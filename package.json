@@ -29,7 +29,7 @@
     "mdinclude": "^0.7.2",
     "prettier": "^2.2.1",
     "prettier-plugin-organize-imports": "^1.1.1",
-    "prettier-plugin-pkg": "^0.8.0",
+    "prettier-plugin-pkg": "^0.10.0",
     "prisma": "^2.16.1",
     "@instructure/cz-lerna-changelog": "^8.6.0",
     "commitizen": "^4.2.4"
