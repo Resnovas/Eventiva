@@ -1,0 +1,43 @@
+{
+  "name": "control",
+  "scripts": {
+    "firstinstall": "npm i -g @teambit/bvm && bvm install",
+    "postinstall": "lerna bootstrap && bit install",
+    "dev:format": "npm run dev:format-scripts",
+    "dev:format-check": "prettier --config .prettier.json --check .",
+    "start:functions:database": "functions-framework --target=handler --source=functions/database/lib",
+    "start:functions:unleash": "functions-framework --target=handler --source=functions/unleash/lib",
+    "tsc": "tsc -p .",
+    "dev:build": "tsc -p tsconfig.json && jest && npm run v:pre && git add . && cz",
+    "dev:format-scripts": "prettier --config .prettier.json --write .",
+    "dev:start": "npm run dev:build && node lib/index.js",
+    "login:bit": "npm login --registry=https://node.bit.dev --scope=@bit",
+    "v:graduate:app": "lerna version --conventional-commits --conventional-graduate=@videndum/control_app",
+    "v:pre": "lerna version --conventional-commits --no-git-tag-version"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@google-cloud/functions-framework": "^1.7.1",
+    "concurrently": "^6.2.0",
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.3.0",
+    "gulp-markdown-toc": "^1.1.0",
+    "gulp-rename": "^2.0.0",
+    "husky": "^7.0.1",
+    "lerna": "^4.0.0",
+    "mdinclude": "^0.7.2",
+    "prettier": "^2.2.1",
+    "prettier-plugin-organize-imports": "^1.1.1",
+    "prettier-plugin-pkg": "^0.8.0",
+    "prisma": "^2.16.1",
+    "@instructure/cz-lerna-changelog": "^8.6.0",
+    "commitizen": "^4.2.4"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/@instructure/cz-lerna-changelog"
+    }
+  },
+  "type": "module"
+}

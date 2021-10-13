@@ -1,0 +1,423 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+generator backend {
+  provider = "typegraphql-prisma"
+}
+
+// generator frontend {
+//   provider           = "typegraphql-prisma"
+//   output             = "../graphql"
+//   emitTranspiledCode = "true"
+// }
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id String @id @default(uuid())
+  username String? @unique
+  emails Email[]
+  phones Phone[]
+  accountType AccountType @default(USER)
+  subsciption Boolean @default(false)
+  subscription SubscriptionOnAccount[]
+
+  // Sub users
+  accesses SubuserOnAccount[] @relation("shared")
+  subusers SubuserOnAccount[] @relation("subuser")
+  
+  // Managers
+  accounts ManagersOnAccount[] @relation("shared")
+  managers ManagersOnAccount[] @relation("managers")
+  
+  // Account logs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime @default(now())
+  applied DateTime @default(now())
+  promoted DateTime @default(now())
+  retired DateTime @default(now())
+  transactions Transaction[] // all interactions of this account
+
+  // Personal details
+  title Title? 
+  firstname String?
+  midname String?
+  lastname String[]
+  Salutation String?
+  contactOfAdress ContactAtAddress[]
+  dob DateTime
+  sex String?
+  label String[]
+  Status Status?
+  application Application?
+  primaryAddress Address? @relation("account")
+  addresses Address[]
+  rtw RTW[] // Right to work
+  qualifications Qualifications[]
+  notes Notes[]
+  files Files[]
+  payroll Payroll[]
+  
+  // Password things
+  password String?
+  resetPasswordToken String? @unique
+  resetPasswordExpires DateTime?
+  apiToken Token[]
+}
+
+model Token {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  type TokenType
+  value String @unique
+  valid Boolean @default(true)
+  expiry DateTime
+
+  account Account @relation(fields: [apiToken], references: [id])
+  apiToken String
+}
+
+model SubuserOnAccount {
+  accountId String
+  subuserId String
+  account Account @relation("shared", fields: [accountId], references: [id])
+  subuser Account @relation("subuser", fields: [subuserId], references: [id])
+
+  @@id([accountId, subuserId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ManagersOnAccount {
+  accountId String
+  managersId String
+  account Account @relation("shared", fields: [accountId], references: [id])
+  managers Account @relation("managers", fields: [managersId], references: [id])
+
+  @@id([accountId, managersId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Domain {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domain String @unique
+  verified Boolean @default(false)
+  dnsType dnsType @default(TXT)
+  linkedEmails Email[]
+  data Json
+}
+
+model Email {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email String @unique
+  account Account? @relation(fields: [accountId], references: [id])
+  accountId String?
+  verified Boolean @default(false)
+  public Boolean @default(false)
+  primary Boolean @default(false)
+  associatedContact ContactAtAddress[]
+  domain Domain? @relation(fields: [domainId], references: [id])
+  domainId String?
+  path String?
+  copy Boolean @default(true)
+  notifyFrom DateTime?
+
+  // Imap settings - email engine
+  imap_authUser String?
+  imap_authPass String?
+  imap_accessToken String?
+  imap_authServer Boolean?
+  imap_host String?
+  imap_port String?
+  imap_secure Boolean? @default(true)
+  imap_tslRejectUnauthorized Boolean? @default(true)
+  imap_tslMinVersion String?
+  imap_resyncDelay Int @default(900)
+
+  // SMTP settings - email engine
+  smtp_authUser String?
+  smtp_authPass String?
+  smtp_accessToken String?
+  smtp_authServer Boolean?
+  smtp_host String?
+  smtp_port String?
+  smtp_secure Boolean? @default(true)
+  smtp_tslRejectUnauthorized Boolean? @default(true)
+  smtp_tslMinVersion String?
+
+  // OAuth2 - email engine
+  oauth2_authorize Boolean @default(true)
+  oauth2_provider String @default("gmail")
+  oauth2_authUser String?
+  oauth2_accessToken String?
+  oauth2_refreshToken String?
+  oauth2_expires DateTime?
+}
+
+model Phone {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+  address Address @relation(fields: [addressId], references: [id])
+  addressId String
+  phone String @unique
+  public Boolean @default(false)
+}
+
+model Address {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+  phones Phone[]
+  type AddressType
+
+  // Address details
+  coords String?
+  street String[]
+  city String?
+  state String?
+  country String?
+  zipcode String?
+
+  // facility details
+  businessName String?
+  name String?
+  parking Boolean? @default(false)
+  contacts ContactAtAddress[]
+  website String?
+  hoursOfOperation Json?
+  rooms Room[]
+  // hotel Hotel[]
+  // restraunt Restraunt[]
+  venueStyle VenueStyle[]
+  featuresOfBuisness Feature[]
+  details Json?
+
+  public Boolean @default(false)
+  primaryAccount Account? @relation("account")
+}
+
+model ContactAtAddress {
+  accountId String
+  addressId String
+  account Account @relation(fields: [accountId], references: [id])
+  address Address @relation(fields: [addressId], references: [id])
+
+  jobTitle String?
+  phone String?
+  email Email? @relation(fields: [emailId], references: [id])
+  emailId String?
+  
+  @@id([accountId, addressId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+  data Json
+}
+
+model SubscriptionOnAccount { 
+  subscriptionId String
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+
+  active Boolean @default(false)
+  deactivated DateTime?
+  activated DateTime?
+  startedAt DateTime? 
+  @@id([accountId, subscriptionId])
+  createdAt DateTime @default(now())
+  lastUpdated DateTime @default(now())
+}
+
+model Subscription {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name String? @unique
+  cost String?
+  details String?
+
+  accounts SubscriptionOnAccount[]
+}
+
+model Room {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  address Address @relation(fields: [addressId], references: [id])
+  addressId String
+
+  name String
+  floor String? // name of the floor its on
+  building String? // name of the building its within
+
+  // facilities
+  accessibility Boolean? @default(false) // is there wheelchair access?
+  checkin DateTime?                     // when can they start using the room?
+  checkout DateTime?                    // when can they stop using the room?
+  features FeatureOfRoom[] 
+
+  // dimensions
+  length String?
+  width String?
+  height String?
+
+  // capacities
+  arrangements ArrangementOfRoom[]
+}
+
+model RTW {
+  name String
+  active Boolean?
+  startDate DateTime?
+  endDate DateTime?
+  file Files[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Files {
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Application {
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Status {
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FeatureOfRoom { 
+  roomId String
+  featureId String
+  feature Feature @relation(fields: [featureId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+  
+  data Json?
+  @@id([roomId, featureId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feature {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name String
+  type FeatureType
+  featureOfRoom FeatureOfRoom[]
+  featureOfBusiness Account[]
+}
+
+model ArrangementOfRoom { 
+  roomId String
+  arrangementId String
+  arrangement Arrangement @relation(fields: [arrangementId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+  
+  capacity Int
+  details String?
+
+  @@id([roomId, arrangementId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) 
+}
+
+
+model Arrangement {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) 
+
+  room ArrangementOfRoom[]
+  name String
+  icon String?
+  details String?
+}
+
+model VenueStyle {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  address Address[]
+  name String
+  details String?
+}
+
+enum AccountType {
+  USER
+  VENUE
+  SUPPLIER
+  SOFTWARE
+}
+
+enum Title {
+  Miss
+  Ms
+  Mrs
+  Mr
+  Dr
+}
+
+enum dnsType {
+  TXT
+  CNAME
+}
+
+enum FeatureType {
+  STRING
+  BOOLEAN
+  NUMBER
+}
+
+enum TokenType {
+  API
+  PERSONAL
+  SYSTEM
+}
+
+enum AddressType {
+  PERSONAL
+  BUSINESS
+}

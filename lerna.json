@@ -1,0 +1,9 @@
+{
+  "version": "independent",
+  "npmClient": "Yarn",
+  "packages": [
+    "packages/*",
+    "functions/**",
+    "apps/**"
+  ]
+}
