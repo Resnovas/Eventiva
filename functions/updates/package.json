@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "execa": "^5.0.0",
-    "tempy": "^1.0.0",
+    "tempy": "^2.0.0",
     "yargs": "^16.2.0"
   }
 }
