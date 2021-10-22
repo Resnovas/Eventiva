@@ -17,12 +17,12 @@
     "swagger": "node ./swagger.js",
     "prebuild": "npx prismix",
     "build": "run-p build:*",
-    "build:main:components": "tsc -p .tsconfig/tsconfig.main.components.json",
-    "build:module:components": "tsc -p .tsconfig/tsconfig.module.components.json",
-    "build:main:functions": "tsc -p .tsconfig/tsconfig.main.functions.json",
-    "build:module:functions": "tsc -p .tsconfig/tsconfig.module.functions.json",
-    "build:main:packages": "tsc -p .tsconfig/tsconfig.main.packages.json",
-    "build:module:packages": "tsc -p .tsconfig/tsconfig.module.packages.json",
+    "build:maincomponents": "tsc -p .tsconfig/tsconfig.main.components.json",
+    "build:modulecomponents": "tsc -p .tsconfig/tsconfig.module.components.json",
+    "build:mainfunctions": "tsc -p .tsconfig/tsconfig.main.functions.json",
+    "build:modulefunctions": "tsc -p .tsconfig/tsconfig.module.functions.json",
+    "build:mainpackages": "tsc -p .tsconfig/tsconfig.main.packages.json",
+    "build:modulepackages": "tsc -p .tsconfig/tsconfig.module.packages.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint src --ext .ts --fix",
@@ -125,8 +125,8 @@
   },
   "private": true,
   "workspaces": [
-    "packages/*",
-    "functions/**",
-    "apps/**"
+    "src/packages/*",
+    "src/functions/*",
+    "src/apps/*"
   ]
 }

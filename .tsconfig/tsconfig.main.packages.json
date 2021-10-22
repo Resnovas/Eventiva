@@ -2,14 +2,14 @@
   "extends": "./tsconfig",
   "compilerOptions": {
     "target": "es2017",
-    "outDir": "build/packages/main",
+    "outDir": "../build/packages/main",
     "rootDir": "../src/packages",
     "module": "commonjs"
   },
   "include": [
-    "src/packages/**/*.ts"
+    "../src/packages/**/*.ts"
   ],
   "exclude": [
-    "node_modules/**"
+    "../node_modules/**"
   ]
 }

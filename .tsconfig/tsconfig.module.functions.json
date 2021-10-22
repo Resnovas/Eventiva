@@ -2,14 +2,14 @@
   "extends": "./tsconfig",
   "compilerOptions": {
     "target": "esnext",
-    "outDir": "build/functions/module",
+    "outDir": "../build/functions/module",
     "rootDir": "../src/functions",
     "module": "esnext"
   },
   "include": [
-    "src/functions/**/*.ts"
+    "../src/functions/**/*.ts"
   ],
   "exclude": [
-    "node_modules/**"
+    "../node_modules/**"
   ]
 }
