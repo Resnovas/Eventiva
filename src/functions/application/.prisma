@@ -1,0 +1,8 @@
+model Application {
+  id String @id @default(uuid())
+  name String
+  account Account []
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

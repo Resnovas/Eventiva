@@ -1,0 +1,51 @@
+model Room {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  address Address @relation(fields: [addressId], references: [id])
+  addressId String
+
+  name String
+  floor String? // name of the floor its on
+  building String? // name of the building its within
+
+  // facilities
+  accessibility Boolean? @default(false) // is there wheelchair access?
+  checkin DateTime?                     // when can they start using the room?
+  checkout DateTime?                    // when can they stop using the room?
+  features FeatureOfRoom[] 
+
+  // dimensions
+  length String?
+  width String?
+  height String?
+
+  // capacities
+  arrangements ArrangementOfRoom[]
+}
+
+model ArrangementOfRoom { 
+  roomId String
+  arrangementId String
+  arrangement Arrangement @relation(fields: [arrangementId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+  
+  capacity Int
+  details String?
+
+  @@id([roomId, arrangementId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) 
+}
+
+
+model Arrangement {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) 
+
+  room ArrangementOfRoom[]
+  name String
+  icon String?
+  details String?
+}

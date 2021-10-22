@@ -18,6 +18,10 @@ template/src/__tests__/__snapshots__/
 yarn.lock
 public/
 **/*/*.tfvars
+.bit/
+.yarn/
+apps/app_old/
+.devcontainer/data
 
 # Logs
 *.log
@@ -84,11 +88,3 @@ common/deploy/
 common/temp/
 common/autoinstallers/*/.npmrc
 **/.rush/temp/
-
-.bit/
-
-.yarn/
-
-docs/Business/
-functions/chat/data/
-apps/app_old/

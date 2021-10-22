@@ -1,0 +1,12 @@
+model Phone {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+  address Address @relation(fields: [addressId], references: [id])
+  addressId String
+  phone String @unique
+  public Boolean @default(false)
+}

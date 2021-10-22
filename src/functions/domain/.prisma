@@ -1,0 +1,16 @@
+model Domain {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domain String @unique
+  verified Boolean @default(false)
+  dnsType dnsType @default(TXT)
+  linkedEmails Email[]
+  data Json
+}
+
+enum dnsType {
+  TXT
+  CNAME
+}

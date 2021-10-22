@@ -5,7 +5,7 @@ const { src, dest, series } = require('gulp');
 
 class Markdown {
     static packages() {
-        return src('packages/**/index.source.md')
+        return src('src/packages/**/index.source.md')
             .pipe(mdinclude())
             .pipe(rename(function (path) {
                 path.basename = "index";
@@ -14,7 +14,7 @@ class Markdown {
     }
 
     static functions() {
-        return src('functions/**/index.source.md')
+        return src('src/functions/**/index.source.md')
             .pipe(mdinclude())
             .pipe(rename(function (path) {
                 path.basename = "index";
@@ -23,7 +23,7 @@ class Markdown {
     }
     
     static apps() {
-        return src('apps/**/index.source.md')
+        return src('src/apps/**/index.source.md')
             .pipe(mdinclude())
             .pipe(rename(function (path) {
                 path.basename = "index";
@@ -32,7 +32,7 @@ class Markdown {
     }
     
     static components() {
-        return src('apps/**/*.docs-source.mdx')
+        return src(src/'apps/**/*.docs-source.mdx')
             .pipe(mdinclude())
             .pipe(rename(function (path) {
                 console.log(path)

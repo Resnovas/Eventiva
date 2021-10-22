@@ -1,0 +1,25 @@
+model Subscription {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name String? @unique
+  cost String?
+  details String?
+
+  accounts SubscriptionOnAccount[]
+}
+
+model SubscriptionOnAccount { 
+  subscriptionId String
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+
+  active Boolean @default(false)
+  deactivated DateTime?
+  activated DateTime?
+  startedAt DateTime? 
+  @@id([accountId, subscriptionId])
+  createdAt DateTime @default(now())
+  lastUpdated DateTime @default(now())
+}

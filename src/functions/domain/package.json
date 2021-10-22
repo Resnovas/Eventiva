@@ -1,0 +1,14 @@
+{
+    "name": "@eventiva/domain",
+    "version": "1.0.0-alpha",
+    "scripts": {
+        "gcp-build": "tsc"
+    },
+    "dependencies": {
+        "typescript": "^4.4.4",
+        "express": "^4.17.1"
+    },
+    "devDependencies": {
+        "@types/node": "^10.0.0"
+    }
+}

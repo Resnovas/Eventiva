@@ -10,7 +10,7 @@
     /**
      * the name of the component workspace. used for development purposes.
      **/
-    "name": "control",
+    "name": "Eventiva",
     /**
      * set the icon to be shown on the Bit server.
      **/
@@ -22,7 +22,7 @@
      * scope - scope name only, e.g. 'compilation'.
      * owner - owner name in bit.dev, e.g. 'teambit'.
      **/
-    "defaultDirectory": "apps/components/{scope}/{name}",
+    "defaultDirectory": "src/apps/components/{scope}/{name}",
     /**
      * default scope for all components in workspace.
      **/
@@ -40,9 +40,7 @@
         "@storybook/addon-knobs": "6.2.9",
         "@storybook/react-native": "5.3.25"
       },
-      "devDependencies": {
-        
-      },
+      "devDependencies": {},
       "peerDependencies": {}
     },
     "packageManagerArgs": [],
@@ -61,7 +59,7 @@
    * see https://harmony-docs.bit.dev/aspects/variants for more info.
    **/
   "teambit.workspace/variants": {
-    "apps/components/generators": {
+    "src/apps/components/generators": {
       "defaultScope": "videndum.generators",
       "teambit.harmony/aspect": {}
     },

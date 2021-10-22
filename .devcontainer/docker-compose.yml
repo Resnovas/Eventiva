@@ -1,0 +1,165 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Update 'VARIANT' to pick an LTS version of Node.js: 16, 14, 12.
+        # Append -bullseye or -buster to pin to an OS version.
+        # Use -bullseye variants on local arm64/Apple Silicon.
+        VARIANT: 16-bullseye
+
+    init: true
+
+    volumes:
+      - ..:/workspace:cached
+      
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:db
+
+    # Uncomment the next line to use a non-root user for all processes.
+    # user: node
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+  unleash:
+    build: .
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@db/postgres"
+      DATABASE_SSL: "false"
+    depends_on:
+      - db
+    network_mode: service:db
+    command: npm run start
+    healthcheck:
+      test: ["CMD", "nc",  "-z", "db", "5432"]
+      interval: 1s
+      timeout: 1m
+      retries: 5
+      start_period: 15s
+
+  rocketchat:
+    image: registry.rocket.chat/rocketchat/rocket.chat:latest
+    command: >
+      bash -c
+        "for i in `seq 1 30`; do
+          node main.js &&
+          s=$$? && break || s=$$?;
+          echo \"Tried $$i times. Waiting 5 secs...\";
+          sleep 5;
+        done; (exit $$s)"
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - PORT=3002
+      - ROOT_URL=http://localhost:3002
+      - MONGO_URL=mongodb://mongo:27017/rocketchat
+      - MONGO_OPLOG_URL=mongodb://mongo:27017/local
+      - MAIL_URL=smtp://smtp.email
+#       - HTTP_PROXY=http://proxy.domain.com
+#       - HTTPS_PROXY=http://proxy.domain.com
+    depends_on:
+      - mongo
+    network_mode: service:db
+    labels:
+      - "traefik.backend=rocketchat"
+      - "traefik.frontend.rule=Host: your.domain.tld"
+  
+  mongo:
+    image: mongo:4.0
+    restart: unless-stopped
+    volumes:
+     - ./data/db:/data/db
+     #- ./data/dump:/dump
+    command: mongod --smallfiles --oplogSize 128 --replSet rs0 --storageEngine=mmapv1
+    labels:
+      - "traefik.enable=false"
+
+  mongo-init-replica:
+    image: mongo:4.0
+    command: >
+      bash -c
+        "for i in `seq 1 30`; do
+          mongo mongo/rocketchat --eval \"
+            rs.initiate({
+              _id: 'rs0',
+              members: [ { _id: 0, host: 'localhost:27017' } ]})\" &&
+          s=$$? && break || s=$$?;
+          echo \"Tried $$i times. Waiting 5 secs...\";
+          sleep 5;
+        done; (exit $$s)"
+    depends_on:
+      - mongo
+
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "--username=postgres", "--host=127.0.0.1", "--port=5432"]
+      interval: 2s
+      timeout: 1m
+      retries: 5
+      start_period: 10s
+
+    # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+  
+  emailengine:
+    restart: always
+    image: andris9/emailengine
+    # ports:
+    #     # API and web interface
+    #     - '3004:3000'
+    #     # Bull UI
+    #     - '3005:3001'
+    #     # SMTP for message submission
+    #     - '2525:2525'
+    network_mode: service:db
+    depends_on:
+        - redis
+    environment:
+        # Configuration to EmailEngine can be passed via environment variables
+        # For full list see https://github.com/postalsys/emailengine#config-mapping
+
+        # Settings to write to v1/settings on startup (https://api.emailengine.app/#operation/postV1Settings)
+        # The following value is a YAML block scalar string, so make it sure it is properly indented
+        EENGINE_SETTINGS: >
+            {
+                "webhooks": "https://webhook.site/f6a00604-7407-4f40-9a8e-ab68a31a3503",
+                "webhookEvents": [
+                    "messageNew", "messageDeleted"
+                ]
+            }
+
+        # Encryption secret
+        EENGINE_SECRET: 'secret'
+        # Database connection URL
+        EENGINE_REDIS: 'redis://redis:6379/2'
+        # Enable SMTP server for local submission
+        EENGINE_SMTP_ENABLED: 'true'
+        # Password for SMTP message submission clients (username is account ID)
+        EENGINE_SMTP_SECRET: 'passw0rd'
+        # Enable Bull UI server for debugging
+        EENGINE_ARENA_ENABLED: 'true'
+
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+        - /data
+        
+volumes:
+  postgres-data:
