@@ -28,21 +28,21 @@ services:
     # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
-  unleash:
-    build: .
-    environment:
-      DATABASE_URL: "postgres://postgres:postgres@db/postgres"
-      DATABASE_SSL: "false"
-    depends_on:
-      - db
-    network_mode: service:db
-    command: npm run start
-    healthcheck:
-      test: ["CMD", "nc",  "-z", "db", "5432"]
-      interval: 1s
-      timeout: 1m
-      retries: 5
-      start_period: 15s
+  # unleash:
+  #   build: Unleash.Dockerfile
+  #   environment:
+  #     DATABASE_URL: "postgres://postgres:postgres@db/postgres"
+  #     DATABASE_SSL: "false"
+  #   depends_on:
+  #     - db
+  #   network_mode: service:db
+  #   command: npm run start
+  #   healthcheck:
+  #     test: ["CMD", "nc",  "-z", "db", "5432"]
+  #     interval: 1s
+  #     timeout: 1m
+  #     retries: 5
+  #     start_period: 15s
 
   rocketchat:
     image: registry.rocket.chat/rocketchat/rocket.chat:latest

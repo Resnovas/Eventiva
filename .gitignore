@@ -20,7 +20,8 @@ public/
 **/*/*.tfvars
 .bit/
 .yarn/
-apps/app_old/
+apps
+apps/app_old
 .devcontainer/data
 
 # Logs

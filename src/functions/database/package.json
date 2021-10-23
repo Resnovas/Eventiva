@@ -1,5 +1,5 @@
 {
-    "name": "@eventiva/database",
+    "name": "database",
     "version": "1.0.0-alpha",
     "scripts": {
         "prisma:generate": "prisma generate",
