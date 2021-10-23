@@ -1,4 +1,5 @@
 const swaggerJsdoc = require('swagger-jsdoc');
+const fs = require('fs');
 
 const openapiSpecification = swaggerJsdoc({
   definition: {
@@ -9,7 +10,9 @@ const openapiSpecification = swaggerJsdoc({
       version: '1.0.0',
     },
   },
-  apis: ['.src/functions/domain/lib/index.js'], // files containing annotations as above
+  apis: ['./build/functions/main/**/index.js'], // files containing annotations as above
 });
 
 console.log(openapiSpecification)
+
+fs.writeFileSync('./openapi.json', JSON.stringify(openapiSpecification, null, 2), { encoding: 'utf8'});

@@ -50,7 +50,7 @@
     "prepare-release": "run-s reset-hard test cov:check doc:html version doc:publish",
     "wip": "wip",
     "wip:finish": "naenae",
-    "wip:watch": "watch wip --ignoreDotFiles --ignoreDirectoryPatterttern=[\"/node_modules/\"]"
+    "wip:watch": "wip silently && watch wip --ignoreDotFiles --ignoreDirectoryPatterttern=[\"/node_modules/\"]"
   },
   "engines": {
     "node": ">=10"
@@ -130,7 +130,6 @@
   },
   "private": true,
   "workspaces": [
-    "docs/*",
     "src/packages/*",
     "src/functions/*",
     "src/apps/*"
