@@ -1,11 +1,13 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Account {
   id String @id @default(uuid())
   username String? @unique
-  emails Email[]
-  phones Phone[]
   accountType AccountType @default(USER)
   subsciption Boolean @default(false)
-  subscription SubscriptionOnAccount[]
 
   // Sub users
   accesses SubuserOnAccount[] @relation("shared")
@@ -22,7 +24,6 @@ model Account {
   applied DateTime @default(now())
   promoted DateTime @default(now())
   retired DateTime @default(now())
-  transactions Transaction[] // all interactions of this account
 
   // Personal details
   title Title? 
@@ -30,18 +31,11 @@ model Account {
   midname String?
   lastname String[]
   Salutation String?
-  contactOfAdress ContactAtAddress[]
   dob DateTime
   sex String?
   label String[]
-  Status StatusOnAccount[]
-  application Application[] // the application and information on application
-  primaryAddress Address? @relation("account")
-  addresses Address[] @relation("address")
-  rtw RTW[] // Right to work
   // qualifications Qualifications[]
   // notes Notes[]
-  files Files[]
   // payroll Payroll[]
   
   // Password things
@@ -49,6 +43,8 @@ model Account {
   resetPasswordToken String? @unique
   resetPasswordExpires DateTime?
   apiToken Token[]
+
+  @@map("accounts")
 }
 
 model Token {

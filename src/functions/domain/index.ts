@@ -1,49 +1,38 @@
 import { Request, Response } from "express";
-
+import PostHog from 'posthog-node'
 /**
  * @swagger
  *
- * /login:
+ * /domain:
  *   post:
  *     produces:
  *       - application/json
  *     parameters:
  *       - name: username
- *         in: formData
+ *         in: query
  *         required: true
  *         type: string
  *       - name: password
- *         in: formData
+ *         in: query
  *         required: true
  *         type: string
+ * 
+ * Responds to any HTTP request.
+ *
+ * @param {!express:Request} req HTTP request context.
+ * @param {!express:Response} res HTTP response context.
  */
-function getDomain(req: Request, res: Response) {
-    // #swagger.start
 
-    /*
-        #swagger.path = '/domain/{id}'
-        #swagger.method = 'get'
-        #swagger.description = 'Get a domain from the database.'
-        #swagger.produces = ['application/json']
-    */
+const client = new PostHog(
+    'phc_9qsTJL1pzfiTBe4yOYXGEvhK18sy07Oov14pHBQEspA',
+    { host: 'https://app.posthog.com' }
+)
+export const handler = (req: Request, res: Response) => {
+    const message = req.query.message || req.body.message || 'Hello World!';
+    client.capture({
+        distinctId: 'test-id',
+        event: 'test-event'
+    })
+    res.status(200).send(message);
     
-    /*  #swagger.parameters['id'] = {
-            in: 'path',
-            type: 'integer',
-            description: 'User ID.' } */
-    const dataId = req.params.id
-
-    /*  #swagger.parameters['obj'] = {
-            in: 'query',
-            description: 'User data.',
-            schema: { $ref: '#/definitions/AddUser' }
-    } */
-    const dataObj = req.query.obj
-    
-    if (dataId || dataObj)
-        return res.status(200).send(true)    // #swagger.responses[200]
-    return res.status(404).send(false)       // #swagger.responses[404]
-    // #swagger.end
-}
-
-export const handler = getDomain
+};

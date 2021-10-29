@@ -1,10 +1,10 @@
 import "reflect-metadata";
-import { PrismaClient } from '@prisma/client'
-import { buildSchemaSync } from 'type-graphql'
 import { resolvers } from '@generated/type-graphql'
-import express from "express";
-import { ApolloServer as ApolloExpress } from "apollo-server-express";
+import { PrismaClient } from '@prisma/client'
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core"
+import { ApolloServer as ApolloExpress } from "apollo-server-express";
+import express from "express";
+import { buildSchemaSync } from 'type-graphql'
 
 const app = express()
 const prisma = new PrismaClient()

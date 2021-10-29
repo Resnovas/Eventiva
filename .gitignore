@@ -1,7 +1,6 @@
 /bin/
 /node_modules/
-**/*/*.js
-**/*/*.js.map
+**/*.js.map
 **/*/lib/
 **/*/node_modules/
 **/*/.env
@@ -20,7 +19,6 @@ public/
 **/*/*.tfvars
 .bit/
 .yarn/
-apps
 apps/app_old
 .devcontainer/data
 
@@ -89,3 +87,4 @@ common/deploy/
 common/temp/
 common/autoinstallers/*/.npmrc
 **/.rush/temp/
+src/functions/database/types/

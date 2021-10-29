@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model Phone {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -9,4 +13,14 @@ model Phone {
   addressId String
   phone String @unique
   public Boolean @default(false)
+}
+
+model Account {
+  id String @id @default(uuid())
+  phones Phone[]
+}
+
+model Address {
+  id String @id @default(uuid())
+  phones Phone[]
 }

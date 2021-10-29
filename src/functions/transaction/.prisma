@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model Transaction {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -6,4 +10,9 @@ model Transaction {
   account Account @relation(fields: [accountId], references: [id])
   accountId String
   data Json
+}
+
+model Account {
+  id String @id @default(uuid())
+  transactions Transaction[]
 }

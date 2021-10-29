@@ -1,14 +1,22 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model RTW {
   id String @id @default(uuid())
   name String
   active Boolean?
   startDate DateTime?
   endDate DateTime?
-  file Files[]
 
   account Account @relation(fields: [accountId], references: [id])
   accountId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id String @id @default(uuid())
+  rtw RTW[]
 }

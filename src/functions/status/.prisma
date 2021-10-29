@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model StatusOnAccount {
   statusId String
   accountId String
@@ -16,4 +20,9 @@ model Status {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id String @id @default(uuid())
+  Status StatusOnAccount[]
 }

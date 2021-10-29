@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model Feature {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -36,4 +40,14 @@ enum FeatureType {
   STRING
   BOOLEAN
   NUMBER
+}
+
+model Address { 
+  id String @id @default(cuid())
+  featuresOfBuisness FeatureOfAddress[]
+}
+
+model Room {
+  id String @id @default(cuid())
+  featuresOfRoom FeatureOfRoom[]
 }

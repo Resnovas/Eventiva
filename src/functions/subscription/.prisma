@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model Subscription {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -19,7 +23,12 @@ model SubscriptionOnAccount {
   deactivated DateTime?
   activated DateTime?
   startedAt DateTime? 
-  @@id([accountId, subscriptionId])
   createdAt DateTime @default(now())
   lastUpdated DateTime @default(now())
+  @@id([accountId, subscriptionId])
+}
+
+model Account {
+  id String @id @default(uuid())
+  subscription SubscriptionOnAccount[]
 }

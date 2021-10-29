@@ -1,3 +1,8 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Address {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -5,7 +10,6 @@ model Address {
 
   account Account @relation(fields: [accountId], references: [id], "address")
   accountId String
-  phones Phone[]
   type AddressType
 
   // Address details
@@ -23,11 +27,9 @@ model Address {
   contacts ContactAtAddress[]
   website String?
   hoursOfOperation Json?
-  rooms Room[]
   // hotel Hotel[]
   // restraunt Restraunt[]
   venueStyle VenueStyle[]
-  featuresOfBuisness FeatureOfAddress[]
   features String[]
   details Json?
 
@@ -65,4 +67,16 @@ model VenueStyle {
 enum AddressType {
   PERSONAL
   BUSINESS
+}
+
+model Account {
+  id String @id @default(uuid())
+  primaryAddress Address? @relation("account")
+  addresses Address[] @relation("address")
+  contactOfAdress ContactAtAddress[]
+}
+
+model Email {
+  id String @id @default(uuid())
+  associatedContact ContactAtAddress[]
 }

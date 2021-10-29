@@ -1,3 +1,7 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 model Room {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -13,7 +17,6 @@ model Room {
   accessibility Boolean? @default(false) // is there wheelchair access?
   checkin DateTime?                     // when can they start using the room?
   checkout DateTime?                    // when can they stop using the room?
-  features FeatureOfRoom[] 
 
   // dimensions
   length String?
@@ -48,4 +51,10 @@ model Arrangement {
   name String
   icon String?
   details String?
+}
+
+
+model Address {
+  id String @id @default(uuid())
+  rooms Room[]
 }

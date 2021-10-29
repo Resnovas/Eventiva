@@ -5,8 +5,9 @@
         "gcp-build": "tsc"
     },
     "dependencies": {
-        "typescript": "^4.4.4",
-        "express": "^4.17.1"
+        "express": "^4.17.1",
+        "posthog-node": "^1.1.5",
+        "typescript": "^4.4.4"
     },
     "devDependencies": {
         "@types/node": "^10.0.0"

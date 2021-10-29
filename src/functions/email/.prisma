@@ -1,3 +1,8 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Email {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
@@ -9,9 +14,6 @@ model Email {
   verified Boolean @default(false)
   public Boolean @default(false)
   primary Boolean @default(false)
-  associatedContact ContactAtAddress[]
-  domain Domain? @relation(fields: [domainId], references: [id])
-  domainId String?
   path String?
   copy Boolean @default(true)
   notifyFrom DateTime?
@@ -46,4 +48,10 @@ model Email {
   oauth2_accessToken String?
   oauth2_refreshToken String?
   oauth2_expires DateTime?
+}
+
+
+model Account {
+  id String @id @default(uuid())
+  emails Email[]
 }
