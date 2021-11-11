@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig",
+  "compilerOptions": {
+    "target": "es2017",
+    "outDir": "../build/interface/main",
+    "rootDir": "../src/interface",
+    "module": "commonjs",
+    "jsx": "react-native"
+  },
+  "include": [
+    "../src/interface/**/*.ts"
+  ],
+  "exclude": [
+    "../node_modules/**",
+    "**/*.tsx"
+  ]
+}

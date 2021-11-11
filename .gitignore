@@ -14,13 +14,15 @@ build
 template/src/__tests__/__snapshots__/
 /.changelog
 .npm/
-yarn.lock
 public/
 **/*/*.tfvars
 .bit/
 .yarn/
 apps/app_old
 .devcontainer/data
+.docusaurus
+.cache-loader
+src/.tsconfig
 
 # Logs
 *.log

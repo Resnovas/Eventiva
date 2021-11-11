@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig",
+  "compilerOptions": {
+    "target": "esnext",
+    "outDir": "../build/interface/module",
+    "rootDir": "../src/interface",
+    "module": "esnext",
+    "jsx": "react-native",
+  },
+  "include": [
+    "../src/interface/**/*.ts"
+  ],
+  "exclude": [
+    "../node_modules/**"
+  ]
+}

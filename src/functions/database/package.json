@@ -8,6 +8,8 @@
         "gcp-build": "prisma generate && tsc"
     },
     "dependencies": {
+        "@casl/ability": "^5.4.3",
+        "@casl/prisma": "^1.0.1",
         "@prisma/client": "^3.2.0",
         "apollo-server-cloud-functions": "^2.20.0",
         "apollo-server-core": "^3.0.0",
