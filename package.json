@@ -27,7 +27,7 @@
     "build:modulefunctions": "tsc -p .tsconfig/tsconfig.module.functions.json",
     "build:mainpackages": "tsc -p .tsconfig/tsconfig.main.packages.json",
     "build:modulepackages": "tsc -p .tsconfig/tsconfig.module.packages.json",
-    "postbuild": "node .schemas/openapi.js",
+    "postbuild": "node ./scripts/openapi.js",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint src --ext .ts --fix",

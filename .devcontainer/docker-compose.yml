@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  app:
+  app:   
     build: 
       context: .
       dockerfile: Dockerfile
@@ -15,6 +15,9 @@ services:
 
     volumes:
       - ..:/workspace:cached
+
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres?schema=public
       
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity

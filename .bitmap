@@ -5,13 +5,13 @@
         "scope": "",
         "version": "",
         "mainFile": "index.ts",
-        "rootDir": "src/apps/components/generators/react-native"
+        "rootDir": "src/generators/react-native"
     },
     "interface/test": {
         "scope": "",
         "version": "",
         "mainFile": "index.ts",
-        "rootDir": "src/apps/components/interface/test"
+        "rootDir": "src/interface/test"
     },
     "$schema-version": "14.9.0"
 }

@@ -22,7 +22,7 @@
      * scope - scope name only, e.g. 'compilation'.
      * owner - owner name in bit.dev, e.g. 'teambit'.
      **/
-    "defaultDirectory": "src/apps/components/{name}",
+    "defaultDirectory": "src/{name}",
     /**
      * default scope for all components in workspace.
      **/
@@ -74,5 +74,5 @@
       "videndum.eventiva/generators/react-native"
     ]
   },
-  "videndum.generators/react-native": {}
+  "videndum.eventiva/generators/react-native": {}
 }
