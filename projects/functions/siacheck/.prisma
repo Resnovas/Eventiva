@@ -1,0 +1,37 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SIABadge {
+  id Int @id @unique
+  license License
+  type LicenseType
+  image String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+
+  account Account @relation(fields: [account_id], references: [id])
+  account_id String
+}
+
+model Account {
+  id String @id @default(uuid())
+  sia SIABadge[]
+}
+
+enum License {
+  CVIT
+  CP
+  DS
+  CCTV
+  SG
+  VI
+  KH
+}
+
+enum LicenseType {
+  FRONTLINE
+  NON_FRONTLINE
+}

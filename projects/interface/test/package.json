@@ -1,0 +1,20 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "scripts": {
+    "setup": "pnpm add react react-native && pnpm add @storybook/addon-actions @storybook/addon-knobs @storybook/react-native @testing-library/react-native @types/react @types/react-native -D"
+  },
+  "dependencies": {
+    "react": "^16.0.0",
+    "react-native": "^0.66.3"
+  },
+  "peerDependencies": {
+    "@babel/preset-env": "^7.1.6"
+  },
+  "devDependencies": {
+    "@testing-library/react-native": "^8.0.0",
+    "react-test-renderer": "^16.0.0",
+    "@types/react": "^17.0.34",
+    "@types/react-native": "^0.66.4"
+  }
+}

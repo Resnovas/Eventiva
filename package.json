@@ -2,31 +2,25 @@
   "name": "eventiva",
   "version": "0.0.0",
   "description": "Imagine a place where you can find all your event vendors, venues and professionals, alongside all the tools you require to be successful within the live events market. ",
-  "main": "./build/packages/main/typescript/index.js",
-  "typings": "./build/packages/main/typescript/index.d.ts",
-  "module": "./build/packages/module/typescript/index.js",
+  "main": "./common/scripts/eventiva.js",
+  "bin": {
+    "evt": "./common/scripts/eventiva.js",
+    "eventiva": "./common/scripts/eventiva.js"
+  },
   "repository": "https://github.com/videndum/eventiva",
   "license": "MIT",
   "keywords": [],
   "private": true,
   "scripts": {
     "prefirstinstall": "node ./scripts/preinstall.js",
-    "firstinstall": "pnpm install && npm install -g ./src/apps/cli/ && run-p script:*",
-    "script:prismix": "pnpm prismix",
-    "script:prisma": "pnpm -C src/functions/database prisma:generate",
+    "firstinstall": "yarn install && npm install -g . && run-p script:*",
+    "script:prismix": "yarn prismix",
+    "script:prisma": "yarn workspace database prisma:generate",
     "start:functions:database": "functions-framework --target=handler --source=build/functions/main/database",
     "start:functions:domain": "functions-framework --target=handler --source=build/functions/main/domain",
-    "preinstall": "node ./scripts/preinstall.js",
+    "preinstall": "node ./common/scripts/preinstall.js",
     "prebuild": "run-p script:*",
     "build": "run-p build:*",
-    "build:maincli": "tsc -p .tsconfig/tsconfig.main.cli.json",
-    "build:modulecli": "tsc -p .tsconfig/tsconfig.module.cli.json",
-    "build-:maininterface": "tsc -p .tsconfig/tsconfig.main.interface.json",
-    "build-:moduleinterface": "tsc -p .tsconfig/tsconfig.module.interface.json",
-    "build:mainfunctions": "tsc -p .tsconfig/tsconfig.main.functions.json",
-    "build:modulefunctions": "tsc -p .tsconfig/tsconfig.module.functions.json",
-    "build:mainpackages": "tsc -p .tsconfig/tsconfig.main.packages.json",
-    "build:modulepackages": "tsc -p .tsconfig/tsconfig.module.packages.json",
     "postbuild": "node ./scripts/openapi.js",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
@@ -61,8 +55,7 @@
     "unused:cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100"
   },
   "engines": {
-    "node": ">=10",
-    "pnpm": ">=4"
+    "node": ">=10"
   },
   "dependencies": {
     "@bitauth/libauth": "^1.17.1",

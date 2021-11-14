@@ -1,0 +1,29 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Domain {
+  id String @id @default(uuid())
+
+  domain String @unique
+  verified Boolean @default(false)
+  dnsType dnsType @default(TXT)
+  linkedEmails Email[]
+  data Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+}
+
+enum dnsType {
+  TXT
+  CNAME
+}
+
+model Email {
+  id String @id @default(uuid())
+  domain Domain? @relation(fields: [domainId], references: [id])
+  domainId String?
+}

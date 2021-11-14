@@ -1,0 +1,31 @@
+{
+  "name": "internals",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tgtgamer/texasholdem.git"
+  },
+  "homepage": "https://ggradio.net/",
+  "bugs": {
+    "email": "bugs@videndum.studio",
+    "url": "https://github.com/tgtgamer/texasholdem/issues"
+  },
+  "author": {
+    "name": "Videndum Studios",
+    "email": "hello@videndum.studio",
+    "url": "https://videndum.studio"
+  },
+  "contributors": [
+    "Contributors can be found in readme.md"
+  ],
+  "license": "unknown",
+  "keywords": [],
+  "scripts": {},
+  "dependencies": {
+    "oso": "^0.23.0",
+    "typescript": "^4.4.4"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "~0.42.2"
+  }
+}

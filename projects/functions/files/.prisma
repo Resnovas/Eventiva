@@ -1,0 +1,25 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Files {
+  id String @id @default(uuid())
+  name String
+  rtw RTW? @relation(fields: [rtwId], references: [id])
+  rtwId String?
+  account Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+}
+
+model Account {
+  id String @id @default(uuid())
+  files Files[]
+}
+
+model RTW {
+  id String @id @default(uuid())
+  files Files[]
+}

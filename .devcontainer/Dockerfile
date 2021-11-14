@@ -12,7 +12,7 @@ RUN apt-get update && sudo apt-get install yarn
 # RUN su node -c "source /usr/local/share/nvm/nvm.sh && nvm install ${EXTRA_NODE_VERSION}"
 
 # [Optional] Uncomment if you want to install more global node modules
-RUN su node -c "npm i -g @teambit/bvm pnpm wip watch commitizen"
+RUN su node -c "npm i -g @teambit/bvm wip watch commitizen"
 RUN bvm install
 # ENV PATH=$HOME/bin:$PATH
 # RUN "echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc && source ~/.bashrc && bvm install"

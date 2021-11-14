@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "target": "esnext",
+    "outDir": "../src/apps/cli/bin",
+    "rootDir": "../src/apps/cli",
+    "module": "esnext"
+  },
+  "include": ["../src/apps/cli/**/*.ts"],
+  "exclude": ["../node_modules/**", "../src/apps/cli/bin/*.ts"]
+}

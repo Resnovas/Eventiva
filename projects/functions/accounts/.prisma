@@ -1,0 +1,105 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id String @id @default(uuid())
+  username String? @unique
+  accountType AccountType @default(USER)
+  subsciption Boolean @default(false)
+
+  // Sub users
+  accesses SubuserOnAccount[] @relation("shared")
+  subusers SubuserOnAccount[] @relation("subuser")
+  
+  // Managers
+  accounts ManagersOnAccount[] @relation("managed")
+  managers ManagersOnAccount[] @relation("managers")
+  
+  // Account logs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime @default(now())
+  applied DateTime @default(now())
+  promoted DateTime @default(now())
+  retired DateTime @default(now())
+
+  // Personal details
+  title Title? 
+  firstname String?
+  midname String?
+  lastname String[]
+  Salutation String?
+  dob DateTime
+  sex String?
+  label String[]
+  // qualifications Qualifications[]
+  // notes Notes[]
+  // payroll Payroll[]
+  
+  // Password things
+  password String?
+  resetPasswordToken String? @unique
+  resetPasswordExpires DateTime?
+  apiToken Token[]
+
+  @@map("accounts")
+  deleted DateTime?
+}
+
+model Token {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  type TokenType
+  value String @unique
+  valid Boolean @default(true)
+  expiry DateTime
+
+  account Account @relation(fields: [apiToken], references: [id])
+  apiToken String
+}
+
+model SubuserOnAccount {
+  accountId String
+  subuserId String
+  account Account @relation("shared", fields: [accountId], references: [id])
+  subuser Account @relation("subuser", fields: [subuserId], references: [id])
+
+  @@id([accountId, subuserId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ManagersOnAccount {
+  accountId String
+  managersId String
+  account Account @relation("managed", fields: [accountId], references: [id])
+  managers Account @relation("managers", fields: [managersId], references: [id])
+
+  @@id([accountId, managersId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AccountType {
+  USER
+  VENUE
+  SUPPLIER
+  SOFTWARE
+}
+
+enum Title {
+  Miss
+  Ms
+  Mrs
+  Mr
+  Dr
+}
+
+enum TokenType {
+  API
+  PERSONAL
+  SYSTEM
+}

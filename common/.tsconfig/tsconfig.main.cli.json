@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "target": "es2017",
+    "outDir": "../src/apps/cli/bin",
+    "rootDir": "../src/apps/cli",
+    "module": "commonjs"
+  },
+  "include": ["../src/apps/cli/**/*.ts"],
+  "exclude": ["../node_modules/**", "../src/apps/cli/bin/*.ts"]
+}

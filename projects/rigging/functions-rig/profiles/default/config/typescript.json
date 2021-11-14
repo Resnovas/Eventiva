@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/heft/typescript.schema.json",
+  "additionalModuleKindsToEmit": [
+    {
+      "moduleKind": "es2015",
+      "outFolderName": "build/lib"
+    },
+    {
+      "moduleKind": "commonjs",
+      "outFolderName": "build/lib-commonjs"
+    }
+  ],
+  "emitFolderNameForTests": "build/lib-commonjs",
+  "staticAssetsToCopy": {
+    "fileExtensions": [".json", ".css"]
+  }
+}
