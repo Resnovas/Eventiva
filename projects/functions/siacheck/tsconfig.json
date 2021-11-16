@@ -1,10 +1,10 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "build/lib-next",
+    "outDir": "lib",
     "rootDir": ".",
-    "module": "esNext"
+    "module": "es2015"
   },
   "include": ["./**/*.ts"],
-  "exclude": ["../node_modules/**", "build/**"]
+  "exclude": ["../node_modules/**", "lib/**"]
 }

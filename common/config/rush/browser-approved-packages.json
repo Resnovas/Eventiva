@@ -151,6 +151,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "ts-node",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "tslib",
       "allowedCategories": [ "prototypes", "tools" ]
     },

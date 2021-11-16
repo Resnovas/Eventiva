@@ -37,18 +37,22 @@ async function testLicense(license: string) {
       path: `${license}-licensecheck.png`,
       clip: { x: 65, y: 1041, width: 1150, height: 340 },
     });
+    const h5 = await page.$$('.panel-body .ax_h5');
     const h4 = await page.$$('.panel-body .ax_h4');
     const active = await page.$$('.panel-body .italic_13');
     const activeDesc = await page.$$('.panel-body .normal_13');
     const returned = {
       result: {
         found: license == (await h4[0]?.getInnerText()) ? 'Found' : 'Invalid',
+        firstname: await h5[0]?.getInnerText(),
+        lastname: await h5[1]?.getInnerText(),
         license: await h4[0]?.getInnerText(),
         role: await h4[1]?.getInnerText(),
         sector: await h4[2]?.getInnerText(),
         expiry: await h4[3]?.getInnerText(),
         active: await (await active[0]?.getInnerText())?.split('-')[0]?.trim(),
         activeDesc: await activeDesc[0]?.getInnerText(),
+        activeDate: Date.now(),
         picture: picture,
       },
     };

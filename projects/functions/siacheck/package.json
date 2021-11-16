@@ -1,9 +1,19 @@
 {
   "name": "siacheck",
   "version": "1.0.0",
+  "types": "dist/siacheck.d.ts",
+  "typings": "dist/siacheck.d.ts",
+  "main": "lib/index.js",
+  "esnext": {
+    "main": "lib/index.mjs"
+  },
   "scripts": {
     "build": "heft build",
     "start": "functions-framework --target=handler --source=build/lib-commonjs"
+  },
+  "publishConfig": {
+    "typings": "dist/siacheck-public.d.ts",
+    "types": "dist/siacheck-public.d.ts"
   },
   "dependencies": {
     "@vendia/serverless-express": "^4.5.2",

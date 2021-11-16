@@ -46,3 +46,6 @@ src/.tsconfig
 src/functions/database/types/
 template/src/__tests__/__snapshots__/
 yarn-error.log*
+tsdoc-metadata.json
+temp/
+dist/
