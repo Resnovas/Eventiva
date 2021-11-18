@@ -1,14 +1,29 @@
 import chromium from 'chrome-aws-lambda';
 import express, { Express } from 'express';
 
+/**
+ * A cloud function that checks if a license is valid against the SIA database.
+ * @remarks -- This function is not intended to be called directly.
+ *
+ * @packageDocumentation
+ */
+
 const app = express();
+
 app.get('/', (req, res) => {
   typeof req.query.license == 'string'
     ? testLicense(req.query.license).then((r) => res.send(r))
     : res.send('Please provide a license number');
 });
 
-async function testLicense(license: string) {
+/**
+ * @swagger
+ * @param license - License number to check
+ * @returns \{Promise\<\{result: \{found: string, firstname: string, lastname: string, license: string, role: string, sector: string, expiry: string, active: string, activeDesc: string, activeDate: number, picture: string\}\}\>\}
+ * @description Checks the license number against the SIA database and returns the result
+ * @alpha
+ */
+export async function testLicense(license: string) {
   let browser = await chromium.puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
@@ -63,4 +78,7 @@ async function testLicense(license: string) {
   return null;
 }
 
+/**
+ * @public
+ */
 export const handler: Express = app;

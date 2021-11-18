@@ -9,6 +9,23 @@ import { Express as Express_2 } from 'express';
 // @public (undocumented)
 export const handler: Express_2;
 
+// @alpha (undocumented)
+export function testLicense(license: string): Promise<{
+    result: {
+        found: string;
+        firstname: string | undefined;
+        lastname: string | undefined;
+        license: string | undefined;
+        role: string | undefined;
+        sector: string | undefined;
+        expiry: string | undefined;
+        active: string | undefined;
+        activeDesc: string | undefined;
+        activeDate: number;
+        picture: string | void | Buffer;
+    };
+} | null>;
+
 // (No @packageDocumentation comment for this package)
 
 ```
