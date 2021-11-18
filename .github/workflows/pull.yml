@@ -147,7 +147,7 @@ jobs:
           mode: 'environment'
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Automatically approve
-        uses: hmarr/auto-approve-action@v2.0.0
+        uses: hmarr/auto-approve-action@v2.1.0
         if: (${{env.approve_enabled}} == true && contains(${{env.auto_whitelist}}, github.actor) || ${{env.approve_enabled}} == true && github.actor == github.repository_owner )
         with:
           github-token: ${{ secrets.BOT_TOKEN }}
