@@ -19,6 +19,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "@microsoft/api-extractor",
+      "allowedCategories": [ "tools" ]
+    },
+    {
       "name": "@prisma/client",
       "allowedCategories": [ "prototypes" ]
     },

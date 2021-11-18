@@ -4,12 +4,14 @@
 
 ```ts
 
+/// <reference types="node" />
+
 import { Express as Express_2 } from 'express';
 
-// @public (undocumented)
+// @public
 export const handler: Express_2;
 
-// @alpha (undocumented)
+// @alpha
 export function testLicense(license: string): Promise<{
     result: {
         found: string;
