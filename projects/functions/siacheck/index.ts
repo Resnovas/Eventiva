@@ -8,8 +8,21 @@ import express, { Express } from 'express';
  * @packageDocumentation
  */
 
+/**
+ * Initialises An express application.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @internal
+ * @returns \{Promise\<void\>\}
+ */
 const app = express();
 
+/**
+ * Initialises the base root.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns \{Promise\<void\>\}
+ */
 app.get('/', (req, res) => {
   typeof req.query.license == 'string'
     ? testLicense(req.query.license).then((r) => res.send(r))
@@ -17,6 +30,7 @@ app.get('/', (req, res) => {
 });
 
 /**
+ * Tests a license using the SIA database and puppeteer.
  * @swagger
  * @param license - License number to check
  * @returns \{Promise\<\{result: \{found: string, firstname: string, lastname: string, license: string, role: string, sector: string, expiry: string, active: string, activeDesc: string, activeDate: number, picture: string\}\}\>\}
@@ -79,6 +93,10 @@ export async function testLicense(license: string) {
 }
 
 /**
+ * Initialises the server.
+ * @param req - The request object.
+ * @param res - The response object.
  * @public
+ * @returns \{Promise\<void\>\}
  */
 export const handler: Express = app;
