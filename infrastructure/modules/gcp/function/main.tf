@@ -5,7 +5,7 @@ locals {
 # Compress source code
 data "archive_file" "source" {
   type        = "zip"
-  source_dir  = "../../../${var.source_dir}"
+  source_dir  = "./../../projects/${var.source_dir}"
   output_path = "/tmp/function-${var.name}-${local.timestamp}.zip"
   # excludes    = [ "../../../terraform" ]
 }

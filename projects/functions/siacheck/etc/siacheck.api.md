@@ -4,8 +4,6 @@
 
 ```ts
 
-/// <reference types="node" />
-
 import { Express as Express_2 } from 'express';
 
 // @public
