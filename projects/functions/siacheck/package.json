@@ -14,14 +14,15 @@
       "require": "./lib/cjs/index.js"
     }
   },
+  "publishConfig": {
+    "typings": "dist/siacheck-public.d.ts",
+    "types": "dist/siacheck-public.d.ts",
+    "access": "public"
+  },
   "scripts": {
     "build": "heft build",
     "postbuild": "fixup.sh",
     "start": "functions-framework --target=handler --source=dist/cjs/index.js"
-  },
-  "publishConfig": {
-    "typings": "dist/siacheck-public.d.ts",
-    "types": "dist/siacheck-public.d.ts"
   },
   "dependencies": {
     "@vendia/serverless-express": "^4.5.2",
@@ -43,5 +44,6 @@
     "@eventiva/functions-rig": "workspace:*",
     "tslib": "~2.3.1",
     "ts-node": "~10.4.0"
-  }
+  },
+  "private": false
 }

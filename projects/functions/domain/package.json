@@ -12,5 +12,21 @@
   "devDependencies": {
     "@types/node": "^16.11.6",
     "@rushstack/heft": "~0.42.2"
+  },
+  "main": "lib/cjs/index.js",
+  "module": "lib/mjs/index.js",
+  "esnext": {
+    "main": "lib/njs/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./lib/mjs/index.js",
+      "require": "./lib/cjs/index.js"
+    }
+  },
+  "publishConfig": {
+    "typings": "dist/siacheck-public.d.ts",
+    "types": "dist/siacheck-public.d.ts",
+    "access": "public"
   }
 }
