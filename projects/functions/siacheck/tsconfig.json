@@ -1,10 +1,10 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "lib",
+    "outDir": "lib/njs",
     "rootDir": ".",
-    "module": "es2015"
+    "module": "esnext"
   },
   "include": ["./**/*.ts"],
-  "exclude": ["../node_modules/**", "lib/**"]
+  "exclude": ["../node_modules/**", "lib/**", "dist/**"]
 }

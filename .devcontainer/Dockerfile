@@ -4,9 +4,9 @@ FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0-${VARIANT}
 
 # [Optional] Uncomment this section to install additional OS packages.
 RUN sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl \
-    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add - \
-    sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    sudo apt-get update && sudo apt-get install yarn terraform
+    && curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add - \
+    && sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" -y \
+    && sudo apt-get update -y && sudo apt-get install -y yarn terraform
     # RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 #     && apt-get -y install --no-install-recommends <your-package-list-here>
 

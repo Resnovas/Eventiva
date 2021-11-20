@@ -70,6 +70,7 @@ export async function testLicense(license: string) {
     const h4 = await page.$$('.panel-body .ax_h4');
     const active = await page.$$('.panel-body .italic_13');
     const activeDesc = await page.$$('.panel-body .normal_13');
+    const sinceDate = await page.$$('.as-on-date');
     const returned = {
       result: {
         found: license == (await h4[0]?.getInnerText()) ? 'Found' : 'Invalid',
@@ -82,6 +83,7 @@ export async function testLicense(license: string) {
         active: await (await active[0]?.getInnerText())?.split('-')[0]?.trim(),
         activeDesc: await activeDesc[0]?.getInnerText(),
         activeDate: Date.now(),
+        sinceDate: await (await sinceDate[0]?.getInnerText())?.slice(7, -1),
         picture: picture,
       },
     };

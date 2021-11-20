@@ -51,6 +51,7 @@ resource "google_cloudfunctions_function" "function" {
   source_archive_object = google_storage_bucket_object.zip.name
   trigger_http          = true
   entry_point           = var.entry_point
+  entry_point_object    = var.entry_point_object
   environment_variables = var.environment_variables
 }
 

@@ -33,7 +33,8 @@ module "function" {
   name        = "siacheck"
   source      = "../modules/gcp/function"
   project     = var.project
-  source_dir  = "functions/siacheck/lib"
+  source_dir  = "functions/siacheck"
+  source_route = "./lib/index.cjs"
   entry_point = "handler"
   environment_variables = {}
 }

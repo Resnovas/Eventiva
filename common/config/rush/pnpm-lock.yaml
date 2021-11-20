@@ -125,12 +125,14 @@ importers:
 
   ../../projects/rigging/functions-rig:
     specifiers:
+      '@microsoft/api-documenter': ~7.13.68
       '@microsoft/api-extractor': ~7.18.19
       '@rushstack/heft': ~0.42.2
       '@types/node': ^16.11.6
       tslib: ~2.3.1
       typescript: ^4.4.4
     dependencies:
+      '@microsoft/api-documenter': 7.13.68
       '@microsoft/api-extractor': 7.18.19
       '@rushstack/heft': 0.42.2
       '@types/node': 16.11.7
@@ -305,6 +307,19 @@ packages:
 
   /@josephg/resolvable/1.0.1:
     resolution: {integrity: sha512-CtzORUwWTTOTqfVtHaKRJ0I1kNQd1bpn3sUh8I3nJDVY+5/M/Oe1DnEWzPQvqq/xPIIkzzzIP7mfCoAjFRvDhg==}
+    dev: false
+
+  /@microsoft/api-documenter/7.13.68:
+    resolution: {integrity: sha512-cRjwK1TDyGxFGgCsRG8G0Yi3Z4akvfWgw1pWAxKFbm7ajlQQGZcHPnb+n4lKlSeQ5g/cxc7hcdw54Mvisne9Bg==}
+    hasBin: true
+    dependencies:
+      '@microsoft/api-extractor-model': 7.13.16
+      '@microsoft/tsdoc': 0.13.2
+      '@rushstack/node-core-library': 3.43.2
+      '@rushstack/ts-command-line': 4.10.4
+      colors: 1.2.5
+      js-yaml: 3.13.1
+      resolve: 1.17.0
     dev: false
 
   /@microsoft/api-extractor-model/7.13.16:
@@ -1843,6 +1858,12 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
+  /esprima/4.0.1:
+    resolution: {integrity: sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A==}
+    engines: {node: '>=4'}
+    hasBin: true
+    dev: false
+
   /etag/1.8.1:
     resolution: {integrity: sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=}
     engines: {node: '>= 0.6'}
@@ -2587,6 +2608,14 @@ packages:
 
   /js-tokens/4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+
+  /js-yaml/3.13.1:
+    resolution: {integrity: sha512-YfbcO7jXDdyj0DGxYVSlSeQNHbD7XPWvrVWeVUujrQEoZzWJIRrCPoyk6kL6IAjAG2IolMK4T0hNUe0HOUs5Jw==}
+    hasBin: true
+    dependencies:
+      argparse: 1.0.10
+      esprima: 4.0.1
+    dev: false
 
   /json-parse-even-better-errors/2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}

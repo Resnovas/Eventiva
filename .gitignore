@@ -49,3 +49,5 @@ yarn-error.log*
 tsdoc-metadata.json
 temp/
 dist/
+.terraform/
+.terraform.*

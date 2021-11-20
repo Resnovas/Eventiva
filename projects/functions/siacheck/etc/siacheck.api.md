@@ -4,6 +4,8 @@
 
 ```ts
 
+/// <reference types="node" />
+
 import { Express as Express_2 } from 'express';
 
 // @public
@@ -22,6 +24,7 @@ export function testLicense(license: string): Promise<{
         active: string | undefined;
         activeDesc: string | undefined;
         activeDate: number;
+        sinceDate: string | undefined;
         picture: string | void | Buffer;
     };
 } | null>;

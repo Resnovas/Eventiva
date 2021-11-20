@@ -3,13 +3,21 @@
   "version": "1.0.0",
   "types": "dist/siacheck.d.ts",
   "typings": "dist/siacheck.d.ts",
-  "main": "lib/index.js",
+  "main": "lib/cjs/index.js",
+  "module": "lib/mjs/index.js",
   "esnext": {
-    "main": "lib/index.mjs"
+    "main": "lib/njs/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./lib/mjs/index.js",
+      "require": "./lib/cjs/index.js"
+    }
   },
   "scripts": {
     "build": "heft build",
-    "start": "functions-framework --target=handler --source=lib/index.cjs"
+    "postbuild": "fixup.sh",
+    "start": "functions-framework --target=handler --source=dist/cjs/index.js"
   },
   "publishConfig": {
     "typings": "dist/siacheck-public.d.ts",

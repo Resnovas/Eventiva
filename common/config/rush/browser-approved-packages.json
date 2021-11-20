@@ -19,6 +19,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "@microsoft/api-documenter",
+      "allowedCategories": [ "tools" ]
+    },
+    {
       "name": "@microsoft/api-extractor",
       "allowedCategories": [ "tools" ]
     },
