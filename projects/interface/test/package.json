@@ -1,5 +1,5 @@
 {
-  "name": "test",
+  "name": "@eventiva/test",
   "version": "1.0.0",
   "scripts": {
     "setup": "pnpm add react react-native && pnpm add @storybook/addon-actions @storybook/addon-knobs @storybook/react-native @testing-library/react-native @types/react @types/react-native -D"

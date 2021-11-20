@@ -1,5 +1,5 @@
 {
-  "name": "functions-rig",
+  "name": "@eventiva/functions-rig",
   "version": "1.0.0",
   "dependencies": {
     "@types/node": "^16.11.6",

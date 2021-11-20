@@ -447,17 +447,17 @@
     //   // "versionPolicyName": ""
     // },
     {
-      "packageName": "database",
+      "packageName": "@eventiva/database",
       "projectFolder": "projects/functions/database",
       "reviewCategory": "prototypes"
     },
     {
-      "packageName": "domain",
+      "packageName": "@eventiva/domain",
       "projectFolder": "projects/functions/domain",
       "reviewCategory": "prototypes"
     },
     {
-      "packageName": "siacheck",
+      "packageName": "@eventiva/siacheck",
       "projectFolder": "projects/functions/siacheck",
       "reviewCategory": "prototypes"
     },
@@ -467,12 +467,12 @@
     //   "reviewCategory": "prototypes"
     // },
     {
-      "packageName": "internals",
+      "packageName": "@eventiva/internals",
       "projectFolder": "projects/packages/internals",
       "reviewCategory": "prototypes"
     },
     {
-      "packageName": "functions-rig",
+      "packageName": "@eventiva/functions-rig",
       "projectFolder": "projects/rigging/functions-rig",
       "reviewCategory": "tools"
     }

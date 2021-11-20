@@ -81,6 +81,7 @@ importers:
 
   ../../projects/functions/siacheck:
     specifiers:
+      '@eventiva/functions-rig': workspace:*
       '@google-cloud/functions-framework': ~2.0.0
       '@rushstack/heft': ~0.42.2
       '@types/express': ~4.17.13
@@ -89,7 +90,6 @@ importers:
       '@vendia/serverless-express': ^4.5.2
       chrome-aws-lambda: ^10.1.0
       express: ^4.17.1
-      functions-rig: workspace:*
       puppeteer: ~10.1.0
       puppeteer-core: ^10.1.0
       ts-node: ~10.4.0
@@ -104,11 +104,11 @@ importers:
       puppeteer-core: 10.4.0
       typescript: 4.4.4
     devDependencies:
+      '@eventiva/functions-rig': link:../../rigging/functions-rig
       '@rushstack/heft': 0.42.2
       '@types/express': 4.17.13
       '@types/node': 16.11.7
       '@types/puppeteer': 5.4.4
-      functions-rig: link:../../rigging/functions-rig
       ts-node: 10.4.0_ee928ac548ac44c173bf0d4654ae2c29
       tslib: 2.3.1
 
