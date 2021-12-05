@@ -1,13 +1,40 @@
 locals {
   timestamp = formatdate("YYMMDDhhmmss", timestamp())
+  package_data = jsondecode(file("./../../projects/${var.source_dir}/package.json"))
+  package_name = join("-", split("/", trim(local.package_data.name, "@")))
 }
 
-# Compress source code
+# Build the package
+resource "null_resource" "build" {
+  provisioner "local-exec" {
+    working_dir = "./../../projects/${var.source_dir}"
+    command = "pnpm build"
+  }
+}
+
+# open the npm package
+resource "null_resource" "pack" {
+  depends_on = [ null_resource.build ]
+  provisioner "local-exec" {
+    working_dir = "./../../projects/${var.source_dir}"
+    command = "pnpm pack --pack-destination=temp && cd temp && tar -xf ${local.package_name}-${local.package_data.version}.tgz"
+  }
+}
+
+# install the npm packages
+resource "null_resource" "source" {
+  depends_on = [ null_resource.pack ]
+  provisioner "local-exec" {
+    working_dir = "./../../projects/${var.source_dir}/temp/package"
+    command = "npm install && rmdir /s /q node_modules"
+  }
+}
+
 data "archive_file" "source" {
+  depends_on = [ null_resource.source ]
   type        = "zip"
-  source_dir  = "./../../projects/${var.source_dir}"
+  source_dir  = "./../../projects/${var.source_dir}/temp/package"
   output_path = "/tmp/function-${var.name}-${local.timestamp}.zip"
-  # excludes    = [ "../../../terraform" ]
 }
 
 # Create bucket that will host the source code
@@ -44,14 +71,13 @@ resource "google_project_service" "cb" {
 # Create Cloud Function
 resource "google_cloudfunctions_function" "function" {
   name    = var.name
-  runtime = "nodejs12"
+  runtime = "nodejs14"
 
-  available_memory_mb   = 128
+  available_memory_mb   = 2048
   source_archive_bucket = google_storage_bucket.bucket.name
   source_archive_object = google_storage_bucket_object.zip.name
   trigger_http          = true
   entry_point           = var.entry_point
-  entry_point_object    = var.entry_point_object
   environment_variables = var.environment_variables
 }
 

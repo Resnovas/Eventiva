@@ -1,11 +1,8 @@
 {
   "mixers": [
     {
-        "input": [
-            "./src/base.prisma",
-            "./src/functions/*/.prisma"
-        ],
-        "output": "./src/functions/database/prisma/schema.prisma"
+      "input": ["./src/base.prisma", "./src/functions/*/.prisma"],
+      "output": "./src/functions/database/prisma/schema.prisma"
     }
   ]
 }

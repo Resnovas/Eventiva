@@ -447,6 +447,11 @@
     //   // "versionPolicyName": ""
     // },
     {
+      "packageName": "@eventiva/documentation",
+      "projectFolder": "projects/apps/documentation",
+      "reviewCategory": "tools"
+    },
+    {
       "packageName": "@eventiva/database",
       "projectFolder": "projects/functions/database",
       "reviewCategory": "prototypes"

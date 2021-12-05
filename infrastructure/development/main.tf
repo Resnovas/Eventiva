@@ -4,20 +4,25 @@ terraform {
       source = "hashicorp/google"
       version = "3.5.0"
     }
+    null = {
+      source = "hashicorp/null"
+      version = "3.1.0"
+    }
   }
 }
 
-locals {
-  env = "development"
+provider "null" {
+  # Configuration options
 }
-
 provider "google" {
-  credentials = file("service_account.json")
+  credentials = file(".terraform.service.json")
   project = var.project
   region  = var.region
   zone    = var.zone
 }
-
+locals {
+  env = "development"
+}
 # module "function" {
 #   name        = "managerdatabasehandler"
 #   source      = "../modules/gcp/function"
@@ -34,7 +39,6 @@ module "function" {
   source      = "../modules/gcp/function"
   project     = var.project
   source_dir  = "functions/siacheck"
-  source_route = "./lib/index.cjs"
-  entry_point = "handler"
+  entry_point = "google"
   environment_variables = {}
 }

@@ -9,10 +9,10 @@ generator client {
 generator backend {
 	provider = "typegraphql-prisma"
 }
-generator frontend {
-	provider = "typegraphql-prisma"
-	output = "../../../../node_modules/@generated/type-graphql"
-}
+// generator frontend {
+// 	provider = "typegraphql-prisma"
+// 	output = "../../../../node_modules/@generated/type-graphql"
+// }
 model Account {
 	id String @id @default(uuid())
 	username String? @unique

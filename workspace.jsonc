@@ -1,7 +1,7 @@
 /**
  * this is the main configuration file of your bit workspace.
  * for full documentation, please see: https://harmony-docs.bit.dev/workspace/configurations
- **/{
+ **/ {
   "$schema": "https://static.bit.dev/teambit/schemas/schema.json",
   /**
    * main configuration of the Bit workspace.
@@ -44,9 +44,7 @@
       "peerDependencies": {}
     },
     "packageManagerArgs": [],
-    "devFilePatterns": [
-      "**/*.spec.ts"
-    ],
+    "devFilePatterns": ["**/*.spec.ts"],
     "strictPeerDependencies": true,
     "installFromBitDevRegistry": true,
     "savePrefix": ""
@@ -70,9 +68,7 @@
     }
   },
   "teambit.generator/generator": {
-    "aspects": [
-      "videndum.eventiva/generators/react-native"
-    ]
+    "aspects": ["videndum.eventiva/generators/react-native"]
   },
   "videndum.eventiva/generators/react-native": {}
 }

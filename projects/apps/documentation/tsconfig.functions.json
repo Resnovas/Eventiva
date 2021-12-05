@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib/njs",
+    "rootDir": "../../functions",
+    "module": "esnext"
+  },
+  "include": ["../../functions/**/*.ts"],
+  "exclude": ["**/node_modules/**", "lib/**", "dist/**", "temp/**"]
+}

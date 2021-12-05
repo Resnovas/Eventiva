@@ -51,3 +51,4 @@ temp/
 dist/
 .terraform/
 .terraform.*
+.service.json
