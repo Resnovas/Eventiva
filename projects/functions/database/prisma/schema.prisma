@@ -5,6 +5,7 @@ datasource db {
 }
 generator client {
 	provider = "prisma-client-js"
+	previewFeatures = ["fullTextSearch", "filterJson", "dataProxy"]
 }
 generator backend {
 	provider = "typegraphql-prisma"
@@ -40,6 +41,7 @@ model Account {
 	resetPasswordToken String? @unique
 	resetPasswordExpires DateTime? 
 	apiToken Token[] @relation(name: "AccountToToken")
+	deleted DateTime? 
 	primaryAddress Address? @relation(name: "account")
 	addresses Address[] @relation(name: "address")
 	contactOfAdress ContactAtAddress[] @relation(name: "AccountToContactAtAddress")
@@ -48,6 +50,7 @@ model Account {
 	files Files[] @relation(name: "AccountToFiles")
 	phones Phone[] @relation(name: "AccountToPhone")
 	rtw RTW[] @relation(name: "AccountToRTW")
+	sia SIABadge[] @relation(name: "AccountToSIABadge")
 	Status StatusOnAccount[] @relation(name: "AccountToStatusOnAccount")
 	subscription SubscriptionOnAccount[] @relation(name: "AccountToSubscriptionOnAccount")
 	transactions Transaction[] @relation(name: "AccountToTransaction")
@@ -107,6 +110,7 @@ model Address {
 	public Boolean @default(false)
 	primaryAccount Account? @relation(name: "account", fields: [primaryaccountId], references: [id])
 	primaryaccountId String? 
+	deleted DateTime? 
 	featuresOfBuisness FeatureOfAddress[] @relation(name: "AddressToFeatureOfAddress")
 	phones Phone[] @relation(name: "AddressToPhone")
 	rooms Room[] @relation(name: "AddressToRoom")
@@ -122,6 +126,7 @@ model ContactAtAddress {
 	emailId String? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	@@id([accountId, addressId])
 }
 model VenueStyle {
@@ -137,8 +142,6 @@ model Email {
 	associatedContact ContactAtAddress[] @relation(name: "ContactAtAddressToEmail")
 	domain Domain? @relation(name: "DomainToEmail", fields: [domainId], references: [id])
 	domainId String? 
-	createdAt DateTime @default(now())
-	updatedAt DateTime @updatedAt
 	email String @unique
 	account Account? @relation(name: "AccountToEmail", fields: [accountId], references: [id])
 	accountId String? 
@@ -173,6 +176,9 @@ model Email {
 	oauth2_accessToken String? 
 	oauth2_refreshToken String? 
 	oauth2_expires DateTime? 
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model Application {
 	id String @id @default(uuid())
@@ -181,25 +187,28 @@ model Application {
 	accountId String 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model Domain {
 	id String @id @default(uuid())
-	createdAt DateTime @default(now())
-	updatedAt DateTime @updatedAt
 	domain String @unique
 	verified Boolean @default(false)
 	dnsType dnsType @default(TXT)
 	linkedEmails Email[] @relation(name: "DomainToEmail")
 	data Json 
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model Feature {
 	id String @id @default(uuid())
-	createdAt DateTime @default(now())
-	updatedAt DateTime @updatedAt
 	name String 
 	type FeatureType 
 	featureOfRoom FeatureOfRoom[] @relation(name: "FeatureToFeatureOfRoom")
 	featureOfAddress FeatureOfAddress[] @relation(name: "FeatureToFeatureOfAddress")
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model FeatureOfRoom {
 	roomId String 
@@ -209,6 +218,7 @@ model FeatureOfRoom {
 	data Json? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	@@id([roomId, featureId])
 }
 model FeatureOfAddress {
@@ -219,6 +229,7 @@ model FeatureOfAddress {
 	data Json? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	@@id([addressId, featureId])
 }
 model Room {
@@ -226,6 +237,7 @@ model Room {
 	featuresOfRoom FeatureOfRoom[] @relation(name: "FeatureOfRoomToRoom")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	address Address @relation(name: "AddressToRoom", fields: [addressId], references: [id])
 	addressId String 
 	name String 
@@ -247,6 +259,7 @@ model Files {
 	account Account[] @relation(name: "AccountToFiles")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model RTW {
 	id String @id @default(uuid())
@@ -259,11 +272,13 @@ model RTW {
 	accountId String 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model Phone {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	account Account @relation(name: "AccountToPhone", fields: [accountId], references: [id])
 	accountId String 
 	address Address @relation(name: "AddressToPhone", fields: [addressId], references: [id])
@@ -291,6 +306,17 @@ model Arrangement {
 	icon String? 
 	details String? 
 }
+model SIABadge {
+	id Int @unique @id
+	license License 
+	type LicenseType 
+	image String 
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	deleted DateTime? 
+	account Account @relation(name: "AccountToSIABadge", fields: [account_id], references: [id])
+	account_id String 
+}
 model StatusOnAccount {
 	statusId String 
 	accountId String 
@@ -298,6 +324,7 @@ model StatusOnAccount {
 	account Account @relation(name: "AccountToStatusOnAccount", fields: [accountId], references: [id])
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	@@id([statusId, accountId])
 }
 model Status {
@@ -306,11 +333,13 @@ model Status {
 	account StatusOnAccount[] @relation(name: "StatusToStatusOnAccount")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 }
 model Subscription {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	name String? @unique
 	cost String? 
 	details String? 
@@ -326,13 +355,15 @@ model SubscriptionOnAccount {
 	activated DateTime? 
 	startedAt DateTime? 
 	createdAt DateTime @default(now())
-	lastUpdated DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	@@id([accountId, subscriptionId])
 }
 model Transaction {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deleted DateTime? 
 	account Account @relation(name: "AccountToTransaction", fields: [accountId], references: [id])
 	accountId String 
 	data Json 
@@ -367,4 +398,17 @@ enum FeatureType {
 	STRING
 	BOOLEAN
 	NUMBER
+}
+enum License {
+	CVIT
+	CP
+	DS
+	CCTV
+	SG
+	VI
+	KH
+}
+enum LicenseType {
+	FRONTLINE
+	NON_FRONTLINE
 }

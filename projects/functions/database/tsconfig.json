@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "lib/njs",
-    "rootDir": ".",
+    "rootDir": "./src",
     "module": "esnext"
   },
   "include": ["./**/*.ts"],

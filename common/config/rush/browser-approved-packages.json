@@ -143,6 +143,14 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "apollo-server",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-azure-functions",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "apollo-server-cloud-functions",
       "allowedCategories": [ "prototypes" ]
     },
@@ -152,6 +160,10 @@
     },
     {
       "name": "apollo-server-express",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-lambda",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -189,6 +201,10 @@
     {
       "name": "core-js",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "cross-env",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "cspell",
@@ -267,11 +283,19 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "graphql-middleware",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "graphql-passport",
       "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "graphql-scalars",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "graphql-shield",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -284,6 +308,14 @@
     },
     {
       "name": "jimp",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "jose",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "jsonwebtoken",
       "allowedCategories": [ "prototypes" ]
     },
     {
