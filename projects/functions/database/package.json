@@ -26,7 +26,7 @@
     "start": "functions-framework --target=handler --source=lib/cjs/express.js",
     "clean": "heft clean",
     "prisma:generate": "cross-env PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",
-    "prisma:migrate": "cross-env DATABASE_URL=\"$MIGRATE_DATABASE_URL\" prisma migrate dev --name dev --preview-feature",
+    "prisma:migrate": "prisma migrate dev --name dev --preview-feature",
     "prisma:reset": "prisma migrate reset --preview-feature",
     "gcp-build": "prisma generate && tsc"
   },
@@ -66,6 +66,7 @@
     "prisma": "^3.4.2",
     "ts-node": "~10.4.0",
     "tslib": "~2.3.1",
-    "typegraphql-prisma": "^0.16.2"
+    "typegraphql-prisma": "^0.16.2",
+    "@eventiva/prismix": "workspace:*"
   }
 }

@@ -67,6 +67,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "@eventiva/prismix",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@google-cloud/functions-framework",
       "allowedCategories": [ "prototypes", "tools" ]
     },
@@ -95,8 +99,28 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "@oclif/command",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@oclif/config",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@oclif/plugin-help",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
       "name": "@prisma/client",
       "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@prisma/generator-helper",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@prisma/sdk",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "@rushstack/heft",
@@ -239,6 +263,10 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "dotenv",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
       "name": "eslint",
       "allowedCategories": [ "tools" ]
     },
@@ -275,6 +303,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "glob",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
       "name": "graphql",
       "allowedCategories": [ "prototypes", "tools" ]
     },
@@ -307,12 +339,20 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "jest",
+      "allowedCategories": [ "tools" ]
+    },
+    {
       "name": "jimp",
       "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "jose",
       "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "jsonfile",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "jsonwebtoken",
@@ -356,7 +396,7 @@
     },
     {
       "name": "prettier",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "prettier-plugin-organize-imports",
@@ -376,7 +416,7 @@
     },
     {
       "name": "prismix",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "puppeteer",
@@ -424,7 +464,11 @@
     },
     {
       "name": "ts-node",
-      "allowedCategories": [ "prototypes", "tools" ]
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "tsc-watch",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "tslib",
@@ -448,7 +492,7 @@
     },
     {
       "name": "typescript",
-      "allowedCategories": [ "prototypes", "tools" ]
+      "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "typescript-json-schema",

@@ -1,0 +1,3 @@
+[submodule "projects/packages/Prismix"]
+	path = projects/packages/Prismix
+	url = https://github.com/Resnovas/prismix.git

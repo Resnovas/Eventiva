@@ -20,7 +20,6 @@ resource Address {
     "open" if "tenent";
     "edit" if "manager";
     "delete" if "owner";
-
     "manager" if "owner";
     "tenent" if "manager";
     "guest" if "tenent";

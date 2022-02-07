@@ -13,46 +13,12 @@
   "private": true,
   "scripts": {
     "prefirstinstall": "node ./scripts/preinstall.js",
-    "firstinstall": "yarn install && npm install -g . && run-p script:*",
-    "script:prismix": "yarn prismix",
-    "script:prisma": "yarn workspace database prisma:generate",
-    "start:functions:database": "functions-framework --target=handler --source=build/functions/main/database",
-    "start:functions:domain": "functions-framework --target=handler --source=build/functions/main/domain",
     "preinstall": "node ./common/scripts/preinstall.js",
-    "prebuild": "run-p script:*",
-    "build": "run-p build:*",
-    "postbuild": "node ./scripts/openapi.js",
-    "fix": "run-s fix:*",
-    "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "fix:lint": "eslint src --ext .ts --fix",
-    "test": "run-s build test:*",
-    "test:lint": "eslint src --ext .ts",
-    "test:prettier": "prettier \"src/**/*.ts\" --list-different",
-    "test:spelling": "cspell \"{README.md,.github/*.md,src/**/*.ts}\"",
-    "doc:start": "set NODE_OPTIONS=--openssl-legacy-provider & docusaurus start",
-    "doc:build": "docusaurus build",
-    "doc:swizzle": "docusaurus swizzle",
-    "doc:deploy": "docusaurus deploy",
-    "doc:clear": "docusaurus clear",
-    "doc:serve": "docusaurus serve",
-    "doc:write-translations": "docusaurus write-translations",
-    "doc:write-heading-ids": "docusaurus write-heading-ids",
+    "firstinstall": "yarn install && npm install -g . && run-p script:*",
     "wip": "wip",
     "wip:finish": "naenae",
     "wip:watch": "wip silently && watch wip --ignoreDotFiles --ignoreDirectoryPatterttern=[\"/node_modules/\"]",
-    "reset-hard": "git clean -dfx && git reset --hard",
-    "prepare-release": "run-s reset-hard test cov:check doc:html version doc:publish",
-    "unused:test:unit": "nyc --silent ava",
-    "unused:watch:test": "nyc --silent ava --watch",
-    "unused:check-cli": "run-s test diff-integration-tests check-integration-tests",
-    "unused:check-integration-tests": "run-s check-integration-test:*",
-    "unused:diff-integration-tests": "mkdir -p diff && rm -rf diff/test && cp -r test diff/test && rm -rf diff/test/test-*/.git && cd diff && git init --quiet && git add -A && git commit --quiet --no-verify --allow-empty -m 'WIP' && echo '\\n\\nCommitted most recent integration test output in the \"diff\" directory. Review the changes with \"cd diff && git diff HEAD\" or your preferred git diff viewer.'",
-    "unused:watch:build": "tsc -p tsconfig.json -w",
-    "unused:cov": "run-s build test:unit cov:html cov:lcov && open-cli coverage/index.html",
-    "unused:cov:html": "nyc report --reporter=html",
-    "unused:cov:lcov": "nyc report --reporter=lcov",
-    "unused:cov:send": "run-s cov:lcov && codecov",
-    "unused:cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100"
+    "reset-hard": "git clean -dfx && git reset --hard"
   },
   "engines": {
     "node": ">=10"
@@ -86,8 +52,5 @@
     "exclude": [
       "**/*.spec.js"
     ]
-  },
-  "devDependencies": {
-    "prismix": "^1.0.20"
   }
 }

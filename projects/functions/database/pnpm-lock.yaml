@@ -1,0 +1,7 @@
+lockfileVersion: 5.3
+
+specifiers:
+  '@eventiva/prismix': ^1.0.21
+
+devDependencies:
+  '@eventiva/prismix': link:../../packages/Prismix

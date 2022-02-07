@@ -1,8 +1,0 @@
-{
-  "mixers": [
-    {
-      "input": ["./projects/base.prisma", "./projects/functions/*/.prisma"],
-      "output": "./projects/functions/database/prisma/schema.prisma"
-    }
-  ]
-}

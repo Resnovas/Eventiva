@@ -5,15 +5,15 @@ datasource db {
 }
 generator client {
 	provider = "prisma-client-js"
-	previewFeatures = ["fullTextSearch", "filterJson", "dataProxy"]
+	previewFeatures = ["fullTextSearch","filterJson","dataProxy"]
 }
 generator backend {
 	provider = "typegraphql-prisma"
 }
-// generator frontend {
-// 	provider = "typegraphql-prisma"
-// 	output = "../../../../node_modules/@generated/type-graphql"
-// }
+generator frontend {
+	provider = "typegraphql-prisma"
+	output = "../../../../node_modules/@generated/type-graphql"
+}
 model Account {
 	id String @id @default(uuid())
 	username String? @unique
@@ -109,7 +109,7 @@ model Address {
 	details Json? 
 	public Boolean @default(false)
 	primaryAccount Account? @relation(name: "account", fields: [primaryaccountId], references: [id])
-	primaryaccountId String? 
+	primaryaccountId String? @unique
 	deleted DateTime? 
 	featuresOfBuisness FeatureOfAddress[] @relation(name: "AddressToFeatureOfAddress")
 	phones Phone[] @relation(name: "AddressToPhone")

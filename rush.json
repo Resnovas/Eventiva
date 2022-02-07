@@ -245,7 +245,7 @@
      */
     "allowedEmailRegExps": [
       "[^@]+@users\\.noreply\\.github\\.com",
-      ".*@videndum\\.studio",
+      ".*@resnovas\\.com",
       ".*@eventiva\\.org"
     ],
 
@@ -297,13 +297,13 @@
      * The default branch name. This tells "rush change" which remote branch to compare against.
      * The default value is "master"
      */
-    "defaultBranch": "master"
+    "defaultBranch": "master",
 
     /**
      * The default remote. This tells "rush change" which remote to compare against if the remote URL is
      * not set or if a remote matching the provided remote URL is not found.
      */
-    // "defaultRemote": "origin"
+    "defaultRemote": "origin"
   },
 
   /**
@@ -313,9 +313,7 @@
     /**
      * The list of shell commands to run before the Rush installation starts
      */
-    "preRushInstall": [
-      // "common/scripts/pre-rush-install.js"
-    ],
+    "preRushInstall": ["common/scripts/pre-rush-install.js"],
 
     /**
      * The list of shell commands to run after the Rush installation finishes
@@ -475,6 +473,11 @@
       "packageName": "@eventiva/internals",
       "projectFolder": "projects/packages/internals",
       "reviewCategory": "prototypes"
+    },
+    {
+      "packageName": "@eventiva/prismix",
+      "projectFolder": "projects/packages/prismix",
+      "reviewCategory": "tools"
     },
     {
       "packageName": "@eventiva/functions-rig",
