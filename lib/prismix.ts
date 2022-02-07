@@ -8,7 +8,7 @@ import {
   deserializeModels,
   deserializeGenerators
 } from './deserializer';
-import { DataSource, DMMF, GeneratorConfig } from '@prisma/generator-helper/dist';
+import { DataSource, DMMF, GeneratorConfig } from '@prisma/generator-helper';
 import glob from 'glob';
 
 const readFile = promisify(fs.readFile);

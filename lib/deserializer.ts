@@ -4,7 +4,7 @@ import {
   DMMF,
   EnvValue,
   GeneratorConfig
-} from '@prisma/generator-helper/dist';
+} from '@prisma/generator-helper';
 import { valueIs } from './utils';
 
 // Render an individual field attribute
