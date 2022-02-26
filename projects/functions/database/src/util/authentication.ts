@@ -54,7 +54,7 @@ export class CustomAuthChecker implements AuthCheckerInterface<Context> {
 
   async check({ context, info }: ResolverData<Context>, _roles: string[]) {
     console.log('this ran');
-    await this.oso.loadFiles(['policy.polar']);
+    await this.oso.loadFiles(['../../policy.polar']);
     return await this.oso.isAllowed(
       context.user,
       info.operation.operation,

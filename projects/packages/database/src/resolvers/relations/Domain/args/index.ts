@@ -1,0 +1,1 @@
+export { DomainLinkedEmailsArgs } from './DomainLinkedEmailsArgs';

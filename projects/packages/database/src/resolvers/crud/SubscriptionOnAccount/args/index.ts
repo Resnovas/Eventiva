@@ -1,0 +1,12 @@
+export { AggregateSubscriptionOnAccountArgs } from './AggregateSubscriptionOnAccountArgs';
+export { CreateManySubscriptionOnAccountArgs } from './CreateManySubscriptionOnAccountArgs';
+export { CreateSubscriptionOnAccountArgs } from './CreateSubscriptionOnAccountArgs';
+export { DeleteManySubscriptionOnAccountArgs } from './DeleteManySubscriptionOnAccountArgs';
+export { DeleteSubscriptionOnAccountArgs } from './DeleteSubscriptionOnAccountArgs';
+export { FindFirstSubscriptionOnAccountArgs } from './FindFirstSubscriptionOnAccountArgs';
+export { FindManySubscriptionOnAccountArgs } from './FindManySubscriptionOnAccountArgs';
+export { FindUniqueSubscriptionOnAccountArgs } from './FindUniqueSubscriptionOnAccountArgs';
+export { GroupBySubscriptionOnAccountArgs } from './GroupBySubscriptionOnAccountArgs';
+export { UpdateManySubscriptionOnAccountArgs } from './UpdateManySubscriptionOnAccountArgs';
+export { UpdateSubscriptionOnAccountArgs } from './UpdateSubscriptionOnAccountArgs';
+export { UpsertSubscriptionOnAccountArgs } from './UpsertSubscriptionOnAccountArgs';

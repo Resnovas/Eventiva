@@ -8,4 +8,4 @@ import { options } from './util/helpers';
  *=============================================**/
 
 const Azure = new ApolloServer({ ...options });
-export const handler = Azure.createHandler();
+export const handler: any = Azure.createHandler();

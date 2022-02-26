@@ -21,13 +21,15 @@
     "access": "public"
   },
   "scripts": {
-    "build": "heft build",
-    "postbuild": "fixup.sh",
+    "build": "heft build && node fixup.js",
     "start": "functions-framework --target=handler --source=lib/cjs/express.js",
     "clean": "heft clean",
-    "prisma:generate": "cross-env PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",
-    "prisma:migrate": "prisma migrate dev --name dev --preview-feature",
-    "prisma:reset": "prisma migrate reset --preview-feature",
+    "prisma:generate:proxy": "prismix && cross-env DATABASE_URL=\"$DATABASE_URL_PROXY\" PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",
+    "prisma:migrate:proxy": "prismix && cross-env DATABASE_URL=\"$MIGRATE_DATABASE_URL\" prisma migrate dev --name dev --preview-feature",
+    "prisma:generate": "prismix && prisma generate",
+    "prisma:migrate": "prismix && prisma migrate dev --name dev --preview-feature",
+    "prisma:reset": "prismix && prisma migrate reset --preview-feature",
+    "prisma:studio": "npx prisma studio",
     "gcp-build": "prisma generate && tsc"
   },
   "dependencies": {
@@ -51,7 +53,8 @@
     "reflect-metadata": "^0.1.13",
     "type-graphql": "^v1.2.0-rc.1",
     "typescript": "^4.4.4",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "@eventiva/databaseclasses": "workspace:*"
   },
   "devDependencies": {
     "@eventiva/functions-rig": "1.0.1",

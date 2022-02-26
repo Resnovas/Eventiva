@@ -6,8 +6,11 @@ import { Request, Response } from 'express';
 import { Authorized, buildSchemaSync } from 'type-graphql';
 import { isDev } from './constants';
 import { CustomAuthChecker } from './authentication';
-import { resolvers, Account } from '@generated/type-graphql';
-import { applyResolversEnhanceMap } from '@generated/type-graphql';
+import {
+  resolvers,
+  Account,
+  applyResolversEnhanceMap,
+} from '@eventiva/databaseclasses';
 
 export interface Context {
   prisma: PrismaClient;

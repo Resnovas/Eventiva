@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib/njs",
+    "rootDir": "./src",
+    "module": "esnext",
+    "target": "ES5",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowUnusedLabels": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["**/node_modules/**", "lib/**", "dist/**", "temp/**"]
+}

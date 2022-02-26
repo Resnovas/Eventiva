@@ -11,4 +11,4 @@ const lambda = new ApolloServer({
   ...options,
   plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
 });
-export const handler = lambda.createHandler();
+export const handler: any = lambda.createHandler();
