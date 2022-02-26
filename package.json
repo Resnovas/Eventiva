@@ -1,6 +1,7 @@
 {
   "name": "@eventiva/eventiva",
   "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
   "description": "Imagine a place where you can find all your event vendors, venues and professionals, alongside all the tools you require to be successful within the live events market. ",
   "main": "./common/scripts/eventiva.js",
   "bin": {
@@ -8,7 +9,6 @@
     "eventiva": "./common/scripts/eventiva.js"
   },
   "repository": "https://github.com/videndum/eventiva",
-  "license": "MIT",
   "keywords": [],
   "private": true,
   "scripts": {
@@ -52,5 +52,8 @@
     "exclude": [
       "**/*.spec.js"
     ]
+  },
+  "devDependencies": {
+    "@rushstack/heft": "^0.44.2"
   }
 }
