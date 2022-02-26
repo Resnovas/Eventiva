@@ -27,7 +27,7 @@ Read more about Github Actions [here](https://github.com/features/actions)
 4. Automatic merging & approval
 5. Automatic contribution license agreements
 6. Automatic updates with automerge via [Dependabot](https://docs.github.com/en/github/managing-security-vulnerabilities/configuring-github-dependabot-security-updates)
-7. Automatic document syncronisation (see [here]())
+7. Automatic document syncronisation (see [here](https://blank))
 8. Automatic labeling based on title, path, branch and files
 9. Automatic branch creation based on labels
 10. Commands for contribution automation
@@ -52,7 +52,7 @@ This workflow does use a couple of External applications, they are not required 
    2. [Needs: a] Branch Automatically gets generated
    3. [Needs: a] Automatically gets assigned to project board
 2. Branch is worked on by contributor
-3. Contributor uses commands to move project in boards using [commands]() which trigger labels
+3. Contributor uses commands to move project in boards using [commands](https://blank) which trigger labels
 4. Contributor creates pull request
    1. Automatically gets labeled based on if `WIP:` is prefixed
    2. Automatically gets labeled based on branch path

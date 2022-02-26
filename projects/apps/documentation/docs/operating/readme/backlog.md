@@ -6,4 +6,4 @@ For more information on contributing, please read the [contributing guidelines](
 
 ### Backlog
 
-Our backlog can be found on either our [Github Project](https://github.com/tmw-media/GGRadio-Discord/projects/1) or our website [Eventiva Backlog]()
+Our backlog can be found on either our [Github Project](https://github.com/tmw-media/GGRadio-Discord/projects/1) or our website [Eventiva Backlog](https://blank)

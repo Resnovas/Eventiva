@@ -1,3 +1,33 @@
+/**
+ * File: docusaurus.config.js
+ * Project: @eventiva/documentation
+ * Created Date: Monday, January 24th 2022
+ * Author: Jonathan Stevens
+ * -----
+ * Last Modified: Fri Feb 25 2022
+ * Modified By: Jonathan Stevens
+ * -----
+ * Copyright (c) 2022 Resnovas
+ * -----
+ * LICENSE: GNU General Public License v3.0 or later
+ *
+ * This program has been provided under confidence of the author and is licensed
+ * under the terms of the GNU General Public License v3.0 or later as published as
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License v3.0 or later for more details.
+ *
+ * You should have received a copy of the GNU General Public License v3.0 or later
+ * along with this program. If not, see http://www.gnu.org/licenses/gpl-3.0-standalone.html
+ * -----
+ * HISTORY:
+ * Date      	By	Comments
+ * ----------	---	---------------------------------------------------------
+ */
+
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
@@ -6,27 +36,79 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const path = require('path');
 const fs = require('fs');
 
+/**
+ * 
+const TypeDoc = require("typedoc");
+
+async function main() {
+    const app = new TypeDoc.Application();
+
+    // If you want TypeDoc to load tsconfig.json / typedoc.json files
+    app.options.addReader(new TypeDoc.TSConfigReader());
+    app.options.addReader(new TypeDoc.TypeDocReader());
+
+    app.bootstrap({
+        // typedoc options here
+        entryPoints: ["src/index.ts"],
+    });
+
+    const project = app.convert();
+
+    if (project) {
+        // Project may not have converted correctly
+        const outputDir = "docs";
+
+        // Rendered docs
+        await app.generateDocs(project, outputDir);
+        // Alternatively generate JSON output
+        await app.generateJson(project, outputDir + "/documentation.json");
+    }
+}
+
+main().catch(console.error)
+ * 
+ */
+
 const functions = [];
+
 fs.readdirSync(path.join(__dirname, './../../functions')).forEach((folder) => {
   if (
-    fs.existsSync(path.join(__dirname, './../../functions', folder, 'index.ts'))
+    fs.existsSync(
+      path.join(__dirname, './../../functions', folder, 'src/index.ts')
+    )
   )
-    functions.push(
-      path.join(__dirname, './../../functions', folder, 'index.ts')
-    );
+    functions.push(path.join(__dirname, './../../functions', folder));
 });
+const packages = [];
+
+fs.readdirSync(path.join(__dirname, './../../packages')).forEach((folder) => {
+  if (
+    fs.existsSync(
+      path.join(__dirname, './../../packages', folder, 'src/index.ts')
+    )
+  )
+    packages.push(path.join(__dirname, './../../packages', folder));
+});
+
+const companyConfig = {
+  organizationName: 'Resnovas',
+  tagline: 'Modern Affordable Event Production Utilities',
+  projectName: 'eventiva',
+  favicon: 'img/favicon.ico',
+  logo: 'img/logo.svg',
+};
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Eventiva',
-  tagline: 'Modern Affordable Event Production Utilities',
+  title: companyConfig.projectName,
+  tagline: companyConfig.tagline,
   url: 'https://your-docusaurus-test-site.com',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.ico',
-  organizationName: 'Videndum', // Usually your GitHub org/user name.
-  projectName: 'eventiva', // Usually your repo name.
+  favicon: companyConfig.favicon,
+  organizationName: companyConfig.organizationName, // Usually your GitHub org/user name.
+  projectName: companyConfig.projectName, // Usually your repo name.
   trailingSlash: false,
   i18n: {
     defaultLocale: 'en',
@@ -39,9 +121,27 @@ const config = {
       {
         specs: [
           {
-            spec: '../../../common/openapi.json',
+            id: 'using-spec-url',
+            specUrl: 'https://redocly.github.io/redoc/openapi.yaml',
+            routePath: '/examples/using-spec-url/',
+          },
+          {
+            id: 'using-relative-url',
+            specUrl: `${process.env.DEPLOY_BASE_URL || '/'}swagger.json`,
+            routePath: '/api/',
           },
         ],
+        theme: {
+          /**
+           * Highlight color for docs
+           */
+          primaryColor: '#1890ff',
+          /**
+           * Options to pass to redoc
+           * @see https://github.com/redocly/redoc#redoc-options-object
+           */
+          redocOptions: { hideDownloadButton: false, disableSearch: true },
+        },
       },
     ],
     [
@@ -92,21 +192,55 @@ const config = {
     [
       'docusaurus-plugin-typedoc',
       {
-        out: 'functions',
+        id: 'functions',
+        out: 'developer/functions',
         entryPoints: functions,
-        tsconfig: './tsconfig.functions.json',
-        excludePrivate: true,
+        entryPointStrategy: 'packages',
+        excludePrivate: false,
+        exclude: ['**/node_modules/**', '**/__tests__/**'],
+        sidebar: {
+          fullNames: true,
+        },
         readme: 'none',
+        plugin: [], //"typedoc-plugin-merge-modules"
       },
     ],
     [
       '@docusaurus/plugin-content-docs',
       {
         id: 'functions',
-        path: 'docs/functions',
-        routeBasePath: 'functions',
+        path: 'docs/developer/functions',
+        routeBasePath: 'developer/functions',
         editLocalizedFiles: true,
         sidebarPath: require.resolve('./docs/sidebars/functions.js'),
+        includeCurrentVersion: true,
+      },
+    ],
+    [
+      'docusaurus-plugin-typedoc',
+      {
+        id: 'packages',
+        out: 'developer/packages',
+        entryPoints: packages,
+        entryPointStrategy: 'packages',
+        excludePrivate: false,
+        exclude: ['**/node_modules/**', '**/__tests__/**'],
+        sidebar: {
+          fullNames: true,
+        },
+        readme: 'none',
+        plugin: [],
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'packages',
+        path: 'docs/developer/packages',
+        routeBasePath: 'developer/packages',
+        editLocalizedFiles: true,
+        sidebarPath: require.resolve('./docs/sidebars/packages.js'),
+        includeCurrentVersion: true,
       },
     ],
     // [
@@ -136,7 +270,8 @@ const config = {
   ],
 
   // themes: [
-  //   '@saucelabs/theme-github-codeblock'
+  // '@saucelabs/theme-github-codeblock',
+  // 'docusaurus-theme-redoc'
   // ],
 
   themeConfig:
@@ -156,10 +291,10 @@ const config = {
         // Add other Moesif options here.
       },
       navbar: {
-        title: 'Eventiva',
+        title: companyConfig.projectName,
         logo: {
-          alt: 'Eventiva Logo',
-          src: 'img/logo.svg',
+          alt: companyConfig.projectName,
+          src: companyConfig.logo,
         },
         items: [
           {
@@ -170,15 +305,27 @@ const config = {
             docsPluginId: 'operating',
           },
           {
-            type: 'doc',
-            docId: 'index',
+            type: 'dropdown',
+            label: 'Developer',
             position: 'left',
-            label: 'Functions',
-            docsPluginId: 'functions',
+            items: [
+              {
+                type: 'doc',
+                docId: 'index',
+                label: 'Functions',
+                docsPluginId: 'functions',
+              },
+              {
+                type: 'doc',
+                docId: 'index',
+                label: 'Packages',
+                docsPluginId: 'packages',
+              },
+            ],
           },
           { to: '/blog', label: 'Blog', position: 'left' },
           {
-            href: 'https://github.com/videndum/eventiva',
+            href: `https://github.com/${companyConfig.organizationName}/${companyConfig.projectName}`,
             label: 'GitHub',
             position: 'right',
           },
@@ -222,12 +369,14 @@ const config = {
               },
               {
                 label: 'GitHub',
-                href: 'https://github.com/videndum/eventiva',
+                href: `https://github.com/${companyConfig.organizationName}/${companyConfig.projectName}`,
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Videndum Studios Ltd operating as Eventiva.`,
+        copyright: `Copyright © ${new Date().getFullYear()} ${
+          companyConfig.organizationName
+        } operating as ${companyConfig.projectName}.`,
       },
       prism: {
         theme: lightCodeTheme,

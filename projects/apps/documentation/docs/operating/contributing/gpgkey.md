@@ -30,10 +30,10 @@ We suggest using this method of GPG key setup to reduce the number of keys you n
 
    The import process will ask for the password you just assigned to your private key, for obvious reasons.
 
-3. Now that you've imported the key into GPG, you need to modify the key to include your email address. This is done by invoking the `gpg --edit-key` command, with a unique identifier for your key. I found using the `<username>@keybase.io` address worked nicely.
+3. Now that you've imported the key into GPG, you need to modify the key to include your email address. This is done by invoking the `gpg --edit-key` command, with a unique identifier for your key. I found using the `{username}@keybase.io` address worked nicely.
 
    "`shell
-   gpg --edit-key <username>@keybase.io
+   gpg --edit-key {username}@keybase.io
    ```
 
    This command will get you into the `gpg>` prompt, and from there you need to run the `adduid` command. It will prompt for your `Real name` and `Email address` (feel free to leave `Comment` empty). Once you've provided your name and email, confirm using the `O' and then `save` to close the `gpg>` prompt.
@@ -52,6 +52,6 @@ We suggest using this method of GPG key setup to reduce the number of keys you n
    Use the `git config user.signingkey` option to specify the Key ID for git to use. You can get this from the GitHub GPG keys page if you're unsure what it is. You can also require Git to sign all commits with the `commit.gpgsign` option.
 
    "`shell
-   git config --global user.signingkey <Key ID>
+   git config --global user.signingkey {Key ID}
    git config --global commit.gpgsign true
    ```

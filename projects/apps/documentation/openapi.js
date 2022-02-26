@@ -13,16 +13,16 @@ const openapiSpecification = swaggerJsdoc({
         process.env.npm_package_version || require('./package.json').version,
     },
   },
-  apis: ['./projects/functions/**/build/index.js'], // files containing annotations as above
+  apis: ['../../functions/**/src/index.ts'], // files containing annotations as above
 });
 
 fs.writeFileSync(
-  './common/openapi.json',
+  './static/openapi.json',
   JSON.stringify(openapiSpecification, null, 2),
   { encoding: 'utf8' }
 );
 fs.writeFileSync(
-  './common/openapi.yaml',
+  './static/openapi.yaml',
   YAML.stringify(openapiSpecification, null, 2),
   { encoding: 'utf8' }
 );
