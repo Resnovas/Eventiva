@@ -17,6 +17,12 @@
   "homepage": "https://github.com/jamiepine/prismix#readme",
   "repository": "https://github.com/jamiepine/prismix",
   "private": false,
+  "contributors": [
+    {
+      "name": "Resnovas",
+      "email": "developers@resnovas.com"
+    }
+  ],
   "scripts": {
     "prepack": "tsc -b",
     "dev": "tsc-watch",
