@@ -455,6 +455,11 @@
       "reviewCategory": "prototypes"
     },
     {
+      "packageName": "@eventiva/axlr8",
+      "projectFolder": "projects/functions/axlr8",
+      "reviewCategory": "prototypes"
+    },
+    {
       "packageName": "@eventiva/domain",
       "projectFolder": "projects/functions/domain",
       "reviewCategory": "prototypes"
@@ -473,6 +478,11 @@
       "packageName": "@eventiva/internals",
       "projectFolder": "projects/packages/internals",
       "reviewCategory": "prototypes"
+    },
+    {
+      "packageName": "@eventiva/databaseclasses",
+      "projectFolder": "projects/packages/database",
+      "reviewCategory": "tools"
     },
     {
       "packageName": "@eventiva/prismix",

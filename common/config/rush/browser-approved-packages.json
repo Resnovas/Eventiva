@@ -63,12 +63,16 @@
       "allowedCategories": [ "tools" ]
     },
     {
-      "name": "@eventiva/functions-rig",
+      "name": "@eventiva/databaseclasses",
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "@eventiva/functions-rig",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
       "name": "@eventiva/prismix",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "@google-cloud/functions-framework",
@@ -107,12 +111,16 @@
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
+      "name": "@oclif/errors",
+      "allowedCategories": [ "tools" ]
+    },
+    {
       "name": "@oclif/plugin-help",
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "@prisma/client",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "@prisma/generator-helper",
@@ -129,6 +137,10 @@
     {
       "name": "@saucelabs/theme-github-codeblock",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@stoplight/spectral-cli",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "@storybook/addon-actions",
@@ -153,6 +165,10 @@
     {
       "name": "@tsconfig/docusaurus",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@tsoa/runtime",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
@@ -195,12 +211,16 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "body-parser",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
       "name": "chrome-aws-lambda",
       "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "class-validator",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "clsx",
@@ -220,7 +240,7 @@
     },
     {
       "name": "concurrently",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "core-js",
@@ -228,7 +248,7 @@
     },
     {
       "name": "cross-env",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "cspell",
@@ -251,12 +271,20 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "docusaurus-plugin-redoc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
       "name": "docusaurus-plugin-relative-paths",
       "allowedCategories": [ "tools" ]
     },
     {
       "name": "docusaurus-plugin-typedoc",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-theme-redoc",
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "docusaurus2-dotenv",
@@ -288,7 +316,7 @@
     },
     {
       "name": "express",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "express-session",
@@ -296,6 +324,10 @@
     },
     {
       "name": "file-loader",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "fs",
       "allowedCategories": [ "tools" ]
     },
     {
@@ -312,11 +344,11 @@
     },
     {
       "name": "graphql-fields",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "graphql-middleware",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "graphql-passport",
@@ -324,15 +356,15 @@
     },
     {
       "name": "graphql-scalars",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "graphql-shield",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "graphql-type-json",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "inquirer",
@@ -348,7 +380,7 @@
     },
     {
       "name": "jose",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "jsonfile",
@@ -367,6 +399,10 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "nodemon",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "npm-run-all",
       "allowedCategories": [ "tools" ]
     },
@@ -380,7 +416,7 @@
     },
     {
       "name": "oso",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "passport",
@@ -456,11 +492,15 @@
     },
     {
       "name": "reflect-metadata",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "swagger-jsdoc",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "swagger-ui-express",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "ts-node",
@@ -475,8 +515,12 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "tsoa",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
       "name": "type-graphql",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "typedoc",
@@ -488,7 +532,7 @@
     },
     {
       "name": "typegraphql-prisma",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "typescript",
@@ -508,7 +552,7 @@
     },
     {
       "name": "uuid",
-      "allowedCategories": [ "prototypes" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "watch",
