@@ -1,0 +1,2120 @@
+{
+  "components": {
+    "examples": {},
+    "headers": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
+    "schemas": {
+      "SIACheck": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "badge": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SIABadge"
+              }
+            ],
+            "nullable": true
+          },
+          "sia_id": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "REVOKED", "SUSPENDED", "NON_ACTIVE"]
+          },
+          "AuthUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "pubUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactions": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Transaction"
+              }
+            ],
+            "nullable": true
+          },
+          "transactionId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["id", "status", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Account": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountType": {
+            "type": "string",
+            "enum": ["USER", "BUSINESS", "PROVIDER"]
+          },
+          "subsciption": {
+            "type": "boolean"
+          },
+          "employer": {
+            "items": {
+              "$ref": "#/components/schemas/EmployersOnAccount"
+            },
+            "type": "array"
+          },
+          "employees": {
+            "items": {
+              "$ref": "#/components/schemas/EmployersOnAccount"
+            },
+            "type": "array"
+          },
+          "accesses": {
+            "items": {
+              "$ref": "#/components/schemas/SubuserOnAccount"
+            },
+            "type": "array"
+          },
+          "subusers": {
+            "items": {
+              "$ref": "#/components/schemas/SubuserOnAccount"
+            },
+            "type": "array"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/ManagersOnAccount"
+            },
+            "type": "array"
+          },
+          "managers": {
+            "items": {
+              "$ref": "#/components/schemas/ManagersOnAccount"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastLogin": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "applied": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "promoted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "retired": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "enum": ["Miss", "Ms", "Mrs", "Mr", "Dr"],
+            "nullable": true
+          },
+          "firstname": {
+            "type": "string",
+            "nullable": true
+          },
+          "midname": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastname": {
+            "type": "string",
+            "nullable": true
+          },
+          "Salutation": {
+            "type": "string",
+            "nullable": true
+          },
+          "dob": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sex": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "resetPasswordToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "resetPasswordExpires": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "apiToken": {
+            "items": {
+              "$ref": "#/components/schemas/Token"
+            },
+            "type": "array"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "primaryAddress": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              }
+            ],
+            "nullable": true
+          },
+          "addresses": {
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            },
+            "type": "array"
+          },
+          "contactOfAddress": {
+            "items": {
+              "$ref": "#/components/schemas/ContactAtAddress"
+            },
+            "type": "array"
+          },
+          "application": {
+            "items": {
+              "$ref": "#/components/schemas/Application"
+            },
+            "type": "array"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/Email"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/Files"
+            },
+            "type": "array"
+          },
+          "phones": {
+            "items": {
+              "$ref": "#/components/schemas/Phone"
+            },
+            "type": "array"
+          },
+          "rtw": {
+            "items": {
+              "$ref": "#/components/schemas/RTW"
+            },
+            "type": "array"
+          },
+          "sia": {
+            "items": {
+              "$ref": "#/components/schemas/SIABadge"
+            },
+            "type": "array"
+          },
+          "Status": {
+            "items": {
+              "$ref": "#/components/schemas/StatusOnAccount"
+            },
+            "type": "array"
+          },
+          "subscription": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionOnAccount"
+            },
+            "type": "array"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/Transaction"
+            },
+            "type": "array"
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "accountType",
+          "subsciption",
+          "createdAt",
+          "updatedAt",
+          "label"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EmployersOnAccount": {
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "employerId": {
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "employer": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["accountId", "employerId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SubuserOnAccount": {
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "subuserId": {
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "subuser": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["accountId", "subuserId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ManagersOnAccount": {
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "managersId": {
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "managers": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["accountId", "managersId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Token": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["API", "PERSONAL", "SYSTEM"]
+          },
+          "value": {
+            "type": "string"
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "apiToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "type",
+          "value",
+          "valid",
+          "expiry",
+          "apiToken"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Address": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["PERSONAL", "BUSINESS"]
+          },
+          "coords": {
+            "type": "string",
+            "nullable": true
+          },
+          "street": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressName": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "parking": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactAtAddress"
+            },
+            "type": "array"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "hoursOfOperation": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Prisma.JsonValue"
+              }
+            ],
+            "nullable": true
+          },
+          "venueStyle": {
+            "items": {
+              "$ref": "#/components/schemas/VenueStyle"
+            },
+            "type": "array"
+          },
+          "features": {
+            "type": "string"
+          },
+          "details": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Prisma.JsonValue"
+              }
+            ],
+            "nullable": true
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "primaryAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Account"
+              }
+            ],
+            "nullable": true
+          },
+          "primaryaccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "featuresOfBuisness": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOfAddress"
+            },
+            "type": "array"
+          },
+          "phones": {
+            "items": {
+              "$ref": "#/components/schemas/Phone"
+            },
+            "type": "array"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "type": "array"
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AddressCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "accountId",
+          "type",
+          "street",
+          "features",
+          "public"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ContactAtAddress": {
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "addressId": {
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "jobTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Email"
+              }
+            ],
+            "nullable": true
+          },
+          "emailId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["accountId", "addressId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Email": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "associatedContact": {
+            "items": {
+              "$ref": "#/components/schemas/ContactAtAddress"
+            },
+            "type": "array"
+          },
+          "domain": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Domain"
+              }
+            ],
+            "nullable": true
+          },
+          "domainId": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Account"
+              }
+            ],
+            "nullable": true
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "primary": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "copy": {
+            "type": "boolean"
+          },
+          "notifyFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "imap_authUser": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_authPass": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_authServer": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "imap_host": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_port": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_secure": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "imap_tslRejectUnauthorized": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "imap_tslMinVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "imap_resyncDelay": {
+            "type": "number",
+            "format": "double"
+          },
+          "smtp_authUser": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtp_authPass": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtp_accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtp_authServer": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "smtp_host": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtp_port": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtp_secure": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "smtp_tslRejectUnauthorized": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "smtp_tslMinVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "oauth2_authorize": {
+            "type": "boolean"
+          },
+          "oauth2_provider": {
+            "type": "string"
+          },
+          "oauth2_authUser": {
+            "type": "string",
+            "nullable": true
+          },
+          "oauth2_accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "oauth2_refreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "oauth2_expires": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EmailCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "verified",
+          "public",
+          "primary",
+          "copy",
+          "imap_resyncDelay",
+          "oauth2_authorize",
+          "oauth2_provider",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "JsonObject": {
+        "properties": {},
+        "type": "object",
+        "description": "From https://github.com/sindresorhus/type-fest/\nMatches a JSON object.\nThis type can be useful to enforce some input to be JSON-compatible or as a super-type to be extended from."
+      },
+      "JsonArray": {
+        "description": "From https://github.com/sindresorhus/type-fest/\nMatches a JSON array.",
+        "properties": {},
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Prisma.JsonValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          {
+            "$ref": "#/components/schemas/JsonArray"
+          }
+        ],
+        "nullable": true,
+        "description": "From https://github.com/sindresorhus/type-fest/\nMatches any valid JSON value."
+      },
+      "DomainCount": {
+        "properties": {
+          "linkedEmails": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["linkedEmails"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Domain": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "dnsType": {
+            "type": "string",
+            "enum": ["TXT", "CNAME"]
+          },
+          "linkedEmails": {
+            "items": {
+              "$ref": "#/components/schemas/Email"
+            },
+            "type": "array"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Prisma.JsonValue"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DomainCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "verified",
+          "dnsType",
+          "data",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EmailCount": {
+        "properties": {
+          "associatedContact": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["associatedContact"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "VenueStyleCount": {
+        "properties": {
+          "address": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["address"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "VenueStyle": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "address": {
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VenueStyleCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "createdAt", "updatedAt", "name"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Feature": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["STRING", "BOOLEAN", "NUMBER"]
+          },
+          "featureOfRoom": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOfRoom"
+            },
+            "type": "array"
+          },
+          "featureOfAddress": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOfAddress"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeatureCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "name", "type", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FeatureOfRoom": {
+        "properties": {
+          "roomId": {
+            "type": "string"
+          },
+          "featureId": {
+            "type": "string"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/Feature"
+          },
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Prisma.JsonValue"
+              }
+            ],
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["roomId", "featureId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ArrangementOfRoom": {
+        "properties": {
+          "roomId": {
+            "type": "string"
+          },
+          "arrangementId": {
+            "type": "string"
+          },
+          "arrangement": {
+            "$ref": "#/components/schemas/Arrangement"
+          },
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "capacity": {
+            "type": "number",
+            "format": "double"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "roomId",
+          "arrangementId",
+          "capacity",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ArrangementCount": {
+        "properties": {
+          "room": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["room"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Arrangement": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "room": {
+            "items": {
+              "$ref": "#/components/schemas/ArrangementOfRoom"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArrangementCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "createdAt", "updatedAt", "name"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Room": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "featuresOfRoom": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOfRoom"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "addressId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "floor": {
+            "type": "string",
+            "nullable": true
+          },
+          "building": {
+            "type": "string",
+            "nullable": true
+          },
+          "accessibility": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "checkin": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "checkout": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "length": {
+            "type": "string",
+            "nullable": true
+          },
+          "width": {
+            "type": "string",
+            "nullable": true
+          },
+          "height": {
+            "type": "string",
+            "nullable": true
+          },
+          "arrangements": {
+            "items": {
+              "$ref": "#/components/schemas/ArrangementOfRoom"
+            },
+            "type": "array"
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RoomCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "createdAt", "updatedAt", "addressId", "name"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RoomCount": {
+        "properties": {
+          "featuresOfRoom": {
+            "type": "number",
+            "format": "double"
+          },
+          "arrangements": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["featuresOfRoom", "arrangements"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FeatureOfAddress": {
+        "properties": {
+          "addressId": {
+            "type": "string"
+          },
+          "featureId": {
+            "type": "string"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/Feature"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Prisma.JsonValue"
+              }
+            ],
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["addressId", "featureId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FeatureCount": {
+        "properties": {
+          "featureOfRoom": {
+            "type": "number",
+            "format": "double"
+          },
+          "featureOfAddress": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["featureOfRoom", "featureOfAddress"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Phone": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "addressId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "public": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "accountId",
+          "addressId",
+          "phone",
+          "public"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AddressCount": {
+        "properties": {
+          "contacts": {
+            "type": "number",
+            "format": "double"
+          },
+          "venueStyle": {
+            "type": "number",
+            "format": "double"
+          },
+          "featuresOfBuisness": {
+            "type": "number",
+            "format": "double"
+          },
+          "phones": {
+            "type": "number",
+            "format": "double"
+          },
+          "rooms": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "contacts",
+          "venueStyle",
+          "featuresOfBuisness",
+          "phones",
+          "rooms"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Application": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["id", "name", "accountId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Files": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rtw": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RTW"
+              }
+            ],
+            "nullable": true
+          },
+          "rtwId": {
+            "type": "string",
+            "nullable": true
+          },
+          "account": {
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilesCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "name", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RTWCount": {
+        "properties": {
+          "files": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["files"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RTW": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/Files"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RTWCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "name", "accountId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FilesCount": {
+        "properties": {
+          "account": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["account"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SIABadge": {
+        "properties": {
+          "id": {
+            "type": "number",
+            "format": "double"
+          },
+          "licenseSector": {
+            "type": "string",
+            "enum": ["CVIT", "CP", "DS", "CCTV", "SG", "VI", "KH", "UNKNOWN"]
+          },
+          "type": {
+            "type": "string",
+            "enum": ["FRONTLINE", "NON_FRONTLINE"]
+          },
+          "licenseExplanation": {
+            "type": "string"
+          },
+          "additionalTerms": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "siaChecks": {
+            "items": {
+              "$ref": "#/components/schemas/SIACheck"
+            },
+            "type": "array"
+          },
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Account"
+              }
+            ],
+            "nullable": true
+          },
+          "account_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SIABadgeCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "licenseSector",
+          "type",
+          "licenseExplanation",
+          "additionalTerms",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "StatusOnAccount": {
+        "properties": {
+          "statusId": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["statusId", "accountId", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "StatusCount": {
+        "properties": {
+          "account": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["account"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Status": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account": {
+            "items": {
+              "$ref": "#/components/schemas/StatusOnAccount"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatusCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "name", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SubscriptionOnAccount": {
+        "properties": {
+          "subscriptionId": {
+            "type": "string"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/Subscription"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "deactivated": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "activated": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "subscriptionId",
+          "accountId",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SubscriptionCount": {
+        "properties": {
+          "accounts": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["accounts"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Subscription": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "cost": {
+            "type": "string",
+            "nullable": true
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionOnAccount"
+            },
+            "type": "array"
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "createdAt", "updatedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "TransactionCount": {
+        "properties": {
+          "SIACheck": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["SIACheck"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Transaction": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "SIACheck": {
+            "items": {
+              "$ref": "#/components/schemas/SIACheck"
+            },
+            "type": "array"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Prisma.JsonValue"
+          },
+          "_count": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionCount"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": ["id", "createdAt", "updatedAt", "accountId", "data"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AccountCount": {
+        "properties": {
+          "employer": {
+            "type": "number",
+            "format": "double"
+          },
+          "employees": {
+            "type": "number",
+            "format": "double"
+          },
+          "accesses": {
+            "type": "number",
+            "format": "double"
+          },
+          "subusers": {
+            "type": "number",
+            "format": "double"
+          },
+          "accounts": {
+            "type": "number",
+            "format": "double"
+          },
+          "managers": {
+            "type": "number",
+            "format": "double"
+          },
+          "apiToken": {
+            "type": "number",
+            "format": "double"
+          },
+          "addresses": {
+            "type": "number",
+            "format": "double"
+          },
+          "contactOfAddress": {
+            "type": "number",
+            "format": "double"
+          },
+          "application": {
+            "type": "number",
+            "format": "double"
+          },
+          "emails": {
+            "type": "number",
+            "format": "double"
+          },
+          "files": {
+            "type": "number",
+            "format": "double"
+          },
+          "phones": {
+            "type": "number",
+            "format": "double"
+          },
+          "rtw": {
+            "type": "number",
+            "format": "double"
+          },
+          "sia": {
+            "type": "number",
+            "format": "double"
+          },
+          "Status": {
+            "type": "number",
+            "format": "double"
+          },
+          "subscription": {
+            "type": "number",
+            "format": "double"
+          },
+          "transactions": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "employer",
+          "employees",
+          "accesses",
+          "subusers",
+          "accounts",
+          "managers",
+          "apiToken",
+          "addresses",
+          "contactOfAddress",
+          "application",
+          "emails",
+          "files",
+          "phones",
+          "rtw",
+          "sia",
+          "Status",
+          "subscription",
+          "transactions"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SIABadgeCount": {
+        "properties": {
+          "siaChecks": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["siaChecks"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "License": {
+        "type": "number",
+        "format": "License",
+        "example": 1030123456789012,
+        "description": "The license number issued by the SIA.",
+        "pattern": "10[0-9]{14}"
+      }
+    },
+    "securitySchemes": {}
+  },
+  "info": {
+    "title": "@eventiva/siacheck",
+    "version": "1.0.0",
+    "license": {
+      "name": "GPLv3"
+    },
+    "contact": {}
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/sia/check/{id}": {
+      "get": {
+        "operationId": "CheckLicense",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SIACheck"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "id": "ae4b40c0-c167-49ec-b2b7-0d9ea4cdemo1",
+                      "status": "ACTIVE",
+                      "AuthUrl": "https://storage.googleapis.com/sia-check-bucket/1030123456789012.png?GoogleAccessId=phrasal-door-332522%40appspot.gserviceaccount.com&Expires=1677245786&Signature=jk%2BZ8IJhKMJdeHRenvr1VM66bfv18cTwd%2FvFu%2Bhaxv4ziM%2F12knx6XlvXWAjycYyQFha%2BI6oV6eJ0aVCOsyzATEDFiitvvCHH%2BNODVJKh5q2La37JCYziJTuaNk6dQR4RMmocXJnf5FAMj%2BYeArgIXVrvj3rsMW%2FRdJvYglDkEu1pr7H9wyQxu%2FkJhTpjitaE2v%2FYc5E%2Futc%2Founsdwf707tptN8gEZ9Ejxvw4UfYqQHJCnQyPM0heK9LMoTIJz2meb1Xr33aGMPdv6AGN%2BxRHl6G3OiERFCOwqI9VauYid4xXhQk0fUhEW875j8bQnmZNetr1pWRAt%2FZfpuBGdpOQ%3D%3D'",
+                      "pubUrl": "https://storage.googleapis.com/sia-check/1030123456789012.png",
+                      "createdAt": "2022-02-25T17:11:35.885Z",
+                      "updatedAt": "2022-02-25T17:11:35.885Z",
+                      "badge": {
+                        "id": 1030123456789012,
+                        "licenseSector": "SG",
+                        "type": "FRONTLINE",
+                        "licenseExplanation": "The individual is licensed to undertake designated licensable activity.",
+                        "additionalTerms": "",
+                        "createdAt": "2022-02-25T17:11:35.886Z",
+                        "updatedAt": "2022-02-25T17:11:35.886Z",
+                        "expiry": "2022-02-25T17:11:35.886Z",
+                        "account": {
+                          "id": "ae4b40c0-c167-49ec-b2b7-0d9ea4cdemo",
+                          "accountType": "USER",
+                          "subsciption": false,
+                          "createdAt": "2022-02-25T17:11:35.886Z",
+                          "updatedAt": "2022-02-25T17:11:35.886Z",
+                          "firstname": "John",
+                          "lastname": "Doe",
+                          "label": "demo"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Run a check on a specified license number for an officer.\r\nSpecify the license number in the query.",
+        "security": [],
+        "parameters": [
+          {
+            "description": "- The license number to check.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/License"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

@@ -4,29 +4,11 @@
 
 ```ts
 
-import { Request as Request_2 } from 'express';
-import { Response as Response_2 } from 'express';
+import { Express as Express_2 } from 'express';
 
 // @public
-export const google: (req: Request_2, res: Response_2) => Promise<void>;
+export const GoogleHandler: Express_2;
 
-// @alpha
-export function testLicense(license: string): Promise<{
-    found: 'Valid' | 'Invalid';
-    firstname?: string | undefined;
-    lastname?: string | undefined;
-    license?: string | undefined;
-    role?: string | undefined;
-    sector?: string | undefined;
-    expiry?: string | undefined;
-    active?: string | undefined;
-    activeDesc?: string | undefined;
-    activeDate?: number | undefined;
-    sinceDate?: string | undefined;
-    picture?: string | void | Buffer | undefined;
-    pictureAUTHURL?: string | undefined;
-    lastValid?: string | undefined;
-    error?: string | undefined;
-} | null>;
+// (No @packageDocumentation comment for this package)
 
 ```
