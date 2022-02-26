@@ -10,10 +10,17 @@ model Transaction {
 
   account Account @relation(fields: [accountId], references: [id])
   accountId String
+  SIACheck SIACheck[]
   data Json
 }
 
 model Account {
   id String @id @default(uuid())
   transactions Transaction[]
+}
+
+model SIACheck {
+  id String @id @default(uuid())
+  transactions Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
 }

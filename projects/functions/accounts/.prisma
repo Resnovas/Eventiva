@@ -10,6 +10,10 @@ model Account {
   subsciption Boolean @default(false)
 
   // Sub users
+  employer EmployersOnAccount[] @relation("employer")
+  employees EmployersOnAccount[] @relation("employees")
+
+  // Sub users
   accesses SubuserOnAccount[] @relation("shared")
   subusers SubuserOnAccount[] @relation("subuser")
   
@@ -20,18 +24,18 @@ model Account {
   // Account logs
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  lastLogin DateTime @default(now())
-  applied DateTime @default(now())
-  promoted DateTime @default(now())
-  retired DateTime @default(now())
+  lastLogin DateTime?
+  applied DateTime? 
+  promoted DateTime?
+  retired DateTime?
 
   // Personal details
   title Title? 
   firstname String?
   midname String?
-  lastname String[]
+  lastname String?
   Salutation String?
-  dob DateTime
+  dob DateTime?
   sex String?
   label String[]
   // qualifications Qualifications[]
@@ -72,6 +76,17 @@ model SubuserOnAccount {
   updatedAt DateTime @updatedAt
 }
 
+model EmployersOnAccount {
+  accountId String
+  employerId String
+  account Account @relation("employer", fields: [accountId], references: [id])
+  employer Account @relation("employees", fields: [employerId], references: [id])
+
+  @@id([accountId, employerId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model ManagersOnAccount {
   accountId String
   managersId String
@@ -85,9 +100,8 @@ model ManagersOnAccount {
 
 enum AccountType {
   USER
-  VENUE
-  SUPPLIER
-  SOFTWARE
+  BUSINESS
+  PROVIDER
 }
 
 enum Title {

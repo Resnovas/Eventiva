@@ -10,11 +10,11 @@ generator backend {
 
 generator frontend {
   provider           = "typegraphql-prisma"
-  output             = "../../../../node_modules/@generated/type-graphql"
-  emitTranspiledCode = "true"
+  output             = "../src"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }

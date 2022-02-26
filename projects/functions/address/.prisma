@@ -21,7 +21,7 @@ model Address {
   zipcode String?
 
   // facility details
-  businessName String?
+  addressName String?
   name String?
   parking Boolean? @default(false)
   contacts ContactAtAddress[]
@@ -75,7 +75,7 @@ model Account {
   id String @id @default(uuid())
   primaryAddress Address? @relation("account")
   addresses Address[] @relation("address")
-  contactOfAdress ContactAtAddress[]
+  contactOfAddress ContactAtAddress[]
 }
 
 model Email {

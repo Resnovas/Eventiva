@@ -5,15 +5,19 @@ datasource db {
 
 model SIABadge {
   id Int @id @unique
-  license License
-  type LicenseType
-  image String
+  licenseSector LicenseSector
+  type LicenseType 
+  licenseExplanation String
+  additionalTerms String
   createdAt DateTime @default(now())
+  active DateTime?
+  expiry DateTime?
   updatedAt DateTime @updatedAt
   deleted DateTime?
+  siaChecks SIACheck[]
 
-  account Account @relation(fields: [account_id], references: [id])
-  account_id String
+  account Account? @relation(fields: [account_id], references: [id])
+  account_id String?
 }
 
 model Account {
@@ -21,7 +25,20 @@ model Account {
   sia SIABadge[]
 }
 
-enum License {
+model SIACheck {
+  id String @id @default(uuid())
+  badge SIABadge? @relation(fields: [sia_id], references: [id])
+  sia_id Int?
+  status BadgeStatus
+  AuthUrl String?
+  pubUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+  error String?
+}
+
+enum LicenseSector {
   CVIT
   CP
   DS
@@ -29,9 +46,17 @@ enum License {
   SG
   VI
   KH
+  UNKNOWN
 }
 
 enum LicenseType {
   FRONTLINE
   NON_FRONTLINE
+}
+
+enum BadgeStatus {
+  ACTIVE
+  REVOKED
+  SUSPENDED
+  NON_ACTIVE
 }
