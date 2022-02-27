@@ -1,6 +1,6 @@
 {
   "name": "@eventiva/siacheck",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "GPLv3",
   "types": "dist/siacheck.d.ts",
   "typings": "dist/siacheck.d.ts",
