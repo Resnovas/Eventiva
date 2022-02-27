@@ -454,11 +454,11 @@
       "projectFolder": "projects/functions/database",
       "reviewCategory": "prototypes"
     },
-    {
-      "packageName": "@eventiva/axlr8",
-      "projectFolder": "projects/functions/axlr8",
-      "reviewCategory": "prototypes"
-    },
+    // {
+    //   "packageName": "@eventiva/axlr8",
+    //   "projectFolder": "projects/functions/axlr8",
+    //   "reviewCategory": "prototypes"
+    // },
     {
       "packageName": "@eventiva/domain",
       "projectFolder": "projects/functions/domain",
