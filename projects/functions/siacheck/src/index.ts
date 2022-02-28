@@ -5,7 +5,7 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Sat Feb 26 2022
+ * Last Modified: Sun Feb 27 2022
  * Modified By: Jonathan Stevens
  * Current Version: 2.0.0
  * -----
@@ -69,3 +69,11 @@ export { handler as GoogleHandler } from './Google';
  * Please instead @see ./Lambda/index.ts for the Lambda Functions entry point details and preferred entry.
  */
 // export { handler as LambdaHandler } from './Lambda';
+
+export * from './Controller';
+export * from './testlicense';
+export * from './util/app';
+export * from './util/routes';
+export * from './Google/createBucket';
+export * from './Google/runCheck';
+export * from './Google/uploadImage';
