@@ -1,0 +1,124 @@
+{
+    "grammarly.overrides": [
+        {
+            "files": [
+                "**/docs/readme/information.md"
+            ],
+            "config": {
+                "audience": "expert",
+                "dialect": "british",
+                "domain": "technical",
+                "emotions": [
+                    "neutral",
+                    "confident",
+                    "friendly"
+                ],
+                "goals": [
+                    "inform",
+                    "describe",
+                    "tellStory"
+                ]
+            }
+        }
+    ],
+    "psi-header.config": {
+    "forceToTop": true,
+		"blankLinesAfter": 2,
+		"license": "GPL-3.0+",
+		"company": "Resnovas",
+		"copyrightHolder": "Jonathan Stevens",
+		"creationDateZero": "asIs",
+		"hostname": "localhost"
+  },
+  "psi-header.changes-tracking": {
+		"isActive": true,
+		"modAuthor": "Modified By:",
+		"modDate": "Last Modified:",
+		"modDateFormat": "dd/MM/yyyy hh:nn:ss",
+		"exclude": ["markdown", "json", "jsonc", "shellscript"],
+		"autoHeader": "autoSave",
+		"enforceHeader": true,
+		"replace": [
+			"File:",
+			"Path:",
+			"Project:",
+			"Current Version:",
+			"Project:",
+			"along with",
+			"or see"
+		],
+		"updateLicenseVariables": true
+	},
+  "psi-header.lang-config": [
+		{
+			"language": "javascript",
+			"begin": "/**",
+			"prefix": " * ",
+			"suffix": "",
+			"lineLength": 80,
+			"end": " */",
+			"forceToTop": true,
+			"blankLinesAfter": 3,
+			"beforeHeader": [],
+			"afterHeader": [],
+			"rootDirFileName": "package.json"
+		},
+		{
+			"language": "typescript",
+			"mapTo": "javascript"
+		}
+	],
+  "psi-header.templates": [
+		{
+			"language": "javascript",
+            "template": [
+        "Project: <<projectname>>",
+				"File: <<filename>>",
+        "Path: <<filerelativepath>>",
+				"Created Date: <<filecreated('dddd, MMMM Do YYYY')>>",
+				"Author: <<author>>",
+				"-----",
+				"Last Modified: <<date>>",
+				"Modified By: <<author>>",
+        "Current Version: <<projectversion>>",
+				"-----",
+				"Copyright (c) <<yeartoyear(fc, now)>> <<company>> - All Rights Reserved",
+				"-----",
+        "LICENSE: <<licensename>> (<<spdxid>>)",
+        "",
+        "This program has been provided under confidence of the copyright holder and is ",
+        "licensed for copying, distribution and modification under the terms of",
+        "the <<licensename>> (<<spdxid>>) published as the License,",
+        "or (at your option) any later version of this license.",
+        "",
+        "This program is distributed in the hope that it will be useful,",
+        "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+        "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+        "<<licensename>> for more details.",
+        "",
+        "You should have received a copy of the <<licensename>>",
+        "along with this program. If not, please write to: <<authoremail>> ,",
+        "or see <<licenseurl>>",
+        "",
+        "DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE - PLEASE SEE THE LICENSE FILE FOR DETAILS",
+				"-----",
+				"HISTORY:",
+				"Date      \tBy\tComments",
+				"----------\t---\t---------------------------------------------------------"
+			],
+			"changeLogCaption": "HISTORY",
+			"changeLogHeaderLineCount": 2,
+			"changeLogEntryTemplate": [
+				"",
+				"<<dateformat(DD-MM-YYYY)>>\t<<initials>>\t"
+			],
+			"changeLogNaturalOrder": false,
+			"changeLogFooterLineCount": 0
+		},
+		{
+			"language": "typescript",
+			"mapTo": "javascript"
+		}
+	],
+    "svn.ignoreMissingSvnWarning": true
+}
