@@ -5,7 +5,7 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Sat Feb 26 2022
+ * Last Modified: Wed Mar 02 2022
  * Modified By: Jonathan Stevens
  * Current Version: 2.0.0
  * -----
@@ -36,7 +36,7 @@
 
 import { Bucket } from '@google-cloud/storage';
 import Jimp from 'jimp';
-import { SIACheck } from '@eventiva/databaseclasses';
+import { SIACheck } from '@eventiva/internals';
 import {
   ErrorCode,
   ErrorMessages,

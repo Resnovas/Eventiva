@@ -37,7 +37,7 @@
     "puppeteer": "~10.1.0",
     "@google-cloud/storage": "~5.16.0",
     "jimp": "~0.16.1",
-    "@eventiva/databaseclasses": "workspace:*",
+    "@eventiva/internals": "workspace:*",
     "tsoa": "^3.14.1",
     "body-parser": "^1.19.1",
     "@tsoa/runtime": "~3.13.0",

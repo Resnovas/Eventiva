@@ -71,6 +71,10 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "@eventiva/internals",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@eventiva/prismix",
       "allowedCategories": [ "prototypes", "tools" ]
     },

@@ -95,8 +95,8 @@ importers:
 
   ../../projects/functions/database:
     specifiers:
-      '@eventiva/databaseclasses': workspace:*
       '@eventiva/functions-rig': 1.0.1
+      '@eventiva/internals': workspace:*
       '@eventiva/prismix': workspace:*
       '@google-cloud/functions-framework': ^2.1.0
       '@prisma/client': ^3.4.2
@@ -132,7 +132,7 @@ importers:
       typescript: ^4.4.4
       uuid: ^8.3.2
     dependencies:
-      '@eventiva/databaseclasses': link:../../packages/database
+      '@eventiva/internals': link:../../packages/internals
       '@prisma/client': 3.4.2_prisma@3.4.2
       apollo-server: 3.5.0_graphql@15.7.2
       apollo-server-azure-functions: 3.5.0_graphql@15.7.2
@@ -187,8 +187,8 @@ importers:
 
   ../../projects/functions/siacheck:
     specifiers:
-      '@eventiva/databaseclasses': workspace:*
       '@eventiva/functions-rig': 1.0.1
+      '@eventiva/internals': workspace:*
       '@google-cloud/functions-framework': ^2.1.0
       '@google-cloud/storage': ~5.16.0
       '@rushstack/heft': ~0.42.2
@@ -213,7 +213,7 @@ importers:
       tsoa: ^3.14.1
       typescript: ^4.4.4
     dependencies:
-      '@eventiva/databaseclasses': link:../../packages/database
+      '@eventiva/internals': link:../../packages/internals
       '@google-cloud/functions-framework': 2.1.0
       '@google-cloud/storage': 5.16.0
       '@tsoa/runtime': 3.13.0
@@ -240,7 +240,7 @@ importers:
       concurrently: 7.0.0
       ts-node: 10.4.0_ee928ac548ac44c173bf0d4654ae2c29
 
-  ../../projects/packages/database:
+  ../../projects/packages/internals:
     specifiers:
       '@eventiva/functions-rig': 1.0.1
       '@eventiva/prismix': workspace:*
@@ -296,17 +296,6 @@ importers:
       ts-node: 10.4.0_ee928ac548ac44c173bf0d4654ae2c29
       tslib: 2.3.1
       typegraphql-prisma: 0.16.6_4d24c7f34bbe11b97756586000e68ac0
-
-  ../../projects/packages/internals:
-    specifiers:
-      '@rushstack/heft': ~0.42.2
-      oso: ^0.23.0
-      typescript: ^4.4.4
-    dependencies:
-      oso: 0.23.0
-      typescript: 4.4.4
-    devDependencies:
-      '@rushstack/heft': 0.42.2
 
   ../../projects/packages/prismix:
     specifiers:
@@ -2986,7 +2975,7 @@ packages:
     peerDependencies:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0
     dependencies:
-      '@graphql-tools/utils': 8.5.3_graphql@15.7.2
+      '@graphql-tools/utils': 8.5.4_graphql@15.7.2
       graphql: 15.7.2
       tslib: 2.3.1
     dev: false
@@ -3009,7 +2998,7 @@ packages:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0
     dependencies:
       '@graphql-tools/merge': 8.2.1_graphql@15.7.2
-      '@graphql-tools/utils': 8.5.3_graphql@15.7.2
+      '@graphql-tools/utils': 8.5.4_graphql@15.7.2
       graphql: 15.7.2
       tslib: 2.3.1
       value-or-promise: 1.0.11
@@ -3995,7 +3984,7 @@ packages:
       http-proxy-agent: 5.0.0
       https-proxy-agent: 5.0.0
       make-dir: 3.1.0
-      node-fetch: 2.6.5
+      node-fetch: 2.6.7
       p-filter: 2.1.0
       p-map: 4.0.0
       p-retry: 4.6.1
@@ -4004,6 +3993,7 @@ packages:
       temp-dir: 2.0.0
       tempy: 1.0.1
     transitivePeerDependencies:
+      - encoding
       - supports-color
     dev: true
 
@@ -4102,6 +4092,7 @@ packages:
       terminal-link: 2.1.1
       tmp: 0.2.1
     transitivePeerDependencies:
+      - encoding
       - supports-color
     dev: true
 
@@ -5023,7 +5014,7 @@ packages:
   /@ts-morph/common/0.11.1:
     resolution: {integrity: sha512-7hWZS0NRpEsNV8vWJzg7FEz6V8MaLNeJOmwmghqUXTpzk16V1LLZhdo+4QvE/+zv4cVci0OviuJFnqhEfoV3+g==}
     dependencies:
-      fast-glob: 3.2.7
+      fast-glob: 3.2.11
       minimatch: 3.0.4
       mkdirp: 1.0.4
       path-browserify: 1.0.1
@@ -5739,6 +5730,7 @@ packages:
     resolution: {integrity: sha512-yXbYeFy+jUuYd3/CDcg2NkIYE991XYX/bje7LmjJigUciaeO1JR4XxXgCIV1/Zc/dRuFEyw1L0pbA+qynJkW5Q==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+    dev: false
 
   /acorn/8.7.0:
     resolution: {integrity: sha512-V/LGr1APy+PXIwKebEWrkZPwoeoF+w1jiOBUmuxuiUIaOHtob8Qc9BTrYo7VuI5fR8tqsy+buA2WFooR5olqvQ==}
@@ -6246,7 +6238,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       glob: 7.2.0
-      graceful-fs: 4.2.8
+      graceful-fs: 4.2.9
       lazystream: 1.0.1
       lodash.defaults: 4.2.0
       lodash.difference: 4.5.0
@@ -8552,8 +8544,8 @@ packages:
     resolution: {integrity: sha512-1shh9DQ23L16oXSZKB2JxpL7iMy2E0S9d517ptA1P8iw0alkPtQcrKH7ru31rYtKwF499HkTu+DRzq3TCKDFRQ==}
     engines: {node: '>=10'}
     dependencies:
-      globby: 11.0.4
-      graceful-fs: 4.2.8
+      globby: 11.1.0
+      graceful-fs: 4.2.9
       is-glob: 4.0.3
       is-path-cwd: 2.2.0
       is-path-inside: 3.0.3
@@ -9383,7 +9375,6 @@ packages:
       glob-parent: 5.1.2
       merge2: 1.4.1
       micromatch: 4.0.4
-    dev: false
 
   /fast-glob/3.2.7:
     resolution: {integrity: sha512-rYGMRwip6lUMvYD3BTScMwT1HtAs2d71SMv66Vrxs0IekGZEjhM0pcMfjQPnknBt2zeCwQMEupiN02ZP4DiT1Q==}
@@ -9956,8 +9947,8 @@ packages:
     dependencies:
       array-union: 2.1.0
       dir-glob: 3.0.1
-      fast-glob: 3.2.7
-      ignore: 5.1.9
+      fast-glob: 3.2.11
+      ignore: 5.2.0
       merge2: 1.4.1
       slash: 3.0.0
 
@@ -9971,7 +9962,6 @@ packages:
       ignore: 5.2.0
       merge2: 1.4.1
       slash: 3.0.0
-    dev: false
 
   /google-auth-library/7.10.2:
     resolution: {integrity: sha512-M37o9Kxa/TLvOLgF71SXvLeVEP5sbSTmKl1zlIgl72SFy5PtsU3pOdu8G8MIHHpQ3/NZabDI8rQkA9DvQVKkPA==}
@@ -10022,6 +10012,7 @@ packages:
 
   /graceful-fs/4.2.8:
     resolution: {integrity: sha512-qkIilPUYcNhJpd33n0GBXTB1MMPp14TxEsEs0pTrsSVucApsYzW5V+Q8Qxhik6KU3evy+qkAAowTByymK0avdg==}
+    dev: false
 
   /graceful-fs/4.2.9:
     resolution: {integrity: sha512-NtNxqUcXgpW2iMrfqSfR73Glt39K+BLwWsPs94yR63v45T0Wbej7eRmL5cWfwEgqXnmjQp3zaJTshdRW/qC2ZQ==}
@@ -10606,14 +10597,9 @@ packages:
   /ieee754/1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
 
-  /ignore/5.1.9:
-    resolution: {integrity: sha512-2zeMQpbKz5dhZ9IwL0gbxSW5w0NK/MSAMtNuhgIHEPmaU3vPdKPL0UdvUCXs5SS4JAwsBxysK5sFMW8ocFiVjQ==}
-    engines: {node: '>= 4'}
-
   /ignore/5.2.0:
     resolution: {integrity: sha512-CmxgYGiEPCLhfLnpPp1MoRmifwEIOgjcHXxOBjv7mY96c+eWScsOP9c112ZyLdWHi0FxHjI+4uVhKYp/gcdRmQ==}
     engines: {node: '>= 4'}
-    dev: false
 
   /image-q/1.1.1:
     resolution: {integrity: sha1-/IQJlmRGC5DKhi2TALa/u7+/gFY=}
@@ -15893,7 +15879,7 @@ packages:
     resolution: {integrity: sha512-HIeWmj77uOOHb0QX7siN3OtwV3CTntquin6TNVg6SHOqCP3hYKmox90eeFOGaY1MqJ9WYDDjkyZrW6qS5AWpbw==}
     engines: {node: '>=8'}
     dependencies:
-      graceful-fs: 4.2.8
+      graceful-fs: 4.2.9
       is-stream: 2.0.1
       make-dir: 3.1.0
       temp-dir: 1.0.0
@@ -16195,7 +16181,7 @@ packages:
       '@tsconfig/node14': 1.0.1
       '@tsconfig/node16': 1.0.2
       '@types/node': 16.11.7
-      acorn: 8.5.0
+      acorn: 8.7.0
       acorn-walk: 8.2.0
       arg: 4.1.3
       create-require: 1.1.1
@@ -16224,7 +16210,7 @@ packages:
       '@tsconfig/node12': 1.0.9
       '@tsconfig/node14': 1.0.1
       '@tsconfig/node16': 1.0.2
-      acorn: 8.5.0
+      acorn: 8.7.0
       acorn-walk: 8.2.0
       arg: 4.1.3
       create-require: 1.1.1
@@ -16396,6 +16382,7 @@ packages:
       tslib: 2.3.1
       type-graphql: 1.2.0-rc.1_5446f4da0b288d6e699187ec5a321cc8
     transitivePeerDependencies:
+      - encoding
       - supports-color
     dev: true
 

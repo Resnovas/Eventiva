@@ -480,11 +480,6 @@
       "reviewCategory": "prototypes"
     },
     {
-      "packageName": "@eventiva/databaseclasses",
-      "projectFolder": "projects/packages/database",
-      "reviewCategory": "tools"
-    },
-    {
       "packageName": "@eventiva/prismix",
       "projectFolder": "projects/packages/prismix",
       "reviewCategory": "tools"

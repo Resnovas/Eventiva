@@ -10,7 +10,7 @@ generator backend {
 
 generator frontend {
   provider           = "typegraphql-prisma"
-  output             = "../src"
+  output             = "../src/database"
 }
 
 datasource db {

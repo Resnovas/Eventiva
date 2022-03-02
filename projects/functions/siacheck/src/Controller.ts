@@ -5,7 +5,7 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Sat Feb 26 2022
+ * Last Modified: Wed Mar 02 2022
  * Modified By: Jonathan Stevens
  * Current Version: 2.0.0
  * -----
@@ -34,11 +34,7 @@
  * ----------	---	---------------------------------------------------------
  */
 
-import {
-  LicenseSector,
-  LicenseType,
-  SIACheck,
-} from '@eventiva/databaseclasses';
+import { LicenseSector, LicenseType, SIACheck } from '@eventiva/internals';
 import { Controller, Example, Get, Path, Route } from 'tsoa';
 import { runCheck as google } from './Google/runCheck';
 import { runCheck as azure } from './Azure/runCheck';

@@ -37,7 +37,7 @@
 		"modDateFormat": "dd/MM/yyyy hh:nn:ss",
 		"exclude": ["markdown", "json", "jsonc", "shellscript"],
 		"autoHeader": "autoSave",
-		"enforceHeader": true,
+		"enforceHeader": false,
 		"replace": [
 			"File:",
 			"Path:",
