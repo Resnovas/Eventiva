@@ -1,0 +1,49 @@
+{
+  "name": "@eventiva/axlr8",
+  "version": "1.0.0",
+  "types": "dist/index.d.ts",
+  "typings": "dist/index.d.ts",
+  "main": "lib/cjs/index.js",
+  "module": "lib/mjs/index.js",
+  "esnext": {
+    "main": "lib/njs/index.js"
+  },
+  "config": {},
+  "exports": {
+    ".": {
+      "import": "./lib/mjs/index.js",
+      "require": "./lib/cjs/index.js"
+    }
+  },
+  "publishConfig": {
+    "typings": "dist/axlr8-public.d.ts",
+    "types": "dist/axlr8-public.d.ts",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsoa spec-and-routes && heft build && node fixup.js",
+    "start": "functions-framework --target=handler --source=lib/cjs/express.js",
+    "clean": "heft clean"
+  },
+  "dependencies": {
+    "docusaurus-theme-redoc": "^0.6.0",
+    "typescript": "^4.4.4",
+    "uuid": "^8.3.2",
+    "tslib": "~2.3.1",
+    "tsoa": "^3.14.1",
+    "body-parser": "^1.19.1",
+    "express": "^4.17.1",
+    "swagger-ui-express": "~4.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "~4.17.13",
+    "@types/node": "^16.11.6",
+    "ts-node": "~10.4.0",
+    "@types/body-parser": "~1.19.2",
+    "@types/swagger-ui-express": "~4.1.3",
+    "@eventiva/functions-rig": "workspace:*",
+    "@google-cloud/functions-framework": "^2.1.0",
+    "@rushstack/heft": "~0.42.2",
+    "tslib": "~2.3.1"
+  }
+}

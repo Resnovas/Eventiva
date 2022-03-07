@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib/njs",
+    "rootDir": "./src",
+    "module": "esnext"
+  },
+  "include": ["./**/*.ts", "src/util/reports/QuestionnaireResponses.ts"],
+  "exclude": ["**/node_modules/**", "lib/**", "dist/**", "temp/**"]
+}
