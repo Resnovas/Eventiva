@@ -51,7 +51,7 @@
     "@types/node": "^16.11.6",
     "@types/puppeteer": "^5.4.4",
     "@rushstack/heft": "~0.42.2",
-    "@eventiva/functions-rig": "1.0.1",
+    "@eventiva/functions-rig": "workspace:*",
     "ts-node": "~10.4.0",
     "@types/body-parser": "~1.19.2",
     "concurrently": "~7.0.0",

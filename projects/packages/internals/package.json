@@ -21,7 +21,7 @@
     "access": "public"
   },
   "scripts": {
-    "postinstall": "prisma generate",
+    // "postinstall": "prisma generate",
     "build": "prismix && prisma generate && heft build && node fixup.js",
     "clean": "heft clean",
     "prisma:generate:proxy": "prismix && cross-env DATABASE_URL=\"$DATABASE_URL_PROXY\" PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",
@@ -49,7 +49,7 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@eventiva/functions-rig": "1.0.1",
+    "@eventiva/functions-rig": "workspace:*",
     "@rushstack/heft": "~0.42.2",
     "@types/graphql-fields": "^1.3.3",
     "@types/node": "^16.11.6",

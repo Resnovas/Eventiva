@@ -57,7 +57,7 @@
     "@eventiva/internals": "workspace:*"
   },
   "devDependencies": {
-    "@eventiva/functions-rig": "1.0.1",
+    "@eventiva/functions-rig": "workspace:*",
     "@google-cloud/functions-framework": "^2.1.0",
     "@rushstack/heft": "~0.42.2",
     "@types/express": "~4.17.13",
