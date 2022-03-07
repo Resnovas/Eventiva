@@ -1,0 +1,10 @@
+{
+  "Modules": [
+    {
+      "Key": "function",
+      "Source": "../modules/gcp/function",
+      "Dir": "../modules/gcp/function"
+    },
+    { "Key": "", "Source": "", "Dir": "." }
+  ]
+}

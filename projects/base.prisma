@@ -1,0 +1,20 @@
+generator client {
+  provider      = "prisma-client-js"
+  // binaryTargets = ["native", "rhel-openssl-1.0.x"]
+  previewFeatures = ["fullTextSearch", "filterJson", "dataProxy"]
+}
+
+generator backend {
+  provider = "typegraphql-prisma"
+}
+
+generator frontend {
+  provider           = "typegraphql-prisma"
+  output             = "../src/database"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}

@@ -1,0 +1,26 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Transaction {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+  SIACheck SIACheck[]
+  data Json
+}
+
+model Account {
+  id String @id @default(uuid())
+  transactions Transaction[]
+}
+
+model SIACheck {
+  id String @id @default(uuid())
+  transactions Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "target": "es2017",
+    "outDir": "../build/functions/main",
+    "rootDir": "../src/functions",
+    "module": "commonjs"
+  },
+  "include": ["../src/functions/**/*.ts"],
+  "exclude": ["../node_modules/**"]
+}

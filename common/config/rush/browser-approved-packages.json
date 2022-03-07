@@ -1,0 +1,582 @@
+// DO NOT ADD COMMENTS IN THIS FILE.  They will be lost when the Rush tool resaves it.
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/approved-packages.schema.json",
+  "packages": [
+    {
+      "name": "@algolia/client-search",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@ava/typescript",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@babel/core",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@babel/preset-env",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@bitauth/libauth",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@casl/ability",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@casl/prisma",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@changesets/cli",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@docusaurus/core",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@docusaurus/module-type-aliases",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@docusaurus/plugin-pwa",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@docusaurus/preset-classic",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@docusaurus/theme-live-codeblock",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@easyops-cn/docusaurus-search-local",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@edno/docusaurus2-graphql-doc-generator",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@eventiva/databaseclasses",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@eventiva/functions-rig",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "@eventiva/internals",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@eventiva/prismix",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "@google-cloud/functions-framework",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "@google-cloud/storage",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@graphql-tools/prisma-loader",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@istanbuljs/nyc-config-typescript",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@mdx-js/react",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@microsoft/api-documenter",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@microsoft/api-extractor",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@oclif/command",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@oclif/config",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@oclif/errors",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@oclif/plugin-help",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@prisma/client",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "@prisma/generator-helper",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@prisma/sdk",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@rushstack/heft",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "@saucelabs/theme-github-codeblock",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@stoplight/spectral-cli",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@storybook/addon-actions",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@storybook/addon-knobs",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@storybook/react-native",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@svgr/webpack",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@testing-library/react-native",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@tsconfig/docusaurus",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@tsoa/runtime",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@typescript-eslint/eslint-plugin",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@typescript-eslint/parser",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@vendia/serverless-express",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-azure-functions",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-cloud-functions",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-core",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-express",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "apollo-server-lambda",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "ava",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "body-parser",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "chrome-aws-lambda",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "class-validator",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "clsx",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "codecov",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "commander",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "commitizen",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "concurrently",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "core-js",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "cross-env",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "cspell",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "cz-conventional-changelog",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-module-alias",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-moesif",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-react-native-web",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-redoc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-relative-paths",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-plugin-typedoc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "docusaurus-theme-redoc",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "docusaurus2-dotenv",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "dotenv",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "eslint",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "eslint-config-prettier",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "eslint-plugin-eslint-comments",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "eslint-plugin-functional",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "eslint-plugin-import",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "express",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "express-session",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "file-loader",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "fs",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "functions-rig",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "glob",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql-fields",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql-middleware",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql-passport",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "graphql-scalars",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql-shield",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "graphql-type-json",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "inquirer",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "jest",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "jimp",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "jose",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "jsonfile",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "jsonwebtoken",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "mdx-mermaid",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "mermaid",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "nodemon",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "npm-run-all",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "nyc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "open-cli",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "oso",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "passport",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "posthog-docusaurus",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "posthog-node",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "prettier",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "prettier-plugin-organize-imports",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "prettier-plugin-pkg",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "prism-react-renderer",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "prisma",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "prismix",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "puppeteer",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "puppeteer-core",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "puppeteer-serverless",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "react",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "react-dom",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "react-is",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "react-native",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "react-test-renderer",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "redocusaurus",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "reflect-metadata",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "swagger-jsdoc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "swagger-ui-express",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "ts-node",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "tsc-watch",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "tslib",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "tsoa",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "type-graphql",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "typedoc",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "typedoc-plugin-markdown",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "typedoc-plugin-merge-modules",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "typegraphql-prisma",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "typescript",
+      "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "typescript-json-schema",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "unist-util-visit",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "url-loader",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "uuid",
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "watch",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "webpack",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "wip",
+      "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "yaml",
+      "allowedCategories": [ "tools" ]
+    }
+  ]
+}

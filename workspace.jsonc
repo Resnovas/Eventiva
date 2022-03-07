@@ -1,7 +1,7 @@
 /**
  * this is the main configuration file of your bit workspace.
  * for full documentation, please see: https://harmony-docs.bit.dev/workspace/configurations
- **/{
+ **/ {
   "$schema": "https://static.bit.dev/teambit/schemas/schema.json",
   /**
    * main configuration of the Bit workspace.
@@ -10,7 +10,7 @@
     /**
      * the name of the component workspace. used for development purposes.
      **/
-    "name": "control",
+    "name": "Eventiva",
     /**
      * set the icon to be shown on the Bit server.
      **/
@@ -22,11 +22,11 @@
      * scope - scope name only, e.g. 'compilation'.
      * owner - owner name in bit.dev, e.g. 'teambit'.
      **/
-    "defaultDirectory": "apps/components/{scope}/{name}",
+    "defaultDirectory": "src/{name}",
     /**
      * default scope for all components in workspace.
      **/
-    "defaultScope": "videndum.interface"
+    "defaultScope": "videndum.eventiva"
   },
   /**
    * main configuration for component dependency resolution.
@@ -40,15 +40,11 @@
         "@storybook/addon-knobs": "6.2.9",
         "@storybook/react-native": "5.3.25"
       },
-      "devDependencies": {
-        
-      },
+      "devDependencies": {},
       "peerDependencies": {}
     },
     "packageManagerArgs": [],
-    "devFilePatterns": [
-      "**/*.spec.ts"
-    ],
+    "devFilePatterns": ["**/*.spec.ts"],
     "strictPeerDependencies": true,
     "installFromBitDevRegistry": true,
     "savePrefix": ""
@@ -61,18 +57,18 @@
    * see https://harmony-docs.bit.dev/aspects/variants for more info.
    **/
   "teambit.workspace/variants": {
-    "apps/components/generators": {
-      "defaultScope": "videndum.generators",
-      "teambit.harmony/aspect": {}
-    },
     "*": {
+      "teambit.harmony/node": {}
+    },
+    "src/app": {
       "teambit.react/react-native": {}
+    },
+    "src/apps/components/generators": {
+      "teambit.harmony/aspect": {}
     }
   },
   "teambit.generator/generator": {
-    "aspects": [
-      "videndum.generators/react-native"
-    ]
+    "aspects": ["videndum.eventiva/generators/react-native"]
   },
-  "videndum.generators/react-native": {}
+  "videndum.eventiva/generators/react-native": {}
 }

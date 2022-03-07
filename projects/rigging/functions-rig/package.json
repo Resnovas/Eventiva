@@ -1,0 +1,12 @@
+{
+  "name": "@eventiva/functions-rig",
+  "version": "1.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@rushstack/heft": "~0.42.2",
+    "@microsoft/api-extractor": "~7.18.19",
+    "@microsoft/api-documenter": "~7.13.68"
+  }
+}

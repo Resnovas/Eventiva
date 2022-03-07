@@ -1,0 +1,12 @@
+export { AggregatePhoneArgs } from './AggregatePhoneArgs';
+export { CreateManyPhoneArgs } from './CreateManyPhoneArgs';
+export { CreatePhoneArgs } from './CreatePhoneArgs';
+export { DeleteManyPhoneArgs } from './DeleteManyPhoneArgs';
+export { DeletePhoneArgs } from './DeletePhoneArgs';
+export { FindFirstPhoneArgs } from './FindFirstPhoneArgs';
+export { FindManyPhoneArgs } from './FindManyPhoneArgs';
+export { FindUniquePhoneArgs } from './FindUniquePhoneArgs';
+export { GroupByPhoneArgs } from './GroupByPhoneArgs';
+export { UpdateManyPhoneArgs } from './UpdateManyPhoneArgs';
+export { UpdatePhoneArgs } from './UpdatePhoneArgs';
+export { UpsertPhoneArgs } from './UpsertPhoneArgs';

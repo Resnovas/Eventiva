@@ -1,0 +1,37 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Subscription {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+  name String? @unique
+  cost String?
+  details String?
+
+  accounts SubscriptionOnAccount[]
+}
+
+model SubscriptionOnAccount { 
+  subscriptionId String
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  accountId String
+
+  active Boolean @default(false)
+  deactivated DateTime?
+  activated DateTime?
+  startedAt DateTime? 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted DateTime?
+  @@id([accountId, subscriptionId])
+}
+
+model Account {
+  id String @id @default(uuid())
+  subscription SubscriptionOnAccount[]
+}

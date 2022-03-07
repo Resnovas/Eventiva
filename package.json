@@ -1,43 +1,59 @@
 {
-  "name": "control",
-  "scripts": {
-    "firstinstall": "npm i -g @teambit/bvm && bvm install",
-    "postinstall": "lerna bootstrap && bit install",
-    "dev:format": "npm run dev:format-scripts",
-    "dev:format-check": "prettier --config .prettier.json --check .",
-    "start:functions:database": "functions-framework --target=handler --source=functions/database/lib",
-    "start:functions:unleash": "functions-framework --target=handler --source=functions/unleash/lib",
-    "tsc": "tsc -p .",
-    "dev:build": "tsc -p tsconfig.json && jest && npm run v:pre && git add . && cz",
-    "dev:format-scripts": "prettier --config .prettier.json --write .",
-    "dev:start": "npm run dev:build && node lib/index.js",
-    "login:bit": "npm login --registry=https://node.bit.dev --scope=@bit",
-    "v:graduate:app": "lerna version --conventional-commits --conventional-graduate=@videndum/control_app",
-    "v:pre": "lerna version --conventional-commits --no-git-tag-version"
+  "name": "@eventiva/eventiva",
+  "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
+  "description": "Imagine a place where you can find all your event vendors, venues and professionals, alongside all the tools you require to be successful within the live events market. ",
+  "main": "./common/scripts/eventiva.js",
+  "bin": {
+    "evt": "./common/scripts/eventiva.js",
+    "eventiva": "./common/scripts/eventiva.js"
   },
-  "dependencies": {
+  "repository": "https://github.com/videndum/eventiva",
+  "keywords": [],
+  "private": true,
+  "scripts": {
+    "prefirstinstall": "node ./scripts/preinstall.js",
+    "preinstall": "node ./common/scripts/preinstall.js",
+    "firstinstall": "yarn install && npm install -g . && run-p script:*",
+    "wip": "wip",
+    "wip:finish": "naenae",
+    "wip:watch": "wip silently && watch wip --ignoreDotFiles --ignoreDirectoryPatterttern=[\"/node_modules/\"]",
+    "reset-hard": "git clean -dfx && git reset --hard"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "files": [
+    "build/main",
+    "build/module",
+    "!**/*.spec.*",
+    "!**/*.json",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "ava": {
+    "failFast": true,
+    "timeout": "60s",
+    "typescript": {
+      "rewritePaths": {
+        "src/": "build/main/"
+      }
+    },
+    "files": [
+      "!build/module/**"
+    ]
+  },
+  "prettier": {
+    "singleQuote": true
+  },
+  "nyc": {
+    "extends": "@istanbuljs/nyc-config-typescript",
+    "exclude": [
+      "**/*.spec.js"
+    ]
   },
   "devDependencies": {
-    "@google-cloud/functions-framework": "^1.7.1",
-    "concurrently": "^6.2.0",
-    "gulp": "^4.0.2",
-    "gulp-cli": "^2.3.0",
-    "gulp-markdown-toc": "^1.1.0",
-    "gulp-rename": "^2.0.0",
-    "husky": "^7.0.1",
-    "lerna": "^4.0.0",
-    "mdinclude": "^0.7.2",
-    "prettier": "^2.2.1",
-    "prettier-plugin-organize-imports": "^1.1.1",
-    "prettier-plugin-pkg": "^0.8.0",
-    "prisma": "^2.16.1",
-    "@instructure/cz-lerna-changelog": "^8.6.0",
-    "commitizen": "^4.2.4"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/@instructure/cz-lerna-changelog"
-    }
-  },
-  "type": "module"
+    "@rushstack/heft": "^0.44.2"
+  }
 }
