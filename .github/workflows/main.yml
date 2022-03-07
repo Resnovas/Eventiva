@@ -13,7 +13,7 @@ jobs:
     name: Release Mastermind
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v3
       - uses: Videndum/release-mastermind@0.0.0-alpha+1564
         with:
           GITHUB_TOKEN: '${{ secrets.BOT_TOKEN }}'
