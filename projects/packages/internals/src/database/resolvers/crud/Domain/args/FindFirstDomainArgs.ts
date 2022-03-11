@@ -1,53 +1,39 @@
-import * as TypeGraphQL from 'type-graphql';
-import * as GraphQLScalars from 'graphql-scalars';
-import { DomainOrderByWithRelationAndSearchRelevanceInput } from '../../../inputs/DomainOrderByWithRelationAndSearchRelevanceInput';
-import { DomainWhereInput } from '../../../inputs/DomainWhereInput';
-import { DomainWhereUniqueInput } from '../../../inputs/DomainWhereUniqueInput';
-import { DomainScalarFieldEnum } from '../../../../enums/DomainScalarFieldEnum';
+import * as TypeGraphQL from "type-graphql";
+import * as GraphQLScalars from "graphql-scalars";
+import { DomainOrderByWithRelationAndSearchRelevanceInput } from "../../../inputs/DomainOrderByWithRelationAndSearchRelevanceInput";
+import { DomainWhereInput } from "../../../inputs/DomainWhereInput";
+import { DomainWhereUniqueInput } from "../../../inputs/DomainWhereUniqueInput";
+import { DomainScalarFieldEnum } from "../../../../enums/DomainScalarFieldEnum";
 
 @TypeGraphQL.ArgsType()
 export class FindFirstDomainArgs {
-  @TypeGraphQL.Field((_type) => DomainWhereInput, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => DomainWhereInput, {
+    nullable: true
   })
   where?: DomainWhereInput | undefined;
 
-  @TypeGraphQL.Field(
-    (_type) => [DomainOrderByWithRelationAndSearchRelevanceInput],
-    {
-      nullable: true,
-    }
-  )
+  @TypeGraphQL.Field(_type => [DomainOrderByWithRelationAndSearchRelevanceInput], {
+    nullable: true
+  })
   orderBy?: DomainOrderByWithRelationAndSearchRelevanceInput[] | undefined;
 
-  @TypeGraphQL.Field((_type) => DomainWhereUniqueInput, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => DomainWhereUniqueInput, {
+    nullable: true
   })
   cursor?: DomainWhereUniqueInput | undefined;
 
-  @TypeGraphQL.Field((_type) => TypeGraphQL.Int, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => TypeGraphQL.Int, {
+    nullable: true
   })
   take?: number | undefined;
 
-  @TypeGraphQL.Field((_type) => TypeGraphQL.Int, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => TypeGraphQL.Int, {
+    nullable: true
   })
   skip?: number | undefined;
 
-  @TypeGraphQL.Field((_type) => [DomainScalarFieldEnum], {
-    nullable: true,
+  @TypeGraphQL.Field(_type => [DomainScalarFieldEnum], {
+    nullable: true
   })
-  distinct?:
-    | Array<
-        | 'id'
-        | 'domain'
-        | 'verified'
-        | 'dnsType'
-        | 'data'
-        | 'createdAt'
-        | 'updatedAt'
-        | 'deleted'
-      >
-    | undefined;
+  distinct?: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
 }

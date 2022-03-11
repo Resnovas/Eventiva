@@ -12,7 +12,7 @@ generator backend {
 }
 generator frontend {
 	provider = "typegraphql-prisma"
-	output = "../database"
+	output = "../src/database"
 }
 model Account {
 	id String @id @default(uuid())

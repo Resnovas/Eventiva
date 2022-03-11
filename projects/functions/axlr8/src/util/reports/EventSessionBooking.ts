@@ -84,6 +84,6 @@ export enum SessionDetails {
     "Venue" = "ES_SESSION_VENUE"
 }
 
-export type EventSessionBooking = EventDetails
+export type EventSessionBooking = EventDetails | EventAddress | Client | ThirdPartyContact | EventCustomFields | EventInvoice | SessionDetails;
 
 export default EventSessionBooking

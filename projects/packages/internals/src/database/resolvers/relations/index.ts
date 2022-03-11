@@ -1,2 +1,2 @@
-export * from './resolvers.index';
-export * from './args.index';
+export * from "./resolvers.index";
+export * from "./args.index";

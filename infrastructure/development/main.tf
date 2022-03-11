@@ -34,11 +34,30 @@ locals {
 #   }
 # }
 
-module "function" {
+# Build the package
+resource "null_resource" "build" {
+  provisioner "local-exec" {
+    working_dir = "./../../"
+    command = "rush build"
+  }
+}
+
+module "siacheck" {
+  depends_on = [ null_resource.build ]
   name        = "siacheck"
   source      = "../modules/gcp/function"
   project     = var.project
   source_dir  = "functions/siacheck"
+  entry_point = "google"
+  environment_variables = {}
+}
+
+module "axlr8" {
+  depends_on = [ null_resource.build ]
+  name        = "axlr8"
+  source      = "../modules/gcp/function"
+  project     = var.project
+  source_dir  = "functions/axlr8"
   entry_point = "google"
   environment_variables = {}
 }

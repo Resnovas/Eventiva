@@ -1,10 +1,1 @@
-{
-  "Modules": [
-    {
-      "Key": "function",
-      "Source": "../modules/gcp/function",
-      "Dir": "../modules/gcp/function"
-    },
-    { "Key": "", "Source": "", "Dir": "." }
-  ]
-}
+{"Modules":[{"Key":"axlr8","Source":"../modules/gcp/function","Dir":"../modules/gcp/function"},{"Key":"function","Source":"../modules/gcp/function","Dir":"../modules/gcp/function"},{"Key":"","Source":"","Dir":"."},{"Key":"siacheck","Source":"../modules/gcp/function","Dir":"../modules/gcp/function"}]}

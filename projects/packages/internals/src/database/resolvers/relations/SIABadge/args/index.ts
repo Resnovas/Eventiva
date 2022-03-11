@@ -1,1 +1,1 @@
-export { SIABadgeSiaChecksArgs } from './SIABadgeSiaChecksArgs';
+export { SIABadgeSiaChecksArgs } from "./SIABadgeSiaChecksArgs";

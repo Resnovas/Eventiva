@@ -1,3 +1,6 @@
-output "function_url" {
-  value = module.function.function_url
+output "siacheck_url" {
+  value = module.siacheck.function_url
+}
+output "axlr8_url" {
+  value = module.axlr8.function_url
 }

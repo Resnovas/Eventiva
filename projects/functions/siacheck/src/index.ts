@@ -5,7 +5,7 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Sun Feb 27 2022
+ * Last Modified: Fri Mar 11 2022
  * Modified By: Jonathan Stevens
  * Current Version: 2.0.0
  * -----
@@ -50,25 +50,25 @@
  * An entry point for Azure Functions.
  * Please instead @see ./Azure/index.ts for the Azure Functions entry point details and preferred entry.
  */
-// export { handler as AzureHandler } from './Azure';
+// export { handler as azure } from './Azure';
 
 /**
  * An entry point for Local Deployments.
  * Please instead @see ./Express/index.ts for the Local Deployments entry point details and preferred entry.
  */
-// export { handler as ExpressHandler } from './Express';
+export { handler as express } from './Express';
 
 /**
  * An entry point for Google Cloud Functions.
  * Please instead @see ./google/index.ts for the Google Cloud Functions entry point details and preferred entry.
  */
-export { handler as GoogleHandler } from './Google';
+export { handler as google } from './Google';
 
 /**
  * An entry point for Lambda Functions.
  * Please instead @see ./Lambda/index.ts for the Lambda Functions entry point details and preferred entry.
  */
-// export { handler as LambdaHandler } from './Lambda';
+// export { handler as lambda } from './Lambda';
 
 export * from './Controller';
 export * from './testlicense';

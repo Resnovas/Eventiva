@@ -1,50 +1,50 @@
-import * as TypeGraphQL from 'type-graphql';
-import * as GraphQLScalars from 'graphql-scalars';
-import { Prisma } from '@prisma/client';
-import { DecimalJSScalar } from '../../scalars';
-import { dnsType } from '../../enums/dnsType';
+import * as TypeGraphQL from "type-graphql";
+import * as GraphQLScalars from "graphql-scalars";
+import { Prisma } from "@prisma/client";
+import { DecimalJSScalar } from "../../scalars";
+import { dnsType } from "../../enums/dnsType";
 
-@TypeGraphQL.InputType('DomainCreateWithoutLinkedEmailsInput', {
-  isAbstract: true,
+@TypeGraphQL.InputType("DomainCreateWithoutLinkedEmailsInput", {
+  isAbstract: true
 })
 export class DomainCreateWithoutLinkedEmailsInput {
-  @TypeGraphQL.Field((_type) => String, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => String, {
+    nullable: true
   })
   id?: string | undefined;
 
-  @TypeGraphQL.Field((_type) => String, {
-    nullable: false,
+  @TypeGraphQL.Field(_type => String, {
+    nullable: false
   })
   domain!: string;
 
-  @TypeGraphQL.Field((_type) => Boolean, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => Boolean, {
+    nullable: true
   })
   verified?: boolean | undefined;
 
-  @TypeGraphQL.Field((_type) => dnsType, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => dnsType, {
+    nullable: true
   })
-  dnsType?: 'TXT' | 'CNAME' | undefined;
+  dnsType?: "TXT" | "CNAME" | undefined;
 
-  @TypeGraphQL.Field((_type) => GraphQLScalars.JSONResolver, {
-    nullable: false,
+  @TypeGraphQL.Field(_type => GraphQLScalars.JSONResolver, {
+    nullable: false
   })
   data!: Prisma.InputJsonValue;
 
-  @TypeGraphQL.Field((_type) => Date, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => Date, {
+    nullable: true
   })
   createdAt?: Date | undefined;
 
-  @TypeGraphQL.Field((_type) => Date, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => Date, {
+    nullable: true
   })
   updatedAt?: Date | undefined;
 
-  @TypeGraphQL.Field((_type) => Date, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => Date, {
+    nullable: true
   })
   deleted?: Date | undefined;
 }

@@ -23,7 +23,7 @@
   },
   "scripts": {
     "build": "tsoa spec-and-routes && heft build && node fixup.js",
-    "start": "functions-framework --target=GoogleHandler --source=lib/cjs/index.js",
+    "start": "functions-framework --target=handler --source=lib/cjs/Google/index.js",
     "clean": "heft clean"
   },
   "dependencies": {
@@ -38,8 +38,8 @@
     "@google-cloud/storage": "~5.16.0",
     "jimp": "~0.16.1",
     "@eventiva/internals": "workspace:*",
-    "tsoa": "^3.14.1",
     "body-parser": "^1.19.1",
+    "tsoa": "^3.14.1",
     "@tsoa/runtime": "~3.13.0",
     "swagger-ui-express": "~4.3.0"
   },

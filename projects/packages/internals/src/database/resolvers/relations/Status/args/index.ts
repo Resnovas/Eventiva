@@ -1,1 +1,1 @@
-export { StatusAccountArgs } from './StatusAccountArgs';
+export { StatusAccountArgs } from "./StatusAccountArgs";

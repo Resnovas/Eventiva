@@ -1,11 +1,11 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum SIABadgeOrderByRelevanceFieldEnum {
-  licenseExplanation = 'licenseExplanation',
-  additionalTerms = 'additionalTerms',
-  account_id = 'account_id',
+  licenseExplanation = "licenseExplanation",
+  additionalTerms = "additionalTerms",
+  account_id = "account_id"
 }
 TypeGraphQL.registerEnumType(SIABadgeOrderByRelevanceFieldEnum, {
-  name: 'SIABadgeOrderByRelevanceFieldEnum',
+  name: "SIABadgeOrderByRelevanceFieldEnum",
   description: undefined,
 });

@@ -1,10 +1,10 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum QueryMode {
-  'default' = 'default',
-  insensitive = 'insensitive',
+  "default" = "default",
+  insensitive = "insensitive"
 }
 TypeGraphQL.registerEnumType(QueryMode, {
-  name: 'QueryMode',
+  name: "QueryMode",
   description: undefined,
 });

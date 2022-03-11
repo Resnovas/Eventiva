@@ -1,9 +1,9 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum JsonNullValueInput {
-  JsonNull = 'JsonNull',
+  JsonNull = "JsonNull"
 }
 TypeGraphQL.registerEnumType(JsonNullValueInput, {
-  name: 'JsonNullValueInput',
+  name: "JsonNullValueInput",
   description: undefined,
 });

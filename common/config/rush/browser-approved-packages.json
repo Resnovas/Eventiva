@@ -215,6 +215,10 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "axios",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "body-parser",
       "allowedCategories": [ "prototypes", "tools" ]
     },

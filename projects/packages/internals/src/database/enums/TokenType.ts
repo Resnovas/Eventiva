@@ -1,11 +1,11 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum TokenType {
-  API = 'API',
-  PERSONAL = 'PERSONAL',
-  SYSTEM = 'SYSTEM',
+  API = "API",
+  PERSONAL = "PERSONAL",
+  SYSTEM = "SYSTEM"
 }
 TypeGraphQL.registerEnumType(TokenType, {
-  name: 'TokenType',
+  name: "TokenType",
   description: undefined,
 });

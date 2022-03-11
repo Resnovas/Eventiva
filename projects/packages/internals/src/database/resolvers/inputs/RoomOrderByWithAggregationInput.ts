@@ -1,98 +1,98 @@
-import * as TypeGraphQL from 'type-graphql';
-import * as GraphQLScalars from 'graphql-scalars';
-import { Prisma } from '@prisma/client';
-import { DecimalJSScalar } from '../../scalars';
-import { RoomCountOrderByAggregateInput } from '../inputs/RoomCountOrderByAggregateInput';
-import { RoomMaxOrderByAggregateInput } from '../inputs/RoomMaxOrderByAggregateInput';
-import { RoomMinOrderByAggregateInput } from '../inputs/RoomMinOrderByAggregateInput';
-import { SortOrder } from '../../enums/SortOrder';
+import * as TypeGraphQL from "type-graphql";
+import * as GraphQLScalars from "graphql-scalars";
+import { Prisma } from "@prisma/client";
+import { DecimalJSScalar } from "../../scalars";
+import { RoomCountOrderByAggregateInput } from "../inputs/RoomCountOrderByAggregateInput";
+import { RoomMaxOrderByAggregateInput } from "../inputs/RoomMaxOrderByAggregateInput";
+import { RoomMinOrderByAggregateInput } from "../inputs/RoomMinOrderByAggregateInput";
+import { SortOrder } from "../../enums/SortOrder";
 
-@TypeGraphQL.InputType('RoomOrderByWithAggregationInput', {
-  isAbstract: true,
+@TypeGraphQL.InputType("RoomOrderByWithAggregationInput", {
+  isAbstract: true
 })
 export class RoomOrderByWithAggregationInput {
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  id?: 'asc' | 'desc' | undefined;
+  id?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  createdAt?: 'asc' | 'desc' | undefined;
+  createdAt?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  updatedAt?: 'asc' | 'desc' | undefined;
+  updatedAt?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  deleted?: 'asc' | 'desc' | undefined;
+  deleted?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  addressId?: 'asc' | 'desc' | undefined;
+  addressId?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  name?: 'asc' | 'desc' | undefined;
+  name?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  floor?: 'asc' | 'desc' | undefined;
+  floor?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  building?: 'asc' | 'desc' | undefined;
+  building?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  accessibility?: 'asc' | 'desc' | undefined;
+  accessibility?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  checkin?: 'asc' | 'desc' | undefined;
+  checkin?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  checkout?: 'asc' | 'desc' | undefined;
+  checkout?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  length?: 'asc' | 'desc' | undefined;
+  length?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  width?: 'asc' | 'desc' | undefined;
+  width?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => SortOrder, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => SortOrder, {
+    nullable: true
   })
-  height?: 'asc' | 'desc' | undefined;
+  height?: "asc" | "desc" | undefined;
 
-  @TypeGraphQL.Field((_type) => RoomCountOrderByAggregateInput, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => RoomCountOrderByAggregateInput, {
+    nullable: true
   })
   _count?: RoomCountOrderByAggregateInput | undefined;
 
-  @TypeGraphQL.Field((_type) => RoomMaxOrderByAggregateInput, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => RoomMaxOrderByAggregateInput, {
+    nullable: true
   })
   _max?: RoomMaxOrderByAggregateInput | undefined;
 
-  @TypeGraphQL.Field((_type) => RoomMinOrderByAggregateInput, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => RoomMinOrderByAggregateInput, {
+    nullable: true
   })
   _min?: RoomMinOrderByAggregateInput | undefined;
 }

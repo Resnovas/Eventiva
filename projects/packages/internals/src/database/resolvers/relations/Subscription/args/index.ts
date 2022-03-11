@@ -1,1 +1,1 @@
-export { SubscriptionAccountsArgs } from './SubscriptionAccountsArgs';
+export { SubscriptionAccountsArgs } from "./SubscriptionAccountsArgs";

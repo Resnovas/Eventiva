@@ -1,1 +1,1 @@
-export { FilesAccountArgs } from './FilesAccountArgs';
+export { FilesAccountArgs } from "./FilesAccountArgs";

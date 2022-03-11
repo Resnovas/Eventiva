@@ -1,10 +1,10 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum FeatureOfRoomOrderByRelevanceFieldEnum {
-  roomId = 'roomId',
-  featureId = 'featureId',
+  roomId = "roomId",
+  featureId = "featureId"
 }
 TypeGraphQL.registerEnumType(FeatureOfRoomOrderByRelevanceFieldEnum, {
-  name: 'FeatureOfRoomOrderByRelevanceFieldEnum',
+  name: "FeatureOfRoomOrderByRelevanceFieldEnum",
   description: undefined,
 });

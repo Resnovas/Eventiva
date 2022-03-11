@@ -1,30 +1,30 @@
-import * as TypeGraphQL from 'type-graphql';
-import * as GraphQLScalars from 'graphql-scalars';
-import { Prisma } from '@prisma/client';
-import { DecimalJSScalar } from '../../scalars';
-import { Title } from '../../enums/Title';
+import * as TypeGraphQL from "type-graphql";
+import * as GraphQLScalars from "graphql-scalars";
+import { Prisma } from "@prisma/client";
+import { DecimalJSScalar } from "../../scalars";
+import { Title } from "../../enums/Title";
 
-@TypeGraphQL.InputType('NestedEnumTitleNullableFilter', {
-  isAbstract: true,
+@TypeGraphQL.InputType("NestedEnumTitleNullableFilter", {
+  isAbstract: true
 })
 export class NestedEnumTitleNullableFilter {
-  @TypeGraphQL.Field((_type) => Title, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => Title, {
+    nullable: true
   })
-  equals?: 'Miss' | 'Ms' | 'Mrs' | 'Mr' | 'Dr' | undefined;
+  equals?: "Miss" | "Ms" | "Mrs" | "Mr" | "Dr" | undefined;
 
-  @TypeGraphQL.Field((_type) => [Title], {
-    nullable: true,
+  @TypeGraphQL.Field(_type => [Title], {
+    nullable: true
   })
-  in?: Array<'Miss' | 'Ms' | 'Mrs' | 'Mr' | 'Dr'> | undefined;
+  in?: Array<"Miss" | "Ms" | "Mrs" | "Mr" | "Dr"> | undefined;
 
-  @TypeGraphQL.Field((_type) => [Title], {
-    nullable: true,
+  @TypeGraphQL.Field(_type => [Title], {
+    nullable: true
   })
-  notIn?: Array<'Miss' | 'Ms' | 'Mrs' | 'Mr' | 'Dr'> | undefined;
+  notIn?: Array<"Miss" | "Ms" | "Mrs" | "Mr" | "Dr"> | undefined;
 
-  @TypeGraphQL.Field((_type) => NestedEnumTitleNullableFilter, {
-    nullable: true,
+  @TypeGraphQL.Field(_type => NestedEnumTitleNullableFilter, {
+    nullable: true
   })
   not?: NestedEnumTitleNullableFilter | undefined;
 }

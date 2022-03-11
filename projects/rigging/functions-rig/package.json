@@ -4,6 +4,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "scripts": {
+    "build": ""
+  },
   "dependencies": {
     "@rushstack/heft": "~0.42.2",
     "@microsoft/api-extractor": "~7.18.19",

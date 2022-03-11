@@ -1,11 +1,11 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum TokenOrderByRelevanceFieldEnum {
-  id = 'id',
-  value = 'value',
-  apiToken = 'apiToken',
+  id = "id",
+  value = "value",
+  apiToken = "apiToken"
 }
 TypeGraphQL.registerEnumType(TokenOrderByRelevanceFieldEnum, {
-  name: 'TokenOrderByRelevanceFieldEnum',
+  name: "TokenOrderByRelevanceFieldEnum",
   description: undefined,
 });

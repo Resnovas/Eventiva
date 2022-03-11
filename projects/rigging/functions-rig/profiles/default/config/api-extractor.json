@@ -310,7 +310,6 @@
          */
         // "addToApiReportFile": false
       }
-
       // "TS2551": {
       //   "logLevel": "warning",
       //   "addToApiReportFile": true
@@ -330,6 +329,16 @@
       "default": {
         "logLevel": "warning"
         // "addToApiReportFile": false
+      },
+
+      "ae-missing-release-tag": {
+        "logLevel": "none",
+        "addToApiReportFile": false
+      },
+
+      "ae-misplaced-package-tag": {
+        "logLevel": "none",
+        "addToApiReportFile": true
       }
 
       // "ae-extra-release-tag": {
@@ -354,6 +363,11 @@
       },
 
       "tsdoc-undefined-tag": {
+        "logLevel": "none"
+        // "addToApiReportFile": true
+      },
+
+      "tsdoc-characters-after-block-tag": {
         "logLevel": "none"
         // "addToApiReportFile": true
       }

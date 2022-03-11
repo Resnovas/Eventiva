@@ -291,7 +291,7 @@
      * your PR branch, and in this situation "rush change" will also automatically invoke "git fetch"
      * to retrieve the latest activity for the remote master branch.
      */
-    "url": "https://github.com/resnovas/eventiva",
+    "url": "https://github.com/Resnovas/Eventiva",
 
     /**
      * The default branch name. This tells "rush change" which remote branch to compare against.
@@ -444,20 +444,20 @@
     //    */
     //   // "versionPolicyName": ""
     // },
+    // {
+    //   "packageName": "@eventiva/documentation",
+    //   "projectFolder": "projects/apps/documentation",
+    //   "reviewCategory": "tools",
+    //   "versionPolicyName": "individualVersion",
+    //   "shouldPublish": false,
+    //   "publishFolder": "temp/publish"
+    // },
     {
-      "packageName": "@eventiva/documentation",
-      "projectFolder": "projects/apps/documentation",
-      "reviewCategory": "tools",
-      "versionPolicyName": "individualVersion",
-      "shouldPublish": false,
-      "publishFolder": "temp/publish"
-    },
-    {
-      "packageName": "@eventiva/database",
-      "projectFolder": "projects/functions/database",
+      "packageName": "@eventiva/internals",
+      "projectFolder": "projects/packages/internals",
       "reviewCategory": "prototypes",
       "versionPolicyName": "individualVersion",
-      "shouldPublish": false,
+      "shouldPublish": true,
       "publishFolder": "temp/publish"
     },
     {
@@ -468,14 +468,14 @@
       "shouldPublish": false,
       "publishFolder": "temp/publish"
     },
-    {
-      "packageName": "@eventiva/domain",
-      "projectFolder": "projects/functions/domain",
-      "reviewCategory": "prototypes",
-      "versionPolicyName": "individualVersion",
-      "shouldPublish": false,
-      "publishFolder": "temp/publish"
-    },
+    // {
+    //   "packageName": "@eventiva/domain",
+    //   "projectFolder": "projects/functions/domain",
+    //   "reviewCategory": "prototypes",
+    //   "versionPolicyName": "individualVersion",
+    //   "shouldPublish": false,
+    //   "publishFolder": "temp/publish"
+    // },
     {
       "packageName": "@eventiva/siacheck",
       "projectFolder": "projects/functions/siacheck",
@@ -492,22 +492,14 @@
       // "shouldPublish": false,
       // "publishFolder": "temp/publish"  
     // },
-    {
-      "packageName": "@eventiva/internals",
-      "projectFolder": "projects/packages/internals",
-      "reviewCategory": "prototypes",
-      "versionPolicyName": "individualVersion",
-      "shouldPublish": true,
-      "publishFolder": "temp/publish"
-    },
-    {
-      "packageName": "@eventiva/prismix",
-      "projectFolder": "projects/packages/prismix",
-      "reviewCategory": "tools",
-      "versionPolicyName": "individualVersion",
-      "shouldPublish": true,
-      "publishFolder": "temp/publish"
-    },
+    // {
+    //   "packageName": "@eventiva/prismix",
+    //   "projectFolder": "projects/packages/prismix",
+    //   "reviewCategory": "tools",
+    //   "versionPolicyName": "individualVersion",
+    //   "shouldPublish": true,
+    //   "publishFolder": "temp/publish"
+    // },
     {
       "packageName": "@eventiva/functions-rig",
       "projectFolder": "projects/rigging/functions-rig",

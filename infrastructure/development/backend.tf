@@ -1,6 +1,6 @@
-terraform {
-  backend "gcs" {
-    bucket = "siacheck-tf-state"
-    prefix = "env/development"
-  }
-}
+# terraform {
+#   backend "gcs" {
+#     bucket = "tf-state"
+#     prefix = "env/development"
+#   }
+# }

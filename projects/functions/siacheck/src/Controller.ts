@@ -5,7 +5,7 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Wed Mar 02 2022
+ * Last Modified: Fri Mar 11 2022
  * Modified By: Jonathan Stevens
  * Current Version: 2.0.0
  * -----
@@ -44,7 +44,7 @@ import { ErrorMessages, ErrorType, ServerError } from './util/errors';
 
 /**
  * The license number issued by the SIA.
- * @pattern 10[0-9]{14}
+ * @pattern 10[0-9]\{14\}
  * @format License
  * @example 1030123456789012
  */

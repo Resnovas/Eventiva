@@ -1,1 +1,1 @@
-export { VenueStyleAddressArgs } from './VenueStyleAddressArgs';
+export { VenueStyleAddressArgs } from "./VenueStyleAddressArgs";

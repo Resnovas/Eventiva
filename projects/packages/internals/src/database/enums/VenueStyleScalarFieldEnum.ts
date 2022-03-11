@@ -1,13 +1,13 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum VenueStyleScalarFieldEnum {
-  id = 'id',
-  createdAt = 'createdAt',
-  updatedAt = 'updatedAt',
-  name = 'name',
-  details = 'details',
+  id = "id",
+  createdAt = "createdAt",
+  updatedAt = "updatedAt",
+  name = "name",
+  details = "details"
 }
 TypeGraphQL.registerEnumType(VenueStyleScalarFieldEnum, {
-  name: 'VenueStyleScalarFieldEnum',
+  name: "VenueStyleScalarFieldEnum",
   description: undefined,
 });

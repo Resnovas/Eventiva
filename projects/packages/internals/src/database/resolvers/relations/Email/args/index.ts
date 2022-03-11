@@ -1,1 +1,1 @@
-export { EmailAssociatedContactArgs } from './EmailAssociatedContactArgs';
+export { EmailAssociatedContactArgs } from "./EmailAssociatedContactArgs";

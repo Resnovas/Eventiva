@@ -1,10 +1,10 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum AddressType {
-  PERSONAL = 'PERSONAL',
-  BUSINESS = 'BUSINESS',
+  PERSONAL = "PERSONAL",
+  BUSINESS = "BUSINESS"
 }
 TypeGraphQL.registerEnumType(AddressType, {
-  name: 'AddressType',
+  name: "AddressType",
   description: undefined,
 });

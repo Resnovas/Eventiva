@@ -21,7 +21,6 @@
     "access": "public"
   },
   "scripts": {
-    // "postinstall": "prisma generate",
     "build": "prismix && prisma generate && heft build && node fixup.js",
     "clean": "heft clean",
     "prisma:generate:proxy": "prismix && cross-env DATABASE_URL=\"$DATABASE_URL_PROXY\" PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",
@@ -58,7 +57,7 @@
     "prisma": "^3.4.2",
     "ts-node": "~10.4.0",
     "tslib": "~2.3.1",
-    "typegraphql-prisma": "^0.16.2",
+    "typegraphql-prisma": "^0.19.1",
     "@eventiva/prismix": "workspace:*"
   }
 }

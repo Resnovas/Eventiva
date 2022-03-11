@@ -1,10 +1,10 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum StatusOnAccountOrderByRelevanceFieldEnum {
-  statusId = 'statusId',
-  accountId = 'accountId',
+  statusId = "statusId",
+  accountId = "accountId"
 }
 TypeGraphQL.registerEnumType(StatusOnAccountOrderByRelevanceFieldEnum, {
-  name: 'StatusOnAccountOrderByRelevanceFieldEnum',
+  name: "StatusOnAccountOrderByRelevanceFieldEnum",
   description: undefined,
 });

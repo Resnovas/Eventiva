@@ -1,1 +1,1 @@
-export { ArrangementRoomArgs } from './ArrangementRoomArgs';
+export { ArrangementRoomArgs } from "./ArrangementRoomArgs";

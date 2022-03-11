@@ -1,11 +1,11 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum AccountType {
-  USER = 'USER',
-  BUSINESS = 'BUSINESS',
-  PROVIDER = 'PROVIDER',
+  USER = "USER",
+  BUSINESS = "BUSINESS",
+  PROVIDER = "PROVIDER"
 }
 TypeGraphQL.registerEnumType(AccountType, {
-  name: 'AccountType',
+  name: "AccountType",
   description: undefined,
 });

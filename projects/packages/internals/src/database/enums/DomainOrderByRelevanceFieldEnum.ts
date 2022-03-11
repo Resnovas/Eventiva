@@ -1,10 +1,10 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum DomainOrderByRelevanceFieldEnum {
-  id = 'id',
-  domain = 'domain',
+  id = "id",
+  domain = "domain"
 }
 TypeGraphQL.registerEnumType(DomainOrderByRelevanceFieldEnum, {
-  name: 'DomainOrderByRelevanceFieldEnum',
+  name: "DomainOrderByRelevanceFieldEnum",
   description: undefined,
 });

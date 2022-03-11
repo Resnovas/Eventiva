@@ -1,17 +1,17 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum RTWScalarFieldEnum {
-  id = 'id',
-  name = 'name',
-  active = 'active',
-  startDate = 'startDate',
-  endDate = 'endDate',
-  accountId = 'accountId',
-  createdAt = 'createdAt',
-  updatedAt = 'updatedAt',
-  deleted = 'deleted',
+  id = "id",
+  name = "name",
+  active = "active",
+  startDate = "startDate",
+  endDate = "endDate",
+  accountId = "accountId",
+  createdAt = "createdAt",
+  updatedAt = "updatedAt",
+  deleted = "deleted"
 }
 TypeGraphQL.registerEnumType(RTWScalarFieldEnum, {
-  name: 'RTWScalarFieldEnum',
+  name: "RTWScalarFieldEnum",
   description: undefined,
 });

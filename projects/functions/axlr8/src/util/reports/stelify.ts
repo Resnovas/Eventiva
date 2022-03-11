@@ -1,42 +1,4 @@
-/**
- * Project: @eventiva/axlr8
- * File: stelify.ts
- * Path: \src\util\reports\stelify.ts
- * Created Date: Monday, March 7th 2022
- * Author: Jonathan Stevens
- * -----
- * Last Modified: Mon Mar 07 2022
- * Modified By: Jonathan Stevens
- * Current Version: 1.0.0
- * -----
- * Copyright (c) 2022 Resnovas - All Rights Reserved
- * -----
- * LICENSE: GNU General Public License v3.0 or later (GPL-3.0+)
- * 
- * This program has been provided under confidence of the copyright holder and is 
- * licensed for copying, distribution and modification under the terms of
- * the GNU General Public License v3.0 or later (GPL-3.0+) published as the License,
- * or (at your option) any later version of this license.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License v3.0 or later for more details.
- * 
- * You should have received a copy of the GNU General Public License v3.0 or later
- * along with this program. If not, please write to: jonathan@resnovas.com ,
- * or see http://www.gnu.org/licenses/gpl-3.0-standalone.html
- * 
- * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE - PLEASE SEE THE LICENSE FILE FOR DETAILS
- * -----
- * HISTORY:
- * Date      	By	Comments
- * ----------	---	---------------------------------------------------------
- */
-
-
-
-enum report200 {
+export enum report200 {
 	'Applied Date' = 'OSCE_APPLIED_DATE',
 	'Cont DOB' = 'OSCE_CONT_DOB',
 	'Cont Email' = 'OSCE_CONT_EMAIL',
@@ -70,7 +32,7 @@ enum report200 {
 	'JPJ ID' = 'OSCE_JP_JAS_HISTORY_JPJ_ID',
 	'JPJ JAS Status' = 'OSCE_JP_JAS_HISTORY_JPJ_CES_STATUS'
 }
-enum report208 {
+export enum report208 {
 	'Account No' = 'OSC_ORG_ALPHA',
 	'Manager' = 'OSC_ORG_ACC_MGR',
 	'Name' = 'OSC_ORG_NAME',
@@ -78,7 +40,7 @@ enum report208 {
 	'Tempaid Client Ref (Account Number)' = 'LU_LKH_SITE_411'
 }
 
-enum report222 {
+export enum report222 {
 	'Account No' = 'OSC_ORG_ALPHA',
 	'Client' = 'ES_ORG_ALPHA',
 	'Venue' = 'ES_EVENT_NAME_SELECT',

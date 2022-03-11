@@ -1,12 +1,12 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum SubuserOnAccountScalarFieldEnum {
-  accountId = 'accountId',
-  subuserId = 'subuserId',
-  createdAt = 'createdAt',
-  updatedAt = 'updatedAt',
+  accountId = "accountId",
+  subuserId = "subuserId",
+  createdAt = "createdAt",
+  updatedAt = "updatedAt"
 }
 TypeGraphQL.registerEnumType(SubuserOnAccountScalarFieldEnum, {
-  name: 'SubuserOnAccountScalarFieldEnum',
+  name: "SubuserOnAccountScalarFieldEnum",
   description: undefined,
 });

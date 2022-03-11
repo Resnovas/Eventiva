@@ -5,7 +5,7 @@
  * Created Date: Wednesday, March 2nd 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Wed Mar 02 2022
+ * Last Modified: Thu Mar 10 2022
  * Modified By: Jonathan Stevens
  * Current Version: 0.0.0
  * -----
@@ -36,6 +36,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import * as database from './database';
+export * from './database';
 
 export class Internals {
   static db = new PrismaClient();

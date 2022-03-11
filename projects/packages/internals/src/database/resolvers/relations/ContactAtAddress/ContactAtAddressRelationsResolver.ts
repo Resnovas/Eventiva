@@ -1,70 +1,51 @@
-import * as TypeGraphQL from 'type-graphql';
-import { Account } from '../../../models/Account';
-import { Address } from '../../../models/Address';
-import { ContactAtAddress } from '../../../models/ContactAtAddress';
-import { Email } from '../../../models/Email';
-import {
-  transformFields,
-  getPrismaFromContext,
-  transformCountFieldIntoSelectRelationsCount,
-} from '../../../helpers';
+import * as TypeGraphQL from "type-graphql";
+import { Account } from "../../../models/Account";
+import { Address } from "../../../models/Address";
+import { ContactAtAddress } from "../../../models/ContactAtAddress";
+import { Email } from "../../../models/Email";
+import { transformFields, getPrismaFromContext, transformCountFieldIntoSelectRelationsCount } from "../../../helpers";
 
-@TypeGraphQL.Resolver((_of) => ContactAtAddress)
+@TypeGraphQL.Resolver(_of => ContactAtAddress)
 export class ContactAtAddressRelationsResolver {
-  @TypeGraphQL.FieldResolver((_type) => Account, {
-    nullable: false,
+  @TypeGraphQL.FieldResolver(_type => Account, {
+    nullable: false
   })
-  async account(
-    @TypeGraphQL.Root() contactAtAddress: ContactAtAddress,
-    @TypeGraphQL.Ctx() ctx: any
-  ): Promise<Account> {
-    return getPrismaFromContext(ctx)
-      .contactAtAddress.findUnique({
-        where: {
-          accountId_addressId: {
-            accountId: contactAtAddress.accountId,
-            addressId: contactAtAddress.addressId,
-          },
+  async account(@TypeGraphQL.Root() contactAtAddress: ContactAtAddress, @TypeGraphQL.Ctx() ctx: any): Promise<Account> {
+    return getPrismaFromContext(ctx).contactAtAddress.findUnique({
+      where: {
+        accountId_addressId: {
+          accountId: contactAtAddress.accountId,
+          addressId: contactAtAddress.addressId,
         },
-      })
-      .account({});
+      },
+    }).account({});
   }
 
-  @TypeGraphQL.FieldResolver((_type) => Address, {
-    nullable: false,
+  @TypeGraphQL.FieldResolver(_type => Address, {
+    nullable: false
   })
-  async address(
-    @TypeGraphQL.Root() contactAtAddress: ContactAtAddress,
-    @TypeGraphQL.Ctx() ctx: any
-  ): Promise<Address> {
-    return getPrismaFromContext(ctx)
-      .contactAtAddress.findUnique({
-        where: {
-          accountId_addressId: {
-            accountId: contactAtAddress.accountId,
-            addressId: contactAtAddress.addressId,
-          },
+  async address(@TypeGraphQL.Root() contactAtAddress: ContactAtAddress, @TypeGraphQL.Ctx() ctx: any): Promise<Address> {
+    return getPrismaFromContext(ctx).contactAtAddress.findUnique({
+      where: {
+        accountId_addressId: {
+          accountId: contactAtAddress.accountId,
+          addressId: contactAtAddress.addressId,
         },
-      })
-      .address({});
+      },
+    }).address({});
   }
 
-  @TypeGraphQL.FieldResolver((_type) => Email, {
-    nullable: true,
+  @TypeGraphQL.FieldResolver(_type => Email, {
+    nullable: true
   })
-  async email(
-    @TypeGraphQL.Root() contactAtAddress: ContactAtAddress,
-    @TypeGraphQL.Ctx() ctx: any
-  ): Promise<Email | null> {
-    return getPrismaFromContext(ctx)
-      .contactAtAddress.findUnique({
-        where: {
-          accountId_addressId: {
-            accountId: contactAtAddress.accountId,
-            addressId: contactAtAddress.addressId,
-          },
+  async email(@TypeGraphQL.Root() contactAtAddress: ContactAtAddress, @TypeGraphQL.Ctx() ctx: any): Promise<Email | null> {
+    return getPrismaFromContext(ctx).contactAtAddress.findUnique({
+      where: {
+        accountId_addressId: {
+          accountId: contactAtAddress.accountId,
+          addressId: contactAtAddress.addressId,
         },
-      })
-      .email({});
+      },
+    }).email({});
   }
 }

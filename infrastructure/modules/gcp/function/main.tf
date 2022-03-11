@@ -4,17 +4,8 @@ locals {
   package_name = join("-", split("/", trim(local.package_data.name, "@")))
 }
 
-# Build the package
-resource "null_resource" "build" {
-  provisioner "local-exec" {
-    working_dir = "./../../projects/${var.source_dir}"
-    command = "pnpm build"
-  }
-}
-
 # open the npm package
 resource "null_resource" "pack" {
-  depends_on = [ null_resource.build ]
   provisioner "local-exec" {
     working_dir = "./../../projects/${var.source_dir}"
     command = "pnpm pack --pack-destination=temp && cd temp && tar -xf ${local.package_name}-${local.package_data.version}.tgz"
@@ -39,7 +30,7 @@ data "archive_file" "source" {
 
 # Create bucket that will host the source code
 resource "google_storage_bucket" "bucket" {
-  name = "${var.project}-function"
+  name = "${var.project}-${var.name}function"
 }
 
 # Add source code zip to bucket

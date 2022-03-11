@@ -1,19 +1,19 @@
-import * as TypeGraphQL from 'type-graphql';
+import * as TypeGraphQL from "type-graphql";
 
 export enum SIABadgeScalarFieldEnum {
-  id = 'id',
-  licenseSector = 'licenseSector',
-  type = 'type',
-  licenseExplanation = 'licenseExplanation',
-  additionalTerms = 'additionalTerms',
-  createdAt = 'createdAt',
-  active = 'active',
-  expiry = 'expiry',
-  updatedAt = 'updatedAt',
-  deleted = 'deleted',
-  account_id = 'account_id',
+  id = "id",
+  licenseSector = "licenseSector",
+  type = "type",
+  licenseExplanation = "licenseExplanation",
+  additionalTerms = "additionalTerms",
+  createdAt = "createdAt",
+  active = "active",
+  expiry = "expiry",
+  updatedAt = "updatedAt",
+  deleted = "deleted",
+  account_id = "account_id"
 }
 TypeGraphQL.registerEnumType(SIABadgeScalarFieldEnum, {
-  name: 'SIABadgeScalarFieldEnum',
+  name: "SIABadgeScalarFieldEnum",
   description: undefined,
 });

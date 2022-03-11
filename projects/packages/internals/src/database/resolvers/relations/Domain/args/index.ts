@@ -1,1 +1,1 @@
-export { DomainLinkedEmailsArgs } from './DomainLinkedEmailsArgs';
+export { DomainLinkedEmailsArgs } from "./DomainLinkedEmailsArgs";
