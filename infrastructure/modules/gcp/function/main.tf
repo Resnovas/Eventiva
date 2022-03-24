@@ -35,6 +35,9 @@ resource "google_storage_bucket" "bucket" {
 
 # Add source code zip to bucket
 resource "google_storage_bucket_object" "zip" {
+  depends_on = [
+    archive_file.source
+  ]
   # Append file MD5 to force bucket to be recreated
   name   = "source.zip#${data.archive_file.source.output_md5}"
   bucket = google_storage_bucket.bucket.name
@@ -61,6 +64,9 @@ resource "google_project_service" "cb" {
 
 # Create Cloud Function
 resource "google_cloudfunctions_function" "function" {
+  depends_on = [
+    google_storage_bucket_object.zip
+  ]
   name    = var.name
   runtime = "nodejs14"
 
@@ -74,6 +80,9 @@ resource "google_cloudfunctions_function" "function" {
 
 # Create IAM entry so all users can invoke the function
 resource "google_cloudfunctions_function_iam_member" "invoker" {
+  depends_on = [
+    google_cloudfunctions_function.function
+  ]
   project        = google_cloudfunctions_function.function.project
   region         = google_cloudfunctions_function.function.region
   cloud_function = google_cloudfunctions_function.function.name
