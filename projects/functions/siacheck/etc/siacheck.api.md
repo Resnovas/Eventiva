@@ -8,8 +8,8 @@
 
 import { Bucket } from '@google-cloud/storage';
 import { Controller } from 'tsoa';
+import * as express from 'express';
 import { Express as Express_2 } from 'express';
-import * as express_2 from 'express';
 import { SIACheck } from '@eventiva/internals';
 
 // @public
@@ -18,9 +18,6 @@ export const app: Express_2;
 // @public
 export function createBucket(): Promise<Bucket>;
 
-// @public (undocumented)
-export const express: Express_2;
-
 // @public
 export const google: Express_2;
 
@@ -28,7 +25,7 @@ export const google: Express_2;
 export type License = number;
 
 // @public (undocumented)
-export function RegisterRoutes(app: express_2.Router): void;
+export function RegisterRoutes(app: express.Router): void;
 
 // @public
 export function runCheck(license: number): Promise<SIACheck>;

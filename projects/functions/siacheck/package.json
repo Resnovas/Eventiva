@@ -1,6 +1,6 @@
 {
   "name": "@eventiva/siacheck",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "license": "GPLv3",
   "types": "dist/siacheck.d.ts",
   "typings": "dist/siacheck.d.ts",
@@ -41,7 +41,9 @@
     "body-parser": "^1.19.1",
     "tsoa": "^3.14.1",
     "@tsoa/runtime": "~3.13.0",
-    "swagger-ui-express": "~4.3.0"
+    "swagger-ui-express": "~4.3.0",
+    "reflect-metadata": "^0.1.13",
+    "reflect-metadata": "^0.1.13"
   },
   "peerDependencies": {
     "class-validator": "^0.11.1"

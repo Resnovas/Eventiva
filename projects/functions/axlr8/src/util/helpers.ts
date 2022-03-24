@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { filter } from './reports';
+// import { filter } from './reports';
 import axios from 'axios';
 
 export interface reportResult {
@@ -23,7 +23,7 @@ export interface postData {
   }
 
 export interface rptFilters {
-      filter: filter;
+      filter: string;
       operator: string;
       values: string;
     }

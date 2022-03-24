@@ -335,6 +335,14 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "firebase-admin",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "firebase-functions",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "fs",
       "allowedCategories": [ "tools" ]
     },
@@ -428,6 +436,14 @@
     },
     {
       "name": "passport",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "pdf-lib",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "pdfkit",
       "allowedCategories": [ "prototypes" ]
     },
     {

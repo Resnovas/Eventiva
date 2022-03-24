@@ -5,9 +5,9 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Wed Mar 02 2022
+ * Last Modified: Tue Mar 22 2022
  * Modified By: Jonathan Stevens
- * Current Version: 2.0.0
+ * Current Version: 1.0.0
  * -----
  * Copyright (c) 2022 Resnovas - All Rights Reserved
  * -----
@@ -104,15 +104,7 @@ export async function uploadFile(
    * Print the text to the image
    */
   image.print(font, X - 90, Y - logo.bitmap.height - 5, string);
-
-  /**
-   * Save the image to the bucket
-   */
-  await screenshot
-    .save(await image.getBufferAsync(Jimp.MIME_PNG), {
-      contentType: 'image/png',
-    })
-    .catch((e) => {
+  const buffer = await image.getBufferAsync(Jimp.MIME_PNG).catch(e => {
       throw new ServerError(
         ErrorCode['Service Unavailable'],
         ErrorMessages[ErrorCode['Service Unavailable']]!,
@@ -120,11 +112,33 @@ export async function uploadFile(
           id: {
             type: ErrorType.PICTURE_SAVE,
             message:
-              'We hae encountered an issue while attempting to save your image',
+              'We hae encountered an issue while attempting to save your image new',
             e,
           },
         }
       );
+    })
+  /**
+   * Save the image to the bucket
+   */
+  await screenshot
+    .save(buffer, {
+      contentType: 'image/png',
+    })
+    .catch((e) => {
+      console.log(e)
+      // throw new ServerError(
+      //   ErrorCode['Service Unavailable'],
+      //   ErrorMessages[ErrorCode['Service Unavailable']]!,
+      //   {
+      //     id: {
+      //       type: ErrorType.PICTURE_SAVE,
+      //       message:
+      //         'We hae encountered an issue while attempting to save your image',
+      //       e,
+      //     },
+      //   }
+      // );
     });
 
   /**
@@ -136,7 +150,7 @@ export async function uploadFile(
     await screenshot.getSignedUrl({
       action: 'read',
       expires: Date.now() + 1000 * 60 * 60 * 24 * 365,
-    })
-  )[0];
+    }).catch(() => { return undefined})
+  )?.[0]
   return result;
 }

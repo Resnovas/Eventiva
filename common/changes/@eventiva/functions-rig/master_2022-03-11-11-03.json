@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@eventiva/functions-rig",
+      "comment": "Fixed error reporting",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@eventiva/functions-rig"
+}

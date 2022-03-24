@@ -5,7 +5,7 @@
  * Created Date: Monday, March 7th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Thu Mar 10 2022
+ * Last Modified: Tue Mar 22 2022
  * Modified By: Jonathan Stevens
  * Current Version: 1.0.0
  * -----
@@ -34,7 +34,7 @@
  * ----------	---	---------------------------------------------------------
  */
 
-
+import 'reflect-metadata';
 /**
  * An entry point for Azure Functions.
  * Please instead @see ./Azure/index.ts for the Azure Functions entry point details and preferred entry.
@@ -45,7 +45,7 @@
  * An entry point for Local Deployments.
  * Please instead @see ./Express/index.ts for the Local Deployments entry point details and preferred entry.
  */
-export { handler as express } from './Express';
+// export { handler as express } from './Express';
 
 /**
  * An entry point for Google Cloud Functions.

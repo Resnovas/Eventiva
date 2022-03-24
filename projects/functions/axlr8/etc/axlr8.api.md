@@ -6,9 +6,6 @@
 
 import { Express as Express_2 } from 'express';
 
-// @public (undocumented)
-export const express: Express_2;
-
 // @public
 export const google: Express_2;
 

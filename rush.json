@@ -484,6 +484,14 @@
       "shouldPublish": false,
       "publishFolder": "temp/publish"
     },
+    {
+      "packageName": "@eventiva/pdf",
+      "projectFolder": "projects/functions/pdf",
+      "reviewCategory": "prototypes",
+      "versionPolicyName": "individualVersion",
+      "shouldPublish": false,
+      "publishFolder": "temp/publish"
+    },
     // {
     //   "packageName": "test",
     //   "projectFolder": "projects/interface/test",
@@ -492,14 +500,14 @@
       // "shouldPublish": false,
       // "publishFolder": "temp/publish"  
     // },
-    // {
-    //   "packageName": "@eventiva/prismix",
-    //   "projectFolder": "projects/packages/prismix",
-    //   "reviewCategory": "tools",
-    //   "versionPolicyName": "individualVersion",
-    //   "shouldPublish": true,
-    //   "publishFolder": "temp/publish"
-    // },
+    {
+      "packageName": "@eventiva/prismix",
+      "projectFolder": "projects/packages/prismix",
+      "reviewCategory": "tools",
+      "versionPolicyName": "individualVersion",
+      "shouldPublish": true,
+      "publishFolder": "temp/publish"
+    },
     {
       "packageName": "@eventiva/functions-rig",
       "projectFolder": "projects/rigging/functions-rig",

@@ -5,7 +5,7 @@
  * Created Date: Monday, March 7th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Mon Mar 07 2022
+ * Last Modified: Fri Mar 11 2022
  * Modified By: Jonathan Stevens
  * Current Version: 1.0.0
  * -----
@@ -40,20 +40,20 @@ const fs = require('fs');
 const path = require('path');
 
 // add package.json file to folder lib/cjs and lib/mjs
-async function packagejson() {
-  fs.writeFileSync(
-    path.join(__dirname, 'lib', 'cjs', 'package.json'),
-    JSON.stringify({ type: 'commonjs' }, null, 2)
-  );
-  fs.writeFileSync(
-    path.join(__dirname, 'lib', 'mjs', 'package.json'),
-    JSON.stringify({ type: 'module' }, null, 2)
-  );
-  fs.writeFileSync(
-    path.join(__dirname, 'lib', 'njs', 'package.json'),
-    JSON.stringify({ type: 'module' }, null, 2)
-  );
-}
+// async function packagejson() {
+//   fs.writeFileSync(
+//     path.join(__dirname, 'lib', 'cjs', 'package.json'),
+//     JSON.stringify({ type: 'commonjs' }, null, 2)
+//   );
+//   fs.writeFileSync(
+//     path.join(__dirname, 'lib', 'mjs', 'package.json'),
+//     JSON.stringify({ type: 'module' }, null, 2)
+//   );
+//   fs.writeFileSync(
+//     path.join(__dirname, 'lib', 'njs', 'package.json'),
+//     JSON.stringify({ type: 'module' }, null, 2)
+//   );
+// }
 
 function copyFileSync(root, file) {
   if (file.endsWith('.d.ts')) {
@@ -87,4 +87,5 @@ function dts() {
     copyFileSync('', file);
   }
 }
-packagejson().then(dts);
+// packagejson().then(dts);
+dts()

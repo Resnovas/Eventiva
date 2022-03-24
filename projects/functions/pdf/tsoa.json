@@ -1,0 +1,19 @@
+{
+  "entryFile": "src/util/app.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/**/*Controller.ts"],
+  "spec": {
+    "outputDirectory": "src",
+    "specVersion": 3,
+    "contact": {
+      "email": "support@resnovas.com",
+      "name": "Resnovas",
+      "url": "https://github.com/Resnovas/Eventiva/discussions"
+    },
+    "specFileBaseName": "openapi",
+    "host": "localhost:3000"
+  },
+  "routes": {
+    "routesDir": "src/util"
+  }
+}

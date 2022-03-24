@@ -1,0 +1,24 @@
+import 'reflect-metadata';
+/**
+ * An entry point for Azure Functions.
+ * Please instead @see ./Azure/index.ts for the Azure Functions entry point details and preferred entry.
+ */
+// export { handler as azure } from './Azure';
+
+/**
+ * An entry point for Local Deployments.
+ * Please instead @see ./Express/index.ts for the Local Deployments entry point details and preferred entry.
+ */
+// export { handler as express } from './Express';
+
+/**
+ * An entry point for Google Cloud Functions.
+ * Please instead @see ./google/index.ts for the Google Cloud Functions entry point details and preferred entry.
+ */
+export { handler as google } from './Google';
+
+/**
+ * An entry point for Lambda Functions.
+ * Please instead @see ./Lambda/index.ts for the Lambda Functions entry point details and preferred entry.
+ */
+// export { handler as lambda } from './Lambda';

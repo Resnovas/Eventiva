@@ -1,0 +1,133 @@
+{
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"FormFields": {
+				"properties": {
+					"venue": {
+						"properties": {
+							"dateCommenced": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"logo": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"dateCommenced",
+							"name",
+							"logo"
+						],
+						"type": "object"
+					},
+					"officer": {
+						"properties": {
+							"profilePicture": {
+								"type": "string"
+							},
+							"address": {
+								"type": "string"
+							},
+							"dob": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"address",
+							"dob",
+							"name"
+						],
+						"type": "object"
+					},
+					"badge": {
+						"properties": {
+							"expiryDate": {
+								"type": "string"
+							},
+							"number": {
+								"type": "string"
+							},
+							"photo": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"number",
+							"photo"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"venue",
+					"officer",
+					"badge"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {}
+	},
+	"info": {
+		"title": "@eventiva/pdf",
+		"version": "1.0.0",
+		"contact": {
+			"email": "support@resnovas.com",
+			"name": "Resnovas",
+			"url": "https://github.com/Resnovas/Eventiva/discussions"
+		}
+	},
+	"openapi": "3.0.0",
+	"paths": {
+		"/profile/file/create": {
+			"post": {
+				"operationId": "Function",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"form": {
+										"$ref": "#/components/schemas/FormFields"
+									},
+									"template": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"form",
+									"template"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "https://localhost:3000/"
+		}
+	]
+}

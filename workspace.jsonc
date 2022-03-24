@@ -1,7 +1,7 @@
 /**
  * this is the main configuration file of your bit workspace.
  * for full documentation, please see: https://harmony-docs.bit.dev/workspace/configurations
- **/ {
+ **/{
   "$schema": "https://static.bit.dev/teambit/schemas/schema.json",
   /**
    * main configuration of the Bit workspace.
@@ -22,29 +22,31 @@
      * scope - scope name only, e.g. 'compilation'.
      * owner - owner name in bit.dev, e.g. 'teambit'.
      **/
-    "defaultDirectory": "src/{name}",
+    "defaultDirectory": "projects/{name}",
     /**
      * default scope for all components in workspace.
      **/
-    "defaultScope": "videndum.eventiva"
+    "defaultScope": "resnovas.eventiva"
   },
   /**
    * main configuration for component dependency resolution.
    **/
   "teambit.dependencies/dependency-resolver": {
-    "packageManager": "teambit.dependencies/yarn",
+    "packageManager": "teambit.dependencies/pnpm",
     "policy": {
       "dependencies": {
-        "@testing-library/react-native": "7.2.0",
-        "@storybook/addon-actions": "6.3.4",
-        "@storybook/addon-knobs": "6.2.9",
-        "@storybook/react-native": "5.3.25"
+        // "@testing-library/react-native": "7.2.0",
+        // "@storybook/addon-actions": "6.3.4",
+        // "@storybook/addon-knobs": "6.2.9",
+        // "@storybook/react-native": "5.3.25"
       },
       "devDependencies": {},
       "peerDependencies": {}
     },
     "packageManagerArgs": [],
-    "devFilePatterns": ["**/*.spec.ts"],
+    "devFilePatterns": [
+      "**/*.spec.ts"
+    ],
     "strictPeerDependencies": true,
     "installFromBitDevRegistry": true,
     "savePrefix": ""
@@ -60,15 +62,19 @@
     "*": {
       "teambit.harmony/node": {}
     },
-    "src/app": {
+    "projects/apps": {
       "teambit.react/react-native": {}
     },
-    "src/apps/components/generators": {
+    "projects/generators": {
       "teambit.harmony/aspect": {}
     }
   },
   "teambit.generator/generator": {
-    "aspects": ["videndum.eventiva/generators/react-native"]
+    "aspects": [
+      "resnovas.eventiva/generators/react-native",
+      "resnovas.eventiva/generators/nodejs"
+    ]
   },
-  "videndum.eventiva/generators/react-native": {}
+  "resnovas.eventiva/generators/react-native": {},
+  "resnovas.eventiva/generators/nodejs": {}
 }

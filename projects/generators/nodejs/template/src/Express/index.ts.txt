@@ -1,0 +1,10 @@
+import { app } from '../util/app';
+import { Express } from 'express';
+
+const port = process.env.PORT || 3000;
+
+app.listen(port, () =>
+  console.log(`Example app listening at http://localhost:${port}`)
+);
+
+export const handler: Express = app;

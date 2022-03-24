@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@eventiva/siacheck",
+      "comment": "Updated version",
+      "type": "major"
+    }
+  ],
+  "packageName": "@eventiva/siacheck"
+}

@@ -1,0 +1,14 @@
+import { app } from '../util/app';
+import { Express } from 'express';
+
+/**============================================
+ **               Google Handler
+ *=============================================**/
+/**
+ * An entry point for Google Cloud Functions.
+ * Google supports Express.js and Node.js so this basically just wraps the Express.js entry point.
+ * @see ../Util/app.ts for the Express.js entry point details.
+ * @public
+ */
+
+export const handler: Express = app;

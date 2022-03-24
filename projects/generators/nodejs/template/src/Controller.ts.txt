@@ -1,0 +1,23 @@
+import { Controller, Body, Route, Path, Header, Query, Post, Example, TsoaResponse, Res, Response} from 'tsoa';
+import { reportResult, rptFilters, SendAPI } from './util/helpers';
+/**
+ * @author <your name>
+ * @since 1.0.0
+ * @version 1.0.0
+ * @public
+ */
+@Route('root')
+export class SIACheckController extends Controller {
+    sendAPI = new SendAPI();
+  
+    @Post('path/{function}')
+    public async function(
+        @Path() path: number,
+        @Query() query: string,
+        @Body() body: unknown,
+        @Res() notFoundResponse: TsoaResponse<422, unknown>
+    ): Promise<unknown> {
+        
+    }
+}
+

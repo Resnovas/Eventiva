@@ -5,9 +5,9 @@
  * Created Date: Saturday, February 26th 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Thu Mar 10 2022
+ * Last Modified: Tue Mar 22 2022
  * Modified By: Jonathan Stevens
- * Current Version: 2.0.0
+ * Current Version: 1.0.0
  * -----
  * Copyright (c) 2022 Resnovas - All Rights Reserved
  * -----
@@ -114,7 +114,7 @@ export async function testLicense(
         // Fill in the badge details
         badge.id = license;
         badge.licenseSector =
-          ls == 'Door Supervisor'
+          ls == 'Door Supervision'
             ? LicenseSector.DS
             : ls == 'Close Protection'
             ? LicenseSector.CP
@@ -138,6 +138,7 @@ export async function testLicense(
           (await (await sinceDate[0]?.getInnerText())?.slice(7, -1)) as string
         );
         badge.licenseExplanation = exp?.[1]?.trim() as string;
+        badge.account = account;
 
         // Fill in the check details
         siacheck.status =
@@ -149,6 +150,8 @@ export async function testLicense(
             ? BadgeStatus.REVOKED
             : BadgeStatus.NON_ACTIVE;
         siacheck.createdAt = new Date();
+        siacheck.badge = badge;
+
 
         // Return the SIABadge and Picture and close the browser
         await browser.close();

@@ -5,9 +5,9 @@
  * Created Date: Wednesday, March 2nd 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Thu Mar 10 2022
+ * Last Modified: Wed Mar 23 2022
  * Modified By: Jonathan Stevens
- * Current Version: 0.0.0
+ * Current Version: 0.0.5
  * -----
  * Copyright (c) 2022 Resnovas - All Rights Reserved
  * -----
@@ -34,13 +34,73 @@
  * ----------	---	---------------------------------------------------------
  */
 
+import 'reflect-metadata'
 import { PrismaClient } from '@prisma/client';
 import * as database from './database';
 export * from './database';
 
 export class Internals {
-  static db = new PrismaClient();
+  static db: PrismaClient;
   static database = database;
+
+  constructor() {
+    Internals.db = new PrismaClient();
+    Internals.db.$use(async (params: any, next: any) => this.softDelete(params, next));
+  }
+
+
+  softDelete(params: any, next: any) {
+  if (params.action == 'findUnique') {
+    // Change to findFirst - you cannot filter
+    // by anything except ID / unique with findUnique
+    params.action = 'findFirst';
+    // Add 'deleted' filter
+    // ID filter maintained
+    params.args.where['deleted'] = null;
+  }
+  if (params.action == 'findMany') {
+    // Find many queries
+    if (params.args.where != undefined) {
+      if (params.args.where.deleted == undefined) {
+        // Exclude deleted records if they have not been explicitly requested
+        params.args.where['deleted'] = null;
+      }
+    } else {
+      params.args['where'] = { deleted: null };
+    }
+  }
+  if (params.action == 'update') {
+    // Change to updateMany - you cannot filter
+    // by anything except ID / unique with findUnique
+    params.action = 'updateMany';
+    // Add 'deleted' filter
+    // ID filter maintained
+    params.args.where['deleted'] = null;
+  }
+  if (params.action == 'updateMany') {
+    if (params.args.where != undefined) {
+      params.args.where['deleted'] = null;
+    } else {
+      params.args['where'] = { deleted: null };
+    }
+  }
+  if (params.action == 'delete') {
+    // Delete queries
+    // Change action to an update
+    params.action = 'update';
+    params.args['data'] = { deleted: new Date() };
+  }
+  if (params.action == 'deleteMany') {
+    // Delete many queries
+    params.action = 'updateMany';
+    if (params.args.data != undefined) {
+      params.args.data['deleted'] = new Date();
+    } else {
+      params.args['data'] = { deleted: new Date() };
+    }
+  }
+  return next(params);
+}
 }
 
 export default Internals;

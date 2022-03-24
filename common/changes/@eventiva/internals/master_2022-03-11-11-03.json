@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@eventiva/internals",
+      "comment": "Updated database classes",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@eventiva/internals"
+}

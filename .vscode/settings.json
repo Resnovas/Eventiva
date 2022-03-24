@@ -39,10 +39,12 @@
 		"autoHeader": "autoSave",
 		"enforceHeader": false,
 		"replace": [
+			"Project:",
 			"File:",
 			"Path:",
 			"Project:",
 			"Current Version:",
+			"Copyright",
 			"Project:",
 			"along with",
 			"or see"
