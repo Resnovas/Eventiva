@@ -27,7 +27,7 @@ variable "port" {
 
 variable "users" {
   description = "The list of users to be created in PgBouncer's userlist.txt. Passwords can be provided as plain-text or md5 hashes."
-  type        = list(string)
+  type        = list(object({name = string, password = string, admin = optional(bool)}))
 }
 
 variable "auth_user" {

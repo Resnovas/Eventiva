@@ -6,7 +6,8 @@ model Room {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
   address Address @relation(fields: [addressId], references: [id])
   addressId String
 
@@ -40,6 +41,8 @@ model ArrangementOfRoom {
   @@id([roomId, arrangementId])
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) 
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 
@@ -52,6 +55,8 @@ model Arrangement {
   name String
   icon String?
   details String?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 

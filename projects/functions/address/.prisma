@@ -36,7 +36,8 @@ model Address {
   public Boolean @default(false)
   primaryAccount Account? @relation(fields: [primaryaccountId], references: [id], "account")
   primaryaccountId String?
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model ContactAtAddress {
@@ -53,7 +54,8 @@ model ContactAtAddress {
   @@id([accountId, addressId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model VenueStyle {
@@ -64,6 +66,8 @@ model VenueStyle {
   address Address[]
   name String
   details String?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 enum AddressType {

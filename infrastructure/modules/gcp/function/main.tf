@@ -31,12 +31,13 @@ data "archive_file" "source" {
 # Create bucket that will host the source code
 resource "google_storage_bucket" "bucket" {
   name = "${var.project}-${var.name}function"
+  location = "EU"
 }
 
 # Add source code zip to bucket
 resource "google_storage_bucket_object" "zip" {
   depends_on = [
-    archive_file.source
+    data.archive_file.source
   ]
   # Append file MD5 to force bucket to be recreated
   name   = "source.zip#${data.archive_file.source.output_md5}"
@@ -76,6 +77,10 @@ resource "google_cloudfunctions_function" "function" {
   trigger_http          = true
   entry_point           = var.entry_point
   environment_variables = var.environment_variables
+  timeouts {
+    create = "60m"
+    update = "60m"
+  }
 }
 
 # Create IAM entry so all users can invoke the function

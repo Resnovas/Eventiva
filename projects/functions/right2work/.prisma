@@ -14,7 +14,8 @@ model RTW {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model Account {

@@ -35,7 +35,7 @@
  */
 
 
-import { Controller, Body, Route, Post, Get} from 'tsoa';
+import { Controller, Body, Route, Post} from 'tsoa';
 import { createBucket } from './Google/createBucket';
 import { FormFields, generateForm, getPDF } from './pdf';
 /**
@@ -53,7 +53,7 @@ export class ProfilePDF extends Controller {
     ) {
         const bucket = await createBucket()
         const template = await getPDF(body.template)
-        return generateForm(template, body.form, bucket)
+        return await generateForm(template, body.form, bucket)
     }
 }
 

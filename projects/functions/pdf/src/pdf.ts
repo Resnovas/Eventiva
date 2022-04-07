@@ -5,7 +5,7 @@
  * Created Date: Monday, March 21st 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Wed Mar 23 2022
+ * Last Modified: Tue Mar 29 2022
  * Modified By: Jonathan Stevens
  * Current Version: 1.0.0
  * -----
@@ -38,8 +38,6 @@ import {PDFDocument} from 'pdf-lib'
 import axios from 'axios';
 import { SIACheck } from '@eventiva/internals';
 import { Bucket } from '@google-cloud/storage';
-import fs from 'fs';
-import path from 'path';
 
 // get a PDf document by url
 export async function getPDF(Url: string) {
@@ -64,7 +62,7 @@ export interface FormFields {
         profilePicture?: string
     },
     badge: {
-        photo: string
+        photo?: string
         number: string
         expiryDate?: string
     }
@@ -115,13 +113,17 @@ export async function generateForm(doc: PDFDocument, formFields: FormFields, buc
     }
     
     const pdfBytes = await doc.save()
-    fs.writeFileSync(path.join(process.cwd() + '/temp/form.pdf'), pdfBytes)
-    // const completed = await bucket.file('profile/' + formFields.badge.number + '.pdf')
-    // completed.save(pdfBytes.toString(), {
-    //     contentType: 'application/pdf',
-    // })
-    // completed.makePublic()
-    // return completed.publicUrl()
+    const completed = await bucket.file(formFields.badge.number + '.pdf')
+    await completed.createWriteStream({
+        resumable: false
+    }).end(pdfBytes)
+    await completed.makePublic()
+    return {
+        hadProfilePicture: Boolean(formFields.officer.profilePicture),
+        hadBadgePicture: Boolean(formFields.badge.photo),
+        hadBadgeCheck: Boolean(formFields.badge.number),
+        url: completed.publicUrl()
+    }
 }
 
 /**

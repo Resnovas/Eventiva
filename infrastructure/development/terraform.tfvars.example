@@ -1,3 +1,7 @@
 project = "PROJECT_ID"
-region  = "europe-west1"
 zone    = "europe-west1-b"
+network_name = "default"
+subnetwork_name = "default"
+db_name = "defaultdb"
+db_user = "admin"
+db_password = "admin"

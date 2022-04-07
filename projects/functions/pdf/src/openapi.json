@@ -62,8 +62,7 @@
 							}
 						},
 						"required": [
-							"number",
-							"photo"
+							"number"
 						],
 						"type": "object"
 					}
@@ -94,8 +93,35 @@
 			"post": {
 				"operationId": "Function",
 				"responses": {
-					"204": {
-						"description": "No content"
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"url": {
+											"type": "string"
+										},
+										"hadBadgeCheck": {
+											"type": "boolean"
+										},
+										"hadBadgePicture": {
+											"type": "boolean"
+										},
+										"hadProfilePicture": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"url",
+										"hadBadgeCheck",
+										"hadBadgePicture",
+										"hadProfilePicture"
+									],
+									"type": "object"
+								}
+							}
+						}
 					}
 				},
 				"security": [],

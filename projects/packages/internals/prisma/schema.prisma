@@ -12,10 +12,11 @@ generator backend {
 }
 generator frontend {
 	provider = "typegraphql-prisma"
-	output = "../src/database"
+	output = "../src/database/generated"
 }
 model Account {
 	id String @id @default(uuid())
+	prn Int @default(autoincrement())
 	username String? @unique
 	accountType AccountType @default(USER)
 	subsciption Boolean @default(false)
@@ -40,10 +41,12 @@ model Account {
 	sex String? 
 	label String 
 	password String? 
+	Salt Salt? @relation(name: "AccountToSalt")
 	resetPasswordToken String? @unique
 	resetPasswordExpires DateTime? 
 	apiToken Token[] @relation(name: "AccountToToken")
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	primaryAddress Address? @relation(name: "account")
 	addresses Address[] @relation(name: "address")
 	contactOfAddress ContactAtAddress[] @relation(name: "AccountToContactAtAddress")
@@ -60,14 +63,25 @@ model Account {
 }
 model Token {
 	id String @id @default(uuid())
+	nickname String 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
 	type TokenType 
-	value String @unique
-	valid Boolean @default(true)
+	value String? @unique
 	expiry DateTime 
-	account Account @relation(name: "AccountToToken", fields: [apiToken], references: [id])
-	apiToken String 
+	account Account @relation(name: "AccountToToken", fields: [accountID], references: [id])
+	accountID String 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
+}
+model Salt {
+	id String @id @default(uuid())
+	salt String 
+	expiry DateTime 
+	account Account? @relation(name: "AccountToSalt", fields: [accountID], references: [id])
+	accountID String? @unique
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model SubuserOnAccount {
 	accountId String 
@@ -76,6 +90,8 @@ model SubuserOnAccount {
 	subuser Account @relation(name: "subuser", fields: [subuserId], references: [id])
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([accountId, subuserId])
 }
 model EmployersOnAccount {
@@ -85,6 +101,8 @@ model EmployersOnAccount {
 	employer Account @relation(name: "employees", fields: [employerId], references: [id])
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([accountId, employerId])
 }
 model ManagersOnAccount {
@@ -94,6 +112,8 @@ model ManagersOnAccount {
 	managers Account @relation(name: "managers", fields: [managersId], references: [id])
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([accountId, managersId])
 }
 model Address {
@@ -121,7 +141,8 @@ model Address {
 	public Boolean @default(false)
 	primaryAccount Account? @relation(name: "account", fields: [primaryaccountId], references: [id])
 	primaryaccountId String? @unique
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	featuresOfBuisness FeatureOfAddress[] @relation(name: "AddressToFeatureOfAddress")
 	phones Phone[] @relation(name: "AddressToPhone")
 	rooms Room[] @relation(name: "AddressToRoom")
@@ -137,7 +158,8 @@ model ContactAtAddress {
 	emailId String? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([accountId, addressId])
 }
 model VenueStyle {
@@ -147,6 +169,8 @@ model VenueStyle {
 	address Address[] @relation(name: "AddressToVenueStyle")
 	name String 
 	details String? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Email {
 	id String @id @default(uuid())
@@ -189,7 +213,8 @@ model Email {
 	oauth2_expires DateTime? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Application {
 	id String @id @default(uuid())
@@ -198,7 +223,8 @@ model Application {
 	accountId String 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Domain {
 	id String @id @default(uuid())
@@ -209,7 +235,8 @@ model Domain {
 	data Json 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Feature {
 	id String @id @default(uuid())
@@ -219,7 +246,8 @@ model Feature {
 	featureOfAddress FeatureOfAddress[] @relation(name: "FeatureToFeatureOfAddress")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model FeatureOfRoom {
 	roomId String 
@@ -229,7 +257,8 @@ model FeatureOfRoom {
 	data Json? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([roomId, featureId])
 }
 model FeatureOfAddress {
@@ -240,7 +269,8 @@ model FeatureOfAddress {
 	data Json? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([addressId, featureId])
 }
 model Room {
@@ -248,7 +278,8 @@ model Room {
 	featuresOfRoom FeatureOfRoom[] @relation(name: "FeatureOfRoomToRoom")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	address Address @relation(name: "AddressToRoom", fields: [addressId], references: [id])
 	addressId String 
 	name String 
@@ -270,7 +301,8 @@ model Files {
 	account Account[] @relation(name: "AccountToFiles")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model RTW {
 	id String @id @default(uuid())
@@ -283,13 +315,15 @@ model RTW {
 	accountId String 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Phone {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	account Account @relation(name: "AccountToPhone", fields: [accountId], references: [id])
 	accountId String 
 	address Address @relation(name: "AddressToPhone", fields: [addressId], references: [id])
@@ -306,6 +340,8 @@ model ArrangementOfRoom {
 	details String? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @default(now())
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([roomId, arrangementId])
 }
 model Arrangement {
@@ -316,6 +352,8 @@ model Arrangement {
 	name String 
 	icon String? 
 	details String? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model SIABadge {
 	id Int @unique @id
@@ -327,7 +365,8 @@ model SIABadge {
 	active DateTime? 
 	expiry DateTime? 
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	siaChecks SIACheck[] @relation(name: "SIABadgeToSIACheck")
 	account Account? @relation(name: "AccountToSIABadge", fields: [account_id], references: [id])
 	account_id String? 
@@ -341,7 +380,8 @@ model SIACheck {
 	pubUrl String? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	error String? 
 	transactions Transaction? @relation(name: "SIACheckToTransaction", fields: [transactionId], references: [id])
 	transactionId String? 
@@ -353,7 +393,8 @@ model StatusOnAccount {
 	account Account @relation(name: "AccountToStatusOnAccount", fields: [accountId], references: [id])
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([statusId, accountId])
 }
 model Status {
@@ -362,13 +403,15 @@ model Status {
 	account StatusOnAccount[] @relation(name: "StatusToStatusOnAccount")
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 }
 model Subscription {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	name String? @unique
 	cost String? 
 	details String? 
@@ -385,14 +428,16 @@ model SubscriptionOnAccount {
 	startedAt DateTime? 
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	@@id([accountId, subscriptionId])
 }
 model Transaction {
 	id String @id @default(uuid())
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
-	deleted DateTime? 
+	deletedDate DateTime? 
+	deleted Boolean? @default(false)
 	account Account @relation(name: "AccountToTransaction", fields: [accountId], references: [id])
 	accountId String 
 	SIACheck SIACheck[] @relation(name: "SIACheckToTransaction")

@@ -78,15 +78,15 @@ resource "google_compute_instance" "pgbouncer" {
 
 # restart instance when users are updated, added or removed
 
-resource "null_resource" "user_updater" {
-  triggers = {
-    users = join("", [for u in var.users : join("", values(u))])
-  }
-  provisioner "local-exec" {
-    on_failure = continue
-    command    = "gcloud compute instances reset --project '${var.project}' --zone '${var.zone}' '${google_compute_instance.pgbouncer.name}'"
-  }
-}
+# resource "null_resource" "user_updater" {
+#   triggers = {
+#     users = join("", [for u in var.users : join("", values(u))])
+#   }
+#   provisioner "local-exec" {
+#     on_failure = continue
+#     command    = "gcloud compute instances reset --project '${var.project}' --zone '${var.zone}' '${google_compute_instance.pgbouncer.name}'"
+#   }
+# }
 
 # inject external dependencies into module
 

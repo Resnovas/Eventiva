@@ -14,7 +14,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "venue": {"dataType":"nestedObjectLiteral","nestedProperties":{"dateCommenced":{"dataType":"string","required":true},"name":{"dataType":"string","required":true},"logo":{"dataType":"string","required":true}},"required":true},
             "officer": {"dataType":"nestedObjectLiteral","nestedProperties":{"profilePicture":{"dataType":"string"},"address":{"dataType":"string","required":true},"dob":{"dataType":"string","required":true},"name":{"dataType":"string","required":true}},"required":true},
-            "badge": {"dataType":"nestedObjectLiteral","nestedProperties":{"expiryDate":{"dataType":"string"},"number":{"dataType":"string","required":true},"photo":{"dataType":"string","required":true}},"required":true},
+            "badge": {"dataType":"nestedObjectLiteral","nestedProperties":{"expiryDate":{"dataType":"string"},"number":{"dataType":"string","required":true},"photo":{"dataType":"string"}},"required":true},
         },
         "additionalProperties": false,
     },

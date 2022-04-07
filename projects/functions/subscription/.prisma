@@ -6,7 +6,8 @@ model Subscription {
   id String @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
   name String? @unique
   cost String?
   details String?
@@ -27,7 +28,8 @@ model SubscriptionOnAccount {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
   @@id([accountId, subscriptionId])
 }
 

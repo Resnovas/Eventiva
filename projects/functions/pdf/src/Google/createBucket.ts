@@ -58,7 +58,7 @@ export async function createBucket(): Promise<Bucket> {
   /**
    * Create/Get the bucket.
    */
-  let bucket = await storage.bucket('profile-picture');
+  let bucket = await storage.bucket('eventiva-profile-picture');
 
   /**
    * If the bucket doesn't exist, throw an error

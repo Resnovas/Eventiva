@@ -11,7 +11,8 @@ model Feature {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model FeatureOfRoom { 
@@ -24,7 +25,8 @@ model FeatureOfRoom {
   @@id([roomId, featureId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model FeatureOfAddress { 
@@ -37,7 +39,8 @@ model FeatureOfAddress {
   @@id([addressId, featureId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 enum FeatureType {

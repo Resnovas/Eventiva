@@ -33,7 +33,9 @@ export class Account {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     dob?: Date | null;
     // (undocumented)
@@ -65,6 +67,8 @@ export class Account {
     // (undocumented)
     primaryAddress?: Address | null;
     // (undocumented)
+    prn: number;
+    // (undocumented)
     promoted?: Date | null;
     // (undocumented)
     resetPasswordExpires?: Date | null;
@@ -74,6 +78,8 @@ export class Account {
     retired?: Date | null;
     // (undocumented)
     rtw?: RTW[];
+    // (undocumented)
+    Salt?: Salt | null;
     // (undocumented)
     Salutation?: string | null;
     // (undocumented)
@@ -103,7 +109,7 @@ export class AccountAccessesArgs {
     // (undocumented)
     cursor?: SubuserOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubuserOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -119,7 +125,7 @@ export class AccountAccountsArgs {
     // (undocumented)
     cursor?: ManagersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ManagersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -135,7 +141,7 @@ export class AccountAddressesArgs {
     // (undocumented)
     cursor?: AddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deleted"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -151,7 +157,7 @@ export class AccountApiTokenArgs {
     // (undocumented)
     cursor?: TokenWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "type" | "value" | "valid" | "expiry" | "apiToken"> | undefined;
+    distinct?: Array<"id" | "nickname" | "createdAt" | "updatedAt" | "type" | "value" | "expiry" | "accountID" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: TokenOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -167,7 +173,7 @@ export class AccountApplicationArgs {
     // (undocumented)
     cursor?: ApplicationWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ApplicationOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -179,11 +185,23 @@ export class AccountApplicationArgs {
 }
 
 // @public (undocumented)
+export class AccountAvgAggregate {
+    // (undocumented)
+    prn: number | null;
+}
+
+// @public (undocumented)
+export class AccountAvgOrderByAggregateInput {
+    // (undocumented)
+    prn?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
 export class AccountContactOfAddressArgs {
     // (undocumented)
     cursor?: ContactAtAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ContactAtAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -247,6 +265,8 @@ export class AccountCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     dob: number;
     // (undocumented)
     firstname: number;
@@ -262,6 +282,8 @@ export class AccountCountAggregate {
     midname: number;
     // (undocumented)
     password: number;
+    // (undocumented)
+    prn: number;
     // (undocumented)
     promoted: number;
     // (undocumented)
@@ -295,6 +317,8 @@ export class AccountCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dob?: "asc" | "desc" | undefined;
     // (undocumented)
     firstname?: "asc" | "desc" | undefined;
@@ -310,6 +334,8 @@ export class AccountCountOrderByAggregateInput {
     midname?: "asc" | "desc" | undefined;
     // (undocumented)
     password?: "asc" | "desc" | undefined;
+    // (undocumented)
+    prn?: "asc" | "desc" | undefined;
     // (undocumented)
     promoted?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -353,7 +379,9 @@ export class AccountCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -385,6 +413,8 @@ export class AccountCreateInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -394,6 +424,8 @@ export class AccountCreateInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -427,7 +459,9 @@ export class AccountCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -444,6 +478,8 @@ export class AccountCreateManyInput {
     midname?: string | undefined;
     // (undocumented)
     password?: string | undefined;
+    // (undocumented)
+    prn?: number | undefined;
     // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
@@ -604,6 +640,16 @@ export class AccountCreateNestedOneWithoutRtwInput {
     connectOrCreate?: AccountCreateOrConnectWithoutRtwInput | undefined;
     // (undocumented)
     create?: AccountCreateWithoutRtwInput | undefined;
+}
+
+// @public (undocumented)
+export class AccountCreateNestedOneWithoutSaltInput {
+    // (undocumented)
+    connect?: AccountWhereUniqueInput | undefined;
+    // (undocumented)
+    connectOrCreate?: AccountCreateOrConnectWithoutSaltInput | undefined;
+    // (undocumented)
+    create?: AccountCreateWithoutSaltInput | undefined;
 }
 
 // @public (undocumented)
@@ -769,6 +815,14 @@ export class AccountCreateOrConnectWithoutRtwInput {
 }
 
 // @public (undocumented)
+export class AccountCreateOrConnectWithoutSaltInput {
+    // (undocumented)
+    create: AccountCreateWithoutSaltInput;
+    // (undocumented)
+    where: AccountWhereUniqueInput;
+}
+
+// @public (undocumented)
 export class AccountCreateOrConnectWithoutSiaInput {
     // (undocumented)
     create: AccountCreateWithoutSiaInput;
@@ -827,7 +881,9 @@ export class AccountCreateWithoutAccessesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -859,6 +915,8 @@ export class AccountCreateWithoutAccessesInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -868,6 +926,8 @@ export class AccountCreateWithoutAccessesInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -911,7 +971,9 @@ export class AccountCreateWithoutAccountsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -943,6 +1005,8 @@ export class AccountCreateWithoutAccountsInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -952,6 +1016,8 @@ export class AccountCreateWithoutAccountsInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -995,7 +1061,9 @@ export class AccountCreateWithoutAddressesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1027,6 +1095,8 @@ export class AccountCreateWithoutAddressesInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1036,6 +1106,8 @@ export class AccountCreateWithoutAddressesInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1079,7 +1151,9 @@ export class AccountCreateWithoutApiTokenInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1111,6 +1185,8 @@ export class AccountCreateWithoutApiTokenInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1120,6 +1196,8 @@ export class AccountCreateWithoutApiTokenInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1163,7 +1241,9 @@ export class AccountCreateWithoutApplicationInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1195,6 +1275,8 @@ export class AccountCreateWithoutApplicationInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1204,6 +1286,8 @@ export class AccountCreateWithoutApplicationInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1247,7 +1331,9 @@ export class AccountCreateWithoutContactOfAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1279,6 +1365,8 @@ export class AccountCreateWithoutContactOfAddressInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1288,6 +1376,8 @@ export class AccountCreateWithoutContactOfAddressInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1333,7 +1423,9 @@ export class AccountCreateWithoutEmailsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1363,6 +1455,8 @@ export class AccountCreateWithoutEmailsInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1372,6 +1466,8 @@ export class AccountCreateWithoutEmailsInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1417,7 +1513,9 @@ export class AccountCreateWithoutEmployeesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1447,6 +1545,8 @@ export class AccountCreateWithoutEmployeesInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1456,6 +1556,8 @@ export class AccountCreateWithoutEmployeesInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1501,7 +1603,9 @@ export class AccountCreateWithoutEmployerInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1531,6 +1635,8 @@ export class AccountCreateWithoutEmployerInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1540,6 +1646,8 @@ export class AccountCreateWithoutEmployerInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1585,7 +1693,9 @@ export class AccountCreateWithoutFilesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1615,6 +1725,8 @@ export class AccountCreateWithoutFilesInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1624,6 +1736,8 @@ export class AccountCreateWithoutFilesInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1669,7 +1783,9 @@ export class AccountCreateWithoutManagersInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1699,6 +1815,8 @@ export class AccountCreateWithoutManagersInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1708,6 +1826,8 @@ export class AccountCreateWithoutManagersInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1753,7 +1873,9 @@ export class AccountCreateWithoutPhonesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1783,6 +1905,8 @@ export class AccountCreateWithoutPhonesInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1792,6 +1916,8 @@ export class AccountCreateWithoutPhonesInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1837,7 +1963,9 @@ export class AccountCreateWithoutPrimaryAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1867,6 +1995,8 @@ export class AccountCreateWithoutPrimaryAddressInput {
     // (undocumented)
     phones?: PhoneCreateNestedManyWithoutAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1876,6 +2006,8 @@ export class AccountCreateWithoutPrimaryAddressInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -1921,7 +2053,9 @@ export class AccountCreateWithoutRtwInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -1953,6 +2087,8 @@ export class AccountCreateWithoutRtwInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -1960,6 +2096,98 @@ export class AccountCreateWithoutRtwInput {
     resetPasswordToken?: string | undefined;
     // (undocumented)
     retired?: Date | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
+    // (undocumented)
+    Salutation?: string | undefined;
+    // (undocumented)
+    sex?: string | undefined;
+    // (undocumented)
+    sia?: SIABadgeCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Status?: StatusOnAccountCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    subsciption?: boolean | undefined;
+    // (undocumented)
+    subscription?: SubscriptionOnAccountCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    subusers?: SubuserOnAccountCreateNestedManyWithoutSubuserInput | undefined;
+    // (undocumented)
+    title?: "Miss" | "Ms" | "Mrs" | "Mr" | "Dr" | undefined;
+    // (undocumented)
+    transactions?: TransactionCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    updatedAt?: Date | undefined;
+    // (undocumented)
+    username?: string | undefined;
+}
+
+// @public (undocumented)
+export class AccountCreateWithoutSaltInput {
+    // (undocumented)
+    accesses?: SubuserOnAccountCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    accounts?: ManagersOnAccountCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    accountType?: "USER" | "BUSINESS" | "PROVIDER" | undefined;
+    // (undocumented)
+    addresses?: AddressCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    apiToken?: TokenCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    application?: ApplicationCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    applied?: Date | undefined;
+    // (undocumented)
+    contactOfAddress?: ContactAtAddressCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
+    dob?: Date | undefined;
+    // (undocumented)
+    emails?: EmailCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    employees?: EmployersOnAccountCreateNestedManyWithoutEmployerInput | undefined;
+    // (undocumented)
+    employer?: EmployersOnAccountCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    files?: FilesCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    firstname?: string | undefined;
+    // (undocumented)
+    id?: string | undefined;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    lastLogin?: Date | undefined;
+    // (undocumented)
+    lastname?: string | undefined;
+    // (undocumented)
+    managers?: ManagersOnAccountCreateNestedManyWithoutManagersInput | undefined;
+    // (undocumented)
+    midname?: string | undefined;
+    // (undocumented)
+    password?: string | undefined;
+    // (undocumented)
+    phones?: PhoneCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
+    // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
+    promoted?: Date | undefined;
+    // (undocumented)
+    resetPasswordExpires?: Date | undefined;
+    // (undocumented)
+    resetPasswordToken?: string | undefined;
+    // (undocumented)
+    retired?: Date | undefined;
+    // (undocumented)
+    rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2005,7 +2233,9 @@ export class AccountCreateWithoutSiaInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -2037,6 +2267,8 @@ export class AccountCreateWithoutSiaInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -2046,6 +2278,8 @@ export class AccountCreateWithoutSiaInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2089,7 +2323,9 @@ export class AccountCreateWithoutStatusInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -2121,6 +2357,8 @@ export class AccountCreateWithoutStatusInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -2130,6 +2368,8 @@ export class AccountCreateWithoutStatusInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2173,7 +2413,9 @@ export class AccountCreateWithoutSubscriptionInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -2205,6 +2447,8 @@ export class AccountCreateWithoutSubscriptionInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -2214,6 +2458,8 @@ export class AccountCreateWithoutSubscriptionInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2257,7 +2503,9 @@ export class AccountCreateWithoutSubusersInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -2289,6 +2537,8 @@ export class AccountCreateWithoutSubusersInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -2298,6 +2548,8 @@ export class AccountCreateWithoutSubusersInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2341,7 +2593,9 @@ export class AccountCreateWithoutTransactionsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dob?: Date | undefined;
     // (undocumented)
@@ -2373,6 +2627,8 @@ export class AccountCreateWithoutTransactionsInput {
     // (undocumented)
     primaryAddress?: AddressCreateNestedOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: number | undefined;
+    // (undocumented)
     promoted?: Date | undefined;
     // (undocumented)
     resetPasswordExpires?: Date | undefined;
@@ -2382,6 +2638,8 @@ export class AccountCreateWithoutTransactionsInput {
     retired?: Date | undefined;
     // (undocumented)
     rtw?: RTWCreateNestedManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltCreateNestedOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: string | undefined;
     // (undocumented)
@@ -2437,7 +2695,7 @@ export class AccountEmailsArgs {
     // (undocumented)
     cursor?: EmailWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmailOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -2453,7 +2711,7 @@ export class AccountEmployeesArgs {
     // (undocumented)
     cursor?: EmployersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmployersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -2469,7 +2727,7 @@ export class AccountEmployerArgs {
     // (undocumented)
     cursor?: EmployersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmployersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -2485,7 +2743,7 @@ export class AccountFilesArgs {
     // (undocumented)
     cursor?: FilesWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FilesOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -2503,11 +2761,15 @@ export class AccountGroupBy {
     // (undocumented)
     applied: Date | null;
     // (undocumented)
+    _avg: AccountAvgAggregate | null;
+    // (undocumented)
     _count: AccountCountAggregate | null;
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dob: Date | null;
     // (undocumented)
@@ -2529,6 +2791,8 @@ export class AccountGroupBy {
     // (undocumented)
     password: string | null;
     // (undocumented)
+    prn: number;
+    // (undocumented)
     promoted: Date | null;
     // (undocumented)
     resetPasswordExpires: Date | null;
@@ -2542,6 +2806,8 @@ export class AccountGroupBy {
     sex: string | null;
     // (undocumented)
     subsciption: boolean;
+    // (undocumented)
+    _sum: AccountSumAggregate | null;
     // (undocumented)
     title: "Miss" | "Ms" | "Mrs" | "Mr" | "Dr" | null;
     // (undocumented)
@@ -2565,7 +2831,7 @@ export class AccountManagersArgs {
     // (undocumented)
     cursor?: ManagersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ManagersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -2585,7 +2851,9 @@ export class AccountMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dob: Date | null;
     // (undocumented)
@@ -2602,6 +2870,8 @@ export class AccountMaxAggregate {
     midname: string | null;
     // (undocumented)
     password: string | null;
+    // (undocumented)
+    prn: number | null;
     // (undocumented)
     promoted: Date | null;
     // (undocumented)
@@ -2635,6 +2905,8 @@ export class AccountMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dob?: "asc" | "desc" | undefined;
     // (undocumented)
     firstname?: "asc" | "desc" | undefined;
@@ -2650,6 +2922,8 @@ export class AccountMaxOrderByAggregateInput {
     midname?: "asc" | "desc" | undefined;
     // (undocumented)
     password?: "asc" | "desc" | undefined;
+    // (undocumented)
+    prn?: "asc" | "desc" | undefined;
     // (undocumented)
     promoted?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -2681,7 +2955,9 @@ export class AccountMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dob: Date | null;
     // (undocumented)
@@ -2698,6 +2974,8 @@ export class AccountMinAggregate {
     midname: string | null;
     // (undocumented)
     password: string | null;
+    // (undocumented)
+    prn: number | null;
     // (undocumented)
     promoted: Date | null;
     // (undocumented)
@@ -2731,6 +3009,8 @@ export class AccountMinOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dob?: "asc" | "desc" | undefined;
     // (undocumented)
     firstname?: "asc" | "desc" | undefined;
@@ -2746,6 +3026,8 @@ export class AccountMinOrderByAggregateInput {
     midname?: "asc" | "desc" | undefined;
     // (undocumented)
     password?: "asc" | "desc" | undefined;
+    // (undocumented)
+    prn?: "asc" | "desc" | undefined;
     // (undocumented)
     promoted?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -2815,11 +3097,15 @@ export class AccountOrderByWithAggregationInput {
     // (undocumented)
     applied?: "asc" | "desc" | undefined;
     // (undocumented)
+    _avg?: AccountAvgOrderByAggregateInput | undefined;
+    // (undocumented)
     _count?: AccountCountOrderByAggregateInput | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     dob?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -2841,6 +3127,8 @@ export class AccountOrderByWithAggregationInput {
     // (undocumented)
     password?: "asc" | "desc" | undefined;
     // (undocumented)
+    prn?: "asc" | "desc" | undefined;
+    // (undocumented)
     promoted?: "asc" | "desc" | undefined;
     // (undocumented)
     resetPasswordExpires?: "asc" | "desc" | undefined;
@@ -2854,6 +3142,8 @@ export class AccountOrderByWithAggregationInput {
     sex?: "asc" | "desc" | undefined;
     // (undocumented)
     subsciption?: "asc" | "desc" | undefined;
+    // (undocumented)
+    _sum?: AccountSumOrderByAggregateInput | undefined;
     // (undocumented)
     title?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -2885,6 +3175,8 @@ export class AccountOrderByWithRelationAndSearchRelevanceInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dob?: "asc" | "desc" | undefined;
     // (undocumented)
     emails?: EmailOrderByRelationAggregateInput | undefined;
@@ -2915,6 +3207,8 @@ export class AccountOrderByWithRelationAndSearchRelevanceInput {
     // (undocumented)
     primaryAddress?: AddressOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
+    prn?: "asc" | "desc" | undefined;
+    // (undocumented)
     promoted?: "asc" | "desc" | undefined;
     // (undocumented)
     _relevance?: AccountOrderByRelevanceInput | undefined;
@@ -2926,6 +3220,8 @@ export class AccountOrderByWithRelationAndSearchRelevanceInput {
     retired?: "asc" | "desc" | undefined;
     // (undocumented)
     rtw?: RTWOrderByRelationAggregateInput | undefined;
+    // (undocumented)
+    Salt?: SaltOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
     Salutation?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -2955,7 +3251,7 @@ export class AccountPhonesArgs {
     // (undocumented)
     cursor?: PhoneWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
     // (undocumented)
     orderBy?: PhoneOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3005,6 +3301,8 @@ export class AccountRelationsResolver {
     // (undocumented)
     rtw(account: Account, ctx: any, args: AccountRtwArgs): Promise<RTW[]>;
     // (undocumented)
+    Salt(account: Account, ctx: any): Promise<Salt | null>;
+    // (undocumented)
     sia(account: Account, ctx: any, args: AccountSiaArgs): Promise<SIABadge[]>;
     // (undocumented)
     Status(account: Account, ctx: any, args: AccountStatusArgs): Promise<StatusOnAccount[]>;
@@ -3021,7 +3319,7 @@ export class AccountRtwArgs {
     // (undocumented)
     cursor?: RTWWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: RTWOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3043,6 +3341,8 @@ export enum AccountScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     dob = "dob",
     // (undocumented)
     firstname = "firstname",
@@ -3058,6 +3358,8 @@ export enum AccountScalarFieldEnum {
     midname = "midname",
     // (undocumented)
     password = "password",
+    // (undocumented)
+    prn = "prn",
     // (undocumented)
     promoted = "promoted",
     // (undocumented)
@@ -3091,7 +3393,9 @@ export class AccountScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     dob?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -3112,6 +3416,8 @@ export class AccountScalarWhereInput {
     OR?: AccountScalarWhereInput[] | undefined;
     // (undocumented)
     password?: StringNullableFilter | undefined;
+    // (undocumented)
+    prn?: IntFilter | undefined;
     // (undocumented)
     promoted?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -3145,7 +3451,9 @@ export class AccountScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     dob?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -3166,6 +3474,8 @@ export class AccountScalarWhereWithAggregatesInput {
     OR?: AccountScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
     password?: StringNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    prn?: IntWithAggregatesFilter | undefined;
     // (undocumented)
     promoted?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -3193,7 +3503,7 @@ export class AccountSiaArgs {
     // (undocumented)
     cursor?: SIABadgeWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deleted" | "account_id"> | undefined;
+    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deletedDate" | "deleted" | "account_id"> | undefined;
     // (undocumented)
     orderBy?: SIABadgeOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3209,7 +3519,7 @@ export class AccountStatusArgs {
     // (undocumented)
     cursor?: StatusOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3225,7 +3535,7 @@ export class AccountSubscriptionArgs {
     // (undocumented)
     cursor?: SubscriptionOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3241,7 +3551,7 @@ export class AccountSubusersArgs {
     // (undocumented)
     cursor?: SubuserOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubuserOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3253,11 +3563,23 @@ export class AccountSubusersArgs {
 }
 
 // @public (undocumented)
+export class AccountSumAggregate {
+    // (undocumented)
+    prn: number | null;
+}
+
+// @public (undocumented)
+export class AccountSumOrderByAggregateInput {
+    // (undocumented)
+    prn?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
 export class AccountTransactionsArgs {
     // (undocumented)
     cursor?: TransactionWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "data"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "data"> | undefined;
     // (undocumented)
     orderBy?: TransactionOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -3299,7 +3621,9 @@ export class AccountUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3331,6 +3655,8 @@ export class AccountUpdateInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -3340,6 +3666,8 @@ export class AccountUpdateInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3373,7 +3701,9 @@ export class AccountUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3390,6 +3720,8 @@ export class AccountUpdateManyMutationInput {
     midname?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     password?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
     // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3691,6 +4023,24 @@ export class AccountUpdateOneWithoutPrimaryAddressInput {
 }
 
 // @public (undocumented)
+export class AccountUpdateOneWithoutSaltInput {
+    // (undocumented)
+    connect?: AccountWhereUniqueInput | undefined;
+    // (undocumented)
+    connectOrCreate?: AccountCreateOrConnectWithoutSaltInput | undefined;
+    // (undocumented)
+    create?: AccountCreateWithoutSaltInput | undefined;
+    // (undocumented)
+    delete?: boolean | undefined;
+    // (undocumented)
+    disconnect?: boolean | undefined;
+    // (undocumented)
+    update?: AccountUpdateWithoutSaltInput | undefined;
+    // (undocumented)
+    upsert?: AccountUpsertWithoutSaltInput | undefined;
+}
+
+// @public (undocumented)
 export class AccountUpdateOneWithoutSiaInput {
     // (undocumented)
     connect?: AccountWhereUniqueInput | undefined;
@@ -3727,7 +4077,9 @@ export class AccountUpdateWithoutAccessesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3759,6 +4111,8 @@ export class AccountUpdateWithoutAccessesInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -3768,6 +4122,8 @@ export class AccountUpdateWithoutAccessesInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3811,7 +4167,9 @@ export class AccountUpdateWithoutAccountsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3843,6 +4201,8 @@ export class AccountUpdateWithoutAccountsInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -3852,6 +4212,8 @@ export class AccountUpdateWithoutAccountsInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3895,7 +4257,9 @@ export class AccountUpdateWithoutAddressesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3927,6 +4291,8 @@ export class AccountUpdateWithoutAddressesInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -3936,6 +4302,8 @@ export class AccountUpdateWithoutAddressesInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -3979,7 +4347,9 @@ export class AccountUpdateWithoutApiTokenInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4011,6 +4381,8 @@ export class AccountUpdateWithoutApiTokenInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4020,6 +4392,8 @@ export class AccountUpdateWithoutApiTokenInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4063,7 +4437,9 @@ export class AccountUpdateWithoutApplicationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4095,6 +4471,8 @@ export class AccountUpdateWithoutApplicationInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4104,6 +4482,8 @@ export class AccountUpdateWithoutApplicationInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4147,7 +4527,9 @@ export class AccountUpdateWithoutContactOfAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4179,6 +4561,8 @@ export class AccountUpdateWithoutContactOfAddressInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4188,6 +4572,8 @@ export class AccountUpdateWithoutContactOfAddressInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4233,7 +4619,9 @@ export class AccountUpdateWithoutEmailsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4263,6 +4651,8 @@ export class AccountUpdateWithoutEmailsInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4272,6 +4662,8 @@ export class AccountUpdateWithoutEmailsInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4317,7 +4709,9 @@ export class AccountUpdateWithoutEmployeesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4347,6 +4741,8 @@ export class AccountUpdateWithoutEmployeesInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4356,6 +4752,8 @@ export class AccountUpdateWithoutEmployeesInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4401,7 +4799,9 @@ export class AccountUpdateWithoutEmployerInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4431,6 +4831,8 @@ export class AccountUpdateWithoutEmployerInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4440,6 +4842,8 @@ export class AccountUpdateWithoutEmployerInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4485,7 +4889,9 @@ export class AccountUpdateWithoutFilesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4515,6 +4921,8 @@ export class AccountUpdateWithoutFilesInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4524,6 +4932,8 @@ export class AccountUpdateWithoutFilesInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4569,7 +4979,9 @@ export class AccountUpdateWithoutManagersInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4599,6 +5011,8 @@ export class AccountUpdateWithoutManagersInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4608,6 +5022,8 @@ export class AccountUpdateWithoutManagersInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4653,7 +5069,9 @@ export class AccountUpdateWithoutPhonesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4683,6 +5101,8 @@ export class AccountUpdateWithoutPhonesInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4692,6 +5112,8 @@ export class AccountUpdateWithoutPhonesInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4737,7 +5159,9 @@ export class AccountUpdateWithoutPrimaryAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4767,6 +5191,8 @@ export class AccountUpdateWithoutPrimaryAddressInput {
     // (undocumented)
     phones?: PhoneUpdateManyWithoutAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4776,6 +5202,8 @@ export class AccountUpdateWithoutPrimaryAddressInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4821,7 +5249,9 @@ export class AccountUpdateWithoutRtwInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4853,6 +5283,8 @@ export class AccountUpdateWithoutRtwInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4860,6 +5292,98 @@ export class AccountUpdateWithoutRtwInput {
     resetPasswordToken?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
+    // (undocumented)
+    Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    sex?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    sia?: SIABadgeUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Status?: StatusOnAccountUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    subsciption?: BoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    subscription?: SubscriptionOnAccountUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    subusers?: SubuserOnAccountUpdateManyWithoutSubuserInput | undefined;
+    // (undocumented)
+    title?: NullableEnumTitleFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    transactions?: TransactionUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    username?: NullableStringFieldUpdateOperationsInput | undefined;
+}
+
+// @public (undocumented)
+export class AccountUpdateWithoutSaltInput {
+    // (undocumented)
+    accesses?: SubuserOnAccountUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    accounts?: ManagersOnAccountUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    accountType?: EnumAccountTypeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    addresses?: AddressUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    apiToken?: TokenUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    application?: ApplicationUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    applied?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    contactOfAddress?: ContactAtAddressUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    emails?: EmailUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    employees?: EmployersOnAccountUpdateManyWithoutEmployerInput | undefined;
+    // (undocumented)
+    employer?: EmployersOnAccountUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    files?: FilesUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    firstname?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    label?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    lastLogin?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    lastname?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    managers?: ManagersOnAccountUpdateManyWithoutManagersInput | undefined;
+    // (undocumented)
+    midname?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    password?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    phones?: PhoneUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
+    // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    resetPasswordToken?: NullableStringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    rtw?: RTWUpdateManyWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4905,7 +5429,9 @@ export class AccountUpdateWithoutSiaInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4937,6 +5463,8 @@ export class AccountUpdateWithoutSiaInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -4946,6 +5474,8 @@ export class AccountUpdateWithoutSiaInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -4989,7 +5519,9 @@ export class AccountUpdateWithoutStatusInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5021,6 +5553,8 @@ export class AccountUpdateWithoutStatusInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -5030,6 +5564,8 @@ export class AccountUpdateWithoutStatusInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5073,7 +5609,9 @@ export class AccountUpdateWithoutSubscriptionInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5105,6 +5643,8 @@ export class AccountUpdateWithoutSubscriptionInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -5114,6 +5654,8 @@ export class AccountUpdateWithoutSubscriptionInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5157,7 +5699,9 @@ export class AccountUpdateWithoutSubusersInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5189,6 +5733,8 @@ export class AccountUpdateWithoutSubusersInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -5198,6 +5744,8 @@ export class AccountUpdateWithoutSubusersInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5241,7 +5789,9 @@ export class AccountUpdateWithoutTransactionsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dob?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5273,6 +5823,8 @@ export class AccountUpdateWithoutTransactionsInput {
     // (undocumented)
     primaryAddress?: AddressUpdateOneWithoutPrimaryAccountInput | undefined;
     // (undocumented)
+    prn?: IntFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     promoted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     resetPasswordExpires?: NullableDateTimeFieldUpdateOperationsInput | undefined;
@@ -5282,6 +5834,8 @@ export class AccountUpdateWithoutTransactionsInput {
     retired?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     rtw?: RTWUpdateManyWithoutAccountInput | undefined;
+    // (undocumented)
+    Salt?: SaltUpdateOneWithoutAccountInput | undefined;
     // (undocumented)
     Salutation?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -5417,6 +5971,14 @@ export class AccountUpsertWithoutRtwInput {
 }
 
 // @public (undocumented)
+export class AccountUpsertWithoutSaltInput {
+    // (undocumented)
+    create: AccountCreateWithoutSaltInput;
+    // (undocumented)
+    update: AccountUpdateWithoutSaltInput;
+}
+
+// @public (undocumented)
 export class AccountUpsertWithoutSiaInput {
     // (undocumented)
     create: AccountCreateWithoutSiaInput;
@@ -5489,7 +6051,9 @@ export class AccountWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     dob?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -5525,6 +6089,8 @@ export class AccountWhereInput {
     // (undocumented)
     primaryAddress?: AddressRelationFilter | undefined;
     // (undocumented)
+    prn?: IntFilter | undefined;
+    // (undocumented)
     promoted?: DateTimeNullableFilter | undefined;
     // (undocumented)
     resetPasswordExpires?: DateTimeNullableFilter | undefined;
@@ -5534,6 +6100,8 @@ export class AccountWhereInput {
     retired?: DateTimeNullableFilter | undefined;
     // (undocumented)
     rtw?: RTWListRelationFilter | undefined;
+    // (undocumented)
+    Salt?: SaltRelationFilter | undefined;
     // (undocumented)
     Salutation?: StringNullableFilter | undefined;
     // (undocumented)
@@ -5589,7 +6157,9 @@ export class Address {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     details?: Prisma.JsonValue | null;
     // (undocumented)
@@ -5635,7 +6205,7 @@ export class AddressContactsArgs {
     // (undocumented)
     cursor?: ContactAtAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ContactAtAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -5678,6 +6248,8 @@ export class AddressCountAggregate {
     createdAt: number;
     // (undocumented)
     deleted: number;
+    // (undocumented)
+    deletedDate: number;
     // (undocumented)
     details: number;
     // (undocumented)
@@ -5725,6 +6297,8 @@ export class AddressCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     features?: "asc" | "desc" | undefined;
@@ -5771,7 +6345,9 @@ export class AddressCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -5823,7 +6399,9 @@ export class AddressCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -5877,7 +6455,9 @@ export class AddressCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6051,7 +6631,9 @@ export class AddressCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6105,7 +6687,9 @@ export class AddressCreateWithoutContactsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6161,7 +6745,9 @@ export class AddressCreateWithoutFeaturesOfBuisnessInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6215,7 +6801,9 @@ export class AddressCreateWithoutPhonesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6269,7 +6857,9 @@ export class AddressCreateWithoutPrimaryAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6323,7 +6913,9 @@ export class AddressCreateWithoutRoomsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6377,7 +6969,9 @@ export class AddressCreateWithoutVenueStyleInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -6447,7 +7041,7 @@ export class AddressFeaturesOfBuisnessArgs {
     // (undocumented)
     cursor?: FeatureOfAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -6475,7 +7069,9 @@ export class AddressGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     details: Prisma.JsonValue | null;
     // (undocumented)
@@ -6535,7 +7131,9 @@ export class AddressMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     features: string | null;
     // (undocumented)
@@ -6579,6 +7177,8 @@ export class AddressMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     features?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -6619,7 +7219,9 @@ export class AddressMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     features: string | null;
     // (undocumented)
@@ -6662,6 +7264,8 @@ export class AddressMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     features?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -6753,6 +7357,8 @@ export class AddressOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     features?: "asc" | "desc" | undefined;
@@ -6807,6 +7413,8 @@ export class AddressOrderByWithRelationAndSearchRelevanceInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     features?: "asc" | "desc" | undefined;
@@ -6853,7 +7461,7 @@ export class AddressPhonesArgs {
     // (undocumented)
     cursor?: PhoneWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
     // (undocumented)
     orderBy?: PhoneOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -6895,7 +7503,7 @@ export class AddressRoomsArgs {
     // (undocumented)
     cursor?: RoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
     // (undocumented)
     orderBy?: RoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -6922,6 +7530,8 @@ export enum AddressScalarFieldEnum {
     createdAt = "createdAt",
     // (undocumented)
     deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
     // (undocumented)
     details = "details",
     // (undocumented)
@@ -6969,7 +7579,9 @@ export class AddressScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: JsonNullableFilter | undefined;
     // (undocumented)
@@ -7021,7 +7633,9 @@ export class AddressScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     details?: JsonNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -7081,7 +7695,9 @@ export class AddressUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7133,7 +7749,9 @@ export class AddressUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7317,7 +7935,9 @@ export class AddressUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7371,7 +7991,9 @@ export class AddressUpdateWithoutContactsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7427,7 +8049,9 @@ export class AddressUpdateWithoutFeaturesOfBuisnessInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7481,7 +8105,9 @@ export class AddressUpdateWithoutPhonesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7535,7 +8161,9 @@ export class AddressUpdateWithoutPrimaryAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7589,7 +8217,9 @@ export class AddressUpdateWithoutRoomsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7643,7 +8273,9 @@ export class AddressUpdateWithoutVenueStyleInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: Prisma.InputJsonValue | undefined;
     // (undocumented)
@@ -7761,7 +8393,7 @@ export class AddressVenueStyleArgs {
     // (undocumented)
     cursor?: VenueStyleWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: VenueStyleOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -7793,7 +8425,9 @@ export class AddressWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: JsonNullableFilter | undefined;
     // (undocumented)
@@ -7855,11 +8489,15 @@ export class AffectedRowsOutput {
 // @public (undocumented)
 export class AggregateAccount {
     // (undocumented)
+    _avg: AccountAvgAggregate | null;
+    // (undocumented)
     _count: AccountCountAggregate | null;
     // (undocumented)
     _max: AccountMaxAggregate | null;
     // (undocumented)
     _min: AccountMinAggregate | null;
+    // (undocumented)
+    _sum: AccountSumAggregate | null;
 }
 
 // @public (undocumented)
@@ -8371,6 +9009,36 @@ export class AggregateRTWResolver {
 }
 
 // @public (undocumented)
+export class AggregateSalt {
+    // (undocumented)
+    _count: SaltCountAggregate | null;
+    // (undocumented)
+    _max: SaltMaxAggregate | null;
+    // (undocumented)
+    _min: SaltMinAggregate | null;
+}
+
+// @public (undocumented)
+export class AggregateSaltArgs {
+    // (undocumented)
+    cursor?: SaltWhereUniqueInput | undefined;
+    // (undocumented)
+    orderBy?: SaltOrderByWithRelationAndSearchRelevanceInput[] | undefined;
+    // (undocumented)
+    skip?: number | undefined;
+    // (undocumented)
+    take?: number | undefined;
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class AggregateSaltResolver {
+    // (undocumented)
+    aggregateSalt(ctx: any, info: GraphQLResolveInfo, args: AggregateSaltArgs): Promise<AggregateSalt>;
+}
+
+// @public (undocumented)
 export class AggregateSIABadge {
     // (undocumented)
     _avg: SIABadgeAvgAggregate | null;
@@ -8687,7 +9355,9 @@ export class Application {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -8707,6 +9377,8 @@ export class ApplicationCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     name: number;
@@ -8723,6 +9395,8 @@ export class ApplicationCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -8737,7 +9411,9 @@ export class ApplicationCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -8751,7 +9427,9 @@ export class ApplicationCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -8775,7 +9453,9 @@ export class ApplicationCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -8809,7 +9489,9 @@ export class ApplicationCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -8855,7 +9537,9 @@ export class ApplicationGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -8885,7 +9569,9 @@ export class ApplicationMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -8903,6 +9589,8 @@ export class ApplicationMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -8917,7 +9605,9 @@ export class ApplicationMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -8934,6 +9624,8 @@ export class ApplicationMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -8979,6 +9671,8 @@ export class ApplicationOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: ApplicationMaxOrderByAggregateInput | undefined;
@@ -9000,6 +9694,8 @@ export class ApplicationOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9025,6 +9721,8 @@ export enum ApplicationScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     name = "name",
@@ -9041,7 +9739,9 @@ export class ApplicationScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -9063,7 +9763,9 @@ export class ApplicationScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -9083,7 +9785,9 @@ export class ApplicationUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -9097,7 +9801,9 @@ export class ApplicationUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -9145,7 +9851,9 @@ export class ApplicationUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -9183,7 +9891,9 @@ export class ApplicationWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -9240,6 +9950,10 @@ export class Arrangement {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
     details?: string | null;
     // (undocumented)
     icon?: string | null;
@@ -9266,6 +9980,10 @@ export class ArrangementCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     details: number;
     // (undocumented)
     icon: number;
@@ -9282,6 +10000,10 @@ export class ArrangementCountOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     icon?: "asc" | "desc" | undefined;
@@ -9297,6 +10019,10 @@ export class ArrangementCountOrderByAggregateInput {
 export class ArrangementCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9315,6 +10041,10 @@ export class ArrangementCreateInput {
 export class ArrangementCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9349,6 +10079,10 @@ export class ArrangementCreateOrConnectWithoutRoomInput {
 export class ArrangementCreateWithoutRoomInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9396,6 +10130,10 @@ export class ArrangementGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     icon: string | null;
@@ -9416,6 +10154,10 @@ export class ArrangementMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     icon: string | null;
@@ -9431,6 +10173,10 @@ export class ArrangementMaxAggregate {
 export class ArrangementMaxOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9448,6 +10194,10 @@ export class ArrangementMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     icon: string | null;
@@ -9463,6 +10213,10 @@ export class ArrangementMinAggregate {
 export class ArrangementMinOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9485,6 +10239,10 @@ export class ArrangementOfRoom {
     capacity: number;
     // (undocumented)
     createdAt: Date;
+    // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     details?: string | null;
     // (undocumented)
@@ -9518,6 +10276,10 @@ export class ArrangementOfRoomCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     details: number;
     // (undocumented)
     roomId: number;
@@ -9533,6 +10295,10 @@ export class ArrangementOfRoomCountOrderByAggregateInput {
     capacity?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9550,6 +10316,10 @@ export class ArrangementOfRoomCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     details?: string | undefined;
     // (undocumented)
     room: RoomCreateNestedOneWithoutArrangementsInput;
@@ -9563,6 +10333,10 @@ export class ArrangementOfRoomCreateManyArrangementInput {
     capacity: number;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9588,6 +10362,10 @@ export class ArrangementOfRoomCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     details?: string | undefined;
     // (undocumented)
     roomId: string;
@@ -9603,6 +10381,10 @@ export class ArrangementOfRoomCreateManyRoomInput {
     capacity: number;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9664,6 +10446,10 @@ export class ArrangementOfRoomCreateWithoutArrangementInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     details?: string | undefined;
     // (undocumented)
     room: RoomCreateNestedOneWithoutArrangementsInput;
@@ -9679,6 +10465,10 @@ export class ArrangementOfRoomCreateWithoutRoomInput {
     capacity: number;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -9726,6 +10516,10 @@ export class ArrangementOfRoomGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     _max: ArrangementOfRoomMaxAggregate | null;
@@ -9758,6 +10552,10 @@ export class ArrangementOfRoomMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     roomId: string | null;
@@ -9773,6 +10571,10 @@ export class ArrangementOfRoomMaxOrderByAggregateInput {
     capacity?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9790,6 +10592,10 @@ export class ArrangementOfRoomMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     roomId: string | null;
@@ -9805,6 +10611,10 @@ export class ArrangementOfRoomMinOrderByAggregateInput {
     capacity?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9852,6 +10662,10 @@ export class ArrangementOfRoomOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: ArrangementOfRoomMaxOrderByAggregateInput | undefined;
@@ -9875,6 +10689,10 @@ export class ArrangementOfRoomOrderByWithRelationAndSearchRelevanceInput {
     capacity?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -9912,6 +10730,10 @@ export enum ArrangementOfRoomScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
     // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     details = "details",
     // (undocumented)
     roomId = "roomId",
@@ -9929,6 +10751,10 @@ export class ArrangementOfRoomScalarWhereInput {
     capacity?: IntFilter | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
@@ -9951,6 +10777,10 @@ export class ArrangementOfRoomScalarWhereWithAggregatesInput {
     capacity?: IntWithAggregatesFilter | undefined;
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     details?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -9984,6 +10814,10 @@ export class ArrangementOfRoomUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     room?: RoomUpdateOneRequiredWithoutArrangementsInput | undefined;
@@ -9997,6 +10831,10 @@ export class ArrangementOfRoomUpdateManyMutationInput {
     capacity?: IntFieldUpdateOperationsInput | undefined;
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -10078,6 +10916,10 @@ export class ArrangementOfRoomUpdateWithoutArrangementInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     room?: RoomUpdateOneRequiredWithoutArrangementsInput | undefined;
@@ -10093,6 +10935,10 @@ export class ArrangementOfRoomUpdateWithoutRoomInput {
     capacity?: IntFieldUpdateOperationsInput | undefined;
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -10148,6 +10994,10 @@ export class ArrangementOfRoomWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
+    // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
     NOT?: ArrangementOfRoomWhereInput[] | undefined;
@@ -10196,6 +11046,10 @@ export class ArrangementOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     icon?: "asc" | "desc" | undefined;
@@ -10215,6 +11069,10 @@ export class ArrangementOrderByWithAggregationInput {
 export class ArrangementOrderByWithRelationAndSearchRelevanceInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -10250,7 +11108,7 @@ export class ArrangementRoomArgs {
     // (undocumented)
     cursor?: ArrangementOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -10265,6 +11123,10 @@ export class ArrangementRoomArgs {
 export enum ArrangementScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
+    // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
     // (undocumented)
     details = "details",
     // (undocumented)
@@ -10283,6 +11145,10 @@ export class ArrangementScalarWhereWithAggregatesInput {
     AND?: ArrangementScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     details?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -10304,6 +11170,10 @@ export class ArrangementUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     icon?: NullableStringFieldUpdateOperationsInput | undefined;
@@ -10321,6 +11191,10 @@ export class ArrangementUpdateInput {
 export class ArrangementUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -10352,6 +11226,10 @@ export class ArrangementUpdateWithoutRoomInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     icon?: NullableStringFieldUpdateOperationsInput | undefined;
@@ -10377,6 +11255,10 @@ export class ArrangementWhereInput {
     AND?: ArrangementWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
@@ -10476,7 +11358,9 @@ export class ContactAtAddress {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     email?: Email | null;
     // (undocumented)
@@ -10510,6 +11394,8 @@ export class ContactAtAddressCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     emailId: number;
     // (undocumented)
     jobTitle: number;
@@ -10530,6 +11416,8 @@ export class ContactAtAddressCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     emailId?: "asc" | "desc" | undefined;
     // (undocumented)
     jobTitle?: "asc" | "desc" | undefined;
@@ -10548,7 +11436,9 @@ export class ContactAtAddressCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     email?: EmailCreateNestedOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -10566,7 +11456,9 @@ export class ContactAtAddressCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     emailId?: string | undefined;
     // (undocumented)
@@ -10592,7 +11484,9 @@ export class ContactAtAddressCreateManyAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     emailId?: string | undefined;
     // (undocumented)
@@ -10620,7 +11514,9 @@ export class ContactAtAddressCreateManyEmailInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     jobTitle?: string | undefined;
     // (undocumented)
@@ -10646,7 +11542,9 @@ export class ContactAtAddressCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     emailId?: string | undefined;
     // (undocumented)
@@ -10724,7 +11622,9 @@ export class ContactAtAddressCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     email?: EmailCreateNestedOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -10742,7 +11642,9 @@ export class ContactAtAddressCreateWithoutAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     email?: EmailCreateNestedOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -10762,7 +11664,9 @@ export class ContactAtAddressCreateWithoutEmailInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     jobTitle?: string | undefined;
     // (undocumented)
@@ -10810,7 +11714,9 @@ export class ContactAtAddressGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     emailId: string | null;
     // (undocumented)
@@ -10844,7 +11750,9 @@ export class ContactAtAddressMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     emailId: string | null;
     // (undocumented)
@@ -10866,6 +11774,8 @@ export class ContactAtAddressMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     emailId?: "asc" | "desc" | undefined;
     // (undocumented)
     jobTitle?: "asc" | "desc" | undefined;
@@ -10884,7 +11794,9 @@ export class ContactAtAddressMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     emailId: string | null;
     // (undocumented)
@@ -10905,6 +11817,8 @@ export class ContactAtAddressMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     emailId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -10958,6 +11872,8 @@ export class ContactAtAddressOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     emailId?: "asc" | "desc" | undefined;
     // (undocumented)
     jobTitle?: "asc" | "desc" | undefined;
@@ -10985,6 +11901,8 @@ export class ContactAtAddressOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     email?: EmailOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -11020,6 +11938,8 @@ export enum ContactAtAddressScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     emailId = "emailId",
     // (undocumented)
     jobTitle = "jobTitle",
@@ -11040,7 +11960,9 @@ export class ContactAtAddressScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     emailId?: StringNullableFilter | undefined;
     // (undocumented)
@@ -11066,7 +11988,9 @@ export class ContactAtAddressScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     emailId?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -11090,7 +12014,9 @@ export class ContactAtAddressUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     email?: EmailUpdateOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -11106,7 +12032,9 @@ export class ContactAtAddressUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     jobTitle?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -11224,7 +12152,9 @@ export class ContactAtAddressUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     email?: EmailUpdateOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -11242,7 +12172,9 @@ export class ContactAtAddressUpdateWithoutAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     email?: EmailUpdateOneWithoutAssociatedContactInput | undefined;
     // (undocumented)
@@ -11262,7 +12194,9 @@ export class ContactAtAddressUpdateWithoutEmailInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     jobTitle?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -11340,7 +12274,9 @@ export class ContactAtAddressWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     email?: EmailRelationFilter | undefined;
     // (undocumented)
@@ -11770,6 +12706,20 @@ export class CreateManyRTWResolver {
 }
 
 // @public (undocumented)
+export class CreateManySaltArgs {
+    // (undocumented)
+    data: SaltCreateManyInput[];
+    // (undocumented)
+    skipDuplicates?: boolean | undefined;
+}
+
+// @public (undocumented)
+export class CreateManySaltResolver {
+    // (undocumented)
+    createManySalt(ctx: any, info: GraphQLResolveInfo, args: CreateManySaltArgs): Promise<AffectedRowsOutput>;
+}
+
+// @public (undocumented)
 export class CreateManySIABadgeArgs {
     // (undocumented)
     data: SIABadgeCreateManyInput[];
@@ -11943,6 +12893,18 @@ export class CreateRTWArgs {
 export class CreateRTWResolver {
     // (undocumented)
     createRTW(ctx: any, info: GraphQLResolveInfo, args: CreateRTWArgs): Promise<RTW>;
+}
+
+// @public (undocumented)
+export class CreateSaltArgs {
+    // (undocumented)
+    data: SaltCreateInput;
+}
+
+// @public (undocumented)
+export class CreateSaltResolver {
+    // (undocumented)
+    createSalt(ctx: any, info: GraphQLResolveInfo, args: CreateSaltArgs): Promise<Salt>;
 }
 
 // @public (undocumented)
@@ -12168,6 +13130,10 @@ export class DateTimeWithAggregatesFilter {
 
 // @public (undocumented)
 export const DecimalJSScalar: GraphQLScalarType;
+
+// @public (undocumented)
+const _default: Internals;
+export default _default;
 
 // @public (undocumented)
 export class DeleteAccountArgs {
@@ -12542,6 +13508,18 @@ export class DeleteManyRTWResolver {
 }
 
 // @public (undocumented)
+export class DeleteManySaltArgs {
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class DeleteManySaltResolver {
+    // (undocumented)
+    deleteManySalt(ctx: any, info: GraphQLResolveInfo, args: DeleteManySaltArgs): Promise<AffectedRowsOutput>;
+}
+
+// @public (undocumented)
 export class DeleteManySIABadgeArgs {
     // (undocumented)
     where?: SIABadgeWhereInput | undefined;
@@ -12698,6 +13676,18 @@ export class DeleteRTWResolver {
 }
 
 // @public (undocumented)
+export class DeleteSaltArgs {
+    // (undocumented)
+    where: SaltWhereUniqueInput;
+}
+
+// @public (undocumented)
+export class DeleteSaltResolver {
+    // (undocumented)
+    deleteSalt(ctx: any, info: GraphQLResolveInfo, args: DeleteSaltArgs): Promise<Salt | null>;
+}
+
+// @public (undocumented)
 export class DeleteSIABadgeArgs {
     // (undocumented)
     where: SIABadgeWhereUniqueInput;
@@ -12834,7 +13824,9 @@ export class Domain {
     // (undocumented)
     data: Prisma.JsonValue;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     dnsType: "TXT" | "CNAME";
     // (undocumented)
@@ -12866,6 +13858,8 @@ export class DomainCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     dnsType: number;
     // (undocumented)
     domain: number;
@@ -12886,6 +13880,8 @@ export class DomainCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dnsType?: "asc" | "desc" | undefined;
     // (undocumented)
     domain?: "asc" | "desc" | undefined;
@@ -12904,7 +13900,9 @@ export class DomainCreateInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dnsType?: "TXT" | "CNAME" | undefined;
     // (undocumented)
@@ -12926,7 +13924,9 @@ export class DomainCreateManyInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dnsType?: "TXT" | "CNAME" | undefined;
     // (undocumented)
@@ -12964,7 +13964,9 @@ export class DomainCreateWithoutLinkedEmailsInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     dnsType?: "TXT" | "CNAME" | undefined;
     // (undocumented)
@@ -13014,7 +14016,9 @@ export class DomainGroupBy {
     // (undocumented)
     data: Prisma.JsonValue;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dnsType: "TXT" | "CNAME";
     // (undocumented)
@@ -13036,7 +14040,7 @@ export class DomainLinkedEmailsArgs {
     // (undocumented)
     cursor?: EmailWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmailOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -13052,7 +14056,9 @@ export class DomainMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dnsType: "TXT" | "CNAME" | null;
     // (undocumented)
@@ -13072,6 +14078,8 @@ export class DomainMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dnsType?: "asc" | "desc" | undefined;
     // (undocumented)
     domain?: "asc" | "desc" | undefined;
@@ -13088,7 +14096,9 @@ export class DomainMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     dnsType: "TXT" | "CNAME" | null;
     // (undocumented)
@@ -13107,6 +14117,8 @@ export class DomainMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     dnsType?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -13148,6 +14160,8 @@ export class DomainOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     dnsType?: "asc" | "desc" | undefined;
     // (undocumented)
     domain?: "asc" | "desc" | undefined;
@@ -13171,6 +14185,8 @@ export class DomainOrderByWithRelationAndSearchRelevanceInput {
     data?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     dnsType?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -13210,6 +14226,8 @@ export enum DomainScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     dnsType = "dnsType",
     // (undocumented)
     domain = "domain",
@@ -13230,7 +14248,9 @@ export class DomainScalarWhereWithAggregatesInput {
     // (undocumented)
     data?: JsonWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     dnsType?: EnumdnsTypeWithAggregatesFilter | undefined;
     // (undocumented)
@@ -13254,7 +14274,9 @@ export class DomainUpdateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dnsType?: EnumdnsTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -13276,7 +14298,9 @@ export class DomainUpdateManyMutationInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dnsType?: EnumdnsTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -13314,7 +14338,9 @@ export class DomainUpdateWithoutLinkedEmailsInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     dnsType?: EnumdnsTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -13344,7 +14370,9 @@ export class DomainWhereInput {
     // (undocumented)
     data?: JsonFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     dnsType?: EnumdnsTypeFilter | undefined;
     // (undocumented)
@@ -13386,7 +14414,9 @@ export class Email {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     domain?: Domain | null;
     // (undocumented)
@@ -13464,7 +14494,7 @@ export class EmailAssociatedContactArgs {
     // (undocumented)
     cursor?: ContactAtAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ContactAtAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -13505,6 +14535,8 @@ export class EmailCountAggregate {
     createdAt: number;
     // (undocumented)
     deleted: number;
+    // (undocumented)
+    deletedDate: number;
     // (undocumented)
     domainId: number;
     // (undocumented)
@@ -13586,6 +14618,8 @@ export class EmailCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     domainId?: "asc" | "desc" | undefined;
     // (undocumented)
     email?: "asc" | "desc" | undefined;
@@ -13666,7 +14700,9 @@ export class EmailCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     domain?: DomainCreateNestedOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -13744,7 +14780,9 @@ export class EmailCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     domainId?: string | undefined;
     // (undocumented)
@@ -13832,7 +14870,9 @@ export class EmailCreateManyDomainInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     email: string;
     // (undocumented)
@@ -13918,7 +14958,9 @@ export class EmailCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     domainId?: string | undefined;
     // (undocumented)
@@ -14056,7 +15098,9 @@ export class EmailCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     domain?: DomainCreateNestedOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -14136,7 +15180,9 @@ export class EmailCreateWithoutAssociatedContactInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     domain?: DomainCreateNestedOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -14218,7 +15264,9 @@ export class EmailCreateWithoutDomainInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     email: string;
     // (undocumented)
@@ -14328,7 +15376,9 @@ export class EmailGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     domainId: string | null;
     // (undocumented)
@@ -14424,7 +15474,9 @@ export class EmailMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     domainId: string | null;
     // (undocumented)
@@ -14506,6 +15558,8 @@ export class EmailMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     domainId?: "asc" | "desc" | undefined;
     // (undocumented)
     email?: "asc" | "desc" | undefined;
@@ -14584,7 +15638,9 @@ export class EmailMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     domainId: string | null;
     // (undocumented)
@@ -14665,6 +15721,8 @@ export class EmailMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     domainId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -14812,6 +15870,8 @@ export class EmailOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     domainId?: "asc" | "desc" | undefined;
     // (undocumented)
     email?: "asc" | "desc" | undefined;
@@ -14901,6 +15961,8 @@ export class EmailOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     domain?: DomainOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -15004,6 +16066,8 @@ export enum EmailScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     domainId = "domainId",
     // (undocumented)
     email = "email",
@@ -15084,7 +16148,9 @@ export class EmailScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     domainId?: StringNullableFilter | undefined;
     // (undocumented)
@@ -15170,7 +16236,9 @@ export class EmailScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     domainId?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -15268,7 +16336,9 @@ export class EmailUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     domain?: DomainUpdateOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -15346,7 +16416,9 @@ export class EmailUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     email?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -15510,7 +16582,9 @@ export class EmailUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     domain?: DomainUpdateOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -15590,7 +16664,9 @@ export class EmailUpdateWithoutAssociatedContactInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     domain?: DomainUpdateOneWithoutLinkedEmailsInput | undefined;
     // (undocumented)
@@ -15672,7 +16748,9 @@ export class EmailUpdateWithoutDomainInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     email?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -15800,7 +16878,9 @@ export class EmailWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     domain?: DomainRelationFilter | undefined;
     // (undocumented)
@@ -15894,6 +16974,10 @@ export class EmployersOnAccount {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
     employer?: Account;
     // (undocumented)
     employerId: string;
@@ -15918,6 +17002,10 @@ export class EmployersOnAccountCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     employerId: number;
     // (undocumented)
     updatedAt: number;
@@ -15929,6 +17017,10 @@ export class EmployersOnAccountCountOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     employerId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -15942,6 +17034,10 @@ export class EmployersOnAccountCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     employer: AccountCreateNestedOneWithoutEmployeesInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -15951,6 +17047,10 @@ export class EmployersOnAccountCreateInput {
 export class EmployersOnAccountCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     employerId: string;
     // (undocumented)
@@ -15972,6 +17072,10 @@ export class EmployersOnAccountCreateManyEmployerInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     updatedAt?: Date | undefined;
 }
 
@@ -15989,6 +17093,10 @@ export class EmployersOnAccountCreateManyInput {
     accountId: string;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     employerId: string;
     // (undocumented)
@@ -16040,6 +17148,10 @@ export class EmployersOnAccountCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     employer: AccountCreateNestedOneWithoutEmployeesInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -16051,6 +17163,10 @@ export class EmployersOnAccountCreateWithoutEmployerInput {
     account: AccountCreateNestedOneWithoutEmployerInput;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -16092,6 +17208,10 @@ export class EmployersOnAccountGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     employerId: string;
     // (undocumented)
     _max: EmployersOnAccountMaxAggregate | null;
@@ -16118,6 +17238,10 @@ export class EmployersOnAccountMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     employerId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -16129,6 +17253,10 @@ export class EmployersOnAccountMaxOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     employerId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -16142,6 +17270,10 @@ export class EmployersOnAccountMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     employerId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -16153,6 +17285,10 @@ export class EmployersOnAccountMinOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     employerId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -16192,6 +17328,10 @@ export class EmployersOnAccountOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     employerId?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: EmployersOnAccountMaxOrderByAggregateInput | undefined;
@@ -16209,6 +17349,10 @@ export class EmployersOnAccountOrderByWithRelationAndSearchRelevanceInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     employer?: AccountOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -16234,6 +17378,10 @@ export enum EmployersOnAccountScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
     // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     employerId = "employerId",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -16247,6 +17395,10 @@ export class EmployersOnAccountScalarWhereInput {
     AND?: EmployersOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     employerId?: StringFilter | undefined;
     // (undocumented)
@@ -16266,6 +17418,10 @@ export class EmployersOnAccountScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
+    // (undocumented)
     employerId?: StringWithAggregatesFilter | undefined;
     // (undocumented)
     NOT?: EmployersOnAccountScalarWhereWithAggregatesInput[] | undefined;
@@ -16282,6 +17438,10 @@ export class EmployersOnAccountUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     employer?: AccountUpdateOneRequiredWithoutEmployeesInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -16291,6 +17451,10 @@ export class EmployersOnAccountUpdateInput {
 export class EmployersOnAccountUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -16368,6 +17532,10 @@ export class EmployersOnAccountUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     employer?: AccountUpdateOneRequiredWithoutEmployeesInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -16379,6 +17547,10 @@ export class EmployersOnAccountUpdateWithoutEmployerInput {
     account?: AccountUpdateOneRequiredWithoutEmployerInput | undefined;
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -16429,6 +17601,10 @@ export class EmployersOnAccountWhereInput {
     AND?: EmployersOnAccountWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     employer?: AccountRelationFilter | undefined;
     // (undocumented)
@@ -16772,7 +17948,9 @@ export class Feature {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     featureOfAddress?: FeatureOfAddress[];
     // (undocumented)
@@ -16804,6 +17982,8 @@ export class FeatureCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     name: number;
@@ -16820,6 +18000,8 @@ export class FeatureCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -16834,7 +18016,9 @@ export class FeatureCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressCreateNestedManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -16854,7 +18038,9 @@ export class FeatureCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -16906,7 +18092,9 @@ export class FeatureCreateWithoutFeatureOfAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureOfRoom?: FeatureOfRoomCreateNestedManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -16924,7 +18112,9 @@ export class FeatureCreateWithoutFeatureOfRoomInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressCreateNestedManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -16970,7 +18160,7 @@ export class FeatureFeatureOfAddressArgs {
     // (undocumented)
     cursor?: FeatureOfAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -16986,7 +18176,7 @@ export class FeatureFeatureOfRoomArgs {
     // (undocumented)
     cursor?: FeatureOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -17004,7 +18194,9 @@ export class FeatureGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -17024,7 +18216,9 @@ export class FeatureMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -17042,6 +18236,8 @@ export class FeatureMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -17056,7 +18252,9 @@ export class FeatureMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -17073,6 +18271,8 @@ export class FeatureMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -17094,7 +18294,9 @@ export class FeatureOfAddress {
     // (undocumented)
     data?: Prisma.JsonValue | null;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     feature?: Feature;
     // (undocumented)
@@ -17124,6 +18326,8 @@ export class FeatureOfAddressCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     featureId: number;
     // (undocumented)
     updatedAt: number;
@@ -17140,6 +18344,8 @@ export class FeatureOfAddressCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -17154,7 +18360,9 @@ export class FeatureOfAddressCreateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     feature: FeatureCreateNestedOneWithoutFeatureOfAddressInput;
     // (undocumented)
@@ -17168,7 +18376,9 @@ export class FeatureOfAddressCreateManyAddressInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17192,7 +18402,9 @@ export class FeatureOfAddressCreateManyFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -17214,7 +18426,9 @@ export class FeatureOfAddressCreateManyInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17268,7 +18482,9 @@ export class FeatureOfAddressCreateWithoutAddressInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     feature: FeatureCreateNestedOneWithoutFeatureOfAddressInput;
     // (undocumented)
@@ -17284,7 +18500,9 @@ export class FeatureOfAddressCreateWithoutFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -17328,7 +18546,9 @@ export class FeatureOfAddressGroupBy {
     // (undocumented)
     data: Prisma.JsonValue | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17356,7 +18576,9 @@ export class FeatureOfAddressMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string | null;
     // (undocumented)
@@ -17372,6 +18594,8 @@ export class FeatureOfAddressMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -17384,7 +18608,9 @@ export class FeatureOfAddressMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string | null;
     // (undocumented)
@@ -17399,6 +18625,8 @@ export class FeatureOfAddressMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -17442,6 +18670,8 @@ export class FeatureOfAddressOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: FeatureOfAddressMaxOrderByAggregateInput | undefined;
@@ -17463,6 +18693,8 @@ export class FeatureOfAddressOrderByWithRelationAndSearchRelevanceInput {
     data?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     feature?: FeatureOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -17492,6 +18724,8 @@ export enum FeatureOfAddressScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     featureId = "featureId",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -17508,7 +18742,9 @@ export class FeatureOfAddressScalarWhereInput {
     // (undocumented)
     data?: JsonNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     featureId?: StringFilter | undefined;
     // (undocumented)
@@ -17530,7 +18766,9 @@ export class FeatureOfAddressScalarWhereWithAggregatesInput {
     // (undocumented)
     data?: JsonNullableWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     featureId?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -17550,7 +18788,9 @@ export class FeatureOfAddressUpdateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     feature?: FeatureUpdateOneRequiredWithoutFeatureOfAddressInput | undefined;
     // (undocumented)
@@ -17564,7 +18804,9 @@ export class FeatureOfAddressUpdateManyMutationInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -17644,7 +18886,9 @@ export class FeatureOfAddressUpdateWithoutAddressInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     feature?: FeatureUpdateOneRequiredWithoutFeatureOfAddressInput | undefined;
     // (undocumented)
@@ -17660,7 +18904,9 @@ export class FeatureOfAddressUpdateWithoutFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -17714,7 +18960,9 @@ export class FeatureOfAddressWhereInput {
     // (undocumented)
     data?: JsonNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     feature?: FeatureRelationFilter | undefined;
     // (undocumented)
@@ -17740,7 +18988,9 @@ export class FeatureOfRoom {
     // (undocumented)
     data?: Prisma.JsonValue | null;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     feature?: Feature;
     // (undocumented)
@@ -17764,6 +19014,8 @@ export class FeatureOfRoomCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     featureId: number;
     // (undocumented)
     roomId: number;
@@ -17780,6 +19032,8 @@ export class FeatureOfRoomCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     roomId?: "asc" | "desc" | undefined;
@@ -17794,7 +19048,9 @@ export class FeatureOfRoomCreateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     feature: FeatureCreateNestedOneWithoutFeatureOfRoomInput;
     // (undocumented)
@@ -17810,7 +19066,9 @@ export class FeatureOfRoomCreateManyFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     roomId: string;
     // (undocumented)
@@ -17832,7 +19090,9 @@ export class FeatureOfRoomCreateManyInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17848,7 +19108,9 @@ export class FeatureOfRoomCreateManyRoomInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17910,7 +19172,9 @@ export class FeatureOfRoomCreateWithoutFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     room: RoomCreateNestedOneWithoutFeaturesOfRoomInput;
     // (undocumented)
@@ -17924,7 +19188,9 @@ export class FeatureOfRoomCreateWithoutRoomInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     feature: FeatureCreateNestedOneWithoutFeatureOfRoomInput;
     // (undocumented)
@@ -17968,7 +19234,9 @@ export class FeatureOfRoomGroupBy {
     // (undocumented)
     data: Prisma.JsonValue | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string;
     // (undocumented)
@@ -17996,7 +19264,9 @@ export class FeatureOfRoomMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string | null;
     // (undocumented)
@@ -18012,6 +19282,8 @@ export class FeatureOfRoomMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     roomId?: "asc" | "desc" | undefined;
@@ -18024,7 +19296,9 @@ export class FeatureOfRoomMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     featureId: string | null;
     // (undocumented)
@@ -18039,6 +19313,8 @@ export class FeatureOfRoomMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -18082,6 +19358,8 @@ export class FeatureOfRoomOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     featureId?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: FeatureOfRoomMaxOrderByAggregateInput | undefined;
@@ -18101,6 +19379,8 @@ export class FeatureOfRoomOrderByWithRelationAndSearchRelevanceInput {
     data?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     feature?: FeatureOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -18140,6 +19420,8 @@ export enum FeatureOfRoomScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     featureId = "featureId",
     // (undocumented)
     roomId = "roomId",
@@ -18156,7 +19438,9 @@ export class FeatureOfRoomScalarWhereInput {
     // (undocumented)
     data?: JsonNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     featureId?: StringFilter | undefined;
     // (undocumented)
@@ -18178,7 +19462,9 @@ export class FeatureOfRoomScalarWhereWithAggregatesInput {
     // (undocumented)
     data?: JsonNullableWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     featureId?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -18198,7 +19484,9 @@ export class FeatureOfRoomUpdateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     feature?: FeatureUpdateOneRequiredWithoutFeatureOfRoomInput | undefined;
     // (undocumented)
@@ -18214,7 +19502,9 @@ export class FeatureOfRoomUpdateManyMutationInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -18294,7 +19584,9 @@ export class FeatureOfRoomUpdateWithoutFeatureInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     room?: RoomUpdateOneRequiredWithoutFeaturesOfRoomInput | undefined;
     // (undocumented)
@@ -18308,7 +19600,9 @@ export class FeatureOfRoomUpdateWithoutRoomInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     feature?: FeatureUpdateOneRequiredWithoutFeatureOfRoomInput | undefined;
     // (undocumented)
@@ -18360,7 +19654,9 @@ export class FeatureOfRoomWhereInput {
     // (undocumented)
     data?: JsonNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     feature?: FeatureRelationFilter | undefined;
     // (undocumented)
@@ -18410,6 +19706,8 @@ export class FeatureOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: FeatureMaxOrderByAggregateInput | undefined;
@@ -18429,6 +19727,8 @@ export class FeatureOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressOrderByRelationAggregateInput | undefined;
     // (undocumented)
@@ -18468,6 +19768,8 @@ export enum FeatureScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     name = "name",
@@ -18484,7 +19786,9 @@ export class FeatureScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -18514,7 +19818,9 @@ export class FeatureUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressUpdateManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -18534,7 +19840,9 @@ export class FeatureUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -18578,7 +19886,9 @@ export class FeatureUpdateWithoutFeatureOfAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featureOfRoom?: FeatureOfRoomUpdateManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -18596,7 +19906,9 @@ export class FeatureUpdateWithoutFeatureOfRoomInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressUpdateManyWithoutFeatureInput | undefined;
     // (undocumented)
@@ -18632,7 +19944,9 @@ export class FeatureWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     featureOfAddress?: FeatureOfAddressListRelationFilter | undefined;
     // (undocumented)
@@ -18666,7 +19980,9 @@ export class Files {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -18684,7 +20000,7 @@ export class FilesAccountArgs {
     // (undocumented)
     cursor?: AccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deleted"> | undefined;
+    distinct?: Array<"id" | "prn" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -18710,6 +20026,8 @@ export class FilesCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     name: number;
@@ -18725,6 +20043,8 @@ export class FilesCountOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -18742,7 +20062,9 @@ export class FilesCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -18758,7 +20080,9 @@ export class FilesCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -18774,7 +20098,9 @@ export class FilesCreateManyRtwInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -18834,7 +20160,9 @@ export class FilesCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -18852,7 +20180,9 @@ export class FilesCreateWithoutRtwInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -18896,7 +20226,9 @@ export class FilesGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -18926,7 +20258,9 @@ export class FilesMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -18944,6 +20278,8 @@ export class FilesMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -18958,7 +20294,9 @@ export class FilesMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -18975,6 +20313,8 @@ export class FilesMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -19020,6 +20360,8 @@ export class FilesOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: FilesMaxOrderByAggregateInput | undefined;
@@ -19041,6 +20383,8 @@ export class FilesOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -19070,6 +20414,8 @@ export enum FilesScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     name = "name",
@@ -19086,7 +20432,9 @@ export class FilesScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -19108,7 +20456,9 @@ export class FilesScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -19130,7 +20480,9 @@ export class FilesUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -19146,7 +20498,9 @@ export class FilesUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -19226,7 +20580,9 @@ export class FilesUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -19244,7 +20600,9 @@ export class FilesUpdateWithoutRtwInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -19298,7 +20656,9 @@ export class FilesWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -19326,7 +20686,7 @@ export class FindFirstAccountArgs {
     // (undocumented)
     cursor?: AccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deleted"> | undefined;
+    distinct?: Array<"id" | "prn" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19348,7 +20708,7 @@ export class FindFirstAddressArgs {
     // (undocumented)
     cursor?: AddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deleted"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19370,7 +20730,7 @@ export class FindFirstApplicationArgs {
     // (undocumented)
     cursor?: ApplicationWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ApplicationOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19392,7 +20752,7 @@ export class FindFirstArrangementArgs {
     // (undocumented)
     cursor?: ArrangementWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19408,7 +20768,7 @@ export class FindFirstArrangementOfRoomArgs {
     // (undocumented)
     cursor?: ArrangementOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19436,7 +20796,7 @@ export class FindFirstContactAtAddressArgs {
     // (undocumented)
     cursor?: ContactAtAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ContactAtAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19458,7 +20818,7 @@ export class FindFirstDomainArgs {
     // (undocumented)
     cursor?: DomainWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: DomainOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19480,7 +20840,7 @@ export class FindFirstEmailArgs {
     // (undocumented)
     cursor?: EmailWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmailOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19502,7 +20862,7 @@ export class FindFirstEmployersOnAccountArgs {
     // (undocumented)
     cursor?: EmployersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmployersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19524,7 +20884,7 @@ export class FindFirstFeatureArgs {
     // (undocumented)
     cursor?: FeatureWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19540,7 +20900,7 @@ export class FindFirstFeatureOfAddressArgs {
     // (undocumented)
     cursor?: FeatureOfAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19562,7 +20922,7 @@ export class FindFirstFeatureOfRoomArgs {
     // (undocumented)
     cursor?: FeatureOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19590,7 +20950,7 @@ export class FindFirstFilesArgs {
     // (undocumented)
     cursor?: FilesWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FilesOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19612,7 +20972,7 @@ export class FindFirstManagersOnAccountArgs {
     // (undocumented)
     cursor?: ManagersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ManagersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19634,7 +20994,7 @@ export class FindFirstPhoneArgs {
     // (undocumented)
     cursor?: PhoneWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
     // (undocumented)
     orderBy?: PhoneOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19656,7 +21016,7 @@ export class FindFirstRoomArgs {
     // (undocumented)
     cursor?: RoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
     // (undocumented)
     orderBy?: RoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19678,7 +21038,7 @@ export class FindFirstRTWArgs {
     // (undocumented)
     cursor?: RTWWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: RTWOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19696,11 +21056,33 @@ export class FindFirstRTWResolver {
 }
 
 // @public (undocumented)
+export class FindFirstSaltArgs {
+    // (undocumented)
+    cursor?: SaltWhereUniqueInput | undefined;
+    // (undocumented)
+    distinct?: Array<"id" | "salt" | "expiry" | "accountID" | "deletedDate" | "deleted"> | undefined;
+    // (undocumented)
+    orderBy?: SaltOrderByWithRelationAndSearchRelevanceInput[] | undefined;
+    // (undocumented)
+    skip?: number | undefined;
+    // (undocumented)
+    take?: number | undefined;
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class FindFirstSaltResolver {
+    // (undocumented)
+    findFirstSalt(ctx: any, info: GraphQLResolveInfo, args: FindFirstSaltArgs): Promise<Salt | null>;
+}
+
+// @public (undocumented)
 export class FindFirstSIABadgeArgs {
     // (undocumented)
     cursor?: SIABadgeWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deleted" | "account_id"> | undefined;
+    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deletedDate" | "deleted" | "account_id"> | undefined;
     // (undocumented)
     orderBy?: SIABadgeOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19722,7 +21104,7 @@ export class FindFirstSIACheckArgs {
     // (undocumented)
     cursor?: SIACheckWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deleted" | "error" | "transactionId"> | undefined;
+    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "error" | "transactionId"> | undefined;
     // (undocumented)
     orderBy?: SIACheckOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19744,7 +21126,7 @@ export class FindFirstStatusArgs {
     // (undocumented)
     cursor?: StatusWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19760,7 +21142,7 @@ export class FindFirstStatusOnAccountArgs {
     // (undocumented)
     cursor?: StatusOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19788,7 +21170,7 @@ export class FindFirstSubscriptionArgs {
     // (undocumented)
     cursor?: SubscriptionWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "name" | "cost" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "name" | "cost" | "details"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19804,7 +21186,7 @@ export class FindFirstSubscriptionOnAccountArgs {
     // (undocumented)
     cursor?: SubscriptionOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19832,7 +21214,7 @@ export class FindFirstSubuserOnAccountArgs {
     // (undocumented)
     cursor?: SubuserOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubuserOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19854,7 +21236,7 @@ export class FindFirstTokenArgs {
     // (undocumented)
     cursor?: TokenWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "type" | "value" | "valid" | "expiry" | "apiToken"> | undefined;
+    distinct?: Array<"id" | "nickname" | "createdAt" | "updatedAt" | "type" | "value" | "expiry" | "accountID" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: TokenOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19876,7 +21258,7 @@ export class FindFirstTransactionArgs {
     // (undocumented)
     cursor?: TransactionWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "data"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "data"> | undefined;
     // (undocumented)
     orderBy?: TransactionOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19898,7 +21280,7 @@ export class FindFirstVenueStyleArgs {
     // (undocumented)
     cursor?: VenueStyleWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: VenueStyleOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19920,7 +21302,7 @@ export class FindManyAccountArgs {
     // (undocumented)
     cursor?: AccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deleted"> | undefined;
+    distinct?: Array<"id" | "prn" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19942,7 +21324,7 @@ export class FindManyAddressArgs {
     // (undocumented)
     cursor?: AddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deleted"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19964,7 +21346,7 @@ export class FindManyApplicationArgs {
     // (undocumented)
     cursor?: ApplicationWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ApplicationOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -19986,7 +21368,7 @@ export class FindManyArrangementArgs {
     // (undocumented)
     cursor?: ArrangementWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20002,7 +21384,7 @@ export class FindManyArrangementOfRoomArgs {
     // (undocumented)
     cursor?: ArrangementOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20030,7 +21412,7 @@ export class FindManyContactAtAddressArgs {
     // (undocumented)
     cursor?: ContactAtAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ContactAtAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20052,7 +21434,7 @@ export class FindManyDomainArgs {
     // (undocumented)
     cursor?: DomainWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: DomainOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20074,7 +21456,7 @@ export class FindManyEmailArgs {
     // (undocumented)
     cursor?: EmailWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmailOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20096,7 +21478,7 @@ export class FindManyEmployersOnAccountArgs {
     // (undocumented)
     cursor?: EmployersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "employerId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: EmployersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20118,7 +21500,7 @@ export class FindManyFeatureArgs {
     // (undocumented)
     cursor?: FeatureWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20134,7 +21516,7 @@ export class FindManyFeatureOfAddressArgs {
     // (undocumented)
     cursor?: FeatureOfAddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfAddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20156,7 +21538,7 @@ export class FindManyFeatureOfRoomArgs {
     // (undocumented)
     cursor?: FeatureOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20184,7 +21566,7 @@ export class FindManyFilesArgs {
     // (undocumented)
     cursor?: FilesWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FilesOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20206,7 +21588,7 @@ export class FindManyManagersOnAccountArgs {
     // (undocumented)
     cursor?: ManagersOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "managersId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ManagersOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20228,7 +21610,7 @@ export class FindManyPhoneArgs {
     // (undocumented)
     cursor?: PhoneWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "addressId" | "phone" | "public"> | undefined;
     // (undocumented)
     orderBy?: PhoneOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20250,7 +21632,7 @@ export class FindManyRoomArgs {
     // (undocumented)
     cursor?: RoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height"> | undefined;
     // (undocumented)
     orderBy?: RoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20272,7 +21654,7 @@ export class FindManyRTWArgs {
     // (undocumented)
     cursor?: RTWWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: RTWOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20290,11 +21672,33 @@ export class FindManyRTWResolver {
 }
 
 // @public (undocumented)
+export class FindManySaltArgs {
+    // (undocumented)
+    cursor?: SaltWhereUniqueInput | undefined;
+    // (undocumented)
+    distinct?: Array<"id" | "salt" | "expiry" | "accountID" | "deletedDate" | "deleted"> | undefined;
+    // (undocumented)
+    orderBy?: SaltOrderByWithRelationAndSearchRelevanceInput[] | undefined;
+    // (undocumented)
+    skip?: number | undefined;
+    // (undocumented)
+    take?: number | undefined;
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class FindManySaltResolver {
+    // (undocumented)
+    salts(ctx: any, info: GraphQLResolveInfo, args: FindManySaltArgs): Promise<Salt[]>;
+}
+
+// @public (undocumented)
 export class FindManySIABadgeArgs {
     // (undocumented)
     cursor?: SIABadgeWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deleted" | "account_id"> | undefined;
+    distinct?: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deletedDate" | "deleted" | "account_id"> | undefined;
     // (undocumented)
     orderBy?: SIABadgeOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20316,7 +21720,7 @@ export class FindManySIACheckArgs {
     // (undocumented)
     cursor?: SIACheckWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deleted" | "error" | "transactionId"> | undefined;
+    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "error" | "transactionId"> | undefined;
     // (undocumented)
     orderBy?: SIACheckOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20338,7 +21742,7 @@ export class FindManyStatusArgs {
     // (undocumented)
     cursor?: StatusWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20354,7 +21758,7 @@ export class FindManyStatusOnAccountArgs {
     // (undocumented)
     cursor?: StatusOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20382,7 +21786,7 @@ export class FindManySubscriptionArgs {
     // (undocumented)
     cursor?: SubscriptionWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "name" | "cost" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "name" | "cost" | "details"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20398,7 +21802,7 @@ export class FindManySubscriptionOnAccountArgs {
     // (undocumented)
     cursor?: SubscriptionOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20426,7 +21830,7 @@ export class FindManySubuserOnAccountArgs {
     // (undocumented)
     cursor?: SubuserOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubuserOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20448,7 +21852,7 @@ export class FindManyTokenArgs {
     // (undocumented)
     cursor?: TokenWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "type" | "value" | "valid" | "expiry" | "apiToken"> | undefined;
+    distinct?: Array<"id" | "nickname" | "createdAt" | "updatedAt" | "type" | "value" | "expiry" | "accountID" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: TokenOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20470,7 +21874,7 @@ export class FindManyTransactionArgs {
     // (undocumented)
     cursor?: TransactionWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "data"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "data"> | undefined;
     // (undocumented)
     orderBy?: TransactionOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20492,7 +21896,7 @@ export class FindManyVenueStyleArgs {
     // (undocumented)
     cursor?: VenueStyleWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "name" | "details" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: VenueStyleOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -20714,6 +22118,18 @@ export class FindUniqueRTWResolver {
 }
 
 // @public (undocumented)
+export class FindUniqueSaltArgs {
+    // (undocumented)
+    where: SaltWhereUniqueInput;
+}
+
+// @public (undocumented)
+export class FindUniqueSaltResolver {
+    // (undocumented)
+    salt(ctx: any, info: GraphQLResolveInfo, args: FindUniqueSaltArgs): Promise<Salt | null>;
+}
+
+// @public (undocumented)
 export class FindUniqueSIABadgeArgs {
     // (undocumented)
     where: SIABadgeWhereUniqueInput;
@@ -20836,7 +22252,7 @@ export class FindUniqueVenueStyleResolver {
 // @public (undocumented)
 export class GroupByAccountArgs {
     // (undocumented)
-    by: Array<"id" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deleted">;
+    by: Array<"id" | "prn" | "username" | "accountType" | "subsciption" | "createdAt" | "updatedAt" | "lastLogin" | "applied" | "promoted" | "retired" | "title" | "firstname" | "midname" | "lastname" | "Salutation" | "dob" | "sex" | "label" | "password" | "resetPasswordToken" | "resetPasswordExpires" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: AccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20858,7 +22274,7 @@ export class GroupByAccountResolver {
 // @public (undocumented)
 export class GroupByAddressArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deleted">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: AddressScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20880,7 +22296,7 @@ export class GroupByAddressResolver {
 // @public (undocumented)
 export class GroupByApplicationArgs {
     // (undocumented)
-    by: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "name" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: ApplicationScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20902,7 +22318,7 @@ export class GroupByApplicationResolver {
 // @public (undocumented)
 export class GroupByArrangementArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "name" | "icon" | "details" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: ArrangementScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20918,7 +22334,7 @@ export class GroupByArrangementArgs {
 // @public (undocumented)
 export class GroupByArrangementOfRoomArgs {
     // (undocumented)
-    by: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt">;
+    by: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: ArrangementOfRoomScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20946,7 +22362,7 @@ export class GroupByArrangementResolver {
 // @public (undocumented)
 export class GroupByContactAtAddressArgs {
     // (undocumented)
-    by: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"accountId" | "addressId" | "jobTitle" | "phone" | "emailId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: ContactAtAddressScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20968,7 +22384,7 @@ export class GroupByContactAtAddressResolver {
 // @public (undocumented)
 export class GroupByDomainArgs {
     // (undocumented)
-    by: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "domain" | "verified" | "dnsType" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: DomainScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -20990,7 +22406,7 @@ export class GroupByDomainResolver {
 // @public (undocumented)
 export class GroupByEmailArgs {
     // (undocumented)
-    by: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "domainId" | "email" | "accountId" | "verified" | "public" | "primary" | "path" | "copy" | "notifyFrom" | "imap_authUser" | "imap_authPass" | "imap_accessToken" | "imap_authServer" | "imap_host" | "imap_port" | "imap_secure" | "imap_tslRejectUnauthorized" | "imap_tslMinVersion" | "imap_resyncDelay" | "smtp_authUser" | "smtp_authPass" | "smtp_accessToken" | "smtp_authServer" | "smtp_host" | "smtp_port" | "smtp_secure" | "smtp_tslRejectUnauthorized" | "smtp_tslMinVersion" | "oauth2_authorize" | "oauth2_provider" | "oauth2_authUser" | "oauth2_accessToken" | "oauth2_refreshToken" | "oauth2_expires" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: EmailScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21012,7 +22428,7 @@ export class GroupByEmailResolver {
 // @public (undocumented)
 export class GroupByEmployersOnAccountArgs {
     // (undocumented)
-    by: Array<"accountId" | "employerId" | "createdAt" | "updatedAt">;
+    by: Array<"accountId" | "employerId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: EmployersOnAccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21034,7 +22450,7 @@ export class GroupByEmployersOnAccountResolver {
 // @public (undocumented)
 export class GroupByFeatureArgs {
     // (undocumented)
-    by: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "name" | "type" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: FeatureScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21050,7 +22466,7 @@ export class GroupByFeatureArgs {
 // @public (undocumented)
 export class GroupByFeatureOfAddressArgs {
     // (undocumented)
-    by: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"addressId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: FeatureOfAddressScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21072,7 +22488,7 @@ export class GroupByFeatureOfAddressResolver {
 // @public (undocumented)
 export class GroupByFeatureOfRoomArgs {
     // (undocumented)
-    by: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: FeatureOfRoomScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21100,7 +22516,7 @@ export class GroupByFeatureResolver {
 // @public (undocumented)
 export class GroupByFilesArgs {
     // (undocumented)
-    by: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: FilesScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21122,7 +22538,7 @@ export class GroupByFilesResolver {
 // @public (undocumented)
 export class GroupByManagersOnAccountArgs {
     // (undocumented)
-    by: Array<"accountId" | "managersId" | "createdAt" | "updatedAt">;
+    by: Array<"accountId" | "managersId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: ManagersOnAccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21144,7 +22560,7 @@ export class GroupByManagersOnAccountResolver {
 // @public (undocumented)
 export class GroupByPhoneArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "addressId" | "phone" | "public">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "addressId" | "phone" | "public">;
     // (undocumented)
     having?: PhoneScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21166,7 +22582,7 @@ export class GroupByPhoneResolver {
 // @public (undocumented)
 export class GroupByRoomArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "addressId" | "name" | "floor" | "building" | "accessibility" | "checkin" | "checkout" | "length" | "width" | "height">;
     // (undocumented)
     having?: RoomScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21188,7 +22604,7 @@ export class GroupByRoomResolver {
 // @public (undocumented)
 export class GroupByRTWArgs {
     // (undocumented)
-    by: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "name" | "active" | "startDate" | "endDate" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: RTWScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21208,9 +22624,31 @@ export class GroupByRTWResolver {
 }
 
 // @public (undocumented)
+export class GroupBySaltArgs {
+    // (undocumented)
+    by: Array<"id" | "salt" | "expiry" | "accountID" | "deletedDate" | "deleted">;
+    // (undocumented)
+    having?: SaltScalarWhereWithAggregatesInput | undefined;
+    // (undocumented)
+    orderBy?: SaltOrderByWithAggregationInput[] | undefined;
+    // (undocumented)
+    skip?: number | undefined;
+    // (undocumented)
+    take?: number | undefined;
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class GroupBySaltResolver {
+    // (undocumented)
+    groupBySalt(ctx: any, info: GraphQLResolveInfo, args: GroupBySaltArgs): Promise<SaltGroupBy[]>;
+}
+
+// @public (undocumented)
 export class GroupBySIABadgeArgs {
     // (undocumented)
-    by: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deleted" | "account_id">;
+    by: Array<"id" | "licenseSector" | "type" | "licenseExplanation" | "additionalTerms" | "createdAt" | "active" | "expiry" | "updatedAt" | "deletedDate" | "deleted" | "account_id">;
     // (undocumented)
     having?: SIABadgeScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21232,7 +22670,7 @@ export class GroupBySIABadgeResolver {
 // @public (undocumented)
 export class GroupBySIACheckArgs {
     // (undocumented)
-    by: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deleted" | "error" | "transactionId">;
+    by: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "error" | "transactionId">;
     // (undocumented)
     having?: SIACheckScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21254,7 +22692,7 @@ export class GroupBySIACheckResolver {
 // @public (undocumented)
 export class GroupByStatusArgs {
     // (undocumented)
-    by: Array<"id" | "name" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"id" | "name" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: StatusScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21270,7 +22708,7 @@ export class GroupByStatusArgs {
 // @public (undocumented)
 export class GroupByStatusOnAccountArgs {
     // (undocumented)
-    by: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: StatusOnAccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21298,7 +22736,7 @@ export class GroupByStatusResolver {
 // @public (undocumented)
 export class GroupBySubscriptionArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "name" | "cost" | "details">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "name" | "cost" | "details">;
     // (undocumented)
     having?: SubscriptionScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21314,7 +22752,7 @@ export class GroupBySubscriptionArgs {
 // @public (undocumented)
 export class GroupBySubscriptionOnAccountArgs {
     // (undocumented)
-    by: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deleted">;
+    by: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: SubscriptionOnAccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21342,7 +22780,7 @@ export class GroupBySubscriptionResolver {
 // @public (undocumented)
 export class GroupBySubuserOnAccountArgs {
     // (undocumented)
-    by: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt">;
+    by: Array<"accountId" | "subuserId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: SubuserOnAccountScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21364,7 +22802,7 @@ export class GroupBySubuserOnAccountResolver {
 // @public (undocumented)
 export class GroupByTokenArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "type" | "value" | "valid" | "expiry" | "apiToken">;
+    by: Array<"id" | "nickname" | "createdAt" | "updatedAt" | "type" | "value" | "expiry" | "accountID" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: TokenScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21386,7 +22824,7 @@ export class GroupByTokenResolver {
 // @public (undocumented)
 export class GroupByTransactionArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "deleted" | "accountId" | "data">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "accountId" | "data">;
     // (undocumented)
     having?: TransactionScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21408,7 +22846,7 @@ export class GroupByTransactionResolver {
 // @public (undocumented)
 export class GroupByVenueStyleArgs {
     // (undocumented)
-    by: Array<"id" | "createdAt" | "updatedAt" | "name" | "details">;
+    by: Array<"id" | "createdAt" | "updatedAt" | "name" | "details" | "deletedDate" | "deleted">;
     // (undocumented)
     having?: VenueStyleScalarWhereWithAggregatesInput | undefined;
     // (undocumented)
@@ -21441,16 +22879,14 @@ export type InputTypesEnhanceMap = {
 };
 
 // @public (undocumented)
-class Internals {
-    // Warning: (ae-forgotten-export) The symbol "database" needs to be exported by the entry point index.d.ts
+export class Internals {
+    // Warning: (ae-forgotten-export) The symbol "Authentication" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    static database: typeof database;
+    auth: Authentication;
     // (undocumented)
-    static db: PrismaClient<Prisma.PrismaClientOptions, never, Prisma.RejectOnNotFound | Prisma.RejectPerOperation | undefined>;
+    db: PrismaClient;
 }
-export { Internals }
-export default Internals;
 
 // @public (undocumented)
 export class IntFieldUpdateOperationsInput {
@@ -21751,6 +23187,10 @@ export class ManagersOnAccount {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
     managers?: Account;
     // (undocumented)
     managersId: string;
@@ -21775,6 +23215,10 @@ export class ManagersOnAccountCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     managersId: number;
     // (undocumented)
     updatedAt: number;
@@ -21786,6 +23230,10 @@ export class ManagersOnAccountCountOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     managersId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -21799,6 +23247,10 @@ export class ManagersOnAccountCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     managers: AccountCreateNestedOneWithoutManagersInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -21808,6 +23260,10 @@ export class ManagersOnAccountCreateInput {
 export class ManagersOnAccountCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     managersId: string;
     // (undocumented)
@@ -21829,6 +23285,10 @@ export class ManagersOnAccountCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     managersId: string;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -21840,6 +23300,10 @@ export class ManagersOnAccountCreateManyManagersInput {
     accountId: string;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -21897,6 +23361,10 @@ export class ManagersOnAccountCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     managers: AccountCreateNestedOneWithoutManagersInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -21908,6 +23376,10 @@ export class ManagersOnAccountCreateWithoutManagersInput {
     account: AccountCreateNestedOneWithoutAccountsInput;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -21949,6 +23421,10 @@ export class ManagersOnAccountGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     managersId: string;
     // (undocumented)
     _max: ManagersOnAccountMaxAggregate | null;
@@ -21975,6 +23451,10 @@ export class ManagersOnAccountMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     managersId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -21986,6 +23466,10 @@ export class ManagersOnAccountMaxOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     managersId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -21999,6 +23483,10 @@ export class ManagersOnAccountMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     managersId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -22010,6 +23498,10 @@ export class ManagersOnAccountMinOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     managersId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -22049,6 +23541,10 @@ export class ManagersOnAccountOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     managersId?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: ManagersOnAccountMaxOrderByAggregateInput | undefined;
@@ -22066,6 +23562,10 @@ export class ManagersOnAccountOrderByWithRelationAndSearchRelevanceInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     managers?: AccountOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
@@ -22091,6 +23591,10 @@ export enum ManagersOnAccountScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
     // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     managersId = "managersId",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -22104,6 +23608,10 @@ export class ManagersOnAccountScalarWhereInput {
     AND?: ManagersOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     managersId?: StringFilter | undefined;
     // (undocumented)
@@ -22123,6 +23631,10 @@ export class ManagersOnAccountScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
+    // (undocumented)
     managersId?: StringWithAggregatesFilter | undefined;
     // (undocumented)
     NOT?: ManagersOnAccountScalarWhereWithAggregatesInput[] | undefined;
@@ -22139,6 +23651,10 @@ export class ManagersOnAccountUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     managers?: AccountUpdateOneRequiredWithoutManagersInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -22148,6 +23664,10 @@ export class ManagersOnAccountUpdateInput {
 export class ManagersOnAccountUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -22225,6 +23745,10 @@ export class ManagersOnAccountUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     managers?: AccountUpdateOneRequiredWithoutManagersInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -22236,6 +23760,10 @@ export class ManagersOnAccountUpdateWithoutManagersInput {
     account?: AccountUpdateOneRequiredWithoutAccountsInput | undefined;
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -22286,6 +23814,10 @@ export class ManagersOnAccountWhereInput {
     AND?: ManagersOnAccountWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     managers?: AccountRelationFilter | undefined;
     // (undocumented)
@@ -23119,7 +24651,9 @@ export class Phone {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -23143,6 +24677,8 @@ export class PhoneCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     phone: number;
@@ -23163,6 +24699,8 @@ export class PhoneCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     phone?: "asc" | "desc" | undefined;
@@ -23181,7 +24719,9 @@ export class PhoneCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23199,7 +24739,9 @@ export class PhoneCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23225,7 +24767,9 @@ export class PhoneCreateManyAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23253,7 +24797,9 @@ export class PhoneCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23311,7 +24857,9 @@ export class PhoneCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23329,7 +24877,9 @@ export class PhoneCreateWithoutAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -23379,7 +24929,9 @@ export class PhoneGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -23413,7 +24965,9 @@ export class PhoneMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -23435,6 +24989,8 @@ export class PhoneMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     phone?: "asc" | "desc" | undefined;
@@ -23453,7 +25009,9 @@ export class PhoneMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -23474,6 +25032,8 @@ export class PhoneMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -23525,6 +25085,8 @@ export class PhoneOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: PhoneMaxOrderByAggregateInput | undefined;
@@ -23552,6 +25114,8 @@ export class PhoneOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -23583,6 +25147,8 @@ export enum PhoneScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     phone = "phone",
@@ -23603,7 +25169,9 @@ export class PhoneScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -23629,7 +25197,9 @@ export class PhoneScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -23653,7 +25223,9 @@ export class PhoneUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -23669,7 +25241,9 @@ export class PhoneUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -23755,7 +25329,9 @@ export class PhoneUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -23773,7 +25349,9 @@ export class PhoneUpdateWithoutAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -23835,7 +25413,9 @@ export class PhoneWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -23915,7 +25495,9 @@ export class Room {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoom[];
     // (undocumented)
@@ -23939,7 +25521,7 @@ export class RoomArrangementsArgs {
     // (undocumented)
     cursor?: ArrangementOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt"> | undefined;
+    distinct?: Array<"roomId" | "arrangementId" | "capacity" | "details" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: ArrangementOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -23977,6 +25559,8 @@ export class RoomCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     floor: number;
     // (undocumented)
     height: number;
@@ -24008,6 +25592,8 @@ export class RoomCountOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     floor?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -24041,7 +25627,9 @@ export class RoomCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomCreateNestedManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24073,7 +25661,9 @@ export class RoomCreateManyAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     floor?: string | undefined;
     // (undocumented)
@@ -24113,7 +25703,9 @@ export class RoomCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     floor?: string | undefined;
     // (undocumented)
@@ -24201,7 +25793,9 @@ export class RoomCreateWithoutAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomCreateNestedManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24235,7 +25829,9 @@ export class RoomCreateWithoutArrangementsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomCreateNestedManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24271,7 +25867,9 @@ export class RoomCreateWithoutFeaturesOfRoomInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     floor?: string | undefined;
     // (undocumented)
@@ -24321,7 +25919,7 @@ export class RoomFeaturesOfRoomArgs {
     // (undocumented)
     cursor?: FeatureOfRoomWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"roomId" | "featureId" | "data" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FeatureOfRoomOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -24349,7 +25947,9 @@ export class RoomGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     floor: string | null;
     // (undocumented)
@@ -24395,7 +25995,9 @@ export class RoomMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     floor: string | null;
     // (undocumented)
@@ -24429,6 +26031,8 @@ export class RoomMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     floor?: "asc" | "desc" | undefined;
     // (undocumented)
     height?: "asc" | "desc" | undefined;
@@ -24459,7 +26063,9 @@ export class RoomMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     floor: string | null;
     // (undocumented)
@@ -24492,6 +26098,8 @@ export class RoomMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     floor?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -24563,6 +26171,8 @@ export class RoomOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     floor?: "asc" | "desc" | undefined;
     // (undocumented)
     height?: "asc" | "desc" | undefined;
@@ -24602,6 +26212,8 @@ export class RoomOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomOrderByRelationAggregateInput | undefined;
     // (undocumented)
@@ -24657,6 +26269,8 @@ export enum RoomScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     floor = "floor",
     // (undocumented)
     height = "height",
@@ -24689,7 +26303,9 @@ export class RoomScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     floor?: StringNullableFilter | undefined;
     // (undocumented)
@@ -24727,7 +26343,9 @@ export class RoomScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     floor?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -24765,7 +26383,9 @@ export class RoomUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomUpdateManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24797,7 +26417,9 @@ export class RoomUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     floor?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -24891,7 +26513,9 @@ export class RoomUpdateWithoutAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomUpdateManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24925,7 +26549,9 @@ export class RoomUpdateWithoutArrangementsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomUpdateManyWithoutRoomInput | undefined;
     // (undocumented)
@@ -24961,7 +26587,9 @@ export class RoomUpdateWithoutFeaturesOfRoomInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     floor?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -25033,7 +26661,9 @@ export class RoomWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     featuresOfRoom?: FeatureOfRoomListRelationFilter | undefined;
     // (undocumented)
@@ -25075,7 +26705,9 @@ export class RTW {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     endDate?: Date | null;
     // (undocumented)
@@ -25109,6 +26741,8 @@ export class RTWCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     endDate: number;
     // (undocumented)
     id: number;
@@ -25131,6 +26765,8 @@ export class RTWCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     endDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -25151,7 +26787,9 @@ export class RTWCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     endDate?: Date | undefined;
     // (undocumented)
@@ -25173,7 +26811,9 @@ export class RTWCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     endDate?: Date | undefined;
     // (undocumented)
@@ -25203,7 +26843,9 @@ export class RTWCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     endDate?: Date | undefined;
     // (undocumented)
@@ -25261,7 +26903,9 @@ export class RTWCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     endDate?: Date | undefined;
     // (undocumented)
@@ -25285,7 +26929,9 @@ export class RTWCreateWithoutFilesInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     endDate?: Date | undefined;
     // (undocumented)
@@ -25331,7 +26977,7 @@ export class RTWFilesArgs {
     // (undocumented)
     cursor?: FilesWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"id" | "name" | "rtwId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: FilesOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -25353,7 +26999,9 @@ export class RTWGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     endDate: Date | null;
     // (undocumented)
@@ -25389,7 +27037,9 @@ export class RTWMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     endDate: Date | null;
     // (undocumented)
@@ -25413,6 +27063,8 @@ export class RTWMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     endDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -25433,7 +27085,9 @@ export class RTWMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     endDate: Date | null;
     // (undocumented)
@@ -25456,6 +27110,8 @@ export class RTWMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     endDate?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -25507,6 +27163,8 @@ export class RTWOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     endDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -25534,6 +27192,8 @@ export class RTWOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     endDate?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -25577,6 +27237,8 @@ export enum RTWScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     endDate = "endDate",
     // (undocumented)
     id = "id",
@@ -25599,7 +27261,9 @@ export class RTWScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     endDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -25627,7 +27291,9 @@ export class RTWScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     endDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -25653,7 +27319,9 @@ export class RTWUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     endDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -25675,7 +27343,9 @@ export class RTWUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     endDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -25747,7 +27417,9 @@ export class RTWUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     endDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -25771,7 +27443,9 @@ export class RTWUpdateWithoutFilesInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     endDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -25823,7 +27497,9 @@ export class RTWWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     endDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -25849,6 +27525,452 @@ export class RTWWhereUniqueInput {
 }
 
 // @public (undocumented)
+export class Salt {
+    // (undocumented)
+    account?: Account | null;
+    // (undocumented)
+    accountID?: string | null;
+    // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
+    expiry: Date;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    salt: string;
+}
+
+// @public (undocumented)
+export class SaltCountAggregate {
+    // (undocumented)
+    accountID: number;
+    // (undocumented)
+    _all: number;
+    // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
+    expiry: number;
+    // (undocumented)
+    id: number;
+    // (undocumented)
+    salt: number;
+}
+
+// @public (undocumented)
+export class SaltCountOrderByAggregateInput {
+    // (undocumented)
+    accountID?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
+    expiry?: "asc" | "desc" | undefined;
+    // (undocumented)
+    id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    salt?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
+export class SaltCreateInput {
+    // (undocumented)
+    account?: AccountCreateNestedOneWithoutSaltInput | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
+    expiry: Date;
+    // (undocumented)
+    id?: string | undefined;
+    // (undocumented)
+    salt: string;
+}
+
+// @public (undocumented)
+export class SaltCreateManyInput {
+    // (undocumented)
+    accountID?: string | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
+    expiry: Date;
+    // (undocumented)
+    id?: string | undefined;
+    // (undocumented)
+    salt: string;
+}
+
+// @public (undocumented)
+export class SaltCreateNestedOneWithoutAccountInput {
+    // (undocumented)
+    connect?: SaltWhereUniqueInput | undefined;
+    // (undocumented)
+    connectOrCreate?: SaltCreateOrConnectWithoutAccountInput | undefined;
+    // (undocumented)
+    create?: SaltCreateWithoutAccountInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltCreateOrConnectWithoutAccountInput {
+    // (undocumented)
+    create: SaltCreateWithoutAccountInput;
+    // (undocumented)
+    where: SaltWhereUniqueInput;
+}
+
+// @public (undocumented)
+export class SaltCreateWithoutAccountInput {
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
+    expiry: Date;
+    // (undocumented)
+    id?: string | undefined;
+    // (undocumented)
+    salt: string;
+}
+
+// @public (undocumented)
+export class SaltCrudResolver {
+    // (undocumented)
+    aggregateSalt(ctx: any, info: GraphQLResolveInfo, args: AggregateSaltArgs): Promise<AggregateSalt>;
+    // (undocumented)
+    createManySalt(ctx: any, info: GraphQLResolveInfo, args: CreateManySaltArgs): Promise<AffectedRowsOutput>;
+    // (undocumented)
+    createSalt(ctx: any, info: GraphQLResolveInfo, args: CreateSaltArgs): Promise<Salt>;
+    // (undocumented)
+    deleteManySalt(ctx: any, info: GraphQLResolveInfo, args: DeleteManySaltArgs): Promise<AffectedRowsOutput>;
+    // (undocumented)
+    deleteSalt(ctx: any, info: GraphQLResolveInfo, args: DeleteSaltArgs): Promise<Salt | null>;
+    // (undocumented)
+    findFirstSalt(ctx: any, info: GraphQLResolveInfo, args: FindFirstSaltArgs): Promise<Salt | null>;
+    // (undocumented)
+    groupBySalt(ctx: any, info: GraphQLResolveInfo, args: GroupBySaltArgs): Promise<SaltGroupBy[]>;
+    // (undocumented)
+    salt(ctx: any, info: GraphQLResolveInfo, args: FindUniqueSaltArgs): Promise<Salt | null>;
+    // (undocumented)
+    salts(ctx: any, info: GraphQLResolveInfo, args: FindManySaltArgs): Promise<Salt[]>;
+    // (undocumented)
+    updateManySalt(ctx: any, info: GraphQLResolveInfo, args: UpdateManySaltArgs): Promise<AffectedRowsOutput>;
+    // (undocumented)
+    updateSalt(ctx: any, info: GraphQLResolveInfo, args: UpdateSaltArgs): Promise<Salt | null>;
+    // (undocumented)
+    upsertSalt(ctx: any, info: GraphQLResolveInfo, args: UpsertSaltArgs): Promise<Salt>;
+}
+
+// @public (undocumented)
+export class SaltGroupBy {
+    // (undocumented)
+    accountID: string | null;
+    // (undocumented)
+    _count: SaltCountAggregate | null;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
+    expiry: Date;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    _max: SaltMaxAggregate | null;
+    // (undocumented)
+    _min: SaltMinAggregate | null;
+    // (undocumented)
+    salt: string;
+}
+
+// @public (undocumented)
+export class SaltMaxAggregate {
+    // (undocumented)
+    accountID: string | null;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
+    expiry: Date | null;
+    // (undocumented)
+    id: string | null;
+    // (undocumented)
+    salt: string | null;
+}
+
+// @public (undocumented)
+export class SaltMaxOrderByAggregateInput {
+    // (undocumented)
+    accountID?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
+    expiry?: "asc" | "desc" | undefined;
+    // (undocumented)
+    id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    salt?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
+export class SaltMinAggregate {
+    // (undocumented)
+    accountID: string | null;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
+    expiry: Date | null;
+    // (undocumented)
+    id: string | null;
+    // (undocumented)
+    salt: string | null;
+}
+
+// @public (undocumented)
+export class SaltMinOrderByAggregateInput {
+    // (undocumented)
+    accountID?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
+    expiry?: "asc" | "desc" | undefined;
+    // (undocumented)
+    id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    salt?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
+export enum SaltOrderByRelevanceFieldEnum {
+    // (undocumented)
+    accountID = "accountID",
+    // (undocumented)
+    id = "id",
+    // (undocumented)
+    salt = "salt"
+}
+
+// @public (undocumented)
+export class SaltOrderByRelevanceInput {
+    // (undocumented)
+    fields: Array<"id" | "salt" | "accountID">;
+    // (undocumented)
+    search: string;
+    // (undocumented)
+    sort: "asc" | "desc";
+}
+
+// @public (undocumented)
+export class SaltOrderByWithAggregationInput {
+    // (undocumented)
+    accountID?: "asc" | "desc" | undefined;
+    // (undocumented)
+    _count?: SaltCountOrderByAggregateInput | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
+    expiry?: "asc" | "desc" | undefined;
+    // (undocumented)
+    id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    _max?: SaltMaxOrderByAggregateInput | undefined;
+    // (undocumented)
+    _min?: SaltMinOrderByAggregateInput | undefined;
+    // (undocumented)
+    salt?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
+export class SaltOrderByWithRelationAndSearchRelevanceInput {
+    // (undocumented)
+    account?: AccountOrderByWithRelationAndSearchRelevanceInput | undefined;
+    // (undocumented)
+    accountID?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
+    expiry?: "asc" | "desc" | undefined;
+    // (undocumented)
+    id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    _relevance?: SaltOrderByRelevanceInput | undefined;
+    // (undocumented)
+    salt?: "asc" | "desc" | undefined;
+}
+
+// @public (undocumented)
+export class SaltRelationFilter {
+    // (undocumented)
+    is?: SaltWhereInput | undefined;
+    // (undocumented)
+    isNot?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltRelationsResolver {
+    // (undocumented)
+    account(salt: Salt, ctx: any): Promise<Account | null>;
+}
+
+// @public (undocumented)
+export enum SaltScalarFieldEnum {
+    // (undocumented)
+    accountID = "accountID",
+    // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
+    expiry = "expiry",
+    // (undocumented)
+    id = "id",
+    // (undocumented)
+    salt = "salt"
+}
+
+// @public (undocumented)
+export class SaltScalarWhereWithAggregatesInput {
+    // (undocumented)
+    accountID?: StringNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    AND?: SaltScalarWhereWithAggregatesInput[] | undefined;
+    // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    expiry?: DateTimeWithAggregatesFilter | undefined;
+    // (undocumented)
+    id?: StringWithAggregatesFilter | undefined;
+    // (undocumented)
+    NOT?: SaltScalarWhereWithAggregatesInput[] | undefined;
+    // (undocumented)
+    OR?: SaltScalarWhereWithAggregatesInput[] | undefined;
+    // (undocumented)
+    salt?: StringWithAggregatesFilter | undefined;
+}
+
+// @public (undocumented)
+export class SaltUpdateInput {
+    // (undocumented)
+    account?: AccountUpdateOneWithoutSaltInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    expiry?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    salt?: StringFieldUpdateOperationsInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltUpdateManyMutationInput {
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    expiry?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    salt?: StringFieldUpdateOperationsInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltUpdateOneWithoutAccountInput {
+    // (undocumented)
+    connect?: SaltWhereUniqueInput | undefined;
+    // (undocumented)
+    connectOrCreate?: SaltCreateOrConnectWithoutAccountInput | undefined;
+    // (undocumented)
+    create?: SaltCreateWithoutAccountInput | undefined;
+    // (undocumented)
+    delete?: boolean | undefined;
+    // (undocumented)
+    disconnect?: boolean | undefined;
+    // (undocumented)
+    update?: SaltUpdateWithoutAccountInput | undefined;
+    // (undocumented)
+    upsert?: SaltUpsertWithoutAccountInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltUpdateWithoutAccountInput {
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    expiry?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    salt?: StringFieldUpdateOperationsInput | undefined;
+}
+
+// @public (undocumented)
+export class SaltUpsertWithoutAccountInput {
+    // (undocumented)
+    create: SaltCreateWithoutAccountInput;
+    // (undocumented)
+    update: SaltUpdateWithoutAccountInput;
+}
+
+// @public (undocumented)
+export class SaltWhereInput {
+    // (undocumented)
+    account?: AccountRelationFilter | undefined;
+    // (undocumented)
+    accountID?: StringNullableFilter | undefined;
+    // (undocumented)
+    AND?: SaltWhereInput[] | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
+    // (undocumented)
+    expiry?: DateTimeFilter | undefined;
+    // (undocumented)
+    id?: StringFilter | undefined;
+    // (undocumented)
+    NOT?: SaltWhereInput[] | undefined;
+    // (undocumented)
+    OR?: SaltWhereInput[] | undefined;
+    // (undocumented)
+    salt?: StringFilter | undefined;
+}
+
+// @public (undocumented)
+export class SaltWhereUniqueInput {
+    // (undocumented)
+    accountID?: string | undefined;
+    // (undocumented)
+    id?: string | undefined;
+}
+
+// @public (undocumented)
 export class SIABadge {
     // (undocumented)
     account?: Account | null;
@@ -25863,7 +27985,9 @@ export class SIABadge {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     expiry?: Date | null;
     // (undocumented)
@@ -25913,6 +28037,8 @@ export class SIABadgeCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     expiry: number;
     // (undocumented)
     id: number;
@@ -25939,6 +28065,8 @@ export class SIABadgeCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -25963,7 +28091,9 @@ export class SIABadgeCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry?: Date | undefined;
     // (undocumented)
@@ -25989,7 +28119,9 @@ export class SIABadgeCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry?: Date | undefined;
     // (undocumented)
@@ -26023,7 +28155,9 @@ export class SIABadgeCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry?: Date | undefined;
     // (undocumented)
@@ -26085,7 +28219,9 @@ export class SIABadgeCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry?: Date | undefined;
     // (undocumented)
@@ -26113,7 +28249,9 @@ export class SIABadgeCreateWithoutSiaChecksInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry?: Date | undefined;
     // (undocumented)
@@ -26171,7 +28309,9 @@ export class SIABadgeGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date | null;
     // (undocumented)
@@ -26213,7 +28353,9 @@ export class SIABadgeMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date | null;
     // (undocumented)
@@ -26241,6 +28383,8 @@ export class SIABadgeMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -26265,7 +28409,9 @@ export class SIABadgeMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date | null;
     // (undocumented)
@@ -26292,6 +28438,8 @@ export class SIABadgeMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -26349,6 +28497,8 @@ export class SIABadgeOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -26382,6 +28532,8 @@ export class SIABadgeOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -26429,6 +28581,8 @@ export enum SIABadgeScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     expiry = "expiry",
     // (undocumented)
     id = "id",
@@ -26455,7 +28609,9 @@ export class SIABadgeScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     expiry?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -26487,7 +28643,9 @@ export class SIABadgeScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     expiry?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -26511,7 +28669,7 @@ export class SIABadgeSiaChecksArgs {
     // (undocumented)
     cursor?: SIACheckWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deleted" | "error" | "transactionId"> | undefined;
+    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "error" | "transactionId"> | undefined;
     // (undocumented)
     orderBy?: SIACheckOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -26545,7 +28703,9 @@ export class SIABadgeUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     expiry?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -26571,7 +28731,9 @@ export class SIABadgeUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     expiry?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -26647,7 +28809,9 @@ export class SIABadgeUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     expiry?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -26675,7 +28839,9 @@ export class SIABadgeUpdateWithoutSiaChecksInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     expiry?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -26731,7 +28897,9 @@ export class SIABadgeWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     expiry?: DateTimeNullableFilter | undefined;
     // (undocumented)
@@ -26767,7 +28935,9 @@ export class SIACheck {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     error?: string | null;
     // (undocumented)
@@ -26809,6 +28979,8 @@ export class SIACheckCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     error: number;
     // (undocumented)
     id: number;
@@ -26832,6 +29004,8 @@ export class SIACheckCountOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     error?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -26857,7 +29031,9 @@ export class SIACheckCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -26879,7 +29055,9 @@ export class SIACheckCreateManyBadgeInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -26909,7 +29087,9 @@ export class SIACheckCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -26933,7 +29113,9 @@ export class SIACheckCreateManyTransactionsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -27003,7 +29185,9 @@ export class SIACheckCreateWithoutBadgeInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -27027,7 +29211,9 @@ export class SIACheckCreateWithoutTransactionsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     error?: string | undefined;
     // (undocumented)
@@ -27079,7 +29265,9 @@ export class SIACheckGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     error: string | null;
     // (undocumented)
@@ -27119,7 +29307,9 @@ export class SIACheckMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     error: string | null;
     // (undocumented)
@@ -27145,6 +29335,8 @@ export class SIACheckMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     error?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -27167,7 +29359,9 @@ export class SIACheckMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     error: string | null;
     // (undocumented)
@@ -27192,6 +29386,8 @@ export class SIACheckMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     error?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -27251,6 +29447,8 @@ export class SIACheckOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     error?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -27282,6 +29480,8 @@ export class SIACheckOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     error?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -27319,6 +29519,8 @@ export enum SIACheckScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     error = "error",
     // (undocumented)
     id = "id",
@@ -27343,7 +29545,9 @@ export class SIACheckScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     error?: StringNullableFilter | undefined;
     // (undocumented)
@@ -27373,7 +29577,9 @@ export class SIACheckScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     error?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -27415,7 +29621,9 @@ export class SIACheckUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     error?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -27437,7 +29645,9 @@ export class SIACheckUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     error?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -27525,7 +29735,9 @@ export class SIACheckUpdateWithoutBadgeInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     error?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -27549,7 +29761,9 @@ export class SIACheckUpdateWithoutTransactionsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     error?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -27609,7 +29823,9 @@ export class SIACheckWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     error?: StringNullableFilter | undefined;
     // (undocumented)
@@ -27655,7 +29871,9 @@ export class Status {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -27669,7 +29887,7 @@ export class StatusAccountArgs {
     // (undocumented)
     cursor?: StatusOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"statusId" | "accountId" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: StatusOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -27695,6 +29913,8 @@ export class StatusCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     name: number;
@@ -27708,6 +29928,8 @@ export class StatusCountOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -27723,7 +29945,9 @@ export class StatusCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -27737,7 +29961,9 @@ export class StatusCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -27769,7 +29995,9 @@ export class StatusCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -27813,7 +30041,9 @@ export class StatusGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -27831,7 +30061,9 @@ export class StatusMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -27847,6 +30079,8 @@ export class StatusMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     name?: "asc" | "desc" | undefined;
@@ -27859,7 +30093,9 @@ export class StatusMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -27874,6 +30110,8 @@ export class StatusMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -27891,7 +30129,9 @@ export class StatusOnAccount {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     status?: Status;
     // (undocumented)
@@ -27911,6 +30151,8 @@ export class StatusOnAccountCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     statusId: number;
     // (undocumented)
     updatedAt: number;
@@ -27925,6 +30167,8 @@ export class StatusOnAccountCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     statusId?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -27937,7 +30181,9 @@ export class StatusOnAccountCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     status: StatusCreateNestedOneWithoutAccountInput;
     // (undocumented)
@@ -27949,7 +30195,9 @@ export class StatusOnAccountCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     statusId: string;
     // (undocumented)
@@ -27971,7 +30219,9 @@ export class StatusOnAccountCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     statusId: string;
     // (undocumented)
@@ -27985,7 +30235,9 @@ export class StatusOnAccountCreateManyStatusInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -28043,7 +30295,9 @@ export class StatusOnAccountCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     status: StatusCreateNestedOneWithoutAccountInput;
     // (undocumented)
@@ -28057,7 +30311,9 @@ export class StatusOnAccountCreateWithoutStatusInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -28099,7 +30355,9 @@ export class StatusOnAccountGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     _max: StatusOnAccountMaxAggregate | null;
     // (undocumented)
@@ -28127,7 +30385,9 @@ export class StatusOnAccountMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     statusId: string | null;
     // (undocumented)
@@ -28143,6 +30403,8 @@ export class StatusOnAccountMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     statusId?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -28155,7 +30417,9 @@ export class StatusOnAccountMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     statusId: string | null;
     // (undocumented)
@@ -28170,6 +30434,8 @@ export class StatusOnAccountMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     statusId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -28211,6 +30477,8 @@ export class StatusOnAccountOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     _max?: StatusOnAccountMaxOrderByAggregateInput | undefined;
     // (undocumented)
     _min?: StatusOnAccountMinOrderByAggregateInput | undefined;
@@ -28230,6 +30498,8 @@ export class StatusOnAccountOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     _relevance?: StatusOnAccountOrderByRelevanceInput | undefined;
     // (undocumented)
@@ -28257,6 +30527,8 @@ export enum StatusOnAccountScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     statusId = "statusId",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -28271,7 +30543,9 @@ export class StatusOnAccountScalarWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     NOT?: StatusOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
@@ -28291,7 +30565,9 @@ export class StatusOnAccountScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     NOT?: StatusOnAccountScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
@@ -28317,7 +30593,9 @@ export class StatusOnAccountUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     status?: StatusUpdateOneRequiredWithoutAccountInput | undefined;
     // (undocumented)
@@ -28329,7 +30607,9 @@ export class StatusOnAccountUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -28407,7 +30687,9 @@ export class StatusOnAccountUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     status?: StatusUpdateOneRequiredWithoutAccountInput | undefined;
     // (undocumented)
@@ -28421,7 +30703,9 @@ export class StatusOnAccountUpdateWithoutStatusInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -28473,7 +30757,9 @@ export class StatusOnAccountWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     NOT?: StatusOnAccountWhereInput[] | undefined;
     // (undocumented)
@@ -28519,6 +30805,8 @@ export class StatusOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: StatusMaxOrderByAggregateInput | undefined;
@@ -28538,6 +30826,8 @@ export class StatusOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -28569,6 +30859,8 @@ export enum StatusScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     name = "name",
@@ -28583,7 +30875,9 @@ export class StatusScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -28603,7 +30897,9 @@ export class StatusUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -28617,7 +30913,9 @@ export class StatusUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -28645,7 +30943,9 @@ export class StatusUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -28671,7 +30971,9 @@ export class StatusWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -28839,7 +31141,9 @@ export class Subscription {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     details?: string | null;
     // (undocumented)
@@ -28855,7 +31159,7 @@ export class SubscriptionAccountsArgs {
     // (undocumented)
     cursor?: SubscriptionOnAccountWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deleted"> | undefined;
+    distinct?: Array<"subscriptionId" | "accountId" | "active" | "deactivated" | "activated" | "startedAt" | "createdAt" | "updatedAt" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: SubscriptionOnAccountOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -28883,6 +31187,8 @@ export class SubscriptionCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     details: number;
     // (undocumented)
     id: number;
@@ -28900,6 +31206,8 @@ export class SubscriptionCountOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -28919,7 +31227,9 @@ export class SubscriptionCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -28937,7 +31247,9 @@ export class SubscriptionCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -28973,7 +31285,9 @@ export class SubscriptionCreateWithoutAccountsInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -29021,7 +31335,9 @@ export class SubscriptionGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     details: string | null;
     // (undocumented)
@@ -29043,7 +31359,9 @@ export class SubscriptionMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     details: string | null;
     // (undocumented)
@@ -29063,6 +31381,8 @@ export class SubscriptionMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -29079,7 +31399,9 @@ export class SubscriptionMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     details: string | null;
     // (undocumented)
@@ -29098,6 +31420,8 @@ export class SubscriptionMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -29123,7 +31447,9 @@ export class SubscriptionOnAccount {
     // (undocumented)
     deactivated?: Date | null;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     startedAt?: Date | null;
     // (undocumented)
@@ -29159,6 +31485,8 @@ export class SubscriptionOnAccountCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     startedAt: number;
     // (undocumented)
     subscriptionId: number;
@@ -29181,6 +31509,8 @@ export class SubscriptionOnAccountCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     startedAt?: "asc" | "desc" | undefined;
     // (undocumented)
     subscriptionId?: "asc" | "desc" | undefined;
@@ -29201,7 +31531,9 @@ export class SubscriptionOnAccountCreateInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29221,7 +31553,9 @@ export class SubscriptionOnAccountCreateManyAccountInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29251,7 +31585,9 @@ export class SubscriptionOnAccountCreateManyInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29273,7 +31609,9 @@ export class SubscriptionOnAccountCreateManySubscriptionInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29339,7 +31677,9 @@ export class SubscriptionOnAccountCreateWithoutAccountInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29361,7 +31701,9 @@ export class SubscriptionOnAccountCreateWithoutSubscriptionInput {
     // (undocumented)
     deactivated?: Date | undefined;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     startedAt?: Date | undefined;
     // (undocumented)
@@ -29411,7 +31753,9 @@ export class SubscriptionOnAccountGroupBy {
     // (undocumented)
     deactivated: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     _max: SubscriptionOnAccountMaxAggregate | null;
     // (undocumented)
@@ -29447,7 +31791,9 @@ export class SubscriptionOnAccountMaxAggregate {
     // (undocumented)
     deactivated: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     startedAt: Date | null;
     // (undocumented)
@@ -29471,6 +31817,8 @@ export class SubscriptionOnAccountMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     startedAt?: "asc" | "desc" | undefined;
     // (undocumented)
     subscriptionId?: "asc" | "desc" | undefined;
@@ -29491,7 +31839,9 @@ export class SubscriptionOnAccountMinAggregate {
     // (undocumented)
     deactivated: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     startedAt: Date | null;
     // (undocumented)
@@ -29514,6 +31864,8 @@ export class SubscriptionOnAccountMinOrderByAggregateInput {
     deactivated?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     startedAt?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -29563,6 +31915,8 @@ export class SubscriptionOnAccountOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     _max?: SubscriptionOnAccountMaxOrderByAggregateInput | undefined;
     // (undocumented)
     _min?: SubscriptionOnAccountMinOrderByAggregateInput | undefined;
@@ -29590,6 +31944,8 @@ export class SubscriptionOnAccountOrderByWithRelationAndSearchRelevanceInput {
     deactivated?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     _relevance?: SubscriptionOnAccountOrderByRelevanceInput | undefined;
     // (undocumented)
@@ -29625,6 +31981,8 @@ export enum SubscriptionOnAccountScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     startedAt = "startedAt",
     // (undocumented)
     subscriptionId = "subscriptionId",
@@ -29647,7 +32005,9 @@ export class SubscriptionOnAccountScalarWhereInput {
     // (undocumented)
     deactivated?: DateTimeNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     NOT?: SubscriptionOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
@@ -29675,7 +32035,9 @@ export class SubscriptionOnAccountScalarWhereWithAggregatesInput {
     // (undocumented)
     deactivated?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     NOT?: SubscriptionOnAccountScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
@@ -29701,7 +32063,9 @@ export class SubscriptionOnAccountUpdateInput {
     // (undocumented)
     deactivated?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -29721,7 +32085,9 @@ export class SubscriptionOnAccountUpdateManyMutationInput {
     // (undocumented)
     deactivated?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -29807,7 +32173,9 @@ export class SubscriptionOnAccountUpdateWithoutAccountInput {
     // (undocumented)
     deactivated?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -29829,7 +32197,9 @@ export class SubscriptionOnAccountUpdateWithoutSubscriptionInput {
     // (undocumented)
     deactivated?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -29889,7 +32259,9 @@ export class SubscriptionOnAccountWhereInput {
     // (undocumented)
     deactivated?: DateTimeNullableFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     NOT?: SubscriptionOnAccountWhereInput[] | undefined;
     // (undocumented)
@@ -29943,6 +32315,8 @@ export class SubscriptionOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -29966,6 +32340,8 @@ export class SubscriptionOrderByWithRelationAndSearchRelevanceInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -30001,6 +32377,8 @@ export enum SubscriptionScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     details = "details",
     // (undocumented)
     id = "id",
@@ -30019,7 +32397,9 @@ export class SubscriptionScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     details?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
@@ -30043,7 +32423,9 @@ export class SubscriptionUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -30061,7 +32443,9 @@ export class SubscriptionUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -30093,7 +32477,9 @@ export class SubscriptionUpdateWithoutAccountsInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -30123,7 +32509,9 @@ export class SubscriptionWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
@@ -30155,6 +32543,10 @@ export class SubuserOnAccount {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
     subuser?: Account;
     // (undocumented)
     subuserId: string;
@@ -30179,6 +32571,10 @@ export class SubuserOnAccountCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     subuserId: number;
     // (undocumented)
     updatedAt: number;
@@ -30190,6 +32586,10 @@ export class SubuserOnAccountCountOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     subuserId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -30203,6 +32603,10 @@ export class SubuserOnAccountCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     subuser: AccountCreateNestedOneWithoutSubusersInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -30212,6 +32616,10 @@ export class SubuserOnAccountCreateInput {
 export class SubuserOnAccountCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     subuserId: string;
     // (undocumented)
@@ -30233,6 +32641,10 @@ export class SubuserOnAccountCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     subuserId: string;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -30244,6 +32656,10 @@ export class SubuserOnAccountCreateManySubuserInput {
     accountId: string;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -30301,6 +32717,10 @@ export class SubuserOnAccountCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     subuser: AccountCreateNestedOneWithoutSubusersInput;
     // (undocumented)
     updatedAt?: Date | undefined;
@@ -30312,6 +32732,10 @@ export class SubuserOnAccountCreateWithoutSubuserInput {
     account: AccountCreateNestedOneWithoutAccessesInput;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     updatedAt?: Date | undefined;
 }
@@ -30353,6 +32777,10 @@ export class SubuserOnAccountGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     _max: SubuserOnAccountMaxAggregate | null;
     // (undocumented)
     _min: SubuserOnAccountMinAggregate | null;
@@ -30379,6 +32807,10 @@ export class SubuserOnAccountMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     subuserId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -30390,6 +32822,10 @@ export class SubuserOnAccountMaxOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     subuserId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -30403,6 +32839,10 @@ export class SubuserOnAccountMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     subuserId: string | null;
     // (undocumented)
     updatedAt: Date | null;
@@ -30414,6 +32854,10 @@ export class SubuserOnAccountMinOrderByAggregateInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     subuserId?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -30453,6 +32897,10 @@ export class SubuserOnAccountOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     _max?: SubuserOnAccountMaxOrderByAggregateInput | undefined;
     // (undocumented)
     _min?: SubuserOnAccountMinOrderByAggregateInput | undefined;
@@ -30470,6 +32918,10 @@ export class SubuserOnAccountOrderByWithRelationAndSearchRelevanceInput {
     accountId?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     _relevance?: SubuserOnAccountOrderByRelevanceInput | undefined;
     // (undocumented)
@@ -30495,6 +32947,10 @@ export enum SubuserOnAccountScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
     // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     subuserId = "subuserId",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -30508,6 +32964,10 @@ export class SubuserOnAccountScalarWhereInput {
     AND?: SubuserOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     NOT?: SubuserOnAccountScalarWhereInput[] | undefined;
     // (undocumented)
@@ -30527,6 +32987,10 @@ export class SubuserOnAccountScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
+    // (undocumented)
     NOT?: SubuserOnAccountScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
     OR?: SubuserOnAccountScalarWhereWithAggregatesInput[] | undefined;
@@ -30543,6 +33007,10 @@ export class SubuserOnAccountUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     subuser?: AccountUpdateOneRequiredWithoutSubusersInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -30552,6 +33020,10 @@ export class SubuserOnAccountUpdateInput {
 export class SubuserOnAccountUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -30629,6 +33101,10 @@ export class SubuserOnAccountUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     subuser?: AccountUpdateOneRequiredWithoutSubusersInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
@@ -30640,6 +33116,10 @@ export class SubuserOnAccountUpdateWithoutSubuserInput {
     account?: AccountUpdateOneRequiredWithoutAccessesInput | undefined;
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
 }
@@ -30691,6 +33171,10 @@ export class SubuserOnAccountWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
+    // (undocumented)
     NOT?: SubuserOnAccountWhereInput[] | undefined;
     // (undocumented)
     OR?: SubuserOnAccountWhereInput[] | undefined;
@@ -30727,41 +33211,49 @@ export class Token {
     // (undocumented)
     account?: Account;
     // (undocumented)
-    apiToken: string;
+    accountID: string;
     // (undocumented)
     createdAt: Date;
+    // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     expiry: Date;
     // (undocumented)
     id: string;
     // (undocumented)
+    nickname: string;
+    // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt: Date;
     // (undocumented)
-    valid: boolean;
-    // (undocumented)
-    value: string;
+    value?: string | null;
 }
 
 // @public (undocumented)
 export class TokenCountAggregate {
     // (undocumented)
+    accountID: number;
+    // (undocumented)
     _all: number;
     // (undocumented)
-    apiToken: number;
-    // (undocumented)
     createdAt: number;
+    // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
     // (undocumented)
     expiry: number;
     // (undocumented)
     id: number;
     // (undocumented)
+    nickname: number;
+    // (undocumented)
     type: number;
     // (undocumented)
     updatedAt: number;
-    // (undocumented)
-    valid: number;
     // (undocumented)
     value: number;
 }
@@ -30769,19 +33261,23 @@ export class TokenCountAggregate {
 // @public (undocumented)
 export class TokenCountOrderByAggregateInput {
     // (undocumented)
-    apiToken?: "asc" | "desc" | undefined;
+    accountID?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
+    nickname?: "asc" | "desc" | undefined;
+    // (undocumented)
     type?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
-    // (undocumented)
-    valid?: "asc" | "desc" | undefined;
     // (undocumented)
     value?: "asc" | "desc" | undefined;
 }
@@ -30793,17 +33289,21 @@ export class TokenCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     expiry: Date;
     // (undocumented)
     id?: string | undefined;
+    // (undocumented)
+    nickname: string;
     // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt?: Date | undefined;
     // (undocumented)
-    valid?: boolean | undefined;
-    // (undocumented)
-    value: string;
+    value?: string | undefined;
 }
 
 // @public (undocumented)
@@ -30811,17 +33311,21 @@ export class TokenCreateManyAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     expiry: Date;
     // (undocumented)
     id?: string | undefined;
+    // (undocumented)
+    nickname: string;
     // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt?: Date | undefined;
     // (undocumented)
-    valid?: boolean | undefined;
-    // (undocumented)
-    value: string;
+    value?: string | undefined;
 }
 
 // @public (undocumented)
@@ -30835,21 +33339,25 @@ export class TokenCreateManyAccountInputEnvelope {
 // @public (undocumented)
 export class TokenCreateManyInput {
     // (undocumented)
-    apiToken: string;
+    accountID: string;
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     expiry: Date;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
+    nickname: string;
+    // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt?: Date | undefined;
     // (undocumented)
-    valid?: boolean | undefined;
-    // (undocumented)
-    value: string;
+    value?: string | undefined;
 }
 
 // @public (undocumented)
@@ -30877,17 +33385,21 @@ export class TokenCreateWithoutAccountInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     expiry: Date;
     // (undocumented)
     id?: string | undefined;
+    // (undocumented)
+    nickname: string;
     // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt?: Date | undefined;
     // (undocumented)
-    valid?: boolean | undefined;
-    // (undocumented)
-    value: string;
+    value?: string | undefined;
 }
 
 // @public (undocumented)
@@ -30921,11 +33433,15 @@ export class TokenCrudResolver {
 // @public (undocumented)
 export class TokenGroupBy {
     // (undocumented)
-    apiToken: string;
+    accountID: string;
     // (undocumented)
     _count: TokenCountAggregate | null;
     // (undocumented)
     createdAt: Date;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date;
     // (undocumented)
@@ -30935,13 +33451,13 @@ export class TokenGroupBy {
     // (undocumented)
     _min: TokenMinAggregate | null;
     // (undocumented)
+    nickname: string;
+    // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM";
     // (undocumented)
     updatedAt: Date;
     // (undocumented)
-    valid: boolean;
-    // (undocumented)
-    value: string;
+    value: string | null;
 }
 
 // @public (undocumented)
@@ -30957,19 +33473,23 @@ export class TokenListRelationFilter {
 // @public (undocumented)
 export class TokenMaxAggregate {
     // (undocumented)
-    apiToken: string | null;
+    accountID: string | null;
     // (undocumented)
     createdAt: Date | null;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
+    nickname: string | null;
+    // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM" | null;
     // (undocumented)
     updatedAt: Date | null;
-    // (undocumented)
-    valid: boolean | null;
     // (undocumented)
     value: string | null;
 }
@@ -30977,19 +33497,23 @@ export class TokenMaxAggregate {
 // @public (undocumented)
 export class TokenMaxOrderByAggregateInput {
     // (undocumented)
-    apiToken?: "asc" | "desc" | undefined;
+    accountID?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
+    nickname?: "asc" | "desc" | undefined;
+    // (undocumented)
     type?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
-    // (undocumented)
-    valid?: "asc" | "desc" | undefined;
     // (undocumented)
     value?: "asc" | "desc" | undefined;
 }
@@ -30997,19 +33521,23 @@ export class TokenMaxOrderByAggregateInput {
 // @public (undocumented)
 export class TokenMinAggregate {
     // (undocumented)
-    apiToken: string | null;
+    accountID: string | null;
     // (undocumented)
     createdAt: Date | null;
+    // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     expiry: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
+    nickname: string | null;
+    // (undocumented)
     type: "API" | "PERSONAL" | "SYSTEM" | null;
     // (undocumented)
     updatedAt: Date | null;
-    // (undocumented)
-    valid: boolean | null;
     // (undocumented)
     value: string | null;
 }
@@ -31017,19 +33545,23 @@ export class TokenMinAggregate {
 // @public (undocumented)
 export class TokenMinOrderByAggregateInput {
     // (undocumented)
-    apiToken?: "asc" | "desc" | undefined;
+    accountID?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
+    nickname?: "asc" | "desc" | undefined;
+    // (undocumented)
     type?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
-    // (undocumented)
-    valid?: "asc" | "desc" | undefined;
     // (undocumented)
     value?: "asc" | "desc" | undefined;
 }
@@ -31043,9 +33575,11 @@ export class TokenOrderByRelationAggregateInput {
 // @public (undocumented)
 export enum TokenOrderByRelevanceFieldEnum {
     // (undocumented)
-    apiToken = "apiToken",
+    accountID = "accountID",
     // (undocumented)
     id = "id",
+    // (undocumented)
+    nickname = "nickname",
     // (undocumented)
     value = "value"
 }
@@ -31053,7 +33587,7 @@ export enum TokenOrderByRelevanceFieldEnum {
 // @public (undocumented)
 export class TokenOrderByRelevanceInput {
     // (undocumented)
-    fields: Array<"id" | "value" | "apiToken">;
+    fields: Array<"id" | "nickname" | "value" | "accountID">;
     // (undocumented)
     search: string;
     // (undocumented)
@@ -31063,11 +33597,15 @@ export class TokenOrderByRelevanceInput {
 // @public (undocumented)
 export class TokenOrderByWithAggregationInput {
     // (undocumented)
-    apiToken?: "asc" | "desc" | undefined;
+    accountID?: "asc" | "desc" | undefined;
     // (undocumented)
     _count?: TokenCountOrderByAggregateInput | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -31077,11 +33615,11 @@ export class TokenOrderByWithAggregationInput {
     // (undocumented)
     _min?: TokenMinOrderByAggregateInput | undefined;
     // (undocumented)
+    nickname?: "asc" | "desc" | undefined;
+    // (undocumented)
     type?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
-    // (undocumented)
-    valid?: "asc" | "desc" | undefined;
     // (undocumented)
     value?: "asc" | "desc" | undefined;
 }
@@ -31091,21 +33629,25 @@ export class TokenOrderByWithRelationAndSearchRelevanceInput {
     // (undocumented)
     account?: AccountOrderByWithRelationAndSearchRelevanceInput | undefined;
     // (undocumented)
-    apiToken?: "asc" | "desc" | undefined;
+    accountID?: "asc" | "desc" | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     expiry?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
+    // (undocumented)
+    nickname?: "asc" | "desc" | undefined;
     // (undocumented)
     _relevance?: TokenOrderByRelevanceInput | undefined;
     // (undocumented)
     type?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
-    // (undocumented)
-    valid?: "asc" | "desc" | undefined;
     // (undocumented)
     value?: "asc" | "desc" | undefined;
 }
@@ -31119,19 +33661,23 @@ export class TokenRelationsResolver {
 // @public (undocumented)
 export enum TokenScalarFieldEnum {
     // (undocumented)
-    apiToken = "apiToken",
+    accountID = "accountID",
     // (undocumented)
     createdAt = "createdAt",
+    // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
     // (undocumented)
     expiry = "expiry",
     // (undocumented)
     id = "id",
     // (undocumented)
+    nickname = "nickname",
+    // (undocumented)
     type = "type",
     // (undocumented)
     updatedAt = "updatedAt",
-    // (undocumented)
-    valid = "valid",
     // (undocumented)
     value = "value"
 }
@@ -31139,15 +33685,21 @@ export enum TokenScalarFieldEnum {
 // @public (undocumented)
 export class TokenScalarWhereInput {
     // (undocumented)
+    accountID?: StringFilter | undefined;
+    // (undocumented)
     AND?: TokenScalarWhereInput[] | undefined;
     // (undocumented)
-    apiToken?: StringFilter | undefined;
-    // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     expiry?: DateTimeFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
+    // (undocumented)
+    nickname?: StringFilter | undefined;
     // (undocumented)
     NOT?: TokenScalarWhereInput[] | undefined;
     // (undocumented)
@@ -31157,23 +33709,27 @@ export class TokenScalarWhereInput {
     // (undocumented)
     updatedAt?: DateTimeFilter | undefined;
     // (undocumented)
-    valid?: BoolFilter | undefined;
-    // (undocumented)
-    value?: StringFilter | undefined;
+    value?: StringNullableFilter | undefined;
 }
 
 // @public (undocumented)
 export class TokenScalarWhereWithAggregatesInput {
     // (undocumented)
+    accountID?: StringWithAggregatesFilter | undefined;
+    // (undocumented)
     AND?: TokenScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
-    apiToken?: StringWithAggregatesFilter | undefined;
-    // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     expiry?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
+    // (undocumented)
+    nickname?: StringWithAggregatesFilter | undefined;
     // (undocumented)
     NOT?: TokenScalarWhereWithAggregatesInput[] | undefined;
     // (undocumented)
@@ -31183,9 +33739,7 @@ export class TokenScalarWhereWithAggregatesInput {
     // (undocumented)
     updatedAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
-    valid?: BoolWithAggregatesFilter | undefined;
-    // (undocumented)
-    value?: StringWithAggregatesFilter | undefined;
+    value?: StringNullableWithAggregatesFilter | undefined;
 }
 
 // @public (undocumented)
@@ -31205,17 +33759,21 @@ export class TokenUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     expiry?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    nickname?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     type?: EnumTokenTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    valid?: BoolFieldUpdateOperationsInput | undefined;
-    // (undocumented)
-    value?: StringFieldUpdateOperationsInput | undefined;
+    value?: NullableStringFieldUpdateOperationsInput | undefined;
 }
 
 // @public (undocumented)
@@ -31223,17 +33781,21 @@ export class TokenUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     expiry?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    nickname?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     type?: EnumTokenTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    valid?: BoolFieldUpdateOperationsInput | undefined;
-    // (undocumented)
-    value?: StringFieldUpdateOperationsInput | undefined;
+    value?: NullableStringFieldUpdateOperationsInput | undefined;
 }
 
 // @public (undocumented)
@@ -31275,17 +33837,21 @@ export class TokenUpdateWithoutAccountInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     expiry?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    nickname?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     type?: EnumTokenTypeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     updatedAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
-    valid?: BoolFieldUpdateOperationsInput | undefined;
-    // (undocumented)
-    value?: StringFieldUpdateOperationsInput | undefined;
+    value?: NullableStringFieldUpdateOperationsInput | undefined;
 }
 
 // @public (undocumented)
@@ -31311,15 +33877,21 @@ export class TokenWhereInput {
     // (undocumented)
     account?: AccountRelationFilter | undefined;
     // (undocumented)
+    accountID?: StringFilter | undefined;
+    // (undocumented)
     AND?: TokenWhereInput[] | undefined;
     // (undocumented)
-    apiToken?: StringFilter | undefined;
-    // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     expiry?: DateTimeFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
+    // (undocumented)
+    nickname?: StringFilter | undefined;
     // (undocumented)
     NOT?: TokenWhereInput[] | undefined;
     // (undocumented)
@@ -31329,9 +33901,7 @@ export class TokenWhereInput {
     // (undocumented)
     updatedAt?: DateTimeFilter | undefined;
     // (undocumented)
-    valid?: BoolFilter | undefined;
-    // (undocumented)
-    value?: StringFilter | undefined;
+    value?: StringNullableFilter | undefined;
 }
 
 // @public (undocumented)
@@ -31355,7 +33925,9 @@ export class Transaction {
     // (undocumented)
     data: Prisma.JsonValue;
     // (undocumented)
-    deleted?: Date | null;
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -31383,6 +33955,8 @@ export class TransactionCountAggregate {
     // (undocumented)
     deleted: number;
     // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     id: number;
     // (undocumented)
     updatedAt: number;
@@ -31399,6 +33973,8 @@ export class TransactionCountOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -31413,7 +33989,9 @@ export class TransactionCreateInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -31429,7 +34007,9 @@ export class TransactionCreateManyAccountInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -31453,7 +34033,9 @@ export class TransactionCreateManyInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -31505,7 +34087,9 @@ export class TransactionCreateWithoutAccountInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -31523,7 +34107,9 @@ export class TransactionCreateWithoutSIACheckInput {
     // (undocumented)
     data: Prisma.InputJsonValue;
     // (undocumented)
-    deleted?: Date | undefined;
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     id?: string | undefined;
     // (undocumented)
@@ -31569,7 +34155,9 @@ export class TransactionGroupBy {
     // (undocumented)
     data: Prisma.JsonValue;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -31597,7 +34185,9 @@ export class TransactionMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -31613,6 +34203,8 @@ export class TransactionMaxOrderByAggregateInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     updatedAt?: "asc" | "desc" | undefined;
@@ -31625,7 +34217,9 @@ export class TransactionMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
-    deleted: Date | null;
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
     // (undocumented)
     id: string | null;
     // (undocumented)
@@ -31640,6 +34234,8 @@ export class TransactionMinOrderByAggregateInput {
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -31683,6 +34279,8 @@ export class TransactionOrderByWithAggregationInput {
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
     // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
     _max?: TransactionMaxOrderByAggregateInput | undefined;
@@ -31704,6 +34302,8 @@ export class TransactionOrderByWithRelationAndSearchRelevanceInput {
     data?: "asc" | "desc" | undefined;
     // (undocumented)
     deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -31741,6 +34341,8 @@ export enum TransactionScalarFieldEnum {
     // (undocumented)
     deleted = "deleted",
     // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     id = "id",
     // (undocumented)
     updatedAt = "updatedAt"
@@ -31757,7 +34359,9 @@ export class TransactionScalarWhereInput {
     // (undocumented)
     data?: JsonFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -31779,7 +34383,9 @@ export class TransactionScalarWhereWithAggregatesInput {
     // (undocumented)
     data?: JsonWithAggregatesFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableWithAggregatesFilter | undefined;
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
     // (undocumented)
@@ -31795,7 +34401,7 @@ export class TransactionSIACheckArgs {
     // (undocumented)
     cursor?: SIACheckWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deleted" | "error" | "transactionId"> | undefined;
+    distinct?: Array<"id" | "sia_id" | "status" | "AuthUrl" | "pubUrl" | "createdAt" | "updatedAt" | "deletedDate" | "deleted" | "error" | "transactionId"> | undefined;
     // (undocumented)
     orderBy?: SIACheckOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -31815,7 +34421,9 @@ export class TransactionUpdateInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -31831,7 +34439,9 @@ export class TransactionUpdateManyMutationInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -31897,7 +34507,9 @@ export class TransactionUpdateWithoutAccountInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -31915,7 +34527,9 @@ export class TransactionUpdateWithoutSIACheckInput {
     // (undocumented)
     data?: Prisma.InputJsonValue | undefined;
     // (undocumented)
-    deleted?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -31961,7 +34575,9 @@ export class TransactionWhereInput {
     // (undocumented)
     data?: JsonFilter | undefined;
     // (undocumented)
-    deleted?: DateTimeNullableFilter | undefined;
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
     // (undocumented)
@@ -32415,6 +35031,20 @@ export class UpdateManyRTWResolver {
 }
 
 // @public (undocumented)
+export class UpdateManySaltArgs {
+    // (undocumented)
+    data: SaltUpdateManyMutationInput;
+    // (undocumented)
+    where?: SaltWhereInput | undefined;
+}
+
+// @public (undocumented)
+export class UpdateManySaltResolver {
+    // (undocumented)
+    updateManySalt(ctx: any, info: GraphQLResolveInfo, args: UpdateManySaltArgs): Promise<AffectedRowsOutput>;
+}
+
+// @public (undocumented)
 export class UpdateManySIABadgeArgs {
     // (undocumented)
     data: SIABadgeUpdateManyMutationInput;
@@ -32594,6 +35224,20 @@ export class UpdateRTWArgs {
 export class UpdateRTWResolver {
     // (undocumented)
     updateRTW(ctx: any, info: GraphQLResolveInfo, args: UpdateRTWArgs): Promise<RTW | null>;
+}
+
+// @public (undocumented)
+export class UpdateSaltArgs {
+    // (undocumented)
+    data: SaltUpdateInput;
+    // (undocumented)
+    where: SaltWhereUniqueInput;
+}
+
+// @public (undocumented)
+export class UpdateSaltResolver {
+    // (undocumented)
+    updateSalt(ctx: any, info: GraphQLResolveInfo, args: UpdateSaltArgs): Promise<Salt | null>;
 }
 
 // @public (undocumented)
@@ -33009,6 +35653,22 @@ export class UpsertRTWResolver {
 }
 
 // @public (undocumented)
+export class UpsertSaltArgs {
+    // (undocumented)
+    create: SaltCreateInput;
+    // (undocumented)
+    update: SaltUpdateInput;
+    // (undocumented)
+    where: SaltWhereUniqueInput;
+}
+
+// @public (undocumented)
+export class UpsertSaltResolver {
+    // (undocumented)
+    upsertSalt(ctx: any, info: GraphQLResolveInfo, args: UpsertSaltArgs): Promise<Salt>;
+}
+
+// @public (undocumented)
 export class UpsertSIABadgeArgs {
     // (undocumented)
     create: SIABadgeCreateInput;
@@ -33177,6 +35837,10 @@ export class VenueStyle {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted?: boolean | null;
+    // (undocumented)
+    deletedDate?: Date | null;
+    // (undocumented)
     details?: string | null;
     // (undocumented)
     id: string;
@@ -33191,7 +35855,7 @@ export class VenueStyleAddressArgs {
     // (undocumented)
     cursor?: AddressWhereUniqueInput | undefined;
     // (undocumented)
-    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deleted"> | undefined;
+    distinct?: Array<"id" | "createdAt" | "updatedAt" | "accountId" | "type" | "coords" | "street" | "city" | "state" | "country" | "zipcode" | "addressName" | "name" | "parking" | "website" | "hoursOfOperation" | "features" | "details" | "public" | "primaryaccountId" | "deletedDate" | "deleted"> | undefined;
     // (undocumented)
     orderBy?: AddressOrderByWithRelationAndSearchRelevanceInput[] | undefined;
     // (undocumented)
@@ -33215,6 +35879,10 @@ export class VenueStyleCountAggregate {
     // (undocumented)
     createdAt: number;
     // (undocumented)
+    deleted: number;
+    // (undocumented)
+    deletedDate: number;
+    // (undocumented)
     details: number;
     // (undocumented)
     id: number;
@@ -33228,6 +35896,10 @@ export class VenueStyleCountAggregate {
 export class VenueStyleCountOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -33245,6 +35917,10 @@ export class VenueStyleCreateInput {
     // (undocumented)
     createdAt?: Date | undefined;
     // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
+    // (undocumented)
     details?: string | undefined;
     // (undocumented)
     id?: string | undefined;
@@ -33258,6 +35934,10 @@ export class VenueStyleCreateInput {
 export class VenueStyleCreateManyInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -33290,6 +35970,10 @@ export class VenueStyleCreateOrConnectWithoutAddressInput {
 export class VenueStyleCreateWithoutAddressInput {
     // (undocumented)
     createdAt?: Date | undefined;
+    // (undocumented)
+    deleted?: boolean | undefined;
+    // (undocumented)
+    deletedDate?: Date | undefined;
     // (undocumented)
     details?: string | undefined;
     // (undocumented)
@@ -33335,6 +36019,10 @@ export class VenueStyleGroupBy {
     // (undocumented)
     createdAt: Date;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     id: string;
@@ -33363,6 +36051,10 @@ export class VenueStyleMaxAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     id: string | null;
@@ -33376,6 +36068,10 @@ export class VenueStyleMaxAggregate {
 export class VenueStyleMaxOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -33391,6 +36087,10 @@ export class VenueStyleMinAggregate {
     // (undocumented)
     createdAt: Date | null;
     // (undocumented)
+    deleted: boolean | null;
+    // (undocumented)
+    deletedDate: Date | null;
+    // (undocumented)
     details: string | null;
     // (undocumented)
     id: string | null;
@@ -33404,6 +36104,10 @@ export class VenueStyleMinAggregate {
 export class VenueStyleMinOrderByAggregateInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -33447,6 +36151,10 @@ export class VenueStyleOrderByWithAggregationInput {
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
     // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
+    // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
     id?: "asc" | "desc" | undefined;
@@ -33466,6 +36174,10 @@ export class VenueStyleOrderByWithRelationAndSearchRelevanceInput {
     address?: AddressOrderByRelationAggregateInput | undefined;
     // (undocumented)
     createdAt?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deleted?: "asc" | "desc" | undefined;
+    // (undocumented)
+    deletedDate?: "asc" | "desc" | undefined;
     // (undocumented)
     details?: "asc" | "desc" | undefined;
     // (undocumented)
@@ -33489,6 +36201,10 @@ export enum VenueStyleScalarFieldEnum {
     // (undocumented)
     createdAt = "createdAt",
     // (undocumented)
+    deleted = "deleted",
+    // (undocumented)
+    deletedDate = "deletedDate",
+    // (undocumented)
     details = "details",
     // (undocumented)
     id = "id",
@@ -33504,6 +36220,10 @@ export class VenueStyleScalarWhereInput {
     AND?: VenueStyleScalarWhereInput[] | undefined;
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
+    // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
     // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
@@ -33525,6 +36245,10 @@ export class VenueStyleScalarWhereWithAggregatesInput {
     // (undocumented)
     createdAt?: DateTimeWithAggregatesFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableWithAggregatesFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableWithAggregatesFilter | undefined;
+    // (undocumented)
     details?: StringNullableWithAggregatesFilter | undefined;
     // (undocumented)
     id?: StringWithAggregatesFilter | undefined;
@@ -33545,6 +36269,10 @@ export class VenueStyleUpdateInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
@@ -33558,6 +36286,10 @@ export class VenueStyleUpdateInput {
 export class VenueStyleUpdateManyMutationInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
@@ -33605,6 +36337,10 @@ export class VenueStyleUpdateWithoutAddressInput {
     // (undocumented)
     createdAt?: DateTimeFieldUpdateOperationsInput | undefined;
     // (undocumented)
+    deleted?: NullableBoolFieldUpdateOperationsInput | undefined;
+    // (undocumented)
+    deletedDate?: NullableDateTimeFieldUpdateOperationsInput | undefined;
+    // (undocumented)
     details?: NullableStringFieldUpdateOperationsInput | undefined;
     // (undocumented)
     id?: StringFieldUpdateOperationsInput | undefined;
@@ -33641,6 +36377,10 @@ export class VenueStyleWhereInput {
     // (undocumented)
     createdAt?: DateTimeFilter | undefined;
     // (undocumented)
+    deleted?: BoolNullableFilter | undefined;
+    // (undocumented)
+    deletedDate?: DateTimeNullableFilter | undefined;
+    // (undocumented)
     details?: StringNullableFilter | undefined;
     // (undocumented)
     id?: StringFilter | undefined;
@@ -33662,10 +36402,10 @@ export class VenueStyleWhereUniqueInput {
 
 // Warnings were encountered during analysis:
 //
-// lib/njs/database/enhance.d.ts:48:5 - (ae-forgotten-export) The symbol "ArgFieldsConfig" needs to be exported by the entry point index.d.ts
-// lib/njs/database/enhance.d.ts:96:5 - (ae-forgotten-export) The symbol "ModelFieldsConfig" needs to be exported by the entry point index.d.ts
-// lib/njs/database/enhance.d.ts:107:5 - (ae-forgotten-export) The symbol "OutputTypeFieldsConfig" needs to be exported by the entry point index.d.ts
-// lib/njs/database/enhance.d.ts:118:5 - (ae-forgotten-export) The symbol "InputTypeFieldsConfig" needs to be exported by the entry point index.d.ts
+// lib/njs/database/generated/enhance.d.ts:49:5 - (ae-forgotten-export) The symbol "ArgFieldsConfig" needs to be exported by the entry point index.d.ts
+// lib/njs/database/generated/enhance.d.ts:98:5 - (ae-forgotten-export) The symbol "ModelFieldsConfig" needs to be exported by the entry point index.d.ts
+// lib/njs/database/generated/enhance.d.ts:109:5 - (ae-forgotten-export) The symbol "OutputTypeFieldsConfig" needs to be exported by the entry point index.d.ts
+// lib/njs/database/generated/enhance.d.ts:120:5 - (ae-forgotten-export) The symbol "InputTypeFieldsConfig" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

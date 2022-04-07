@@ -5,6 +5,7 @@ datasource db {
 
 model Account {
   id String @id @default(uuid())
+  prn Int @default(autoincrement())
   username String? @unique
   accountType AccountType @default(USER)
   subsciption Boolean @default(false)
@@ -44,25 +45,39 @@ model Account {
   
   // Password things
   password String?
+  Salt Salt?
   resetPasswordToken String? @unique
   resetPasswordExpires DateTime?
   apiToken Token[]
 
   @@map("accounts")
-  deleted DateTime?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model Token {
   id String @id @default(uuid())
+  nickname String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   type TokenType
-  value String @unique
-  valid Boolean @default(true)
+  value String? @unique
   expiry DateTime
 
-  account Account @relation(fields: [apiToken], references: [id])
-  apiToken String
+  account Account @relation(fields: [accountID], references: [id])
+  accountID String
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
+}
+
+model Salt {
+  id String @id @default(uuid())
+  salt String
+  expiry DateTime
+  account Account? @relation(fields: [accountID], references: [id])
+  accountID String?
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model SubuserOnAccount {
@@ -74,6 +89,8 @@ model SubuserOnAccount {
   @@id([accountId, subuserId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model EmployersOnAccount {
@@ -85,6 +102,8 @@ model EmployersOnAccount {
   @@id([accountId, employerId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 model ManagersOnAccount {
@@ -96,6 +115,8 @@ model ManagersOnAccount {
   @@id([accountId, managersId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedDate DateTime?
+  deleted Boolean? @default(false)
 }
 
 enum AccountType {
