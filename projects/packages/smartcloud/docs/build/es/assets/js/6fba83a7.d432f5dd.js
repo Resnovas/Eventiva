@@ -721,8 +721,7 @@
 										"a",
 										{
 											parentName: "li",
-											href:
-												"https://help.github.com/articles/helping-new-contributors-find-your-project-with-labels/"
+											href: "https://help.github.com/articles/helping-new-contributors-find-your-project-with-labels/"
 										},
 										"GitHub actively promotes it"
 									),
@@ -731,8 +730,7 @@
 										"a",
 										{
 											parentName: "li",
-											href:
-												"https://help.github.com/articles/about-labels/#using-default-labels"
+											href: "https://help.github.com/articles/about-labels/#using-default-labels"
 										},
 										"initializes new repositories with that label"
 									),

@@ -233,8 +233,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/docs/release-mastermind/interfaces/IssueConfig"
+								href: "/action-masterminds/docs/release-mastermind/interfaces/IssueConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "IssueConfig")
 						)
@@ -248,8 +247,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L87"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L87"
 							},
 							"action.ts:87"
 						)
@@ -268,8 +266,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/docs/release-mastermind/interfaces/PullRequestConfig"
+								href: "/action-masterminds/docs/release-mastermind/interfaces/PullRequestConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "PullRequestConfig")
 						)
@@ -283,8 +280,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L83"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L83"
 							},
 							"action.ts:83"
 						)
@@ -303,8 +299,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/docs/release-mastermind/interfaces/ProjectConfig"
+								href: "/action-masterminds/docs/release-mastermind/interfaces/ProjectConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "ProjectConfig")
 						)
@@ -318,8 +313,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L91"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L91"
 							},
 							"action.ts:91"
 						)
@@ -355,8 +349,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L68"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L68"
 							},
 							"action.ts:68"
 						)
@@ -386,8 +379,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L46"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L46"
 							},
 							"action.ts:46"
 						)
@@ -406,8 +398,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "SharedConfig")
 						)
@@ -421,8 +412,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L95"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L95"
 							},
 							"action.ts:95"
 						)
@@ -441,8 +431,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "SharedConfig")
 						)
@@ -460,8 +449,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L79"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L79"
 							},
 							"action.ts:79"
 						)
@@ -576,8 +564,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L50"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L50"
 							},
 							"action.ts:50"
 						)

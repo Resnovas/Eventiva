@@ -238,8 +238,7 @@
 									"a",
 									{
 										parentName: "p",
-										href:
-											"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
+										href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
 									},
 									(0, a.kt)("inlineCode", { parentName: "a" }, "SharedConfig")
 								)
@@ -292,8 +291,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L30"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L30"
 							},
 							"contexts/projects.ts:30"
 						)
@@ -327,8 +325,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							"SharedConfig"
 						),
@@ -337,8 +334,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#enforceconventions"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#enforceconventions"
 							},
 							"enforceConventions"
 						)
@@ -351,8 +347,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L119"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L119"
 							},
 							"action.ts:119"
 						)
@@ -383,8 +378,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/IssueConditionConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/IssueConditionConfig"
 							},
 							(0, a.kt)(
 								"inlineCode",
@@ -399,8 +393,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/ProjectConditionConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/ProjectConditionConfig"
 							},
 							(0, a.kt)(
 								"inlineCode",
@@ -415,8 +408,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/PRConditionConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/PRConditionConfig"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "PRConditionConfig")
 						),
@@ -427,8 +419,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/ScheduleConditionConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/ScheduleConditionConfig"
 							},
 							(0, a.kt)(
 								"inlineCode",
@@ -443,8 +434,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConditions"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConditions"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "SharedConditions")
 						)
@@ -457,8 +447,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							"SharedConfig"
 						),
@@ -467,8 +456,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#labels"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#labels"
 							},
 							"labels"
 						)
@@ -481,8 +469,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L127"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L127"
 							},
 							"action.ts:127"
 						)
@@ -508,8 +495,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L26"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L26"
 							},
 							"contexts/projects.ts:26"
 						)
@@ -535,8 +521,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							"SharedConfig"
 						),
@@ -545,8 +530,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#ref"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#ref"
 							},
 							"ref"
 						)
@@ -559,8 +543,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L115"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L115"
 							},
 							"action.ts:115"
 						)
@@ -594,8 +577,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig"
 							},
 							"SharedConfig"
 						),
@@ -604,8 +586,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#stale"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/SharedConfig#stale"
 							},
 							"stale"
 						)
@@ -618,8 +599,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L123"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L123"
 							},
 							"action.ts:123"
 						)
@@ -646,8 +626,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L22"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/contexts/projects.ts#L22"
 							},
 							"contexts/projects.ts:22"
 						)

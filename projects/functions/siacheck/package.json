@@ -42,7 +42,6 @@
     "tsoa": "^3.14.1",
     "@tsoa/runtime": "~3.13.0",
     "swagger-ui-express": "~4.3.0",
-    "reflect-metadata": "^0.1.13",
     "reflect-metadata": "^0.1.13"
   },
   "peerDependencies": {
@@ -56,7 +55,6 @@
     "@eventiva/functions-rig": "workspace:*",
     "ts-node": "~10.4.0",
     "@types/body-parser": "~1.19.2",
-    "concurrently": "~7.0.0",
     "@types/swagger-ui-express": "~4.1.3",
     "@stoplight/spectral-cli": "~6.2.1"
   },

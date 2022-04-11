@@ -195,8 +195,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/CODE_OF_CONDUCT",
+				path: "/action-masterminds/docs/getting-started/contributing/CODE_OF_CONDUCT",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/CODE_OF_CONDUCT",
 					"c9b"
@@ -205,8 +204,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/code-review-process",
+				path: "/action-masterminds/docs/getting-started/contributing/code-review-process",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/code-review-process",
 					"842"
@@ -224,8 +222,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/runningLocally",
+				path: "/action-masterminds/docs/getting-started/contributing/runningLocally",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/runningLocally",
 					"7c9"
@@ -243,8 +240,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/branch",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/branch",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/branch",
 					"f30"
@@ -253,8 +249,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/external",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/external",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/external",
 					"a1a"
@@ -263,8 +258,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/first",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/first",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/first",
 					"1ed"
@@ -273,8 +267,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/internal",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/internal",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/internal",
 					"b09"
@@ -283,8 +276,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/labels",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/labels",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/labels",
 					"0ce"
@@ -293,8 +285,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/types",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/types",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/types",
 					"9ae"
@@ -303,8 +294,7 @@ export default [
 				sidebar: "getting"
 			},
 			{
-				path:
-					"/action-masterminds/docs/getting-started/contributing/Start Contributing/why-the-guidelines",
+				path: "/action-masterminds/docs/getting-started/contributing/Start Contributing/why-the-guidelines",
 				component: ComponentCreator(
 					"/action-masterminds/docs/getting-started/contributing/Start Contributing/why-the-guidelines",
 					"906"
@@ -376,8 +366,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/IssueConditionConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/IssueConditionConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/IssueConditionConfig",
 					"f08"
@@ -386,8 +375,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/IssueConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/IssueConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/IssueConfig",
 					"cd6"
@@ -423,8 +411,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/PRConditionConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/PRConditionConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/PRConditionConfig",
 					"da3"
@@ -433,8 +420,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/ProjectConditionConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/ProjectConditionConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/ProjectConditionConfig",
 					"d84"
@@ -443,8 +429,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/ProjectConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/ProjectConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/ProjectConfig",
 					"52b"
@@ -453,8 +438,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/PullRequestConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/PullRequestConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/PullRequestConfig",
 					"6a1"
@@ -481,8 +465,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/ScheduleConditionConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/ScheduleConditionConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/ScheduleConditionConfig",
 					"c6b"
@@ -491,8 +474,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/SharedConditions",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/SharedConditions",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/SharedConditions",
 					"893"
@@ -501,8 +483,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/SharedConfig",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/SharedConfig",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/SharedConfig",
 					"9d8"
@@ -511,8 +492,7 @@ export default [
 				sidebar: "release"
 			},
 			{
-				path:
-					"/action-masterminds/docs/release-mastermind/interfaces/SharedConventionConditions",
+				path: "/action-masterminds/docs/release-mastermind/interfaces/SharedConventionConditions",
 				component: ComponentCreator(
 					"/action-masterminds/docs/release-mastermind/interfaces/SharedConventionConditions",
 					"f90"

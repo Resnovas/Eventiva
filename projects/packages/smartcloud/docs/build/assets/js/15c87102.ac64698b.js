@@ -339,8 +339,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://www.contributor-covenant.org/version/1/4/code-of-conduct.html"
+								href: "https://www.contributor-covenant.org/version/1/4/code-of-conduct.html"
 							},
 							"https://www.contributor-covenant.org/version/1/4/code-of-conduct.html"
 						)

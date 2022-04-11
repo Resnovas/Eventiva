@@ -236,8 +236,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/Runners"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/Runners"
 							},
 							(0, o.kt)("inlineCode", { parentName: "a" }, "Runners")
 						)
@@ -251,8 +250,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L139"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L139"
 							},
 							"index.ts:139"
 						)
@@ -276,8 +274,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L135"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L135"
 							},
 							"index.ts:135"
 						)
@@ -301,8 +298,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L147"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L147"
 							},
 							"index.ts:147"
 						)
@@ -326,8 +322,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L151"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L151"
 							},
 							"index.ts:151"
 						)
@@ -346,8 +341,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/Repo"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/Repo"
 							},
 							(0, o.kt)("inlineCode", { parentName: "a" }, "Repo")
 						)
@@ -361,8 +355,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L159"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L159"
 							},
 							"index.ts:159"
 						)
@@ -386,8 +379,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L143"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L143"
 							},
 							"index.ts:143"
 						)
@@ -411,8 +403,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L155"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/index.ts#L155"
 							},
 							"index.ts:155"
 						)

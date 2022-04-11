@@ -230,8 +230,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/utils/index.ts#L204"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/utils/index.ts#L204"
 							},
 							"utils/index.ts:204"
 						)
@@ -248,8 +247,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/Repo"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/Repo"
 							},
 							(0, o.kt)("inlineCode", { parentName: "a" }, "Repo")
 						)
@@ -262,8 +260,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/utils/index.ts#L205"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/utils/index.ts#L205"
 							},
 							"utils/index.ts:205"
 						)

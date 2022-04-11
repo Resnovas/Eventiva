@@ -235,8 +235,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L250"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L250"
 							},
 							"conditions/index.ts:250"
 						)
@@ -264,8 +263,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L246"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L246"
 							},
 							"conditions/index.ts:246"
 						)

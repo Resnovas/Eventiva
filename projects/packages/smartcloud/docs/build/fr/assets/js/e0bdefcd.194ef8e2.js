@@ -214,8 +214,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://docusaurus.io/docs/using-themes#swizzling-theme-components"
+								href: "https://docusaurus.io/docs/using-themes#swizzling-theme-components"
 							},
 							"doc"
 						)

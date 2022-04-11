@@ -1,28 +1,28 @@
 /** @format */
 
 import {
-	IssueConditionConfig,
-	PRConditionConfig,
-	ProjectConditionConfig,
-	UtilProps,
-	UtilThis
-} from "../"
-import { evaluator } from "../../evaluator"
-const TYPE = "$or"
+  IssueConditionConfig,
+  PRConditionConfig,
+  ProjectConditionConfig,
+  UtilProps,
+  UtilThis,
+} from '../';
+import { evaluator } from '../../evaluator';
+const TYPE = '$or';
 
 export interface ConditionOr {
-	type: typeof TYPE
-	pattern: [PRConditionConfig | IssueConditionConfig | ProjectConditionConfig]
+  type: typeof TYPE;
+  pattern: [PRConditionConfig | IssueConditionConfig | ProjectConditionConfig];
 }
 
 function or(this: UtilThis, condition: ConditionOr, props: UtilProps) {
-	let success = false
+  let success = false;
 
-	condition.pattern.forEach((condition) => {
-		if (evaluator.call(this, condition, props)) success = true
-	})
+  condition.pattern.forEach(async (condition) => {
+    if (await evaluator.call(this, condition, props)) success = true;
+  });
 
-	return success
+  return success;
 }
 
-export default [TYPE, or] as const
+export default [TYPE, or] as const;

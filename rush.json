@@ -469,6 +469,14 @@
       "publishFolder": "temp/publish"
     },
     {
+      "packageName": "@resnovas/smartcloud",
+      "projectFolder": "projects/packages/smartcloud",
+      "reviewCategory": "prototypes",
+      "versionPolicyName": "individualVersion",
+      "shouldPublish": true,
+      "publishFolder": "temp/publish"
+    },
+    {
       "packageName": "@eventiva/axlr8",
       "projectFolder": "projects/functions/axlr8",
       "reviewCategory": "prototypes",
@@ -505,8 +513,8 @@
     //   "projectFolder": "projects/interface/test",
     //   "reviewCategory": "prototypes",
     //   "versionPolicyName": "individualVersion",
-      // "shouldPublish": false,
-      // "publishFolder": "temp/publish"  
+    // "shouldPublish": false,
+    // "publishFolder": "temp/publish"
     // },
     {
       "packageName": "@eventiva/prismix",

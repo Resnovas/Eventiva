@@ -22,7 +22,6 @@
     "access": "public"
   },
   "scripts": {
-    "postinstall": "prisma generate",
     "build": "prismix && prisma migrate dev --name dev --preview-feature && prisma generate && heft build && node fixup.js",
     "clean": "heft clean",
     "prisma:generate:proxy": "prismix && cross-env DATABASE_URL=\"$DATABASE_URL_PROXY\" PRISMA_CLIENT_ENGINE_TYPE=\"dataproxy\" prisma generate",

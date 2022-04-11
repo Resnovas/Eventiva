@@ -211,8 +211,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://code.visualstudio.com/docs/remote/remote-overview"
+								href: "https://code.visualstudio.com/docs/remote/remote-overview"
 							},
 							"VSCode"
 						),
@@ -239,8 +238,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/action-masterminds/projects/1"
+								href: "https://github.com/Videndum/action-masterminds/projects/1"
 							},
 							"Github"
 						)

@@ -373,7 +373,12 @@
 		},
 		8408: function (e, n, t) {
 			Object.defineProperty(n, "__esModule", { value: !0 }),
-				(n.getDocVersionSuggestions = n.getActiveDocContext = n.getActiveVersion = n.getLatestVersion = n.getActivePlugin = void 0)
+				(n.getDocVersionSuggestions =
+					n.getActiveDocContext =
+					n.getActiveVersion =
+					n.getLatestVersion =
+					n.getActivePlugin =
+						void 0)
 			var r = t(8143)
 			n.getActivePlugin = function (e, n, t) {
 				void 0 === t && (t = {})
@@ -455,7 +460,16 @@
 		},
 		6730: function (e, n, t) {
 			Object.defineProperty(n, "__esModule", { value: !0 }),
-				(n.useDocVersionSuggestions = n.useActiveDocContext = n.useActiveVersion = n.useLatestVersion = n.useVersions = n.useActivePluginAndVersion = n.useActivePlugin = n.useDocsData = n.useAllDocsData = void 0)
+				(n.useDocVersionSuggestions =
+					n.useActiveDocContext =
+					n.useActiveVersion =
+					n.useLatestVersion =
+					n.useVersions =
+					n.useActivePluginAndVersion =
+					n.useActivePlugin =
+					n.useDocsData =
+					n.useAllDocsData =
+						void 0)
 			var r = t(655),
 				o = t(8143),
 				u = r.__importStar(t(8084)),

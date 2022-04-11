@@ -227,8 +227,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/modules#projectcondition"
+								href: "/action-masterminds/es/docs/release-mastermind/modules#projectcondition"
 							},
 							(0, o.kt)("inlineCode", { parentName: "a" }, "ProjectCondition")
 						),
@@ -243,8 +242,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L264"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L264"
 							},
 							"conditions/index.ts:264"
 						)
@@ -272,8 +270,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L260"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/conditions/index.ts#L260"
 							},
 							"conditions/index.ts:260"
 						)

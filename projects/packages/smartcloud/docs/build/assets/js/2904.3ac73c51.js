@@ -163,658 +163,43 @@
 				c = new RegExp("[" + o + p + "]")
 			o = p = null
 			var l = [
-					0,
-					11,
-					2,
-					25,
-					2,
-					18,
-					2,
-					1,
-					2,
-					14,
-					3,
-					13,
-					35,
-					122,
-					70,
-					52,
-					268,
-					28,
-					4,
-					48,
-					48,
-					31,
-					14,
-					29,
-					6,
-					37,
-					11,
-					29,
-					3,
-					35,
-					5,
-					7,
-					2,
-					4,
-					43,
-					157,
-					19,
-					35,
-					5,
-					35,
-					5,
-					39,
-					9,
-					51,
-					157,
-					310,
-					10,
-					21,
-					11,
-					7,
-					153,
-					5,
-					3,
-					0,
-					2,
-					43,
-					2,
-					1,
-					4,
-					0,
-					3,
-					22,
-					11,
-					22,
-					10,
-					30,
-					66,
-					18,
-					2,
-					1,
-					11,
-					21,
-					11,
-					25,
-					71,
-					55,
-					7,
-					1,
-					65,
-					0,
-					16,
-					3,
-					2,
-					2,
-					2,
-					28,
-					43,
-					28,
-					4,
-					28,
-					36,
-					7,
-					2,
-					27,
-					28,
-					53,
-					11,
-					21,
-					11,
-					18,
-					14,
-					17,
-					111,
-					72,
-					56,
-					50,
-					14,
-					50,
-					14,
-					35,
-					477,
-					28,
-					11,
-					0,
-					9,
-					21,
-					190,
-					52,
-					76,
-					44,
-					33,
-					24,
-					27,
-					35,
-					30,
-					0,
-					12,
-					34,
-					4,
-					0,
-					13,
-					47,
-					15,
-					3,
-					22,
-					0,
-					2,
-					0,
-					36,
-					17,
-					2,
-					24,
-					85,
-					6,
-					2,
-					0,
-					2,
-					3,
-					2,
-					14,
-					2,
-					9,
-					8,
-					46,
-					39,
-					7,
-					3,
-					1,
-					3,
-					21,
-					2,
-					6,
-					2,
-					1,
-					2,
-					4,
-					4,
-					0,
-					19,
-					0,
-					13,
-					4,
-					159,
-					52,
-					19,
-					3,
-					54,
-					47,
-					21,
-					1,
-					2,
-					0,
-					185,
-					46,
-					42,
-					3,
-					37,
-					47,
-					21,
-					0,
-					60,
-					42,
-					86,
-					26,
-					230,
-					43,
-					117,
-					63,
-					32,
-					0,
-					257,
-					0,
-					11,
-					39,
-					8,
-					0,
-					22,
-					0,
-					12,
-					39,
-					3,
-					3,
-					20,
-					0,
-					35,
-					56,
-					264,
-					8,
-					2,
-					36,
-					18,
-					0,
-					50,
-					29,
-					113,
-					6,
-					2,
-					1,
-					2,
-					37,
-					22,
-					0,
-					26,
-					5,
-					2,
-					1,
-					2,
-					31,
-					15,
-					0,
-					328,
-					18,
-					270,
-					921,
-					103,
-					110,
-					18,
-					195,
-					2749,
-					1070,
-					4050,
-					582,
-					8634,
-					568,
-					8,
-					30,
-					114,
-					29,
-					19,
-					47,
-					17,
-					3,
-					32,
-					20,
-					6,
-					18,
-					689,
-					63,
-					129,
-					68,
-					12,
-					0,
-					67,
-					12,
-					65,
-					1,
-					31,
-					6129,
-					15,
-					754,
-					9486,
-					286,
-					82,
-					395,
-					2309,
-					106,
-					6,
-					12,
-					4,
-					8,
-					8,
-					9,
-					5991,
-					84,
-					2,
-					70,
-					2,
-					1,
-					3,
-					0,
-					3,
-					1,
-					3,
-					3,
-					2,
-					11,
-					2,
-					0,
-					2,
-					6,
-					2,
-					64,
-					2,
-					3,
-					3,
-					7,
-					2,
-					6,
-					2,
-					27,
-					2,
-					3,
-					2,
-					4,
-					2,
-					0,
-					4,
-					6,
-					2,
-					339,
-					3,
-					24,
-					2,
-					24,
-					2,
-					30,
-					2,
-					24,
-					2,
-					30,
-					2,
-					24,
-					2,
-					30,
-					2,
-					24,
-					2,
-					30,
-					2,
-					24,
-					2,
-					7,
-					4149,
-					196,
-					60,
-					67,
-					1213,
-					3,
-					2,
-					26,
-					2,
-					1,
-					2,
-					0,
-					3,
-					0,
-					2,
-					9,
-					2,
-					3,
-					2,
-					0,
-					2,
-					0,
-					7,
-					0,
-					5,
-					0,
-					2,
-					0,
-					2,
-					0,
-					2,
-					2,
-					2,
-					1,
-					2,
-					0,
-					3,
-					0,
-					2,
-					0,
-					2,
-					0,
-					2,
-					0,
-					2,
-					0,
-					2,
-					1,
-					2,
-					0,
-					3,
-					3,
-					2,
-					6,
-					2,
-					3,
-					2,
-					3,
-					2,
-					0,
-					2,
-					9,
-					2,
-					16,
-					6,
-					2,
-					2,
-					4,
-					2,
-					16,
-					4421,
-					42710,
-					42,
-					4148,
-					12,
-					221,
-					3,
-					5761,
-					15,
-					7472,
-					3104,
-					541
+					0, 11, 2, 25, 2, 18, 2, 1, 2, 14, 3, 13, 35, 122, 70, 52, 268, 28, 4,
+					48, 48, 31, 14, 29, 6, 37, 11, 29, 3, 35, 5, 7, 2, 4, 43, 157, 19, 35,
+					5, 35, 5, 39, 9, 51, 157, 310, 10, 21, 11, 7, 153, 5, 3, 0, 2, 43, 2,
+					1, 4, 0, 3, 22, 11, 22, 10, 30, 66, 18, 2, 1, 11, 21, 11, 25, 71, 55,
+					7, 1, 65, 0, 16, 3, 2, 2, 2, 28, 43, 28, 4, 28, 36, 7, 2, 27, 28, 53,
+					11, 21, 11, 18, 14, 17, 111, 72, 56, 50, 14, 50, 14, 35, 477, 28, 11,
+					0, 9, 21, 190, 52, 76, 44, 33, 24, 27, 35, 30, 0, 12, 34, 4, 0, 13,
+					47, 15, 3, 22, 0, 2, 0, 36, 17, 2, 24, 85, 6, 2, 0, 2, 3, 2, 14, 2, 9,
+					8, 46, 39, 7, 3, 1, 3, 21, 2, 6, 2, 1, 2, 4, 4, 0, 19, 0, 13, 4, 159,
+					52, 19, 3, 54, 47, 21, 1, 2, 0, 185, 46, 42, 3, 37, 47, 21, 0, 60, 42,
+					86, 26, 230, 43, 117, 63, 32, 0, 257, 0, 11, 39, 8, 0, 22, 0, 12, 39,
+					3, 3, 20, 0, 35, 56, 264, 8, 2, 36, 18, 0, 50, 29, 113, 6, 2, 1, 2,
+					37, 22, 0, 26, 5, 2, 1, 2, 31, 15, 0, 328, 18, 270, 921, 103, 110, 18,
+					195, 2749, 1070, 4050, 582, 8634, 568, 8, 30, 114, 29, 19, 47, 17, 3,
+					32, 20, 6, 18, 689, 63, 129, 68, 12, 0, 67, 12, 65, 1, 31, 6129, 15,
+					754, 9486, 286, 82, 395, 2309, 106, 6, 12, 4, 8, 8, 9, 5991, 84, 2,
+					70, 2, 1, 3, 0, 3, 1, 3, 3, 2, 11, 2, 0, 2, 6, 2, 64, 2, 3, 3, 7, 2,
+					6, 2, 27, 2, 3, 2, 4, 2, 0, 4, 6, 2, 339, 3, 24, 2, 24, 2, 30, 2, 24,
+					2, 30, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 7, 4149, 196, 60, 67,
+					1213, 3, 2, 26, 2, 1, 2, 0, 3, 0, 2, 9, 2, 3, 2, 0, 2, 0, 7, 0, 5, 0,
+					2, 0, 2, 0, 2, 2, 2, 1, 2, 0, 3, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 1, 2,
+					0, 3, 3, 2, 6, 2, 3, 2, 3, 2, 0, 2, 9, 2, 16, 6, 2, 2, 4, 2, 16, 4421,
+					42710, 42, 4148, 12, 221, 3, 5761, 15, 7472, 3104, 541
 				],
 				u = [
-					509,
-					0,
-					227,
-					0,
-					150,
-					4,
-					294,
-					9,
-					1368,
-					2,
-					2,
-					1,
-					6,
-					3,
-					41,
-					2,
-					5,
-					0,
-					166,
-					1,
-					574,
-					3,
-					9,
-					9,
-					525,
-					10,
-					176,
-					2,
-					54,
-					14,
-					32,
-					9,
-					16,
-					3,
-					46,
-					10,
-					54,
-					9,
-					7,
-					2,
-					37,
-					13,
-					2,
-					9,
-					6,
-					1,
-					45,
-					0,
-					13,
-					2,
-					49,
-					13,
-					9,
-					3,
-					4,
-					9,
-					83,
-					11,
-					7,
-					0,
-					161,
-					11,
-					6,
-					9,
-					7,
-					3,
-					56,
-					1,
-					2,
-					6,
-					3,
-					1,
-					3,
-					2,
-					10,
-					0,
-					11,
-					1,
-					3,
-					6,
-					4,
-					4,
-					193,
-					17,
-					10,
-					9,
-					5,
-					0,
-					82,
-					19,
-					13,
-					9,
-					214,
-					6,
-					3,
-					8,
-					28,
-					1,
-					83,
-					16,
-					16,
-					9,
-					82,
-					12,
-					9,
-					9,
-					84,
-					14,
-					5,
-					9,
-					243,
-					14,
-					166,
-					9,
-					280,
-					9,
-					41,
-					6,
-					2,
-					3,
-					9,
-					0,
-					10,
-					10,
-					47,
-					15,
-					406,
-					7,
-					2,
-					7,
-					17,
-					9,
-					57,
-					21,
-					2,
-					13,
-					123,
-					5,
-					4,
-					0,
-					2,
-					1,
-					2,
-					6,
-					2,
-					0,
-					9,
-					9,
-					49,
-					4,
-					2,
-					1,
-					2,
-					4,
-					9,
-					9,
-					330,
-					3,
-					19306,
-					9,
-					135,
-					4,
-					60,
-					6,
-					26,
-					9,
-					1016,
-					45,
-					17,
-					3,
-					19723,
-					1,
-					5319,
-					4,
-					4,
-					5,
-					9,
-					7,
-					3,
-					6,
-					31,
-					3,
-					149,
-					2,
-					1418,
-					49,
-					513,
-					54,
-					5,
-					49,
-					9,
-					0,
-					15,
-					0,
-					23,
-					4,
-					2,
-					14,
-					1361,
-					6,
-					2,
-					16,
-					3,
-					6,
-					2,
-					1,
-					2,
-					4,
-					2214,
-					6,
-					110,
-					6,
-					6,
-					9,
-					792487,
-					239
+					509, 0, 227, 0, 150, 4, 294, 9, 1368, 2, 2, 1, 6, 3, 41, 2, 5, 0, 166,
+					1, 574, 3, 9, 9, 525, 10, 176, 2, 54, 14, 32, 9, 16, 3, 46, 10, 54, 9,
+					7, 2, 37, 13, 2, 9, 6, 1, 45, 0, 13, 2, 49, 13, 9, 3, 4, 9, 83, 11, 7,
+					0, 161, 11, 6, 9, 7, 3, 56, 1, 2, 6, 3, 1, 3, 2, 10, 0, 11, 1, 3, 6,
+					4, 4, 193, 17, 10, 9, 5, 0, 82, 19, 13, 9, 214, 6, 3, 8, 28, 1, 83,
+					16, 16, 9, 82, 12, 9, 9, 84, 14, 5, 9, 243, 14, 166, 9, 280, 9, 41, 6,
+					2, 3, 9, 0, 10, 10, 47, 15, 406, 7, 2, 7, 17, 9, 57, 21, 2, 13, 123,
+					5, 4, 0, 2, 1, 2, 6, 2, 0, 9, 9, 49, 4, 2, 1, 2, 4, 9, 9, 330, 3,
+					19306, 9, 135, 4, 60, 6, 26, 9, 1016, 45, 17, 3, 19723, 1, 5319, 4, 4,
+					5, 9, 7, 3, 6, 31, 3, 149, 2, 1418, 49, 513, 54, 5, 49, 9, 0, 15, 0,
+					23, 4, 2, 14, 1361, 6, 2, 16, 3, 6, 2, 1, 2, 4, 2214, 6, 110, 6, 6, 9,
+					792487, 239
 				]
 			function d(t, e) {
 				for (var i = 65536, r = 0; r < e.length; r += 2) {
@@ -1012,37 +397,39 @@
 				return 2 | (t ? 4 : 0) | (e ? 8 : 0)
 			}
 			var B = function (t, e, i) {
-					;(this.options = t = (function (t) {
-						var e = {}
-						for (var i in D) e[i] = t && O(t, i) ? t[i] : D[i]
-						if (
-							(e.ecmaVersion >= 2015 && (e.ecmaVersion -= 2009),
-							null == e.allowReserved && (e.allowReserved = e.ecmaVersion < 5),
-							N(e.onToken))
-						) {
-							var r = e.onToken
-							e.onToken = function (t) {
-								return r.push(t)
+					;(this.options = t =
+						(function (t) {
+							var e = {}
+							for (var i in D) e[i] = t && O(t, i) ? t[i] : D[i]
+							if (
+								(e.ecmaVersion >= 2015 && (e.ecmaVersion -= 2009),
+								null == e.allowReserved &&
+									(e.allowReserved = e.ecmaVersion < 5),
+								N(e.onToken))
+							) {
+								var r = e.onToken
+								e.onToken = function (t) {
+									return r.push(t)
+								}
 							}
-						}
-						return (
-							N(e.onComment) &&
-								(e.onComment = (function (t, e) {
-									return function (i, r, n, s, a, o) {
-										var p = {
-											type: i ? "Block" : "Line",
-											value: r,
-											start: n,
-											end: s
+							return (
+								N(e.onComment) &&
+									(e.onComment = (function (t, e) {
+										return function (i, r, n, s, a, o) {
+											var p = {
+												type: i ? "Block" : "Line",
+												value: r,
+												start: n,
+												end: s
+											}
+											t.locations && (p.loc = new R(this, a, o)),
+												t.ranges && (p.range = [n, s]),
+												e.push(p)
 										}
-										t.locations && (p.loc = new R(this, a, o)),
-											t.ranges && (p.range = [n, s]),
-											e.push(p)
-									}
-								})(e, e.onComment)),
-							e
-						)
-					})(t)),
+									})(e, e.onComment)),
+								e
+							)
+						})(t)),
 						(this.sourceFile = t.sourceFile),
 						(this.keywords = j(s[t.ecmaVersion >= 6 ? 6 : 5]))
 					var n = ""
@@ -1137,7 +524,12 @@
 			var U = B.prototype,
 				q = /^(?:'((?:\\.|[^'])*?)'|"((?:\\.|[^"])*?)")/
 			function z() {
-				this.shorthandAssign = this.trailingComma = this.parenthesizedAssign = this.parenthesizedBind = this.doubleProto = -1
+				this.shorthandAssign =
+					this.trailingComma =
+					this.parenthesizedAssign =
+					this.parenthesizedBind =
+					this.doubleProto =
+						-1
 			}
 			;(U.strictDirective = function (t) {
 				for (;;) {
@@ -2354,7 +1746,10 @@
 						? ((n = e.parenthesizedAssign),
 						  (s = e.trailingComma),
 						  (a = e.shorthandAssign),
-						  (e.parenthesizedAssign = e.trailingComma = e.shorthandAssign = -1))
+						  (e.parenthesizedAssign =
+								e.trailingComma =
+								e.shorthandAssign =
+									-1))
 						: ((e = new z()), (r = !0))
 					var o = this.start,
 						p = this.startLoc
@@ -3377,15 +2772,16 @@
 						? e.call(this, t)
 						: (this.exprAllowed = i.beforeExpr)
 				}),
-				(k.parenR.updateContext = k.braceR.updateContext = function () {
-					if (1 !== this.context.length) {
-						var t = this.context.pop()
-						t === at.b_stat &&
-							"function" === this.curContext().token &&
-							(t = this.context.pop()),
-							(this.exprAllowed = !t.isExpr)
-					} else this.exprAllowed = !0
-				}),
+				(k.parenR.updateContext = k.braceR.updateContext =
+					function () {
+						if (1 !== this.context.length) {
+							var t = this.context.pop()
+							t === at.b_stat &&
+								"function" === this.curContext().token &&
+								(t = this.context.pop()),
+								(this.exprAllowed = !t.isExpr)
+						} else this.exprAllowed = !0
+					}),
 				(k.braceL.updateContext = function (t) {
 					this.context.push(this.braceIsBlock(t) ? at.b_stat : at.b_expr),
 						(this.exprAllowed = !0)
@@ -3402,17 +2798,19 @@
 						(this.exprAllowed = !0)
 				}),
 				(k.incDec.updateContext = function () {}),
-				(k._function.updateContext = k._class.updateContext = function (t) {
-					!t.beforeExpr ||
-					t === k.semi ||
-					t === k._else ||
-					(t === k._return &&
-						S.test(this.input.slice(this.lastTokEnd, this.start))) ||
-					((t === k.colon || t === k.braceL) && this.curContext() === at.b_stat)
-						? this.context.push(at.f_stat)
-						: this.context.push(at.f_expr),
-						(this.exprAllowed = !1)
-				}),
+				(k._function.updateContext = k._class.updateContext =
+					function (t) {
+						!t.beforeExpr ||
+						t === k.semi ||
+						t === k._else ||
+						(t === k._return &&
+							S.test(this.input.slice(this.lastTokEnd, this.start))) ||
+						((t === k.colon || t === k.braceL) &&
+							this.curContext() === at.b_stat)
+							? this.context.push(at.f_stat)
+							: this.context.push(at.f_expr),
+							(this.exprAllowed = !1)
+					}),
 				(k.backQuote.updateContext = function () {
 					this.curContext() === at.q_tmpl
 						? this.context.pop()
@@ -5601,9 +4999,10 @@
 				do {
 					var i = 31 & t
 					;(t >>= 5) > 0 && (i |= 32),
-						(e += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="[
-							i
-						])
+						(e +=
+							"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="[
+								i
+							])
 				} while (t > 0)
 				return e
 			}
@@ -6852,18 +6251,16 @@
 					(e.prototype.getArgumentsAlias = function () {
 						return (
 							this.argumentsAlias ||
-								(this.argumentsAlias = this.scope.createIdentifier(
-									"arguments"
-								)),
+								(this.argumentsAlias =
+									this.scope.createIdentifier("arguments")),
 							this.argumentsAlias
 						)
 					}),
 					(e.prototype.getArgumentsArrayAlias = function () {
 						return (
 							this.argumentsArrayAlias ||
-								(this.argumentsArrayAlias = this.scope.createIdentifier(
-									"argsArray"
-								)),
+								(this.argumentsArrayAlias =
+									this.scope.createIdentifier("argsArray")),
 							this.argumentsArrayAlias
 						)
 					}),
@@ -7813,9 +7210,8 @@
 															  (n = "" + _))
 															: (~S.indexOf(t.key.name) || S.push(t.key.name),
 															  b ||
-																	(b = k.createIdentifier(
-																		"prototypeAccessors"
-																	)),
+																	(b =
+																		k.createIdentifier("prototypeAccessors")),
 															  (n = "" + b))
 												} else n = t.static ? "" + a : a + ".prototype"
 												t.computed || (n += "."),
@@ -9816,9 +9212,8 @@
 				getObjectWithoutPropertiesHelper: function (t) {
 					return (
 						this.objectWithoutPropertiesHelper ||
-							((this.objectWithoutPropertiesHelper = this.body.scope.createIdentifier(
-								"objectWithoutProperties"
-							)),
+							((this.objectWithoutPropertiesHelper =
+								this.body.scope.createIdentifier("objectWithoutProperties")),
 							t.prependLeft(
 								this.prependAt,
 								"function " +
@@ -12015,13 +11410,14 @@
 						for (var s = arguments.length, y = Array(s), g = 0; g < s; g++)
 							y[g] = arguments[g]
 						return (
-							(i = n = o(
-								this,
-								(t = e.__proto__ || Object.getPrototypeOf(e)).call.apply(
-									t,
-									[this].concat(y)
-								)
-							)),
+							(i = n =
+								o(
+									this,
+									(t = e.__proto__ || Object.getPrototypeOf(e)).call.apply(
+										t,
+										[this].concat(y)
+									)
+								)),
 							(n.state = { capture: !0 }),
 							(n._recordCurrentState = function () {
 								var t = n._input

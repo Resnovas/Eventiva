@@ -164,8 +164,7 @@
 				c = {
 					unversionedId:
 						"getting-started/contributing/Start Contributing/why-the-guidelines",
-					id:
-						"getting-started/contributing/Start Contributing/why-the-guidelines",
+					id: "getting-started/contributing/Start Contributing/why-the-guidelines",
 					isDocsHomePage: !1,
 					title: "Contributing",
 					description:
@@ -173,8 +172,7 @@
 					source:
 						"@site/docs/getting-started/contributing/Start Contributing/why-the-guidelines.md",
 					sourceDirName: "getting-started/contributing/Start Contributing",
-					slug:
-						"/getting-started/contributing/Start Contributing/why-the-guidelines",
+					slug: "/getting-started/contributing/Start Contributing/why-the-guidelines",
 					permalink:
 						"/action-masterminds/es/docs/getting-started/contributing/Start Contributing/why-the-guidelines",
 					editUrl:
@@ -256,8 +254,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/getting-started/contributing/CODE_OF_CONDUCT"
+								href: "/action-masterminds/es/docs/getting-started/contributing/CODE_OF_CONDUCT"
 							},
 							(0, o.kt)(
 								"inlineCode",

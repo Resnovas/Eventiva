@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,8 +167,10 @@ message ListNotificationChannelDescriptorsRequest {
   //
   //     projects/[PROJECT_ID_OR_NUMBER]
   //
-  // Note that this names the parent container in which to look for the
-  // descriptors; to retrieve a single descriptor by name, use the
+  // Note that this
+  // [names](https://cloud.google.com/monitoring/api/v3#project_name) the parent
+  // container in which to look for the descriptors; to retrieve a single
+  // descriptor by name, use the
   // [GetNotificationChannelDescriptor][google.monitoring.v3.NotificationChannelService.GetNotificationChannelDescriptor]
   // operation, instead.
   string name = 4 [
@@ -217,7 +219,8 @@ message GetNotificationChannelDescriptorRequest {
 
 // The `CreateNotificationChannel` request.
 message CreateNotificationChannelRequest {
-  // Required. The project on which to execute the request. The format is:
+  // Required. The [project](https://cloud.google.com/monitoring/api/v3#project_name) on
+  // which to execute the request. The format is:
   //
   //     projects/[PROJECT_ID_OR_NUMBER]
   //
@@ -238,7 +241,8 @@ message CreateNotificationChannelRequest {
 
 // The `ListNotificationChannels` request.
 message ListNotificationChannelsRequest {
-  // Required. The project on which to execute the request. The format is:
+  // Required. The [project](https://cloud.google.com/monitoring/api/v3#project_name) on
+  // which to execute the request. The format is:
   //
   //     projects/[PROJECT_ID_OR_NUMBER]
   //
@@ -291,6 +295,10 @@ message ListNotificationChannelsResponse {
   // subsequent request to fetch the next set of results. If empty,
   // all results have been returned.
   string next_page_token = 2;
+
+  // The total number of notification channels in all pages. This number is only
+  // an estimate, and may change in subsequent pages. https://aip.dev/158
+  int32 total_size = 4;
 }
 
 // The `GetNotificationChannel` request.

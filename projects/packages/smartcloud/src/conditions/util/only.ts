@@ -1,30 +1,30 @@
 /** @format */
 
 import {
-	IssueConditionConfig,
-	PRConditionConfig,
-	ProjectConditionConfig,
-	UtilProps,
-	UtilThis
-} from ".."
-import { evaluator } from "../../evaluator"
+  IssueConditionConfig,
+  PRConditionConfig,
+  ProjectConditionConfig,
+  UtilProps,
+  UtilThis,
+} from '..';
+import { evaluator } from '../../evaluator';
 
-const TYPE = "$only"
+const TYPE = '$only';
 
 export interface ConditionOnlyOne {
-	required: number
-	type: typeof TYPE
-	pattern: [PRConditionConfig | IssueConditionConfig | ProjectConditionConfig]
+  required: number;
+  type: typeof TYPE;
+  pattern: [PRConditionConfig | IssueConditionConfig | ProjectConditionConfig];
 }
 
 function only(this: UtilThis, condition: ConditionOnlyOne, props: UtilProps) {
-	let success = 0
+  let success = 0;
 
-	condition.pattern.forEach((condition) => {
-		if (evaluator.call(this, condition, props)) success++
-	})
+  condition.pattern.forEach(async (condition) => {
+    if (await evaluator.call(this, condition, props)) success++;
+  });
 
-	return success == condition.required
+  return success == condition.required;
 }
 
-export default [TYPE, only] as const
+export default [TYPE, only] as const;

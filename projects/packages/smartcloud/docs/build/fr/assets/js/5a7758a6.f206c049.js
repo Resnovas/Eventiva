@@ -227,8 +227,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/fr/docs/release-mastermind/interfaces/Labels"
+								href: "/action-masterminds/fr/docs/release-mastermind/interfaces/Labels"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "Labels")
 						)
@@ -242,8 +241,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L35"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L35"
 							},
 							"action.ts:35"
 						)
@@ -260,8 +258,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/fr/docs/release-mastermind/interfaces/Config"
+								href: "/action-masterminds/fr/docs/release-mastermind/interfaces/Config"
 							},
 							(0, a.kt)("inlineCode", { parentName: "a" }, "Config")
 						),
@@ -276,8 +273,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L39"
+								href: "https://github.com/Videndum/Convential-PR-Releases/blob/377fcdd/src/action.ts#L39"
 							},
 							"action.ts:39"
 						)

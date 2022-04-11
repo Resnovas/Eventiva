@@ -3,6 +3,14 @@
   "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/approved-packages.schema.json",
   "packages": [
     {
+      "name": "@actions/core",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@actions/github",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@algolia/client-search",
       "allowedCategories": [ "tools" ]
     },
@@ -95,6 +103,10 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "@instructure/cz-lerna-changelog",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@istanbuljs/nyc-config-typescript",
       "allowedCategories": [ "tools" ]
     },
@@ -141,6 +153,10 @@
     {
       "name": "@prisma/sdk",
       "allowedCategories": [ "production", "prototypes", "tools" ]
+    },
+    {
+      "name": "@resnovas/utilities",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "@rushstack/heft",
@@ -196,14 +212,22 @@
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "@typescript-eslint/parser",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "@vendia/serverless-express",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@vercel/ncc",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@videndum/utilities",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -272,7 +296,7 @@
     },
     {
       "name": "commitizen",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "concurrently",
@@ -316,7 +340,7 @@
     },
     {
       "name": "docusaurus-plugin-typedoc",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "docusaurus-theme-redoc",
@@ -332,19 +356,23 @@
     },
     {
       "name": "eslint",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "eslint-config-prettier",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "eslint-plugin-eslint-comments",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "eslint-plugin-functional",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "eslint-plugin-github",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "eslint-plugin-i18next",
@@ -352,7 +380,15 @@
     },
     {
       "name": "eslint-plugin-import",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "eslint-plugin-node",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "eslint-plugin-tsdoc",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "express",
@@ -360,6 +396,10 @@
     },
     {
       "name": "express-session",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "fancy-log",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -415,7 +455,47 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "gulp",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-cli",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-copy",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-exec",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-json-config",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-json-fmt",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-markdown-toc",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-merge-json",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "gulp-rename",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "html-entities",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "husky",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -463,11 +543,23 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "js-yaml",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "jsonfile",
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
       "name": "jsonwebtoken",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "lerna",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "mdinclude",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -477,6 +569,10 @@
     {
       "name": "mermaid",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "minimatch",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "nodemon",
@@ -531,6 +627,14 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "prettier-plugin-sh",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "prettier-standard",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "prism-react-renderer",
       "allowedCategories": [ "tools" ]
     },
@@ -583,6 +687,10 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "simple-git",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "swagger-jsdoc",
       "allowedCategories": [ "tools" ]
     },
@@ -592,6 +700,10 @@
     },
     {
       "name": "ts-jest",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "ts-json-schema-generator",
       "allowedCategories": [ "prototypes" ]
     },
     {
@@ -620,11 +732,11 @@
     },
     {
       "name": "typedoc",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "typedoc-plugin-markdown",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "typedoc-plugin-merge-modules",
@@ -640,7 +752,7 @@
     },
     {
       "name": "typescript-json-schema",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "unist-util-visit",

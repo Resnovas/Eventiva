@@ -218,8 +218,7 @@
 							"a",
 							{
 								parentName: "p",
-								href:
-									"/action-masterminds/es/docs/release-mastermind/interfaces/Label"
+								href: "/action-masterminds/es/docs/release-mastermind/interfaces/Label"
 							},
 							(0, i.kt)("inlineCode", { parentName: "a" }, "Label")
 						)

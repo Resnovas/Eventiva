@@ -224,8 +224,7 @@
 								"a",
 								{
 									parentName: "strong",
-									href:
-										"https://github.com/Videndum/action-masterminds/discussions"
+									href: "https://github.com/Videndum/action-masterminds/discussions"
 								},
 								"our discussions page"
 							)
@@ -245,8 +244,7 @@
 								"a",
 								{
 									parentName: "strong",
-									href:
-										"https://github.com/Videndum/action-masterminds/discussions"
+									href: "https://github.com/Videndum/action-masterminds/discussions"
 								},
 								"discussions page"
 							)
@@ -266,8 +264,7 @@
 								"a",
 								{
 									parentName: "strong",
-									href:
-										"https://github.com/Videndum/action-masterminds/blob/develop/README.md"
+									href: "https://github.com/Videndum/action-masterminds/blob/develop/README.md"
 								},
 								"here"
 							)
