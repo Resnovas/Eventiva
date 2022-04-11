@@ -1,8 +1,8 @@
 {
   "core": {
     "debug": "",
-    "developer": "Developed by ",
-    "init": "Smartcloudjs framework Launched",
+    "developer": "Developed by {{developer}}",
+    "init": "Utilities Launched",
     "version_dev": "Running version development version {{version}}. Please be careful when running an unstable version"
   },
   "errors": {

@@ -461,6 +461,14 @@
       "publishFolder": "temp/publish"
     },
     {
+      "packageName": "@resnovas/utilities",
+      "projectFolder": "projects/packages/utilities",
+      "reviewCategory": "prototypes",
+      "versionPolicyName": "individualVersion",
+      "shouldPublish": true,
+      "publishFolder": "temp/publish"
+    },
+    {
       "packageName": "@eventiva/axlr8",
       "projectFolder": "projects/functions/axlr8",
       "reviewCategory": "prototypes",

@@ -1,48 +1,46 @@
 {
-  "name": "@videndum/utilities",
+  "name": "@resnovas/utilities",
   "version": "1.0.0-alpha.18",
-  "description": "Utilities used by Videndum Studios to enable Logging, i18n, and much more",
+  "description": "Utilities used by Resnovas to enable Logging, i18n, and much more",
+  "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Videndum/utilities"
+    "url": "https://github.com/Resnovas/utilities"
   },
   "bugs": {
-    "email": "bugs.utilities@videndum.studio",
-    "url": "https://github.com/Videndum/utilities/issues"
+    "email": "bugs.utilities@Resnovas.com",
+    "url": "https://github.com/Resnovas/utilities/issues"
   },
-  "author": "Videndum",
+  "author": "Resnovas",
   "contributors": [
     "TGTGamer"
   ],
-  "license": "",
-  "private": false,
-  "main": "lib/index.js",
-  "directories": {
-    "lib": "lib",
-    "doc": "docs",
-    "locales": "locales",
-    "test": "__tests__",
-    "src": "src"
+  "types": "dist/internals.d.ts",
+  "typings": "dist/internals.d.ts",
+  "main": "lib/cjs/index.js",
+  "module": "lib/mjs/index.js",
+  "esnext": {
+    "main": "lib/njs/index.js"
   },
-  "files": [
-    "__tests__",
-    "docs",
-    "lib",
-    "locales"
-  ],
-  "keywords": [],
+  "config": {},
+  "exports": {
+    ".": {
+      "import": "./lib/mjs/index.js",
+      "require": "./lib/cjs/index.js"
+    }
+  },
+  "publishConfig": {
+    "typings": "dist/internals-public.d.ts",
+    "types": "dist/internals-public.d.ts",
+    "access": "public",
+    "registry":"https://npm.pkg.github.com"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "heft build && node fixup.js",
     "check:i18n": "npm run i18n -- --check",
-    "dev:format": "prettier --config .prettier.json --write .",
-    "dev:format-check": "prettier --config .prettier.json --check .",
-    "dev:i18n": "sync-i18n --files './locales/*.json' --primary en --languages es ja fr it en zh ko en-GB en-US de-CH zh-Hant zh-Hans --space 2 --le LF --fn true -e true",
-    "dev:run": "yarn dev:i18n && npm run dev:tsc && npm run dev:format && node lib/index.js",
-    "dev:test": "jest --json --outputFile=result.json --testLocationInResults",
-    "dev:tsc": "tsc -p tsconfig.json",
+    "i18n": "sync-i18n --files './locales/*.json' --primary en --languages es ja fr it en zh ko en-GB en-US de-CH zh-Hant zh-Hans --space 2 --le LF --fn true -e true",
+    "test": "jest --json --outputFile=result.json --testLocationInResults",
     "release": "yarn version --prerelease --no-git-tag-version && yarn publish",
-    "run": "node lib/index.js",
-    "test": "jest"
   },
   "dependencies": {
     "@google-cloud/logging": "^9.3.0",
@@ -59,6 +57,8 @@
     "i18next-react-postprocessor": "^3.0.5"
   },
   "devDependencies": {
+    "@eventiva/functions-rig": "workspace:*",
+    "@rushstack/heft": "~0.42.2",
     "@overnightjs/core": "^1.7.4",
     "@types/app-root-path": "^1.2.4",
     "@types/fs-extra": "^9.0.1",
@@ -75,9 +75,4 @@
     "tslib": "^2.0.3",
     "tslint": "^6.1.0",
     "typescript": "^3.9.5"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry":"https://npm.pkg.github.com"
   }
-}

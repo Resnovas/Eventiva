@@ -97,18 +97,41 @@ export class Logger {
   public configured: boolean = false
   i18: Localizer = new Localizer()
 
-  constructor(options: { i18?: i18; logger: ConstructData }) {
-    this.main(options)
-  }
-  async main(options: { i18?: i18; logger: ConstructData }) {
+  async init(options: { i18?: i18; logger: ConstructData }) {
     this.constructData = options.logger
-    await this.i18.main(options.i18)
+    await this.i18.init(options.i18)
     if (options.logger.logLevel) this.setloglevel(options.logger.logLevel)
     else if (process.env.LOGLEVEL) this.loglevel = +process.env.LOGLEVEL
     this.configureLogger(options.logger)
   }
 
   async configureLogger(constructData: ConstructData) {
+    this.constructorLogs.push({
+      data: {
+        name: '200',
+        message: 'utilities:core.init',
+        translate: true
+      },
+      level: 2,
+    })
+    if (process.env.NPM_PACKAGE_VERSION?.split("-")[1]) this.constructorLogs.push({
+      data: {
+        name: '200',
+        message: 'utilities:core.version_dev',
+        translate: true,
+        T: {replace: {version: process.env.NPM_PACKAGE_VERSION?.split("-")[1]}}
+      },
+      level: 2,
+    })
+    this.constructorLogs.push({
+      data: {
+        name: '200',
+        message: 'utilities:core.developer',
+        translate: true,
+        T: { replace: { developer: constructData.developer || "Resnovas" } }
+      },
+      level: 2,
+    })
     if (constructData.gcp?.enabled) await this.configureGCP(constructData.gcp)
     if (constructData.sentry?.enabled)
       await this.configureSentry(constructData.sentry)
@@ -124,7 +147,7 @@ export class Logger {
     this.constructorLogs.push({
       data: {
         name: '200',
-        message: 'videndum:logging.gcp.constructor',
+        message: 'utilities:logging.gcp.constructor',
         translate: true
       },
       level: 1
@@ -137,7 +160,7 @@ export class Logger {
     this.constructorLogs.push({
       data: {
         name: '200',
-        message: 'videndum:logging.sentry.constructor',
+        message: 'utilities:logging.sentry.constructor',
         translate: true
       },
       level: 1
@@ -160,8 +183,8 @@ export class Logger {
       this.constructorLogs.push({
         data: {
           name: '200',
-          message: 'videndum:logging.sentry.error',
-          errors: _,
+          message: 'utilities:logging.sentry.error',
+          errors: _ as Error,
           translate: true
         },
         level: 6
@@ -192,7 +215,7 @@ export class Logger {
     this.constructorLogs.push({
       data: {
         name: '200',
-        message: 'videndum:logging.file.constructor',
+        message: 'utilities:logging.file.constructor',
         translate: true
       },
       level: 1
@@ -204,7 +227,7 @@ export class Logger {
         this.constructorLogs.push({
           data: {
             name: '200',
-            message: 'videndum:errors.fileDirectory.caught',
+            message: 'utilities:errors.fileDirectory.caught',
             errors: err,
             translate: true
           },
@@ -218,7 +241,7 @@ export class Logger {
               this.constructorLogs.push({
                 data: {
                   name: '200',
-                  message: 'videndum:errors.fileDirectory.thrown',
+                  message: 'utilities:errors.fileDirectory.thrown',
                   errors: err2,
                   translate: true
                 },
@@ -228,7 +251,7 @@ export class Logger {
               this.constructorLogs.push({
                 data: {
                   name: '200',
-                  message: 'videndum:errors.fileDirectory.solved',
+                  message: 'utilities:errors.fileDirectory.solved',
                   errors: err2,
                   translate: true
                 },
@@ -290,7 +313,7 @@ export class Logger {
     // Translate the metadata
     loggingData.name = this.loglevels[type].name.toLowerCase()
     loggingData.name = await this.translate(
-      `videndum:logging.${loggingData.name}`
+      `utilities:logging.${loggingData.name}`
     )
     if (loggingData.name) loggingData.name = loggingData.name.toUpperCase()
     result.console = await this.logconsole(loggingData, type)
@@ -356,8 +379,8 @@ export class Logger {
             logged: true,
             success: true
           }
-        } catch (err) {
-          this.log(err)
+        } catch (_) {
+          console.log(_)
           this.constructData.file.enabled = false
           return {
             logged: true,
@@ -410,7 +433,7 @@ export class Logger {
       } catch (_) {
         this.log(
           new LoggingDataClass(LoggingLevels.error, 'Failed to log to sentry', {
-            errors: _
+            errors: _ as Error
           })
         )
         this.constructData.sentry.enabled = false

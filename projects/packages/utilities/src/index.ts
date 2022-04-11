@@ -170,7 +170,8 @@ export interface ConstructData {
   sentry?: SentryDataType
   file?: fileDataType
   console?: consoleData
-  logLevel?: LoggingLevels
+  logLevel?: LoggingLevels,
+  developer?: string
 }
 
 export interface LogReturn {

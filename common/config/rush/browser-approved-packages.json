@@ -83,6 +83,10 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "@google-cloud/logging",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@google-cloud/storage",
       "allowedCategories": [ "prototypes" ]
     },
@@ -123,6 +127,10 @@
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
+      "name": "@overnightjs/core",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@prisma/client",
       "allowedCategories": [ "prototypes", "tools" ]
     },
@@ -141,6 +149,18 @@
     {
       "name": "@saucelabs/theme-github-codeblock",
       "allowedCategories": [ "tools" ]
+    },
+    {
+      "name": "@sentry/integrations",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@sentry/node",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "@sentry/tracing",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "@stoplight/spectral-cli",
@@ -211,6 +231,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "app-root-path",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "ava",
       "allowedCategories": [ "tools" ]
     },
@@ -221,6 +245,10 @@
     {
       "name": "body-parser",
       "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "chalk",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "chrome-aws-lambda",
@@ -319,6 +347,10 @@
       "allowedCategories": [ "tools" ]
     },
     {
+      "name": "eslint-plugin-i18next",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "eslint-plugin-import",
       "allowedCategories": [ "tools" ]
     },
@@ -383,12 +415,44 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "html-entities",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next-chained-backend",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next-fs-backend",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next-intervalplural-postprocessor",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next-json-sync",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
+      "name": "i18next-react-postprocessor",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "inquirer",
       "allowedCategories": [ "tools" ]
     },
     {
       "name": "jest",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "jest-circus",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "jimp",
@@ -460,11 +524,11 @@
     },
     {
       "name": "prettier-plugin-organize-imports",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "prettier-plugin-pkg",
-      "allowedCategories": [ "tools" ]
+      "allowedCategories": [ "prototypes", "tools" ]
     },
     {
       "name": "prism-react-renderer",
@@ -527,6 +591,10 @@
       "allowedCategories": [ "prototypes" ]
     },
     {
+      "name": "ts-jest",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "ts-node",
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
@@ -537,6 +605,10 @@
     {
       "name": "tslib",
       "allowedCategories": [ "prototypes", "tools" ]
+    },
+    {
+      "name": "tslint",
+      "allowedCategories": [ "prototypes" ]
     },
     {
       "name": "tsoa",

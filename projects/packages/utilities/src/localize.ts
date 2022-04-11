@@ -11,12 +11,12 @@ export interface i18 {
 export class Localizer {
   public readonly localize = i18Next
 
-  async main(construct?: i18) {
+  async init(construct?: i18) {
     const resources = await this.createResources(construct?.localesLocation)
     this.localize.use(intervalPlural).init({
       lng: 'en',
       resources: resources,
-      defaultNS: construct?.defaultNamespace,
+      defaultNS: construct?.defaultNamespace || 'utilities',
       fallbackLng: {
         'de-CH': ['fr', 'it'],
         'zh-Hant': ['zh-Hans', 'en'],
@@ -46,7 +46,7 @@ export class Localizer {
   async createResources(construct?: i18['localesLocation']): Promise<Resource> {
     let resource: Resource = {}
     if (typeof construct == 'undefined') construct = {}
-    construct['videndum'] = `${__dirname}/../locales`
+    construct['utilities'] = `${__dirname}/../locales`
     for (let namespace in construct) {
       let location: PathLike = path.normalize(construct[namespace] + '/')
       const files = fs.readdirSync(location)
@@ -66,7 +66,7 @@ export class Localizer {
   }
 
   t = (input: string, options?: T): string => {
-    return this.localize.t([input, 'videndum:errors.unspecific.localize'], {
+    return this.localize.t([input, 'utilities:errors.unspecific.localize'], {
       ...options,
       replace: {
         ...options?.replace,

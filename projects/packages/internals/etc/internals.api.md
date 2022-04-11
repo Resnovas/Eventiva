@@ -4,8 +4,12 @@
 
 ```ts
 
+import { ConstructData } from '@resnovas/utilities';
 import { GraphQLResolveInfo } from 'graphql';
 import { GraphQLScalarType } from 'graphql';
+import { i18 } from '@resnovas/utilities';
+import { Localizer } from '@resnovas/utilities';
+import { Logger } from '@resnovas/utilities';
 import { NonEmptyArray } from 'type-graphql';
 import { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
@@ -22880,12 +22884,20 @@ export type InputTypesEnhanceMap = {
 
 // @public (undocumented)
 export class Internals {
+    constructor(options?: {
+        i18?: i18;
+        logger: ConstructData;
+    });
     // Warning: (ae-forgotten-export) The symbol "Authentication" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
     auth: Authentication;
     // (undocumented)
     db: PrismaClient;
+    // (undocumented)
+    i18n: Localizer;
+    // (undocumented)
+    logging: Logger;
 }
 
 // @public (undocumented)

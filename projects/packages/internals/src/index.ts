@@ -5,7 +5,7 @@
  * Created Date: Wednesday, March 2nd 2022
  * Author: Jonathan Stevens
  * -----
- * Last Modified: Thu Apr 07 2022
+ * Last Modified: Mon Apr 11 2022
  * Modified By: Jonathan Stevens
  * Current Version: 0.0.5
  * -----
@@ -38,13 +38,30 @@ import 'reflect-metadata'
 import { PrismaClient } from '@prisma/client';
 import { Database } from './database';
 import { Authentication } from './Authentication';
-import { TokenType } from './database/generated';
+import {ConstructData, Localizer, Logger, i18} from '@resnovas/utilities'
 export * from './database/generated';
 
 export class Internals {
+  // Initialise database access
   private d = new Database()
+  // Initialise the prisma client
   public db: PrismaClient = this.d.db
+  // Initialise the logging class
+  public logging: Logger = new Logger()
+  // Initialise the Localisation class
+  public i18n: Localizer = this.logging.i18
+  // Initialise the authentication class
   public auth: Authentication = new Authentication(this.d)
+  
+
+  // Initialise the logging systems and I18n for the end user
+  constructor(options?: { i18?: i18, logger: ConstructData }) {
+    if (options) {
+      this.logging.init(options)
+    } else {
+      options = { logger: { console: { enabled: true }, developer: "Resnovas" } }
+    }
+  }
 }
 
 export default new Internals();
