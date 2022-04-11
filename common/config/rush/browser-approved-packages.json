@@ -143,6 +143,10 @@
       "allowedCategories": [ "production", "prototypes", "tools" ]
     },
     {
+      "name": "@resnovas/utilities",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "@rushstack/heft",
       "allowedCategories": [ "prototypes", "tools" ]
     },

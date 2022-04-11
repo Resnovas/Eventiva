@@ -1,9 +1,11 @@
 {
+  "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema.json",
   "labels": {
+    "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema/labels.json",
     "abandoned": {
       "name": "Status - Abandoned",
       "color": "CFD3D7",
-      "description": "This issue / pull request has been abandon"
+      "description": "This issue/pull request has been abandon"
     },
     "available": {
       "name": "Status - Available",
@@ -18,7 +20,7 @@
     "completed": {
       "name": "Status - Completed",
       "color": "CFD3D7",
-      "description": "Development has finished and been merged for this issue"
+      "description": "Development has finished and had merged for this issue"
     },
     "progress": {
       "name": "Status - In Progress",
@@ -33,7 +35,7 @@
     "pending": {
       "name": "Status - Pending",
       "color": "CFD3D7",
-      "description": "The developers have approved development of this request."
+      "description": "The developers have approved the development of this request"
     },
     "review": {
       "name": "Status - Review Needed",
@@ -48,12 +50,12 @@
     "doNotDevelop": {
       "name": "Status - Do not develop",
       "color": "CFD3D7",
-      "description": "This wont be worked on by DevOPS or Community contributor"
+      "description": "Development by DevOps or Community contributor shall not happen"
     },
     "stale": {
       "name": "Status - Stale",
       "color": "CFD3D7",
-      "description": "This issue has been automatically marked as stale because it has not had recent activite"
+      "description": "This issue has been automatically marked as stale because it has not had recent activity"
     },
     "chore": {
       "name": "Type - Chore",
@@ -108,7 +110,7 @@
     "revert": {
       "name": "Type - Revert",
       "color": "0075CA",
-      "description": "Removes & Discards a previous change as error"
+      "description": "Removes & Discards a previous change as an error"
     },
     "deprecated": {
       "name": "Type - Deprecated",
@@ -123,7 +125,7 @@
     "style": {
       "name": "Type - Style",
       "color": "0075CA",
-      "description": "Changes that do not affect the meaning of the code (white-space formatting missing semi-colons etc)"
+      "description": "Changes that do not affect the meaning of the code (white-space formatting missing semi-colons)"
     },
     "dependences": {
       "name": "Type - Dependences",
@@ -135,40 +137,45 @@
       "color": "f9cea2",
       "description": "Related to ./.github/workflows"
     },
-    "smartcloudJS": {
-      "name": "Context - SmartcloudJS",
+    "releaseMastermind": {
+      "name": "Context - Release Mastermind",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloudJS"
+      "description": "Related to @videndum/release-mastermind"
     },
-    "discord": {
-      "name": "Context - Discord",
+    "labelMastermind": {
+      "name": "Context - Label Mastermind",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-discord"
+      "description": "Related to @videndum/label-mastermind"
     },
-    "components": {
+    "variableMastermind": {
       "name": "Context - Variable Mastermind",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-components"
+      "description": "Related to @videndum/variable-mastermind"
     },
-    "webfront": {
-      "name": "Context - Webfront",
+    "condition": {
+      "name": "Context - Conditions",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-webfront"
+      "description": "Related to action conditions"
     },
-    "console": {
-      "name": "Context - Webfront",
+    "api": {
+      "name": "Context - API",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-console"
+      "description": "Related to action API"
     },
-    "webdocs": {
-      "name": "Context - Webfront",
+    "contexts": {
+      "name": "Context - Contexts",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-webdocs"
+      "description": "Related to action Contexts"
     },
-    "login": {
-      "name": "Context - Webfront",
+    "util": {
+      "name": "Context - Util",
       "color": "f9cea2",
-      "description": "Related to @videndum/smartcloud-login"
+      "description": "Related to action Utilities"
+    },
+    "installer": {
+      "name": "Context - Installer",
+      "color": "f9cea2",
+      "description": "Related to action installer & automatic configuration tools"
     },
     "deps": {
       "name": "Context - Dependencies",
@@ -178,7 +185,7 @@
     "depsDev": {
       "name": "Context - Dependencies",
       "color": "f9cea2",
-      "description": "Related to developer depenencies"
+      "description": "Related to developer dependencies"
     },
     "devOpsAccepted": {
       "name": "DevOps - Accepted",
@@ -193,7 +200,7 @@
     "devOpsDeploying": {
       "name": "DevOps - Deploying",
       "color": "172875",
-      "description": "DevOPS are deploying to latest"
+      "description": "DevOps is deploying to latest"
     },
     "devOpsDeveloping": {
       "name": "DevOps - Developing",
@@ -373,27 +380,27 @@
     "major": {
       "name": "Versioning - Major",
       "color": "e580c8",
-      "description": "Major version to be incremented due to of backwards incompatible changes are introduced"
+      "description": "Major version increment due to backwards-incompatible changes"
     },
     "minor": {
       "name": "Versioning - Minor",
       "color": "e580c8",
-      "description": "Minor version to be incremented due to substantial new functionality or improvements are introduced"
+      "description": "Minor version increment due to substantial new functionality or improvements"
     },
     "patch": {
       "name": "Versioning - Patch",
       "color": "e580c8",
-      "description": "Patch version to be incremented due to backwards compatible bug fixes are introduced."
+      "description": "Patch version increment due to backwards-compatible bug fixes"
     },
     "prerelease": {
       "name": "Versioning - Prerelease",
       "color": "e580c8",
-      "description": "Prerelease of the next version."
+      "description": "Prerelease of the next version"
     },
     "build": {
       "name": "Versioning - Build",
       "color": "e580c8",
-      "description": "A build to represent dependencies updates and insignificant changes."
+      "description": "A build to represent dependencies updates and insignificant changes"
     },
     "breaking": {
       "name": "Versioning - BREAKING",
@@ -438,12 +445,12 @@
     "firstIssue": {
       "name": "Good first issue",
       "color": "d4c5f9",
-      "description": "A Good issue for first time github users"
+      "description": "A Good issue for first-time GitHub users"
     },
     "firstTimers": {
       "name": "First Timers",
       "color": "d4c5f9",
-      "description": "A Good issue for first time github users"
+      "description": "A Good issue for first-time GitHub users"
     },
     "skipChangelog": {
       "name": "skip-changelog",
@@ -453,25 +460,41 @@
   },
   "runners": [
     {
+      "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema/configs.json",
       "root": ".",
-      "projectType": "node",
-      "versioning": "SemVer",
+      "versioning": {
+        "source": "milestones",
+        "type": "SemVer"
+      },
       "prereleaseName": "alpha",
       "sharedConfig": {
+        "stale": {
+          "staleLabel": "stale",
+          "stale": {
+            "days": 60,
+            "comment": "This has been automatically marked as stale by the bot."
+          },
+          "abandoned": {
+            "days": 30,
+            "label": "abandoned",
+            "comment": "This has been automatically marked as abandoned by the bot."
+          }
+        },
         "enforceConventions": {
           "onColumn": ["Accepted", "Reviewing"],
           "conventions": [
             {
               "requires": 1,
               "contexts": [
-                "workflow",
-                "smartcloudJS",
-                "discord",
-                "components",
-                "webfront",
-                "console",
-                "webdocs",
-                "login",
+                "@videndum/workflow-mastermind",
+                "@videndum/release-mastermind",
+                "@videndum/label-mastermind",
+                "@videndum/variable-mastermind",
+                "@videndum/convention-mastermind",
+                "condition",
+                "api",
+                "util",
+                "installer",
                 "deps",
                 "deps-dev"
               ],
@@ -485,7 +508,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^bug(\\(.*\\))?:/i"
+                "pattern": "/^bug(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -498,7 +521,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^chore(\\(.*\\))?:/i"
+                "pattern": "/^chore(\\(.*\\))?(!)?:/i"
               }
             ]
           },
@@ -507,19 +530,19 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^opt(\\(.*\\))?:/i"
+                "pattern": "/^opt(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^optimisation(\\(.*\\))?:/i"
+                "pattern": "/^optimisation(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -532,15 +555,15 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^style(\\(.*\\))?:/i"
+                "pattern": "/^style(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -553,19 +576,19 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^ref(\\(.*\\))?:/i"
+                "pattern": "/^ref(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^refactor(\\(.*\\))?:/i"
+                "pattern": "/^refactor(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -578,15 +601,15 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^revert(\\(.*\\))?:/i"
+                "pattern": "/^revert(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -599,19 +622,19 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^dep(\\(.*\\))?:/i"
+                "pattern": "/^dep(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^deprecated(\\(.*\\))?:/i"
+                "pattern": "/^deprecated(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -624,15 +647,15 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^removal(\\(.*\\))?:/i"
+                "pattern": "/^removal(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maint(\\(.*\\))?:/i"
+                "pattern": "/^maint(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^maintenance(\\(.*\\))?:/i"
+                "pattern": "/^maintenance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -645,7 +668,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^discussion(\\(.*\\))?:/i"
+                "pattern": "/^discussion(\\(.*\\))?(!)?:/i"
               }
             ]
           },
@@ -654,11 +677,11 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^docs(\\(.*\\))?:/i"
+                "pattern": "/^docs(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^documentation(\\(.*\\))?:/i"
+                "pattern": "/^documentation(\\(.*\\))?(!)?:/i"
               }
             ]
           },
@@ -667,19 +690,19 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^feat(\\(.*\\))?:/i"
+                "pattern": "/^feat(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^enhance(\\(.*\\))?:/i"
+                "pattern": "/^enhance(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^feature(\\(.*\\))?:/i"
+                "pattern": "/^feature(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^enhancement(\\(.*\\))?:/i"
+                "pattern": "/^enhancement(\\(.*\\))?(!)?:/i"
               }
             ]
           },
@@ -688,7 +711,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^fix(\\(.*\\))?:/i"
+                "pattern": "/^fix(\\(.*\\))?(!)?:/i"
               }
             ]
           },
@@ -697,98 +720,46 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(workflow\\):/i"
+                "pattern": "/^.*\\((@videndum\\/)?workflow-mastermind\\)(!)?:/i"
               }
             ]
           },
-          "smartcloudJS": {
+          "releaseMastermind": {
             "requires": 1,
             "conditions": [
               {
                 "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloudJS.*/im"
+                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?release-mastermind.*/im"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(smartcloudJS\\):/i"
+                "pattern": "/^.*\\((@videndum\\/)?release-mastermind\\)(!)?:/i"
               }
             ]
           },
-          "discord": {
+          "labelMastermind": {
             "requires": 1,
             "conditions": [
               {
                 "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?discord.*/im"
+                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?label-mastermind.*/im"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(discord\\):/i"
+                "pattern": "/^.*\\((@videndum\\/)?label-mastermind\\)(!)?:/i"
               }
             ]
           },
-          "components": {
+          "variableMastermind": {
             "requires": 1,
             "conditions": [
               {
                 "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloud-components.*/im"
+                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?variable-mastermind.*/im"
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(components\\):/i"
-              }
-            ]
-          },
-          "webfront": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloud-webfront.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\(webfront\\):/i"
-              }
-            ]
-          },
-          "console": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloud-console.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\(console\\):/i"
-              }
-            ]
-          },
-          "webdocs": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloud-webdocs.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\(webdocs\\):/i"
-              }
-            ]
-          },
-          "login": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?smartcloud-login.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\(login\\):/i"
+                "pattern": "/^.*\\((@videndum\\/)?variable-mastermind\\)(!)?:/i"
               }
             ]
           },
@@ -797,7 +768,43 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(condition\\):/i"
+                "pattern": "/^.*\\(condition\\)(!)?:/i"
+              }
+            ]
+          },
+          "api": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(api\\)(!)?:/i"
+              }
+            ]
+          },
+          "contexts": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(contexts\\)(!)?:/i"
+              }
+            ]
+          },
+          "util": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(util\\)(!)?:/i"
+              }
+            ]
+          },
+          "installer": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(installer\\)(!)?:/i"
               }
             ]
           },
@@ -806,7 +813,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(deps\\):/i"
+                "pattern": "/^.*\\(deps\\)(!)?:/i"
               }
             ]
           },
@@ -815,7 +822,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(deps-dev\\):/i"
+                "pattern": "/^.*\\(deps-dev\\)(!)?:/i"
               }
             ]
           },
@@ -1046,7 +1053,7 @@
               },
               {
                 "type": "titleMatches",
-                "pattern": "/^bug(\\(.*\\))?:/i"
+                "pattern": "/^bug(\\(.*\\))?(!)?:/i"
               },
               {
                 "type": "descriptionMatches",
@@ -1244,11 +1251,6 @@
                 "type": "onColumn",
                 "project": "Developer Operations",
                 "column": "Accepted"
-              },
-              {
-                "type": "onColumn",
-                "project": "Community Operations",
-                "column": "Accepted"
               }
             ]
           },
@@ -1264,11 +1266,6 @@
                 "type": "onColumn",
                 "project": "Developer Operations",
                 "column": "Testing"
-              },
-              {
-                "type": "onColumn",
-                "project": "Community Operations",
-                "column": "In Progress"
               }
             ]
           },
@@ -1279,22 +1276,12 @@
                 "type": "onColumn",
                 "project": "Developer Operations",
                 "column": "Reviewing"
-              },
-              {
-                "type": "onColumn",
-                "project": "Community Operations",
-                "column": "Awaiting Review"
               }
             ]
           },
           "completed": {
             "requires": 1,
             "conditions": [
-              {
-                "type": "onColumn",
-                "project": "Developer Operations",
-                "column": "Completed"
-              },
               {
                 "type": "onColumn",
                 "project": "Developer Operations",
@@ -1307,7 +1294,7 @@
             "conditions": [
               {
                 "type": "onColumn",
-                "project": "Community Operations",
+                "project": "Developer Operations",
                 "column": "Rejected"
               }
             ]
@@ -1427,7 +1414,8 @@
             ]
           }
         }
-      }
+      },
+      "schedule": {}
     }
   ]
 }

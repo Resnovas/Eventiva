@@ -1,3 +1,5 @@
+# @format
+
 name: Command Management
 
 on:
@@ -32,14 +34,14 @@ jobs:
       # Advanced JSON configuration
       - name: Slash Command Dispatch (JSON)
         id: scd
-        uses: peter-evans/slash-command-dispatch@v2.1.3
+        uses: peter-evans/slash-command-dispatch@v2.3.0
         with:
           token: ${{ secrets.BOT_TOKEN }}
           config: ${{env.command_settings}}
 
       - name: Edit comment with error message
         if: steps.scd.outputs.error-message
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v1.4.5
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
