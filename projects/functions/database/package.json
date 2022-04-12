@@ -70,6 +70,6 @@
     "ts-node": "~10.4.0",
     "tslib": "~2.3.1",
     "typegraphql-prisma": "^0.16.2",
-    "@eventiva/prismix": "workspace:*"
+    "prismix": "workspace:*"
   }
 }

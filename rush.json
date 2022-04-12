@@ -517,7 +517,7 @@
     // "publishFolder": "temp/publish"
     // },
     {
-      "packageName": "@eventiva/prismix",
+      "packageName": "prismix",
       "projectFolder": "projects/packages/prismix",
       "reviewCategory": "tools",
       "versionPolicyName": "individualVersion",
