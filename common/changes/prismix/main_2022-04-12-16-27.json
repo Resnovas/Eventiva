@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "prismix",
+      "comment": "Initialise Changes",
+      "type": "patch"
+    }
+  ],
+  "packageName": "prismix"
+}

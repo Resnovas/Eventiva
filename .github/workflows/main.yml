@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Release Mastermind
-        uses: Resnovas/release-mastermind@0.0.0-alpha.7
+        uses: Resnovas/smartcloud@1.0.0-alpha.7
         with:
           GITHUB_TOKEN: '${{ secrets.BOT_TOKEN }}'
           config: .github/config.json

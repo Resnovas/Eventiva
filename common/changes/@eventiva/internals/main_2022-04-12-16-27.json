@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@eventiva/internals",
+      "comment": "Initialise Changes",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@eventiva/internals"
+}

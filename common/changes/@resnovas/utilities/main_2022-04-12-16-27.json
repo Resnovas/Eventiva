@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@resnovas/utilities",
+      "comment": "Initialise Changes",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@resnovas/utilities"
+}
