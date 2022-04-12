@@ -1,6 +1,6 @@
 {
-  "name": "@eventiva/prismix",
-  "version": "1.0.21",
+  "name": "prismix",
+  "version": "1.0.19",
   "description": "Create multiple Prisma schema files with shared model relations.",
   "keywords": [
     "prisma",
@@ -17,12 +17,6 @@
   "homepage": "https://github.com/jamiepine/prismix#readme",
   "repository": "https://github.com/jamiepine/prismix",
   "private": false,
-  "contributors": [
-    {
-      "name": "Resnovas",
-      "email": "developers@resnovas.com"
-    }
-  ],
   "scripts": {
     "prepack": "tsc -b",
     "dev": "tsc-watch",
@@ -37,23 +31,23 @@
   ],
   "devDependencies": {
     "@types/glob": "^7.1.4",
+    "@types/jest": "^27.4.0",
     "@types/jsonfile": "^6.0.1",
     "prettier": "^2.3.2",
-    "ts-node": "~10.4.0",
-    "typescript": "^4.4.4"
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5"
   },
   "dependencies": {
-    "jest": "~27.5.0",
     "@oclif/command": "^1.8.0",
     "@oclif/config": "^1.17.0",
     "@oclif/plugin-help": "^3.2.2",
-    "@prisma/sdk": "^3.9.1",
+    "@prisma/sdk": "^3.9.2",
     "glob": "^7.1.7",
     "jsonfile": "^6.1.0",
-    "tsc-watch": "^4.5.0",
-    "dotenv": "^10.0.0",
-    "@prisma/generator-helper": "~3.9.1",
-    "@oclif/errors": "~1.3.5"
+    "tsc-watch": "^4.5.0"
+  },
+  "peerDependencies": {
+    "dotenv": "^10.0.0"
   },
   "bin": {
     "prismix": "./bin/run"
