@@ -1,7 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema.json",
+  "$schema": "https://raw.githubusercontent.com/resnovas/smartcloud/main/schema.json",
   "labels": {
-    "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema/labels.json",
+    "$schema": "https://raw.githubusercontent.com/resnovas/smartcloud/main/schema/labels.json",
     "abandoned": {
       "name": "Status - Abandoned",
       "color": "CFD3D7",
@@ -460,7 +460,7 @@
   },
   "runners": [
     {
-      "$schema": "https://raw.githubusercontent.com/Videndum/smartcloud/develop/schema/configs.json",
+      "$schema": "https://raw.githubusercontent.com/resnovas/smartcloud/main/schema/configs.json",
       "root": ".",
       "versioning": {
         "source": "milestones",
