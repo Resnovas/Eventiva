@@ -54,3 +54,4 @@ dist/
 .service.json
 **/*.tfstate*
 infrastructure/modules/mirror/
+projects/functions/axlr8/src/util/Axlr8ID.zip

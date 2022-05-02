@@ -1,7 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/resnovas/smartcloud/main/schema.json",
   "labels": {
-    "$schema": "https://raw.githubusercontent.com/resnovas/smartcloud/main/schema/labels.json",
     "abandoned": {
       "name": "Status - Abandoned",
       "color": "CFD3D7",
@@ -133,49 +132,44 @@
       "description": "Changes that affect the dependences"
     },
     "workflow": {
-      "name": "Context - workflows",
+      "name": "Context - Workflows",
       "color": "f9cea2",
       "description": "Related to ./.github/workflows"
     },
-    "releaseMastermind": {
-      "name": "Context - Release Mastermind",
+    "infrastructure": {
+      "name": "Context - Infrastructure",
       "color": "f9cea2",
-      "description": "Related to @videndum/release-mastermind"
+      "description": "Related to infrastructure"
     },
-    "labelMastermind": {
-      "name": "Context - Label Mastermind",
+    "prototypes": {
+      "name": "Context - Prototypes",
       "color": "f9cea2",
-      "description": "Related to @videndum/label-mastermind"
+      "description": "Related to prototypes"
     },
-    "variableMastermind": {
-      "name": "Context - Variable Mastermind",
+    "component": {
+      "name": "Context - Component",
       "color": "f9cea2",
-      "description": "Related to @videndum/variable-mastermind"
+      "description": "Related to component"
     },
-    "condition": {
-      "name": "Context - Conditions",
+    "generators": {
+      "name": "Context - Generators",
       "color": "f9cea2",
-      "description": "Related to action conditions"
+      "description": "Related to generators"
     },
-    "api": {
-      "name": "Context - API",
+    "interface": {
+      "name": "Context - Interface",
       "color": "f9cea2",
-      "description": "Related to action API"
+      "description": "Related to interface"
     },
-    "contexts": {
-      "name": "Context - Contexts",
+    "applications": {
+      "name": "Context - Applications",
       "color": "f9cea2",
-      "description": "Related to action Contexts"
+      "description": "Related to applications"
     },
     "util": {
-      "name": "Context - Util",
+      "name": "Context - tools",
       "color": "f9cea2",
-      "description": "Related to action Utilities"
-    },
-    "installer": {
-      "name": "Context - Installer",
-      "color": "f9cea2",
-      "description": "Related to action installer & automatic configuration tools"
+      "description": "Related to tools"
     },
     "deps": {
       "name": "Context - Dependencies",
@@ -472,12 +466,16 @@
           "staleLabel": "stale",
           "stale": {
             "days": 60,
-            "comment": "This has been automatically marked as stale by the bot."
+            "comment": "This has been automatically marked as stale.",
+            "conditions": [],
+            "requires": 0
           },
           "abandoned": {
             "days": 30,
             "label": "abandoned",
-            "comment": "This has been automatically marked as abandoned by the bot."
+            "comment": "This has been automatically marked as abandoned.",
+            "conditions": [],
+            "requires": 0
           }
         },
         "enforceConventions": {
@@ -486,15 +484,14 @@
             {
               "requires": 1,
               "contexts": [
-                "@videndum/workflow-mastermind",
-                "@videndum/release-mastermind",
-                "@videndum/label-mastermind",
-                "@videndum/variable-mastermind",
-                "@videndum/convention-mastermind",
-                "condition",
-                "api",
-                "util",
-                "installer",
+                "workflow",
+                "infrastructure",
+                "prototypes",
+                "component",
+                "generators",
+                "interface",
+                "applications",
+                "tools",
                 "deps",
                 "deps-dev"
               ],
@@ -715,78 +712,66 @@
               }
             ]
           },
+          "infrastructure": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(infrastructure\\)(!)?:/i"
+              }
+            ]
+          },
           "workflow": {
             "requires": 1,
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\((@videndum\\/)?workflow-mastermind\\)(!)?:/i"
+                "pattern": "/^.*\\(workflows\\)(!)?:/i"
               }
             ]
           },
-          "releaseMastermind": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?release-mastermind.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\((@videndum\\/)?release-mastermind\\)(!)?:/i"
-              }
-            ]
-          },
-          "labelMastermind": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?label-mastermind.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\((@videndum\\/)?label-mastermind\\)(!)?:/i"
-              }
-            ]
-          },
-          "variableMastermind": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "descriptionMatches",
-                "pattern": "/^- package\\(s\\):.*(@videndum\\/)?variable-mastermind.*/im"
-              },
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\((@videndum\\/)?variable-mastermind\\)(!)?:/i"
-              }
-            ]
-          },
-          "condition": {
+          "prototypes": {
             "requires": 1,
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(condition\\)(!)?:/i"
+                "pattern": "/^.*\\(prototypes\\)(!)?:/i"
               }
             ]
           },
-          "api": {
+          "component": {
             "requires": 1,
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(api\\)(!)?:/i"
+                "pattern": "/^.*\\(component\\)(!)?:/i"
               }
             ]
           },
-          "contexts": {
+          "generators": {
             "requires": 1,
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(contexts\\)(!)?:/i"
+                "pattern": "/^.*\\(generators\\)(!)?:/i"
+              }
+            ]
+          },
+          "interface": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(interface\\)(!)?:/i"
+              }
+            ]
+          },
+          "applications": {
+            "requires": 1,
+            "conditions": [
+              {
+                "type": "titleMatches",
+                "pattern": "/^.*\\(applications\\)(!)?:/i"
               }
             ]
           },
@@ -795,16 +780,7 @@
             "conditions": [
               {
                 "type": "titleMatches",
-                "pattern": "/^.*\\(util\\)(!)?:/i"
-              }
-            ]
-          },
-          "installer": {
-            "requires": 1,
-            "conditions": [
-              {
-                "type": "titleMatches",
-                "pattern": "/^.*\\(installer\\)(!)?:/i"
+                "pattern": "/^.*\\(tools\\)(!)?:/i"
               }
             ]
           },
@@ -849,8 +825,10 @@
             "breaking": "Versioning - Breaking"
           },
           "createTag": true,
-          "createRelease": true,
-          "createMilestone": {},
+          "createRelease": {},
+          "createMilestone": {
+            "milestone": "version"
+          },
           "createPackages": "npm publish",
           "createChangelog": {
             "includeIssues": true,
@@ -903,19 +881,20 @@
               }
             ]
           },
-          "conditions": {}
+          "conditions": [],
+          "requires": 0
         },
         "automaticApprove": {
           "conventions": [
             {
               "requires": 1,
-              "conditions": [{}]
+              "conditions": []
             }
           ]
         },
         "duplicateHotfix": {},
         "createMilestone": {},
-        "syncRemote": {},
+        "syncRemote": [],
         "assignProject": [
           {
             "project": "Developer Operations",
@@ -989,7 +968,7 @@
             "conditions": [
               {
                 "type": "descriptionMatches",
-                "pattern": "/^- \\[x\\] fix Confirmed by ((@.*& .*){4,}|(@.*& )*@(tgtgamer|videndum\\/.*))/im"
+                "pattern": "/^- \\[x\\] fix Confirmed by ((@.*& .*){4,}|(@.*& )*@(tgtgamer|resnovas\\/.*))/im"
               },
               {
                 "type": "descriptionMatches",
@@ -1231,7 +1210,9 @@
             "project": "Issues"
           }
         ],
-        "openBranch": {},
+        "openBranch": {
+          "branchName": "short"
+        },
         "assignMilestone": {},
         "labels": {
           "available": {

@@ -40,7 +40,7 @@ export interface SharedConventionsConfig extends SharedConventionConditions {
   /**
    * The failed comment to use
    */
-  failedComment: string;
+  failedComment?: string;
   /**
    * The contexts to use. Use this in combernation with "semanticTitle"
    * @requires conditions: "semanticTitle"
@@ -91,7 +91,7 @@ export function enforce(this: Issues | PullRequests | Project) {
     if (await evaluator.call(this, convention, this.context.props)) {
       successful++;
     } else {
-      failedMessages.push(convention.failedComment);
+      failedMessages.push(convention.failedComment || '');
     }
   });
 

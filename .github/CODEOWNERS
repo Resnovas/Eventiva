@@ -1,5 +1,3 @@
 * @resnovas
 *.yml @resnovas/automation
 docs/*/** @resnovas/community
-docs\getting-started\contributing\CODE_OF_CONDUCT.md @resnovas/admins
-docs\getting-started\contributing\AGREEMENT.md @resnovas/security
