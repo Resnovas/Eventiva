@@ -73,7 +73,7 @@ export class Authentication {
             let expiry = new Date()
             expiry.setDate(expiry.getDate() + 3)
             // create a salt from the expiry and the random number and a sequence of characters
-            let salt = (expiry.getMilliseconds() / expiry.getDay()) + crypto.randomBytes(Math.ceil(rounds / 2)).toString('hex').slice(0, rounds)
+            let salt = (expiry.getMilliseconds() / expiry.getDay()) + crypto.randomBytes(Math.ceil(rounds / 2)).toString('hex').slice(0, rounds) + InternalSalt + UserSalt 
             // mix up the salt string
             salt = salt.split('').sort().join('')
             // hash the password
