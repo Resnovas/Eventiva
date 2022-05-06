@@ -62,7 +62,7 @@
     "@overnightjs/core": "^1.7.4",
     "@types/app-root-path": "^1.2.4",
     "@types/fs-extra": "^9.0.1",
-    "@types/jest": "~27.4.1",
+    "@types/jest": "^27.4.1",
     "@types/node": "^16.11.6",
     "eslint-plugin-i18next": "^4.5.0",
     "i18next-json-sync": "^2.3.1",

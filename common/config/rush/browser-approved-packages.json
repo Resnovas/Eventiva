@@ -311,6 +311,10 @@
       "allowedCategories": [ "prototypes", "tools" ]
     },
     {
+      "name": "crypto",
+      "allowedCategories": [ "prototypes" ]
+    },
+    {
       "name": "cspell",
       "allowedCategories": [ "tools" ]
     },

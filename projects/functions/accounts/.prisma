@@ -45,7 +45,7 @@ model Account {
   
   // Password things
   password String?
-  Salt Salt?
+  Salt Json?
   resetPasswordToken String? @unique
   resetPasswordExpires DateTime?
   apiToken Token[]
@@ -66,16 +66,6 @@ model Token {
 
   account Account @relation(fields: [accountID], references: [id])
   accountID String
-  deletedDate DateTime?
-  deleted Boolean? @default(false)
-}
-
-model Salt {
-  id String @id @default(uuid())
-  salt String
-  expiry DateTime
-  account Account? @relation(fields: [accountID], references: [id])
-  accountID String?
   deletedDate DateTime?
   deleted Boolean? @default(false)
 }
