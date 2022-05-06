@@ -1,268 +1,3622 @@
 {
-	"components": {
-		"examples": {},
-		"headers": {},
-		"parameters": {},
-		"requestBodies": {},
-		"responses": {},
-		"schemas": {
-			"postDataString": {
-				"properties": {
-					"rptId": {
-						"type": "number",
-						"format": "double"
-					},
-					"rptFilters": {
-						"items": {
-							"properties": {
-								"values": {
-									"type": "string"
-								},
-								"operator": {
-									"type": "string"
-								},
-								"filter": {
-									"type": "string"
-								}
-							},
-							"required": [
-								"values",
-								"operator",
-								"filter"
-							],
-							"type": "object"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"rptId",
-					"rptFilters"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"reportResult": {
-				"properties": {
-					"result": {
-						"type": "boolean"
-					},
-					"success": {
-						"anyOf": [
-							{
-								"items": {
-									"properties": {},
-									"additionalProperties": {
-										"anyOf": [
-											{
-												"type": "string"
-											},
-											{
-												"type": "number",
-												"format": "double"
-											}
-										]
-									},
-									"type": "object"
-								},
-								"type": "array"
-							},
-							{
-								"type": "boolean",
-								"enum": [
-									false
-								]
-							}
-						]
-					},
-					"error": {
-						"type": "string",
-						"nullable": true
-					},
-					"debug": {
-						"$ref": "#/components/schemas/postDataString"
-					}
-				},
-				"required": [
-					"result",
-					"success",
-					"error",
-					"debug"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"rptFilters": {
-				"properties": {
-					"filter": {
-						"type": "string"
-					},
-					"operator": {
-						"type": "string"
-					},
-					"values": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"filter",
-					"operator",
-					"values"
-				],
-				"type": "object",
-				"additionalProperties": false
-			}
-		},
-		"securitySchemes": {}
-	},
-	"info": {
-		"title": "@eventiva/axlr8",
-		"version": "1.0.0",
-		"contact": {
-			"email": "support@resnovas.com",
-			"name": "Resnovas",
-			"url": "https://github.com/Resnovas/Eventiva/discussions"
-		}
-	},
-	"openapi": "3.0.0",
-	"paths": {
-		"/axlr8/report/{rptId}": {
-			"post": {
-				"operationId": "GetData",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/reportResult"
-								},
-								"examples": {
-									"Example 1": {
-										"value": {
-											"result": true,
-											"success": [
-												{
-													"Account Number": " ",
-													"Client:": "Example",
-													"Venue:": "Example",
-													"Session ID": "0000000",
-													"Sess Id": "00000000",
-													"Customer ID": "null",
-													"No. Required": "1",
-													"Number still required": "1",
-													"No. DNS": "0",
-													"Shift Date": "27/07/9202 09:00",
-													"Start Date/Time": "null",
-													"End Date/Time": "null",
-													"Booking Id": "null",
-													"Booking Status": "No Booking",
-													"No. Confirmed": "null",
-													"Staff Member Confirmed": 0,
-													"Attendee Status": "No Booking",
-													"Declined Status": "Not Set",
-													"DNS": 0,
-													"DNS Reason": "null",
-													"Hour Rate": "null",
-													"Shift Rate": "null",
-													"Staff Rate": "null",
-													"Staff Shift Rate": "null",
-													"Client Hourly Rate": "null",
-													"Full Name": "null",
-													"NI number": "null",
-													"Email": "null",
-													"Operations Manager": "null",
-													"Strikes": "0"
-												}
-											],
-											"error": null,
-											"debug": {
-												"rptId": 1000,
-												"rptFilters": [
-													{
-														"filter": "ES_SESSION_NUMBER_STAFF_STILL_REQUIRED",
-														"operator": ">",
-														"values": "0"
-													},
-													{
-														"filter": "ES_SESSION_START_DATE",
-														"operator": ">",
-														"values": "09/03/2022"
-													}
-												]
-											}
-										}
-									}
-								}
-							}
-						}
-					},
-					"422": {
-						"description": "",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/reportResult"
-								}
-							}
-						}
-					}
-				},
-				"security": [],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "rptId",
-						"required": true,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "url",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "api_user",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "api_user_pw",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"items": {
-									"$ref": "#/components/schemas/rptFilters"
-								},
-								"type": "array"
-							}
-						}
-					}
-				}
-			}
-		}
-	},
-	"servers": [
-		{
-			"url": "https://localhost:3000/"
-		}
-	]
+  "components": {
+    "examples": {},
+    "headers": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
+    "schemas": {
+      "LookupsUnformated": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "AdminContactProfiles",
+              "ContactProfiles",
+              "OrganisationLookups",
+              "SiteInformation"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["type", "value"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ContactProfiles": {
+        "type": "string",
+        "enum": [
+          "LU_LKH_CONTACTS_1",
+          "LU_LKH_CONTACTS_2",
+          "LU_LKH_CONTACTS_3",
+          "LU_LKH_CONTACTS_4",
+          "LU_LKH_CONTACTS_5",
+          "LU_LKH_CONTACTS_6",
+          "LU_LKH_CONTACTS_7",
+          "LU_LKH_CONTACTS_8",
+          "LU_LKH_CONTACTS_9",
+          "LU_LKH_CONTACTS_10",
+          "LU_LKH_CONTACTS_11",
+          "LU_LKH_CONTACTS_12",
+          "LU_LKH_CONTACTS_13",
+          "LU_LKH_CONTACTS_14",
+          "LU_LKH_CONTACTS_15",
+          "LU_LKH_CONTACTS_16",
+          "LU_LKH_CONTACTS_17",
+          "LU_LKH_CONTACTS_18",
+          "LU_LKH_CONTACTS_19",
+          "LU_LKH_CONTACTS_20",
+          "LU_LKH_CONTACTS_21",
+          "LU_LKH_CONTACTS_22",
+          "LU_LKH_CONTACTS_23",
+          "LU_LKH_CONTACTS_24",
+          "LU_LKH_CONTACTS_25",
+          "LU_LKH_CONTACTS_26",
+          "LU_LKH_CONTACTS_27",
+          "LU_LKH_CONTACTS_28",
+          "LU_LKH_CONTACTS_29",
+          "LU_LKH_CONTACTS_30",
+          "LU_LKH_CONTACTS_31",
+          "LU_LKH_CONTACTS_32",
+          "LU_LKH_CONTACTS_33",
+          "LU_LKH_CONTACTS_34",
+          "LU_LKH_CONTACTS_35",
+          "LU_LKH_CONTACTS_36",
+          "LU_LKH_CONTACTS_37",
+          "LU_LKH_CONTACTS_38",
+          "LU_LKH_CONTACTS_39",
+          "LU_LKH_CONTACTS_40",
+          "LU_LKH_CONTACTS_41",
+          "LU_LKH_CONTACTS_42",
+          "LU_LKH_CONTACTS_43",
+          "LU_LKH_CONTACTS_44",
+          "LU_LKH_CONTACTS_45",
+          "LU_LKH_CONTACTS_46",
+          "LU_LKH_CONTACTS_47",
+          "LU_LKH_CONTACTS_48",
+          "LU_LKH_CONTACTS_49",
+          "LU_LKH_CONTACTS_50",
+          "LU_LKH_CONTACTS_51",
+          "LU_LKH_CONTACTS_52",
+          "LU_LKH_CONTACTS_53",
+          "LU_LKH_CONTACTS_54",
+          "LU_LKH_CONTACTS_55",
+          "LU_LKH_CONTACTS_56",
+          "LU_LKH_CONTACTS_57",
+          "LU_LKH_CONTACTS_58",
+          "LU_LKH_CONTACTS_59",
+          "LU_LKH_CONTACTS_60",
+          "LU_LKH_CONTACTS_61",
+          "LU_LKH_CONTACTS_62",
+          "LU_LKH_CONTACTS_63",
+          "LU_LKH_CONTACTS_64",
+          "LU_LKH_CONTACTS_65",
+          "LU_LKH_CONTACTS_66",
+          "LU_LKH_CONTACTS_67",
+          "LU_LKH_CONTACTS_68",
+          "LU_LKH_CONTACTS_69",
+          "LU_LKH_CONTACTS_70",
+          "LU_LKH_CONTACTS_71",
+          "LU_LKH_CONTACTS_72",
+          "LU_LKH_CONTACTS_73",
+          "LU_LKH_CONTACTS_74",
+          "LU_LKH_CONTACTS_75",
+          "LU_LKH_CONTACTS_76",
+          "LU_LKH_CONTACTS_77",
+          "LU_LKH_CONTACTS_78",
+          "LU_LKH_CONTACTS_79",
+          "LU_LKH_CONTACTS_80",
+          "LU_LKH_CONTACTS_81",
+          "LU_LKH_CONTACTS_82",
+          "LU_LKH_CONTACTS_83",
+          "LU_LKH_CONTACTS_84",
+          "LU_LKH_CONTACTS_85",
+          "LU_LKH_CONTACTS_86",
+          "LU_LKH_CONTACTS_87",
+          "LU_LKH_CONTACTS_88",
+          "LU_LKH_CONTACTS_89",
+          "LU_LKH_CONTACTS_90",
+          "LU_LKH_CONTACTS_91",
+          "LU_LKH_CONTACTS_92",
+          "LU_LKH_CONTACTS_93",
+          "LU_LKH_CONTACTS_94",
+          "LU_LKH_CONTACTS_95",
+          "LU_LKH_CONTACTS_96",
+          "LU_LKH_CONTACTS_97",
+          "LU_LKH_CONTACTS_98",
+          "LU_LKH_CONTACTS_99",
+          "LU_LKH_CONTACTS_100",
+          "LU_LKH_CONTACTS_101",
+          "LU_LKH_CONTACTS_102",
+          "LU_LKH_CONTACTS_103",
+          "LU_LKH_CONTACTS_104",
+          "LU_LKH_CONTACTS_105",
+          "LU_LKH_CONTACTS_106",
+          "LU_LKH_CONTACTS_107",
+          "LU_LKH_CONTACTS_108",
+          "LU_LKH_CONTACTS_109",
+          "LU_LKH_CONTACTS_110",
+          "LU_LKH_CONTACTS_111",
+          "LU_LKH_CONTACTS_112",
+          "LU_LKH_CONTACTS_113",
+          "LU_LKH_CONTACTS_114",
+          "LU_LKH_CONTACTS_115",
+          "LU_LKH_CONTACTS_116",
+          "LU_LKH_CONTACTS_117",
+          "LU_LKH_CONTACTS_118",
+          "LU_LKH_CONTACTS_119",
+          "LU_LKH_CONTACTS_120",
+          "LU_LKH_CONTACTS_121",
+          "LU_LKH_CONTACTS_122",
+          "LU_LKH_CONTACTS_123",
+          "LU_LKH_CONTACTS_124",
+          "LU_LKH_CONTACTS_125",
+          "LU_LKH_CONTACTS_126",
+          "LU_LKH_CONTACTS_127",
+          "LU_LKH_CONTACTS_128",
+          "LU_LKH_CONTACTS_129",
+          "LU_LKH_CONTACTS_130",
+          "LU_LKH_CONTACTS_131",
+          "LU_LKH_CONTACTS_132",
+          "LU_LKH_CONTACTS_133",
+          "LU_LKH_CONTACTS_134",
+          "LU_LKH_CONTACTS_135",
+          "LU_LKH_CONTACTS_136",
+          "LU_LKH_CONTACTS_137",
+          "LU_LKH_CONTACTS_138",
+          "LU_LKH_CONTACTS_139",
+          "LU_LKH_CONTACTS_140",
+          "LU_LKH_CONTACTS_141",
+          "LU_LKH_CONTACTS_142",
+          "LU_LKH_CONTACTS_143",
+          "LU_LKH_CONTACTS_144",
+          "LU_LKH_CONTACTS_145",
+          "LU_LKH_CONTACTS_146",
+          "LU_LKH_CONTACTS_147",
+          "LU_LKH_CONTACTS_148",
+          "LU_LKH_CONTACTS_149",
+          "LU_LKH_CONTACTS_150",
+          "LU_LKH_CONTACTS_151",
+          "LU_LKH_CONTACTS_152",
+          "LU_LKH_CONTACTS_153",
+          "LU_LKH_CONTACTS_154",
+          "LU_LKH_CONTACTS_155",
+          "LU_LKH_CONTACTS_156",
+          "LU_LKH_CONTACTS_157",
+          "LU_LKH_CONTACTS_158",
+          "LU_LKH_CONTACTS_159",
+          "LU_LKH_CONTACTS_160",
+          "LU_LKH_CONTACTS_161",
+          "LU_LKH_CONTACTS_162",
+          "LU_LKH_CONTACTS_163",
+          "LU_LKH_CONTACTS_164",
+          "LU_LKH_CONTACTS_165",
+          "LU_LKH_CONTACTS_166",
+          "LU_LKH_CONTACTS_167",
+          "LU_LKH_CONTACTS_168",
+          "LU_LKH_CONTACTS_169",
+          "LU_LKH_CONTACTS_170",
+          "LU_LKH_CONTACTS_171",
+          "LU_LKH_CONTACTS_172",
+          "LU_LKH_CONTACTS_173",
+          "LU_LKH_CONTACTS_174",
+          "LU_LKH_CONTACTS_175",
+          "LU_LKH_CONTACTS_176",
+          "LU_LKH_CONTACTS_177",
+          "LU_LKH_CONTACTS_178",
+          "LU_LKH_CONTACTS_179",
+          "LU_LKH_CONTACTS_180",
+          "LU_LKH_CONTACTS_181",
+          "LU_LKH_CONTACTS_182",
+          "LU_LKH_CONTACTS_183",
+          "LU_LKH_CONTACTS_184",
+          "LU_LKH_CONTACTS_185",
+          "LU_LKH_CONTACTS_186",
+          "LU_LKH_CONTACTS_187",
+          "LU_LKH_CONTACTS_188",
+          "LU_LKH_CONTACTS_189",
+          "LU_LKH_CONTACTS_190",
+          "LU_LKH_CONTACTS_191",
+          "LU_LKH_CONTACTS_192",
+          "LU_LKH_CONTACTS_193",
+          "LU_LKH_CONTACTS_194",
+          "LU_LKH_CONTACTS_195",
+          "LU_LKH_CONTACTS_196",
+          "LU_LKH_CONTACTS_197",
+          "LU_LKH_CONTACTS_198",
+          "LU_LKH_CONTACTS_199",
+          "LU_LKH_CONTACTS_200",
+          "LU_LKH_CONTACTS_201",
+          "LU_LKH_CONTACTS_202",
+          "LU_LKH_CONTACTS_203",
+          "LU_LKH_CONTACTS_204",
+          "LU_LKH_CONTACTS_205",
+          "LU_LKH_CONTACTS_206",
+          "LU_LKH_CONTACTS_207",
+          "LU_LKH_CONTACTS_208",
+          "LU_LKH_CONTACTS_209",
+          "LU_LKH_CONTACTS_210",
+          "LU_LKH_CONTACTS_211",
+          "LU_LKH_CONTACTS_212",
+          "LU_LKH_CONTACTS_213",
+          "LU_LKH_CONTACTS_214",
+          "LU_LKH_CONTACTS_215",
+          "LU_LKH_CONTACTS_216",
+          "LU_LKH_CONTACTS_217",
+          "LU_LKH_CONTACTS_218",
+          "LU_LKH_CONTACTS_219",
+          "LU_LKH_CONTACTS_220",
+          "LU_LKH_CONTACTS_221",
+          "LU_LKH_CONTACTS_222",
+          "LU_LKH_CONTACTS_223",
+          "LU_LKH_CONTACTS_224",
+          "LU_LKH_CONTACTS_225",
+          "LU_LKH_CONTACTS_226",
+          "LU_LKH_CONTACTS_227",
+          "LU_LKH_CONTACTS_228",
+          "LU_LKH_CONTACTS_229",
+          "LU_LKH_CONTACTS_230",
+          "LU_LKH_CONTACTS_231",
+          "LU_LKH_CONTACTS_232",
+          "LU_LKH_CONTACTS_233",
+          "LU_LKH_CONTACTS_234",
+          "LU_LKH_CONTACTS_235",
+          "LU_LKH_CONTACTS_236",
+          "LU_LKH_CONTACTS_237",
+          "LU_LKH_CONTACTS_238",
+          "LU_LKH_CONTACTS_239",
+          "LU_LKH_CONTACTS_240",
+          "LU_LKH_CONTACTS_241",
+          "LU_LKH_CONTACTS_242",
+          "LU_LKH_CONTACTS_243",
+          "LU_LKH_CONTACTS_244",
+          "LU_LKH_CONTACTS_245",
+          "LU_LKH_CONTACTS_246",
+          "LU_LKH_CONTACTS_247",
+          "LU_LKH_CONTACTS_248",
+          "LU_LKH_CONTACTS_249",
+          "LU_LKH_CONTACTS_250",
+          "LU_LKH_CONTACTS_251",
+          "LU_LKH_CONTACTS_252",
+          "LU_LKH_CONTACTS_253",
+          "LU_LKH_CONTACTS_254",
+          "LU_LKH_CONTACTS_255",
+          "LU_LKH_CONTACTS_256",
+          "LU_LKH_CONTACTS_257",
+          "LU_LKH_CONTACTS_258",
+          "LU_LKH_CONTACTS_259",
+          "LU_LKH_CONTACTS_260",
+          "LU_LKH_CONTACTS_261",
+          "LU_LKH_CONTACTS_262",
+          "LU_LKH_CONTACTS_263",
+          "LU_LKH_CONTACTS_264",
+          "LU_LKH_CONTACTS_265",
+          "LU_LKH_CONTACTS_266",
+          "LU_LKH_CONTACTS_267",
+          "LU_LKH_CONTACTS_268",
+          "LU_LKH_CONTACTS_269",
+          "LU_LKH_CONTACTS_270",
+          "LU_LKH_CONTACTS_271",
+          "LU_LKH_CONTACTS_272",
+          "LU_LKH_CONTACTS_273",
+          "LU_LKH_CONTACTS_274",
+          "LU_LKH_CONTACTS_275",
+          "LU_LKH_CONTACTS_276",
+          "LU_LKH_CONTACTS_277",
+          "LU_LKH_CONTACTS_278",
+          "LU_LKH_CONTACTS_279",
+          "LU_LKH_CONTACTS_280",
+          "LU_LKH_CONTACTS_281",
+          "LU_LKH_CONTACTS_282",
+          "LU_LKH_CONTACTS_283",
+          "LU_LKH_CONTACTS_284",
+          "LU_LKH_CONTACTS_285",
+          "LU_LKH_CONTACTS_286",
+          "LU_LKH_CONTACTS_287",
+          "LU_LKH_CONTACTS_288",
+          "LU_LKH_CONTACTS_289",
+          "LU_LKH_CONTACTS_290",
+          "LU_LKH_CONTACTS_291",
+          "LU_LKH_CONTACTS_292",
+          "LU_LKH_CONTACTS_293",
+          "LU_LKH_CONTACTS_294",
+          "LU_LKH_CONTACTS_295",
+          "LU_LKH_CONTACTS_296",
+          "LU_LKH_CONTACTS_297",
+          "LU_LKH_CONTACTS_298",
+          "LU_LKH_CONTACTS_299",
+          "LU_LKH_CONTACTS_300",
+          "LU_LKH_CONTACTS_301",
+          "LU_LKH_CONTACTS_302",
+          "LU_LKH_CONTACTS_303",
+          "LU_LKH_CONTACTS_304",
+          "LU_LKH_CONTACTS_305",
+          "LU_LKH_CONTACTS_306",
+          "LU_LKH_CONTACTS_307",
+          "LU_LKH_CONTACTS_308",
+          "LU_LKH_CONTACTS_309",
+          "LU_LKH_CONTACTS_310",
+          "LU_LKH_CONTACTS_311",
+          "LU_LKH_CONTACTS_312",
+          "LU_LKH_CONTACTS_313",
+          "LU_LKH_CONTACTS_314",
+          "LU_LKH_CONTACTS_315",
+          "LU_LKH_CONTACTS_316",
+          "LU_LKH_CONTACTS_317",
+          "LU_LKH_CONTACTS_318",
+          "LU_LKH_CONTACTS_319",
+          "LU_LKH_CONTACTS_320",
+          "LU_LKH_CONTACTS_321",
+          "LU_LKH_CONTACTS_322",
+          "LU_LKH_CONTACTS_323",
+          "LU_LKH_CONTACTS_324",
+          "LU_LKH_CONTACTS_325",
+          "LU_LKH_CONTACTS_326",
+          "LU_LKH_CONTACTS_327",
+          "LU_LKH_CONTACTS_328",
+          "LU_LKH_CONTACTS_329",
+          "LU_LKH_CONTACTS_330",
+          "LU_LKH_CONTACTS_331",
+          "LU_LKH_CONTACTS_332",
+          "LU_LKH_CONTACTS_333",
+          "LU_LKH_CONTACTS_334",
+          "LU_LKH_CONTACTS_335",
+          "LU_LKH_CONTACTS_336",
+          "LU_LKH_CONTACTS_337",
+          "LU_LKH_CONTACTS_338",
+          "LU_LKH_CONTACTS_339",
+          "LU_LKH_CONTACTS_340",
+          "LU_LKH_CONTACTS_341",
+          "LU_LKH_CONTACTS_342",
+          "LU_LKH_CONTACTS_343",
+          "LU_LKH_CONTACTS_344",
+          "LU_LKH_CONTACTS_345",
+          "LU_LKH_CONTACTS_346",
+          "LU_LKH_CONTACTS_347",
+          "LU_LKH_CONTACTS_348",
+          "LU_LKH_CONTACTS_349",
+          "LU_LKH_CONTACTS_350",
+          "LU_LKH_CONTACTS_351",
+          "LU_LKH_CONTACTS_352",
+          "LU_LKH_CONTACTS_353",
+          "LU_LKH_CONTACTS_354",
+          "LU_LKH_CONTACTS_355",
+          "LU_LKH_CONTACTS_356",
+          "LU_LKH_CONTACTS_357",
+          "LU_LKH_CONTACTS_358",
+          "LU_LKH_CONTACTS_359",
+          "LU_LKH_CONTACTS_360",
+          "LU_LKH_CONTACTS_361",
+          "LU_LKH_CONTACTS_362",
+          "LU_LKH_CONTACTS_363",
+          "LU_LKH_CONTACTS_364",
+          "LU_LKH_CONTACTS_365",
+          "LU_LKH_CONTACTS_366",
+          "LU_LKH_CONTACTS_367",
+          "LU_LKH_CONTACTS_368",
+          "LU_LKH_CONTACTS_369",
+          "LU_LKH_CONTACTS_370",
+          "LU_LKH_CONTACTS_371",
+          "LU_LKH_CONTACTS_372",
+          "LU_LKH_CONTACTS_373",
+          "LU_LKH_CONTACTS_374",
+          "LU_LKH_CONTACTS_375",
+          "LU_LKH_CONTACTS_376",
+          "LU_LKH_CONTACTS_377",
+          "LU_LKH_CONTACTS_378",
+          "LU_LKH_CONTACTS_379",
+          "LU_LKH_CONTACTS_380",
+          "LU_LKH_CONTACTS_381",
+          "LU_LKH_CONTACTS_382",
+          "LU_LKH_CONTACTS_383",
+          "LU_LKH_CONTACTS_384",
+          "LU_LKH_CONTACTS_385",
+          "LU_LKH_CONTACTS_386",
+          "LU_LKH_CONTACTS_387",
+          "LU_LKH_CONTACTS_388",
+          "LU_LKH_CONTACTS_389",
+          "LU_LKH_CONTACTS_390",
+          "LU_LKH_CONTACTS_391",
+          "LU_LKH_CONTACTS_392",
+          "LU_LKH_CONTACTS_393",
+          "LU_LKH_CONTACTS_394",
+          "LU_LKH_CONTACTS_395",
+          "LU_LKH_CONTACTS_396",
+          "LU_LKH_CONTACTS_397",
+          "LU_LKH_CONTACTS_398",
+          "LU_LKH_CONTACTS_399",
+          "LU_LKH_CONTACTS_400",
+          "LU_LKH_CONTACTS_401",
+          "LU_LKH_CONTACTS_402",
+          "LU_LKH_CONTACTS_403",
+          "LU_LKH_CONTACTS_404",
+          "LU_LKH_CONTACTS_405",
+          "LU_LKH_CONTACTS_406",
+          "LU_LKH_CONTACTS_407",
+          "LU_LKH_CONTACTS_408",
+          "LU_LKH_CONTACTS_409",
+          "LU_LKH_CONTACTS_410",
+          "LU_LKH_CONTACTS_411",
+          "LU_LKH_CONTACTS_412",
+          "LU_LKH_CONTACTS_413",
+          "LU_LKH_CONTACTS_414",
+          "LU_LKH_CONTACTS_415",
+          "LU_LKH_CONTACTS_416",
+          "LU_LKH_CONTACTS_417",
+          "LU_LKH_CONTACTS_418",
+          "LU_LKH_CONTACTS_419",
+          "LU_LKH_CONTACTS_420",
+          "LU_LKH_CONTACTS_421",
+          "LU_LKH_CONTACTS_422",
+          "LU_LKH_CONTACTS_423",
+          "LU_LKH_CONTACTS_424",
+          "LU_LKH_CONTACTS_425",
+          "LU_LKH_CONTACTS_426",
+          "LU_LKH_CONTACTS_427",
+          "LU_LKH_CONTACTS_428",
+          "LU_LKH_CONTACTS_429",
+          "LU_LKH_CONTACTS_430",
+          "LU_LKH_CONTACTS_431",
+          "LU_LKH_CONTACTS_432",
+          "LU_LKH_CONTACTS_433",
+          "LU_LKH_CONTACTS_434",
+          "LU_LKH_CONTACTS_435",
+          "LU_LKH_CONTACTS_436",
+          "LU_LKH_CONTACTS_437",
+          "LU_LKH_CONTACTS_438",
+          "LU_LKH_CONTACTS_439",
+          "LU_LKH_CONTACTS_440",
+          "LU_LKH_CONTACTS_441",
+          "LU_LKH_CONTACTS_442",
+          "LU_LKH_CONTACTS_443",
+          "LU_LKH_CONTACTS_444",
+          "LU_LKH_CONTACTS_445",
+          "LU_LKH_CONTACTS_446",
+          "LU_LKH_CONTACTS_447",
+          "LU_LKH_CONTACTS_448",
+          "LU_LKH_CONTACTS_449",
+          "LU_LKH_CONTACTS_450",
+          "LU_LKH_CONTACTS_451",
+          "LU_LKH_CONTACTS_452",
+          "LU_LKH_CONTACTS_453",
+          "LU_LKH_CONTACTS_454",
+          "LU_LKH_CONTACTS_455",
+          "LU_LKH_CONTACTS_456",
+          "LU_LKH_CONTACTS_457",
+          "LU_LKH_CONTACTS_458",
+          "LU_LKH_CONTACTS_459",
+          "LU_LKH_CONTACTS_460",
+          "LU_LKH_CONTACTS_461",
+          "LU_LKH_CONTACTS_462",
+          "LU_LKH_CONTACTS_463",
+          "LU_LKH_CONTACTS_464",
+          "LU_LKH_CONTACTS_465",
+          "LU_LKH_CONTACTS_466",
+          "LU_LKH_CONTACTS_467",
+          "LU_LKH_CONTACTS_468",
+          "LU_LKH_CONTACTS_469",
+          "LU_LKH_CONTACTS_470",
+          "LU_LKH_CONTACTS_471",
+          "LU_LKH_CONTACTS_472",
+          "LU_LKH_CONTACTS_473",
+          "LU_LKH_CONTACTS_474",
+          "LU_LKH_CONTACTS_475",
+          "LU_LKH_CONTACTS_476",
+          "LU_LKH_CONTACTS_477",
+          "LU_LKH_CONTACTS_478",
+          "LU_LKH_CONTACTS_479",
+          "LU_LKH_CONTACTS_480",
+          "LU_LKH_CONTACTS_481",
+          "LU_LKH_CONTACTS_482",
+          "LU_LKH_CONTACTS_483",
+          "LU_LKH_CONTACTS_484",
+          "LU_LKH_CONTACTS_485",
+          "LU_LKH_CONTACTS_486",
+          "LU_LKH_CONTACTS_487",
+          "LU_LKH_CONTACTS_488",
+          "LU_LKH_CONTACTS_489",
+          "LU_LKH_CONTACTS_490",
+          "LU_LKH_CONTACTS_491",
+          "LU_LKH_CONTACTS_492",
+          "LU_LKH_CONTACTS_493",
+          "LU_LKH_CONTACTS_494",
+          "LU_LKH_CONTACTS_495",
+          "LU_LKH_CONTACTS_496",
+          "LU_LKH_CONTACTS_497",
+          "LU_LKH_CONTACTS_498",
+          "LU_LKH_CONTACTS_499",
+          "LU_LKH_CONTACTS_500",
+          "LU_LKH_CONTACTS_501",
+          "LU_LKH_CONTACTS_502",
+          "LU_LKH_CONTACTS_503",
+          "LU_LKH_CONTACTS_504",
+          "LU_LKH_CONTACTS_505",
+          "LU_LKH_CONTACTS_506",
+          "LU_LKH_CONTACTS_507",
+          "LU_LKH_CONTACTS_508",
+          "LU_LKH_CONTACTS_509",
+          "LU_LKH_CONTACTS_510",
+          "LU_LKH_CONTACTS_511",
+          "LU_LKH_CONTACTS_512",
+          "LU_LKH_CONTACTS_513",
+          "LU_LKH_CONTACTS_514",
+          "LU_LKH_CONTACTS_515",
+          "LU_LKH_CONTACTS_516",
+          "LU_LKH_CONTACTS_517",
+          "LU_LKH_CONTACTS_518",
+          "LU_LKH_CONTACTS_519",
+          "LU_LKH_CONTACTS_520",
+          "LU_LKH_CONTACTS_521",
+          "LU_LKH_CONTACTS_522",
+          "LU_LKH_CONTACTS_523",
+          "LU_LKH_CONTACTS_524",
+          "LU_LKH_CONTACTS_525",
+          "LU_LKH_CONTACTS_526",
+          "LU_LKH_CONTACTS_527",
+          "LU_LKH_CONTACTS_528",
+          "LU_LKH_CONTACTS_529",
+          "LU_LKH_CONTACTS_530",
+          "LU_LKH_CONTACTS_531",
+          "LU_LKH_CONTACTS_532",
+          "LU_LKH_CONTACTS_533",
+          "LU_LKH_CONTACTS_534",
+          "LU_LKH_CONTACTS_535",
+          "LU_LKH_CONTACTS_536",
+          "LU_LKH_CONTACTS_537",
+          "LU_LKH_CONTACTS_538",
+          "LU_LKH_CONTACTS_539",
+          "LU_LKH_CONTACTS_540",
+          "LU_LKH_CONTACTS_541",
+          "LU_LKH_CONTACTS_542",
+          "LU_LKH_CONTACTS_543",
+          "LU_LKH_CONTACTS_544",
+          "LU_LKH_CONTACTS_545",
+          "LU_LKH_CONTACTS_546",
+          "LU_LKH_CONTACTS_547",
+          "LU_LKH_CONTACTS_548",
+          "LU_LKH_CONTACTS_549",
+          "LU_LKH_CONTACTS_550",
+          "LU_LKH_CONTACTS_551",
+          "LU_LKH_CONTACTS_552",
+          "LU_LKH_CONTACTS_553",
+          "LU_LKH_CONTACTS_554",
+          "LU_LKH_CONTACTS_555",
+          "LU_LKH_CONTACTS_556",
+          "LU_LKH_CONTACTS_557",
+          "LU_LKH_CONTACTS_558",
+          "LU_LKH_CONTACTS_559",
+          "LU_LKH_CONTACTS_560",
+          "LU_LKH_CONTACTS_561",
+          "LU_LKH_CONTACTS_562",
+          "LU_LKH_CONTACTS_563",
+          "LU_LKH_CONTACTS_564",
+          "LU_LKH_CONTACTS_565",
+          "LU_LKH_CONTACTS_566",
+          "LU_LKH_CONTACTS_567",
+          "LU_LKH_CONTACTS_568",
+          "LU_LKH_CONTACTS_569",
+          "LU_LKH_CONTACTS_570",
+          "LU_LKH_CONTACTS_571",
+          "LU_LKH_CONTACTS_572",
+          "LU_LKH_CONTACTS_573",
+          "LU_LKH_CONTACTS_574",
+          "LU_LKH_CONTACTS_575",
+          "LU_LKH_CONTACTS_576",
+          "LU_LKH_CONTACTS_577",
+          "LU_LKH_CONTACTS_578",
+          "LU_LKH_CONTACTS_579",
+          "LU_LKH_CONTACTS_580",
+          "LU_LKH_CONTACTS_581",
+          "LU_LKH_CONTACTS_582",
+          "LU_LKH_CONTACTS_583",
+          "LU_LKH_CONTACTS_584",
+          "LU_LKH_CONTACTS_585",
+          "LU_LKH_CONTACTS_586",
+          "LU_LKH_CONTACTS_587",
+          "LU_LKH_CONTACTS_588",
+          "LU_LKH_CONTACTS_589",
+          "LU_LKH_CONTACTS_590",
+          "LU_LKH_CONTACTS_591",
+          "LU_LKH_CONTACTS_592",
+          "LU_LKH_CONTACTS_593",
+          "LU_LKH_CONTACTS_594",
+          "LU_LKH_CONTACTS_595",
+          "LU_LKH_CONTACTS_596",
+          "LU_LKH_CONTACTS_597",
+          "LU_LKH_CONTACTS_598",
+          "LU_LKH_CONTACTS_599",
+          "LU_LKH_CONTACTS_600"
+        ]
+      },
+      "OrganisationLookups": {
+        "type": "string",
+        "enum": [
+          "LU_LKH_ORG_1",
+          "LU_LKH_ORG_2",
+          "LU_LKH_ORG_3",
+          "LU_LKH_ORG_4",
+          "LU_LKH_ORG_5",
+          "LU_LKH_ORG_6",
+          "LU_LKH_ORG_7",
+          "LU_LKH_ORG_8",
+          "LU_LKH_ORG_9",
+          "LU_LKH_ORG_10",
+          "LU_LKH_ORG_11",
+          "LU_LKH_ORG_12",
+          "LU_LKH_ORG_13",
+          "LU_LKH_ORG_14",
+          "LU_LKH_ORG_15",
+          "LU_LKH_ORG_16",
+          "LU_LKH_ORG_17",
+          "LU_LKH_ORG_18",
+          "LU_LKH_ORG_19",
+          "LU_LKH_ORG_20",
+          "LU_LKH_ORG_21",
+          "LU_LKH_ORG_22",
+          "LU_LKH_ORG_23",
+          "LU_LKH_ORG_24",
+          "LU_LKH_ORG_25",
+          "LU_LKH_ORG_26",
+          "LU_LKH_ORG_27",
+          "LU_LKH_ORG_28",
+          "LU_LKH_ORG_29",
+          "LU_LKH_ORG_30",
+          "LU_LKH_ORG_31",
+          "LU_LKH_ORG_32",
+          "LU_LKH_ORG_33",
+          "LU_LKH_ORG_34",
+          "LU_LKH_ORG_35",
+          "LU_LKH_ORG_36",
+          "LU_LKH_ORG_37",
+          "LU_LKH_ORG_38",
+          "LU_LKH_ORG_39",
+          "LU_LKH_ORG_40",
+          "LU_LKH_ORG_41",
+          "LU_LKH_ORG_42",
+          "LU_LKH_ORG_43",
+          "LU_LKH_ORG_44",
+          "LU_LKH_ORG_45",
+          "LU_LKH_ORG_46",
+          "LU_LKH_ORG_47",
+          "LU_LKH_ORG_48",
+          "LU_LKH_ORG_49",
+          "LU_LKH_ORG_50",
+          "LU_LKH_ORG_51",
+          "LU_LKH_ORG_52",
+          "LU_LKH_ORG_53",
+          "LU_LKH_ORG_54",
+          "LU_LKH_ORG_55",
+          "LU_LKH_ORG_56",
+          "LU_LKH_ORG_57",
+          "LU_LKH_ORG_58",
+          "LU_LKH_ORG_59",
+          "LU_LKH_ORG_60",
+          "LU_LKH_ORG_61",
+          "LU_LKH_ORG_62",
+          "LU_LKH_ORG_63",
+          "LU_LKH_ORG_64",
+          "LU_LKH_ORG_65",
+          "LU_LKH_ORG_66",
+          "LU_LKH_ORG_67",
+          "LU_LKH_ORG_68",
+          "LU_LKH_ORG_69",
+          "LU_LKH_ORG_70",
+          "LU_LKH_ORG_71",
+          "LU_LKH_ORG_72",
+          "LU_LKH_ORG_73",
+          "LU_LKH_ORG_74",
+          "LU_LKH_ORG_75",
+          "LU_LKH_ORG_76",
+          "LU_LKH_ORG_77",
+          "LU_LKH_ORG_78",
+          "LU_LKH_ORG_79",
+          "LU_LKH_ORG_80",
+          "LU_LKH_ORG_81",
+          "LU_LKH_ORG_82",
+          "LU_LKH_ORG_83",
+          "LU_LKH_ORG_84",
+          "LU_LKH_ORG_85",
+          "LU_LKH_ORG_86",
+          "LU_LKH_ORG_87",
+          "LU_LKH_ORG_88",
+          "LU_LKH_ORG_89",
+          "LU_LKH_ORG_90",
+          "LU_LKH_ORG_91",
+          "LU_LKH_ORG_92",
+          "LU_LKH_ORG_93",
+          "LU_LKH_ORG_94",
+          "LU_LKH_ORG_95",
+          "LU_LKH_ORG_96",
+          "LU_LKH_ORG_97",
+          "LU_LKH_ORG_98",
+          "LU_LKH_ORG_99",
+          "LU_LKH_ORG_100",
+          "LU_LKH_ORG_101",
+          "LU_LKH_ORG_102",
+          "LU_LKH_ORG_103",
+          "LU_LKH_ORG_104",
+          "LU_LKH_ORG_105",
+          "LU_LKH_ORG_106",
+          "LU_LKH_ORG_107",
+          "LU_LKH_ORG_108",
+          "LU_LKH_ORG_109",
+          "LU_LKH_ORG_110",
+          "LU_LKH_ORG_111",
+          "LU_LKH_ORG_112",
+          "LU_LKH_ORG_113",
+          "LU_LKH_ORG_114",
+          "LU_LKH_ORG_115",
+          "LU_LKH_ORG_116",
+          "LU_LKH_ORG_117",
+          "LU_LKH_ORG_118",
+          "LU_LKH_ORG_119",
+          "LU_LKH_ORG_120",
+          "LU_LKH_ORG_121",
+          "LU_LKH_ORG_122",
+          "LU_LKH_ORG_123",
+          "LU_LKH_ORG_124",
+          "LU_LKH_ORG_125",
+          "LU_LKH_ORG_126",
+          "LU_LKH_ORG_127",
+          "LU_LKH_ORG_128",
+          "LU_LKH_ORG_129",
+          "LU_LKH_ORG_130",
+          "LU_LKH_ORG_131",
+          "LU_LKH_ORG_132",
+          "LU_LKH_ORG_133",
+          "LU_LKH_ORG_134",
+          "LU_LKH_ORG_135",
+          "LU_LKH_ORG_136",
+          "LU_LKH_ORG_137",
+          "LU_LKH_ORG_138",
+          "LU_LKH_ORG_139",
+          "LU_LKH_ORG_140",
+          "LU_LKH_ORG_141",
+          "LU_LKH_ORG_142",
+          "LU_LKH_ORG_143",
+          "LU_LKH_ORG_144",
+          "LU_LKH_ORG_145",
+          "LU_LKH_ORG_146",
+          "LU_LKH_ORG_147",
+          "LU_LKH_ORG_148",
+          "LU_LKH_ORG_149",
+          "LU_LKH_ORG_150",
+          "LU_LKH_ORG_151",
+          "LU_LKH_ORG_152",
+          "LU_LKH_ORG_153",
+          "LU_LKH_ORG_154",
+          "LU_LKH_ORG_155",
+          "LU_LKH_ORG_156",
+          "LU_LKH_ORG_157",
+          "LU_LKH_ORG_158",
+          "LU_LKH_ORG_159",
+          "LU_LKH_ORG_160",
+          "LU_LKH_ORG_161",
+          "LU_LKH_ORG_162",
+          "LU_LKH_ORG_163",
+          "LU_LKH_ORG_164",
+          "LU_LKH_ORG_165",
+          "LU_LKH_ORG_166",
+          "LU_LKH_ORG_167",
+          "LU_LKH_ORG_168",
+          "LU_LKH_ORG_169",
+          "LU_LKH_ORG_170",
+          "LU_LKH_ORG_171",
+          "LU_LKH_ORG_172",
+          "LU_LKH_ORG_173",
+          "LU_LKH_ORG_174",
+          "LU_LKH_ORG_175",
+          "LU_LKH_ORG_176",
+          "LU_LKH_ORG_177",
+          "LU_LKH_ORG_178",
+          "LU_LKH_ORG_179",
+          "LU_LKH_ORG_180",
+          "LU_LKH_ORG_181",
+          "LU_LKH_ORG_182",
+          "LU_LKH_ORG_183",
+          "LU_LKH_ORG_184",
+          "LU_LKH_ORG_185",
+          "LU_LKH_ORG_186",
+          "LU_LKH_ORG_187",
+          "LU_LKH_ORG_188",
+          "LU_LKH_ORG_189",
+          "LU_LKH_ORG_190",
+          "LU_LKH_ORG_191",
+          "LU_LKH_ORG_192",
+          "LU_LKH_ORG_193",
+          "LU_LKH_ORG_194",
+          "LU_LKH_ORG_195",
+          "LU_LKH_ORG_196",
+          "LU_LKH_ORG_197",
+          "LU_LKH_ORG_198",
+          "LU_LKH_ORG_199",
+          "LU_LKH_ORG_200",
+          "LU_LKH_ORG_201",
+          "LU_LKH_ORG_202",
+          "LU_LKH_ORG_203",
+          "LU_LKH_ORG_204",
+          "LU_LKH_ORG_205",
+          "LU_LKH_ORG_206",
+          "LU_LKH_ORG_207",
+          "LU_LKH_ORG_208",
+          "LU_LKH_ORG_209",
+          "LU_LKH_ORG_210",
+          "LU_LKH_ORG_211",
+          "LU_LKH_ORG_212",
+          "LU_LKH_ORG_213",
+          "LU_LKH_ORG_214",
+          "LU_LKH_ORG_215",
+          "LU_LKH_ORG_216",
+          "LU_LKH_ORG_217",
+          "LU_LKH_ORG_218",
+          "LU_LKH_ORG_219",
+          "LU_LKH_ORG_220",
+          "LU_LKH_ORG_221",
+          "LU_LKH_ORG_222",
+          "LU_LKH_ORG_223",
+          "LU_LKH_ORG_224",
+          "LU_LKH_ORG_225",
+          "LU_LKH_ORG_226",
+          "LU_LKH_ORG_227",
+          "LU_LKH_ORG_228",
+          "LU_LKH_ORG_229",
+          "LU_LKH_ORG_230",
+          "LU_LKH_ORG_231",
+          "LU_LKH_ORG_232",
+          "LU_LKH_ORG_233",
+          "LU_LKH_ORG_234",
+          "LU_LKH_ORG_235",
+          "LU_LKH_ORG_236",
+          "LU_LKH_ORG_237",
+          "LU_LKH_ORG_238",
+          "LU_LKH_ORG_239",
+          "LU_LKH_ORG_240",
+          "LU_LKH_ORG_241",
+          "LU_LKH_ORG_242",
+          "LU_LKH_ORG_243",
+          "LU_LKH_ORG_244",
+          "LU_LKH_ORG_245",
+          "LU_LKH_ORG_246",
+          "LU_LKH_ORG_247",
+          "LU_LKH_ORG_248",
+          "LU_LKH_ORG_249",
+          "LU_LKH_ORG_250",
+          "LU_LKH_ORG_251",
+          "LU_LKH_ORG_252",
+          "LU_LKH_ORG_253",
+          "LU_LKH_ORG_254",
+          "LU_LKH_ORG_255",
+          "LU_LKH_ORG_256",
+          "LU_LKH_ORG_257",
+          "LU_LKH_ORG_258",
+          "LU_LKH_ORG_259",
+          "LU_LKH_ORG_260",
+          "LU_LKH_ORG_261",
+          "LU_LKH_ORG_262",
+          "LU_LKH_ORG_263",
+          "LU_LKH_ORG_264",
+          "LU_LKH_ORG_265",
+          "LU_LKH_ORG_266",
+          "LU_LKH_ORG_267",
+          "LU_LKH_ORG_268",
+          "LU_LKH_ORG_269",
+          "LU_LKH_ORG_270",
+          "LU_LKH_ORG_271",
+          "LU_LKH_ORG_272",
+          "LU_LKH_ORG_273",
+          "LU_LKH_ORG_274",
+          "LU_LKH_ORG_275",
+          "LU_LKH_ORG_276",
+          "LU_LKH_ORG_277",
+          "LU_LKH_ORG_278",
+          "LU_LKH_ORG_279",
+          "LU_LKH_ORG_280",
+          "LU_LKH_ORG_281",
+          "LU_LKH_ORG_282",
+          "LU_LKH_ORG_283",
+          "LU_LKH_ORG_284",
+          "LU_LKH_ORG_285",
+          "LU_LKH_ORG_286",
+          "LU_LKH_ORG_287",
+          "LU_LKH_ORG_288",
+          "LU_LKH_ORG_289",
+          "LU_LKH_ORG_290",
+          "LU_LKH_ORG_291",
+          "LU_LKH_ORG_292",
+          "LU_LKH_ORG_293",
+          "LU_LKH_ORG_294",
+          "LU_LKH_ORG_295",
+          "LU_LKH_ORG_296",
+          "LU_LKH_ORG_297",
+          "LU_LKH_ORG_298",
+          "LU_LKH_ORG_299",
+          "LU_LKH_ORG_300",
+          "LU_LKH_ORG_301",
+          "LU_LKH_ORG_302",
+          "LU_LKH_ORG_303",
+          "LU_LKH_ORG_304",
+          "LU_LKH_ORG_305",
+          "LU_LKH_ORG_306",
+          "LU_LKH_ORG_307",
+          "LU_LKH_ORG_308",
+          "LU_LKH_ORG_309",
+          "LU_LKH_ORG_310",
+          "LU_LKH_ORG_311",
+          "LU_LKH_ORG_312",
+          "LU_LKH_ORG_313",
+          "LU_LKH_ORG_314",
+          "LU_LKH_ORG_315",
+          "LU_LKH_ORG_316",
+          "LU_LKH_ORG_317",
+          "LU_LKH_ORG_318",
+          "LU_LKH_ORG_319",
+          "LU_LKH_ORG_320",
+          "LU_LKH_ORG_321",
+          "LU_LKH_ORG_322",
+          "LU_LKH_ORG_323",
+          "LU_LKH_ORG_324",
+          "LU_LKH_ORG_325",
+          "LU_LKH_ORG_326",
+          "LU_LKH_ORG_327",
+          "LU_LKH_ORG_328",
+          "LU_LKH_ORG_329",
+          "LU_LKH_ORG_330",
+          "LU_LKH_ORG_331",
+          "LU_LKH_ORG_332",
+          "LU_LKH_ORG_333",
+          "LU_LKH_ORG_334",
+          "LU_LKH_ORG_335",
+          "LU_LKH_ORG_336",
+          "LU_LKH_ORG_337",
+          "LU_LKH_ORG_338",
+          "LU_LKH_ORG_339",
+          "LU_LKH_ORG_340",
+          "LU_LKH_ORG_341",
+          "LU_LKH_ORG_342",
+          "LU_LKH_ORG_343",
+          "LU_LKH_ORG_344",
+          "LU_LKH_ORG_345",
+          "LU_LKH_ORG_346",
+          "LU_LKH_ORG_347",
+          "LU_LKH_ORG_348",
+          "LU_LKH_ORG_349",
+          "LU_LKH_ORG_350",
+          "LU_LKH_ORG_351",
+          "LU_LKH_ORG_352",
+          "LU_LKH_ORG_353",
+          "LU_LKH_ORG_354",
+          "LU_LKH_ORG_355",
+          "LU_LKH_ORG_356",
+          "LU_LKH_ORG_357",
+          "LU_LKH_ORG_358",
+          "LU_LKH_ORG_359",
+          "LU_LKH_ORG_360",
+          "LU_LKH_ORG_361",
+          "LU_LKH_ORG_362",
+          "LU_LKH_ORG_363",
+          "LU_LKH_ORG_364",
+          "LU_LKH_ORG_365",
+          "LU_LKH_ORG_366",
+          "LU_LKH_ORG_367",
+          "LU_LKH_ORG_368",
+          "LU_LKH_ORG_369",
+          "LU_LKH_ORG_370",
+          "LU_LKH_ORG_371",
+          "LU_LKH_ORG_372",
+          "LU_LKH_ORG_373",
+          "LU_LKH_ORG_374",
+          "LU_LKH_ORG_375",
+          "LU_LKH_ORG_376",
+          "LU_LKH_ORG_377",
+          "LU_LKH_ORG_378",
+          "LU_LKH_ORG_379",
+          "LU_LKH_ORG_380",
+          "LU_LKH_ORG_381",
+          "LU_LKH_ORG_382",
+          "LU_LKH_ORG_383",
+          "LU_LKH_ORG_384",
+          "LU_LKH_ORG_385",
+          "LU_LKH_ORG_386",
+          "LU_LKH_ORG_387",
+          "LU_LKH_ORG_388",
+          "LU_LKH_ORG_389",
+          "LU_LKH_ORG_390",
+          "LU_LKH_ORG_391",
+          "LU_LKH_ORG_392",
+          "LU_LKH_ORG_393",
+          "LU_LKH_ORG_394",
+          "LU_LKH_ORG_395",
+          "LU_LKH_ORG_396",
+          "LU_LKH_ORG_397",
+          "LU_LKH_ORG_398",
+          "LU_LKH_ORG_399",
+          "LU_LKH_ORG_400",
+          "LU_LKH_ORG_401",
+          "LU_LKH_ORG_402",
+          "LU_LKH_ORG_403",
+          "LU_LKH_ORG_404",
+          "LU_LKH_ORG_405",
+          "LU_LKH_ORG_406",
+          "LU_LKH_ORG_407",
+          "LU_LKH_ORG_408",
+          "LU_LKH_ORG_409",
+          "LU_LKH_ORG_410",
+          "LU_LKH_ORG_411",
+          "LU_LKH_ORG_412",
+          "LU_LKH_ORG_413",
+          "LU_LKH_ORG_414",
+          "LU_LKH_ORG_415",
+          "LU_LKH_ORG_416",
+          "LU_LKH_ORG_417",
+          "LU_LKH_ORG_418",
+          "LU_LKH_ORG_419",
+          "LU_LKH_ORG_420",
+          "LU_LKH_ORG_421",
+          "LU_LKH_ORG_422",
+          "LU_LKH_ORG_423",
+          "LU_LKH_ORG_424",
+          "LU_LKH_ORG_425",
+          "LU_LKH_ORG_426",
+          "LU_LKH_ORG_427",
+          "LU_LKH_ORG_428",
+          "LU_LKH_ORG_429",
+          "LU_LKH_ORG_430",
+          "LU_LKH_ORG_431",
+          "LU_LKH_ORG_432",
+          "LU_LKH_ORG_433",
+          "LU_LKH_ORG_434",
+          "LU_LKH_ORG_435",
+          "LU_LKH_ORG_436",
+          "LU_LKH_ORG_437",
+          "LU_LKH_ORG_438",
+          "LU_LKH_ORG_439",
+          "LU_LKH_ORG_440",
+          "LU_LKH_ORG_441",
+          "LU_LKH_ORG_442",
+          "LU_LKH_ORG_443",
+          "LU_LKH_ORG_444",
+          "LU_LKH_ORG_445",
+          "LU_LKH_ORG_446",
+          "LU_LKH_ORG_447",
+          "LU_LKH_ORG_448",
+          "LU_LKH_ORG_449",
+          "LU_LKH_ORG_450",
+          "LU_LKH_ORG_451",
+          "LU_LKH_ORG_452",
+          "LU_LKH_ORG_453",
+          "LU_LKH_ORG_454",
+          "LU_LKH_ORG_455",
+          "LU_LKH_ORG_456",
+          "LU_LKH_ORG_457",
+          "LU_LKH_ORG_458",
+          "LU_LKH_ORG_459",
+          "LU_LKH_ORG_460",
+          "LU_LKH_ORG_461",
+          "LU_LKH_ORG_462",
+          "LU_LKH_ORG_463",
+          "LU_LKH_ORG_464",
+          "LU_LKH_ORG_465",
+          "LU_LKH_ORG_466",
+          "LU_LKH_ORG_467",
+          "LU_LKH_ORG_468",
+          "LU_LKH_ORG_469",
+          "LU_LKH_ORG_470",
+          "LU_LKH_ORG_471",
+          "LU_LKH_ORG_472",
+          "LU_LKH_ORG_473",
+          "LU_LKH_ORG_474",
+          "LU_LKH_ORG_475",
+          "LU_LKH_ORG_476",
+          "LU_LKH_ORG_477",
+          "LU_LKH_ORG_478",
+          "LU_LKH_ORG_479",
+          "LU_LKH_ORG_480",
+          "LU_LKH_ORG_481",
+          "LU_LKH_ORG_482",
+          "LU_LKH_ORG_483",
+          "LU_LKH_ORG_484",
+          "LU_LKH_ORG_485",
+          "LU_LKH_ORG_486",
+          "LU_LKH_ORG_487",
+          "LU_LKH_ORG_488",
+          "LU_LKH_ORG_489",
+          "LU_LKH_ORG_490",
+          "LU_LKH_ORG_491",
+          "LU_LKH_ORG_492",
+          "LU_LKH_ORG_493",
+          "LU_LKH_ORG_494",
+          "LU_LKH_ORG_495",
+          "LU_LKH_ORG_496",
+          "LU_LKH_ORG_497",
+          "LU_LKH_ORG_498",
+          "LU_LKH_ORG_499",
+          "LU_LKH_ORG_500",
+          "LU_LKH_ORG_501",
+          "LU_LKH_ORG_502",
+          "LU_LKH_ORG_503",
+          "LU_LKH_ORG_504",
+          "LU_LKH_ORG_505",
+          "LU_LKH_ORG_506",
+          "LU_LKH_ORG_507",
+          "LU_LKH_ORG_508",
+          "LU_LKH_ORG_509",
+          "LU_LKH_ORG_510",
+          "LU_LKH_ORG_511",
+          "LU_LKH_ORG_512",
+          "LU_LKH_ORG_513",
+          "LU_LKH_ORG_514",
+          "LU_LKH_ORG_515",
+          "LU_LKH_ORG_516",
+          "LU_LKH_ORG_517",
+          "LU_LKH_ORG_518",
+          "LU_LKH_ORG_519",
+          "LU_LKH_ORG_520",
+          "LU_LKH_ORG_521",
+          "LU_LKH_ORG_522",
+          "LU_LKH_ORG_523",
+          "LU_LKH_ORG_524",
+          "LU_LKH_ORG_525",
+          "LU_LKH_ORG_526",
+          "LU_LKH_ORG_527",
+          "LU_LKH_ORG_528",
+          "LU_LKH_ORG_529",
+          "LU_LKH_ORG_530",
+          "LU_LKH_ORG_531",
+          "LU_LKH_ORG_532",
+          "LU_LKH_ORG_533",
+          "LU_LKH_ORG_534",
+          "LU_LKH_ORG_535",
+          "LU_LKH_ORG_536",
+          "LU_LKH_ORG_537",
+          "LU_LKH_ORG_538",
+          "LU_LKH_ORG_539",
+          "LU_LKH_ORG_540",
+          "LU_LKH_ORG_541",
+          "LU_LKH_ORG_542",
+          "LU_LKH_ORG_543",
+          "LU_LKH_ORG_544",
+          "LU_LKH_ORG_545",
+          "LU_LKH_ORG_546",
+          "LU_LKH_ORG_547",
+          "LU_LKH_ORG_548",
+          "LU_LKH_ORG_549",
+          "LU_LKH_ORG_550",
+          "LU_LKH_ORG_551",
+          "LU_LKH_ORG_552",
+          "LU_LKH_ORG_553",
+          "LU_LKH_ORG_554",
+          "LU_LKH_ORG_555",
+          "LU_LKH_ORG_556",
+          "LU_LKH_ORG_557",
+          "LU_LKH_ORG_558",
+          "LU_LKH_ORG_559",
+          "LU_LKH_ORG_560",
+          "LU_LKH_ORG_561",
+          "LU_LKH_ORG_562",
+          "LU_LKH_ORG_563",
+          "LU_LKH_ORG_564",
+          "LU_LKH_ORG_565",
+          "LU_LKH_ORG_566",
+          "LU_LKH_ORG_567",
+          "LU_LKH_ORG_568",
+          "LU_LKH_ORG_569",
+          "LU_LKH_ORG_570",
+          "LU_LKH_ORG_571",
+          "LU_LKH_ORG_572",
+          "LU_LKH_ORG_573",
+          "LU_LKH_ORG_574",
+          "LU_LKH_ORG_575",
+          "LU_LKH_ORG_576",
+          "LU_LKH_ORG_577",
+          "LU_LKH_ORG_578",
+          "LU_LKH_ORG_579",
+          "LU_LKH_ORG_580",
+          "LU_LKH_ORG_581",
+          "LU_LKH_ORG_582",
+          "LU_LKH_ORG_583",
+          "LU_LKH_ORG_584",
+          "LU_LKH_ORG_585",
+          "LU_LKH_ORG_586",
+          "LU_LKH_ORG_587",
+          "LU_LKH_ORG_588",
+          "LU_LKH_ORG_589",
+          "LU_LKH_ORG_590",
+          "LU_LKH_ORG_591",
+          "LU_LKH_ORG_592",
+          "LU_LKH_ORG_593",
+          "LU_LKH_ORG_594",
+          "LU_LKH_ORG_595",
+          "LU_LKH_ORG_596",
+          "LU_LKH_ORG_597",
+          "LU_LKH_ORG_598",
+          "LU_LKH_ORG_599",
+          "LU_LKH_ORG_600"
+        ]
+      },
+      "SiteInformation": {
+        "type": "string",
+        "enum": [
+          "LU_LKH_SITE_1",
+          "LU_LKH_SITE_2",
+          "LU_LKH_SITE_3",
+          "LU_LKH_SITE_4",
+          "LU_LKH_SITE_5",
+          "LU_LKH_SITE_6",
+          "LU_LKH_SITE_7",
+          "LU_LKH_SITE_8",
+          "LU_LKH_SITE_9",
+          "LU_LKH_SITE_10",
+          "LU_LKH_SITE_11",
+          "LU_LKH_SITE_12",
+          "LU_LKH_SITE_13",
+          "LU_LKH_SITE_14",
+          "LU_LKH_SITE_15",
+          "LU_LKH_SITE_16",
+          "LU_LKH_SITE_17",
+          "LU_LKH_SITE_18",
+          "LU_LKH_SITE_19",
+          "LU_LKH_SITE_20",
+          "LU_LKH_SITE_21",
+          "LU_LKH_SITE_22",
+          "LU_LKH_SITE_23",
+          "LU_LKH_SITE_24",
+          "LU_LKH_SITE_25",
+          "LU_LKH_SITE_26",
+          "LU_LKH_SITE_27",
+          "LU_LKH_SITE_28",
+          "LU_LKH_SITE_29",
+          "LU_LKH_SITE_30",
+          "LU_LKH_SITE_31",
+          "LU_LKH_SITE_32",
+          "LU_LKH_SITE_33",
+          "LU_LKH_SITE_34",
+          "LU_LKH_SITE_35",
+          "LU_LKH_SITE_36",
+          "LU_LKH_SITE_37",
+          "LU_LKH_SITE_38",
+          "LU_LKH_SITE_39",
+          "LU_LKH_SITE_40",
+          "LU_LKH_SITE_41",
+          "LU_LKH_SITE_42",
+          "LU_LKH_SITE_43",
+          "LU_LKH_SITE_44",
+          "LU_LKH_SITE_45",
+          "LU_LKH_SITE_46",
+          "LU_LKH_SITE_47",
+          "LU_LKH_SITE_48",
+          "LU_LKH_SITE_49",
+          "LU_LKH_SITE_50",
+          "LU_LKH_SITE_51",
+          "LU_LKH_SITE_52",
+          "LU_LKH_SITE_53",
+          "LU_LKH_SITE_54",
+          "LU_LKH_SITE_55",
+          "LU_LKH_SITE_56",
+          "LU_LKH_SITE_57",
+          "LU_LKH_SITE_58",
+          "LU_LKH_SITE_59",
+          "LU_LKH_SITE_60",
+          "LU_LKH_SITE_61",
+          "LU_LKH_SITE_62",
+          "LU_LKH_SITE_63",
+          "LU_LKH_SITE_64",
+          "LU_LKH_SITE_65",
+          "LU_LKH_SITE_66",
+          "LU_LKH_SITE_67",
+          "LU_LKH_SITE_68",
+          "LU_LKH_SITE_69",
+          "LU_LKH_SITE_70",
+          "LU_LKH_SITE_71",
+          "LU_LKH_SITE_72",
+          "LU_LKH_SITE_73",
+          "LU_LKH_SITE_74",
+          "LU_LKH_SITE_75",
+          "LU_LKH_SITE_76",
+          "LU_LKH_SITE_77",
+          "LU_LKH_SITE_78",
+          "LU_LKH_SITE_79",
+          "LU_LKH_SITE_80",
+          "LU_LKH_SITE_81",
+          "LU_LKH_SITE_82",
+          "LU_LKH_SITE_83",
+          "LU_LKH_SITE_84",
+          "LU_LKH_SITE_85",
+          "LU_LKH_SITE_86",
+          "LU_LKH_SITE_87",
+          "LU_LKH_SITE_88",
+          "LU_LKH_SITE_89",
+          "LU_LKH_SITE_90",
+          "LU_LKH_SITE_91",
+          "LU_LKH_SITE_92",
+          "LU_LKH_SITE_93",
+          "LU_LKH_SITE_94",
+          "LU_LKH_SITE_95",
+          "LU_LKH_SITE_96",
+          "LU_LKH_SITE_97",
+          "LU_LKH_SITE_98",
+          "LU_LKH_SITE_99",
+          "LU_LKH_SITE_100",
+          "LU_LKH_SITE_101",
+          "LU_LKH_SITE_102",
+          "LU_LKH_SITE_103",
+          "LU_LKH_SITE_104",
+          "LU_LKH_SITE_105",
+          "LU_LKH_SITE_106",
+          "LU_LKH_SITE_107",
+          "LU_LKH_SITE_108",
+          "LU_LKH_SITE_109",
+          "LU_LKH_SITE_110",
+          "LU_LKH_SITE_111",
+          "LU_LKH_SITE_112",
+          "LU_LKH_SITE_113",
+          "LU_LKH_SITE_114",
+          "LU_LKH_SITE_115",
+          "LU_LKH_SITE_116",
+          "LU_LKH_SITE_117",
+          "LU_LKH_SITE_118",
+          "LU_LKH_SITE_119",
+          "LU_LKH_SITE_120",
+          "LU_LKH_SITE_121",
+          "LU_LKH_SITE_122",
+          "LU_LKH_SITE_123",
+          "LU_LKH_SITE_124",
+          "LU_LKH_SITE_125",
+          "LU_LKH_SITE_126",
+          "LU_LKH_SITE_127",
+          "LU_LKH_SITE_128",
+          "LU_LKH_SITE_129",
+          "LU_LKH_SITE_130",
+          "LU_LKH_SITE_131",
+          "LU_LKH_SITE_132",
+          "LU_LKH_SITE_133",
+          "LU_LKH_SITE_134",
+          "LU_LKH_SITE_135",
+          "LU_LKH_SITE_136",
+          "LU_LKH_SITE_137",
+          "LU_LKH_SITE_138",
+          "LU_LKH_SITE_139",
+          "LU_LKH_SITE_140",
+          "LU_LKH_SITE_141",
+          "LU_LKH_SITE_142",
+          "LU_LKH_SITE_143",
+          "LU_LKH_SITE_144",
+          "LU_LKH_SITE_145",
+          "LU_LKH_SITE_146",
+          "LU_LKH_SITE_147",
+          "LU_LKH_SITE_148",
+          "LU_LKH_SITE_149",
+          "LU_LKH_SITE_150",
+          "LU_LKH_SITE_151",
+          "LU_LKH_SITE_152",
+          "LU_LKH_SITE_153",
+          "LU_LKH_SITE_154",
+          "LU_LKH_SITE_155",
+          "LU_LKH_SITE_156",
+          "LU_LKH_SITE_157",
+          "LU_LKH_SITE_158",
+          "LU_LKH_SITE_159",
+          "LU_LKH_SITE_160",
+          "LU_LKH_SITE_161",
+          "LU_LKH_SITE_162",
+          "LU_LKH_SITE_163",
+          "LU_LKH_SITE_164",
+          "LU_LKH_SITE_165",
+          "LU_LKH_SITE_166",
+          "LU_LKH_SITE_167",
+          "LU_LKH_SITE_168",
+          "LU_LKH_SITE_169",
+          "LU_LKH_SITE_170",
+          "LU_LKH_SITE_171",
+          "LU_LKH_SITE_172",
+          "LU_LKH_SITE_173",
+          "LU_LKH_SITE_174",
+          "LU_LKH_SITE_175",
+          "LU_LKH_SITE_176",
+          "LU_LKH_SITE_177",
+          "LU_LKH_SITE_178",
+          "LU_LKH_SITE_179",
+          "LU_LKH_SITE_180",
+          "LU_LKH_SITE_181",
+          "LU_LKH_SITE_182",
+          "LU_LKH_SITE_183",
+          "LU_LKH_SITE_184",
+          "LU_LKH_SITE_185",
+          "LU_LKH_SITE_186",
+          "LU_LKH_SITE_187",
+          "LU_LKH_SITE_188",
+          "LU_LKH_SITE_189",
+          "LU_LKH_SITE_190",
+          "LU_LKH_SITE_191",
+          "LU_LKH_SITE_192",
+          "LU_LKH_SITE_193",
+          "LU_LKH_SITE_194",
+          "LU_LKH_SITE_195",
+          "LU_LKH_SITE_196",
+          "LU_LKH_SITE_197",
+          "LU_LKH_SITE_198",
+          "LU_LKH_SITE_199",
+          "LU_LKH_SITE_200",
+          "LU_LKH_SITE_201",
+          "LU_LKH_SITE_202",
+          "LU_LKH_SITE_203",
+          "LU_LKH_SITE_204",
+          "LU_LKH_SITE_205",
+          "LU_LKH_SITE_206",
+          "LU_LKH_SITE_207",
+          "LU_LKH_SITE_208",
+          "LU_LKH_SITE_209",
+          "LU_LKH_SITE_210",
+          "LU_LKH_SITE_211",
+          "LU_LKH_SITE_212",
+          "LU_LKH_SITE_213",
+          "LU_LKH_SITE_214",
+          "LU_LKH_SITE_215",
+          "LU_LKH_SITE_216",
+          "LU_LKH_SITE_217",
+          "LU_LKH_SITE_218",
+          "LU_LKH_SITE_219",
+          "LU_LKH_SITE_220",
+          "LU_LKH_SITE_221",
+          "LU_LKH_SITE_222",
+          "LU_LKH_SITE_223",
+          "LU_LKH_SITE_224",
+          "LU_LKH_SITE_225",
+          "LU_LKH_SITE_226",
+          "LU_LKH_SITE_227",
+          "LU_LKH_SITE_228",
+          "LU_LKH_SITE_229",
+          "LU_LKH_SITE_230",
+          "LU_LKH_SITE_231",
+          "LU_LKH_SITE_232",
+          "LU_LKH_SITE_233",
+          "LU_LKH_SITE_234",
+          "LU_LKH_SITE_235",
+          "LU_LKH_SITE_236",
+          "LU_LKH_SITE_237",
+          "LU_LKH_SITE_238",
+          "LU_LKH_SITE_239",
+          "LU_LKH_SITE_240",
+          "LU_LKH_SITE_241",
+          "LU_LKH_SITE_242",
+          "LU_LKH_SITE_243",
+          "LU_LKH_SITE_244",
+          "LU_LKH_SITE_245",
+          "LU_LKH_SITE_246",
+          "LU_LKH_SITE_247",
+          "LU_LKH_SITE_248",
+          "LU_LKH_SITE_249",
+          "LU_LKH_SITE_250",
+          "LU_LKH_SITE_251",
+          "LU_LKH_SITE_252",
+          "LU_LKH_SITE_253",
+          "LU_LKH_SITE_254",
+          "LU_LKH_SITE_255",
+          "LU_LKH_SITE_256",
+          "LU_LKH_SITE_257",
+          "LU_LKH_SITE_258",
+          "LU_LKH_SITE_259",
+          "LU_LKH_SITE_260",
+          "LU_LKH_SITE_261",
+          "LU_LKH_SITE_262",
+          "LU_LKH_SITE_263",
+          "LU_LKH_SITE_264",
+          "LU_LKH_SITE_265",
+          "LU_LKH_SITE_266",
+          "LU_LKH_SITE_267",
+          "LU_LKH_SITE_268",
+          "LU_LKH_SITE_269",
+          "LU_LKH_SITE_270",
+          "LU_LKH_SITE_271",
+          "LU_LKH_SITE_272",
+          "LU_LKH_SITE_273",
+          "LU_LKH_SITE_274",
+          "LU_LKH_SITE_275",
+          "LU_LKH_SITE_276",
+          "LU_LKH_SITE_277",
+          "LU_LKH_SITE_278",
+          "LU_LKH_SITE_279",
+          "LU_LKH_SITE_280",
+          "LU_LKH_SITE_281",
+          "LU_LKH_SITE_282",
+          "LU_LKH_SITE_283",
+          "LU_LKH_SITE_284",
+          "LU_LKH_SITE_285",
+          "LU_LKH_SITE_286",
+          "LU_LKH_SITE_287",
+          "LU_LKH_SITE_288",
+          "LU_LKH_SITE_289",
+          "LU_LKH_SITE_290",
+          "LU_LKH_SITE_291",
+          "LU_LKH_SITE_292",
+          "LU_LKH_SITE_293",
+          "LU_LKH_SITE_294",
+          "LU_LKH_SITE_295",
+          "LU_LKH_SITE_296",
+          "LU_LKH_SITE_297",
+          "LU_LKH_SITE_298",
+          "LU_LKH_SITE_299",
+          "LU_LKH_SITE_300",
+          "LU_LKH_SITE_301",
+          "LU_LKH_SITE_302",
+          "LU_LKH_SITE_303",
+          "LU_LKH_SITE_304",
+          "LU_LKH_SITE_305",
+          "LU_LKH_SITE_306",
+          "LU_LKH_SITE_307",
+          "LU_LKH_SITE_308",
+          "LU_LKH_SITE_309",
+          "LU_LKH_SITE_310",
+          "LU_LKH_SITE_311",
+          "LU_LKH_SITE_312",
+          "LU_LKH_SITE_313",
+          "LU_LKH_SITE_314",
+          "LU_LKH_SITE_315",
+          "LU_LKH_SITE_316",
+          "LU_LKH_SITE_317",
+          "LU_LKH_SITE_318",
+          "LU_LKH_SITE_319",
+          "LU_LKH_SITE_320",
+          "LU_LKH_SITE_321",
+          "LU_LKH_SITE_322",
+          "LU_LKH_SITE_323",
+          "LU_LKH_SITE_324",
+          "LU_LKH_SITE_325",
+          "LU_LKH_SITE_326",
+          "LU_LKH_SITE_327",
+          "LU_LKH_SITE_328",
+          "LU_LKH_SITE_329",
+          "LU_LKH_SITE_330",
+          "LU_LKH_SITE_331",
+          "LU_LKH_SITE_332",
+          "LU_LKH_SITE_333",
+          "LU_LKH_SITE_334",
+          "LU_LKH_SITE_335",
+          "LU_LKH_SITE_336",
+          "LU_LKH_SITE_337",
+          "LU_LKH_SITE_338",
+          "LU_LKH_SITE_339",
+          "LU_LKH_SITE_340",
+          "LU_LKH_SITE_341",
+          "LU_LKH_SITE_342",
+          "LU_LKH_SITE_343",
+          "LU_LKH_SITE_344",
+          "LU_LKH_SITE_345",
+          "LU_LKH_SITE_346",
+          "LU_LKH_SITE_347",
+          "LU_LKH_SITE_348",
+          "LU_LKH_SITE_349",
+          "LU_LKH_SITE_350",
+          "LU_LKH_SITE_351",
+          "LU_LKH_SITE_352",
+          "LU_LKH_SITE_353",
+          "LU_LKH_SITE_354",
+          "LU_LKH_SITE_355",
+          "LU_LKH_SITE_356",
+          "LU_LKH_SITE_357",
+          "LU_LKH_SITE_358",
+          "LU_LKH_SITE_359",
+          "LU_LKH_SITE_360",
+          "LU_LKH_SITE_361",
+          "LU_LKH_SITE_362",
+          "LU_LKH_SITE_363",
+          "LU_LKH_SITE_364",
+          "LU_LKH_SITE_365",
+          "LU_LKH_SITE_366",
+          "LU_LKH_SITE_367",
+          "LU_LKH_SITE_368",
+          "LU_LKH_SITE_369",
+          "LU_LKH_SITE_370",
+          "LU_LKH_SITE_371",
+          "LU_LKH_SITE_372",
+          "LU_LKH_SITE_373",
+          "LU_LKH_SITE_374",
+          "LU_LKH_SITE_375",
+          "LU_LKH_SITE_376",
+          "LU_LKH_SITE_377",
+          "LU_LKH_SITE_378",
+          "LU_LKH_SITE_379",
+          "LU_LKH_SITE_380",
+          "LU_LKH_SITE_381",
+          "LU_LKH_SITE_382",
+          "LU_LKH_SITE_383",
+          "LU_LKH_SITE_384",
+          "LU_LKH_SITE_385",
+          "LU_LKH_SITE_386",
+          "LU_LKH_SITE_387",
+          "LU_LKH_SITE_388",
+          "LU_LKH_SITE_389",
+          "LU_LKH_SITE_390",
+          "LU_LKH_SITE_391",
+          "LU_LKH_SITE_392",
+          "LU_LKH_SITE_393",
+          "LU_LKH_SITE_394",
+          "LU_LKH_SITE_395",
+          "LU_LKH_SITE_396",
+          "LU_LKH_SITE_397",
+          "LU_LKH_SITE_398",
+          "LU_LKH_SITE_399",
+          "LU_LKH_SITE_400",
+          "LU_LKH_SITE_401",
+          "LU_LKH_SITE_402",
+          "LU_LKH_SITE_403",
+          "LU_LKH_SITE_404",
+          "LU_LKH_SITE_405",
+          "LU_LKH_SITE_406",
+          "LU_LKH_SITE_407",
+          "LU_LKH_SITE_408",
+          "LU_LKH_SITE_409",
+          "LU_LKH_SITE_410",
+          "LU_LKH_SITE_411",
+          "LU_LKH_SITE_412",
+          "LU_LKH_SITE_413",
+          "LU_LKH_SITE_414",
+          "LU_LKH_SITE_415",
+          "LU_LKH_SITE_416",
+          "LU_LKH_SITE_417",
+          "LU_LKH_SITE_418",
+          "LU_LKH_SITE_419",
+          "LU_LKH_SITE_420",
+          "LU_LKH_SITE_421",
+          "LU_LKH_SITE_422",
+          "LU_LKH_SITE_423",
+          "LU_LKH_SITE_424",
+          "LU_LKH_SITE_425",
+          "LU_LKH_SITE_426",
+          "LU_LKH_SITE_427",
+          "LU_LKH_SITE_428",
+          "LU_LKH_SITE_429",
+          "LU_LKH_SITE_430",
+          "LU_LKH_SITE_431",
+          "LU_LKH_SITE_432",
+          "LU_LKH_SITE_433",
+          "LU_LKH_SITE_434",
+          "LU_LKH_SITE_435",
+          "LU_LKH_SITE_436",
+          "LU_LKH_SITE_437",
+          "LU_LKH_SITE_438",
+          "LU_LKH_SITE_439",
+          "LU_LKH_SITE_440",
+          "LU_LKH_SITE_441",
+          "LU_LKH_SITE_442",
+          "LU_LKH_SITE_443",
+          "LU_LKH_SITE_444",
+          "LU_LKH_SITE_445",
+          "LU_LKH_SITE_446",
+          "LU_LKH_SITE_447",
+          "LU_LKH_SITE_448",
+          "LU_LKH_SITE_449",
+          "LU_LKH_SITE_450",
+          "LU_LKH_SITE_451",
+          "LU_LKH_SITE_452",
+          "LU_LKH_SITE_453",
+          "LU_LKH_SITE_454",
+          "LU_LKH_SITE_455",
+          "LU_LKH_SITE_456",
+          "LU_LKH_SITE_457",
+          "LU_LKH_SITE_458",
+          "LU_LKH_SITE_459",
+          "LU_LKH_SITE_460",
+          "LU_LKH_SITE_461",
+          "LU_LKH_SITE_462",
+          "LU_LKH_SITE_463",
+          "LU_LKH_SITE_464",
+          "LU_LKH_SITE_465",
+          "LU_LKH_SITE_466",
+          "LU_LKH_SITE_467",
+          "LU_LKH_SITE_468",
+          "LU_LKH_SITE_469",
+          "LU_LKH_SITE_470",
+          "LU_LKH_SITE_471",
+          "LU_LKH_SITE_472",
+          "LU_LKH_SITE_473",
+          "LU_LKH_SITE_474",
+          "LU_LKH_SITE_475",
+          "LU_LKH_SITE_476",
+          "LU_LKH_SITE_477",
+          "LU_LKH_SITE_478",
+          "LU_LKH_SITE_479",
+          "LU_LKH_SITE_480",
+          "LU_LKH_SITE_481",
+          "LU_LKH_SITE_482",
+          "LU_LKH_SITE_483",
+          "LU_LKH_SITE_484",
+          "LU_LKH_SITE_485",
+          "LU_LKH_SITE_486",
+          "LU_LKH_SITE_487",
+          "LU_LKH_SITE_488",
+          "LU_LKH_SITE_489",
+          "LU_LKH_SITE_490",
+          "LU_LKH_SITE_491",
+          "LU_LKH_SITE_492",
+          "LU_LKH_SITE_493",
+          "LU_LKH_SITE_494",
+          "LU_LKH_SITE_495",
+          "LU_LKH_SITE_496",
+          "LU_LKH_SITE_497",
+          "LU_LKH_SITE_498",
+          "LU_LKH_SITE_499",
+          "LU_LKH_SITE_500",
+          "LU_LKH_SITE_501",
+          "LU_LKH_SITE_502",
+          "LU_LKH_SITE_503",
+          "LU_LKH_SITE_504",
+          "LU_LKH_SITE_505",
+          "LU_LKH_SITE_506",
+          "LU_LKH_SITE_507",
+          "LU_LKH_SITE_508",
+          "LU_LKH_SITE_509",
+          "LU_LKH_SITE_510",
+          "LU_LKH_SITE_511",
+          "LU_LKH_SITE_512",
+          "LU_LKH_SITE_513",
+          "LU_LKH_SITE_514",
+          "LU_LKH_SITE_515",
+          "LU_LKH_SITE_516",
+          "LU_LKH_SITE_517",
+          "LU_LKH_SITE_518",
+          "LU_LKH_SITE_519",
+          "LU_LKH_SITE_520",
+          "LU_LKH_SITE_521",
+          "LU_LKH_SITE_522",
+          "LU_LKH_SITE_523",
+          "LU_LKH_SITE_524",
+          "LU_LKH_SITE_525",
+          "LU_LKH_SITE_526",
+          "LU_LKH_SITE_527",
+          "LU_LKH_SITE_528",
+          "LU_LKH_SITE_529",
+          "LU_LKH_SITE_530",
+          "LU_LKH_SITE_531",
+          "LU_LKH_SITE_532",
+          "LU_LKH_SITE_533",
+          "LU_LKH_SITE_534",
+          "LU_LKH_SITE_535",
+          "LU_LKH_SITE_536",
+          "LU_LKH_SITE_537",
+          "LU_LKH_SITE_538",
+          "LU_LKH_SITE_539",
+          "LU_LKH_SITE_540",
+          "LU_LKH_SITE_541",
+          "LU_LKH_SITE_542",
+          "LU_LKH_SITE_543",
+          "LU_LKH_SITE_544",
+          "LU_LKH_SITE_545",
+          "LU_LKH_SITE_546",
+          "LU_LKH_SITE_547",
+          "LU_LKH_SITE_548",
+          "LU_LKH_SITE_549",
+          "LU_LKH_SITE_550",
+          "LU_LKH_SITE_551",
+          "LU_LKH_SITE_552",
+          "LU_LKH_SITE_553",
+          "LU_LKH_SITE_554",
+          "LU_LKH_SITE_555",
+          "LU_LKH_SITE_556",
+          "LU_LKH_SITE_557",
+          "LU_LKH_SITE_558",
+          "LU_LKH_SITE_559",
+          "LU_LKH_SITE_560",
+          "LU_LKH_SITE_561",
+          "LU_LKH_SITE_562",
+          "LU_LKH_SITE_563",
+          "LU_LKH_SITE_564",
+          "LU_LKH_SITE_565",
+          "LU_LKH_SITE_566",
+          "LU_LKH_SITE_567",
+          "LU_LKH_SITE_568",
+          "LU_LKH_SITE_569",
+          "LU_LKH_SITE_570",
+          "LU_LKH_SITE_571",
+          "LU_LKH_SITE_572",
+          "LU_LKH_SITE_573",
+          "LU_LKH_SITE_574",
+          "LU_LKH_SITE_575",
+          "LU_LKH_SITE_576",
+          "LU_LKH_SITE_577",
+          "LU_LKH_SITE_578",
+          "LU_LKH_SITE_579",
+          "LU_LKH_SITE_580",
+          "LU_LKH_SITE_581",
+          "LU_LKH_SITE_582",
+          "LU_LKH_SITE_583",
+          "LU_LKH_SITE_584",
+          "LU_LKH_SITE_585",
+          "LU_LKH_SITE_586",
+          "LU_LKH_SITE_587",
+          "LU_LKH_SITE_588",
+          "LU_LKH_SITE_589",
+          "LU_LKH_SITE_590",
+          "LU_LKH_SITE_591",
+          "LU_LKH_SITE_592",
+          "LU_LKH_SITE_593",
+          "LU_LKH_SITE_594",
+          "LU_LKH_SITE_595",
+          "LU_LKH_SITE_596",
+          "LU_LKH_SITE_597",
+          "LU_LKH_SITE_598",
+          "LU_LKH_SITE_599",
+          "LU_LKH_SITE_600"
+        ]
+      },
+      "Lookups": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ContactProfiles"
+          },
+          {
+            "$ref": "#/components/schemas/OrganisationLookups"
+          },
+          {
+            "$ref": "#/components/schemas/SiteInformation"
+          }
+        ]
+      },
+      "Common": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/LookupsUnformated"
+          },
+          {
+            "$ref": "#/components/schemas/Lookups"
+          }
+        ]
+      },
+      "EventDetails": {
+        "enum": [
+          "ES_SUMM_EVENT_OWNER_EMP",
+          "ES_SUMM_EVENT_CODE",
+          "ES_SUMM_EVENT_DATE",
+          "ES_SUMM_EVENT_ID",
+          "EMP_SUMM_LOB",
+          "ES_EVENT_VENUE",
+          "ES_SUMM_EVENT_TYPE",
+          "ES_SUMM_EVENT_VENUE_ORG",
+          "ES_SUMM_EVENT_NAME"
+        ],
+        "type": "string"
+      },
+      "Client": {
+        "enum": [
+          "ES_SUMM_CLIENT_ACCOUNT_MANAGER",
+          "ES_SUMM_ORG_ALPHA",
+          "ES_SUMM_ORG_TYPE",
+          "ES_SUMM_EVENT_ORG"
+        ],
+        "type": "string"
+      },
+      "SessionDetails": {
+        "enum": [
+          "ES_SUMM_BOOKED_ON",
+          "ES_SUMM_SESSION_CUSTOM_FIELD_1",
+          "ES_SUMM_SESSION_CUSTOM_FIELD_2",
+          "ES_SUMM_SESSION_CUSTOM_FIELD_3",
+          "ES_SUMM_SESSION_CUSTOM_FIELD_4",
+          "ES_SUMM_SESSION_CUSTOM_FIELD_5",
+          "ES_SUMM_SITE_CUSTOMER_ID",
+          "ES_SUMM_DURATION",
+          "ES_SUMM_NO_CONFIRMED",
+          "ES_SUMM_PROV_COUNT",
+          "ES_SUMM_SESSION_NUMBER_REQ",
+          "ES_SUMM_WAIT_COUNT",
+          "ES_SUMM_SESSION_NUMBER_STAFF_STILL_REQUIRED",
+          "ES_SUMM_ID",
+          "ES_SUMM_SESSION_ID",
+          "ES_SUMM_OBJECTIVES",
+          "ES_SESSION_PERIOD",
+          "ES_SUMM_SESSION_POSTCODE_ONLY",
+          "ES_SUMM_SESSION_TYPE",
+          "ES_SUMM_SESSION_ADDRESS",
+          "ES_SUMM_SESSION_START_DATE",
+          "ES_SUMM_SESSION",
+          "ES_SUMM_SESSION",
+          "ES_SUMM_SYNOPSIS",
+          "ES_SUMM_SESS_VENUE"
+        ],
+        "type": "string"
+      },
+      "RoleDetails": {
+        "enum": [
+          "ES_SUMM_AVAIL_ROLE",
+          "ES_SUMM_SESSION_ROLE_RATE",
+          "ES_SUMM_ROLE_ASSIGNED",
+          "ES_SUMM_ROLE_CONFIRMED",
+          "ES_SUMM_SESSION_ROLE_DAY_RATE",
+          "ES_SUMM_SESSION_ROLE_END_TIME",
+          "ES_SUMM_ROLE_NOT_FILLED",
+          "ES_SUMM_ROLE_REQUIRED",
+          "ES_SUMM_SESSION_ROLE_START_TIME",
+          "ES_SUMM_RATE",
+          "ES_SUMM_DAY_RATE"
+        ],
+        "type": "string"
+      },
+      "SupportItem": {
+        "enum": [
+          "SUP_3RD_PARTY_REF",
+          "SUP_PRODUCT",
+          "SUP_DATE_CLOSED",
+          "SUP_DATE_DUE",
+          "SUP_DATE_RAISED",
+          "SUP_INVOICE_NO",
+          "SUP_NOTES",
+          "SUP_ON_TIME",
+          "SUP_OPEN",
+          "SUP_OWNER_KEY",
+          "SUP_PASSED_DATE",
+          "SUP_PO",
+          "SUP_SUPPORT_PRICE",
+          "SUP_PRIORITY",
+          "SUP_RESOLUTION",
+          "SUP_REVIEW_STATUS",
+          "SUP_DESC",
+          "SUP_KEY",
+          "SUP_OWNER",
+          "SUP_TAKEN_BY_KEY",
+          "SUP_TIME_DUE",
+          "ES_SUMM_TYPE_DESC"
+        ],
+        "type": "string"
+      },
+      "EventSessionSummary": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Common"
+          },
+          {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          {
+            "$ref": "#/components/schemas/Client"
+          },
+          {
+            "$ref": "#/components/schemas/SessionDetails"
+          },
+          {
+            "$ref": "#/components/schemas/RoleDetails"
+          },
+          {
+            "$ref": "#/components/schemas/SupportItem"
+          }
+        ]
+      },
+      "report200": {
+        "enum": [
+          "OSCE_APPLIED_DATE",
+          "OSCE_CONT_DOB",
+          "OSCE_CONT_EMAIL",
+          "OSCE_CONTACT_ID",
+          "OSCE_CONTACT_ID",
+          "OSCE_PROMOTE_DATE",
+          "OSCE_EMP_RETIRED_DATE",
+          "OSCE_CONT_1STNAME",
+          "OSCE_CONT_LASTNAME",
+          "OSCE_FULL_NAME",
+          "OSCE_CONT_SEX",
+          "OSCE_VETTING_INTERVIEWED_BY",
+          "ES_JOB_APP_STATUS",
+          "OSCE_JAS_LAST_CHANGE",
+          "OSCE_CONTACT_MOBILE",
+          "OSCE_EMP_NI",
+          "OSCE_ORG_SOURCE",
+          "OSCE_ORG_TYPE",
+          "ES_EMP_PAYROLL_NO",
+          "OSCE_SITE_POSTCODE",
+          "SECT_QUAL_NAME",
+          "SECT_QUAL_PASS_DATE",
+          "SECT_QUAL_TO",
+          "OSCE_MOST_RECENT_BOOKING_DATE",
+          "OSCE_EMP_PROMOTED_BY",
+          "OSCE_EMP_APPLICANT_MANAGER",
+          "SECT_QUAL_CERTIFICATE",
+          "OSCE_EMP_ACTIVE",
+          "OSCE_JP_JAS_HISTORY_JPJ_DATE_CHANGED",
+          "OSCE_JP_JAS_HISTORY_JPJ_CHANGEUSER",
+          "OSCE_JP_JAS_HISTORY_JPJ_ID",
+          "OSCE_JP_JAS_HISTORY_JPJ_CES_STATUS"
+        ],
+        "type": "string"
+      },
+      "report208": {
+        "enum": [
+          "OSC_ORG_ALPHA",
+          "OSC_ORG_ACC_MGR",
+          "OSC_ORG_NAME",
+          "LU_LKH_ORG_410",
+          "LU_LKH_SITE_411"
+        ],
+        "type": "string"
+      },
+      "report222": {
+        "enum": [
+          "OSC_ORG_ALPHA",
+          "ES_ORG_ALPHA",
+          "ES_EVENT_NAME_SELECT",
+          "ES_EVENT_NAME_SELECT",
+          "ES_ID",
+          "ES_SITE_CUSTOMER_ID",
+          "ES_SESSION_NUMBER_REQ",
+          "ES_SESSION_NUMBER_STAFF_STILL_REQUIRED",
+          "ES_NUMBER_DNS",
+          "ES_SESSION_START_DATE",
+          "ES_ROLE_START_TIME",
+          "ES_ROLE_END_TIME",
+          "ES_BOOKING_KEY",
+          "EMP_BOOKING_STATUS",
+          "ES_NO_CONFIRMED",
+          "ES_BOOKING_WORKED_STATUS",
+          "EMP_BOOKING_AVAILABILITY_STATUS",
+          "EMP_DECLINED_STATUS",
+          "ES_DID_NOT_SHOW",
+          "ES_BOOKING_DNS_REASON",
+          "ES_SESSION_BOOKING_HOUR_RATE",
+          "ES_SESSION_BOOKING_DAY_RATE",
+          "ES_RATE",
+          "ES_DAY_RATE",
+          "ES_SESSION_ROLE_RATE",
+          "ES_CONTACT_FULLNAME",
+          "LU_LKH_CONTACTS_45",
+          "ES_CONTACT_EMAIL",
+          "ES_EMP_APPLICANT_MANAGER",
+          "ES_CONT_STRIKES"
+        ],
+        "type": "string"
+      },
+      "stelify": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/report200"
+          },
+          {
+            "$ref": "#/components/schemas/report208"
+          },
+          {
+            "$ref": "#/components/schemas/report222"
+          }
+        ]
+      },
+      "AuditDetails": {
+        "enum": [
+          "AUDIT_META_USER_NAME",
+          "AUDIT_KEY",
+          "AUDIT_BROWSER",
+          "AUDIT_CHANGE_DATE",
+          "AUDIT_CHANGE_TYPE",
+          "AUDIT_USER",
+          "AUDIT_META_OBJECT",
+          "AUDIT_META_OBJECT_KEY",
+          "AUDIT_META_OBJECT_PROP",
+          "AUDIT_NEW_VALUE",
+          "AUDIT_OLD_VALUE"
+        ],
+        "type": "string"
+      },
+      "BookingData": {
+        "enum": [
+          "AUDIT_BOOKING_CREATED_DATE",
+          "AUDIT_BOOKING_KEY",
+          "AUDIT_BOOKING_CONT_KEY",
+          "AUDIT_BOOKING_FULLNAME",
+          "_BOOKING_SESSION_ID",
+          "AUDIT_BOOKING_START_DATE"
+        ],
+        "type": "string"
+      },
+      "AuditBooking": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AuditDetails"
+          },
+          {
+            "$ref": "#/components/schemas/BookingData"
+          },
+          {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          {
+            "$ref": "#/components/schemas/SessionDetails"
+          }
+        ]
+      },
+      "Meta": {
+        "enum": [
+          "AL_CHANGE_DATE",
+          "AL_CHANGE_DATE_TIME",
+          "AL_META_CHANGE_BROWSER",
+          "AL_CHANGE_TYPE",
+          "AL_META_OBJECT_KEY",
+          "AL_META_OBJECT",
+          "AL_USER"
+        ],
+        "type": "string"
+      },
+      "MetaProp": {
+        "enum": ["AL_META_PROP", "AL_NEW_VALUE", "AL_OLD_VALUE"],
+        "type": "string"
+      },
+      "AuditLog": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Meta"
+          },
+          {
+            "$ref": "#/components/schemas/MetaProp"
+          }
+        ]
+      },
+      "BookingSummary": {
+        "enum": [
+          "ASA_SESSIONS_WORKED",
+          "ASA_FIRST_BOOKING",
+          "ASA_TOTAL_HOURS_WORKED",
+          "ASA_BOOKING_BOOKED",
+          "ASA_TOTAL_PAY"
+        ],
+        "type": "string"
+      },
+      "LoginSummary": {
+        "enum": ["ASA_NO_LOGINS"],
+        "type": "string"
+      },
+      "StaffAddress": {
+        "enum": [
+          "ASA_SITE_LOC_3",
+          "ASA_SITE_COUNTY",
+          "ASA_SITE_POSTCODE",
+          "ASA_SITE_BUILD_1",
+          "ASA_SITE_BUILD_2",
+          "ASA_SITE_ID",
+          "ASA_SITE_SUMM",
+          "ASA_SITE_THORO_1",
+          "ASA_SITE_TELE",
+          "ASA_SITE_LOC_1",
+          "ASA_SITE_LOC_2"
+        ],
+        "type": "string"
+      },
+      "StaffAvailability": {
+        "enum": [
+          "ASA_AVAIL_EXTENDED_DESC",
+          "ASA_AVAIL_CALANDER_DATE",
+          "ASA_AVAIL_BOOL"
+        ],
+        "type": "string"
+      },
+      "StaffEmployeeData": {
+        "enum": [
+          "ASA_EMP_BANK_ACC_NO",
+          "ASA_EMP_ACTIVE",
+          "ASA_EMP_ADDRESS_LAST_CHANGED",
+          "ASA_PROMOTE_DATE",
+          "ASA_EMP_RETIRED_DATE",
+          "ASA_EMAIL_LAST_CHANGED",
+          "ASA_EMAIL_LAST_CHANGED",
+          "ASA_EMP_NI",
+          "ASA_EMP_PASSPORT_COUNTRY",
+          "ASA_EMP_PASSPORT_EXPIRY",
+          "ASA_EMP_PASSPORT_NUMBER",
+          "ASA_EMP_PAYROLL_NO",
+          "ASA_EMP_ROLL_REF_NO",
+          "ASA_EMP_BANK_SORT",
+          "ASA_EMP_DESC"
+        ],
+        "type": "string"
+      },
+      "StaffOrganisationData": {
+        "enum": [
+          "ASA_ORG_ALPHA",
+          "ASA_ORG_ACC_MGR",
+          "ASA_ORG_ID",
+          "ASA_ORG_ID",
+          "ASA_ORG_SOURCE",
+          "ASA_ORG_TYPE"
+        ],
+        "type": "string"
+      },
+      "StaffStatus": {
+        "enum": ["ES_CONTACT_STATUS", "ASA_JOB_APP_STATUS"],
+        "type": "string"
+      },
+      "StaffDetails": {
+        "enum": [
+          "ASA_APPLIED_DATE",
+          "ASA_CONT_DOB",
+          "ASA_CONTACT_ID",
+          "ASA_CONT_FEATURES",
+          "ASA_CONT_EMAIL",
+          "ASA_CONT_1STNAME",
+          "ASA_CONT_LASTNAME",
+          "ASA_FULL_NAME",
+          "ASA_FULL_NAME",
+          "ASA_CONT_JOB_TITLE",
+          "ASA_FULL_NAME_LAST_FIRST",
+          "ASA_CONT_MIDDLENAME",
+          "ASA_CONTACT_MOBILE",
+          "ASA_CONT_PRIVATE_NOTES",
+          "ASA_CONT_SALUTATION"
+        ],
+        "type": "string"
+      },
+      "AuditStaffActivity": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BookingSummary"
+          },
+          {
+            "$ref": "#/components/schemas/LoginSummary"
+          },
+          {
+            "$ref": "#/components/schemas/StaffAddress"
+          },
+          {
+            "$ref": "#/components/schemas/StaffAvailability"
+          },
+          {
+            "$ref": "#/components/schemas/StaffEmployeeData"
+          },
+          {
+            "$ref": "#/components/schemas/StaffOrganisationData"
+          },
+          {
+            "$ref": "#/components/schemas/StaffStatus"
+          },
+          {
+            "$ref": "#/components/schemas/StaffDetails"
+          },
+          {
+            "$ref": "#/components/schemas/Common"
+          }
+        ]
+      },
+      "CallBacks": {
+        "enum": [
+          "OSC_CALL_LINK",
+          "OSC_CALL_CALLBACK_NO",
+          "OSC_CALL_OPEN",
+          "OSC_CALL_REASON",
+          "OSC_CALL_TIME",
+          "OSC_CALL_SETUP_BY",
+          "OSC_CALL_FOR_USER",
+          "OSC_CALL_CLOSED",
+          "OSC_CALL_PRIORTY",
+          "OSC_CALL_RESULT",
+          "OSC_CALL_RESULT_DESC",
+          "OSC_CALL_TYPE"
+        ],
+        "type": "string"
+      },
+      "ContactDetails": {
+        "enum": [
+          "OSC_APPLIED_DATE",
+          "OSC_ORG_LOAD_DATA",
+          "OSC_CONT_DOB",
+          "OSC_CONTACT_ID",
+          "OSC_CONT_TELEPHONE",
+          "OSC_CONT_FEATURES",
+          "OSC_CONT_EMAIL",
+          "OSC_CONT_1STNAME",
+          "OSC_FULL_NAME",
+          "OSC_CONT_LASTNAME",
+          "OSC_FULL_NAME_LAST_FIRST",
+          "OSC_CONT_MIDDLENAME",
+          "OSC_CONTACT_MOBILE",
+          "OSC_CONT_PRIVATE_NOTES",
+          "OSC_CONT_SALUTATION"
+        ],
+        "type": "string"
+      },
+      "ContactNotes": {
+        "enum": ["OSC_CONTACT_NOTE1", "OSC_CONTACT_NOTE_DATE"],
+        "type": "string"
+      },
+      "ContactStatus": {
+        "enum": ["ES_CONTACT_STATUS"],
+        "type": "string"
+      },
+      "Files": {
+        "enum": [
+          "OSC_FA_DATE_ADDED",
+          "OSC_FA_ATTACH_DESC",
+          "OSC_FA_URL",
+          "OSC_FA_ATTACH_NAME",
+          "OSC_FA_FILE_OBSOLETE",
+          "OSC_FACT_CUST_TYPE",
+          "OSC_FA_NUMBER_OF_FILES"
+        ],
+        "type": "string"
+      },
+      "TalentDate": {
+        "enum": ["OSC_TH_TALENT_VALUE"],
+        "type": "string"
+      },
+      "CompaniesSitesContracts": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CallBacks"
+          },
+          {
+            "$ref": "#/components/schemas/ContactDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ContactNotes"
+          },
+          {
+            "$ref": "#/components/schemas/ContactStatus"
+          },
+          {
+            "$ref": "#/components/schemas/Files"
+          },
+          {
+            "$ref": "#/components/schemas/TalentDate"
+          },
+          {
+            "$ref": "#/components/schemas/Common"
+          }
+        ]
+      },
+      "EventAddress": {
+        "enum": ["ES_EVENT_ADDRESS", "ES_EVENT_VENUE"],
+        "type": "string"
+      },
+      "ThirdPartyContact": {
+        "enum": ["ES_EV3P_CONTACT_FULLNAME"],
+        "type": "string"
+      },
+      "EventCustomFields": {
+        "enum": [
+          "ES_EVENT_CUSTOM_FIELD_2",
+          "ES_EVENT_CUSTOM_FIELD_3",
+          "ES_EVENT_CUSTOM_FIELD_4",
+          "ES_EVENT_CUSTOM_FIELD_5",
+          "ES_EVENT_CUSTOM_FIELD_1"
+        ],
+        "type": "string"
+      },
+      "EventInvoice": {
+        "enum": [
+          "ES_EVENT_INVOICE_AMOUNT",
+          "ES_EVENT_INVOICE_DATE",
+          "ES_EVENT_INVOICE_NO",
+          "ES_EVENT_INVOICE_PAID",
+          "ES_EVENT_INVOICE_PAID_AMOUNT",
+          "ES_EVENT_INVOICE_PAID_DATE"
+        ],
+        "type": "string"
+      },
+      "SessionPreferences": {
+        "enum": ["ES_SESSIONGEOPREFS_CICO", "Session Preferences"],
+        "type": "string"
+      },
+      "PayrollSubmission": {
+        "enum": [
+          "ES_OAYROLL_APPROVED_EMP",
+          "ES_PAYROLL_APPROVED_DATE",
+          "ES_PAYROLL_SUBMIT_STATUS",
+          "ES_OAYROLL_SUBMIT_EMP",
+          "ES_PAYROLL_SUBMITED_DATE"
+        ],
+        "type": "string"
+      },
+      "BookingDetails": {
+        "enum": [
+          "ES_SESSION_BOOKING_FINES",
+          "ES_AGE_AT_SESSION_START",
+          "EMP_BOOKING_AVAILABILITY_STATUS",
+          "ES_BOOKING_END_TIME_ONLY",
+          "ES_BOOKING_KEY",
+          "ES_BOOKING_LAST_CHANGED",
+          "ES_BOOKING_START_TIME_ONLY",
+          "EMP_BOOKING_STATUS",
+          "ES_BOOKING_STATUS_EMPLOYEE",
+          "ES_SESSION_BOOKING_TYPE",
+          "ES_SESSION_BOOKING_BREAKTIME",
+          "EMP_DECLINED_STATUS",
+          "ES_DID_NOT_SHOW",
+          "ES_BOOKING_DNS_REASON",
+          "ES_SESSION_BOOKING_EXPENSES",
+          "ES_SESSION_BOOKING_EXPENSES_MEMO",
+          "ES_SESSION_BOOKING_FINES_MEMO",
+          "ES_SESSION_BOOKING_HOUR_RATE",
+          "ES_MARKED_AS_PAID",
+          "ES_NO_CONFIRMED",
+          "ES_BOOKED_ON",
+          "ES_OK_TO_PAY",
+          "ES_SESSION_BOOKING_PAY",
+          "ES_BOOKING_PAYROLL_EXPORT_ID",
+          "ES_BOOKING_HAS_ROLE",
+          "ES_HOURS_WORKED",
+          "ES_SESSION_BOOKING_DAY_RATE",
+          "ES_BOOKING_ADJUSTED_TIME",
+          "ES_BOOKING_EDITED_TEXT",
+          "ES_BOOKING_USER_HAS_EDITED_TEXT",
+          "ES_SESSION_BOOKING_TOTAL_PAY"
+        ],
+        "type": "string"
+      },
+      "RateLogData": {
+        "enum": [
+          "ES_RATES_LOG_DATA_CHANGE_USER",
+          "ES_RATES_LOG_DATA_CHANGE_DATE",
+          "ES_RATES_LOG_DATA_RATE_AFTER",
+          "ES_RATES_LOG_DATA_RATE_BEFORE",
+          "ES_RATES_LOG_DATA_RATE_REQUESTED",
+          "ES_RATES_LOG_DATA_CHANGE_USER_MANAGER",
+          "ES_RATES_LOG_APPROVAL_STATUS",
+          "ES_RATES_LOG_DATA_BOOKING_RATE_CHANGE_STATUS",
+          "ES_RATES_LOG_ID",
+          "ES_RATES_LOG_REVIEW_DATA",
+          "ES_RATES_LOG_APPROVAL_DATE",
+          "ES_RATES_LOG_UPDATED_WORK_RATE",
+          "ES_RATES_LOG_DATA_WORK_AFTER",
+          "ES_RATES_LOG_DATA_WORK_BEFORE",
+          "ES_RATES_LOG_DATA_WORK_RATE_CHANGE_STATUS",
+          "ES_RATES_LOG_DATA_WORK_REQUESTED"
+        ],
+        "type": "string"
+      },
+      "StaffMember": {
+        "enum": [
+          "ES_EMP_ACTIVE",
+          "ES_AGE_NOW",
+          "ES_EMP_BANK_ACC_NO",
+          "ES_PROMOTE_DATE",
+          "ES_CONT_DOB",
+          "ES_CONTACT_EMAIL",
+          "ES_CONTACT_FIRSTNAME",
+          "ES_CONTACT_LASTNAME",
+          "ES_CONTACT_MOBILE",
+          "ES_EMP_APPLICANT_MANAGER",
+          "ES_EMP_PASSPORT_COUNTRY",
+          "ES_EMP_PASSPORT_EXPIRY",
+          "ES_EMP_PASSPORT_NUMBER",
+          "ES_CONT_SALUTATION",
+          "ES_SELF_EMPLOYED",
+          "ES_STAFF_DISTANCE_FROM_SESSION_KM",
+          "ES_STAFF_DISTANCE_FROM_SESSION_MI",
+          "STAFF_BETA_TESTER",
+          "ES_STAFF_PHOTO_THUMBNAIL",
+          "ES_CONT_STRIKES",
+          "ES_CONTACT_TELEPHONE",
+          "ES_EMP_VISA_EXPIARY",
+          "ES_EMP_VISA_TYPE"
+        ],
+        "type": "string"
+      },
+      "StaffQualifications": {
+        "enum": [
+          "SECT_QUAL_CERTIFICATE",
+          "SECT_QUAL_COLLEGE",
+          "SECT_QUAL_EXAM_BOARD_LINK",
+          "SECT_QUAL_EXAM_BOARD",
+          "SECT_QUAL_TO",
+          "SECT_QUAL_MODULE_NAME",
+          "SECT_QUAL_PASS_DATE",
+          "SECT_QUAL_NAME",
+          "SECT_QUAL_DESC",
+          "OSCE_QUAL_DOCUMENT",
+          "SECT_QUAL_EXISTS",
+          "SECT_QUAL_FROM",
+          "SECT_QUAL_STATUS"
+        ],
+        "type": "string"
+      },
+      "StaffPayroll": {
+        "enum": ["ES_EMP_PAYROLL_CREATED", "ES_EMP_PAYROLL_NO"],
+        "type": "string"
+      },
+      "OtherContacts": {
+        "enum": [
+          "SECT_OTHERCONTACS_ADDRESS",
+          "SECT_OTHERCONTACS_NAME",
+          "SECT_OTHERCONTACS_RELATIONSHIP",
+          "SECT_OTHERCONTACS_PHONE"
+        ],
+        "type": "string"
+      },
+      "StaffFiles": {
+        "enum": [
+          "ES_STAFF_FA_DATE_ADDED",
+          "ES_STAFF_FA_ATTACH_DESC",
+          "ES_STAFF_FA_URL",
+          "ES_STAFF_FA_ATTACH_NAME",
+          "ES_STAFF_FA_FILE_OBSOLETE",
+          "ES_STAFF_FACT_CUST_TYPE",
+          "ES_STAFF_FA_NUMBER_OF_FILES"
+        ],
+        "type": "string"
+      },
+      "StaffNotifications": {
+        "enum": [
+          "NOTIFICATION_HAS_NOTIFICATION",
+          "NOTIFICATION_CREATED",
+          "NOTIFICATION_DELIVERED",
+          "NOTIFICATION_MESSAGE",
+          "NOTIFICATION_ID",
+          "NOTIFICATION_DATE",
+          "NOTIFICATION_REGISTRATION",
+          "NOTIFICATION_STATUS",
+          "NOTIFICATION_TITLE"
+        ],
+        "type": "string"
+      },
+      "StaffAsset": {
+        "enum": [
+          "SA_ASSET_KEY",
+          "SA_BATCH_NO",
+          "SA_COMMENTS",
+          "SA_CURRENT_VALUE",
+          "SA_DESC",
+          "SA_MODEL_NUMBER",
+          "SA_PURCHASE_COST",
+          "SA_ASSET_QTY",
+          "SA_ASSET_REF",
+          "SA_TARCK_NO",
+          "SA_STATUS_DATE",
+          "SA_WARRENTY_DATE"
+        ],
+        "type": "string"
+      },
+      "CheckInOut": {
+        "enum": [
+          "ES_CHECK_IN_MANUAL_DIALOG",
+          "ES_CHECK_IN_MANUAL",
+          "ES_CHECK_IN_CHANGED_DATE",
+          "ES_CHECK_IN_TIME_DUE_MINUS_1",
+          "ES_CHECK_IN_TIME_DUE",
+          "ES_CHECK_IN_EMPLOYEE",
+          "ES_CHECK_IN_IMAGE_PATH",
+          "ES_CHECK_IN_IMAGE",
+          "ES_CHECK_IN_LOCATION_SUPPLIED",
+          "ES_CHECK_IN_ID",
+          "ES_CHECKED_IN_DATE",
+          "ES_CHECK_IN_TIME_DIFF",
+          "ES_CHECK_OUT_MANUAL_DIALOG",
+          "ES_CHECK_OUT_MANUAL",
+          "ES_CHECK_OUT_CHANGED_DATE",
+          "ES_CHECK_OUT_EMPLOYEE",
+          "ES_CHECK_OUT_IMAGE_PATH",
+          "ES_CHECK_OUT_IMAGE",
+          "ES_CHECK_OUT_LOCATION_SUPPLIED",
+          "ES_CHECK_OUT_ID",
+          "ES_CHECKED_OUT_DATE",
+          "ES_CHECK_OUT_TIME_DIFF",
+          "ES_CHECKED_IN",
+          "ES_CHECKED_OUT",
+          "ES_CHECK_IN_GEO_DIFF",
+          "ES_CHECK_OUT_GEO_DIFF",
+          "ES_FAIL_CICO_DISTANCE",
+          "ES_FAIL_CICO_ID",
+          "ES_FAIL_CICO_DATE",
+          "ES_FAIL_CICO_FAIL_TYPE",
+          "ES_FIRST_CHECK_IN_UER",
+          "ES_CHECK_OUT_GEO_PICTURE_DIFF",
+          "ES_CHECK_IN_GEO_PICTURE_DIFF"
+        ],
+        "type": "string"
+      },
+      "CheckInOutGeo": {
+        "enum": ["ES_GPS_REPORT"],
+        "type": "string"
+      },
+      "SessionSales": {
+        "enum": [
+          "ES_SESSION_CLIENT_GROSS_AMOUNT",
+          "ES_SESSION_CLIENT_AMOUNT",
+          "ES_SESSION_CLIENT_VAT_AMOUNT",
+          "ES_SESSION_CLIENT_COSTS_NOMINAL_CODE",
+          "ES_SESSION_CLIENT_COSTS_NOMINAL_DESC",
+          "ES_SESSION_CLIENT_PAID_HOURS",
+          "ES_SESSION_CLIENT_SALES_NOMINAL_CODE",
+          "ES_SESSION_CLIENT_SALES_NOMINAL_DESC",
+          "ES_SESSION_CLIENT_VAT_CODE",
+          "ES_SESSION_CLIENT_VAT_DESC",
+          "ES_SESSION_CLIENT_UNPAID_HOURS",
+          "ES_SESSION_CLIENT_UNPAID_HOURS_APPLIED"
+        ],
+        "type": "string"
+      },
+      "InvoiceData": {
+        "enum": [
+          "ES_INVOICE_REF",
+          "ES_INVOICE_DEL_COMPANY",
+          "ES_INVOICE_CREATED_BY",
+          "ES_INVOICE_CREATE_DATE",
+          "ES_INVOICE_ID",
+          "ES_INVOICE_REFERANCE",
+          "ES_INVOICE_REFERANCE_WITH_UNINVOICED_SESSION",
+          "ES_INVOICE_LABEL",
+          "ES_INVOICE_NAME",
+          "ES_INVOICE_NOTES",
+          "ES_INVOICE_PO",
+          "ES_INVOICE_PREVIEW",
+          "ES_SESSION_BEEN_INVOICED",
+          "ES_INVOICE_TOTAL",
+          "ES_INVOICE_TOTAL_INCL_VAT",
+          "ES_INVOICE_VAT_AMOUNT"
+        ],
+        "type": "string"
+      },
+      "InvoiceClientAddress": {
+        "enum": [
+          "ES_INVOICE_ADDRESS_1",
+          "ES_INVOICE_ADDRESS_2",
+          "ES_INVOICE_ADDRESS_3",
+          "ES_INVOICE_ADDRESS_4",
+          "ES_INVOICE_COMPANY",
+          "ES_INVOICE_EMAIL",
+          "ES_INVOICE_POST_CODE",
+          "ES_INVOICE_TELEPHONE"
+        ],
+        "type": "string"
+      },
+      "PrintFields": {
+        "enum": [
+          "ES_SIGN_IN_HERE",
+          "ES_SIGN_OUT_HERE",
+          "ES_ACTUAL_TIME_IN",
+          "ES_ACTUAL_TIME_OUT"
+        ],
+        "type": "string"
+      },
+      "QuestionnaireDetails": {
+        "enum": [
+          "SESSQS_RESULTS_EVE_APPROVED",
+          "SESSQS_RESULTS_EVE_APPROVED_DATE",
+          "SESSQS_CONT_QS_ID",
+          "SESSQS_CONT_QS_NAME",
+          "SESSQS_CONT_META_OBJECT_TYPE",
+          "SESSQS_CONT_QS_LINK",
+          "SESSQS_CONT_RESPONSE_CREATED",
+          "SESSQS_RESULTS_EVE_WEIGTHING",
+          "SESSQS_RESULTS_EVE_STATUS"
+        ],
+        "type": "string"
+      },
+      "QuestionnaireResults": {
+        "enum": [
+          "SESSQS_RPT_ATTACH_GROUP",
+          "SESSQS_RPT_IMAGE_RESULTS_COMPLETED_ONLY",
+          "SESSQS_RPT_NUMBER_PART_COMPLETE",
+          "SESSQS_RPT_NUMBER_COMPLETE",
+          "SESSQS_RPT_REPORT_RESULTS_ALL",
+          "SESSQS_RPT_REPORT_RESULTS_PART_COMPLETE",
+          "SESSQS_RPT_REPORT_RESULTS_COMPLETED_ONLY",
+          "SESSQS_RPT_REPORT_RESULTS_COMPLETED_ONLY_NOT_LIMITED_PER_EVENT"
+        ],
+        "type": "string"
+      },
+      "SystemDataQuestionnaires": {
+        "enum": [
+          "SESSQS_RPT_ATTACH_TYPE",
+          "SESSQS_CONT_QS_DEFAULT_TITLE",
+          "SESSQS_CONT_META_OBJECT_ID",
+          "SESSQS_RESULTS_EVE_QS_ID",
+          "SESSQS_CONT_META_DISTINCT_ID",
+          "SESSQS_CONT_DEFAULT_QS_USER_KEY"
+        ],
+        "type": "string"
+      },
+      "XSystem": {
+        "enum": [
+          "ES_EV3P_CONTACT_ID",
+          "ES_CONTACT_ID",
+          "ES_EVENT_ORG_ID",
+          "ES_SESSION_ID_CONT_KEY",
+          "ES_SESSION_PARENT_EVENT_KEY",
+          "ES_QS_USER_ID",
+          "ES_SESSION_REPORT_USER_ID"
+        ],
+        "type": "string"
+      },
+      "EventSessionBooking": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Common"
+          },
+          {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          {
+            "$ref": "#/components/schemas/EventAddress"
+          },
+          {
+            "$ref": "#/components/schemas/Client"
+          },
+          {
+            "$ref": "#/components/schemas/ThirdPartyContact"
+          },
+          {
+            "$ref": "#/components/schemas/EventCustomFields"
+          },
+          {
+            "$ref": "#/components/schemas/EventInvoice"
+          },
+          {
+            "$ref": "#/components/schemas/SessionDetails"
+          },
+          {
+            "$ref": "#/components/schemas/RoleDetails"
+          },
+          {
+            "$ref": "#/components/schemas/SessionPreferences"
+          },
+          {
+            "$ref": "#/components/schemas/PayrollSubmission"
+          },
+          {
+            "$ref": "#/components/schemas/BookingDetails"
+          },
+          {
+            "$ref": "#/components/schemas/RateLogData"
+          },
+          {
+            "$ref": "#/components/schemas/StaffMember"
+          },
+          {
+            "$ref": "#/components/schemas/StaffAddress"
+          },
+          {
+            "$ref": "#/components/schemas/StaffQualifications"
+          },
+          {
+            "$ref": "#/components/schemas/StaffPayroll"
+          },
+          {
+            "$ref": "#/components/schemas/StaffStatus"
+          },
+          {
+            "$ref": "#/components/schemas/OtherContacts"
+          },
+          {
+            "$ref": "#/components/schemas/StaffFiles"
+          },
+          {
+            "$ref": "#/components/schemas/StaffNotifications"
+          },
+          {
+            "$ref": "#/components/schemas/StaffAsset"
+          },
+          {
+            "$ref": "#/components/schemas/BookingSummary"
+          },
+          {
+            "$ref": "#/components/schemas/CheckInOut"
+          },
+          {
+            "$ref": "#/components/schemas/CheckInOutGeo"
+          },
+          {
+            "$ref": "#/components/schemas/SessionSales"
+          },
+          {
+            "$ref": "#/components/schemas/InvoiceData"
+          },
+          {
+            "$ref": "#/components/schemas/InvoiceClientAddress"
+          },
+          {
+            "$ref": "#/components/schemas/PrintFields"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireDetails"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireResults"
+          },
+          {
+            "$ref": "#/components/schemas/SystemDataQuestionnaires"
+          },
+          {
+            "$ref": "#/components/schemas/XSystem"
+          }
+        ]
+      },
+      "QuestionnaireStatus": {
+        "enum": [
+          "QS_CONT_NO_SUBMITTED_BY_QS",
+          "QS_CONT_RESULTS_BY_QUESTIONARE_COMPLETED"
+        ],
+        "type": "string"
+      },
+      "QuestionnaireProfiles": {
+        "enum": ["QS_CONT_META_OBJECT_TYPE"],
+        "type": "string"
+      },
+      "QuestionnaireResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/QuestionnaireDetails"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireStatus"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireProfiles"
+          }
+        ]
+      },
+      "AdvertMedium": {
+        "enum": ["JP_AM_ID", "JP_AM_SHORTNAME"],
+        "type": "string"
+      },
+      "ContactCoreData": {
+        "enum": [
+          "JP_CONTACT_KEY",
+          "JP_CONTACT_FIRSTNAME",
+          "JP_CONTACT_LASTNAME"
+        ],
+        "type": "string"
+      },
+      "FileAttach": {
+        "enum": [
+          "JP_FILE_ATTACH_DESC",
+          "JP_FILE_ATTACH_TYPE",
+          "JP_FILE_ATTACH_URL"
+        ],
+        "type": "string"
+      },
+      "JobFields": {
+        "enum": [
+          "JP_FV_VALUE",
+          "JP_FM_FORMID",
+          "JP_FM_NAME",
+          "JP_FM_REQUIRED",
+          "JP_FV_WILLPUBLISH"
+        ],
+        "type": "string"
+      },
+      "JobPost": {
+        "enum": ["JP_JP_ID", "JP_JP_NAME", "JP_JP_POSTREF", "JP_JP_POSTSTATUS"],
+        "type": "string"
+      },
+      "JobApplication": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AdvertMedium"
+          },
+          {
+            "$ref": "#/components/schemas/ContactCoreData"
+          },
+          {
+            "$ref": "#/components/schemas/FileAttach"
+          },
+          {
+            "$ref": "#/components/schemas/JobFields"
+          },
+          {
+            "$ref": "#/components/schemas/JobPost"
+          }
+        ]
+      },
+      "JobPostData": {
+        "enum": [
+          "JP_JP_JOB_APPLICANT_EXPECTATIONS",
+          "JP_JP_JOB_APPLICANT_INSTRUCTIONS",
+          "JP_JP_APPLICATION_DEADLINE",
+          "JP_JP_JOB_APP_FORM_URL",
+          "JP_JP_JOB_CALL_NUMBER",
+          "JP_JP_JOB_COUNTY",
+          "JP_JP_JOB_CV_REQUIRED",
+          "JP_JP_JOB_DEPARTMENT",
+          "JP_JP_JOB_EMAIL_US_HERE",
+          "JP_JP_JOB_FIN_SIGN_DATE",
+          "JP_JP_JOB_FIN_SIG",
+          "JP_JP_JOB_HIRING",
+          "JP_JP_JOB_HOURS",
+          "JP_JP_JOB_HR_SIGN_DATE",
+          "JP_JP_JOB_HR_SIG",
+          "JP_JP_JOB_DESCRIPTION",
+          "JP_JP_JOB_DETAILS_URL",
+          "JP_JP_JOB_TITLE",
+          "JP_JP_JOB_KEY_SKILLS",
+          "JP_JP_JOB_WEBSITE_LINK",
+          "JP_JP_JOB_LOCATION",
+          "JP_JP_JOB_ROLE_OBJECTIVES",
+          "JP_JP_JOB_POSTAL_APPLICATIONS",
+          "JP_JP_JOB_POST_DISTICT",
+          "JP_JP_JOB_POST_CODE",
+          "JP_JP_JOB_REGION",
+          "JP_JP_JOB_REPORTS_TO",
+          "JP_JP_JOB_SALARY",
+          "JP_JP_JOB_UNIT"
+        ],
+        "type": "string"
+      },
+      "JobPostSummaryData": {
+        "enum": ["JP_JP_NUMBER_APPLIED"],
+        "type": "string"
+      },
+      "JobPostingData": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AdvertMedium"
+          },
+          {
+            "$ref": "#/components/schemas/JobFields"
+          },
+          {
+            "$ref": "#/components/schemas/JobPost"
+          },
+          {
+            "$ref": "#/components/schemas/JobPostData"
+          },
+          {
+            "$ref": "#/components/schemas/JobPostSummaryData"
+          }
+        ]
+      },
+      "MailedContact": {
+        "enum": ["MP_CONT_EMAIL"],
+        "type": "string"
+      },
+      "PreviewDetail": {
+        "enum": [
+          "MP_FULL_NAME",
+          "MP_PREVIEW_OPTED_OUT",
+          "MP_PREVIEW_CONT_KEY",
+          "MP_PREVIEW_KEY"
+        ],
+        "type": "string"
+      },
+      "MailingPreview": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Common"
+          },
+          {
+            "$ref": "#/components/schemas/MailedContact"
+          },
+          {
+            "$ref": "#/components/schemas/PreviewDetail"
+          }
+        ]
+      },
+      "Product": {
+        "enum": [
+          "PR_AVAIL_DATE",
+          "PR_UPDATE_DATE",
+          "PR_PROD_DESC",
+          "PR_INTL_CODE1",
+          "PR_INTL_CODE2",
+          "PR_INTL_CODE3",
+          "PR_COUNTRY_OF_ORIGIN",
+          "PR_PRIMARY_IMAGE",
+          "PR_ID",
+          "PR_KEY",
+          "PR_TYPE_DESC",
+          "PR_MAT_DESC",
+          "PR_RETIRED",
+          "PR_STATUS_TEXT"
+        ],
+        "type": "string"
+      },
+      "LinkedAsset": {
+        "enum": [
+          "PR_LA_KEY",
+          "PR_LA_BATCH_NO",
+          "PR_LA_COMMENTS",
+          "PR_LA_CONDITION_TEXT",
+          "PR_LA_CURRENT_VALUE",
+          "PR_LA_DESC",
+          "PR_LA_MODEL_NUMBER",
+          "PR_NUMBER_ASSETS",
+          "PR_LA_PURCHASE_COST",
+          "PR_LA_ASSET_QTY",
+          "PR_LA_ASSET_REF",
+          "PR_LA_TARCK_NO",
+          "PR_LA_STATUS_TEXT",
+          "PR_LA_STATUS_DATE",
+          "PR_LA_WARRENTY_DATE"
+        ],
+        "type": "string"
+      },
+      "LinkedAssetLocation": {
+        "enum": [
+          "PR_LA_LOC_IN_TIME_STAMP",
+          "PR_LA_LOC_OUT_TIME_STAMP",
+          "PR_LA_LOC_CURRENT",
+          "PR_LA_LOC_FULL_LOCATION",
+          "PR_LA_LOC_COMMENT",
+          "PR_LA_LOC_FULL_LOCATION_META"
+        ],
+        "type": "string"
+      },
+      "Price": {
+        "enum": [
+          "PR_MOV_PER",
+          "PR_PRICE_SOURCE_PRICE_BASE_CUR",
+          "PR_PRICE_DIRECT_COST_1",
+          "PR_PRICE_DUTY",
+          "PR_EUR_PRICE",
+          "PR_PRICE_LAND_COST_1",
+          "PR_PRICE_LAND_COST_2",
+          "PR_OUR_PRICE",
+          "PR_PRICE_OVERHEAD_1",
+          "PR_PRICE_OVERHEAD_2",
+          "PR_MOV_DATE",
+          "PR_PRICE_LANDED_COST",
+          "PR_PRICE_QTY",
+          "PR_RETAIL_PRICE",
+          "PR_PRICE_SOURCE_PRICE",
+          "PR_PRICE_SOURCE_CUR",
+          "PR_PRICE_START_DATE",
+          "PR_PRICE_UPLIFT_1",
+          "PR_PRICE_UPLIFT_2",
+          "PR_PRICE_UPLIFT_3",
+          "PR_PRICE_UPLIFT_4",
+          "PR_USD_PRICE"
+        ],
+        "type": "string"
+      },
+      "SupplierInfo": {
+        "enum": [
+          "PR_QS_PALLET_LOT_SIZE",
+          "PR_RE_PACK_CHARGE_1KG",
+          "PR_RE_PACK_CHARGE_5KG",
+          "PR_QS_STD_PACK_SIZE",
+          "PR_ORG_ALPHA"
+        ],
+        "type": "string"
+      },
+      "VAT": {
+        "enum": ["PR_VAT_CODE", "PR_VAT_DESC", "PR_VAT_RATE"],
+        "type": "string"
+      },
+      "Products": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Product"
+          },
+          {
+            "$ref": "#/components/schemas/LinkedAsset"
+          },
+          {
+            "$ref": "#/components/schemas/LinkedAssetLocation"
+          },
+          {
+            "$ref": "#/components/schemas/Price"
+          },
+          {
+            "$ref": "#/components/schemas/SupplierInfo"
+          },
+          {
+            "$ref": "#/components/schemas/VAT"
+          }
+        ]
+      },
+      "Asset": {
+        "enum": [
+          "AT_EMP_OWNER_DESC",
+          "AT_KEY",
+          "AT_EMP_CONT_FKEY",
+          "AT_BATCH_NO",
+          "AT_AVAILABLE_FOR_BOOKING",
+          "AT_COMMENTS",
+          "AT_FROM_ORG_NAME",
+          "AT_CONDITION_TEXT",
+          "AT_EMP_OWNER_CONTACT_STATUS",
+          "AT_CURRENT_VALUE",
+          "AT_DESC",
+          "AT_PRIMARY_IMAGE_THUMB",
+          "AT_MODEL_NUMBER",
+          "AT_EMP_OWNER_JOB_APP_STATUS",
+          "AT_MAINT_ORG_NAME",
+          "AT_MANUFACTURE_ORG_NAME",
+          "AT_PRIMARY_IMAGE",
+          "AT_PURCHASE_COST",
+          "AT_ASSET_QTY",
+          "AT_ASSET_REF",
+          "AT_TARCK_NO",
+          "AT_EMP_DESC",
+          "AT_STATUS_TEXT",
+          "AT_STATUS_DATE",
+          "AT_WARRENTY_DATE",
+          "AT_TYPE_TEXT"
+        ],
+        "type": "string"
+      },
+      "JobBookingAvailablility": {
+        "enum": [
+          "AT_BOOKING_JOB_AVAILABLE",
+          "AT_BOOKING_SHORTDESC",
+          "AB_SUPPORT_DATE_DUE",
+          "AT_LSA_TOTAL_CLASHES",
+          "AT_BOOKING_JOB_TOTAL_AVAILABLE"
+        ],
+        "type": "string"
+      },
+      "JobBookingDetails": {
+        "enum": [
+          "AB_JOB_BOOKING_KEY",
+          "AT_BOOKING_STATUS_TEXT",
+          "AT_BOOKING_KEY_TO_EDIT"
+        ],
+        "type": "string"
+      },
+      "Location": {
+        "enum": [
+          "AT_LOC_IN_TIME_STAMP",
+          "AT_LOC_OUT_TIME_STAMP",
+          "AT_LOC_CURRENT",
+          "AT_LOC_COMMENT",
+          "AT_LOC_FULL_LOCATION",
+          "AT_LOC_FULL_LOCATION_META"
+        ],
+        "type": "string"
+      },
+      "SalesOrder": {
+        "enum": [
+          "AT_SO_ORDER_DATE",
+          "AT_SO_ORDER_NO",
+          "AT_SO_CONT_KEY",
+          "AT_SO_CONT_FULL_NAME"
+        ],
+        "type": "string"
+      },
+      "System": {
+        "enum": ["AT_MAINT_ORG_KEY", "AT_MANUFACTURE_ORG_KEY"],
+        "type": "string"
+      },
+      "Test": {
+        "enum": [
+          "AT_NEXT_TEST_DUE",
+          "AT_TEST_CLOSED",
+          "AT_TEST_CODE",
+          "AT_TEST_COMMENTS",
+          "AT_TEST_DUE",
+          "AT_TEST_ID",
+          "AT_TEST_REF",
+          "AT_TEST_STATUS",
+          "AT_TEST_STATUS_DATE"
+        ],
+        "type": "string"
+      },
+      "SessionAvailability": {
+        "enum": ["AT_BOOKING_EVENT_ID", "AT_BOOKING_EVENT_NAME_SELECT"],
+        "type": "string"
+      },
+      "ProductTracking": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Asset"
+          },
+          {
+            "$ref": "#/components/schemas/JobBookingAvailablility"
+          },
+          {
+            "$ref": "#/components/schemas/JobBookingDetails"
+          },
+          {
+            "$ref": "#/components/schemas/Location"
+          },
+          {
+            "$ref": "#/components/schemas/Product"
+          },
+          {
+            "$ref": "#/components/schemas/SalesOrder"
+          },
+          {
+            "$ref": "#/components/schemas/System"
+          },
+          {
+            "$ref": "#/components/schemas/Test"
+          },
+          {
+            "$ref": "#/components/schemas/SessionAvailability"
+          }
+        ]
+      },
+      "ContactData": {
+        "enum": [
+          "QS_LINKS_CONTACT_ID",
+          "QS_LINKS_CONTACT_EMAIL",
+          "QS_LINKS_CONTACT_FIRSTNAME",
+          "QS_LINKS_CONTACT_FULLNAME",
+          "QS_LINKS_CONTACT_LASTNAME"
+        ],
+        "type": "string"
+      },
+      "ReportDetails": {
+        "enum": ["QS_LINKS_ATTACH_GROUP"],
+        "type": "string"
+      },
+      "ReportStatus": {
+        "enum": [
+          "QS_LINK_APPROVED",
+          "QS_LINKS_QS_ID",
+          "QS_LINKS_WEIGTHING",
+          "QS_LINKS_STATUS"
+        ],
+        "type": "string"
+      },
+      "SystemDetails": {
+        "enum": [
+          "QS_LINK_QS_DEFAULT_TITLE",
+          "QS_LINKS_DYNAMIC_LABEL",
+          "QS_LINKS_QS_META_DISTINCT_ID",
+          "QS_LINKS_STATUS_META_OBJECT_TYPE"
+        ],
+        "type": "string"
+      },
+      "QuestionnaireSessionLinks": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Common"
+          },
+          {
+            "$ref": "#/components/schemas/ContactData"
+          },
+          {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ReportDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          {
+            "$ref": "#/components/schemas/SessionDetails"
+          },
+          {
+            "$ref": "#/components/schemas/SystemDetails"
+          }
+        ]
+      },
+      "Employee": {
+        "enum": [
+          "RB_RUN_EMPLOYEE",
+          "RB_RUN_RPT_CONFIG_ID",
+          "RB_RUN_REPORT_NAME"
+        ],
+        "type": "string"
+      },
+      "RBRunAnalysis": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Meta"
+          },
+          {
+            "$ref": "#/components/schemas/MetaProp"
+          },
+          {
+            "$ref": "#/components/schemas/Employee"
+          },
+          {
+            "$ref": "#/components/schemas/System"
+          }
+        ]
+      },
+      "SystemFields": {
+        "enum": ["SESS_RPT_ATTACH_TYPE", "SESS_RPT_QS_ID"],
+        "type": "string"
+      },
+      "SessionQuestionnairesResult": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ReportDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          {
+            "$ref": "#/components/schemas/SessionDetails"
+          },
+          {
+            "$ref": "#/components/schemas/SystemFields"
+          }
+        ]
+      },
+      "filter": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Common"
+          },
+          {
+            "$ref": "#/components/schemas/EventSessionSummary"
+          },
+          {
+            "$ref": "#/components/schemas/Lookups"
+          },
+          {
+            "$ref": "#/components/schemas/stelify"
+          },
+          {
+            "$ref": "#/components/schemas/AuditBooking"
+          },
+          {
+            "$ref": "#/components/schemas/AuditLog"
+          },
+          {
+            "$ref": "#/components/schemas/AuditStaffActivity"
+          },
+          {
+            "$ref": "#/components/schemas/CompaniesSitesContracts"
+          },
+          {
+            "$ref": "#/components/schemas/EventSessionBooking"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireResponse"
+          },
+          {
+            "$ref": "#/components/schemas/JobApplication"
+          },
+          {
+            "$ref": "#/components/schemas/JobPostingData"
+          },
+          {
+            "$ref": "#/components/schemas/MailingPreview"
+          },
+          {
+            "$ref": "#/components/schemas/Products"
+          },
+          {
+            "$ref": "#/components/schemas/ProductTracking"
+          },
+          {
+            "$ref": "#/components/schemas/QuestionnaireSessionLinks"
+          },
+          {
+            "$ref": "#/components/schemas/RBRunAnalysis"
+          },
+          {
+            "$ref": "#/components/schemas/SessionQuestionnairesResult"
+          }
+        ]
+      },
+      "postDataString": {
+        "properties": {
+          "rptId": {
+            "type": "number",
+            "format": "double"
+          },
+          "rptFilters": {
+            "items": {
+              "properties": {
+                "values": {
+                  "type": "string"
+                },
+                "operator": {
+                  "type": "string"
+                },
+                "filter": {
+                  "$ref": "#/components/schemas/filter"
+                }
+              },
+              "required": ["values", "operator", "filter"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["rptId", "rptFilters"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "reportResult": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "items": {
+                  "properties": {},
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number",
+                        "format": "double"
+                      }
+                    ]
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "boolean",
+                "enum": [false]
+              }
+            ]
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "debug": {
+            "$ref": "#/components/schemas/postDataString"
+          }
+        },
+        "required": ["result", "success", "error", "debug"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "rptFilters": {
+        "properties": {
+          "filter": {
+            "$ref": "#/components/schemas/filter"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "values": {
+            "type": "string"
+          }
+        },
+        "required": ["filter", "operator", "values"],
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {}
+  },
+  "info": {
+    "title": "@eventiva/axlr8",
+    "version": "1.0.0",
+    "contact": {
+      "email": "support@resnovas.com",
+      "name": "Resnovas",
+      "url": "https://github.com/Resnovas/Eventiva/discussions"
+    }
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/axlr8/report/{rptId}": {
+      "post": {
+        "operationId": "GetData",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reportResult"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "result": true,
+                      "success": [
+                        {
+                          "Account Number": " ",
+                          "Client:": "Example",
+                          "Venue:": "Example",
+                          "Session ID": "0000000",
+                          "Sess Id": "00000000",
+                          "Customer ID": "null",
+                          "No. Required": "1",
+                          "Number still required": "1",
+                          "No. DNS": "0",
+                          "Shift Date": "27/07/9202 09:00",
+                          "Start Date/Time": "null",
+                          "End Date/Time": "null",
+                          "Booking Id": "null",
+                          "Booking Status": "No Booking",
+                          "No. Confirmed": "null",
+                          "Staff Member Confirmed": 0,
+                          "Attendee Status": "No Booking",
+                          "Declined Status": "Not Set",
+                          "DNS": 0,
+                          "DNS Reason": "null",
+                          "Hour Rate": "null",
+                          "Shift Rate": "null",
+                          "Staff Rate": "null",
+                          "Staff Shift Rate": "null",
+                          "Client Hourly Rate": "null",
+                          "Full Name": "null",
+                          "NI number": "null",
+                          "Email": "null",
+                          "Operations Manager": "null",
+                          "Strikes": "0"
+                        }
+                      ],
+                      "error": null,
+                      "debug": {
+                        "rptId": 1000,
+                        "rptFilters": [
+                          {
+                            "operator": ">",
+                            "values": "0"
+                          },
+                          {
+                            "operator": ">",
+                            "values": "09/03/2022"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reportResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rptId",
+            "required": true,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "api_user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/rptFilters"
+                },
+                "type": "array"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://localhost:3000/"
+    }
+  ]
 }
