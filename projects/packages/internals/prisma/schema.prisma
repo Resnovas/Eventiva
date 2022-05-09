@@ -16,7 +16,7 @@ generator frontend {
 }
 model Account {
 	id String @id @default(uuid())
-	prn Int @default(autoincrement())
+	prn Int @unique @default(autoincrement())
 	username String? @unique
 	accountType AccountType @default(USER)
 	subsciption Boolean @default(false)
@@ -40,8 +40,10 @@ model Account {
 	dob DateTime? 
 	sex String? 
 	label String 
-	password String? 
-	Salt Json? 
+	passwordPublic String @unique
+	passwordSecret Json @unique
+	publicKey String? @unique
+	secretKey Json? @unique
 	resetPasswordToken String? @unique
 	resetPasswordExpires DateTime? 
 	apiToken Token[] @relation(name: "AccountToToken")
@@ -67,7 +69,7 @@ model Token {
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
 	type TokenType 
-	value String? @unique
+	publicKey String? @unique
 	expiry DateTime 
 	account Account @relation(name: "AccountToToken", fields: [accountID], references: [id])
 	accountID String 

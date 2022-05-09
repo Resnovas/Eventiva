@@ -5,7 +5,7 @@ datasource db {
 
 model Account {
   id String @id @default(uuid())
-  prn Int @default(autoincrement())
+  prn Int @default(autoincrement()) @unique
   username String? @unique
   accountType AccountType @default(USER)
   subsciption Boolean @default(false)
@@ -44,8 +44,10 @@ model Account {
   // payroll Payroll[]
   
   // Password things
-  password String?
-  Salt Json?
+  passwordPublic String @unique
+  passwordSecret Json @unique
+  publicKey String? @unique
+  secretKey Json? @unique
   resetPasswordToken String? @unique
   resetPasswordExpires DateTime?
   apiToken Token[]
@@ -61,7 +63,7 @@ model Token {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   type TokenType
-  value String? @unique
+  publicKey String? @unique
   expiry DateTime
 
   account Account @relation(fields: [accountID], references: [id])

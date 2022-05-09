@@ -1,9 +1,9 @@
-import { Log, Logging } from '@google-cloud/logging'
-import * as Sentry from '@sentry/node'
-import chalk from 'chalk'
-import * as fs from 'fs'
-import { decode } from 'html-entities'
-import os from 'os'
+import { Log, Logging } from '@google-cloud/logging';
+import * as Sentry from '@sentry/node';
+import chalk from 'chalk';
+import * as fs from 'fs';
+import { decode } from 'html-entities';
+import os from 'os';
 import {
   ConstructData,
   constructPair,
@@ -13,11 +13,9 @@ import {
   LoggingLevels,
   LogReturn,
   LogReturned,
-  SentryDataType
-} from '.'
-import { i18, Localizer } from './localize'
-
-global.__rootdir__ = __dirname || process.cwd()
+  SentryDataType,
+} from '.';
+import { i18, Localizer } from './localize';
 
 /**
  * Configures Chalk
@@ -26,13 +24,13 @@ global.__rootdir__ = __dirname || process.cwd()
  */
 export const style = {
   brand: {
-    videndumPurple: chalk.hex('4B428E')
-  }
-}
+    videndumPurple: chalk.hex('4B428E'),
+  },
+};
 type logLevels = {
-  name: logTypes
-  chalk: chalk.Chalk
-}[]
+  name: logTypes;
+  chalk: chalk.Chalk;
+}[];
 type logTypes =
   | 'DEFAULT'
   | 'DEBUG'
@@ -42,7 +40,7 @@ type logTypes =
   | 'ERROR'
   | 'CRITICAL'
   | 'ALERT'
-  | 'EMERGENCY'
+  | 'EMERGENCY';
 
 /**
  * Main class used for package
@@ -50,59 +48,59 @@ type logTypes =
  * @since 1.0.0-alpha
  */
 export class Logger {
-  private gcp: Logging = new Logging()
-  protected constructData: ConstructData | undefined
-  public loglevel: number = 1
-  public readonly sentry = Sentry
+  private gcp: Logging = new Logging();
+  protected constructData: ConstructData | undefined;
+  public loglevel: number = 1;
+  public readonly sentry = Sentry;
   public readonly loglevels: logLevels = [
     {
       name: 'DEFAULT',
-      chalk: chalk.inverse
+      chalk: chalk.inverse,
     },
     {
       name: 'DEBUG',
-      chalk: chalk.grey
+      chalk: chalk.grey,
     },
     {
       name: 'INFO',
-      chalk: chalk.green
+      chalk: chalk.green,
     },
     {
       name: 'NOTICE',
-      chalk: chalk.greenBright
+      chalk: chalk.greenBright,
     },
     {
       name: 'WARN',
-      chalk: chalk.white
+      chalk: chalk.white,
     },
     {
       name: 'ERROR',
-      chalk: chalk.yellow
+      chalk: chalk.yellow,
     },
     {
       name: 'CRITICAL',
-      chalk: chalk.yellow
+      chalk: chalk.yellow,
     },
     {
       name: 'ALERT',
-      chalk: chalk.red
+      chalk: chalk.red,
     },
     {
       name: 'EMERGENCY',
-      chalk: chalk.red
-    }
-  ]
-  private constructorLogs: constructPair[] = []
-  gcpLogger: Log | undefined
-  public configured: boolean = false
-  i18: Localizer = new Localizer()
+      chalk: chalk.red,
+    },
+  ];
+  private constructorLogs: constructPair[] = [];
+  gcpLogger: Log | undefined;
+  public configured: boolean = false;
+  i18: Localizer = new Localizer();
 
   async init(options: { i18?: i18; logger: ConstructData }) {
-    this.constructData = options.logger
-    await this.i18.init(options.i18)
-    if (options.logger.logLevel) this.setloglevel(options.logger.logLevel)
-    else if (process.env.LOGLEVEL) this.loglevel = +process.env.LOGLEVEL
-    this.configureLogger(options.logger)
+    this.constructData = options.logger;
+    await this.i18.init(options.i18);
+    if (options.logger.logLevel) this.setloglevel(options.logger.logLevel);
+    else if (process.env.LOGLEVEL) this.loglevel = +process.env.LOGLEVEL;
+    this.configureLogger(options.logger);
   }
 
   async configureLogger(constructData: ConstructData) {
@@ -110,37 +108,42 @@ export class Logger {
       data: {
         name: '200',
         message: 'utilities:core.init',
-        translate: true
-      },
-      level: 2,
-    })
-    if (process.env.NPM_PACKAGE_VERSION?.split("-")[1]) this.constructorLogs.push({
-      data: {
-        name: '200',
-        message: 'utilities:core.version_dev',
         translate: true,
-        T: {replace: {version: process.env.NPM_PACKAGE_VERSION?.split("-")[1]}}
       },
       level: 2,
-    })
+    });
+    if (process.env.NPM_PACKAGE_VERSION?.split('-')[1])
+      this.constructorLogs.push({
+        data: {
+          name: '200',
+          message: 'utilities:core.version_dev',
+          translate: true,
+          T: {
+            replace: {
+              version: process.env.NPM_PACKAGE_VERSION?.split('-')[1],
+            },
+          },
+        },
+        level: 2,
+      });
     this.constructorLogs.push({
       data: {
         name: '200',
         message: 'utilities:core.developer',
         translate: true,
-        T: { replace: { developer: constructData.developer || "Resnovas" } }
+        T: { replace: { developer: constructData.developer || 'Resnovas' } },
       },
       level: 2,
-    })
-    if (constructData.gcp?.enabled) await this.configureGCP(constructData.gcp)
+    });
+    if (constructData.gcp?.enabled) await this.configureGCP(constructData.gcp);
     if (constructData.sentry?.enabled)
-      await this.configureSentry(constructData.sentry)
+      await this.configureSentry(constructData.sentry);
     if (constructData.file?.enabled)
-      await this.configureFile(constructData.file)
-    this.constructorLogs.forEach(log => {
-      this.log(log.data)
-    })
-    this.configured = true
+      await this.configureFile(constructData.file);
+    this.constructorLogs.forEach((log) => {
+      this.log(log.data);
+    });
+    this.configured = true;
   }
 
   async configureGCP(gcpData: GCPData) {
@@ -148,12 +151,12 @@ export class Logger {
       data: {
         name: '200',
         message: 'utilities:logging.gcp.constructor',
-        translate: true
+        translate: true,
       },
-      level: 1
-    })
-    this.gcp = new Logging({ projectId: gcpData.projectid })
-    this.gcpLogger = this.gcp.log(gcpData.logname)
+      level: 1,
+    });
+    this.gcp = new Logging({ projectId: gcpData.projectid });
+    this.gcpLogger = this.gcp.log(gcpData.logname);
   }
 
   async configureSentry(SentryData: SentryDataType) {
@@ -161,10 +164,10 @@ export class Logger {
       data: {
         name: '200',
         message: 'utilities:logging.sentry.constructor',
-        translate: true
+        translate: true,
       },
-      level: 1
-    })
+      level: 1,
+    });
     try {
       this.sentry.init({
         ...SentryData.config,
@@ -174,36 +177,36 @@ export class Logger {
           new Sentry.Integrations.Http({ tracing: true }),
           new Sentry.Integrations.OnUncaughtException(),
           new Sentry.Integrations.OnUnhandledRejection({ mode: 'warn' }),
-          new Sentry.Integrations.FunctionToString()
+          new Sentry.Integrations.FunctionToString(),
         ],
-        tracesSampleRate: 0.2
-      })
-      await this.configureSentryScope()
+        tracesSampleRate: 0.2,
+      });
+      await this.configureSentryScope();
     } catch (_) {
       this.constructorLogs.push({
         data: {
           name: '200',
           message: 'utilities:logging.sentry.error',
           errors: _ as Error,
-          translate: true
+          translate: true,
         },
-        level: 6
-      })
+        level: 6,
+      });
     }
   }
 
   async configureSentryScope() {
-    this.sentry.configureScope(scope => {
-      scope.clear()
+    this.sentry.configureScope((scope) => {
+      scope.clear();
       if (this.constructData?.sentry?.extras?.user)
-        scope.setUser(this.constructData?.sentry?.extras.user)
+        scope.setUser(this.constructData?.sentry?.extras.user);
       if (this.constructData?.sentry?.extras?.tags)
-        scope.setTags(this.constructData?.sentry?.extras.tags)
+        scope.setTags(this.constructData?.sentry?.extras.tags);
       if (this.constructData?.sentry?.extras?.context)
-        this.constructData?.sentry?.extras.context.forEach(context => {
-          scope.setContext(context.name, context.data)
-        })
-    })
+        this.constructData?.sentry?.extras.context.forEach((context) => {
+          scope.setContext(context.name, context.data);
+        });
+    });
   }
 
   /**
@@ -216,23 +219,23 @@ export class Logger {
       data: {
         name: '200',
         message: 'utilities:logging.file.constructor',
-        translate: true
+        translate: true,
       },
-      level: 1
-    })
+      level: 1,
+    });
     fs.access(fileData.config.logDirectory, fs.constants.F_OK, (err: any) => {
       if (!err) {
-        return
+        return;
       } else {
         this.constructorLogs.push({
           data: {
             name: '200',
             message: 'utilities:errors.fileDirectory.caught',
             errors: err,
-            translate: true
+            translate: true,
           },
-          level: 6
-        })
+          level: 6,
+        });
         fs.mkdir(
           fileData.config.logDirectory,
           { recursive: false },
@@ -243,24 +246,24 @@ export class Logger {
                   name: '200',
                   message: 'utilities:errors.fileDirectory.thrown',
                   errors: err2,
-                  translate: true
+                  translate: true,
                 },
-                level: 6
-              })
+                level: 6,
+              });
             else
               this.constructorLogs.push({
                 data: {
                   name: '200',
                   message: 'utilities:errors.fileDirectory.solved',
                   errors: err2,
-                  translate: true
+                  translate: true,
                 },
-                level: 3
-              })
+                level: 3,
+              });
           }
-        )
+        );
       }
-    })
+    });
   }
 
   /**
@@ -268,7 +271,7 @@ export class Logger {
    * @param {number | string} level - Logging level to use.
    */
   async setloglevel(level: LoggingLevels) {
-    this.loglevel = Number(level) / 100
+    this.loglevel = Number(level) / 100;
   }
 
   /**
@@ -285,41 +288,46 @@ export class Logger {
    */
   async log(loggingData: LoggingDataClass): Promise<LogReturn> {
     if (this.constructData == undefined)
-      throw new Error('Logging Utility hasnt initialised')
+      throw new Error('Logging Utility hasnt initialised');
     if (loggingData.translate)
-      loggingData.message = this.i18.t(loggingData.message, loggingData.T)
-    if (loggingData.decode) loggingData.message = decode(loggingData.message)
+      loggingData.message = this.i18.t(loggingData.message, loggingData.T);
+    if (loggingData.decode) loggingData.message = decode(loggingData.message);
     if (loggingData.errors) {
       if (!Array.isArray(loggingData.errors))
-        loggingData.message = loggingData.message + ' ' + loggingData.errors
+        loggingData.message = loggingData.message + ' ' + loggingData.errors;
       else {
         loggingData.errors.forEach(
-          error => (loggingData.message = loggingData.message + ' ' + error)
-        )
+          (error) => (loggingData.message = loggingData.message + ' ' + error)
+        );
       }
     }
     if (!loggingData.userData) {
       loggingData.userData = {
-        username: os.userInfo().username
-      }
-      loggingData.userData.platform = os.platform()
-      loggingData.userData.arch = os.arch()
-      loggingData.userData.release = os.release()
+        username: os.userInfo().username,
+      };
+      loggingData.userData.platform = os.platform();
+      loggingData.userData.arch = os.arch();
+      loggingData.userData.release = os.release();
     }
-    let result: LogReturn = {}
+    let result: LogReturn = {};
     // Defines log type
-    let type = Number(loggingData.name) / 100
-    result.gcp = await this.loggcp(loggingData)
+    let type = Number(loggingData.name) / 100;
+    result.gcp = await this.loggcp(loggingData);
     // Translate the metadata
-    loggingData.name = this.loglevels[type].name.toLowerCase()
+    const LogType = this.loglevels[type];
+    if (!LogType) {
+      await this.logconsole(loggingData, 0);
+      throw new Error('Logging level not found');
+    }
+    loggingData.name = LogType.name.toLowerCase();
     loggingData.name = await this.translate(
       `utilities:logging.${loggingData.name}`
-    )
-    if (loggingData.name) loggingData.name = loggingData.name.toUpperCase()
-    result.console = await this.logconsole(loggingData, type)
-    result.file = await this.logfile(loggingData, type)
-    result.sentry = await this.logsentry(loggingData, type)
-    return result
+    );
+    if (loggingData.name) loggingData.name = loggingData.name.toUpperCase();
+    result.console = await this.logconsole(loggingData, type);
+    result.file = await this.logfile(loggingData, type);
+    result.sentry = await this.logsentry(loggingData, type);
+    return result;
   }
   async loggcp(loggingData: LoggingDataClass): Promise<LogReturned> {
     // log to cloud logger
@@ -327,37 +335,37 @@ export class Logger {
       try {
         if (!this.gcpLogger)
           return {
-            logged: false
-          }
+            logged: false,
+          };
         if (!loggingData.metadata)
           loggingData.metadata = {
             resource: {
-              type: 'global'
+              type: 'global',
             },
-            severity: Number(loggingData.name)
-          }
+            severity: Number(loggingData.name),
+          };
         let entry = this.gcpLogger.entry(
           loggingData.metadata,
           loggingData.message
-        )
-        const logged = await this.gcpLogger.write(entry)
+        );
+        const logged = await this.gcpLogger.write(entry);
         return {
           logged: true,
           success: true,
-          response: logged
-        }
+          response: logged,
+        };
       } catch (err) {
-        console.log(err)
-        this.constructData.gcp.enabled = false
+        console.log(err);
+        this.constructData.gcp.enabled = false;
         return {
           logged: true,
-          success: false
-        }
+          success: false,
+        };
       }
     }
     return {
-      logged: false
-    }
+      logged: false,
+    };
   }
 
   async logfile(
@@ -371,27 +379,27 @@ export class Logger {
           fs.appendFile(
             `${this.constructData.file?.config.logDirectory}/${this.constructData.file?.config.fileNamePattern}`,
             `[${loggingData.name}]  ` + loggingData.message + '\r\n',
-            err => {
-              if (err) throw err
+            (err) => {
+              if (err) throw err;
             }
-          )
+          );
           return {
             logged: true,
-            success: true
-          }
+            success: true,
+          };
         } catch (_) {
-          console.log(_)
-          this.constructData.file.enabled = false
+          console.log(_);
+          this.constructData.file.enabled = false;
           return {
             logged: true,
-            success: false
-          }
+            success: false,
+          };
         }
       }
     }
     return {
-      logged: false
-    }
+      logged: false,
+    };
   }
   async logsentry(
     loggingData: LoggingDataClass,
@@ -400,52 +408,52 @@ export class Logger {
     // Log to sentry
     if (type > 4 && this.constructData?.sentry?.enabled) {
       try {
-        const data = loggingData
-        data.name = loggingData.message
-        this.sentry.configureScope(scope => {
+        const data = loggingData;
+        data.name = loggingData.message;
+        this.sentry.configureScope((scope) => {
           scope.setUser({
             username: loggingData.userData?.username,
-            email: loggingData.userData?.email
-          })
+            email: loggingData.userData?.email,
+          });
           scope.setContext('device', {
             Platform: loggingData.userData?.platform,
             Arch: loggingData.userData?.arch,
-            Release: loggingData.userData?.release
-          })
-          scope.setTag('Platform', loggingData.userData?.platform)
-          scope.setTag('Arch', loggingData.userData?.arch)
-          if (loggingData.tags) scope.setTags(loggingData.tags)
+            Release: loggingData.userData?.release,
+          });
+          scope.setTag('Platform', loggingData.userData?.platform);
+          scope.setTag('Arch', loggingData.userData?.arch);
+          if (loggingData.tags) scope.setTags(loggingData.tags);
           if (loggingData.context)
-            loggingData.context.forEach(context =>
+            loggingData.context.forEach((context) =>
               scope.setContext(context.name, context.data)
-            )
-          if (type == 5) scope.setLevel(this.sentry.Severity.Error)
-          else if (type == 6) scope.setLevel(this.sentry.Severity.Critical)
-          else if (type >= 7) scope.setLevel(this.sentry.Severity.Fatal)
-        })
+            );
+          if (type == 5) scope.setLevel(this.sentry.Severity.Error);
+          else if (type == 6) scope.setLevel(this.sentry.Severity.Critical);
+          else if (type >= 7) scope.setLevel(this.sentry.Severity.Fatal);
+        });
         const returning: LogReturned = {
           logged: true,
           success: true,
-          eventID: this.sentry.captureException(data)
-        }
-        await this.configureSentryScope()
-        return returning
+          eventID: this.sentry.captureException(data),
+        };
+        await this.configureSentryScope();
+        return returning;
       } catch (_) {
         this.log(
           new LoggingDataClass(LoggingLevels.error, 'Failed to log to sentry', {
-            errors: _ as Error
+            errors: _ as Error,
           })
-        )
-        this.constructData.sentry.enabled = false
+        );
+        this.constructData.sentry.enabled = false;
         return {
           logged: true,
-          success: false
-        }
+          success: false,
+        };
       }
     }
     return {
-      logged: false
-    }
+      logged: false,
+    };
   }
 
   async logconsole(
@@ -453,21 +461,21 @@ export class Logger {
     type: number
   ): Promise<LogReturned> {
     if (this.constructData?.console?.enabled) {
-      loggingData.name = this.loglevels[type].chalk(loggingData.name)
+      loggingData.name = this.loglevels[type]!.chalk(loggingData.name);
       // if (!!this.constructData?.console?.enabled)
-      console.log(`[${loggingData.name}]  ` + loggingData.message)
+      console.log(`[${loggingData.name}]  ` + loggingData.message);
       return {
         logged: true,
-        success: true
-      }
+        success: true,
+      };
     } else
       return {
-        logged: false
-      }
+        logged: false,
+      };
   }
 
   async translate(name: string): Promise<string> {
-    return this.i18.t(name)
+    return this.i18.t(name);
   }
 
   /**
@@ -482,10 +490,10 @@ export class Logger {
         .then(async () => {
           await this.log(
             new Error('Logger successfully shutdown - safe to end all process')
-          )
-          resolve()
+          );
+          resolve();
         })
-        .catch(_ => reject(_))
-    })
+        .catch((_) => reject(_));
+    });
   }
 }
