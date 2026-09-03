@@ -1,109 +1,34 @@
 {
-    "name": "eventiva",
-    "$schema": "./node_modules/nx/schemas/project-schema.json",
-    "projectType": "library",
-    "sourceRoot": ".",
-    "tags": ["scope:repo"],
-    "targets": {
-        "format": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "prettier --write ."
-            }
-        },
-        "format-check": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "prettier --check ."
-            }
-        },
-        "lint-fix": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run-many -t lint --skip-nx-cache --exclude=eventiva -- --fix"
-            }
-        },
-        "check": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run-many -t lint --skip-nx-cache --exclude=eventiva && pnpm exec nx run eventiva:format-check"
-            }
-        },
-        "fix": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run eventiva:format && pnpm exec nx run eventiva:lint-fix"
-            }
-        },
-        "local-ci:cluster": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run cluster-tooling:local-ci",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:run:local-fiber": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:run:local-fiber",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:run:local": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:run-local",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:container:images-build": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:cluster:images:build",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:container:compose-up": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run cluster-tooling:compose-up",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:container:compose-down": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run cluster-tooling:compose-down",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:container:compose-logs": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run cluster-tooling:compose-logs",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:kubernetes:images-build": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:cluster:images:build",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:kubernetes:apply": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:cluster:apply",
-                "cwd": "{workspaceRoot}"
-            }
-        },
-        "platform:kubernetes:wait": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "pnpm exec nx run platforms-postgresql:cluster:wait",
-                "cwd": "{workspaceRoot}"
-            }
-        }
+  "name": "eventiva",
+  "$schema": "./node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": ".",
+  "tags": ["scope:repo", "type:core"],
+  "targets": {
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+      }
+    },
+    "format-check": {
+      "executor": "nx:run-commands",
+      "options": {
+      }
+    },
+    "lint-fix": {
+      "executor": "nx:run-commands",
+      "options": {
+      }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "options": {
+      }
+    },
+    "fix": {
+      "executor": "nx:run-commands",
+      "options": {
+      }
     }
+  }
 }

@@ -1,48 +1,33 @@
 {
-    "compilerOptions": {
-        "plugins": [
-            {
-                "name": "@effect/language-service"
-            }
-        ],
-        "baseUrl": ".",
-        "composite": true,
-        "declarationMap": true,
-        "emitDeclarationOnly": true,
-        "importHelpers": true,
-        "isolatedModules": true,
-        "lib": ["es2022"],
-        "module": "nodenext",
-        "moduleResolution": "nodenext",
-        "noEmitOnError": true,
-        "noFallthroughCasesInSwitch": true,
-        "noImplicitOverride": true,
-        "noImplicitReturns": true,
-        "noUnusedLocals": true,
-        "skipLibCheck": true,
-        "strict": true,
-        "target": "es2022",
-        "downlevelIteration": true,
-        "customConditions": ["@eventiva/source"],
-        "paths": {
-            "remote1/Module": ["apps/remote1/src/remote-entry.ts"],
-            "remote2/Module": ["apps/remote2/src/remote-entry.ts"],
-            "@eventiva/core": ["packages/core/src/index.ts"],
-            "@eventiva/cluster-tooling": ["packages/cluster-tooling/src/index.ts"],
-            "@eventiva/extensions.runner": ["packages/extensions/runner/src/index.ts"],
-            "@eventiva/extensions.shooter": ["packages/extensions/shooter/src/index.ts"],
-            "@eventiva/extensions.slow-shooter": ["packages/extensions/slow-shooter/src/index.ts"],
-            "@eventiva/extensions.speed-shooter": ["packages/extensions/speed-shooter/src/index.ts"],
-            "@eventiva/extensions.copyright-notice": ["packages/extensions/copyright-notice/src/index.ts"],
-            "@eventiva/extensions.example-transform": ["packages/extensions/example-transform/src/index.ts"],
-            "@eventiva/extensions.hooks-kafka-demo": ["packages/extensions/hooks-kafka-demo/src/index.ts"],
-            "@eventiva/platforms.postgresql": ["packages/platforms/postgresql/src/index.ts"],
-            "@eventiva/platforms.postgresql/platform": ["packages/platforms/postgresql/src/platform.ts"],
-            "@eventiva/platforms.mysql": ["packages/platforms/mysql/src/index.ts"],
-            "@eventiva/platforms.mysql/platform": ["packages/platforms/mysql/src/platform.ts"],
-            "@eventiva/integrations.kafka": ["packages/integrations/kafka/src/index.ts"],
-            "@eventiva/databases.pg": ["packages/databases/pg/src/index.ts"],
-            "@eventiva/extensions.schema-demo": ["packages/extensions/schema-demo/src/index.ts"]
-        }
+  "compilerOptions": {
+    "plugins": [
+    ],
+    "baseUrl": ".",
+    "composite": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "importHelpers": true,
+    "isolatedModules": true,
+    "lib": ["es2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "noEmitOnError": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2022",
+    "downlevelIteration": true,
+    "customConditions": ["@eventiva/source"],
+    "paths": {
+      "@eventiva/core": ["packages/core/src/index.ts"],
+      "@eventiva/databases.pg": ["packages/databases/pg/src/index.ts"],
+      "@eventiva/platforms.postgresql": ["packages/platforms/postgresql/src/index.ts"],
+      "@eventiva/platforms.postgresql/platform": ["packages/platforms/postgresql/src/platform.ts"],
+      "@eventiva/platforms.mysql": ["packages/platforms/mysql/src/index.ts"],
+      "@eventiva/platforms.mysql/platform": ["packages/platforms/mysql/src/platform.ts"]
     }
+  }
 }
