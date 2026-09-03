@@ -1,0 +1,17 @@
+{
+  "name": "domain-auth",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain"],
+  "sourceRoot": "libs/domain/auth/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/auth/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/auth"],
+      "cache": true
+    }
+  }
+}

@@ -27,7 +27,12 @@
       "@eventiva/platforms.postgresql": ["packages/platforms/postgresql/src/index.ts"],
       "@eventiva/platforms.postgresql/platform": ["packages/platforms/postgresql/src/platform.ts"],
       "@eventiva/platforms.mysql": ["packages/platforms/mysql/src/index.ts"],
-      "@eventiva/platforms.mysql/platform": ["packages/platforms/mysql/src/platform.ts"]
+      "@eventiva/platforms.mysql/platform": ["packages/platforms/mysql/src/platform.ts"],
+      "@eventiva/mobile": ["apps/mobile/src/index.ts"],
+      "@eventiva/api": ["libs/api/src/index.ts"],
+      "@eventiva/domain-venue": ["libs/domain/venue/src/index.ts"],
+      "@eventiva/domain-vendor": ["libs/domain/vendor/src/index.ts"],
+      "@eventiva/domain-event": ["libs/domain/event/src/index.ts"]
     }
   }
 }

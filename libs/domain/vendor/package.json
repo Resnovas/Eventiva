@@ -1,0 +1,20 @@
+{
+  "name": "@eventiva/domain-vendor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@eventiva/core": "workspace:*",
+    "@eventiva/databases.pg": "workspace:*",
+    "drizzle-orm": "1.0.0-beta.18-dc9676b",
+    "effect": "3.19.19"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "@nx/vitest": "^22.5.4",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^2.1.9"
+  }
+}

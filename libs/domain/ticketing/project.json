@@ -1,0 +1,17 @@
+{
+  "name": "domain-ticketing",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain"],
+  "sourceRoot": "libs/domain/ticketing/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/ticketing/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/ticketing"],
+      "cache": true
+    }
+  }
+}

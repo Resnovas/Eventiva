@@ -1,0 +1,21 @@
+{
+  "name": "domain-venue",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain"],
+  "sourceRoot": "libs/domain/venue/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/venue/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/venue"],
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {}
+    }
+  }
+}

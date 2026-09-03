@@ -1,0 +1,17 @@
+{
+  "name": "domain-vendor",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain"],
+  "sourceRoot": "libs/domain/vendor/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/vendor/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/vendor"],
+      "cache": true
+    }
+  }
+}
