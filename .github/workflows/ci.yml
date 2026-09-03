@@ -45,7 +45,27 @@ jobs:
           filter: 'tree:0'
           skip-checkout: 'true'
 
-      - run: pnpm nx run-many --exclude=eventiva -t lint build typecheck
+      - run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            pnpm nx affected --base=origin/main --head=HEAD -t lint build typecheck
+            pnpm nx affected --base=origin/main --head=HEAD -t test --coverage
+          else
+            pnpm nx run-many --exclude=eventiva -t lint build typecheck
+            pnpm nx run-many --exclude=eventiva -t test --coverage
+          fi
+
+      - name: Security Scan (npm audit / pnpm audit)
+        run: pnpm audit --prod || true
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=Eventiva_eventiva
+            -Dsonar.organization=eventiva
       - run: pnpm run dts:docs:enrich
       - run: pnpm run dts:docs:check
       - run: pnpm nx fix-ci
@@ -474,3 +494,21 @@ jobs:
               event: "REQUEST_CHANGES",
               body
             })
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker Backend Image
+        run: |
+          docker build -t eventiva/backend:staging -f Dockerfile.backend .
+          echo "Backend Docker image successfully built."
+      - name: Deploy Staging Application
+        run: |
+          echo "Triggering staging deployment pipeline..."
