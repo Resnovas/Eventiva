@@ -34,11 +34,12 @@ export const DemoEntity = Entity.make("DemoEntity", [
     payload: { target: Schema.Int },
   }).annotate(ClusterSchema.Persisted, false),
 
+  /** Same transport as `Shoot`: handler runs on the runner (no persisted envelope round-trip). */
   Rpc.make("ShootWithDelay", {
     payload: DelayedBullet,
-  }),
+  }).annotate(ClusterSchema.Persisted, false),
 
   Rpc.make("ShootAt", {
     payload: DeliverAtBullet,
-  }),
-]).annotateRpcs(ClusterSchema.Persisted, true)
+  }).annotate(ClusterSchema.Persisted, true),
+])
