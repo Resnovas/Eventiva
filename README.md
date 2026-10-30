@@ -10,12 +10,16 @@ Deeper procedures (env vars, log regression checks, CI) live in the docs hub: [`
 
 ### Node.js and pnpm (required for all local commands)
 
-1. **Node.js** — use an **LTS** version (see [Node.js download](https://nodejs.org/en/download)). The repo expects a modern LTS (see `.nvmrc` / CI if present).
-2. **pnpm** — this repo pins **`packageManager`** in `package.json`. Install pnpm per [pnpm installation](https://pnpm.io/installation) (recommended: enable [Corepack](https://nodejs.org/api/corepack.html), which ships with Node.js: `corepack enable` then `corepack prepare pnpm@9.14.2 --activate` or match the version in `package.json`).
+1. **Node.js** — use the exact **Node 22 LTS** version in [`.node-version`](./.node-version), also used by CI and Amp orb setup (see [Node.js download](https://nodejs.org/en/download)).
+2. **pnpm** — use the exact **`packageManager`** version in `package.json`. Install it per [pnpm installation](https://pnpm.io/installation), for example `npm install --global pnpm@9.14.2`. Do not assume Corepack is installed on every machine.
 3. **Workspace dependencies** — from the repo root:
-   ```bash
-   pnpm install
-   ```
+    ```bash
+    pnpm install --frozen-lockfile
+    ```
+
+### Amp orbs
+
+Amp runs [`.agents/setup`](./.agents/setup) once when preparing a snapshot, then restores the installed toolchain, dependencies, and caches for fresh orbs. [`.agents/resume`](./.agents/resume) only checks readiness; do not reinstall on every wake. See [the contributor guide](./CONTRIBUTING.adoc#AmpOrbs) for lifecycle behavior, optional test access, and service provisioning. The scripts target disposable Debian orbs, not personal machines.
 
 ### Container engines (for Docker Compose or standalone `docker run` / `podman run`)
 
@@ -35,11 +39,11 @@ Cluster-specific steps (FPK render/apply, wait, logs) are in [`docs/parts/local-
 
 ## Three ways to run the platform (demo)
 
-| Mode | What it is | Root npm scripts | Nx (same effect) |
-| --- | --- | --- | --- |
-| **1 — Local (Node)** | Single process on your machine: either **in-memory** cluster (`EVENTIVA_CLUSTER_INFRASTRUCTURE=local`) or **PostgreSQL on localhost**. | See below | `pnpm exec nx run eventiva:platform:…` (see `project.json`) |
-| **2 — Container (Compose)** | Multi-service stack (Postgres, Redpanda, shard-manager, workloads) via **Docker Compose** / Podman Compose — **not** Kubernetes. | `pnpm platform:container:compose-up` | `nx run eventiva:platform:container:compose-up` |
-| **3 — Kubernetes** | FPK manifests applied with `kubectl` (e.g. Kind). | `pnpm platform:kubernetes:apply` then `pnpm platform:kubernetes:wait` | `nx run eventiva:platform:kubernetes:apply` |
+| Mode                        | What it is                                                                                                                             | Root npm scripts                                                      | Nx (same effect)                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **1 — Local (Node)**        | Single process on your machine: either **in-memory** cluster (`EVENTIVA_CLUSTER_INFRASTRUCTURE=local`) or **PostgreSQL on localhost**. | See below                                                             | `pnpm exec nx run eventiva:platform:…` (see `project.json`) |
+| **2 — Container (Compose)** | Multi-service stack (Postgres, Redpanda, shard-manager, workloads) via **Docker Compose** / Podman Compose — **not** Kubernetes.       | `pnpm platform:container:compose-up`                                  | `nx run eventiva:platform:container:compose-up`             |
+| **3 — Kubernetes**          | FPK manifests applied with `kubectl` (e.g. Kind).                                                                                      | `pnpm platform:kubernetes:apply` then `pnpm platform:kubernetes:wait` | `nx run eventiva:platform:kubernetes:apply`                 |
 
 ### 1a — Local, in-memory cluster (no Postgres)
 
@@ -112,6 +116,6 @@ Aggregated logs should eventually contain substrings such as `Boom!`, `Shooting 
 
 ## Related documentation
 
-- [`docs/readme.md`](./docs/readme.md) — documentation hub  
-- [`docs/parts/local-dev/three-tier-platform-runtime.md`](./docs/parts/local-dev/three-tier-platform-runtime.md) — full tier-by-tier reference  
+- [`docs/readme.md`](./docs/readme.md) — documentation hub
+- [`docs/parts/local-dev/three-tier-platform-runtime.md`](./docs/parts/local-dev/three-tier-platform-runtime.md) — full tier-by-tier reference
 - [`README.adoc`](./README.adoc) — repository overview (AsciiDoc)

@@ -50,20 +50,40 @@ You must have agreed to the code of conduct and DCO before your contributions ca
 == Tests Repository
 
 Eventiva uses a separate tests repository (`Eventiva/tests`) for all test code.
-This separation ensures that implementation code is written without seeing test expectations,
-leading to more robust software that satisfies real contracts rather than just passing specific tests.
+The current transition policy in `docs/learnings/tdd-and-test-creation.md` permits implementers, including AI agents, to run, add, and update tests alongside implementation.
+The separate builder/test-creator/test-runner roles are a target end-state, not a current ban on local verification.
+Never delete tests to silence failures.
 
-**Critical rule for AI-assisted development:**
-* **Never** clone, initialize, or access the tests repository when doing implementation work with AI tools.
-* The tests repository should only be accessed when:
-  * Running tests locally (use the test-runner devcontainer)
-  * Writing or reviewing tests
-  * Working in a dedicated test-writing environment
+Default setup leaves the private `tests/` submodule unpopulated and does not need private-repository credentials.
+For test work, explicitly initialize it with `git submodule update --init tests` using authorized access, then follow its own setup guidance.
+Do not remove an existing tests checkout during setup.
+An empty `tests/` folder means the separate suite is unavailable, not that tests passed.
 
-For normal development work (implementation, features, bug fixes), keep the `tests/` folder unpopulated.
-This ensures AI tools don't use test code as context when implementing features, which would lead to code that "beats the tests" instead of satisfying the real contract.
+See `docs/learnings/effect-vitest-testing.md` for how to write Effect/Vitest tests.
 
-See `docs/learnings/tdd-and-test-creation.md` for the full TDD policy and `docs/learnings/effect-vitest-testing.md` for how to write Effect/Vitest tests.
+[#AmpOrbs]
+== Amp Orb Setup
+
+Amp runs the executable `.agents/setup` before publishing a reusable project snapshot.
+It installs the Node.js version pinned in `.node-version`, pnpm pinned in `package.json`, native-build and Cypress system libraries, and dependencies with `pnpm install --frozen-lockfile`.
+It checks Nx project discovery and creates `.env` from the commented reference only when `.env` is absent.
+The script targets disposable Debian 12 orbs with passwordless `sudo`; it replaces the orb's `/usr/local` Node installation, so do not run it on your personal machine as a generic installer.
+
+Fresh orbs reuse the snapshot; stale snapshots rerun the idempotent setup against the updated checkout.
+`.agents/resume` only checks readiness and never installs dependencies or starts services.
+If you change manifests or the lockfile within an existing orb, rerun `.agents/setup`.
+Keep both lifecycle scripts executable in Git.
+These files must reach the Amp project's default branch before future orbs receive them.
+
+For manual development, select the version in `.node-version`, install the exact pnpm `packageManager` version, and run `pnpm install --frozen-lockfile` from the root.
+Run workspace tasks through `pnpm exec nx`; in orbs prefix them with `NX_DAEMON=false`.
+Nx skills are available as files under `.cursor/skills/` when the agent cannot load them by name, and Nx CLI commands work without an MCP server.
+
+No devcontainer configuration is currently tracked; a test-runner devcontainer is not a prerequisite.
+Setup does not clone private submodules, authenticate users, create databases, start Docker/Kubernetes, or contact shared infrastructure.
+The in-memory cluster demo uses `pnpm platform:run:local-fiber`; `pnpm dev` instead invokes a Kubernetes workflow.
+Provision backing services only for tasks that need them; use `amp orb service start <name> --command '<command>'` for long-lived processes and add `--portal` for web servers.
+Keep secrets in Amp project secrets or local ignored configuration, never in setup scripts or snapshots.
 
 [#beginners]
 == Beginners

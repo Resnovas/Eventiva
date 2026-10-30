@@ -52,8 +52,8 @@ Our extensive *documentation* can be found at *https://github.com/Eventiva/Event
 == Contributing
 
 Thank you for taking an interest in contributing.
-We have created development containers (`.devcontainer`) to allow you to jump straight in with coding.
-Everything is configured and ready to go, all you need to do is use one of the supported platforms: https://code.visualstudio.com/docs/remote/containers[VSCode]
+Amp orbs use `.agents/setup` to prepare the toolchain and dependencies for reusable snapshots.
+See link:CONTRIBUTING.adoc#AmpOrbs[the contributor setup guide]; no `.devcontainer` configuration is currently tracked.
 
 This project utilises the https://github.com/Eventiva/smartcloud[Smartcloud Project] to automate our workflow, alongside provide templates for issues and pull requests.
 If you want to learn more about precisely what this workflow accomplishes, please check out the documentation https://github.com/Eventiva/smartcloud[here].
@@ -80,38 +80,22 @@ You can access our backlog on our JetBrains Space found here:
 
 ==== Prerequisites
 
-* Node.js 20 or later
-* pnpm 9.14.2 (or compatible version)
+* Node.js at the exact version in `.node-version`
+* pnpm at the exact `packageManager` version in `package.json`
 * Git
 
 You can choose one of the following methods to get your development platform configured:
 
-==== Codespaces Method (Recommended)
+==== Amp Orbs
 
-image::https://github.com/codespaces/badge.svg[Open in GitHub Codespaces,link=https://codespaces.new/Eventiva/eventiva?quickstart=1]
+Amp runs `.agents/setup` to install the pinned toolchain, system prerequisites, and frozen workspace dependencies before taking a reusable snapshot.
+`.agents/resume` checks readiness without reinstalling dependencies.
+Private tests and database/cluster services are opt-in; see link:CONTRIBUTING.adoc#AmpOrbs[the contributor setup guide].
 
-GitHub Codespaces provides cloud-hosted development environments for any activity - whether it's a long-term project, or a short-term task like reviewing a pull request.
-You can connect to Codespaces from Visual Studio Code or a browser-based editor that's accessible anywhere.
-Download the VSCode extension https://marketplace.visualstudio.com/items?itemName=GitHub.codespaces[here].
+==== Codespaces and Devcontainers
 
-==== Devcontainer Method
-
-The Dev Container lets you use a Docker container as a full-featured development environment.
-Whether you deploy to containers or not, containers make a great development environment because you can:
-
-* Develop with a consistent, easily reproducible toolchain on the same operating system you deploy to.
-* Quickly swap between different, separate development environments and safely make updates without worrying about impacting your local machine.
-* Try out new technologies or clone a copy of a code base without impacting your local setup.
-
-Simply install the https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers[Dev containers extension], clone the repository to your local device, and choose the https://code.visualstudio.com/docs/devcontainers/containers[`Open Devcontainer` option].
-
-The devcontainer includes:
-* Node.js 22
-* pnpm 9.14.2
-* Nx (installed globally)
-* PostgreSQL 16 (service `postgres`, port 5432)
-
-See `.devcontainer/README.md` for more details.
+No `.devcontainer` configuration is currently tracked.
+Codespaces or a custom container require the manual setup below; do not assume a global Nx installation or a PostgreSQL service is provided.
 
 ==== Local Setup
 
@@ -129,7 +113,7 @@ cd eventiva
 +
 [source,bash]
 ----
-pnpm install
+pnpm install --frozen-lockfile
 ----
 
 . Build all packages:
@@ -198,20 +182,10 @@ Environment variables such as `EVENTIVA_DATABASE`, `DATABASE`, and database conn
 ==== Tests Repository
 
 Eventiva uses a separate tests repository (`Eventiva/tests`) for all test code.
-This separation ensures that implementation code is written without seeing test expectations,
-leading to more robust software that satisfies real contracts rather than just passing specific tests.
-
-**Important for AI-assisted development:**
-* **Never** clone or initialize the tests repository when doing implementation work with AI tools.
-* The tests repository should only be accessed when:
-  * Running tests locally
-  * Writing or reviewing tests
-  * Working in the test-runner devcontainer
-
-For normal development work, keep the `tests/` folder unpopulated (or use the development devcontainer which excludes tests).
-This ensures AI tools don't use test code as context when implementing features.
-
-See `docs/learnings/tdd-and-test-creation.md` for the full TDD policy.
+Default setup leaves the private submodule unpopulated; initialize it explicitly with authorized access for test work.
+The current transition policy permits implementers, including AI agents, to run and update tests alongside implementation.
+Never delete tests to silence failures, and do not report an unavailable test suite as passing.
+See link:CONTRIBUTING.adoc#TestsRepository[the contributor guide] and `docs/learnings/tdd-and-test-creation.md` for the full policy.
 
 ==== Available Nx Commands
 

@@ -47,13 +47,13 @@ runs:
     - uses: actions/setup-node@v6
       if: inputs.registry-url == ''
       with:
-        node-version: 20
+        node-version-file: .node-version
         cache: 'pnpm'
 
     - uses: actions/setup-node@v6
       if: inputs.registry-url != ''
       with:
-        node-version: 20
+        node-version-file: .node-version
         cache: 'pnpm'
         registry-url: ${{ inputs.registry-url }}
 

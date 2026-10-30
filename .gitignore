@@ -307,3 +307,7 @@ vitest.config.*.timestamp*
 .claude/worktrees
 .claude/settings.local.json
 .data/
+
+# Amp-generated portal metadata and review artifacts
+.amp/portals/
+.amp/in/

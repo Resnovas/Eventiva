@@ -5,6 +5,7 @@ This document defines the TDD policy for the Eventiva rebuild. It must be reflec
 ## Transition (current)
 
 Until the team re-enforces strict separation, **implementers may add or update tests in the same change as implementation** (especially Vitest / `@effect/vitest` tests under `tests/**`). The **golden rule** below still applies: do not delete tests to silence failures.
+This transition takes precedence over the target end-state restrictions below, including the planning and CI guidance. Implementers may initialize the private tests submodule with authorized access for test work; default machine setup leaves it unpopulated. No test-runner devcontainer is currently provided.
 
 **Local full-cluster E2E** (FPK render/apply, rollout wait, port-forward, `tests-cluster-e2e` with `EVENTIVA_CLUSTER_E2E=1`) is documented in `docs/parts/local-dev/local-cluster-ci.md` and run via `pnpm local-ci:cluster`. Remote GitHub Actions for a live cluster is deferred until infrastructure exists; PR CI does not require a cluster.
 
@@ -22,6 +23,7 @@ If the same agent that implements a feature or component also writes its tests, 
 ## Input format for the test creator
 
 The test-creator has **full read access to the main repo source code** (`packages/**/*.ts`). It uses:
+
 - The complete implementation source code to understand actual behavior
 - Docstrings from declarations (`@remarks`, `@example`, `@param`, `@returns`) to understand intended behavior
 - Type definitions and exported interfaces
