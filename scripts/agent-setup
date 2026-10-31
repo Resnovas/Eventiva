@@ -1,0 +1,12 @@
+#!/bin/sh
+# Sets up this checkout for an agent on a machine that already has the pinned
+# Node (.node-version) and pnpm (packageManager in package.json). Idempotent.
+# Amp orbs provision the toolchain with .agents/setup instead. Windows: run the
+# commands below by hand.
+set -eu
+cd "$(dirname "$0")/.."
+CI=true NX_DAEMON=false pnpm install --frozen-lockfile
+node --run setup
+NX_DAEMON=false pnpm exec nx show projects >/dev/null
+node tools/dev/surfaces.mjs check
+echo "agent-setup: ok"

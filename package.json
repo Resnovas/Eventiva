@@ -11,6 +11,7 @@
     "type": "module",
     "packageManager": "pnpm@9.14.2",
     "scripts": {
+        "setup": "node tools/dev/surfaces.mjs install",
         "lint": "nx run-many -t lint",
         "lint:fix": "nx run eventiva:lint-fix",
         "format": "nx run eventiva:format",

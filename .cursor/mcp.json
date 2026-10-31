@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "mem0-gateway": {
+      "url": "https://gateway-mcp.mem0.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:MEM0_GATEWAY_TOKEN}"
+      }
+    },
+    "graphify": {
+      "command": "sh",
+      "args": [
+        "${workspaceFolder}/tools/graphify/graphify",
+        "mcp"
+      ]
+    },
+    "graphify-cloud": {
+      "url": "https://api.graphify.com/mcp"
+    }
+  }
+}

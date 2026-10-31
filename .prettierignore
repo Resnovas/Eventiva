@@ -1,3 +1,83 @@
+# house:managed:begin - synced from Resnovas/.github templates/.prettierignore. Edits inside this block are overwritten.
+#
+# Files synced from Resnovas/.github. The sync owns their formatting: a
+# formatter rewriting them would edit the managed block and fail the check.
+AGENTS.md
+AI_POLICY.md
+APPROVAL_POLICY.md
+CLAUDE.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+COOPERATION_COMMITMENT.md
+DCO.md
+GOVERNANCE.md
+SECURITY.md
+SUPPORT.md
+LICENSE
+.github/CODEOWNERS
+.github/dependabot.yml
+.github/FUNDING.yml
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
+.github/smartcloud.yml
+.github/workflows/house-codeql.yml
+.github/workflows/house-dependency-review.yml
+.github/workflows/house-scorecard.yml
+.github/zizmor.yml
+.github/copilot-instructions.md
+.github/instructions/house-*.instructions.md
+.github/dependency-review-config.yml
+.coderabbit.yaml
+.pr_agent.toml
+.cursor/BUGBOT.md
+.github/workflows/house-graphify.yml
+.github/workflows/house-workflow-lint.yml
+.github/workflows/smartcloud.yml
+.github/workflows/smartcloud-review.yml
+.graphifyignore
+.agents/skills/
+tools/graphify/
+tools/dev/surfaces.mjs
+tools/dev/open.mjs
+tools/dev/commit-check.mjs
+tools/dev/docs.ts
+tools/license/
+tools/release/
+.github/workflows/house-release.yml
+.github/workflows/house-nightly.yml
+.github/workflows/house-release-preview.yml
+tools/ci/coverage-goal.ts
+tools/ci/flaky-tests.ts
+tools/test/file.ts
+tools/typecheck/tests.ts
+tools/ai-docs/
+ai-docs/README.md
+ai-docs/src/05_house-standards/
+.agents/surfaces.jsonc
+.agents/mcp.jsonc
+.agents/prompts/verify.md
+.agents/prompts/review.md
+.agents/prompts/address-review.md
+.zed/
+.vscode/tasks.json
+.vscode/launch.json
+.run/house-*.run.xml
+.codex/environments/environment.toml
+orca.yaml
+# Generated from .agents/prompts, .agents/skills and .agents/mcp.jsonc by tools/dev/surfaces.mjs.
+.claude/commands/
+.claude/skills/
+.cursor/commands/
+.mcp.json
+.cursor/mcp.json
+.vscode/mcp.json
+.codex/config.toml
+# Generated from ai-docs/src by tools/ai-docs/docgen.mjs.
+LLMS.md
+# The committed code graph.
+graphify-out/
+# house:managed:end
+# house:local - add this repository's own ignores below this line.
 # Add files here to ignore them from prettier formatting
 /dist
 /coverage
