@@ -24,6 +24,7 @@ This folder contains structured learnings from the Eventiva codebase, the evolut
 | [debug-initial-crash.md](debug-initial-crash.md)             | Debugging "Cannot read properties of undefined (reading 'initial')" – feature flags, workarounds, dependency audit. |
 | [code-quality-sync.md](code-quality-sync.md)                 | EditorConfig, Trunk, and Nx: keep lint/format config in sync; commands for check and fix.                           |
 | [module-boundaries.md](module-boundaries.md)                 | Module boundary rules, dependency constraints, tagging strategy, ESLint enforcement.                                  |
+| [cluster-sharding.md](cluster-sharding.md)                   | Sharding decision (EVE-18): delivery guarantees, drain and runner-loss behaviour, rules for entity handlers.        |
 
 ## How to update
 

@@ -32,6 +32,7 @@ This folder holds **Markdown** guides and reusable **parts** for day-to-day work
 | Cluster hook fan-out (Kafka): topic, consumer groups, FPK dev broker, demo extension (`hooks-kafka-demo`), TLS/ACLs/retention, fallbacks | [`parts/local-dev/kafka-hook-dispatch.md`](parts/local-dev/kafka-hook-dispatch.md) |
 | Strimzi Kafka: FPK vendor/apply pattern for staging–prod (no ad-hoc kubectl as primary) | [`parts/local-dev/kafka-strimzi-fpk-pattern.md`](parts/local-dev/kafka-strimzi-fpk-pattern.md) |
 | Effect cluster SQL tables (`cluster_*`), sharding parity, optional participant registry | [`parts/local-dev/effect-cluster-sql-tables.md`](parts/local-dev/effect-cluster-sql-tables.md) |
+| Sharding decision and two-runner probe: drain, runner loss, delivery guarantees (EVE-18) | [`parts/local-dev/cluster-sharding-probe.md`](parts/local-dev/cluster-sharding-probe.md) |
 | Hooks and transforms (cluster demo): glossary, registries, platform wiring, demo extensions | [`parts/backend/hooks-and-transforms-battleship.md`](parts/backend/hooks-and-transforms-battleship.md) |
 | Contact REST + RPC curl examples (default HTTP **3000**, override with `EVENTIVA_HTTP_PORT`) | [`testing-entity-http-endpoints.md`](testing-entity-http-endpoints.md) |
 
