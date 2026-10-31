@@ -1,0 +1,27 @@
+{
+    "name": "@eventiva/spike-eve-s1-action-projection",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Throwaway spike for EVE-14 (S1). Never merged to main.",
+    "scripts": {
+        "test": "vitest run",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@effect/opentelemetry": "0.61.0",
+        "@effect/platform": "0.94.5",
+        "@modelcontextprotocol/sdk": "1.32.2",
+        "@opentelemetry/api": "1.9.0",
+        "@opentelemetry/sdk-trace-base": "2.0.1",
+        "ai": "7.0.159",
+        "effect": "3.19.19",
+        "zod": "4.1.12"
+    },
+    "devDependencies": {
+        "@effect/vitest": "0.27.0",
+        "@types/node": "20.19.9",
+        "typescript": "5.9.3",
+        "vitest": "3.2.4"
+    }
+}
