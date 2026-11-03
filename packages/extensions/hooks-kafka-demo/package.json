@@ -9,6 +9,6 @@
     "@eventiva/core": "workspace:*",
     "@eventiva/integrations.kafka": "workspace:*",
     "effect": "3.19.19",
-    "tslib": "^2.3.0"
+    "tslib": "^2.9.1"
   }
 }
