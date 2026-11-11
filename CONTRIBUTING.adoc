@@ -1,48 +1,6 @@
 = Contributing to Eventiva
 
-Read link:AGENTS.md[the repository rules], link:AI_POLICY.md[the AI policy], link:DCO.md[the Developer Certificate of Origin] and link:CODE_OF_CONDUCT.adoc[the code of conduct] before contributing.
-Report security issues through link:SECURITY.adoc[the security policy].
-
-== Repository reset
-
-EVE-242 archives the manual implementation and retires its workspace, CI, tests, coverage and declaration-documentation tooling.
-The production `packages/` directory intentionally contains only a README.
-No application build or test suite is configured at the root.
-Do not restore historical infrastructure to make a missing command work.
-
-The sequence is EVE-242 acceptance, EVE-243 full Smartcloud enrollment, then EVE-244 fresh workspace and testing foundation.
-Follow EVE-13 for architecture and the current issue for the work being implemented.
-EVE-23 must not restart before those prerequisites are accepted.
-
-== Setup
-
-Select the Node version in `.node-version` and pnpm version in `package.json`, then run:
-
-[source,sh]
-----
-pnpm install --frozen-lockfile
-node --run setup
-node --run check
-----
-
-On a machine with those tools, `sh scripts/agent-setup` runs the same commands.
-`check` verifies the existing house-generated agent files and commit hook only, not application correctness or coverage.
-If generated files are stale, run `node tools/dev/surfaces.mjs sync` and repeat the check.
-
-Amp's `.agents/setup` provisions the pinned toolchain in a disposable Debian orb; `.agents/resume` checks readiness without installing anything.
-Neither initializes the private tests submodule, starts services, creates databases or deploys infrastructure.
-See link:AGENT-SETUP.md[the machine setup reference] for prerequisites and failure handling.
-
-== Historical reference and tests
-
-`Examples/eventiva-before-amp` preserves the previous manual workspace, including test generators, coverage tools, documentation and its private tests gitlink.
-`Examples/packages-old` is a distinct earlier snapshot and remains unchanged.
-Read their files for behaviour and lessons, not as the rebuild's implementation baseline.
-Archived instructions, scripts and configurations are not active repository guidance.
-
-The private tests gitlink retains its original revision with automatic updates disabled.
-No private test source was fetched or deleted by the reset.
-Old tests may inform requirements but do not constrain the new architecture by default.
-Fresh application testing belongs to EVE-244; report its absence honestly rather than treating it as a passing suite.
-
-The original contribution guide is retained at link:Examples/eventiva-before-amp/CONTRIBUTING.adoc[the historical snapshot].
+Read link:CONTRIBUTING.md[the current contribution policy] and link:README.md[the current repository setup guide].
+Eventiva's owner-approved direct-to-main exception is in link:AGENTS.md[the repository rules].
+This compatibility link contains no separate policy.
+The previous manual contribution guide is preserved in link:Examples/eventiva-before-amp/CONTRIBUTING.adoc[the historical archive].

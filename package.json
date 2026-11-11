@@ -6,8 +6,11 @@
     "repository": "https://github.com/Resnovas/Eventiva",
     "type": "module",
     "packageManager": "pnpm@9.14.2",
+    "engines": {
+        "node": ">=24"
+    },
     "scripts": {
         "setup": "node tools/dev/surfaces.mjs install",
-        "check": "node tools/dev/surfaces.mjs check"
+        "check": "node tools/dev/surfaces.mjs check && node tools/license/check-headers.mjs && node tools/ai-docs/docgen.mjs --check"
     }
 }

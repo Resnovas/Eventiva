@@ -1,12 +1,5 @@
 = Security Policy
 
-== Supported Versions
-
-All versions are currently supported for security updates and maintainance.
-Please note this may change after the project reaches version 1.0.0.
-
-== Reporting a Vulnerability
-
-To report a please open a ticket in our main repository https://github.com/Eventiva/Eventiva/[@Eventiva/Eventiva] using the report the "https://github.com/Eventiva/Eventiva/security/advisories/new[Report a security vulnerability]" option within the issue templates.
-
-You will also be able to submit your Security Vulnerability via both our Discord and Service Desk solutions, ensuring whichever platform you use, it gets to the correct team.
+Read link:SECURITY.md[the current security policy and vulnerability reporting instructions].
+This compatibility link contains no separate policy.
+The previous policy is preserved in link:Examples/eventiva-before-amp/SECURITY.adoc[the historical archive].

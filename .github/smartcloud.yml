@@ -1,0 +1,35 @@
+# house:managed:begin - synced from Resnovas/.github templates/.github/smartcloud.yml. Edits inside this block are overwritten.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Resnovas/smartcloud/main/schema/smartcloud.schema.json
+version: 2
+extends:
+  - Resnovas/.github/smartcloud/house.yml@main
+#
+# The preset sets, and this file cannot change:
+#   roles.maintainers   TGTGamer
+#   roles.trustedBots   dependabot[bot], renovate[bot], github-actions[bot], resnovas-smartcloud[bot]
+#   CodeQL merge gate   true (settings.ruleset.codeScanning.CodeQL)
+# house:managed:end
+# house:local - add this repository's own configuration below this line.
+#
+# Local additions are allowed: new labels and rules, and keys the house preset
+# leaves unset, such as settings.environments.projectType or sync.exclude.
+# Set the deployment environments here: settings.environments.projectType
+# (saas, desktop or library) or settings.environments.names.
+# A value the preset already sets cannot be changed here; restating it exactly
+# is allowed, but any other value fails the run.
+
+# Eventiva's coding agents deliver directly to main under AGENTS.md's owner
+# exception. The preset's locked settings.ruleset.adminBypass: true gives
+# repository administrators an always-bypass, including the PR and queue rules.
+# Do not replace it with a PR-only bypass or require agent-authored PRs.
+# House sync and Graphify bot proposals are not coding-agent delivery.
+# No deployment environments or application targets until EVE-244.
+
+# Require the real house gate even when a restricted PR skips aggregation.
+settings:
+  ruleset:
+    statusChecks:
+      checks:
+        house check: true
+required:
+  expect: [house check]

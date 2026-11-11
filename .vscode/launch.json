@@ -1,0 +1,30 @@
+{
+  // VS Code and Cursor debug configurations (house standard
+  // project-dev-surfaces). Secrets come from the environment the editor was
+  // started in, never from this file. Zed reads .zed/debug.json instead.
+  "version": "0.2.0",
+  "configurations": [
+    // house:managed:begin - synced from Resnovas/.github templates/.vscode/launch.json. Edits inside this block are overwritten.
+    {
+      "name": "Node: current file",
+      "type": "node",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+    },
+    {
+      "name": "Surfaces: install (dry run)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/dev/surfaces.mjs",
+      "args": ["install", "--dry-run"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+    },
+    // house:managed:end
+    // house:local - add this repository's own debug configurations below this line.
+  ],
+}

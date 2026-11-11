@@ -1,0 +1,8 @@
+name: Eventiva active repository
+paths-ignore:
+  # EVE-242 preserves these as evidence, not active source to build or scan.
+  - Examples/**
+  # Generated mirrors of the agent sources are not application source.
+  - .claude/skills/**
+  - .claude/commands/**
+  - .cursor/commands/**

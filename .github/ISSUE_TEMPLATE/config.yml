@@ -1,0 +1,11 @@
+# house:managed:begin - synced from Resnovas/.github templates/.github/ISSUE_TEMPLATE/config.yml. Edits inside this block are overwritten.
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Resnovas/Eventiva/security/advisories/new
+    about: Report it privately. Never in a public issue.
+  - name: Question or support
+    url: https://github.com/Resnovas/Eventiva/discussions
+    about: The issue tracker is for bugs and feature requests only.
+# house:managed:end
+# house:local - add further contact links below, as list items under contact_links.

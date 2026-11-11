@@ -1,0 +1,151 @@
+# house:managed:begin - synced from Resnovas/.github templates/.github/workflows/smartcloud.yml. Edits inside this block are overwritten.
+#
+# Runs smartcloud with the house preset (.github/smartcloud.yml): the pull
+# request policy and review gate, label sync, repository settings and the
+# weekly house sync. On pull requests the job also waits for every other check
+# and passes only when they all have, so its "smartcloud" check is the one
+# aggregate check the house ruleset requires on the default branch. The default
+# branch merges through a merge queue, so the workflow also runs on
+# merge_group. The job is skipped there, which GitHub reports as a success: the
+# policy was checked on the pull request, and a queued group needs no label or
+# settings run.
+#
+# smartcloud splits its tokens, so each does only its own job
+# (https://github.com/Resnovas/.github/blob/main/docs/access.md):
+# - the workflow token acts in this repository: check runs, comments, labels
+#   and reviews, within the job's permissions below;
+# - a read-only Resnovas Bot token, limited to contents: read on
+#   Resnovas/.github, reads the house preset and the sync templates on every
+#   run that gets secrets, pull requests included. The repository is public,
+#   so any token could read them; this one keeps privileged tokens away from
+#   it and spends the app's rate limit rather than the workflow token's;
+# - the full Resnovas Bot token, minted from the organisation variable
+#   RESNOVAS_BOT_APP_ID and secret RESNOVAS_BOT_PRIVATE_KEY, reaches only this
+#   repository and is used only for settings, sync, CODEOWNERS proposals and
+#   backports. It is minted only on push, schedule and manual runs of the
+#   default branch, whose workflow file no pull request controls, and on the
+#   closed event of a merged pull request from this repository, which runs
+#   the merged code; so it can never write to Resnovas/.github from another
+#   repository. GitHub signs the sync commits
+#   made with it, and its rate limit is the app's own.
+# Pull requests from forks and Dependabot get no secrets, so neither app token
+# is minted: smartcloud acts with the workflow token, which can still read
+# the public preset, and runs restricted. It skips settings, sync and any
+# write the token is refused, and lists them in the job summary. Forks and Dependabot runs are
+# restricted whatever token is passed. The job runs a released smartcloud,
+# never the pull request's code.
+name: smartcloud
+
+on:
+  pull_request:
+    # closed starts the backports a merged pull request's labels ask for. Its
+    # check lands on a merged pull request, so it gates nothing.
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft, closed]
+  issues:
+    types: [opened, edited, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  merge_group:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+# A newer run on the same pull request, issue or branch replaces an older one
+# on the same event, so retriggered runs never wait beside each other.
+concurrency:
+  group: smartcloud-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smartcloud:
+    name: smartcloud
+    if: github.event_name != 'merge_group'
+    runs-on: ubuntu-latest
+    # Above the aggregate check's 60-minute wait for the other checks (required.timeout).
+    timeout-minutes: 75
+    # Without the app's credentials, as in a repository outside the
+    # organisation, the mint is skipped rather than attempted with empty inputs.
+    env:
+      HAS_APP_KEY: ${{ vars.RESNOVAS_BOT_APP_ID != '' && secrets.RESNOVAS_BOT_PRIVATE_KEY != '' }}
+    # contents: write lets the workflow token turn on auto-merge for the pull
+    # requests an autoMerge rule allows (Dependabot patch and minor updates),
+    # since enabling it needs the right to merge. This job runs the published
+    # action, never the pull request's code, and a fork's token stays
+    # read-only whatever is asked for here.
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      issues: write
+      statuses: read
+    steps:
+      # A failed mint falls back to the workflow token rather than failing the run.
+      - name: Mint the read-only house token
+        id: house
+        # Never for a pull request from another (or a deleted) repository, or
+        # for Dependabot's runs and pull requests.
+        if: >-
+          env.HAS_APP_KEY == 'true'
+          && (!github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository)
+          && github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]'
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          # GitHub accepts the App ID wherever the client ID is asked for.
+          client-id: ${{ vars.RESNOVAS_BOT_APP_ID }}
+          private-key: ${{ secrets.RESNOVAS_BOT_PRIVATE_KEY }}
+          owner: Resnovas
+          repositories: .github
+          permission-contents: read
+
+      # Settings, sync, CODEOWNERS proposals and backports only. Never on an
+      # open pull request: only on the closed event of a merged one from this
+      # repository, whose run is trusted merged code, because backport pull
+      # requests opened with the workflow token start no CI. With no owner or
+      # repositories, the token reaches only this repository.
+      - name: Mint the Resnovas Bot token
+        id: app
+        if: >-
+          env.HAS_APP_KEY == 'true'
+          && (
+            contains(fromJSON('["push", "schedule", "workflow_dispatch"]'), github.event_name)
+            || github.event_name == 'pull_request' && github.event.action == 'closed'
+            && github.event.pull_request.merged == true
+            && github.event.pull_request.head.repo.full_name == github.repository
+          )
+          && github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]'
+          && (github.event_name != 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch)
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0 # zizmor: ignore[github-app]
+        with:
+          client-id: ${{ vars.RESNOVAS_BOT_APP_ID }}
+          private-key: ${{ secrets.RESNOVAS_BOT_PRIVATE_KEY }}
+
+      - uses: resnovas/smartcloud@v2
+        with:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          # Read-only access to Resnovas/.github; an older smartcloud ignores it.
+          houseToken: ${{ steps.house.outputs.token }}
+          # Lets the required feature wait for the other checks and leave this job out.
+          checkRunId: ${{ job.check_run_id }}
+# house:managed:end
+# house:local - add further jobs below, indented under jobs.
+
+  house-check:
+    name: house check
+    if: contains(fromJSON('["push", "pull_request", "merge_group", "workflow_dispatch", "schedule"]'), github.event_name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      # No application or dependency installation: EVE-244 owns that foundation.
+      - run: node --run check
