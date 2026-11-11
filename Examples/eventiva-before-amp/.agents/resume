@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dependencies are restored from the snapshot. No services or user authentication
+# are needed for the default workspace; do not reinstall anything on wake.
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd -- "$repo_root"
+package_manager="$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).packageManager')"
+if [[ "$(node --version)" != "v$(cat .node-version)" || \
+      "$(pnpm --version)" != "${package_manager#pnpm@}" || ! -x node_modules/.bin/nx ]]; then
+    echo 'Orb toolchain/dependencies are missing or stale; run .agents/setup.' >&2
+    exit 1
+fi
+echo 'Orb workspace ready.'

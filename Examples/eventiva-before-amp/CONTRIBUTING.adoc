@@ -1,0 +1,212 @@
+[#WhyTheGuidelines]
+= Why the guidelines
+:icons: font
+
+First off, thank you for considering contributing to this project.
+
+Following these guidelines helps to communicate that you respect the time of the developers managing and creating this project.
+In return, they should reciprocate that respect in addressing your issue, assessing changes, and helping you finalize your pull requests.
+We created these guidelines to ensure that everyone has the same information when working on the project.
+
+* Please don't use the issue tracker for support questions.
+We have a dedicated Service Desk for these questions:
+* Please check whether the FAQ can help with your issue.
+This can be found via our AnswerOverflow or Service Desk.
+* Please check the closed tickets &amp; pull requests before opening an new one.
+
+[#SecurityIssues]
+== Security Issues
+
+In order to determine whether you are dealing with a security issue, ask yourself these two questions:
+
+* Can I access something that's not mine, or something I shouldn't have access to?
+* Can I disable something for other people?
+
+If the answer to either of those two questions are "yes", then you're probably dealing with a security issue.
+Note that even if you answer "no" to both questions, you may still be dealing with a security issue, so if you're unsure, just contact us.
+
+We prioritize any security issue brought to our attention, dedicating all available resources to ensure it's handled swiftly.
+Security is one of the most important steps in all of our processes, and we follow the OSS Best Practices to reduce the chances of these issues occurring.
+
+IMPORTANT: If you are ever in doubt.
+Contact us immediately
+
+[#contributorLicenseAgreement]
+== Contributor License Agreement
+
+We have a Contributor License Agreement which can be found at https://github.com/Eventiva/Eventiva?tab=coc-ov-file#readme[`@Eventiva/CODE_OF_CONDUCT`].
+
+You must have agreed to the code of conduct and DCO before your contributions can be included.
+
+[#Responsibilities]
+== Responsibilities
+
+* Ensure cross-platform compatibility for every change that's accepted.
+* Ensure that code meets all <<IssueTypes,requirements>>
+* Submit and Ensure each contribution is created on its own branch to ensure we can follow http://semver.org/[Semantic Versioning]
+* Be welcoming to newcomers and encourage diverse new contributors from all backgrounds
+
+[#TestsRepository]
+== Tests Repository
+
+Eventiva uses a separate tests repository (`Eventiva/tests`) for all test code.
+The current transition policy in `docs/learnings/tdd-and-test-creation.md` permits implementers, including AI agents, to run, add, and update tests alongside implementation.
+The separate builder/test-creator/test-runner roles are a target end-state, not a current ban on local verification.
+Never delete tests to silence failures.
+
+Default setup leaves the private `tests/` submodule unpopulated and does not need private-repository credentials.
+For test work, explicitly initialize it with `git submodule update --init tests` using authorized access, then follow its own setup guidance.
+Do not remove an existing tests checkout during setup.
+An empty `tests/` folder means the separate suite is unavailable, not that tests passed.
+
+See `docs/learnings/effect-vitest-testing.md` for how to write Effect/Vitest tests.
+
+[#AmpOrbs]
+== Amp Orb Setup
+
+Amp runs the executable `.agents/setup` before publishing a reusable project snapshot.
+It installs the Node.js version pinned in `.node-version`, pnpm pinned in `package.json`, native-build and Cypress system libraries, and dependencies with `pnpm install --frozen-lockfile`.
+It checks Nx project discovery and creates `.env` from the commented reference only when `.env` is absent.
+The script targets disposable Debian 12 orbs with passwordless `sudo`; it replaces the orb's `/usr/local` Node installation, so do not run it on your personal machine as a generic installer.
+
+Fresh orbs reuse the snapshot; stale snapshots rerun the idempotent setup against the updated checkout.
+`.agents/resume` only checks readiness and never installs dependencies or starts services.
+If you change manifests or the lockfile within an existing orb, rerun `.agents/setup`.
+Keep both lifecycle scripts executable in Git.
+These files must reach the Amp project's default branch before future orbs receive them.
+
+For manual development, select the version in `.node-version`, install the exact pnpm `packageManager` version, and run `pnpm install --frozen-lockfile` from the root.
+Run workspace tasks through `pnpm exec nx`; in orbs prefix them with `NX_DAEMON=false`.
+Nx skills are available as files under `.cursor/skills/` when the agent cannot load them by name, and Nx CLI commands work without an MCP server.
+
+No devcontainer configuration is currently tracked; a test-runner devcontainer is not a prerequisite.
+Setup does not clone private submodules, authenticate users, create databases, start Docker/Kubernetes, or contact shared infrastructure.
+The in-memory cluster demo uses `pnpm platform:run:local-fiber`; `pnpm dev` instead invokes a Kubernetes workflow.
+Provision backing services only for tasks that need them; use `amp orb service start <name> --command '<command>'` for long-lived processes and add `--portal` for web servers.
+Keep secrets in Amp project secrets or local ignored configuration, never in setup scripts or snapshots.
+
+[#beginners]
+== Beginners
+
+Unsure where to begin contributing?
+You can start by looking through these beginner and help-wanted issues:
+
+* First Timers - issues specific for first time github users, designed and created to guide you through contributing.
+* Beginner issues - issues which should only require a few lines of code, and a test or two.
+* Help wanted - issues which should be a bit more involved than beginner issues.
+
+[#firstProject]
+=== Your first project
+
+Working on your first Pull Request?
+You can learn how from this _free_ series, https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github[How to Contribute to an Open Source Project on GitHub]
+
+At this point, you're ready to make your changes!
+Feel free to ask for help; everyone is a beginner at first!
+
+If a maintainer asks you to "rebase" your PR, they're saying that a lot of code has changed, and that you need to update your branch so it's easier to merge.
+
+[#mergeRequest]
+== Creating a merge request
+
+When you believe you have completed your contribution, you will need to make an pull request.
+This should be simple for most users, and we have provided some templates for you to get started, however if you choose to create your pull request from scratch, please ensure the following steps are followed.
+
+[#titleYourRequest]
+=== Titling your request
+
+We use https://www.conventionalcommits.org/en/v1.0.0/[conventional commits] format when creating pull requests, this is so we can squash all pull requests when merging and automatically create our changelog and releases.
+To ensure that this convention is completed, our automation will fail if the title does not follow this standard.
+
+[#DraftPullRequest]
+=== Draft Pull requests
+
+When you create a pull request, you can choose to create a pull request that is ready for review or a draft pull request.
+Draft pull requests cannot be merged, and code owners are not automatically requested to review draft pull requests.
+
+[#IssueTypes]
+== Issue Types
+
+[#MinorContributions]
+== Minor Contributions
+
+Small contributions such as fixing spelling errors, where the content is small enough to not be considered intellectual property, can be submitted by a contributor as a minor patch, without a CLA.
+
+As a rule of thumb, changes are obvious fixes if they do not introduce any new functionality or creative thinking.
+As long as the change does not affect functionality, some likely examples include the following:
+
+* Spelling / grammar fixes
+* Typo correction, white space and formatting changes
+* Comment clean up
+* Issue fixes that change default return values or error codes stored in constants
+* Adding logging messages or debugging output
+* Changes to �metadata� files like Gemfile, .gitignore, build scripts, etc.
+* Moving source files from one directory or package to another
+
+[#StandardContributions]
+== Standard Contributions
+
+Standard contributions are contributions which are too large to be considered a minor contribution however, only address one feature or function.
+This can include, but is not limited to, tutorials, wiki pages, new features (e.g. small integrations) and feature enhancements.
+Our automation systems will automatically do all the hard work of labeling, assigning and reviewing your contribution.
+
+You are required to sign the CLA and agree to the terms.
+This will be automatically handled by our automation when you create a pull request, and once signed you will be able to submit without resigning.
+
+[#MajorContributions]
+== Major Contributions
+
+Major contributions are contributions which add, modify or remove multiple features or modules.
+We can not emphasize enough how much the community helps us every time they submit one of these.
+
+You are required to sign the CLA and agree to the terms.
+This will be automatically handled by our automation when you create a pull request, and once signed you will be able to submit without resigning.
+
+[#BranchPrefixes]
+== Branch Prefixes
+
+Please follow the branch name configuration defined as follows:
+
+* Chore: chore/
+* Enhancement: enhance/
+* Feature: feat/
+* Documentation: docs/
+* Bug: fix/
+* Optimisation: opt/
+* Deprecate: dep/
+* Refactor: ref/
+* Style: style/
+
+If you are working on a issue which is tracked in the roadmap or issue trackers, please ensure to use the branch name and issue id so that the commits can be linked to the issue.
+
+[#CodeReviewProcess]
+== Code review process
+
+Code review is a complex process which we undertake over multiple locations to ensure that the code complies with all our current expectations and goals.
+There are a number of resources which we utilise to ensure the pull request is handled as fairly as possible.
+
+- Discord - Utilized to communicate regarding the proposed changes in a free flowing manor, with quick feedback and immediate response times.
+- GitHub - Utilized to manage the proposed changes, run security checks, run automations, track review approvals and change requests.
+- Nx - Utilized to build, test, lint, and type-check all affected packages in the monorepo.
+
+Once you have submitted a pull request, the following processes are automated:
+
+- Initial Review: A initial Automatic Review is handled by https://github.com/apps/coderabbitai[@CodderRabitAI], which will write out a Summary of your submitted changes, provide a walkthrough of the changes in a comment and mark any suggested improvements.
+These suggested changes should be taken as seriously as a real developer telling you to make the changes.
+If you disagree with any of the suggestion, simply leave a comment and let us know.
+- Code Analysis: SonarCloud will provide a quality control analysis of the code.
+You should fix any and all issues which this highlights.
+- Build and Test: Nx will automatically build all affected packages, run linting, type checking, and tests.
+This ensures that your changes don't break existing functionality and that all packages in the monorepo remain compatible.
+- Checks: A number of security, code and build steps will run on your branch.
+Until these have completed your code can not be merged.
+
+Before you move to manual review from our team, you will have a chance to utilize https://github.com/apps/sweep-ai[SweepAI], which will automatically work on improving things for you.
+SweepAI takes all our complex code rules and ensures the changes comply to the best standard possible.
+
+Manual Review then takes place.
+One of our developers will review the code you've submitted.
+The developer will be assigned to the Pull Request.
+The CodeOwners for the files will also be requested to review.
+
+Once all required persons have submitted reviews, the senior developer involved will be required to add the successful Pull Request to the merge queue, which will run some more checks to ensure the code hasn't changed then merge it with a Squash Merge.

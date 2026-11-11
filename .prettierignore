@@ -89,3 +89,4 @@ pnpm-lock.yaml
 .cursor/
 .examples/
 patches/
+Examples/**

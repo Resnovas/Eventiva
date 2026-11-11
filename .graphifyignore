@@ -1,0 +1,2 @@
+# Historical snapshots are inspected explicitly, not indexed as current code.
+Examples/**

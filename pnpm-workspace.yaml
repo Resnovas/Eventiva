@@ -1,8 +1,4 @@
+# Isolation only: no application workspace until EVE-244.
 packages:
-    - 'packages/core'
-    - 'packages/databases/*'
-    - 'packages/cluster-tooling'
-    - 'packages/test-repo'
-    - 'packages/extensions/*'
-    - 'packages/integrations/*'
-    - 'packages/platforms/*'
+  - '.'
+  - '!Examples/**'

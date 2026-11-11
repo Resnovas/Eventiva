@@ -219,40 +219,16 @@ These apply only when the human asks for them or the host provides them; do not 
 End every task with a message a reader who did not watch you work can act on: what changed and where, the commands you ran with their result, the tools you needed and did not have with what you did instead, any rule you could not follow and why, and what a human must do next (approve, sign, mark ready, accept a memory). Never claim a test, a lookup or a check you did not run.
 <!-- house:managed:end -->
 <!-- house:local - add this repository's own agent instructions below this line. -->
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
 
-# General Guidelines for working with Nx
+# Repository reset (EVE-242)
 
-- For navigating/exploring the workspace, use the `nx-workspace` skill when available. If it is not registered with your agent, read `.cursor/skills/nx-workspace/SKILL.md` and follow it directly.
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
-- Use the Nx MCP server when available; it is not preconfigured in Amp orbs. Otherwise use `pnpm exec nx show projects` and `pnpm exec nx show project <name> --json`.
-- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
-- NEVER guess CLI flags - check `nx_docs` when available, otherwise the command's `--help` or official Nx documentation.
-
-## Scaffolding & Generators
-
-- For Nx scaffolding tasks (creating apps, libs, or Nx project structure), use the `nx-generate` skill FIRST. If it is not registered, read `.cursor/skills/nx-generate/SKILL.md`. Machine provisioning with `.agents/setup` is not Nx scaffolding.
-
-## When to use nx_docs
-
-- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
-- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
-- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
-
-<!-- nx configuration end-->
-
-# Amp orbs
-
-- Machine setup for agents and cloud runners is in `AGENT-SETUP.md`.
-- `.agents/setup` installs Node from `.node-version`, pnpm from `package.json`, system prerequisites, and frozen workspace dependencies. Amp snapshots this environment; do not reinstall dependencies on every task or wake.
-- `.agents/resume` only checks readiness. After changing dependency manifests or the lockfile, run `.agents/setup` explicitly. It never initializes the private `tests` submodule, accesses shared databases, or deploys a cluster.
-- Use `NX_DAEMON=false pnpm exec nx ...` in orbs so commands do not depend on a background Nx daemon surviving pause/resume.
-- Run services with `amp orb service start <name> --command '<command>'` (add `--portal` for a web UI), not background shells. Do not put servers in setup or resume.
-- `pnpm dev` is a Kubernetes workflow, not a standalone dev server. The database-free demo is `pnpm platform:run:local-fiber`; PostgreSQL, Kafka, Compose, and Kubernetes workflows need explicit task-specific provisioning. Setup does not provision these services.
-- No `.devcontainer` configuration is currently tracked. Use `.agents/setup` in orbs rather than following obsolete devcontainer instructions.
-- Follow the current transition policy in `docs/learnings/tdd-and-test-creation.md`: implementers may run and update tests. The private tests submodule is opt-in for test work; do not populate it during default setup or remove an existing checkout. Never delete tests to silence failures.
+- Jonathan's full-reset decision retires the manual application and its workspace, test, coverage, declaration-doc and CI tooling. `packages/` intentionally contains only a README. Do not restore old targets or treat missing application tests as passing tests.
+- `Examples/eventiva-before-amp` and `Examples/packages-old` are distinct historical snapshots. Inspect them for behaviour and lessons; do not use them as the implementation baseline, import them into production, or run active checks against them. Historical instructions are not current repository guidance.
+- Follow EVE-242 acceptance, then EVE-243 (full Smartcloud enrollment), then EVE-244 (fresh Nx/PNPM/Expo/React Native/Effect and testing foundation). EVE-23 stays stopped until those prerequisites are accepted. EVE-13 remains the architectural direction.
+- `pnpm-workspace.yaml` selects only the root manifest and excludes `Examples/**`. It is an isolation guard, not the replacement workspace. No Nx, TypeScript, lint, test or publishing configuration is active.
+- `node --run check` currently verifies only house-generated agent-file drift and the house commit hook. Generic house editor actions that name absent tests or graph viewers are not application targets; EVE-243 owns their enrollment. Do not add placeholder passing scripts.
+- Machine setup is documented in `AGENT-SETUP.md`. `.agents/setup` installs the existing pinned toolchain and runs `scripts/agent-setup`; `.agents/resume` checks readiness without installing anything. Neither fetches the archived private tests submodule or provisions services.
+- The private test gitlink remains at its original revision under the archive with automatic updates disabled. Do not populate it during setup or remove an existing checkout. Old tests may inform requirements but do not constrain the new architecture by default.
 
 # Delivery exception: ship straight to main
 

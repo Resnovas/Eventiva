@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd -- "$repo_root"
+SECONDS=0
+trap 'echo "Orb setup failed at line $LINENO after ${SECONDS}s" >&2' ERR
+
+echo "[${SECONDS}s] Checking system prerequisites"
+packages=(ca-certificates curl xz-utils build-essential python3 libgtk-3-0 libgbm1 libnotify4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb)
+missing=()
+for package in "${packages[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        missing+=("$package")
+    fi
+done
+if ((${#missing[@]})); then
+    sudo apt-get update -qq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+fi
+
+echo "[${SECONDS}s] Installing pinned toolchain"
+node_version="$(cat .node-version)"
+if [[ "$(node --version 2>/dev/null || true)" != "v${node_version}" ]]; then
+    case "$(uname -m)" in
+        x86_64) arch=x64 ;;
+        aarch64) arch=arm64 ;;
+        *) echo 'Unsupported Node.js architecture' >&2; exit 1 ;;
+    esac
+    archive="node-v${node_version}-linux-${arch}.tar.xz"
+    download_dir="$(mktemp -d)"
+    trap 'rm -rf -- "$download_dir"' EXIT
+    curl --fail --silent --show-error --location --retry 3 \
+        "https://nodejs.org/dist/v${node_version}/${archive}" -o "$download_dir/$archive"
+    curl --fail --silent --show-error --location --retry 3 \
+        "https://nodejs.org/dist/v${node_version}/SHASUMS256.txt" -o "$download_dir/SHASUMS256.txt"
+    (cd -- "$download_dir"; grep "  ${archive}$" SHASUMS256.txt | sha256sum --check -)
+    sudo tar -xJf "$download_dir/$archive" --directory /usr/local --strip-components=1
+    hash -r
+fi
+package_manager="$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).packageManager')"
+if [[ "$(pnpm --version 2>/dev/null || true)" != "${package_manager#pnpm@}" ]]; then
+    sudo npm install --global "$package_manager"
+fi
+node --version
+pnpm --version
+
+echo "[${SECONDS}s] Installing locked workspace dependencies"
+# No Nx daemon may survive setup; package-manager caches and native builds do.
+CI=true NX_DAEMON=false pnpm install --frozen-lockfile
+
+echo "[${SECONDS}s] Checking Nx workspace discovery"
+NX_DAEMON=false pnpm exec nx show projects
+
+# The template contains comments only; never overwrite an agent's local settings.
+if [[ ! -f .env ]]; then
+    cp -- .env.example .env
+fi
+echo "[${SECONDS}s] Orb setup ready (tests submodule and external services are opt-in)"

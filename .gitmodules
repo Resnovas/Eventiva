@@ -1,3 +1,5 @@
 [submodule "tests"]
-	path = tests
+	path = Examples/eventiva-before-amp/tests
 	url = https://github.com/Eventiva/tests
+	active = false
+	update = none

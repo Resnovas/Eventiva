@@ -1,121 +1,37 @@
-# Eventiva — developer guide (PostgreSQL cluster platform)
+# Eventiva
 
-This repository’s primary **AsciiDoc** overview is [`README.adoc`](./README.adoc) (product context, contributing, Codespaces). **This file** is the Markdown entry for **tooling prerequisites** and the **three supported ways** to run the packaged **Effect cluster / battleship demo** (`packages/platforms/postgresql` entry).
+Eventiva is an event planning and production logistics project. **The production workspace is intentionally empty following the full reset in [EVE-242](https://linear.app/resnovas/issue/EVE-242).** There is currently no application, Nx workspace, build, test suite, coverage gate or publishing workflow configured at the repository root.
 
-Deeper procedures (env vars, log regression checks, CI) live in the docs hub: [`docs/readme.md`](./docs/readme.md) and [`docs/parts/local-dev/three-tier-platform-runtime.md`](./docs/parts/local-dev/three-tier-platform-runtime.md).
+## Rebuild order
 
----
+1. Accept the EVE-242 archive and clean repository.
+2. Complete [EVE-243](https://linear.app/resnovas/issue/EVE-243): full Smartcloud enrollment and current house-generated governance, guidance, workflows and repository configuration.
+3. Complete [EVE-244](https://linear.app/resnovas/issue/EVE-244): fresh Nx/PNPM/Expo/React Native/Effect workspace and testing foundation.
+4. Resume implementation issues, including EVE-23, against that accepted foundation and [EVE-13](https://linear.app/resnovas/issue/EVE-13).
 
-## Prerequisites (install once)
+## Set up the repository
 
-### Node.js and pnpm (required for all local commands)
+Use Node at the version in [`.node-version`](.node-version) and pnpm at the `packageManager` version in [`package.json`](package.json). The root manifest has no application or development dependencies.
 
-1. **Node.js** — use the exact **Node 22 LTS** version in [`.node-version`](./.node-version), also used by CI and Amp orb setup (see [Node.js download](https://nodejs.org/en/download)).
-2. **pnpm** — use the exact **`packageManager`** version in `package.json`. Install it per [pnpm installation](https://pnpm.io/installation), for example `npm install --global pnpm@9.14.2`. Do not assume Corepack is installed on every machine.
-3. **Workspace dependencies** — from the repo root:
-    ```bash
-    pnpm install --frozen-lockfile
-    ```
-
-### Amp orbs
-
-Amp runs [`.agents/setup`](./.agents/setup) once when preparing a snapshot, then restores the installed toolchain, dependencies, and caches for fresh orbs. [`.agents/resume`](./.agents/resume) only checks readiness; do not reinstall on every wake. See [the contributor guide](./CONTRIBUTING.adoc#AmpOrbs) for lifecycle behavior, optional test access, and service provisioning. The scripts target disposable Debian orbs, not personal machines.
-
-### Container engines (for Docker Compose or standalone `docker run` / `podman run`)
-
-- **Docker Engine + Docker Compose V2** — [Get Docker](https://docs.docker.com/get-docker/), [Compose install](https://docs.docker.com/compose/install/) (Compose is often bundled as the `docker compose` plugin).
-- **Podman** — [Podman installation](https://podman.io/getting-started/installation) (Linux packages, macOS installer, etc.). For Compose-like workflows, use [Podman Compose](https://docs.podman.io/en/latest/markdown/podman-compose.1.html) or `podman compose` where your Podman build supports it.
-
-This repo’s Compose stack for the PostgreSQL cluster demo is documented in [`packages/cluster-compose/README.md`](./packages/cluster-compose/README.md) (file: `packages/cluster-compose/docker-compose.postgresql.yaml`).
-
-### Kubernetes (local or remote)
-
-- **kubectl** — [Install kubectl](https://kubernetes.io/docs/tasks/tools/).
-- **Kind** (Kubernetes in Docker/Podman) — common for local clusters: [Kind quick start](https://kind.sigs.k8s.io/docs/user/quick-start/). Alternative: minikube, k3d, etc.
-
-Cluster-specific steps (FPK render/apply, wait, logs) are in [`docs/parts/local-dev/postgresql-cluster-runtime.md`](./docs/parts/local-dev/postgresql-cluster-runtime.md).
-
----
-
-## Three ways to run the platform (demo)
-
-| Mode                        | What it is                                                                                                                             | Root npm scripts                                                      | Nx (same effect)                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------- |
-| **1 — Local (Node)**        | Single process on your machine: either **in-memory** cluster (`EVENTIVA_CLUSTER_INFRASTRUCTURE=local`) or **PostgreSQL on localhost**. | See below                                                             | `pnpm exec nx run eventiva:platform:…` (see `project.json`) |
-| **2 — Container (Compose)** | Multi-service stack (Postgres, Redpanda, shard-manager, workloads) via **Docker Compose** / Podman Compose — **not** Kubernetes.       | `pnpm platform:container:compose-up`                                  | `nx run eventiva:platform:container:compose-up`             |
-| **3 — Kubernetes**          | FPK manifests applied with `kubectl` (e.g. Kind).                                                                                      | `pnpm platform:kubernetes:apply` then `pnpm platform:kubernetes:wait` | `nx run eventiva:platform:kubernetes:apply`                 |
-
-### 1a — Local, in-memory cluster (no Postgres)
-
-Uses `CLUSTER_HOOK_BUS=off` and colocated shooters (no Kafka hook bus).
-
-```bash
-pnpm platform:run:local-fiber
-# equivalent: pnpm exec nx run platforms-postgresql:run:local-fiber
+```sh
+pnpm install --frozen-lockfile
+node --run setup
+node --run check
 ```
 
-### 1b — Local, distributed mode against PostgreSQL on `localhost`
+`setup` installs the existing house commit hook and registers available editor actions. `check` checks only the existing house-generated agent files for drift. It is **not** a build, lint, application test or coverage result. The old checks were retired by the explicit full-reset decision, not made green by ignoring failures. `scripts/agent-setup` runs the three commands above on a machine with the pinned toolchain. No secrets, services or private repository access are required.
 
-Requires Postgres listening on **`localhost:5432`** with DB/user/password matching the target (see `platforms-postgresql:run-local` env in `packages/platforms/postgresql/project.json`). Hook bus is off for this dev preset (`CLUSTER_HOOK_BUS=off`).
+`pnpm-workspace.yaml` selects only the root manifest and explicitly excludes `Examples/**`; without this isolation guard, recursive pnpm commands can discover archived manifests. Verify with `pnpm list -r --depth -1 --json`, which must list only the root repository.
 
-```bash
-pnpm platform:run:local
-# equivalent: pnpm exec nx run platforms-postgresql:run-local
-```
+Amp orbs use [`.agents/setup`](.agents/setup) to provision the pinned toolchain and run repository setup, and [`.agents/resume`](.agents/resume) for a fast readiness check. There is no development server or docs server to start. Old `pnpm dev`, `platform:*`, cluster, test and declaration-doc commands are unavailable until replacement work defines them.
 
-### 2 — Docker Compose (container stack, not Kubernetes)
+If `check` reports stale generated files, run `node tools/dev/surfaces.mjs sync` and repeat the check. Missing Nx or application targets are expected during this reset; do not install or activate the historical workspace to repair them.
 
-Build the runtime image(s), then bring up the stack:
+## Historical reference
 
-```bash
-pnpm platform:container:images-build
-pnpm platform:container:compose-up
-# logs: pnpm platform:container:compose-logs
-# down: pnpm platform:container:compose-down
-```
+- [`Examples/eventiva-before-amp`](Examples/eventiva-before-amp/README.md) preserves the manual workspace, packages, tests reference, tooling, documentation and CI configuration from main at `ae54174aa209be4c21f00226eebae8a01ed04df6`.
+- [`Examples/packages-old`](Examples/packages-old) is a separate, older snapshot. It has not been merged with or overwritten by the new archive.
 
-Verify demo log patterns when workloads have warmed up:
+Inspect both for behaviour and lessons, not as code to copy into the new implementation. Neither is an active workspace or production dependency. The archived private tests gitlink is preserved at its original revision and disabled for automatic submodule updates; no private test source was fetched or deleted.
 
-```bash
-pnpm cluster:compose:verify-demo-logs
-```
-
-### 2b — Standalone runtime image (Podman or Docker, no Compose)
-
-After `pnpm platform:container:images-build`, the image is tagged **`docker.io/eventiva/runtime:local`**. You can run it directly (example: **local** infrastructure, no Kubernetes):
-
-```bash
-podman run --rm \
-  -e NODE_ENV=development \
-  -e CLUSTER_HOOK_BUS=off \
-  -e EVENTIVA_CLUSTER_INFRASTRUCTURE=local \
-  -e EVENTIVA_RUNTIME_TIER=local \
-  docker.io/eventiva/runtime:local
-```
-
-For **distributed** mode against Postgres on the host, use host networking and DB env vars (see `docs/parts/local-dev/three-tier-platform-runtime.md`).
-
-### 3 — Kubernetes (FPK)
-
-```bash
-pnpm platform:kubernetes:images-build   # or reuse pnpm platform:container:images-build
-pnpm platform:kubernetes:apply
-pnpm platform:kubernetes:wait
-pnpm cluster:logs:all
-```
-
-See [`docs/parts/local-dev/postgresql-cluster-runtime.md`](./docs/parts/local-dev/postgresql-cluster-runtime.md) for Kind image load, namespaces, and troubleshooting.
-
----
-
-## Regression signals (demo)
-
-Aggregated logs should eventually contain substrings such as `Boom!`, `Shooting at`, `Shot at`, and `Shots fired:` (see the three-tier doc for details). Allow extra time for slow-shooter (`Shot at` is delayed).
-
----
-
-## Related documentation
-
-- [`docs/readme.md`](./docs/readme.md) — documentation hub
-- [`docs/parts/local-dev/three-tier-platform-runtime.md`](./docs/parts/local-dev/three-tier-platform-runtime.md) — full tier-by-tier reference
-- [`README.adoc`](./README.adoc) — repository overview (AsciiDoc)
+Read current [AGENTS.md](AGENTS.md) before working. Historical instructions, commands and configuration inside the archives do not govern the rebuild. House enrollment and the fresh workspace belong to EVE-243 and EVE-244, not this reset.

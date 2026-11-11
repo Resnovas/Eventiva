@@ -7,7 +7,7 @@ SECONDS=0
 trap 'echo "Orb setup failed at line $LINENO after ${SECONDS}s" >&2' ERR
 
 echo "[${SECONDS}s] Checking system prerequisites"
-packages=(ca-certificates curl xz-utils build-essential python3 libgtk-3-0 libgbm1 libnotify4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb)
+packages=(ca-certificates curl xz-utils)
 missing=()
 for package in "${packages[@]}"; do
     if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
@@ -45,15 +45,6 @@ fi
 node --version
 pnpm --version
 
-echo "[${SECONDS}s] Installing locked workspace dependencies"
-# No Nx daemon may survive setup; package-manager caches and native builds do.
-CI=true NX_DAEMON=false pnpm install --frozen-lockfile
-
-echo "[${SECONDS}s] Checking Nx workspace discovery"
-NX_DAEMON=false pnpm exec nx show projects
-
-# The template contains comments only; never overwrite an agent's local settings.
-if [[ ! -f .env ]]; then
-    cp -- .env.example .env
-fi
-echo "[${SECONDS}s] Orb setup ready (tests submodule and external services are opt-in)"
+echo "[${SECONDS}s] Preparing the dependency-free repository"
+sh scripts/agent-setup
+echo "[${SECONDS}s] Orb setup ready (no application runtime or tests configured)"

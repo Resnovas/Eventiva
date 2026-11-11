@@ -1,0 +1,221 @@
+[#eventiva]
+= EVENTIVA
+
+image::https://github.com/codespaces/badge.svg[Open in GitHub Codespaces,link=https://codespaces.new/Eventiva/eventiva?quickstart=1]
+
+IMPORTANT: This project is in pre-alpha state. Code here is subject to massive change and is likely unstable. Only
+install if you know what you are doing.
+
+[#introduction]
+== Introduction
+
+Welcome to the Eventiva repository.
+Eventiva is an open-source platform for Event Planning and Production logistics.
+We have created a custom-built directory focused on indexing, marketing and connecting event specialist Vendors, Venues and professionals.
+We then connected this to our innovative tools for event production planning which include scheduling, itinerary, task management, contact management, warehousing ticket sales, interactive site maps, online and in-person sales solutions, accounting, payroll and human resources.
+
+[#why]
+== Why do we exist?
+
+When surveyed, the industry revealed that over fifty-five percent of events did not have a management tool of any form.
+The remaining forty percent are split across solutions designed and implemented for office environments.
+Software like Flock and Excel barely cover the toolset which managers require to be effective in the preproduction sections of their work.
+While fifty-five percent of events did not have management tools, a full eighty percent of individuals surveyed believed that schedulers, task lists and other management tools would be helpful to their ongoing operations.
+
+[#what]
+== What is Eventiva Gaming
+
+Eventiva Gaming is born out of the desire to create the best tools for our industry.
+While gaming is an unusual route, we believe that the gaming industry, specifically role play communities, is a perfect fit for testing, developing and improving our tools.
+Within the Role Play Communities, there are may teams which need to coordinate, manage and plan digital events with the exact same requirements as physical events.
+We believe that by working with these communities we can create a better product for everyone.
+
+For instance, the Eventiva Gaming team developed the initial version of the Fleet Management module.
+They designed it to manage the distribution, maintainance and deployment of vehicles within Emergency Service role play.
+Those same key features are now being used to manage the distribution, maintainance and deployment of vehicles within the events industry.
+
+[#open-source]
+== Why open-source?
+
+We believe in the power of community development, while our tools are designed and marketted for event planning, they can be utilised by organisations planning all variations of projects, we believe that through keeping our tools open-source we can connect with amazing developers who can contribute in ways we simply cannot fathom.
+
+[#support]
+== How to get support 👨‍👩‍👧‍👦
+
+For *Features Requests*, *Q&A*, *Show & Tell* and *Discussions* please use *https://github.com/Eventiva/Eventiva/discussions[our discussion page]* 🚑.
+
+We have a *FAQ* label in our *https://github.com/Eventiva/Eventiva/discussions[discussion page]* where you can get quick answers, help with debugging weird issues, and general help.
+
+Our extensive *documentation* can be found at *https://github.com/Eventiva/Eventiva[here]*.
+
+[#contributing]
+== Contributing
+
+Thank you for taking an interest in contributing.
+Amp orbs use `.agents/setup` to prepare the toolchain and dependencies for reusable snapshots.
+See link:CONTRIBUTING.adoc#AmpOrbs[the contributor setup guide]; no `.devcontainer` configuration is currently tracked.
+
+This project utilises the https://github.com/Eventiva/smartcloud[Smartcloud Project] to automate our workflow, alongside provide templates for issues and pull requests.
+If you want to learn more about precisely what this workflow accomplishes, please check out the documentation https://github.com/Eventiva/smartcloud[here].
+
+Eventiva is built on the following main stack:
+
+* image:https://img.stackshare.io/service/1011/n1JRsFeB_400x400.png[Node.js,25] http://nodejs.org/[Node.js] -- Runtime Environment
+* image:https://img.stackshare.io/service/1612/bynNY5dJ.jpg[TypeScript,25] http://www.typescriptlang.org[TypeScript] -- Languages
+* image:https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png[Nx,25] https://nx.dev[Nx] -- Monorepo & Build System
+* image:https://img.stackshare.io/service/11563/actions.png[GitHub Actions,25] https://github.com/features/actions[GitHub Actions] -- Continuous Integration
+* image:https://vitest.dev/logo.svg[Vitest,25] https://vitest.dev[Vitest] -- Testing Framework
+* image:https://img.stackshare.io/service/48786/default_8b1119bcbb159cebebc2f6cfc9cd2e359b169d22.jpg[OpenAI,25] https://openai.com/[OpenAI] -- Large Language Models
+* image:https://img.stackshare.io/service/586/n4u37v9t_400x400.png[Docker,25] https://www.docker.com/[Docker] -- Virtual Machine Platforms & Containers
+
+Full tech stack xref:/techstack.adoc[here]
+
+For more information on contributing, please read the [contributing guidelines].
+
+=== Backlog
+
+You can access our backlog on our JetBrains Space found here:
+
+=== Running Locally & Developing
+
+==== Prerequisites
+
+* Node.js at the exact version in `.node-version`
+* pnpm at the exact `packageManager` version in `package.json`
+* Git
+
+You can choose one of the following methods to get your development platform configured:
+
+==== Amp Orbs
+
+Amp runs `.agents/setup` to install the pinned toolchain, system prerequisites, and frozen workspace dependencies before taking a reusable snapshot.
+`.agents/resume` checks readiness without reinstalling dependencies.
+Private tests and database/cluster services are opt-in; see link:CONTRIBUTING.adoc#AmpOrbs[the contributor setup guide].
+
+==== Codespaces and Devcontainers
+
+No `.devcontainer` configuration is currently tracked.
+Codespaces or a custom container require the manual setup below; do not assume a global Nx installation or a PostgreSQL service is provided.
+
+==== Local Setup
+
+If you prefer to set up locally without containers:
+
+. Clone the repository:
++
+[source,bash]
+----
+git clone https://github.com/Eventiva/eventiva.git
+cd eventiva
+----
+
+. Install dependencies:
++
+[source,bash]
+----
+pnpm install --frozen-lockfile
+----
+
+. Build all packages:
++
+[source,bash]
+----
+pnpm nx run-many -t build
+----
+
+. Run linting:
++
+[source,bash]
+----
+pnpm nx run-many -t lint
+----
+
+. Run type checking:
++
+[source,bash]
+----
+pnpm nx run-many -t typecheck
+----
+
+. Run tests:
++
+[source,bash]
+----
+pnpm nx run-many -t test
+----
+
+==== Effect cluster demo: three ways to run
+
+The packaged **battleship** cluster demo (runner + shooters) can be run **locally** (single process, in-memory cluster storage), via **Docker Compose**, or on **Kubernetes** (FPK). **Tooling prerequisites** (Node.js, pnpm, Docker/Podman, Compose, kubectl/Kind) and **canonical `pnpm platform:*` scripts** are in link:README.md[README.md] at the repository root. Full commands, env vars, and log regression checks are in link:docs/parts/local-dev/three-tier-platform-runtime.md[docs/parts/local-dev/three-tier-platform-runtime.md] (also linked from link:docs/readme.md[docs/readme.md]). The same flows are exposed as Nx targets on the root `eventiva` project (for example `pnpm exec nx run eventiva:platform:run:local-fiber`).
+
+[cols="1,2",options="header"]
+|===
+|Tier |Typical command
+
+|Local (no Kafka hook bus)
+|`pnpm platform:run:local-fiber` (or `pnpm nx run platforms-postgresql:run:local-fiber`)
+
+|Docker Compose
+|`pnpm platform:container:images-build` then `pnpm platform:container:compose-up`
+
+|Kubernetes (FPK)
+|`pnpm platform:kubernetes:apply` / `pnpm platform:kubernetes:wait` then `pnpm cluster:logs:all` (aliases: `pnpm cluster:apply` / `pnpm cluster:wait`; see link:docs/parts/local-dev/postgresql-cluster-runtime.md[postgresql-cluster-runtime.md])
+|===
+
+**Regression:** aggregated logs should eventually contain `Boom!`, `Shooting at`, `Shot at`, and `Shots fired:` (substring match). For Compose use `pnpm exec nx run cluster-tooling:compose-verify-demo-logs` after workloads have warmed up; allow extra time for slow-shooter (`Shot at` follows a long delay).
+
+==== Run the PostgreSQL platform
+
+The `platforms-postgresql` Nx project is the main PostgreSQL platform library and cluster entrypoints. The default `pnpm dev` / `pnpm nx run platforms-postgresql:run` target streams **Kubernetes** cluster logs when a cluster is deployed (see link:docs/parts/local-dev/postgresql-cluster-runtime.md[postgresql-cluster-runtime.md]). For a **single-machine** demo without K8s, use `pnpm nx run platforms-postgresql:run:local-fiber` instead (see the table above).
+
+To build the library from the repository root:
+
+[source,bash]
+----
+pnpm nx run platforms-postgresql:build
+----
+
+Other HTTP / workload entrypoints and ports are documented under `packages/platforms/postgresql` and link:docs/parts/local-dev/database-backends-and-platforms.md[database-backends-and-platforms.md].
+
+Environment variables such as `EVENTIVA_DATABASE`, `DATABASE`, and database connection settings apply as documented in the platform (`packages/platforms/postgresql`) and `@eventiva/core` (backend registry and dialect facades).
+
+==== Tests Repository
+
+Eventiva uses a separate tests repository (`Eventiva/tests`) for all test code.
+Default setup leaves the private submodule unpopulated; initialize it explicitly with authorized access for test work.
+The current transition policy permits implementers, including AI agents, to run and update tests alongside implementation.
+Never delete tests to silence failures, and do not report an unavailable test suite as passing.
+See link:CONTRIBUTING.adoc#TestsRepository[the contributor guide] and `docs/learnings/tdd-and-test-creation.md` for the full policy.
+
+==== Available Nx Commands
+
+This project uses Nx for task orchestration. Common commands:
+
+* `pnpm nx run-many -t build` - Build all packages
+* `pnpm nx run-many -t lint` - Lint all packages
+* `pnpm nx run-many -t typecheck` - Type check all packages
+* `pnpm nx run-many -t test` - Run tests for all packages
+* `pnpm nx run platforms-postgresql:run:local-fiber` - **Local colocated cluster demo** (single process; `CLUSTER_HOOK_BUS=off`)
+* `npx nx run platforms-postgresql:run` - **Tail Kubernetes cluster logs** when a cluster is deployed (see cluster runtime docs)
+* `pnpm nx run <project>:<target>` - Run a specific target for a project (e.g., `pnpm nx run core:build`)
+* `pnpm nx graph` - Visualize the project dependency graph
+
+For more information about Nx, see https://nx.dev[nx.dev].
+
+=== Contributors ✨
+
+=== Supporters & Sponsors
+
+==== Sponsored by
+
+Want to help build the next generation of event planning tools?
+We are looking for sponsors to help us grow and develop our tools.
+
+==== Supported by
+
+[.text-center]
+--
+image::https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg[Jetbrains,link="https://jb.gg/OpenSourceSupport"]
+
+JetBrains supports the development of this project through Licenses for Open Source Development.
+--

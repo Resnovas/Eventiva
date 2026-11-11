@@ -5,8 +5,7 @@
 # commands below by hand.
 set -eu
 cd "$(dirname "$0")/.."
-CI=true NX_DAEMON=false pnpm install --frozen-lockfile
+CI=true pnpm install --frozen-lockfile
 node --run setup
-NX_DAEMON=false pnpm exec nx show projects >/dev/null
-node tools/dev/surfaces.mjs check
+node --run check
 echo "agent-setup: ok"
