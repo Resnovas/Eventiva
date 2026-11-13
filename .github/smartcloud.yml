@@ -2,7 +2,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Resnovas/smartcloud/main/schema/smartcloud.schema.json
 version: 2
 extends:
-  - Resnovas/.github/smartcloud/house.yml@main
+  - Resnovas/.github/smartcloud/house-base.yml@main
 #
 # The preset sets, and this file cannot change:
 #   roles.maintainers   TGTGamer
@@ -25,9 +25,23 @@ extends:
 # House sync and Graphify bot proposals are not coding-agent delivery.
 # No deployment environments or application targets until EVE-244.
 
+# Temporary owner-approved exception (EVE-243, revisit in EVE-248): extend
+# the house base preset, which is house.yml without the two default branch
+# ruleset gates that spend GitHub AI credits, while the organisation's
+# AI-credit budget is held at USD 0 with hard stop. HOUSE_PRESET keeps the
+# managed extends line on house-base.yml through every house sync.
+# Copilot review is switched off explicitly; codeQuality has no off value, so
+# leaving it unset adds no Code Quality rule. Every other locked house rule,
+# including the CodeQL gate, secret scanning and the administrator always
+# bypass, still applies. See Resnovas/.github docs/preset.md#base.
+sync:
+  values:
+    HOUSE_PRESET: house-base.yml
+
 # Require the real house gate even when a restricted PR skips aggregation.
 settings:
   ruleset:
+    copilotReview: false
     statusChecks:
       checks:
         house check: true

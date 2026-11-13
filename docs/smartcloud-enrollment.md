@@ -2,7 +2,7 @@
 
 ## Scope and source
 
-Eventiva extends `Resnovas/.github/smartcloud/house.yml@main` through `.github/smartcloud.yml`. On 2026-11-11 the enrollment was prepared against Eventiva main `5809bd2ec3c364eac89e4266bd8a476a6523192e`, after EVE-242, using house source `0af11afe1165c942622a311cf1f2ee1baba745ed` and Smartcloud source `61eedd655f31d7e1f511f85bbb6621ab6454d465`. Future synchronization follows the current house `main`, not those audit revisions.
+Eventiva extends `Resnovas/.github/smartcloud/house-base.yml@main` through `.github/smartcloud.yml`, under the temporary exception in [AI-credit gate exception](#ai-credit-gate-exception); every other house repository extends `house.yml`, which is the base plus those gates. On 2026-11-11 the enrollment was prepared against Eventiva main `5809bd2ec3c364eac89e4266bd8a476a6523192e`, after EVE-242, using house source `0af11afe1165c942622a311cf1f2ee1baba745ed` and Smartcloud source `61eedd655f31d7e1f511f85bbb6621ab6454d465`. Future synchronization follows the current house `main`, not those audit revisions.
 
 The house preset supplies governance, policies, skills, prompts, MCP sources, dev surfaces, issue forms, Dependabot, review configuration, shared tools and ten workflows. Existing `house:local` sections remain repository-owned. Node is pinned to 24.22.2 for the house tools; pnpm remains 9.14.2, with no application dependencies added.
 
@@ -45,9 +45,32 @@ The supported `plan settings` command proposed these ten operations, in order:
 | Create/update ruleset by name | Apply `house: default branch` to the default branch with the rules below and the administrator `always` bypass. |
 | PUT `/actions/permissions/workflow` | Set default workflow permissions to `read` and `can_approve_pull_request_reviews: true`. |
 
-The ruleset blocks deletion and force pushes; requires linear history, signatures, PR conversation resolution, the squash merge queue and up-to-date `smartcloud` and `house check` statuses; gates CodeQL at errors/high-or-higher security alerts, code quality at errors and provider-pattern secret alerts; and requests Copilot review on drafts and pushes. The local enrollment adds `house check` to both `settings.ruleset.statusChecks.checks` and `required.expect`, so restricted PRs cannot pass without the real house gate. The queue uses `SQUASH`/`ALLGREEN`, a 60-minute response timeout, up to five entries and a five-minute minimum wait. PRs permit squash/rebase and dismiss stale reviews. No coverage gate or deployments are activated. Actions access-level changes do not apply to this public repository.
+The ruleset blocks deletion and force pushes; requires linear history, signatures, PR conversation resolution, the squash merge queue and up-to-date `smartcloud` and `house check` statuses; gates CodeQL at errors/high-or-higher security alerts and provider-pattern secret alerts. The house Code Quality gate and Copilot review are left out under the exception below. The local enrollment adds `house check` to both `settings.ruleset.statusChecks.checks` and `required.expect`, so restricted PRs cannot pass without the real house gate. The queue uses `SQUASH`/`ALLGREEN`, a 60-minute response timeout, up to five entries and a five-minute minimum wait. PRs permit squash/rebase and dismiss stale reviews. No coverage gate or deployments are activated. Actions access-level changes do not apply to this public repository.
 
 The dry run also proposed nine process labels: `needs-disclosure`, `needs-dco`, `needs-reproduction`, `needs-evidence`, `needs-tests`, `needs-human-explanation`, `needs-scope-approval`, `needs-refactor` and `house-sync`. It proposed the normal `house/sync` update PR and feature check runs, but created none. No collaborator, team, webhook, secret, variable, deployment environment or Pages change is configured.
+
+## AI-credit gate exception
+
+Since 2026-11-13 Eventiva runs without the two default branch ruleset gates that spend GitHub AI credits: the Code Quality merge gate (`code_quality` at errors) and Copilot code review on drafts and pushes (`copilot_code_review`). The owner approved this while the Resnovas Actions and AI-credit budgets are held at USD 0 with hard stop. [EVE-248](https://linear.app/resnovas/issue/EVE-248) tracks restoring them once budgets are approved.
+
+Presets are locked, so the exception uses the house mechanism in `Resnovas/.github` [docs/preset.md#base](https://github.com/Resnovas/.github/blob/main/docs/preset.md#base): `smartcloud/house-base.yml` holds every house value except those two gates, and `smartcloud/house.yml` extends it and adds them. In `.github/smartcloud.yml`, after the `house:local` line:
+
+```yaml
+sync:
+  values:
+    HOUSE_PRESET: house-base.yml
+settings:
+  ruleset:
+    copilotReview: false
+```
+
+`HOUSE_PRESET` makes the house sync render the managed `extends` line as `house-base.yml`. `codeQuality` has no off value, so it stays unset. `smartcloud plan settings` shows that the ruleset differs from the house ruleset only by those two rules. CodeQL, secret scanning (including push protection), signatures, the merge queue, the required `smartcloud` and `house check` statuses and the administrator `always` bypass are unchanged. The repository's own Code Quality scanning setting and the disabled `Code Quality Copilot review for default branch` ruleset are outside the preset and are not changed.
+
+To end the exception, remove the lines above, point `extends` back at `house.yml`, validate, and read back the ruleset.
+
+## Checkout fix
+
+`actions/checkout` failed in every job that checks out code with `No url found for submodule path 'Examples/cluster-docker' in .gitmodules`. That gitlink was committed in April 2026 without a `.gitmodules` entry, and it is removed. The archived `Examples/eventiva-before-amp/tests` submodule stays declared, inactive and not updated.
 
 ## Owner completion steps
 
