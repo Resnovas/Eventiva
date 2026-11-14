@@ -1,0 +1,25 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "lib": ["es2023"],
+        "resolveJsonModule": true,
+        "outDir": "out-tsc",
+        "tsBuildInfoFile": "out-tsc/tsconfig.tsbuildinfo",
+        "types": []
+    },
+    "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx", "lang/*.json"],
+    "references": [
+        {
+            "path": "../../packages/integrations/posthog-client"
+        },
+        {
+            "path": "../../packages/integrations/openfeature-client"
+        },
+        {
+            "path": "../../packages/contracts"
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.openfeature.server-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/integrations.openfeature.server": "workspace:*",
+        "@eventiva/contracts": "workspace:*",
+        "@openfeature/server-sdk": "1.23.0"
+    }
+}

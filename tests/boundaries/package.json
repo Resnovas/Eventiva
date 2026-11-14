@@ -1,0 +1,15 @@
+{
+    "name": "@eventiva/boundaries-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/schema": "workspace:*",
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/integrations.openfeature.client": "workspace:*",
+        "@effect/platform-node": "0.108.4",
+        "@effect/cluster": "0.60.5",
+        "posthog-node": "5.63.1"
+    }
+}

@@ -4,9 +4,9 @@
 
 Eventiva extends `Resnovas/.github/smartcloud/house-base.yml@main` through `.github/smartcloud.yml`, under the temporary exception in [AI-credit gate exception](#ai-credit-gate-exception); every other house repository extends `house.yml`, which is the base plus those gates. On 2026-11-11 the enrollment was prepared against Eventiva main `5809bd2ec3c364eac89e4266bd8a476a6523192e`, after EVE-242, using house source `0af11afe1165c942622a311cf1f2ee1baba745ed` and Smartcloud source `61eedd655f31d7e1f511f85bbb6621ab6454d465`. Future synchronization follows the current house `main`, not those audit revisions.
 
-The house preset supplies governance, policies, skills, prompts, MCP sources, dev surfaces, issue forms, Dependabot, review configuration, shared tools and ten workflows. Existing `house:local` sections remain repository-owned. Node is pinned to 24.22.2 for the house tools; pnpm remains 9.14.2, with no application dependencies added.
+The house preset supplies governance, policies, skills, prompts, MCP sources, dev surfaces, issue forms, Dependabot, review configuration, shared tools and ten workflows. Existing `house:local` sections remain repository-owned. Enrollment pinned Node 24.22.2 and pnpm 9.14.2 with no application dependencies; EVE-244 later moved them to Node 24.22.3 and pnpm 12.18.0 for the application foundation.
 
-No Nx/Expo/React Native/Effect application foundation, application tests, coverage, deployment environment or release configuration is created here. That remains EVE-244. Release and nightly workflows skip without `release.config.json`. Generic Test actions remain unavailable rather than calling placeholder tests. Graphify, CodeQL and licence checking exclude `Examples/`; the archived private tests gitlink is not initialized.
+Enrollment created no Nx/Expo/React Native/Effect application foundation, application tests, coverage, deployment environment or release configuration; EVE-244 added the foundation and its tests (see [the foundation guide](foundation.md)), still with no deployment environment or release configuration. Release and nightly workflows skip without `release.config.json`. Generic Test actions remain unavailable rather than calling placeholder tests. Graphify, CodeQL and licence checking exclude `Examples/`; the archived private tests gitlink is not initialized.
 
 ## Dry-run effects
 
@@ -112,4 +112,4 @@ node --run setup
 node --run check
 ```
 
-The `house check` job runs `node --run check` on pushes, PRs, merge groups, scheduled and manual runs. Its token is read-only, checkout credentials are not persisted, and it installs no dependencies. Application builds/tests and coverage are absent, not passing. Gate output must be reported separately from the unresolved administration and runtime synchronization checks.
+The `house check` job runs `node --run check` on pushes, PRs, merge groups, scheduled and manual runs. Its token is read-only, checkout credentials are not persisted, and it installs no dependencies. Since EVE-244, `.github/workflows/ci.yml` runs the application lint, typecheck, test, build and smoke targets; its `application check` aggregate is required next to `house check` in `.github/smartcloud.yml`. Gate output must be reported separately from the unresolved administration and runtime synchronization checks.

@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/runtime-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/schema": "workspace:*"
+    }
+}

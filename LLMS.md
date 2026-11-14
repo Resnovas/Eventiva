@@ -136,9 +136,9 @@ documentation in the same commit:
 
 ## Eventiva enrollment and reset boundary
 
-The production package tree is empty after EVE-242. EVE-243 enrolls the house preset through `.github/smartcloud.yml`; EVE-244 alone owns the replacement Nx/PNPM/Expo/React Native/Effect application and fresh tests. No application test, coverage, deployment or release target is supplied by enrollment. Generic house Test actions are unavailable until EVE-244; never add a passing placeholder.
+EVE-243 enrolls the house preset through `.github/smartcloud.yml`. Enrollment supplies no application test, coverage, deployment or release target; the EVE-244 foundation (section 11) supplies the application and its tests. Never add a passing placeholder.
 
-Run `pnpm install --frozen-lockfile`, `node --run setup` and `node --run check` with Node from `.node-version` and pnpm from `package.json`. Check validates agent-file drift, local commit-hook installation, licence headers outside `Examples/` and generated `LLMS.md`. CI's `house check` job runs the same gate without a commit hook. Regenerate agent mirrors with `node tools/dev/surfaces.mjs sync` and this document with `node tools/ai-docs/docgen.mjs`.
+Run `pnpm install --frozen-lockfile`, `node --run setup` and `node --run check` with Node from `.node-version` and pnpm from `package.json`. Check validates toolchain pins, agent-file drift, local commit-hook installation, licence headers outside `Examples/` and generated `LLMS.md`. CI's `house check` job runs the same gate without a commit hook. Regenerate agent mirrors with `node tools/dev/surfaces.mjs sync` and this document with `node tools/ai-docs/docgen.mjs`.
 
 Read `docs/smartcloud-enrollment.md` for sources, the pre-apply dry-run effects, supported CLI route, idempotence checks and the external administration blocker. Published Smartcloud 2.0.0 is not usable; the documented source build at `61eedd655f31d7e1f511f85bbb6621ab6454d465` starts and runs validate, plan, dry-run and local sync. CLI sync merges against remote default-branch files, not a dirty local tree. Preview first.
 
@@ -148,4 +148,54 @@ Preserve all `house:local` content. Coding agents deliver straight to `main` und
 
 Canonical governance is Markdown, with AsciiDoc compatibility links. Canonical owners/funding live in `.github/`. `Examples/` is historical reference only, excluded from workspace discovery, Graphify, CodeQL and licence checking. Never initialize its private tests gitlink during setup, run its old active checks or treat it as an implementation baseline.
 
-No runtime behavior or feature flag is introduced: this is repository governance and CI configuration, not an application or library API. There are no TypeScript API examples to compile until EVE-244 establishes the application toolchain.
+Enrollment introduces no runtime behavior or feature flag: it is repository governance and CI configuration. Application APIs and examples are in section 11.
+
+---
+
+## Eventiva application foundation (EVE-244)
+
+Workspace: PNPM 12.18.0, Nx 24.0.5 (`neverConnectToCloud`), TypeScript 6.0.3 (nodenext, strict, `exactOptionalPropertyTypes`, custom condition `@eventiva/source` resolving workspace packages to `src/*.ts`), Effect 3.22.4 from the pnpm catalog. Projects:
+
+- `packages/contracts` (`@eventiva/contracts`; `type:core layer:shared capability:contracts`): `./action` (`define`, `ActionSpec`, `Input`, `Output`, `Failure`, `wireName`), `./errors` (`Schema.TaggedError` platform errors), `./flags` (`Flags` tag, `FlagSource` precedence, `safeDefault`), `./i18n` (`I18n` tag, `MessageKey`, `TerminologyPack`, `canonicalLocale`), `./telemetry` (OTel attribute and span names only; no exporter).
+- `packages/schema` (`@eventiva/schema`; `type:shared`): `./manifest` (`ModuleManifest`, format 1).
+- `packages/runtime` (`@eventiva/runtime`; `type:runtime layer:backend`): `./action` (`implement`), `./host` (`ActionHost`, `ActionHostLive`, `ServerModule`, `DuplicateAction`, `InvalidModule`). Registration is scoped and all-or-nothing; `invoke` gates the flag, decodes input, runs the handler and encodes the output or typed error inside span `action.<name>`.
+- `packages/integrations/{formatjs,openfeature-server,openfeature-client,posthog-server,posthog-client}` (`type:integration`): the only places that import vendor SDKs. PostHog connects only when a key is configured and sends no analytics or flag-called events.
+- `apps/server`, `apps/client` (Expo 56, Hermes; `index.ts` loads `src/polyfills.ts` first), `apps/client-e2e` (Playwright web smoke), `tests/*` (Vitest 4 with `@effect/vitest`, 90% coverage thresholds, and the `boundaries` rule tests).
+
+Rules: subpath exports only, no root barrel, no `export *`, `"sideEffects": false`. A specification never imports runtime code; a handler is registered only through `ActionHost`. Boundaries come from Nx tags in `eslint.config.mjs`: `core`/`shared` import only `effect` externally, `frontend` and `shared` never import `backend` or server-only packages, capabilities stay acyclic. Every flag has a safe default. Only dependencies in the EVE-244 approval matrix, at exact versions.
+
+Gates: `node --run check`; `pnpm nx sync:check`; `pnpm nx run-many -t lint typecheck test build`; `pnpm nx run-many -t smoke` (server start, `client:i18n`, Android export with Hermes bytecode, web export plus Playwright). `node --run verify` runs all of them. CI's required `application check` aggregates `.github/workflows/ci.yml`.
+
+Example, compiled as `apps/server/src/status.ts`: a portable specification and the backend module that implements it.
+
+```ts
+import { define } from '@eventiva/contracts/action';
+import { implement } from '@eventiva/runtime/action';
+import type { ServerModule } from '@eventiva/runtime/host';
+import { Effect, Schema } from 'effect';
+
+export const Status = define('platform.status', {
+    version: 1,
+    description: 'Report the running Eventiva runtime and its registered actions. Reads nothing else.',
+    input: Schema.Struct({}),
+    output: Schema.Struct({ runtime: Schema.Literal('eventiva'), actions: Schema.Array(Schema.String) }),
+    sideEffect: 'read',
+    offline: 'local',
+});
+
+export const platformModule = (actions: Effect.Effect<ReadonlyArray<string>>): ServerModule => ({
+    manifest: {
+        format: 1,
+        id: 'platform',
+        version: '0.0.1',
+        description: 'Built-in platform status.',
+        actions: [Status.name],
+        flags: [],
+    },
+    actions: [implement(Status, () => Effect.map(actions, (names) => ({ runtime: 'eventiva' as const, actions: names })))],
+});
+```
+
+Run it with `host.register(platformModule(host.actions))` inside `Effect.scoped`, then `host.invoke('platform.status', {})`, as `apps/server/src/main.ts` does.
+
+Feature flags: this foundation adds the flag plumbing and one client flag, `client.shell.offline-banner` (safe default `false`). It adds no product behaviour to gate.

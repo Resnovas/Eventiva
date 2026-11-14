@@ -1,6 +1,6 @@
 # Eventiva
 
-Eventiva is an open-source platform for event planning and production logistics. **The production workspace is intentionally empty following the full reset in [EVE-242](https://linear.app/resnovas/issue/EVE-242).** There is currently no application, Nx workspace, build, test suite or coverage gate. House governance, security and synchronization workflows are enrolled under [EVE-243](https://linear.app/resnovas/issue/EVE-243); release workflows remain inert without a release configuration.
+Eventiva is an open-source platform for event planning and production logistics. After the full reset in [EVE-242](https://linear.app/resnovas/issue/EVE-242), the repository holds the fresh application foundation from [EVE-244](https://linear.app/resnovas/issue/EVE-244): a PNPM and Nx workspace with an Effect backend shell, an Expo client and the `@eventiva/contracts`, `@eventiva/schema` and `@eventiva/runtime` packages, with tests and smoke runs. **It has no product features yet.** Read [the foundation guide](docs/foundation.md). House governance, security and synchronization workflows are enrolled under [EVE-243](https://linear.app/resnovas/issue/EVE-243); release workflows remain inert without a release configuration.
 
 The sections from here to [Rebuild order](#rebuild-order) restore the project introduction and mission from the [historical README](Examples/eventiva-before-amp/README.adoc). They describe what Eventiva sets out to become. **None of the features they name is implemented in this repository today.**
 
@@ -39,28 +39,30 @@ The archived snapshots described under [Historical reference](#historical-refere
 
 ## Rebuild order
 
-1. Accept the EVE-242 archive and clean repository.
-2. Complete [EVE-243](https://linear.app/resnovas/issue/EVE-243): full Smartcloud enrollment and current house-generated governance, guidance, workflows and repository configuration.
-3. Complete [EVE-244](https://linear.app/resnovas/issue/EVE-244): fresh Nx/PNPM/Expo/React Native/Effect workspace and testing foundation.
+1. Accept the EVE-242 archive and clean repository (done).
+2. Complete [EVE-243](https://linear.app/resnovas/issue/EVE-243): full Smartcloud enrollment and current house-generated governance, guidance, workflows and repository configuration (done).
+3. Complete [EVE-244](https://linear.app/resnovas/issue/EVE-244): fresh Nx/PNPM/Expo/React Native/Effect workspace and testing foundation (this foundation, pending acceptance).
 4. Resume implementation issues, including EVE-23, against that accepted foundation and [EVE-13](https://linear.app/resnovas/issue/EVE-13).
 
 ## Set up the repository
 
-Use Node at the version in [`.node-version`](.node-version) and pnpm at the `packageManager` version in [`package.json`](package.json). The root manifest has no application or development dependencies.
+Use Node at the version in [`.node-version`](.node-version) and pnpm at the `packageManager` version in [`package.json`](package.json); `corepack enable pnpm` selects it.
 
 ```sh
 pnpm install --frozen-lockfile
 node --run setup
 node --run check
+pnpm exec playwright install --with-deps chromium
+node --run verify
 ```
 
-`setup` installs the house commit hook and registers available editor actions. `check` verifies generated agent files, licence headers outside the historical archive, and `LLMS.md`; locally it also checks that the commit hook is installed. The `house check` CI job runs the same command. It is **not** a build, application test or coverage result. The old checks were retired by the explicit full-reset decision, not made green by ignoring failures. `scripts/agent-setup` runs the three commands above on a machine with the pinned toolchain. No secrets, services or private repository access are required for local setup.
+`setup` installs the house commit hook and registers available editor actions. `check` is the house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current; locally it also checks that the commit hook is installed. `verify` runs `check`, then the Nx `lint`, `typecheck`, `test` and `build` targets, then the `smoke` targets. The `house check` and `application check` CI jobs run the same gates. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required.
 
-`pnpm-workspace.yaml` selects only the root manifest and explicitly excludes `Examples/**`; without this isolation guard, recursive pnpm commands can discover archived manifests. Verify with `pnpm list -r --depth -1 --json`, which must list only the root repository.
+`pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `Examples/**` so recursive commands never discover the archived manifests.
 
-Amp orbs use [`.agents/setup`](.agents/setup) to provision the pinned toolchain and run repository setup, and [`.agents/resume`](.agents/resume) for a fast readiness check. There is no development server or docs server to start. Old `pnpm dev`, `platform:*`, cluster, test and declaration-doc commands are unavailable until replacement work defines them.
+Amp orbs use [`.agents/setup`](.agents/setup) to provision the pinned toolchain, dependencies and Chromium, and [`.agents/resume`](.agents/resume) for a fast readiness check. There is no development server to start. Old `pnpm dev`, `platform:*`, cluster and declaration-doc commands from the archive do not exist here.
 
-If `check` reports stale generated files, run `node tools/dev/surfaces.mjs sync` and `node tools/ai-docs/docgen.mjs`, then repeat the check. Missing Nx or application targets are expected during this reset; do not install or activate the historical workspace to repair them. The generic house Test action has no application target until EVE-244. To open the graph viewer, first generate it with `sh tools/graphify/graphify update`.
+If `check` reports stale generated files, run `node tools/dev/surfaces.mjs sync` and `node tools/ai-docs/docgen.mjs`, then repeat the check. To open the graph viewer, first generate it with `sh tools/graphify/graphify update`.
 
 ## House synchronization and delivery
 
@@ -77,4 +79,4 @@ The Markdown governance files and `LICENSE` are canonical. Root AsciiDoc policy 
 
 Inspect both for behaviour and lessons, not as code to copy into the new implementation. Neither is an active workspace or production dependency. The archived private tests gitlink is preserved at its original revision and disabled for automatic submodule updates; no private test source was fetched or deleted.
 
-Read current [AGENTS.md](AGENTS.md) before working. Historical instructions, commands and configuration inside the archives do not govern the rebuild. The fresh application workspace remains EVE-244's responsibility.
+Read current [AGENTS.md](AGENTS.md) before working. Historical instructions, commands and configuration inside the archives do not govern the rebuild. The application workspace is the EVE-244 foundation described in [docs/foundation.md](docs/foundation.md).

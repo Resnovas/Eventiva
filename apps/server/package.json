@@ -1,0 +1,24 @@
+{
+    "name": "@eventiva/server",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The Eventiva backend composition root: the only place that chooses platform layers and providers.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "dependencies": {
+        "@effect/cluster": "0.60.5",
+        "@effect/experimental": "0.61.2",
+        "@effect/platform": "0.97.3",
+        "@effect/platform-node": "0.108.4",
+        "@effect/rpc": "0.76.4",
+        "@effect/sql": "0.52.2",
+        "@effect/workflow": "0.19.1",
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/integrations.formatjs": "workspace:*",
+        "@eventiva/integrations.openfeature.server": "workspace:*",
+        "@eventiva/integrations.posthog.server": "workspace:*",
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/schema": "workspace:*",
+        "effect": "catalog:"
+    }
+}

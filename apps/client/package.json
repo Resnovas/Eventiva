@@ -1,0 +1,41 @@
+{
+    "name": "@eventiva/client",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The Eventiva Expo client shell for native (Hermes) and web.",
+    "license": "SEE LICENSE IN LICENSE",
+    "main": "index.ts",
+    "dependencies": {
+        "@babel/runtime": "7.29.13",
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/integrations.openfeature.client": "workspace:*",
+        "@eventiva/integrations.posthog.client": "workspace:*",
+        "@expo/metro": "56.0.2",
+        "@expo/metro-runtime": "56.0.21",
+        "@formatjs/intl-getcanonicallocales": "3.3.0",
+        "@formatjs/intl-locale": "5.4.2",
+        "@formatjs/intl-pluralrules": "7.0.2",
+        "@openfeature/core": "1.12.0",
+        "@openfeature/react-sdk": "1.4.1",
+        "@openfeature/web-sdk": "1.10.0",
+        "@react-native-async-storage/async-storage": "2.2.0",
+        "effect": "catalog:",
+        "expo": "56.0.24",
+        "expo-localization": "56.0.6",
+        "expo-splash-screen": "56.0.16",
+        "expo-status-bar": "56.0.4",
+        "expo-system-ui": "56.0.5",
+        "posthog-react-native": "4.85.3",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "react-intl": "12.1.6",
+        "react-native": "0.85.3",
+        "react-native-web": "0.21.4"
+    },
+    "devDependencies": {
+        "@babel/core": "7.29.13",
+        "@expo/cli": "56.1.27",
+        "@types/react": "19.2.18",
+        "babel-preset-expo": "56.0.21"
+    }
+}

@@ -1,7 +1,12 @@
 # Production packages
 
-Intentionally empty after [EVE-242](https://linear.app/resnovas/issue/EVE-242).
+The platform packages from [EVE-244](https://linear.app/resnovas/issue/EVE-244):
 
-Complete [EVE-243](https://linear.app/resnovas/issue/EVE-243) (Smartcloud enrollment), then [EVE-244](https://linear.app/resnovas/issue/EVE-244) (fresh workspace and testing foundation) before rebuilding production packages. Follow [EVE-13](https://linear.app/resnovas/issue/EVE-13) and the current [AGENTS.md](../AGENTS.md).
+- `contracts`: `@eventiva/contracts`, portable action specifications, platform errors, flag, i18n and telemetry contracts.
+- `schema`: `@eventiva/schema`, the module manifest schema.
+- `runtime`: `@eventiva/runtime`, handler registration and the action host.
+- `integrations/*`: vendor integrations (FormatJS, OpenFeature, PostHog) behind the contracts.
 
-The two snapshots under [Examples](../Examples) are historical reference only, not implementation baselines. No package, runtime, test generator or replacement architecture is scaffolded here.
+Each package exports subpaths only, has no root barrel and sets `"sideEffects": false`. Tests live under [`tests/`](../tests). Read [the foundation guide](../docs/foundation.md) for boundaries, targets and an example, and follow [EVE-13](https://linear.app/resnovas/issue/EVE-13) and the current [AGENTS.md](../AGENTS.md).
+
+The two snapshots under [Examples](../Examples) are historical reference only, not implementation baselines.

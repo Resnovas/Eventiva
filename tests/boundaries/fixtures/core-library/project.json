@@ -1,0 +1,8 @@
+{
+    "name": "@eventiva/fixture-core-library",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/boundaries/fixtures/core-library/src",
+    "tags": ["type:core", "layer:shared", "capability:contracts"],
+    "targets": {}
+}

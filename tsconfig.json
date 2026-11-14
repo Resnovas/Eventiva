@@ -1,0 +1,37 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compileOnSave": false,
+    "files": [],
+    "references": [
+        {
+            "path": "./packages/contracts"
+        },
+        {
+            "path": "./packages/schema"
+        },
+        {
+            "path": "./packages/runtime"
+        },
+        {
+            "path": "./packages/integrations/openfeature-server"
+        },
+        {
+            "path": "./packages/integrations/openfeature-client"
+        },
+        {
+            "path": "./packages/integrations/posthog-server"
+        },
+        {
+            "path": "./packages/integrations/posthog-client"
+        },
+        {
+            "path": "./packages/integrations/formatjs"
+        },
+        {
+            "path": "./apps/server"
+        },
+        {
+            "path": "./apps/client"
+        }
+    ]
+}

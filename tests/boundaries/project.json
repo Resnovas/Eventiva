@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/boundaries-tests",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/boundaries/src",
+    "tags": [
+        "type:test",
+        "layer:backend",
+        "capability:test"
+    ]
+}

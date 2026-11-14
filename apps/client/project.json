@@ -1,0 +1,62 @@
+{
+    "name": "@eventiva/client",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "application",
+    "sourceRoot": "apps/client/src",
+    "tags": [
+        "type:platform",
+        "layer:frontend",
+        "capability:app"
+    ],
+    "targets": {
+        "i18n": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "inputs": [
+                "{projectRoot}/src/**/*",
+                "{projectRoot}/lang/*"
+            ],
+            "options": {
+                "cwd": "apps/client",
+                "command": "formatjs extract 'src/**/*.tsx' --format simple --out-file test-output/en-GB.json && formatjs verify --source-locale en-GB --structural-equality test-output/en-GB.json lang/en-GB.json && node -e \"const a=require('./test-output/en-GB.json'),b=require('./lang/en-GB.json');if(JSON.stringify(a,Object.keys(a).sort())!==JSON.stringify(b,Object.keys(b).sort()))throw new Error('lang/en-GB.json is stale: run formatjs extract')\""
+            }
+        },
+        "export-web": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "inputs": [
+                "default",
+                "^production"
+            ],
+            "outputs": [
+                "{projectRoot}/dist/web"
+            ],
+            "options": {
+                "cwd": "apps/client",
+                "command": "expo export --platform web --output-dir dist/web --clear"
+            }
+        },
+        "export-android": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "inputs": [
+                "default",
+                "^production"
+            ],
+            "outputs": [
+                "{projectRoot}/dist/android"
+            ],
+            "options": {
+                "cwd": "apps/client",
+                "command": "expo export --platform android --output-dir dist/android --clear && node -e \"const fs=require('fs'),p=require('path');const d='dist/android/_expo/static/js/android';const f=fs.readdirSync(d).filter(n=>n.endsWith('.hbc'));if(f.length===0)throw new Error('no Hermes bytecode in '+d);console.log('Hermes bytecode:',f.map(n=>n+' '+fs.statSync(p.join(d,n)).size+' bytes').join(', '))\""
+            }
+        },
+        "smoke": {
+            "executor": "nx:noop",
+            "dependsOn": [
+                "export-android",
+                "i18n"
+            ]
+        }
+    }
+}

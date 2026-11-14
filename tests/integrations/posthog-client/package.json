@@ -1,0 +1,10 @@
+{
+    "name": "@eventiva/integrations.posthog.client-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/integrations.posthog.client": "workspace:*",
+        "@openfeature/web-sdk": "1.10.0"
+    }
+}

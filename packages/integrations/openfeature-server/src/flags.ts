@@ -1,0 +1,124 @@
+/**
+ * @file packages/integrations/openfeature-server/src/flags.ts
+ *
+ * Copyright 2026 Jonathan Stevens trading as Resnovas. All rights reserved.
+ * Licensed under the Fair Core License, Version 1.0, MIT Future License
+ * (FCL-1.0-MIT); see LICENSE. You may not move, change, disable or circumvent
+ * the licence key functionality, or modify any part of the software that the
+ * licence key protects.
+ *
+ * Contributions are made under the Developer Certificate of Origin (DCO.md) and
+ * the Contributing Guidelines (CONTRIBUTING.md), subject to the Code of Conduct
+ * (CODE_OF_CONDUCT.md) and the Cooperation Commitment (COOPERATION_COMMITMENT.md).
+ *
+ * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
+ */
+
+import {
+    type EvaluationContext as FlagContext,
+    type Flag,
+    Flags,
+    type FlagSource,
+    byPrecedence,
+    safeDefault,
+} from '@eventiva/contracts/flags';
+import {
+    FirstMatchStrategy,
+    InMemoryProvider,
+    MultiProvider,
+    NOOP_PROVIDER,
+    OpenFeature,
+    type Provider,
+} from '@openfeature/server-sdk';
+import { Data, Effect, Layer } from 'effect';
+
+/**
+ * The `Flags` service on the OpenFeature server SDK. Providers are ordered by
+ * Eventiva's source precedence and combined with a first-match multi-provider,
+ * so a higher source (an emergency policy, say) always wins over a lower one
+ * (a remote rollout). A flag no provider knows resolves to its safe default.
+ */
+
+/** An OpenFeature call failed; flags fall back to safe defaults. */
+export class FlagProviderError extends Data.TaggedError('FlagProviderError')<{ readonly cause: unknown }> {}
+
+/** An OpenFeature provider tagged with the precedence source it speaks for. */
+export interface SourcedProvider {
+    readonly source: FlagSource;
+    readonly provider: Provider;
+}
+
+/** A static provider for fixed values, such as the Git-managed baseline. */
+export const staticValues = (values: Readonly<Record<string, boolean>>): Provider =>
+    new InMemoryProvider(
+        Object.fromEntries(
+            Object.entries(values).map(([key, value]) => [
+                key,
+                { variants: { on: true, off: false }, defaultVariant: value ? 'on' : 'off', disabled: false },
+            ])
+        )
+    );
+
+const toOpenFeature = (context: FlagContext | undefined) => ({
+    ...context?.attributes,
+    ...(context?.targetingKey === undefined ? {} : { targetingKey: context.targetingKey }),
+});
+
+/**
+ * A `Flags` layer over the given providers, bound to an OpenFeature domain for
+ * the layer's lifetime. Closing the layer unbinds the domain and closes the providers.
+ */
+export const layer = (
+    providers: ReadonlyArray<SourcedProvider>,
+    options: { readonly domain?: string } = {}
+): Layer.Layer<Flags> =>
+    Layer.scoped(
+        Flags,
+        Effect.gen(function* () {
+            const domain = options.domain ?? 'eventiva';
+            const multi = new MultiProvider(
+                byPrecedence(providers).map(({ source, provider }, index) => ({
+                    provider,
+                    name: `${source}-${index}`,
+                })),
+                new FirstMatchStrategy()
+            );
+            // A provider that fails to start stays bound in OpenFeature's recoverable
+            // ERROR state: it answers for what it knows and everything else falls back.
+            yield* Effect.acquireRelease(
+                Effect.tryPromise({
+                    // effect-boundary: OpenFeature binds providers through a promise.
+                    try: () => OpenFeature.setProviderAndWait(domain, multi),
+                    catch: (cause) => new FlagProviderError({ cause }),
+                }).pipe(
+                    Effect.catchAll((error) =>
+                        Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
+                    )
+                ),
+                () =>
+                    Effect.tryPromise({
+                        // effect-boundary: replacing the provider closes the old one.
+                        try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
+                        catch: (cause) => new FlagProviderError({ cause }),
+                    }).pipe(Effect.ignoreLogged)
+            );
+            const client = OpenFeature.getClient(domain);
+            return Flags.of({
+                evaluate: (flag: Flag, context?: FlagContext) =>
+                    // OpenFeature catches provider failures and resolves with the default and an error code.
+                    Effect.promise(() => client.getBooleanDetails(flag.key, flag.safeDefault, toOpenFeature(context))).pipe(
+                        Effect.map((details) =>
+                            details.errorCode === undefined
+                                ? {
+                                      flag: flag.key,
+                                      value: details.value,
+                                      reason: details.reason ?? 'UNKNOWN',
+                                      fallback: false,
+                                  }
+                                : safeDefault(flag, details.errorCode)
+                        ),
+                        Effect.withSpan('flags.evaluate', { attributes: { 'feature_flag.key': flag.key } })
+                    ),
+            });
+        })
+    );

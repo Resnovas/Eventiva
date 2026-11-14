@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# No application dependencies, services or user authentication are required.
-# Do not reinstall anything on wake.
+# No services or user authentication are required. Do not reinstall anything
+# on wake: .agents/setup installs the toolchain, dependencies and Chromium.
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd -- "$repo_root"
 package_manager="$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).packageManager')"
 if [[ "$(node --version)" != "v$(cat .node-version)" || \
-      "$(pnpm --version)" != "${package_manager#pnpm@}" ]]; then
+      "$(pnpm --version)" != "${package_manager#pnpm@}" || \
+      ! -d node_modules/.pnpm ]]; then
     echo 'Orb toolchain is missing or stale; run .agents/setup.' >&2
     exit 1
 fi
 node --run check
-echo 'Orb repository ready; application foundation pending EVE-244.'
+echo 'Orb repository ready; run node --run verify for the full gate.'

@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/contracts-tests",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/contracts/src",
+    "tags": [
+        "type:test",
+        "layer:shared",
+        "capability:test"
+    ]
+}

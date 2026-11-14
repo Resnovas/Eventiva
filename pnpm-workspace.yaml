@@ -1,4 +1,23 @@
-# Isolation only: no application workspace until EVE-244.
+# Eventiva workspace (EVE-244). Only the fresh projects below are discovered;
+# the historical snapshots under Examples/ are never workspace packages.
 packages:
-  - '.'
-  - '!Examples/**'
+    - 'apps/*'
+    - 'packages/*'
+    - 'packages/integrations/*'
+    - 'tests/*'
+    - 'tests/integrations/*'
+    - '!Examples/**'
+
+# Supply chain: a version is installable only once it is seven days old, the
+# same cooldown as Dependabot, and only the build scripts listed here run.
+minimumReleaseAge: 10080
+
+allowBuilds:
+    nx: true
+    # Optional native accelerators: unused here (no file watching, no MessagePack), so denied.
+    '@parcel/watcher': false
+    msgpackr-extract: false
+
+# One copy of effect for every project: two copies break Context and Schema identity.
+catalog:
+    effect: 3.22.4

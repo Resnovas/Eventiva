@@ -1,0 +1,106 @@
+# Application checks for the EVE-244 foundation, as parallel jobs: verify runs
+# the Nx lint, typecheck, test and build targets, and smoke runs the server
+# start, the i18n catalogue check, the Android Hermes export and the
+# Playwright web smoke. The application check job waits for both and is the
+# one context the ruleset requires (.github/smartcloud.yml), so adding a job
+# never touches the ruleset. Nx runs locally only: no Nx Cloud, no EAS, no
+# deployment and no PostHog ingestion.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+# Each job asks for the access it needs; the workflow grants none.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NX_NO_CLOUD: 'true'
+  NX_DAEMON: 'false'
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Nx replays a task only when its input hash matches; a pull request's
+      # entries stay on its own ref, so they never reach main.
+      - name: Restore the Nx cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}-ci-verify
+          restore-keys: |
+            nx-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Project references are in sync
+        run: pnpm nx sync:check
+
+      - name: Lint, typecheck, test and build
+        run: pnpm nx run-many -t lint typecheck test build --outputStyle=static
+
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke
+        run: pnpm nx run-many -t smoke --outputStyle=static --skip-nx-cache
+
+  # The required context. It runs even when a job above fails or is cancelled,
+  # and passes only when every job succeeded.
+  application-check:
+    name: application check
+    needs: [verify, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          failed=$(jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"' <<<"$RESULTS")
+          if [ -n "$failed" ]; then echo "::error::Not every CI job passed:"; echo "$failed"; exit 1; fi

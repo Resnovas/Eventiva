@@ -1,0 +1,9 @@
+{
+    "name": "@eventiva/contracts-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*"
+    }
+}

@@ -1,0 +1,32 @@
+{
+    "name": "@eventiva/runtime",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The backend action runtime: Effect handlers registered against portable action specifications, with scoped module registration.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./action": {
+            "@eventiva/source": "./src/action.ts",
+            "types": "./dist/action.d.ts",
+            "default": "./dist/action.js"
+        },
+        "./host": {
+            "@eventiva/source": "./src/host.ts",
+            "types": "./dist/host.d.ts",
+            "default": "./dist/host.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/schema": "workspace:*"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

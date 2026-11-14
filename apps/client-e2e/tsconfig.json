@@ -1,0 +1,16 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "composite": false,
+        "emitDeclarationOnly": false,
+        "lib": ["es2023", "dom"],
+        "types": ["node"]
+    },
+    "include": ["src/**/*.ts", "playwright.config.mts"],
+    "references": [
+        {
+            "path": "../client"
+        }
+    ]
+}

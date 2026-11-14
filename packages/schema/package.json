@@ -1,0 +1,26 @@
+{
+    "name": "@eventiva/schema",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Portable, Drizzle-neutral Eventiva schema declarations, starting with dynamic module manifests.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./manifest": {
+            "@eventiva/source": "./src/manifest.ts",
+            "types": "./dist/manifest.d.ts",
+            "default": "./dist/manifest.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "name": "@eventiva/integrations.posthog.client",
+    "version": "0.0.1",
+    "private": true,
+    "description": "An OpenFeature provider over posthog-react-native, which PostHog does not ship. Nothing is sent until credentials are configured.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./flags": {
+            "@eventiva/source": "./src/flags.ts",
+            "types": "./dist/flags.d.ts",
+            "default": "./dist/flags.js"
+        },
+        "./connect": {
+            "@eventiva/source": "./src/connect.ts",
+            "types": "./dist/connect.d.ts",
+            "default": "./dist/connect.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@openfeature/core": "1.12.0",
+        "@openfeature/web-sdk": "1.10.0",
+        "posthog-react-native": "4.85.3"
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "name": "@eventiva/server",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "application",
+    "sourceRoot": "apps/server/src",
+    "tags": ["type:platform", "layer:backend", "capability:app"],
+    "targets": {
+        "smoke": {
+            "executor": "nx:run-commands",
+            "dependsOn": ["build", "^build"],
+            "options": { "command": "node apps/server/dist/main.js" }
+        }
+    }
+}

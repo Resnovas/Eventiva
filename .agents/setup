@@ -40,11 +40,16 @@ if [[ "$(node --version 2>/dev/null || true)" != "v${node_version}" ]]; then
 fi
 package_manager="$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).packageManager')"
 if [[ "$(pnpm --version 2>/dev/null || true)" != "${package_manager#pnpm@}" ]]; then
-    sudo npm install --global "$package_manager"
+    # Corepack ships with Node 24 and reads packageManager from package.json.
+    sudo corepack enable pnpm
+    corepack prepare "$package_manager" --activate
+    hash -r
 fi
 node --version
 pnpm --version
 
-echo "[${SECONDS}s] Preparing the dependency-free repository"
+echo "[${SECONDS}s] Installing dependencies and checking the repository"
 sh scripts/agent-setup
-echo "[${SECONDS}s] Orb setup ready (no application runtime or tests configured)"
+echo "[${SECONDS}s] Installing Chromium for the web smoke test"
+pnpm exec playwright install --with-deps chromium
+echo "[${SECONDS}s] Orb setup ready"

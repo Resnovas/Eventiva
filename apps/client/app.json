@@ -1,0 +1,28 @@
+{
+    "expo": {
+        "name": "Eventiva",
+        "slug": "eventiva",
+        "version": "0.0.1",
+        "orientation": "portrait",
+        "icon": "./assets/images/icon.png",
+        "scheme": "eventiva",
+        "userInterfaceStyle": "automatic",
+        "ios": { "supportsTablet": true, "bundleIdentifier": "com.resnovas.eventiva" },
+        "android": {
+            "package": "com.resnovas.eventiva",
+            "adaptiveIcon": { "foregroundImage": "./assets/images/adaptive-icon.png", "backgroundColor": "#ffffff" }
+        },
+        "web": { "bundler": "metro", "output": "single", "favicon": "./assets/images/favicon.png" },
+        "plugins": [
+            [
+                "expo-splash-screen",
+                {
+                    "image": "./assets/images/splash-icon.png",
+                    "imageWidth": 200,
+                    "resizeMode": "contain",
+                    "backgroundColor": "#ffffff"
+                }
+            ]
+        ]
+    }
+}

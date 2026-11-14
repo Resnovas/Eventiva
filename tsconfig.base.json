@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+        "composite": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "emitDeclarationOnly": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "erasableSyntaxOnly": true,
+        "allowImportingTsExtensions": true,
+        "rewriteRelativeImportExtensions": true,
+        "lib": ["es2023"],
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "target": "es2023",
+        "noEmitOnError": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "customConditions": ["@eventiva/source"],
+        "types": [],
+        "plugins": [
+            {
+                "name": "@effect/language-service",
+                "includeSuggestionsInTsc": false
+            }
+        ]
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "name": "@eventiva/integrations.formatjs",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The Eventiva I18n service on @formatjs/intl: ICU messages from offline catalogues, portable to Hermes, browsers and Node.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./i18n": {
+            "@eventiva/source": "./src/i18n.ts",
+            "types": "./dist/i18n.d.ts",
+            "default": "./dist/i18n.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@formatjs/intl": "6.1.4"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

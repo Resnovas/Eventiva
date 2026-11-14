@@ -1,0 +1,29 @@
+{
+    "name": "@eventiva/integrations.posthog.server",
+    "version": "0.0.1",
+    "private": true,
+    "description": "PostHog as an OpenFeature provider for the server. Nothing is sent until credentials are configured.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./flags": {
+            "@eventiva/source": "./src/flags.ts",
+            "types": "./dist/flags.d.ts",
+            "default": "./dist/flags.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@openfeature/core": "1.12.0",
+        "@openfeature/server-sdk": "1.23.0",
+        "@posthog/openfeature-node-provider": "0.1.3",
+        "posthog-node": "5.63.1"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

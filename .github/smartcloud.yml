@@ -23,7 +23,7 @@ extends:
 # repository administrators an always-bypass, including the PR and queue rules.
 # Do not replace it with a PR-only bypass or require agent-authored PRs.
 # House sync and Graphify bot proposals are not coding-agent delivery.
-# No deployment environments or application targets until EVE-244.
+# No deployment environments: EVE-244 adds application checks, not deployments.
 
 # Temporary owner-approved exception (EVE-243, revisit in EVE-248): extend
 # the house base preset, which is house.yml without the two default branch
@@ -38,12 +38,14 @@ sync:
   values:
     HOUSE_PRESET: house-base.yml
 
-# Require the real house gate even when a restricted PR skips aggregation.
+# Require the real house gate and the application checks (EVE-244,
+# .github/workflows/ci.yml) even when a restricted PR skips aggregation.
 settings:
   ruleset:
     copilotReview: false
     statusChecks:
       checks:
         house check: true
+        application check: true
 required:
-  expect: [house check]
+  expect: [house check, application check]

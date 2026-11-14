@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.openfeature.server",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/openfeature-server/src",
+    "tags": [
+        "type:integration",
+        "layer:backend",
+        "capability:flags"
+    ]
+}

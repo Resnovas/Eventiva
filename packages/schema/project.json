@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/schema",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "packages/schema/src",
+    "tags": [
+        "type:shared",
+        "layer:shared",
+        "capability:schema"
+    ]
+}

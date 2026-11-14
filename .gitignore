@@ -303,3 +303,8 @@ vitest.config.*.timestamp*
 # Amp-generated portal metadata and review artifacts
 .amp/portals/
 .amp/in/
+
+# EVE-244 foundation: test and smoke output
+test-output
+test-results
+playwright-report

@@ -1,0 +1,28 @@
+{
+    "name": "@eventiva/integrations.openfeature.client",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The Eventiva Flags service on the OpenFeature web SDK (static context), for Expo native and web.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./flags": {
+            "@eventiva/source": "./src/flags.ts",
+            "types": "./dist/flags.d.ts",
+            "default": "./dist/flags.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@openfeature/core": "1.12.0",
+        "@openfeature/web-sdk": "1.10.0"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

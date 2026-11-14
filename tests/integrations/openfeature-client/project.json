@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.openfeature.client-tests",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/integrations/openfeature-client/src",
+    "tags": [
+        "type:test",
+        "layer:frontend",
+        "capability:test"
+    ]
+}

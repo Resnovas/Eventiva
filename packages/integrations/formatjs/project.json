@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.formatjs",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/formatjs/src",
+    "tags": [
+        "type:integration",
+        "layer:shared",
+        "capability:i18n"
+    ]
+}

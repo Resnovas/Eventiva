@@ -1,0 +1,21 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "composite": false,
+        "emitDeclarationOnly": false,
+        "types": ["node"]
+    },
+    "include": ["src/**/*.ts", "vitest.config.mts"],
+    "references": [
+        {
+            "path": "../../packages/schema"
+        },
+        {
+            "path": "../../packages/contracts"
+        },
+        {
+            "path": "../../packages/runtime"
+        }
+    ]
+}

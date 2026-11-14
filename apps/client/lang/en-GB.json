@@ -1,0 +1,5 @@
+{
+    "client.shell.modules": "{count, plural, one {# module installed} other {# modules installed}}",
+    "client.shell.offline-banner": "Changes are saved on this device first.",
+    "client.shell.title": "Eventiva"
+}

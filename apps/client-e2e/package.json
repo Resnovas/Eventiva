@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/client-e2e",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "description": "Playwright smoke test of the exported Expo web client.",
+    "license": "SEE LICENSE IN LICENSE",
+    "devDependencies": {
+        "@eventiva/client": "workspace:*"
+    }
+}

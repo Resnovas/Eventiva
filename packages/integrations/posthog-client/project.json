@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.posthog.client",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/posthog-client/src",
+    "tags": [
+        "type:integration",
+        "layer:frontend",
+        "capability:flags"
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "name": "@eventiva/contracts",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Portable Eventiva contracts: action specifications, platform errors, feature flags, message keys and telemetry names. Depends only on effect.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./action": {
+            "@eventiva/source": "./src/action.ts",
+            "types": "./dist/action.d.ts",
+            "default": "./dist/action.js"
+        },
+        "./errors": {
+            "@eventiva/source": "./src/errors.ts",
+            "types": "./dist/errors.d.ts",
+            "default": "./dist/errors.js"
+        },
+        "./flags": {
+            "@eventiva/source": "./src/flags.ts",
+            "types": "./dist/flags.d.ts",
+            "default": "./dist/flags.js"
+        },
+        "./i18n": {
+            "@eventiva/source": "./src/i18n.ts",
+            "types": "./dist/i18n.d.ts",
+            "default": "./dist/i18n.js"
+        },
+        "./telemetry": {
+            "@eventiva/source": "./src/telemetry.ts",
+            "types": "./dist/telemetry.d.ts",
+            "default": "./dist/telemetry.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {},
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

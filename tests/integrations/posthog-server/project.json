@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.posthog.server-tests",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/integrations/posthog-server/src",
+    "tags": [
+        "type:test",
+        "layer:backend",
+        "capability:test"
+    ]
+}
