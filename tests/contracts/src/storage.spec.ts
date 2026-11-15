@@ -71,7 +71,7 @@ it.effect('typed machine edges reject illegal transitions', () =>
         });
         const typeProof = () => {
             // @ts-expect-error State names are the literal machine vocabulary.
-            transition(machine, 'reservation', 'missing', 'confirmed');
+            return transition(machine, 'reservation', 'missing', 'confirmed');
         };
         expect(typeProof).toBeTypeOf('function');
     })
