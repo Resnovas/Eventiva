@@ -32,6 +32,9 @@
         },
         {
             "path": "./apps/client"
+        },
+        {
+            "path": "./packages/integrations/sql"
         }
     ]
 }

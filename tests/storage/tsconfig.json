@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "composite": false,
+        "emitDeclarationOnly": false,
+        "rewriteRelativeImportExtensions": false,
+        "rootDir": "../..",
+        "types": ["node"]
+    },
+    "include": ["src/**/*.ts", "vitest.config.mts", "../../ai-docs/src/13_storage/**/*.ts"],
+    "references": [
+        { "path": "../../packages/contracts" },
+        { "path": "../../packages/runtime" },
+        { "path": "../../packages/integrations/sql" }
+    ]
+}

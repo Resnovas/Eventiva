@@ -7,6 +7,16 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./storage": {
+            "@eventiva/source": "./src/storage.ts",
+            "types": "./dist/storage.d.ts",
+            "default": "./dist/storage.js"
+        },
+        "./machine": {
+            "@eventiva/source": "./src/machine.ts",
+            "types": "./dist/machine.d.ts",
+            "default": "./dist/machine.js"
+        },
         "./action": {
             "@eventiva/source": "./src/action.ts",
             "types": "./dist/action.d.ts",

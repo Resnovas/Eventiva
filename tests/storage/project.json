@@ -1,0 +1,14 @@
+{
+    "name": "@eventiva/storage-tests",
+    "projectType": "library",
+    "sourceRoot": "tests/storage/src",
+    "tags": ["type:test", "layer:backend", "capability:test"],
+    "targets": {
+        "test": { "cache": false },
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/storage/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        }
+    }
+}

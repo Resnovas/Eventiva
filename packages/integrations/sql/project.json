@@ -1,0 +1,6 @@
+{
+    "name": "@eventiva/integrations.sql",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/sql/src",
+    "tags": ["type:integration", "layer:backend", "capability:storage"]
+}

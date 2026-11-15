@@ -10,7 +10,8 @@ EVE-244 foundation: PNPM 12 and Nx 24 workspace, `apps/server` (Effect, Node), `
 
 - Node from `.node-version` (24.22.3; `.nvmrc`, `.tool-versions` and `engines.node` must agree) and pnpm from `packageManager` in `package.json` (12.18.0, via `corepack enable pnpm`).
 - Chromium for the web smoke: `pnpm exec playwright install --with-deps chromium`.
-- No secrets, environment file, services or private repository access. `POSTHOG_API_KEY` and `EXPO_PUBLIC_POSTHOG_KEY` stay unset; unset means no PostHog connection.
+- Root `check` needs no services, secrets, environment file or private repository access. Full `verify` additionally requires the disposable loopback PostgreSQL 17 fixture in [docs/storage.md](docs/storage.md#run-conformance); never use Neon for that destructive fixture harness.
+- `POSTHOG_API_KEY` and `EXPO_PUBLIC_POSTHOG_KEY` stay unset; unset means no PostHog connection. Live Neon tests require separately authorized synthetic resources and privately injected credentials; they are not part of the default local gate.
 - Network for provisioning: `nodejs.org`, `registry.npmjs.org`, the Playwright CDN, Debian mirrors.
 
 ## Setup and validation
@@ -23,7 +24,7 @@ node --run setup
 node --run check
 ```
 
-Success ends with `agent-setup: ok`. Then run the full gate:
+Success ends with `agent-setup: ok`. Start the pinned disposable PostgreSQL fixture documented in `docs/storage.md`, then run the full gate. Setup and resume do not provision or start database services:
 
 ```sh
 export NX_NO_CLOUD=true NX_DAEMON=false
@@ -42,6 +43,7 @@ Amp orbs run `.agents/setup` (Node, corepack pnpm, `scripts/agent-setup`, Chromi
 - Stale generated agent files or agent docs: run `node tools/dev/surfaces.mjs sync` and `node tools/ai-docs/docgen.mjs`, then `node --run check`.
 - `toolchain:` errors: align `.node-version`, `.nvmrc`, `.tool-versions` and `engines.node`.
 - Nx says the workspace is out of sync: run `pnpm nx sync` and commit the tsconfig references.
+- Storage conformance cannot connect: start the pinned local PostgreSQL fixture named `eventiva_test`. Missing PostgreSQL is a failure, not a reason to skip tests; root `check` remains usable without it. Never authorize a `better-sqlite3` build script when its bundled prebuild is unavailable.
 - Stale `lang/en-GB.json`: rerun `formatjs extract` in `apps/client` (see docs/foundation.md).
 - New dependency or version: only those approved in the EVE-244 matrix; ask the owner before adding any other.
 - Generate the graph viewer with `sh tools/graphify/graphify update` before using Graph: open viewer; delete `dist`, `.expo` and `test-output` first.

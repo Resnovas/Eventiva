@@ -238,6 +238,63 @@ Run `node --run parity` or Nx target `@eventiva/runtime-tests:parity`. It checks
 
 ---
 
+# SQL storage increment
+
+EVE-42's first increment is SQL-only, not completion of deferred Drizzle/device-sync scope. Read `docs/storage.md` and `docs/neon-storage.md`. Portable storage/capability and machine contracts occupy distinct subpaths; driver clients remain in `@eventiva/integrations.sql`. PostgreSQL/Neon and in-memory Node SQLite share conformance; Node SQLite is not device storage.
+
+Authenticate before `TenantRouter.run`. Inject a trusted resolver and an authorization callback that also audits current control-plane access; no caller-supplied URL, cross-tenant operational query or tenant ID in isolated database primary keys. Build the runtime `durable` layer inside that tenant scope and use the same Storage service in handlers. Do not wire server main until a separate durable integration is accepted.
+
+Persistence seam v1 is the existing `Storage.commit` result/replay contract, operational `compareAndSet` with leases and atomic transition history, and `enqueue` outbox staging. No second workflow abstraction is needed. `client` from `@eventiva/integrations.sql/postgres` already supplies upstream `SqlClient.SqlClient` and `PgClient.PgClient`; share one layer instance with `storage('postgres')` and trusted SQL consumers only when database/role routing intentionally matches. The tenant router does not expose a raw SQL client. Within the tenant route, provide `durable` to ActionHost and retain that same Storage for handlers: commit's execute effect runs inside its captured client's transaction, including nested Storage operations. Do not capture another client, replace Storage or detach work. Transport transactions are not implicitly atomic with business actions.
+
+Migration locks are transaction-scoped `pg_advisory_xact_lock`; runtime locking is row/transaction based, with no session advisory locks or `LISTEN`. Transaction pooling does not preserve backend session identity between transactions. Upstream runner lease-row ownership, polling and message storage require their own compatibility verification; installed cluster packages alone do not prove sharding/recovery. Keep migration/direct and runtime/pooled privileges separate. See `docs/storage.md` for exact v1 composition and boundaries.
+
+Integrity serializes scoped keys and atomically stores domain/history/outbox/dedup/success receipt. Audit persists or fails closed; no spool is implemented. External actions enqueue commands, never call providers inside a SQL transaction. Runtime revalidates live gates after waiting and before replay. Conflicts are visible typed failures, not authorization for force writes. Exact money/decimal values are strings, quantities/versions safe integers, times epoch milliseconds, UUIDs application-generated v7. Typed raw canonical/device records remain distinct from JSON projections; device migrations and PowerSync are deferred.
+
+Use forward-only exact-byte SHA-256 migrations and the protected database applied ledger. Git-based root policy is dependency-free and guards review history; deployment must additionally export the trusted applied ledger for `tools/storage/guard.mjs`. Runtime roles must not own/DDL/truncate/disable triggers or modify the migration ledger. Expand, retain old-client compatibility, then approve contraction after isolated restore rehearsal. Never weaken the guard or pnpm build policy.
+
+Production direction is one Neon PG17 project per tenant in AWS London, not branches. Use verified TLS, direct migration credentials and separately tested pooled ordinary SQL. The only authorized remote test target is the synthetic London development project described in `docs/neon-storage.md`; secure credentials and quota measurement gate execution. Historical Frankfurt is protected. Replication is disabled and separately gated because enablement is irreversible and connected subscribers prevent scale-to-zero. No paid infrastructure, provider service, ingestion or feature activation is introduced, so this library increment has no new runtime rollout toggle.
+
+Bounded Neon development validation passed 16 direct/pooled connectivity, verified-TLS/hostname-rejection, migration, atomicity, rollback, concurrency, routing-denial and exact-value checks using the owner's explicitly authorized existing full-access test secret. Scratch schema was removed and clients closed; no credentials or grants changed. This exception is development-only, not a production least-privilege configuration. Role metadata matched the supplied restricted roles, but `SET LOCAL ROLE eventiva_test_migrator` failed with 42501 before the effective-role/RLS probe could run; do not claim that probe or independent role authentication passed. Before/after project usage counters did not advance despite real writes, so attributable consumption and autosuspend remain unverified. EVE-42 and cluster Phase B delivery/recovery are not established by these provider checks.
+
+The owner accepted the exact pinned PG17.12 Bookworm image's residual scan findings for disposable synthetic local/CI tests only, expiring 2026-11-22 UTC or earlier on a relevant exploit/input/fix/rebuild trigger. The scan remains 4 critical/140 high/231 medium/190 low/11 unknown, with no suppression or production waiver. Follow `docs/storage.md`: dedicated bridge network, loopback only, SCRAM with generated per-run test credentials, non-superuser CREATEDB fixture login, bounded resources/time and complete teardown; no host networking, privileged mode, unrelated mounts, cloud credentials or unreviewed inputs. CI fails closed on expiry and PR/dispatch events rather than skipping conformance. Trixie is not approved; later image acceptance must address event coverage and the outstanding findings.
+
+### Commit an action with its outbox command
+
+Provide the same tenant-scoped Storage service to Integrity and handlers.
+The runtime supplies the validated successful receipt and rechecks live gates.
+
+```ts
+import type { Receipt } from '../../../packages/contracts/src/receipt.ts';
+import { Storage } from '../../../packages/contracts/src/storage.ts';
+import { Integrity } from '../../../packages/runtime/src/invocation.ts';
+import { Effect } from 'effect';
+
+export const stage = (receipt: Receipt & { readonly version: number }) =>
+    Effect.gen(function* () {
+        const storage = yield* Storage;
+        const integrity = yield* Integrity;
+        return yield* integrity.commit(
+            {
+                key: 'example:invoice:1',
+                inputHash: receipt.inputHash,
+                caller: receipt.caller,
+                action: receipt.action,
+                version: receipt.version,
+            },
+            Effect.gen(function* () {
+                yield* storage.enqueue('invoice:1', {
+                    type: 'send-invoice',
+                    minorUnits: '9007199254740993',
+                    currency: 'GBP',
+                });
+                return { output: { queued: true }, receipt };
+            })
+        );
+    });
+```
+
+---
+
 ## Mandatory Cluster composition (EVE-252 Phase A)
 
 Canonical Markdown: `docs/cluster.md`. Compiling examples and policy/protocol tests: `apps/server/src/cluster{,-profile,-actions}.ts` and `apps/server/tests/cluster.spec.ts`, included by `apps/server/tsconfig.spec.json` and its Vitest config. The tests reuse already-approved dependencies inside the owning server project without changing package/lock files or weakening Nx boundaries.

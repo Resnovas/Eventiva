@@ -1,0 +1,54 @@
+{
+    "name": "@eventiva/integrations.sql",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "license": "SEE LICENSE IN LICENSE",
+    "sideEffects": false,
+    "exports": {
+        "./postgres": {
+            "@eventiva/source": "./src/postgres.ts",
+            "types": "./dist/postgres.d.ts",
+            "default": "./dist/postgres.js"
+        },
+        "./sqlite": {
+            "@eventiva/source": "./src/sqlite.ts",
+            "types": "./dist/sqlite.d.ts",
+            "default": "./dist/sqlite.js"
+        },
+        "./storage": {
+            "@eventiva/source": "./src/storage.ts",
+            "types": "./dist/storage.d.ts",
+            "default": "./dist/storage.js"
+        },
+        "./router": {
+            "@eventiva/source": "./src/router.ts",
+            "types": "./dist/router.d.ts",
+            "default": "./dist/router.js"
+        },
+        "./values": {
+            "@eventiva/source": "./src/values.ts",
+            "types": "./dist/values.d.ts",
+            "default": "./dist/values.js"
+        },
+        "./migrations": {
+            "@eventiva/source": "./src/migrations.ts",
+            "types": "./dist/migrations.d.ts",
+            "default": "./dist/migrations.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@effect/sql": "0.52.2",
+        "@effect/sql-pg": "0.53.1",
+        "@effect/sql-sqlite-node": "0.54.1"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:",
+        "@types/pg": "8.23.1"
+    }
+}

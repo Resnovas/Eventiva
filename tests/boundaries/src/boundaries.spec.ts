@@ -137,6 +137,7 @@ describe('package hygiene', () => {
             'packages/integrations/openfeature-server',
             'packages/integrations/posthog-client',
             'packages/integrations/posthog-server',
+            'packages/integrations/sql',
             'packages/runtime',
             'packages/schema',
         ]);

@@ -5,6 +5,11 @@
     "sourceRoot": "tests/runtime/src",
     "tags": ["type:test", "layer:backend", "capability:test"],
     "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/runtime/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        },
         "parity": {
             "executor": "nx:run-commands",
             "cache": true,

@@ -3,9 +3,12 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "sourceRoot": "tests/contracts/src",
-    "tags": [
-        "type:test",
-        "layer:shared",
-        "capability:test"
-    ]
+    "tags": ["type:test", "layer:shared", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/contracts/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        }
+    }
 }
