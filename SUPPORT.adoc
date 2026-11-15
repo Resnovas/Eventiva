@@ -1,5 +1,0 @@
-= Support
-
-Read link:SUPPORT.md[the current support instructions].
-This compatibility link contains no separate policy.
-The previous instructions are preserved in link:Examples/eventiva-before-amp/SUPPORT.adoc[the historical archive].

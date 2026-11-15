@@ -1,5 +1,0 @@
-= Project Governance
-
-Read link:GOVERNANCE.md[the current house governance] and the owner-approved direct-to-main exception in link:AGENTS.md[the repository rules].
-This compatibility link contains no separate policy.
-The previous governance is preserved in link:Examples/eventiva-before-amp/GOVERNANCE.adoc[the historical archive].

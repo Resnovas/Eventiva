@@ -1,5 +1,0 @@
-= Cooperation Commitment
-
-Read link:COOPERATION_COMMITMENT.md[the current Cooperation Commitment].
-This compatibility link contains no separate policy and does not revoke earlier commitments.
-The previous commitment is preserved in link:Examples/eventiva-before-amp/Eventiva%20Cooperation%20Commitment.adoc[the historical archive].

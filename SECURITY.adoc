@@ -1,5 +1,0 @@
-= Security Policy
-
-Read link:SECURITY.md[the current security policy and vulnerability reporting instructions].
-This compatibility link contains no separate policy.
-The previous policy is preserved in link:Examples/eventiva-before-amp/SECURITY.adoc[the historical archive].

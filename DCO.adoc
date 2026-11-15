@@ -1,5 +1,0 @@
-= Developer Certificate of Origin
-
-Read link:DCO.md[the current Developer Certificate of Origin].
-This compatibility link contains no separate policy.
-The previous copy is preserved in link:Examples/eventiva-before-amp/DCO.adoc[the historical archive].

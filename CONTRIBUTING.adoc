@@ -1,6 +1,0 @@
-= Contributing to Eventiva
-
-Read link:CONTRIBUTING.md[the current contribution policy] and link:README.md[the current repository setup guide].
-Eventiva's owner-approved direct-to-main exception is in link:AGENTS.md[the repository rules].
-This compatibility link contains no separate policy.
-The previous manual contribution guide is preserved in link:Examples/eventiva-before-amp/CONTRIBUTING.adoc[the historical archive].

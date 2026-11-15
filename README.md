@@ -68,7 +68,7 @@ If `check` reports stale generated files, run `node tools/dev/surfaces.mjs sync`
 
 The canonical configuration is [`.github/smartcloud.yml`](.github/smartcloud.yml), extending the current Resnovas house preset. House automation checks policies, synchronizes templates and repository settings, and runs security and workflow checks. Read [the enrollment record](docs/smartcloud-enrollment.md) for the dry-run effects, supported CLI commands, credential requirements and outstanding external administration steps. Enrollment is not fully verified until those steps succeed.
 
-The Markdown governance files and `LICENSE` are canonical. Root AsciiDoc policy files are compatibility links, not independent policies; historical originals remain in the archive. Ownership and funding configuration now live only in `.github/CODEOWNERS` and `.github/FUNDING.yml`.
+The Markdown governance files and `LICENSE` are canonical. Obsolete root AsciiDoc compatibility links have been removed; historical originals remain in the archive. Ownership and funding configuration now live only in `.github/CODEOWNERS` and `.github/FUNDING.yml`.
 
 **Coding agents still commit and push directly to `main` under [the owner's documented exception](AGENTS.md#delivery-exception-ship-straight-to-main).** It takes precedence over the generic house PR delivery path. The preset retains an always-bypass for repository administrators. Standard house sync and Graphify bot PRs do not change that exception.
 

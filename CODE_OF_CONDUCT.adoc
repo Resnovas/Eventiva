@@ -1,5 +1,0 @@
-= Code of Conduct
-
-Read link:CODE_OF_CONDUCT.md[the current Code of Conduct].
-This compatibility link contains no separate policy.
-The previous text is preserved in link:Examples/eventiva-before-amp/CODE_OF_CONDUCT.adoc[the historical archive].
