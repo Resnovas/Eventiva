@@ -1,7 +1,0 @@
-= Eventiva
-
-The production workspace has been reset under https://linear.app/resnovas/issue/EVE-242[EVE-242].
-Read link:README.md[the current repository guide] for setup, validation limits and the rebuild sequence.
-
-The former project overview is preserved in link:Examples/eventiva-before-amp/README.adoc[the historical archive].
-It describes the previous implementation, not the current production baseline.
