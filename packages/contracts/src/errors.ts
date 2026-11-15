@@ -38,6 +38,16 @@ export class Unavailable extends Schema.TaggedError<Unavailable>()('Unavailable'
     reason: Schema.Literal('flag-off'),
 }) {}
 
+/**
+ * The caller may not invoke the action, or may not act on the target it named.
+ * Raised before decoding when the caller lacks the permission, so an
+ * unauthorised caller learns nothing about whether its input was valid.
+ */
+export class Forbidden extends Schema.TaggedError<Forbidden>()('Forbidden', {
+    action: Schema.String,
+    reason: Schema.String,
+}) {}
+
 /** The handler failed with one of the action's declared errors, carried encoded. */
 export class ActionFailed extends Schema.TaggedError<ActionFailed>()('ActionFailed', {
     action: Schema.String,
@@ -45,5 +55,5 @@ export class ActionFailed extends Schema.TaggedError<ActionFailed>()('ActionFail
 }) {}
 
 /** Every platform error an invocation can fail with. */
-export const PlatformError = Schema.Union(UnknownAction, InvalidInput, Unavailable, ActionFailed);
+export const PlatformError = Schema.Union(UnknownAction, InvalidInput, Unavailable, Forbidden, ActionFailed);
 export type PlatformError = typeof PlatformError.Type;

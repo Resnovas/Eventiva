@@ -15,7 +15,17 @@
  */
 
 import { ActionName, define, wireName } from '@eventiva/contracts/action';
-import { ActionFailed, InvalidInput, PlatformError, Unavailable, UnknownAction } from '@eventiva/contracts/errors';
+import { CallerIdentity } from '@eventiva/contracts/caller';
+import {
+    ActionFailed,
+    Forbidden,
+    InvalidInput,
+    PlatformError,
+    Unavailable,
+    UnknownAction,
+} from '@eventiva/contracts/errors';
+import { SubjectId, TenantId } from '@eventiva/contracts/ids';
+import { isWeaker, SecurityProfile } from '@eventiva/contracts/security';
 import { canonicalLocale, LocaleTag, MessageKey, TerminologyPack } from '@eventiva/contracts/i18n';
 import { Attributes, actionSpan } from '@eventiva/contracts/telemetry';
 import { describe, expect, it } from '@effect/vitest';
@@ -30,12 +40,14 @@ describe('action specifications', () => {
             input: Schema.Struct({ title: Schema.String }),
             output: Schema.Struct({ id: Schema.String }),
             error: Failure,
+            permission: 'events.create',
             sideEffect: 'write',
             offline: 'queued',
             flag: 'events.create-v2',
         });
         expect(spec._tag).toBe('ActionSpec');
         expect(spec.version).toBe(2);
+        expect(spec.permission).toBe('events.create');
         expect(Option.getOrNull(spec.flag)).toBe('events.create-v2');
         expect(Option.getOrNull(spec.error)).toBe(Failure);
         expect(Object.keys(spec)).not.toContain('handler');
@@ -45,6 +57,7 @@ describe('action specifications', () => {
             description: 'Read an event.',
             input: Schema.Struct({}),
             output: Schema.Struct({}),
+            permission: 'events.get',
             sideEffect: 'read',
             offline: 'local',
         });
@@ -68,6 +81,7 @@ describe('platform errors', () => {
             new UnknownAction({ action: 'a.b' }),
             new InvalidInput({ action: 'a.b', message: 'Expected string' }),
             new Unavailable({ action: 'a.b', reason: 'flag-off' }),
+            new Forbidden({ action: 'a.b', reason: 'missing permission a.b' }),
             new ActionFailed({ action: 'a.b', error: { _tag: 'LimitReached', limit: 3 } }),
         ];
         for (const error of errors) {
@@ -100,5 +114,33 @@ describe('telemetry names', () => {
     it('name action spans and attributes consistently', () => {
         expect(actionSpan('events.create')).toBe('action.events.create');
         expect(Attributes.flagKey).toBe('feature_flag.key');
+    });
+});
+
+describe('callers and identifiers', () => {
+    const subject = '0193a4f0-0000-7000-8000-000000000001';
+    const session = '0193a4f0-0000-7000-8000-000000000002';
+
+    it('decode a delegated agent caller and refuse malformed ids or kinds', () => {
+        const decode = Schema.decodeUnknownEither(CallerIdentity);
+        const agent = { subject, kind: 'external-agent', tenant: subject, onBehalfOf: session, session };
+        expect(Schema.decodeUnknownSync(CallerIdentity)(agent)).toEqual(agent);
+        expect(decode({ subject, kind: 'service', session })._tag).toBe('Right');
+        expect(decode({ ...agent, subject: 'alice' })._tag).toBe('Left');
+        expect(decode({ ...agent, kind: 'admin' })._tag).toBe('Left');
+    });
+
+    it('brand ids by kind', () => {
+        expect(Schema.is(TenantId)(subject)).toBe(true);
+        expect(Schema.is(SubjectId)('ten_123')).toBe(false);
+    });
+});
+
+describe('security profiles', () => {
+    it('order profiles from baseline to vault', () => {
+        expect(SecurityProfile.literals).toEqual(['baseline', 'sensitive', 'restricted', 'vault']);
+        expect(isWeaker('baseline', 'restricted')).toBe(true);
+        expect(isWeaker('vault', 'restricted')).toBe(false);
+        expect(isWeaker('restricted', 'restricted')).toBe(false);
     });
 });

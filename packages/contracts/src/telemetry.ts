@@ -31,7 +31,7 @@ export const Attributes = {
 } as const;
 
 /** The outcome recorded on an action span. */
-export type Outcome = 'succeeded' | 'failed' | 'invalid-input' | 'unavailable' | 'unknown-action';
+export type Outcome = 'succeeded' | 'failed' | 'invalid-input' | 'unavailable' | 'forbidden' | 'unknown-action';
 
 /** The span name for one invocation of an action. */
 export const actionSpan = (name: string): string => `action.${name}`;

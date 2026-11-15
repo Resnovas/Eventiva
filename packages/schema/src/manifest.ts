@@ -25,6 +25,10 @@ import { Schema } from 'effect';
  * declaration.
  */
 
+/** A resource name: the owning module followed by the record, such as `events.event`. */
+export const ResourceName = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$/));
+export type ResourceName = typeof ResourceName.Type;
+
 /** A module id: lower case, optionally dotted, such as `events` or `events.tickets`. */
 export const ModuleId = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/));
 export type ModuleId = typeof ModuleId.Type;
@@ -45,5 +49,7 @@ export const ModuleManifest = Schema.Struct({
     actions: Schema.Array(ActionName),
     /** Every flag the module, its actions and its screens reference. */
     flags: Schema.Array(FlagDefinition),
+    /** Names of every resource the module declares; omitted when it declares none. */
+    resources: Schema.optional(Schema.Array(ResourceName)),
 });
 export type ModuleManifest = typeof ModuleManifest.Type;

@@ -84,10 +84,12 @@ const layerConstraints = [
     { sourceTag: 'layer:backend', onlyDependOnLibsWithTags: ['layer:backend', 'layer:shared'] },
 ];
 
-// Contracts and schema depend on effect alone.
+// Contracts and schema depend on effect alone, and so does the action runtime:
+// drivers, vendor SDKs, Node platform layers and Cluster arrive through apps and integrations.
 const portableOnly = [
     { sourceTag: 'type:core', allowedExternalImports: ['effect', 'effect/*'] },
     { sourceTag: 'type:shared', allowedExternalImports: ['effect', 'effect/*'] },
+    { sourceTag: 'capability:actions', allowedExternalImports: ['effect', 'effect/*'] },
 ];
 
 // The Node globals portable code must not touch; Hermes and browsers lack them.
@@ -119,6 +121,7 @@ const filesTagged = (...tags) =>
         .filter((project) => tags.some((tag) => project.tags.includes(tag)))
         .map((project) => `${project.root}/**/*.{ts,tsx,mts}`);
 const portableFiles = filesTagged('layer:shared', 'layer:frontend');
+const runtimeFiles = filesTagged('capability:actions');
 
 export default [
     ...nx.configs['flat/base'],
@@ -189,6 +192,25 @@ export default [
                 },
             ],
             'no-restricted-globals': ['error', ...nodeGlobals],
+        },
+    },
+    {
+        // The action runtime is backend code but owns no platform: Node arrives through an app's layers.
+        files: runtimeFiles,
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
+                        ...nodeBuiltins.map((name) => ({
+                            name,
+                            message:
+                                'The action runtime takes platform capabilities from services, not Node built-ins.',
+                        })),
+                    ],
+                },
+            ],
         },
     },
     {

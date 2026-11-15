@@ -28,6 +28,13 @@ import type { FlagKey } from './flags.ts';
 export const ActionName = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/));
 export type ActionName = typeof ActionName.Type;
 
+/**
+ * The permission a caller needs to invoke an action, dotted and lower case,
+ * such as `events.tickets.create`. The `Authorizer` decides who holds it.
+ */
+export const Permission = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$/));
+export type Permission = typeof Permission.Type;
+
 /** What running the action changes. */
 export type SideEffect = 'read' | 'write' | 'external';
 
@@ -54,6 +61,8 @@ export interface ActionSpec<
     readonly output: Out;
     /** The action's own errors, if it declares any; platform errors are added by the runtime. */
     readonly error: Option.Option<Err>;
+    /** Checked by the runtime's `Authorizer` on every invocation, before and after decoding. */
+    readonly permission: Permission;
     readonly sideEffect: SideEffect;
     readonly offline: Offline;
     /** The flag that switches an optional capability on, declared in the module manifest. */
@@ -82,6 +91,7 @@ export const define = <
         readonly input: In;
         readonly output: Out;
         readonly error?: Err;
+        readonly permission: Permission;
         readonly sideEffect: SideEffect;
         readonly offline: Offline;
         readonly flag?: FlagKey;
@@ -94,6 +104,7 @@ export const define = <
     input: options.input,
     output: options.output,
     error: Option.fromNullable(options.error),
+    permission: options.permission,
     sideEffect: options.sideEffect,
     offline: options.offline,
     flag: Option.fromNullable(options.flag),

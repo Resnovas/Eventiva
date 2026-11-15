@@ -2,15 +2,30 @@
     "name": "@eventiva/schema",
     "version": "0.0.1",
     "private": true,
-    "description": "Portable, Drizzle-neutral Eventiva schema declarations, starting with dynamic module manifests.",
+    "description": "Portable, database-neutral Eventiva schema: module manifests, resources and fields, and pure schema composition.",
     "license": "SEE LICENSE IN LICENSE",
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./compose": {
+            "@eventiva/source": "./src/compose.ts",
+            "types": "./dist/compose.d.ts",
+            "default": "./dist/compose.js"
+        },
+        "./field": {
+            "@eventiva/source": "./src/field.ts",
+            "types": "./dist/field.d.ts",
+            "default": "./dist/field.js"
+        },
         "./manifest": {
             "@eventiva/source": "./src/manifest.ts",
             "types": "./dist/manifest.d.ts",
             "default": "./dist/manifest.js"
+        },
+        "./resource": {
+            "@eventiva/source": "./src/resource.ts",
+            "types": "./dist/resource.d.ts",
+            "default": "./dist/resource.js"
         },
         "./package.json": "./package.json"
     },

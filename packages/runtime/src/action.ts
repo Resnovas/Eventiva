@@ -31,8 +31,9 @@ export interface Implementation<S extends ActionSpec = ActionSpec, R = never> {
 }
 
 /**
- * Implements a specification. A module provides the handler's services before
- * it registers the implementation, so registered handlers need nothing.
+ * Implements a specification. The handler may need services `R`; the module
+ * that registers it supplies them with its own layer, built when the module
+ * registers and released when it is removed.
  */
 export const implement = <S extends ActionSpec, R = never>(
     spec: S,

@@ -2,7 +2,7 @@
     "name": "@eventiva/contracts",
     "version": "0.0.1",
     "private": true,
-    "description": "Portable Eventiva contracts: action specifications, platform errors, feature flags, message keys and telemetry names. Depends only on effect.",
+    "description": "Portable Eventiva contracts: action specifications, callers and authorisation, platform errors, identifiers, security profiles, feature flags, message keys and telemetry names. Depends only on effect.",
     "license": "SEE LICENSE IN LICENSE",
     "type": "module",
     "sideEffects": false,
@@ -11,6 +11,11 @@
             "@eventiva/source": "./src/action.ts",
             "types": "./dist/action.d.ts",
             "default": "./dist/action.js"
+        },
+        "./caller": {
+            "@eventiva/source": "./src/caller.ts",
+            "types": "./dist/caller.d.ts",
+            "default": "./dist/caller.js"
         },
         "./errors": {
             "@eventiva/source": "./src/errors.ts",
@@ -26,6 +31,16 @@
             "@eventiva/source": "./src/i18n.ts",
             "types": "./dist/i18n.d.ts",
             "default": "./dist/i18n.js"
+        },
+        "./ids": {
+            "@eventiva/source": "./src/ids.ts",
+            "types": "./dist/ids.d.ts",
+            "default": "./dist/ids.js"
+        },
+        "./security": {
+            "@eventiva/source": "./src/security.ts",
+            "types": "./dist/security.d.ts",
+            "default": "./dist/security.js"
         },
         "./telemetry": {
             "@eventiva/source": "./src/telemetry.ts",

@@ -29,6 +29,7 @@ export const Status = define('platform.status', {
     description: 'Report the running Eventiva runtime and its registered actions. Reads nothing else.',
     input: Schema.Struct({}),
     output: Schema.Struct({ runtime: Schema.Literal('eventiva'), actions: Schema.Array(Schema.String) }),
+    permission: 'platform.status',
     sideEffect: 'read',
     offline: 'local',
 });
@@ -42,5 +43,7 @@ export const platformModule = (actions: Effect.Effect<ReadonlyArray<string>>): S
         actions: [Status.name],
         flags: [],
     },
-    actions: [implement(Status, () => Effect.map(actions, (names) => ({ runtime: 'eventiva' as const, actions: names })))],
+    actions: [
+        implement(Status, () => Effect.map(actions, (names) => ({ runtime: 'eventiva' as const, actions: names }))),
+    ],
 });

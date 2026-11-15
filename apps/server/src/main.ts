@@ -21,7 +21,8 @@ import { layer as flags, staticValues } from '@eventiva/integrations.openfeature
 import { fromConfig as postHog } from '@eventiva/integrations.posthog.server/flags';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { Effect, Layer, Option } from 'effect';
-import { platformModule } from './status.ts';
+import { ShellCaller, shellCaller, staticGrants } from './access.ts';
+import { platformModule, Status } from './status.ts';
 
 /**
  * The backend composition root: the only place that names providers and
@@ -35,7 +36,10 @@ const FlagsLive = Layer.unwrapScoped(
     Effect.map(postHog, (remote) =>
         flags([
             { source: 'git-baseline', provider: staticValues({}) },
-            ...Option.match(remote, { onNone: () => [], onSome: (provider) => [{ source: 'remote' as const, provider }] }),
+            ...Option.match(remote, {
+                onNone: () => [],
+                onSome: (provider) => [{ source: 'remote' as const, provider }],
+            }),
         ])
     )
 );
@@ -49,6 +53,8 @@ const program = Effect.gen(function* () {
 
 const MainLive = ActionHostLive.pipe(
     Layer.provide(FlagsLive),
+    Layer.provide(staticGrants(new Map([[shellCaller.subject, [Status.permission]]]))),
+    Layer.merge(ShellCaller),
     Layer.merge(i18n({ locale: canonicalLocale, catalogue: {} }))
 );
 
