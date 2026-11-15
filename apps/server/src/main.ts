@@ -25,14 +25,17 @@ import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { FailClosed, InputDigest } from '@eventiva/runtime/invocation';
 import { Effect, Layer, Option } from 'effect';
 import { ShellCaller, ShellIdentity, shellCaller, staticGrants } from './access.ts';
+import { deploymentProfile } from './cluster-profile.ts';
 import { platformModule, Status } from './status.ts';
 
 /**
  * The backend composition root: the only place that names providers and
  * platform layers. Flags come from the Git baseline, then PostHog when a key
  * is configured; without one, nothing leaves the process. HTTP and agent
- * transports arrive with their own issues (EVE-46 onwards); until then the
- * shell registers its modules, checks the action path once and exits.
+ * transports arrive with their own issues (EVE-46 onwards). Until EVE-42's SQL
+ * adapter lands, this is a registration diagnostic, not a business runner.
+ * Every executable deployment must compose clusterRunner; there is no direct
+ * ActionHost invocation fallback in this shell.
  */
 
 const FlagsLive = Layer.unwrapScoped(
@@ -48,6 +51,7 @@ const FlagsLive = Layer.unwrapScoped(
 );
 
 const program = Effect.gen(function* () {
+    const profile = yield* deploymentProfile;
     const host = yield* ActionHost;
     const inventory = yield* ActionInventory;
     const module = platformModule(host.actions);
@@ -58,15 +62,15 @@ const program = Effect.gen(function* () {
         { server: listed.map(({ id, version, permission }) => ({ id, version, permission })) },
         ['server']
     );
-    // No durable audit/storage adapter is configured in this shell yet. Prove
-    // that the real invocation path fails closed rather than invent durability.
-    yield* host
-        .execute('platform.status', {})
-        .pipe(
-            Effect.catchTag('AuditUnavailable', () =>
-                Effect.logWarning('Action execution disabled: durable audit is not configured.')
-            )
-        );
+    yield* Effect.logWarning(
+        'Cluster execution unavailable: SQL runner and durable action adapters are not composed.',
+        {
+            edition: profile.edition,
+            expectedRunners: profile.expectedRunners,
+            healthyRunners: 0,
+            status: 'unavailable',
+        }
+    );
     yield* Effect.logInfo('Eventiva modules registered', {
         actions: listed.map((action) => action.id),
     });

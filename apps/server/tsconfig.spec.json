@@ -1,0 +1,18 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": "../..",
+        "outDir": "dist/test-types",
+        "tsBuildInfoFile": "dist/tsconfig.spec.tsbuildinfo",
+        "types": ["node"]
+    },
+    "include": ["tests/**/*.ts", "../../vitest.shared.ts", "src/**/*.ts", "vitest.config.mts"],
+    "references": [
+        { "path": "../../packages/contracts" },
+        { "path": "../../packages/schema" },
+        { "path": "../../packages/runtime" },
+        { "path": "../../packages/integrations/formatjs" },
+        { "path": "../../packages/integrations/openfeature-server" },
+        { "path": "../../packages/integrations/posthog-server" }
+    ]
+}

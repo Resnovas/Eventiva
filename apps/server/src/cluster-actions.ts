@@ -1,0 +1,117 @@
+/**
+ * @file apps/server/src/cluster-actions.ts
+ *
+ * Copyright 2026 Jonathan Stevens trading as Resnovas. All rights reserved.
+ * Licensed under the Fair Core License, Version 1.0, MIT Future License
+ * (FCL-1.0-MIT); see LICENSE. You may not move, change, disable or circumvent
+ * the licence key functionality, or modify any part of the software that the
+ * licence key protects.
+ *
+ * Contributions are made under the Developer Certificate of Origin (DCO.md) and
+ * the Contributing Guidelines (CONTRIBUTING.md), subject to the Code of Conduct
+ * (CODE_OF_CONDUCT.md) and the Cooperation Commitment (COOPERATION_COMMITMENT.md).
+ *
+ * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
+ */
+
+import * as Entity from '@effect/cluster/Entity';
+import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
+import * as Rpc from '@effect/rpc/Rpc';
+import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
+import { Receipt } from '@eventiva/contracts/receipt';
+import { ActionHost } from '@eventiva/runtime/host';
+import { IdentityResolver } from '@eventiva/runtime/invocation';
+import { Context, Data, Effect, Layer, Schema } from 'effect';
+
+const Intent = Schema.Struct({
+    idempotencyKey: Schema.NonEmptyString,
+    approvalId: Schema.optional(Schema.String),
+    mode: Schema.optional(Schema.Literal('online', 'offline-intent', 'scheduled')),
+    notBefore: Schema.optional(Schema.Number),
+    deadline: Schema.optional(Schema.Number),
+    expectedVersion: Schema.optional(Schema.String),
+    expectedState: Schema.optional(Schema.String),
+});
+
+export const ClusterInvocation = Schema.Struct({
+    caller: CallerIdentity,
+    entityKey: Schema.NonEmptyString,
+    action: Schema.NonEmptyString,
+    input: Schema.Unknown,
+    intent: Intent,
+});
+export type ClusterInvocation = typeof ClusterInvocation.Type;
+
+export class ClusterActionDenied extends Data.TaggedError('ClusterActionDenied')<{
+    readonly reason: string;
+}> {}
+const Denied = Schema.Struct({ _tag: Schema.Literal('ClusterActionDenied'), reason: Schema.String });
+
+/** This identity namespaces compute ordering only. It is never a database selector. */
+export const entityId = (caller: CallerIdentity, key: string): string => JSON.stringify([caller.tenant ?? null, key]);
+
+const ActionEntity = Entity.make('EventivaAction', [
+    Rpc.make('Execute', {
+        payload: ClusterInvocation,
+        success: Schema.Struct({
+            output: Schema.Unknown,
+            receipt: Receipt,
+            replayed: Schema.Boolean,
+            audit: Schema.Literal('durable', 'spooled'),
+        }),
+        error: Denied,
+    }).annotate(Persisted, true),
+]).annotate(ShardGroup, () => 'eventiva-actions');
+
+/** Re-resolve identity on the receiving runner before entering the SAME authorized ActionHost. */
+export const receive = (address: string, request: ClusterInvocation) =>
+    Effect.gen(function* () {
+        const resolver = yield* IdentityResolver;
+        const caller = yield* resolver
+            .resolve(request.caller)
+            .pipe(Effect.mapError(() => new ClusterActionDenied({ reason: 'identity-unavailable' })));
+        if (caller.tenant !== request.caller.tenant || entityId(caller, request.entityKey) !== address)
+            return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
+        const host = yield* ActionHost;
+        const result = yield* host.execute(request.action, request.input, request.intent).pipe(
+            Effect.provideService(Caller, caller),
+            Effect.mapError(() => new ClusterActionDenied({ reason: 'audit-unavailable' }))
+        );
+        const output = yield* result.result.pipe(
+            Effect.mapError(() => new ClusterActionDenied({ reason: 'invocation-denied' }))
+        );
+        return { output, receipt: result.receipt, replayed: result.replayed, audit: result.audit };
+    }).pipe(Effect.withSpan('cluster.action.receive'));
+
+/** Common composition always includes this registration; readiness still needs real-stack validation. */
+export const ActionEntityLive = ActionEntity.toLayer(
+    Effect.gen(function* () {
+        const address = yield* Entity.CurrentAddress;
+        const context = yield* Effect.context<ActionHost | IdentityResolver>();
+        return { Execute: ({ payload }) => receive(address.entityId, payload).pipe(Effect.provide(context)) };
+    }),
+    { concurrency: 1 }
+);
+
+const makeClusterActions = Effect.gen(function* () {
+    const client = yield* ActionEntity.client;
+    const resolver = yield* IdentityResolver;
+    return {
+        execute: (request: ClusterInvocation) =>
+            Effect.gen(function* () {
+                const caller = yield* resolver.resolve(request.caller);
+                if (caller.tenant !== request.caller.tenant)
+                    return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
+                return yield* client(entityId(caller, request.entityKey)).Execute({ ...request, caller });
+            }).pipe(Effect.withSpan('cluster.action.send')),
+    };
+});
+
+export class ClusterActions extends Context.Tag('@eventiva/server/ClusterActions')<
+    ClusterActions,
+    Effect.Effect.Success<typeof makeClusterActions>
+>() {}
+
+export const ClusterActionsLive = Layer.effect(ClusterActions, makeClusterActions).pipe(
+    Layer.provideMerge(ActionEntityLive)
+);
