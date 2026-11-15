@@ -1,0 +1,415 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`portable action inventory > snapshots read, write and external schemas for anthropic 1`] = `
+[
+  {
+    "id": "events.get",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "description": "a boolean",
+          "type": "boolean",
+        },
+        "tags": {
+          "items": {
+            "description": "a string",
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "tags",
+        "active",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "events.create",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "capacity": {
+          "description": "an integer",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "category": {
+          "enum": [
+            "concert",
+            "conference",
+          ],
+          "type": "string",
+        },
+        "notes": {
+          "description": "a string",
+          "type": "string",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "category",
+        "capacity",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "payments.refund",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "a number",
+          "type": "number",
+        },
+        "payment": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "payment",
+        "amount",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "receipt": {
+          "enum": [
+            null,
+          ],
+          "type": "null",
+        },
+        "status": {
+          "enum": [
+            "refunded",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "status",
+        "receipt",
+      ],
+      "type": "object",
+    },
+  },
+]
+`;
+
+exports[`portable action inventory > snapshots read, write and external schemas for google 1`] = `
+[
+  {
+    "id": "events.get",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "description": "a boolean",
+          "type": "boolean",
+        },
+        "tags": {
+          "items": {
+            "description": "a string",
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "tags",
+        "active",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "events.create",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "capacity": {
+          "description": "an integer",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "category": {
+          "enum": [
+            "concert",
+            "conference",
+          ],
+          "type": "string",
+        },
+        "notes": {
+          "description": "a string",
+          "type": "string",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "category",
+        "capacity",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "payments.refund",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "a number",
+          "type": "number",
+        },
+        "payment": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "payment",
+        "amount",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "receipt": {
+          "enum": [
+            null,
+          ],
+          "type": "null",
+        },
+        "status": {
+          "enum": [
+            "refunded",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "status",
+        "receipt",
+      ],
+      "type": "object",
+    },
+  },
+]
+`;
+
+exports[`portable action inventory > snapshots read, write and external schemas for openai 1`] = `
+[
+  {
+    "id": "events.get",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "description": "a boolean",
+          "type": "boolean",
+        },
+        "tags": {
+          "items": {
+            "description": "a string",
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "tags",
+        "active",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "events.create",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "capacity": {
+          "description": "an integer",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "category": {
+          "enum": [
+            "concert",
+            "conference",
+          ],
+          "type": "string",
+        },
+        "notes": {
+          "description": "a string",
+          "type": "string",
+        },
+        "title": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "category",
+        "capacity",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+  },
+  {
+    "id": "payments.refund",
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "a number",
+          "type": "number",
+        },
+        "payment": {
+          "description": "a string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "payment",
+        "amount",
+      ],
+      "type": "object",
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "receipt": {
+          "enum": [
+            null,
+          ],
+          "type": "null",
+        },
+        "status": {
+          "enum": [
+            "refunded",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "status",
+        "receipt",
+      ],
+      "type": "object",
+    },
+  },
+]
+`;

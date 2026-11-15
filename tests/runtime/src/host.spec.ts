@@ -21,6 +21,8 @@ import { Flags, FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, ActionHostLive, type ServerModule } from '@eventiva/runtime/host';
+import { IdentityResolver } from '@eventiva/runtime/invocation';
+import { makeTestOnlyHarness } from '@eventiva/runtime/testing';
 import { contribute } from '@eventiva/schema/compose';
 import * as Field from '@eventiva/schema/field';
 import * as Resource from '@eventiva/schema/resource';
@@ -92,8 +94,17 @@ const alice = person('0193a4f0-0000-7000-8000-000000000001');
 const bob = person('0193a4f0-0000-7000-8000-000000000002');
 
 const allowAll = Layer.succeed(Authorizer, { canInvoke: () => Effect.void, check: () => Effect.void });
+// These existing host/lifecycle cases are independent of durable platform adapters.
+// Use the explicitly volatile fixture, never a fallback in ActionHostLive.
+const invocationServices = Layer.merge(
+    Layer.unwrapScoped(Effect.map(makeTestOnlyHarness(alice), ({ TestOnly }) => TestOnly)),
+    Layer.succeed(IdentityResolver, { resolve: (caller) => Effect.succeed(caller) })
+);
 const hostWith = (flags: Layer.Layer<Flags>, authorizer: Layer.Layer<Authorizer> = allowAll) =>
-    Layer.merge(ActionHostLive.pipe(Layer.provide(flags), Layer.provide(authorizer)), Layer.succeed(Caller, alice));
+    Layer.merge(
+        ActionHostLive.pipe(Layer.provide(flags), Layer.provide(authorizer), Layer.provide(invocationServices)),
+        Layer.succeed(Caller, alice)
+    );
 const host = hostWith(FlagsSafeDefaults);
 
 describe('ActionHost.invoke', () => {
@@ -164,7 +175,7 @@ describe('ActionHost.invoke', () => {
             const calls = yield* Ref.make(0);
             const actions = yield* ActionHost;
             yield* actions.register(counted(calls));
-            expect(yield* actions.invoke('test.gated', {})).toEqual({});
+            expect(yield* actions.invoke('test.gated', {}, { idempotencyKey: 'gated-on' })).toEqual({});
             expect(yield* Ref.get(calls)).toBe(1);
         }).pipe(Effect.provide(hostWith(flagsOn)))
     );

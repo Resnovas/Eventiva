@@ -5,6 +5,11 @@
     "sourceRoot": "apps/server/src",
     "tags": ["type:platform", "layer:backend", "capability:app"],
     "targets": {
+        "parity": {
+            "executor": "nx:run-commands",
+            "dependsOn": ["build", "^build"],
+            "options": { "command": "node apps/server/dist/main.js" }
+        },
         "smoke": {
             "executor": "nx:run-commands",
             "dependsOn": ["build", "^build"],

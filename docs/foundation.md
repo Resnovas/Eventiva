@@ -152,7 +152,7 @@ export const demoModule: ServerModule<Salutation> = {
 };
 ```
 
-Register it with `host.register(demoModule)` inside a scope and run it with `host.invoke('demo.greet', { name: 'Sam' })` with a `Caller` provided, as `apps/server/src/main.ts` does for `platform.status`.
+Register it with `host.register(demoModule)` inside a scope. EVE-40 adds mandatory invocation services and receipts: follow [the action guide](actions.md) before calling `host.execute` or `host.invoke` with a per-call `Caller`. The server shell deliberately disables execution until durable audit is configured; registration alone does not imply an executable unaudited action.
 
 ## Targets
 
@@ -162,6 +162,7 @@ Register it with `host.register(demoModule)` inside a scope and run it with `hos
 | `pnpm nx run-many -t lint typecheck test build` | ESLint with the boundary rules, TypeScript project references, Vitest with 90% coverage thresholds, package builds.                                                                 |
 | `pnpm nx run-many -t smoke`                     | Starts the server once, checks the i18n catalogue (`client:i18n`), exports Android and checks for Hermes bytecode, exports the web build and runs the Playwright smoke in Chromium. |
 | `node --run verify`                             | All of the above.                                                                                                                                                                   |
+| `node --run parity`                             | Canonical action inventory, registered server dispatch and negative parity checks; also included in `verify` and CI's required `application check`.                                 |
 | `node --run toolchain`                          | Prints the pinned and active Node and pnpm versions.                                                                                                                                |
 
 ## Settings

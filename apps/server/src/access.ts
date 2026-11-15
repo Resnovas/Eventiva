@@ -18,6 +18,7 @@ import type { Permission } from '@eventiva/contracts/action';
 import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { Forbidden } from '@eventiva/contracts/errors';
 import { SessionId, SubjectId } from '@eventiva/contracts/ids';
+import { IdentityResolver, InvocationDenied } from '@eventiva/runtime/invocation';
 import { Effect, Layer } from 'effect';
 
 /**
@@ -47,3 +48,15 @@ export const staticGrants = (grants: ReadonlyMap<string, ReadonlyArray<Permissio
 
 /** Runs the shell's own calls as `shellCaller`. */
 export const ShellCaller: Layer.Layer<Caller> = Layer.succeed(Caller, shellCaller);
+
+/** No credential provider yet: recognize only this exact, process-owned service session. */
+export const ShellIdentity = Layer.succeed(IdentityResolver, {
+    resolve: (caller) =>
+        caller.subject === shellCaller.subject &&
+        caller.session === shellCaller.session &&
+        caller.kind === 'service' &&
+        caller.tenant === undefined &&
+        caller.onBehalfOf === undefined
+            ? Effect.succeed(shellCaller)
+            : Effect.fail(new InvocationDenied({ action: '<identity>', reason: 'unknown-session' })),
+});

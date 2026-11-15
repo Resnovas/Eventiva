@@ -56,7 +56,7 @@ pnpm exec playwright install --with-deps chromium
 node --run verify
 ```
 
-`setup` installs the house commit hook and registers available editor actions. `check` is the house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current; locally it also checks that the commit hook is installed. `verify` runs `check`, then the Nx `lint`, `typecheck`, `test` and `build` targets, then the `smoke` targets. The `house check` and `application check` CI jobs run the same gates. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required.
+`setup` installs the house commit hook and registers available editor actions. `check` is the house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current; locally it also checks that the commit hook is installed. `verify` runs `check`, then the Nx `lint`, `typecheck`, `test`, `build` and `parity` targets, then the `smoke` targets. The `house check` and `application check` CI jobs run the same gates. Run `node --run parity` for the action inventory gate alone; read [the action host guide](docs/actions.md) for invocation services, approval and receipt guarantees. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required.
 
 `pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `Examples/**` so recursive commands never discover the archived manifests.
 

@@ -59,8 +59,8 @@ jobs:
       - name: Project references are in sync
         run: pnpm nx sync:check
 
-      - name: Lint, typecheck, test and build
-        run: pnpm nx run-many -t lint typecheck test build --outputStyle=static
+      - name: Lint, typecheck, test, build and action parity
+        run: pnpm nx run-many -t lint typecheck test build parity --outputStyle=static
 
   smoke:
     name: smoke

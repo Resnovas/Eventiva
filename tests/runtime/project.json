@@ -3,9 +3,15 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "sourceRoot": "tests/runtime/src",
-    "tags": [
-        "type:test",
-        "layer:backend",
-        "capability:test"
-    ]
+    "tags": ["type:test", "layer:backend", "capability:test"],
+    "targets": {
+        "parity": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "options": {
+                "cwd": "tests/runtime",
+                "command": "pnpm exec vitest run src/parity.spec.ts --coverage.enabled=false"
+            }
+        }
+    }
 }

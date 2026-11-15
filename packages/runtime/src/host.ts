@@ -15,9 +15,10 @@
  */
 
 import { ActionName, type ActionSpec } from '@eventiva/contracts/action';
-import { Authorizer, Caller } from '@eventiva/contracts/caller';
-import { ActionFailed, type Forbidden, InvalidInput, UnknownAction, Unavailable } from '@eventiva/contracts/errors';
+import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { Forbidden, UnknownAction, Unavailable } from '@eventiva/contracts/errors';
 import { type Flag, Flags } from '@eventiva/contracts/flags';
+import { ActionInventory, validateDefinitions, validateInventory } from '@eventiva/contracts/inventory';
 import { Attributes, type Outcome, actionSpan } from '@eventiva/contracts/telemetry';
 import { type ComposeError, type Composed, type Contribution, compose } from '@eventiva/schema/compose';
 import { ModuleManifest } from '@eventiva/schema/manifest';
@@ -39,6 +40,18 @@ import {
     Scope,
 } from 'effect';
 import type { Implementation } from './action.ts';
+import { type InvocationError, makeExecutor } from './execution.ts';
+import {
+    Approvals,
+    Audit,
+    ExecutionPolicy,
+    IdentityResolver,
+    InputDigest,
+    Integrity,
+    type InvokeOptions,
+    type InvocationResult,
+    type AuditUnavailable,
+} from './invocation.ts';
 
 /**
  * The action host: modules register handlers for portable specifications,
@@ -93,7 +106,7 @@ export type ServerModule<R = never> = ModuleParts<R> &
 export type RegistrationError = DuplicateAction | InvalidModule | ActivationFailed | ComposeError;
 
 /** Every error invoking an action can fail with. */
-export type InvocationError = UnknownAction | InvalidInput | Unavailable | Forbidden | ActionFailed;
+export type { InvocationError } from './execution.ts';
 
 /** Runs registered actions. */
 export class ActionHost extends Context.Tag('@eventiva/runtime/ActionHost')<
@@ -112,7 +125,17 @@ export class ActionHost extends Context.Tag('@eventiva/runtime/ActionHost')<
          * gates, permission, decode, policy check, handler, encode, all inside
          * the span `action.<name>`. The output and any declared error are encoded.
          */
-        readonly invoke: (action: string, input: unknown) => Effect.Effect<unknown, InvocationError, Caller>;
+        readonly invoke: (
+            action: string,
+            input: unknown,
+            options?: InvokeOptions
+        ) => Effect.Effect<unknown, InvocationError, Caller>;
+        /** Every outcome carries a durable receipt; persistence failure is never disguised as success. */
+        readonly execute: (
+            action: string,
+            input: unknown,
+            options?: InvokeOptions
+        ) => Effect.Effect<InvocationResult<InvocationError>, AuditUnavailable, Caller>;
     }
 >() {}
 
@@ -259,11 +282,16 @@ const outcomeOf = (exit: Exit.Exit<unknown, { readonly _tag: string }>): Outcome
     });
 
 /** The in-process action host. It evaluates flag gates with `Flags` and asks `Authorizer` on every call. */
-export const ActionHostLive: Layer.Layer<ActionHost, never, Flags | Authorizer> = Layer.effect(
-    ActionHost,
+export const ActionHostLive: Layer.Layer<
+    ActionHost | ActionInventory,
+    never,
+    Flags | Authorizer | IdentityResolver | InputDigest | ExecutionPolicy | Approvals | Audit | Integrity
+> = Layer.effectContext(
     Effect.gen(function* () {
         const flags = yield* Flags;
         const authorizer = yield* Authorizer;
+        const identity = yield* IdentityResolver;
+        const executor = yield* makeExecutor;
         const state = yield* Ref.make(emptyState);
 
         const register = <R = never>(
@@ -286,6 +314,9 @@ export const ActionHostLive: Layer.Layer<ActionHost, never, Flags | Authorizer> 
                 };
                 // Check first, so an invalid module never starts its layer.
                 yield* plan(yield* Ref.get(state), manifest, parts);
+                yield* validateDefinitions(parts.actions.map(({ spec }) => spec)).pipe(
+                    Effect.mapError((error) => new InvalidModule({ module: manifest.id, reason: error.message }))
+                );
 
                 // The module scope is a child of the caller's scope. Its finalizer is added
                 // before the registration's, so removal runs first and release second.
@@ -327,54 +358,82 @@ export const ActionHostLive: Layer.Layer<ActionHost, never, Flags | Authorizer> 
                 return manifest;
             });
 
-        const invoke = (action: string, input: unknown) =>
-            Effect.gen(function* () {
-                const entry = HashMap.get((yield* Ref.get(state)).actions, action);
-                if (Option.isNone(entry)) return yield* new UnknownAction({ action });
-                const { spec, run, gates, module } = entry.value;
-                yield* Effect.annotateCurrentSpan(Attributes.moduleId, module);
-                yield* Effect.annotateCurrentSpan(Attributes.actionVersion, spec.version);
-                for (const gate of gates) {
-                    const evaluation = yield* flags.evaluate(gate);
-                    if (!evaluation.value) return yield* new Unavailable({ action, reason: 'flag-off' });
-                }
-                // The caller is read per call, so a revoked grant stops working mid-session.
-                const caller = yield* Caller;
-                // Permission before decoding: an unauthorised caller learns nothing about its input.
-                yield* authorizer.canInvoke(caller, spec);
-                const decoded = yield* Schema.decodeUnknown(spec.input)(input).pipe(
-                    Effect.mapError(
-                        (error) =>
-                            new InvalidInput({ action, message: ParseResult.TreeFormatter.formatErrorSync(error) })
+        const execute = (action: string, input: unknown, options?: InvokeOptions) =>
+            executor(
+                action,
+                input,
+                Effect.gen(function* () {
+                    const entry = HashMap.get((yield* Ref.get(state)).actions, action);
+                    if (Option.isNone(entry)) return yield* new UnknownAction({ action });
+                    const { spec, run, gates, module } = entry.value;
+                    yield* Effect.annotateCurrentSpan(Attributes.moduleId, module);
+                    yield* Effect.annotateCurrentSpan(Attributes.actionVersion, spec.version);
+                    return {
+                        spec,
+                        run,
+                        available: Effect.gen(function* () {
+                            const current = HashMap.get((yield* Ref.get(state)).actions, action);
+                            if (Option.isNone(current) || current.value !== entry.value)
+                                return yield* new UnknownAction({ action });
+                            for (const gate of gates) {
+                                const evaluation = yield* flags.evaluate(gate);
+                                if (!evaluation.value) return yield* new Unavailable({ action, reason: 'flag-off' });
+                            }
+                        }),
+                    };
+                }),
+                options
+            ).pipe(
+                Effect.onExit((exit) =>
+                    Effect.annotateCurrentSpan(
+                        Attributes.actionOutcome,
+                        outcomeOf(Exit.isFailure(exit) ? exit : exit.value.result)
                     )
-                );
-                yield* authorizer.check(caller, spec, decoded);
-                const output = yield* run(decoded).pipe(
-                    Effect.catchAll((error) =>
-                        Option.match(spec.error, {
-                            // A handler that declares no errors and fails anyway has a defect.
-                            onNone: () => Effect.die(error),
-                            onSome: (schema) =>
-                                Schema.encode(schema)(error).pipe(
-                                    Effect.orDie,
-                                    Effect.flatMap((encoded) =>
-                                        Effect.fail(new ActionFailed({ action, error: encoded }))
-                                    )
-                                ),
-                        })
-                    )
-                );
-                return yield* Schema.encode(spec.output)(output).pipe(Effect.orDie);
-            }).pipe(
-                Effect.onExit((exit) => Effect.annotateCurrentSpan(Attributes.actionOutcome, outcomeOf(exit))),
+                ),
                 Effect.withSpan(actionSpan(action), { attributes: { [Attributes.actionName]: action } })
             );
 
-        return ActionHost.of({
-            register,
-            actions: Ref.get(state).pipe(Effect.map((current) => [...HashMap.keys(current.actions)].sort())),
-            schema: Ref.get(state).pipe(Effect.flatMap((current) => composeState(current))),
-            invoke,
-        });
+        const invoke = (action: string, input: unknown, options?: InvokeOptions) =>
+            execute(action, input, options).pipe(Effect.flatMap(({ result }) => result));
+
+        const list = (presented: CallerIdentity) =>
+            Effect.gen(function* () {
+                const caller = yield* identity
+                    .resolve(presented)
+                    .pipe(
+                        Effect.mapError(() => new Forbidden({ action: '<inventory>', reason: 'identity-unavailable' }))
+                    );
+                const entries = [...HashMap.values((yield* Ref.get(state)).actions)].sort((a, b) =>
+                    a.spec.name.localeCompare(b.spec.name)
+                );
+                const visible: Array<ActionSpec> = [];
+                for (const entry of entries) {
+                    const permitted = yield* authorizer.canInvoke(caller, entry.spec).pipe(
+                        Effect.as(true),
+                        Effect.catchTag('Forbidden', () => Effect.succeed(false))
+                    );
+                    if (!permitted) continue;
+                    const enabled = yield* Effect.forEach(entry.gates, (gate) => flags.evaluate(gate));
+                    if (enabled.every((evaluation) => evaluation.value)) visible.push(entry.spec);
+                }
+                return yield* validateInventory(visible);
+            });
+
+        return Context.make(
+            ActionHost,
+            ActionHost.of({
+                register,
+                actions: Ref.get(state).pipe(Effect.map((current) => [...HashMap.keys(current.actions)].sort())),
+                schema: Ref.get(state).pipe(Effect.flatMap((current) => composeState(current))),
+                invoke,
+                execute,
+            })
+        ).pipe(
+            Context.add(ActionInventory, {
+                list,
+                find: (caller, id) =>
+                    list(caller).pipe(Effect.map((items) => Option.fromNullable(items.find((item) => item.id === id)))),
+            })
+        );
     })
 );

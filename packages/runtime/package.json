@@ -17,6 +17,16 @@
             "types": "./dist/host.d.ts",
             "default": "./dist/host.js"
         },
+        "./invocation": {
+            "@eventiva/source": "./src/invocation.ts",
+            "types": "./dist/invocation.d.ts",
+            "default": "./dist/invocation.js"
+        },
+        "./testing": {
+            "@eventiva/source": "./src/testing.ts",
+            "types": "./dist/testing.d.ts",
+            "default": "./dist/testing.js"
+        },
         "./package.json": "./package.json"
     },
     "dependencies": {

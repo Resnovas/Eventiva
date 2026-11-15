@@ -25,6 +25,7 @@ import {
     UnknownAction,
 } from '@eventiva/contracts/errors';
 import { SubjectId, TenantId } from '@eventiva/contracts/ids';
+import { Receipt } from '@eventiva/contracts/receipt';
 import { isWeaker, SecurityProfile } from '@eventiva/contracts/security';
 import { canonicalLocale, LocaleTag, MessageKey, TerminologyPack } from '@eventiva/contracts/i18n';
 import { Attributes, actionSpan } from '@eventiva/contracts/telemetry';
@@ -142,5 +143,29 @@ describe('security profiles', () => {
         expect(isWeaker('baseline', 'restricted')).toBe(true);
         expect(isWeaker('vault', 'restricted')).toBe(false);
         expect(isWeaker('restricted', 'restricted')).toBe(false);
+    });
+});
+
+describe('portable receipts', () => {
+    it('roundtrips denied unknown-action evidence and rejects invalid durations and versions', () => {
+        const receipt = {
+            id: 'receipt-1',
+            caller: {
+                subject: '0193a4f0-0000-7000-8000-000000000001',
+                kind: 'human',
+                session: '0193a4f0-0000-7000-8000-000000000002',
+            },
+            action: 'not a canonical name',
+            version: null,
+            inputHash: 'sha256-digest',
+            outcome: 'denied',
+            startedAt: 4,
+            durationMs: 3,
+        };
+        const decoded = Schema.decodeUnknownSync(Receipt)(receipt);
+        expect(Schema.encodeSync(Receipt)(decoded)).toEqual(receipt);
+        expect(Schema.is(Receipt)({ ...receipt, durationMs: -1 })).toBe(false);
+        expect(Schema.is(Receipt)({ ...receipt, version: 0 })).toBe(false);
+        expect(Schema.is(Receipt)({ ...receipt, outcome: 'queued-success' })).toBe(false);
     });
 });

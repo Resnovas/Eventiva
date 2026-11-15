@@ -41,6 +41,12 @@ export type SideEffect = 'read' | 'write' | 'external';
 /** How the action behaves offline (2026-11-11 offline-first decision). Every action declares it. */
 export type Offline = 'local' | 'queued' | 'online-only';
 
+/** Whether invocation needs an explicit approval decision. */
+export type ApprovalPolicy = 'none' | 'confirm' | 'always';
+
+/** The operational risk of an action, independent of its side effect. */
+export type Risk = 'routine' | 'irreversible' | 'financial' | 'permission' | 'capacity' | 'stock' | 'live-production';
+
 /** A schema that needs no services to decode or encode. */
 type AnySchema = Schema.Schema.AnyNoContext;
 
@@ -65,6 +71,9 @@ export interface ActionSpec<
     readonly permission: Permission;
     readonly sideEffect: SideEffect;
     readonly offline: Offline;
+    readonly approval: ApprovalPolicy;
+    readonly risk: Risk;
+    readonly sensitive: boolean;
     /** The flag that switches an optional capability on, declared in the module manifest. */
     readonly flag: Option.Option<FlagKey>;
 }
@@ -94,6 +103,9 @@ export const define = <
         readonly permission: Permission;
         readonly sideEffect: SideEffect;
         readonly offline: Offline;
+        readonly approval?: ApprovalPolicy;
+        readonly risk?: Risk;
+        readonly sensitive?: boolean;
         readonly flag?: FlagKey;
     }
 ): ActionSpec<Name, In, Out, Err> => ({
@@ -107,6 +119,9 @@ export const define = <
     permission: options.permission,
     sideEffect: options.sideEffect,
     offline: options.offline,
+    approval: options.approval ?? 'none',
+    risk: options.risk ?? 'routine',
+    sensitive: options.sensitive ?? false,
     flag: Option.fromNullable(options.flag),
 });
 

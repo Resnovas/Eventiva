@@ -17,5 +17,7 @@
   ],
   // house:managed:end
   // house:local - add this repository's own actions to the list below.
-  "actions": [],
+  "actions": [
+    { "id": "action-parity", "label": "Check action inventory parity", "script": "parity" },
+  ],
 }

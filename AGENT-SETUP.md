@@ -28,7 +28,7 @@ Success ends with `agent-setup: ok`. Then run the full gate:
 ```sh
 export NX_NO_CLOUD=true NX_DAEMON=false
 pnpm nx sync:check
-pnpm nx run-many -t lint typecheck test build --outputStyle=static
+pnpm nx run-many -t lint typecheck test build parity --outputStyle=static
 pnpm nx run-many -t smoke --outputStyle=static
 ```
 

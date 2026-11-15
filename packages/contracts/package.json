@@ -37,6 +37,21 @@
             "types": "./dist/ids.d.ts",
             "default": "./dist/ids.js"
         },
+        "./inventory": {
+            "@eventiva/source": "./src/inventory.ts",
+            "types": "./dist/inventory.d.ts",
+            "default": "./dist/inventory.js"
+        },
+        "./json-schema": {
+            "@eventiva/source": "./src/json-schema.ts",
+            "types": "./dist/json-schema.d.ts",
+            "default": "./dist/json-schema.js"
+        },
+        "./receipt": {
+            "@eventiva/source": "./src/receipt.ts",
+            "types": "./dist/receipt.d.ts",
+            "default": "./dist/receipt.js"
+        },
         "./security": {
             "@eventiva/source": "./src/security.ts",
             "types": "./dist/security.d.ts",
