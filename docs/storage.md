@@ -70,8 +70,9 @@ With a working Docker daemon, run the following in one Bash shell before the exp
 
 ```sh
 test "$(date -u +%F)" \< 2026-11-22 || exit 1
-export POSTGRES_PASSWORD=$(openssl rand -hex 32)
-export STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
+POSTGRES_PASSWORD=$(openssl rand -hex 32)
+STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
+export POSTGRES_PASSWORD STORAGE_FIXTURE_PASSWORD
 docker network create eventiva-storage-test
 docker run --detach --rm --name eventiva-storage-test \
     --network eventiva-storage-test --publish 127.0.0.1:5432:5432 \
@@ -81,7 +82,7 @@ docker run --detach --rm --name eventiva-storage-test \
     --env 'POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256' \
     docker.io/library/postgres:17.12-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
 export PGPASSWORD="$POSTGRES_PASSWORD"
-for attempt in {1..30}; do
+for _ in {1..30}; do
     if docker exec --env PGPASSWORD eventiva-storage-test \
         psql -h 127.0.0.1 -U postgres -d eventiva_test -c 'SELECT 1' >/dev/null 2>&1; then break; fi
     sleep 1
