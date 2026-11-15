@@ -316,3 +316,54 @@ ClusterStatus observes registered/live counts, actually acquired local shards, a
 Run the uncached server:cluster-conformance target against only the approved disposable loopback eventiva_test fixture. It builds/forks independent processes, checks the registration gate and disjoint 24-shard ownership, and tests SIGTERM/SIGKILL at two barriers: uncommitted A1 writes and committed business output before Activity reply. The survivor must automatically complete persisted work with exactly one domain/history/outbox/dedup/success receipt. Tests also check live replay security, changed input, audit outage and independently routed tenant databases, then restart all runners in community mode and read persisted workflow/business results. No manual resume/resubmit is recovery evidence. The final success marker is sql-cluster-conformance-passed.
 
 server:test depends on that process target and also runs typed SQL composition plus explicitly volatile unit protocol/policy fixtures. Unit actors are not process proof. Existing CI's bounded PostgreSQL fixture and expiry controls apply unchanged. node --run verify includes the real process suite. main remains only an inventory/parity diagnostic, with no direct local invocation. Local process proof does not certify host partitions, RLS/effective restricted-role DML, autosuspend, Neon pooling, CDC, cross-project isolation or external outbox delivery.
+
+---
+
+# Tenant identity foundation
+
+EVE-43 adds `@eventiva/contracts/identity`, `@eventiva/runtime/identity` and `@eventiva/integrations.sql/identity`. Read `docs/identity.md` for the complete action/options contract and the unproved provider matrix. Keycloak is selected, candidate 26.8.2, but no concrete provider adapter, production signature verifier, consent issuer or provisioning/SCIM connector is implemented. Do not claim working SSO or activate the server shell.
+
+Build `identityStore`, Storage and runtime `durable` around ONE authorized tenant SQL client. EVE-42's router supplies Storage/CurrentTenant, deliberately not SqlClient; retain the exact authorized client only in the trusted backend composition root. Never reuse a host/module/store across routes, derive URLs from claims, change the router to leak SQL, or confuse the cluster transport database with tenant storage. Apply additive `0002.sql` with the existing checksum-verified migration path. Current tables have typed JSON bodies and versions, not a normalized directory or device-sync schema. Team lookup is a tenant-local scan, not a large-directory optimization.
+
+Canonical SubjectIds are stable and explicitly provisioned; `(issuer, subject)` links are case-sensitive, tenant-local, idempotent for the same canonical ID and collision-rejecting for a different one. No email link, auto-provision, relink or token role grants. `IdentityStore` is a trusted persistence port, never a public provisioning action. Its caller must authorize/audit initial principal/session/link/delegation changes. Another tenant inherits neither a link nor membership. A future control-plane identity directory can explicitly preserve canonical IDs across tenants without granting access.
+
+`identitySecurity` supplies IdentityResolver, Authorizer and conservative ExecutionPolicy. Every subject needs active principal/session/membership; kind, subject, session, tenant and onBehalfOf must match SQL. Effective agent rights intersect own roles, current human roles and bounded delegation resources; human-session revocation/expiry stops the agent. No chained delegation. Roles combine direct membership and team membership, never token roles. Identity target grammar denies unknown module actions; compose an explicit target policy for each future module. The SQL guard serializes identity writes and policy refresh, remaining held through Storage.commit's revalidation/handler/receipt transaction. CAS is create-only with null or update-only with the exact version, never unconditional upsert.
+
+Register `identityModule` on a routed ActionHost. Module flag `identity.foundation-enabled` defaults false; do not add remote ingestion, provider accounts or alternate environment toggles. The flag controls administration availability, not authorization. Every action is sensitive/online-only/version 1. Reads return null or value/version; writes return null. Permission-changing writes require always approval plus step-up. Profile writes by agents require confirmation. Existing ActionHost verifies proof binding/idempotency and persists exactly one receipt per invocation when audit is available. No approval issuance API, self-issued proof or production in-memory audit fallback is introduced. Tenant admins need explicit `identity.audit.read` on `audit`; limit is required 1..100. Receipt API exposes hashes/opaque identities only; idempotent results remain private backend data. Route failures require control-plane audit rather than a write into an untrusted tenant DB.
+
+`StandardsTokenVerifier` takes Redacted token input and returns normalized claims only after a real maintained standards verifier checks signatures, algorithm, provenance, token type and protocol. No production implementation exists. `authenticateToken` checks exact trusted nonempty issuer/audience and nonempty scope requirements, time bounds in milliseconds with no skew, mapping and live session. It grants no route or permissions. Tests inject synthetic normalized claims, not working JWT verification.
+
+Read-only Keycloak 26.8.2 vetting is complete but the exact image batch is ON HOLD: 7 high/44 medium/17 low occurrences per architecture, missing complete digest-bound SBOM and verified container signature, unresolved licence/vendor-triage gaps. See the vetting artifact linked in `docs/identity.md`. Do not pull, run or adopt it. `oauth4webapi@3.8.8` is also unapproved. Before provider execution obtain explicit exact-component/digest acceptance. Prove OIDC/OAuth and SAML in both directions, SCIM capability/direction, enterprise federation/directories, explicit linking, logout/rotation/revocation, passkeys/MFA/step-up, human consent, outage/degraded behavior and independent Community topology. All Keycloak claims remain unexecuted. WS-Federation, CAS, SAML 1.x and proprietary variants remain unsupported unless separately bridged and approved. Keep all vendor code/types in backend integrations; replace a provider through explicit authorized links to unchanged canonical subjects, never an email-based migration.
+
+Run contracts/runtime/storage tests and `node --run verify`. Use only `docs/storage.md`'s approved disposable PostgreSQL fixture. Tests must retain cross-DB denial, link collisions, viewer-agent intersection, resource denial, live revocation/replays, bound approvals, CAS concurrency, receipt count/privacy and audit rollback. The composition example below compiles in the storage test typecheck. No cloud, paid service, CI change or new dependency is needed.
+
+### host
+
+@title Register a host INSIDE one already authorized tenant route
+
+```ts
+import { Caller, type CallerIdentity } from '../../../packages/contracts/src/caller.ts';
+import { CurrentTenant } from '../../../packages/contracts/src/storage.ts';
+import { ActionHost, ActionHostLive } from '../../../packages/runtime/src/host.ts';
+import { identityModule, identitySecurity } from '../../../packages/runtime/src/identity.ts';
+import { InvocationDenied } from '../../../packages/runtime/src/invocation.ts';
+import { durable } from '../../../packages/runtime/src/storage.ts';
+import { Effect, Layer } from 'effect';
+
+/** The composition root supplies IdentityStore and Storage around the SAME authorized tenant SQL client. */
+export const readOrganization = (caller: CallerIdentity) => {
+    const host = ActionHostLive.pipe(Layer.provide(identitySecurity), Layer.provide(durable));
+    // IdentityStore, Storage, Approvals, InputDigest, Flags and CurrentTenant remain REQUIRED.
+    // Supply production implementations at the trusted root, never a permissive fallback.
+    return Effect.scoped(
+        Effect.gen(function* () {
+            const tenant = yield* CurrentTenant;
+            if (caller.tenant !== tenant.id)
+                return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
+            const actions = yield* ActionHost;
+            yield* actions.register(yield* identityModule);
+            return yield* actions.execute('identity.organization.get', {}).pipe(Effect.provideService(Caller, caller));
+        }).pipe(Effect.provide(host))
+    );
+};
+```

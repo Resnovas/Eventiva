@@ -6,6 +6,11 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./identity": {
+            "@eventiva/source": "./src/identity.ts",
+            "types": "./dist/identity.d.ts",
+            "default": "./dist/identity.js"
+        },
         "./postgres": {
             "@eventiva/source": "./src/postgres.ts",
             "types": "./dist/postgres.d.ts",

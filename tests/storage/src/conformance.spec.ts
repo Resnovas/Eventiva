@@ -471,12 +471,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                     ).toMatchObject({ left: { operation: 'applied-migration-changed:0001.sql' } });
                     const sql = yield* SqlClient.SqlClient;
                     const bad = 'CREATE TABLE bad_expansion (value text);\n-- statement-breakpoint\nINVALID SQL';
+                    const nextName = `${(Number(entries.at(-1)!.name.slice(0, 4)) + 1).toString().padStart(4, '0')}.sql`;
                     expect(
                         yield* Effect.either(
                             migrate(dialect, [
                                 ...entries,
                                 {
-                                    name: '0002.sql',
+                                    name: nextName,
                                     sql: bad,
                                     checksum: createHash('sha256').update(bad).digest('hex'),
                                 },
@@ -487,13 +488,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                     const expansion = 'CREATE TABLE expansion (id text PRIMARY KEY, optional_value text);';
                     expect(
                         yield* Effect.either(
-                            migrate(dialect, [...entries, { name: '0002.sql', sql: expansion, checksum: 'wrong' }])
+                            migrate(dialect, [...entries, { name: nextName, sql: expansion, checksum: 'wrong' }])
                         )
                     ).toMatchObject({ left: { operation: 'migration-checksum' } });
                     yield* migrate(dialect, [
                         ...entries,
                         {
-                            name: '0002.sql',
+                            name: nextName,
                             sql: expansion,
                             checksum: createHash('sha256').update(expansion).digest('hex'),
                         },

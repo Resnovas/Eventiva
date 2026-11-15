@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./identity": {
+            "@eventiva/source": "./src/identity.ts",
+            "types": "./dist/identity.d.ts",
+            "default": "./dist/identity.js"
+        },
         "./storage": {
             "@eventiva/source": "./src/storage.ts",
             "types": "./dist/storage.d.ts",
