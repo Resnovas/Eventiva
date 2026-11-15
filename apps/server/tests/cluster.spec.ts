@@ -34,7 +34,14 @@ import { IdentityResolver } from '@eventiva/runtime/invocation';
 import { makeTestOnlyHarness } from '@eventiva/runtime/testing';
 import { implement } from '@eventiva/runtime/action';
 import { ConfigProvider, Context, Effect, Either, Layer, Ref, Schema } from 'effect';
-import { ClusterActions, ClusterActionsLive, ClusterInvocation, entityId, receive } from '../src/cluster-actions.ts';
+import {
+    ClusterActionExecutor,
+    ClusterActions,
+    ClusterActionsLive,
+    ClusterInvocation,
+    entityId,
+    receive,
+} from '../src/cluster-actions.ts';
 import { DeploymentProfile, deploymentProfile, shardingConfig } from '../src/cluster-profile.ts';
 import { ClusterStatus, clusterRunner, clusterStatus } from '../src/cluster.ts';
 
@@ -141,10 +148,11 @@ describe('deployment profiles', () => {
 // dispatch policy only, NEVER independent-runner ownership or durable recovery.
 const fixture = Effect.gen(function* () {
     const h = yield* makeTestOnlyHarness(caller);
-    const context = yield* Layer.build(
+    const hostContext = yield* Layer.build(
         ActionHostLive.pipe(Layer.provide(h.TestOnly), Layer.provide(FlagsSafeDefaults))
     );
-    const host = Context.get(context, ActionHost);
+    const host = Context.get(hostContext, ActionHost);
+    const context = Context.add(hostContext, ClusterActionExecutor, { execute: host.execute });
     const action = define('fixture.change', {
         version: 1,
         description: 'Cluster dispatch conformance.',
@@ -211,15 +219,14 @@ describe('one authorized dispatch boundary', () => {
                 Effect.provideService(IdentityResolver, {
                     resolve: () => Effect.succeed({ ...caller, tenant: undefined }),
                 }),
-                Effect.provideService(
-                    ActionHost,
-                    Context.get(
+                Effect.provideService(ClusterActionExecutor, {
+                    execute: Context.get(
                         yield* Layer.build(
                             ActionHostLive.pipe(Layer.provide(h.TestOnly), Layer.provide(FlagsSafeDefaults))
                         ),
                         ActionHost
-                    )
-                ),
+                    ).execute,
+                }),
                 Effect.either
             );
             expect(yield* changed).toMatchObject({ _tag: 'Left', left: { reason: 'tenant-route-mismatch' } });

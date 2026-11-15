@@ -17,8 +17,9 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { NodeRuntime } from '@effect/platform-node';
-import { Effect, FiberSet, Layer, Schema } from 'effect';
-import { ClusterStatus, clusterRunner } from '../dist/cluster.js';
+import { Sharding } from '@effect/cluster/Sharding';
+import { Cause, Effect, FiberSet, Layer, Schema } from 'effect';
+import { ClusterStatus } from '../dist/cluster.js';
 import { ClusterActions, ClusterInvocation } from '../dist/cluster-actions.js';
 import { deploymentProfile } from '../dist/cluster-profile.js';
 
@@ -26,14 +27,14 @@ import { deploymentProfile } from '../dist/cluster-profile.js';
 // dependencies. This file never creates a memory storage or integrity substitute.
 const bootstrap = process.argv[2];
 if (!bootstrap) throw new Error('Phase B SQL/action bootstrap module is required.');
-const { Dependencies } = await import(pathToFileURL(resolve(bootstrap)).href);
-if (!Layer.isLayer(Dependencies)) throw new Error('Bootstrap must export a Dependencies Layer.');
+const { makeBackend, commands: extraCommands } = await import(pathToFileURL(resolve(bootstrap)).href);
 
 const program = Effect.gen(function* () {
     const profile = yield* deploymentProfile;
-    const context = yield* Layer.build(clusterRunner(profile).pipe(Layer.provide(Dependencies)));
+    const context = yield* Layer.build(makeBackend(profile));
     const status = yield* ClusterStatus.pipe(Effect.provide(context));
     const actions = yield* ClusterActions.pipe(Effect.provide(context));
+    const sharding = yield* Sharding.pipe(Effect.provide(context));
     const commands = yield* FiberSet.make();
     const runFork = yield* FiberSet.runtime(commands)();
     const respond = (message) => {
@@ -42,11 +43,19 @@ const program = Effect.gen(function* () {
                 ? status.snapshot
                 : message?.command === 'execute'
                   ? Schema.decodeUnknown(ClusterInvocation)(message.request).pipe(Effect.flatMap(actions.execute))
-                  : Effect.fail(new Error('Unknown harness command'));
+                  : message?.command === 'shard'
+                    ? Effect.succeed(sharding.getShardId(message.entityId, 'eventiva-actions').id)
+                    : extraCommands?.[message?.command]
+                      ? extraCommands[message.command](message.request ?? message.executionId).pipe(
+                            Effect.provide(context)
+                        )
+                      : Effect.fail(new Error('Unknown harness command'));
         runFork(
             operation.pipe(
-                Effect.match({
-                    onFailure: () => process.send?.({ id: message.id, error: 'runner-command-failed' }),
+                Effect.matchCause({
+                    onFailure: (cause) => {
+                        process.send?.({ id: message.id, error: Cause.pretty(cause) });
+                    },
                     onSuccess: (value) => process.send?.({ id: message.id, value }),
                 })
             )

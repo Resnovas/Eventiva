@@ -16,7 +16,7 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
-const config = testProject('server-cluster', ['apps/server/src/cluster*.ts']);
+const config = testProject('server-cluster', ['apps/server/src/cluster*.ts', 'apps/server/src/backend.ts']);
 const serverConfig: ReturnType<typeof testProject> = {
     ...config,
     test: { ...config.test, include: ['tests/**/*.spec.ts'] },

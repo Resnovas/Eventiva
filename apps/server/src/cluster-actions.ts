@@ -19,7 +19,7 @@ import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
 import * as Rpc from '@effect/rpc/Rpc';
 import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
 import { Receipt } from '@eventiva/contracts/receipt';
-import { ActionHost } from '@eventiva/runtime/host';
+import type { ActionHost } from '@eventiva/runtime/host';
 import { IdentityResolver } from '@eventiva/runtime/invocation';
 import { Context, Data, Effect, Layer, Schema } from 'effect';
 
@@ -47,6 +47,12 @@ export class ClusterActionDenied extends Data.TaggedError('ClusterActionDenied')
 }> {}
 const Denied = Schema.Struct({ _tag: Schema.Literal('ClusterActionDenied'), reason: Schema.String });
 
+/** Backend routing boundary. Every implementation delegates to ActionHost.execute. */
+export class ClusterActionExecutor extends Context.Tag('@eventiva/server/ClusterActionExecutor')<
+    ClusterActionExecutor,
+    { readonly execute: ActionHost['Type']['execute'] }
+>() {}
+
 /** This identity namespaces compute ordering only. It is never a database selector. */
 export const entityId = (caller: CallerIdentity, key: string): string => JSON.stringify([caller.tenant ?? null, key]);
 
@@ -72,7 +78,7 @@ export const receive = (address: string, request: ClusterInvocation) =>
             .pipe(Effect.mapError(() => new ClusterActionDenied({ reason: 'identity-unavailable' })));
         if (caller.tenant !== request.caller.tenant || entityId(caller, request.entityKey) !== address)
             return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
-        const host = yield* ActionHost;
+        const host = yield* ClusterActionExecutor;
         const result = yield* host.execute(request.action, request.input, request.intent).pipe(
             Effect.provideService(Caller, caller),
             Effect.mapError(() => new ClusterActionDenied({ reason: 'audit-unavailable' }))
@@ -87,7 +93,7 @@ export const receive = (address: string, request: ClusterInvocation) =>
 export const ActionEntityLive = ActionEntity.toLayer(
     Effect.gen(function* () {
         const address = yield* Entity.CurrentAddress;
-        const context = yield* Effect.context<ActionHost | IdentityResolver>();
+        const context = yield* Effect.context<ClusterActionExecutor | IdentityResolver>();
         return { Execute: ({ payload }) => receive(address.entityId, payload).pipe(Effect.provide(context)) };
     }),
     { concurrency: 1 }

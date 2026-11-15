@@ -32,8 +32,8 @@ import { platformModule, Status } from './status.ts';
  * The backend composition root: the only place that names providers and
  * platform layers. Flags come from the Git baseline, then PostHog when a key
  * is configured; without one, nothing leaves the process. HTTP and agent
- * transports arrive with their own issues (EVE-46 onwards). Until EVE-42's SQL
- * adapter lands, this is a registration diagnostic, not a business runner.
+ * transports arrive with their own issues (EVE-46 onwards). This executable
+ * is a registration diagnostic, not an authenticated business runner.
  * Every executable deployment must compose clusterRunner; there is no direct
  * ActionHost invocation fallback in this shell.
  */
@@ -63,7 +63,7 @@ const program = Effect.gen(function* () {
         ['server']
     );
     yield* Effect.logWarning(
-        'Cluster execution unavailable: SQL runner and durable action adapters are not composed.',
+        'Diagnostic only: compose backend with trusted identity, tenant routing and SQL services to execute actions.',
         {
             edition: profile.edition,
             expectedRunners: profile.expectedRunners,

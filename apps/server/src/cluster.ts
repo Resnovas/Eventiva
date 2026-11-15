@@ -15,6 +15,7 @@
  */
 
 import * as RunnerHealth from '@effect/cluster/RunnerHealth';
+import * as ClusterWorkflowEngine from '@effect/cluster/ClusterWorkflowEngine';
 import { RunnerStorage } from '@effect/cluster/RunnerStorage';
 import * as Runners from '@effect/cluster/Runners';
 import { Sharding } from '@effect/cluster/Sharding';
@@ -25,7 +26,8 @@ import * as SqlMessageStorage from '@effect/cluster/SqlMessageStorage';
 import * as SqlRunnerStorage from '@effect/cluster/SqlRunnerStorage';
 import { NodeClusterSocket } from '@effect/platform-node';
 import * as RpcSerialization from '@effect/rpc/RpcSerialization';
-import { Context, Effect, Layer } from 'effect';
+import { Context, Deferred, Effect, Layer, Scope } from 'effect';
+import type { WorkflowEngine } from '@effect/workflow/WorkflowEngine';
 import { ClusterActionsLive } from './cluster-actions.ts';
 import { type DeploymentProfile, shardingConfig } from './cluster-profile.ts';
 
@@ -107,18 +109,50 @@ export const clusterStatus = (profile: DeploymentProfile) =>
  * there is deliberately no memory/noop fallback. All settings are validated
  * before this layer is built. Lease rows avoid session advisory ownership.
  */
-export const clusterRunner = (profile: DeploymentProfile) => {
-    const config = ShardingConfig.layer(shardingConfig(profile));
-    const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(config));
-    const health = RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol));
-    const storage = Layer.mergeAll(SqlRunnerStorage.layer, SqlMessageStorage.layer).pipe(Layer.provide(config));
-    const transport = SocketRunner.layer.pipe(
-        Layer.provide(NodeClusterSocket.layerSocketServer),
-        Layer.provideMerge(health),
-        Layer.provide(protocol),
-        Layer.provideMerge(storage),
-        Layer.provide(config),
-        Layer.provide(RpcSerialization.layerNdjson)
+export const clusterRunner = <E = never, R = never>(
+    profile: DeploymentProfile,
+    registerWorkflows: Effect.Effect<void, E, R | WorkflowEngine | Scope.Scope> = Effect.void
+) =>
+    Layer.unwrapEffect(
+        Effect.gen(function* () {
+            const ready = yield* Deferred.make<void>();
+            const config = ShardingConfig.layer(shardingConfig(profile));
+            const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(config));
+            const health = RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol));
+            // Sharding starts its background loops during acquisition. Do not advertise
+            // or acquire work until both action and workflow handlers are registered.
+            const runners = Layer.effect(
+                RunnerStorage,
+                Effect.map(RunnerStorage, (storage) => ({
+                    ...storage,
+                    register: (runner, healthy) =>
+                        Deferred.await(ready).pipe(Effect.zipRight(storage.register(runner, healthy))),
+                    getRunners: Deferred.await(ready).pipe(Effect.zipRight(storage.getRunners)),
+                }))
+            ).pipe(Layer.provide(SqlRunnerStorage.layer));
+            const storage = Layer.mergeAll(runners, SqlMessageStorage.layer).pipe(Layer.provide(config));
+            const transport = SocketRunner.layer.pipe(
+                Layer.provide(NodeClusterSocket.layerSocketServer),
+                Layer.provideMerge(health),
+                Layer.provide(protocol),
+                Layer.provideMerge(storage),
+                Layer.provide(config),
+                Layer.provide(RpcSerialization.layerNdjson)
+            );
+            const services = ClusterActionsLive.pipe(
+                Layer.provideMerge(
+                    Layer.mergeAll(clusterStatus(profile), ClusterWorkflowEngine.layer).pipe(
+                        Layer.provideMerge(transport)
+                    )
+                )
+            );
+            return Layer.scopedContext(
+                Effect.gen(function* () {
+                    const context = yield* Layer.build(services);
+                    yield* registerWorkflows.pipe(Effect.provide(context));
+                    yield* Deferred.succeed(ready, undefined);
+                    return context;
+                })
+            );
+        })
     );
-    return ClusterActionsLive.pipe(Layer.provideMerge(clusterStatus(profile).pipe(Layer.provideMerge(transport))));
-};

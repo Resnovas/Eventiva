@@ -380,6 +380,9 @@ importers:
       '@eventiva/integrations.posthog.server':
         specifier: workspace:*
         version: link:../../packages/integrations/posthog-server
+      '@eventiva/integrations.sql':
+        specifier: workspace:*
+        version: link:../../packages/integrations/sql
       '@eventiva/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
