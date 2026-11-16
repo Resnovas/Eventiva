@@ -15,7 +15,7 @@
  */
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
@@ -64,6 +64,7 @@ const cases = [
 ];
 for (const [name, body, code] of cases)
     test(`resource compiler contract: ${name}`, () => {
+        mkdirSync(join(root, '.amp/in'), { recursive: true });
         const directory = mkdtempSync(join(root, '.amp/in/resource-types-'));
         try {
             const path = join(directory, 'case.mts');
