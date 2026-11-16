@@ -96,6 +96,31 @@ test('relative paths cannot evade the privileged SQL directory', () =>
         ({ findings }) => assert.match(findings[0].reason, /privileged SQL implementation/)
     ));
 
+for (const syntax of [
+    `import { value } from './externals/upstream/library/src/index.ts'`,
+    `export type { Value } from './externals/upstream/library/src/index.ts'`,
+    `type Value = import('./externals/upstream/library/src/index.ts').Value`,
+    `const value = require('./externals/upstream/library/src/index.ts')`,
+    `const value = import('./externals/upstream/library/src/index.ts')`,
+    `export type { Value } from '@bridge'`,
+])
+    test(`rejects reference-only source through the resolved graph: ${syntax}`, () =>
+        fixture(
+            {
+                'feature.ts': syntax,
+                'bridge.ts': `export type { Value } from './externals/upstream/library/src/index.ts'`,
+                'externals/upstream/library/src/index.ts': 'export const value = 1; export type Value = number;',
+            },
+            (_boundary, graph) => {
+                assert.equal(graph.findings.length, 1);
+                assert.match(graph.findings[0].reason, /reference-only upstream source/);
+                assert.equal(
+                    graph.edges.some(([, target]) => target.startsWith('externals/')),
+                    false
+                );
+            }
+        ));
+
 test('fails closed on unresolved local types', () =>
     fixture({ 'feature.ts': `type T = import('./hidden.ts').Client` }, ({ findings }) =>
         assert.match(findings[0].reason, /Unresolved/)

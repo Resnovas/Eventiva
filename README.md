@@ -58,11 +58,15 @@ node --run verify
 
 `setup` installs the house commit hook and registers available editor actions. `check` is the house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current; locally it also checks that the commit hook is installed. `verify` runs `check`, then the Nx `lint`, `typecheck`, `test`, `build` and `parity` targets, then the `smoke` targets. The `house check` and `application check` CI jobs run the same gates. Run `node --run parity` for the action inventory gate alone; read [the action host guide](docs/actions.md) for invocation services, approval and receipt guarantees. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required.
 
-`pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `Examples/**` so recursive commands never discover the archived manifests.
+`pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `Examples/**` and `externals/**` so recursive commands never discover archived or upstream reference manifests.
 
 Amp orbs use [`.agents/setup`](.agents/setup) to provision the pinned toolchain, dependencies and Chromium, and [`.agents/resume`](.agents/resume) for a fast readiness check. There is no development server to start. Old `pnpm dev`, `platform:*`, cluster and declaration-doc commands from the archive do not exist here.
 
 If `check` reports stale generated files, run `node tools/dev/surfaces.mjs sync` and `node tools/ai-docs/docgen.mjs`, then repeat the check. To open the graph viewer, first generate it with `sh tools/graphify/graphify update`.
+
+## Upstream source references
+
+Browse [`externals/README.md`](externals/README.md) for version-pinned dependency implementations, licenses, provenance and the update procedure. These are actual upstream source trees for coding-agent inspection, not installed packages or another application implementation. Effect stable and main are separate; only the stable dependencies in the workspace lockfile execute. `check` verifies source identities and workspace exclusions; `verify` also rejects application and test imports into the references.
 
 ## House synchronization and delivery
 

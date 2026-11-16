@@ -141,6 +141,7 @@ export default [
             '**/.expo',
             '**/vitest.config.*.timestamp*',
             'Examples/**',
+            'externals/**',
             'graphify-out/**',
             // Boundary fixtures break the rules on purpose; tests/boundaries lints them.
             'tests/boundaries/fixtures/**',

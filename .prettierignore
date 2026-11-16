@@ -90,3 +90,5 @@ pnpm-lock.yaml
 .examples/
 patches/
 Examples/**
+# Preserve upstream source bytes and notices.
+externals/**

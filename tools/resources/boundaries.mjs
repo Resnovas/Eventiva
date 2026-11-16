@@ -136,6 +136,14 @@ export const checkResourceGraph = (
             const owner = packageOf(path);
             const destination = packageOf(target);
             const next = [...chain, relative(root, target)];
+            if (relative(root, target).split(/[\\/]/)[0] === 'externals') {
+                findings.push({
+                    path: relative(root, path),
+                    reason: 'Executable/type dependency reaches reference-only upstream source',
+                    chain: next,
+                });
+                return;
+            }
             if (destination && permitted[owner] && !permitted[owner].includes(destination))
                 findings.push({
                     path: relative(root, path),

@@ -8,6 +8,7 @@ packages:
     - 'tests/*'
     - 'tests/integrations/*'
     - '!Examples/**'
+    - '!externals/**'
 
 # Supply chain: a version is installable only once it is seven days old, the
 # same cooldown as Dependabot, and only the build scripts listed here run.

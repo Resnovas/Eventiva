@@ -1,3 +1,5 @@
 # Historical snapshots must remain excluded if Nx is reintroduced.
 packages-old/**
 Examples/**
+# Upstream source is for reading only, never Nx project discovery.
+externals/**

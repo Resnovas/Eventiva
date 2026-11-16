@@ -16,7 +16,7 @@
     "scripts": {
         "prepare": "effect-language-service patch",
         "setup": "node tools/dev/surfaces.mjs install",
-        "check": "node tools/toolchain/versions.mjs --check && node tools/dev/surfaces.mjs check && node tools/license/check-headers.mjs && node tools/ai-docs/docgen.mjs --check && node tools/storage/policy.mjs && node --test tools/storage/guard.test.mjs",
+        "check": "node tools/toolchain/versions.mjs --check && node tools/dev/surfaces.mjs check && node tools/license/check-headers.mjs && node tools/ai-docs/docgen.mjs --check && node tools/storage/policy.mjs && node --test tools/storage/guard.test.mjs && node tools/references/check.mjs && node --test tools/references/check.test.mjs",
         "toolchain": "node tools/toolchain/versions.mjs",
         "lint": "nx run-many -t lint",
         "typecheck": "nx run-many -t typecheck",

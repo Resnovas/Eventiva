@@ -1,0 +1,55 @@
+# Upstream source references
+
+These are upstream implementation source trees for local coding-agent research, imported as a single-commit Git subtree at `externals/upstream`. They are not runtime dependencies, workspace projects, npm package archives, declaration-only substitutes or a second application baseline. No upstream installation or build scripts run during import. Eventiva's approved dependency versions and lockfile remain unchanged.
+
+## Governing rules and scope
+
+The exact rule in [coding-preferences/references/vendoring.md](../.agents/skills/coding-preferences/references/vendoring.md) is: **"Preference: Vendor external repositories into the project using Git subtree under `externals/`."** It applies when starting a project with external dependencies, adding a major library, or configuring agent access. Its stated exceptions are an external repository too large to vendor, a repository needing fork-based contributions, or no stable public URL. The same file says **"Preference: Use `git subtree` to vendor external source code."**
+
+[coding-preferences/references/agent-git.md](../.agents/skills/coding-preferences/references/agent-git.md) adds: **"Vendor critical SDKs under `externals/` (Git subtree preferred over submodules)."** [coding-preferences/references/effect.md](../.agents/skills/coding-preferences/references/effect.md) additionally requires: **"Keep two copies available: current stable version plus Effect main branch, clearly separated"**. Root [AGENTS.md](../AGENTS.md#source-availability) says a dependency the project leans on heavily is vendored under `externals/<name>` and excludes repositories enormous relative to their value.
+
+The audit on 2026-11-16 found no existing `externals` directory. The inventory covers every directly declared non-workspace implementation dependency and the critical PostgreSQL driver. Declaration packages (`@types/node`, `@types/react`, `@types/pg`) are not substituted for implementations or copied from the enormous DefinitelyTyped repository. Node and the disposable PostgreSQL service are separately pinned execution environments, not vendored SDKs. This is not a recursive copy of every transitive npm dependency.
+
+Both Effect snapshots are complete repository trees, including upstream agent/pattern material, scripts, tests and packages. Stable is matched to Eventiva's installed versions, not automatically upgraded when a later release appears. Main is a dated immutable research snapshot. For oversized UI/tooling monorepos, the catalog selects complete implementation/package subtrees rather than unrelated websites, historical assets or test corpora. Original internal paths are retained. In particular, the compiler is the complete TypeScript `src` tree; React is all `packages`; React Native includes the entire native/JS implementation and code generator; PostHog includes each SDK's complete `src` plus shared core implementation. These scoped entries are not represented as complete repository clones.
+
+### Exact inventory
+
+[`tools/references/catalog.json`](../tools/references/catalog.json) is the reviewed list of URLs, immutable commits, release tags, versions, licenses and source scopes. [`upstream/sources.json`](upstream/sources.json) additionally records every retained notice and the original Git tree/blob identities. Look up an entry's `paths` before browsing it; the original repository structure starts below its entry directory.
+
+Versions below identify published releases through their upstream tags or npm `gitHead`. Upstream source manifests are not rewritten: Nx uses development version `0.0.1`, and the React Hooks plugin's release-tagged source still says `7.0.0`. Their publish tooling stamps the released versions. Main contains `.agents` and `scripts` but no top-level `.patterns` directory at the recorded commit; the complete tree is preserved as published.
+
+- `effect-stable`: Effect 3.22.4; platform 0.97.3, platform-node 0.108.4, sql 0.52.2, sql-sqlite-node 0.54.1, cluster 0.60.5, rpc 0.76.4, experimental 0.61.2, vitest 0.30.1. `effect-main`: commit `3d13d1e84a933bfd4b90952ad9a221728326e923`, captured 2026-11-16. Separate release trees cover sql-pg 0.53.1, workflow 0.19.1 and language-service 0.87.5.
+- React and React DOM 19.2.3; React Native 0.85.3 and its code generator; React Native Web 0.21.4; Async Storage 2.2.0.
+- Expo 56.0.24; CLI 56.1.27; Metro runtime 56.0.21; Babel preset 56.0.21; localization 56.0.6; splash-screen 56.0.16; status-bar 56.0.4; system-ui 56.0.5. Independently released packages retain their own npm `gitHead` commits, not an approximate shared Expo tag.
+- Metro and its 13 companion packages 0.84.5, the exact implementation dependencies of `@expo/metro` 56.0.2. The latter describes itself as a "Generated and versioned meta-package wrapping Metro". Its published `expo/expo-metro` URL returns 404 and its `gitHead` is absent from both public Expo repositories checked. Under the no-stable-public-URL exception, no wrapper source is invented or replaced with npm artifacts; the actual upstream Metro implementation is copied at its matching release.
+- FormatJS intl 6.1.4, React Intl 12.1.6, intl-getcanonicallocales 3.3.0, intl-locale 5.4.2, intl-pluralrules 7.0.2, CLI 6.18.0 and ESLint plugin 8.1.3.
+- OpenFeature core 1.12.0, server SDK 1.23.0, web SDK 1.10.0 and React SDK 1.4.1.
+- PostHog Node 5.63.1, React Native 4.85.3 and OpenFeature provider 0.1.3, each with its same-commit shared core source; node-postgres (`pg`) 8.23.1 including its repository packages.
+- TypeScript 6.0.3; Nx and all seven directly used Nx plugins/devkit 24.0.5; Vite 8.3.6; Vitest and coverage-v8 4.1.12; Playwright 1.65.0.
+- ESLint 10.14.0; `@eslint/js` 10.0.1; typescript-eslint 8.72.1; React Hooks ESLint plugin 7.1.1 at its own release, not the older copy in the React release; Prettier 3.9.10; eslint-config-prettier 10.1.8; Babel core/runtime 7.29.13 plus upstream helpers.
+
+## Licenses and security
+
+Each entry keeps original root licenses/notices, selected subtrees' nested notices, upstream README and package metadata. Source bytes and executable modes are unmodified; Eventiva's FCL header is not applied to upstream code. Most upstream projects use MIT; OpenFeature, TypeScript and Playwright use Apache-2.0. Per-file and nested third-party notices remain authoritative, including fixture licenses. The catalog's `license` field summarizes upstream metadata; it does not relicense upstream files.
+
+Treat upstream scripts, agent instructions, fixtures and example credentials as untrusted reference data. Do not install dependencies inside these trees or run their scripts. Import fetches immutable public Git revisions, archives only reviewed paths, and does not initialize submodules. Verification rejects source drift, escaping symlinks and a total source payload above 350 MiB. Git history contains one aggregate source snapshot rather than the upstream repositories' histories.
+
+## Isolation and verification
+
+- PNPM explicitly excludes `externals/**`; upstream manifests cannot join the workspace. The reference check rejects workspace dependency values pointing into `externals` and checks copied release versions against active manifests.
+- Nx, ESLint, Prettier, Docker and Graphify exclude `externals`. Upstream source is not reformatted, relicensed, indexed as Eventiva code, shipped in the Docker context or discovered as Nx projects.
+- TypeScript projects retain explicit active source roots/project references. Tests and builds retain their existing scoped inputs. The compiler-resolved workspace boundary gate rejects direct, transitive, aliased, type-only, dynamic and CommonJS imports into the references, including imports from tests and agent examples. This is a CI boundary, not a sandbox against deliberately executing arbitrary files.
+- `node tools/references/check.mjs` reconstructs Git tree/blob identities from actual bytes, modes and symlink targets, checks retained licenses and validates release/workspace pins. `node --run check` runs it and its regression tests. `node --run verify` additionally checks the complete active source/declaration graph and executes the existing application gates.
+
+For example, inspect stable Effect's actual implementation at `upstream/effect-stable/packages/effect/src/internal/core.ts`, then compare the same package in `effect-main` as research only. Import `effect` in application code, never a path below `externals`.
+
+## Update procedure
+
+1. Update Eventiva dependencies only through their own approved change. Identify each exact release's upstream tag or npm `gitHead`; peel annotated tags to immutable commits and review licensing and repository size. Update `tools/references/catalog.json`. A main-branch refresh records a new dated commit without changing the stable pin.
+2. Run `node tools/references/import.mjs tools/references/catalog.json /tmp/eventiva-reference-next` from the repository root. The destination must not exist. This downloads public Git objects and stages a source-only bundle; it neither executes upstream scripts nor changes Eventiva history. With no flags, each catalog entry's `paths` is its entire declared source scope; there is no package-install mode.
+3. Review the staged bundle, sources inventory, license changes, symlinks and size. Commit the bundle with the authorized human identity, DCO sign-off and applicable AI credit. Use a single bundle commit, not upstream histories. Import an initial bundle with `git subtree add --prefix=externals/upstream <bundle-repository> HEAD`; for later updates, maintain the previous bundle commit as its parent and use `git subtree pull --prefix=externals/upstream <bundle-repository> <bundle-branch>`. Set the subtree merge message with `--message` and keep the same attribution/sign-off rules. The previous bundle commit is recorded by Git subtree metadata and is available in Eventiva's Git object history; seed a new bundle repository with that commit before committing the next snapshot.
+4. Run `node --run check`, `node --run verify`, `pnpm nx show projects --json` and `pnpm -r list --depth -1 --json`. Confirm the project/package inventories contain no upstream entries and no runtime import or dependency uses `externals`. Refresh the Eventiva-only code graph after removing generated build output. Deliver the catalog, source subtree, docs, safeguards and graph together.
+
+Verify signatures on both the bundle and subtree merge commits before pushing. Older Git subtree implementations call `git commit-tree` without `-S`; `commit.gpgsign=true` does not sign that plumbing command. The initial import used the bundled subtree implementation with `-S` added to that invocation. Keep signatures and policy trailers on generated subtree commits rather than disabling the repository's signature requirement.
+
+If source validation fails, restore/refetch the exact declared upstream revision rather than editing upstream bytes or weakening the check. If a release has no stable public source, record that exception explicitly; never substitute a nearby tag, generated declarations or a compiled npm archive.
