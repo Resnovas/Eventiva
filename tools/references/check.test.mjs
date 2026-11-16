@@ -35,6 +35,7 @@ const fixture = (run) => {
         write('package.json', JSON.stringify({ dependencies: { effect: 'catalog:' } }));
         write('pnpm-workspace.yaml', "packages:\n  - '!externals/**'\ncatalog:\n  effect: 3.22.4\n");
         write('.nxignore', 'externals/**\n');
+        write('.github/codeql/codeql-config.yml', 'paths-ignore:\n  - externals/**\n');
         const base = 'externals/upstream/effect-stable';
         write(`${base}/src/index.ts`, 'export const value = 31;\n');
         write(`${base}/src/nested/a.ts`, 'export const other = 7;\n');
@@ -120,6 +121,11 @@ for (const [label, change, expected] of [
         /version drift/,
     ],
     ['missing workspace exclusion', ({ write }) => write('.nxignore', ''), /exclusions are missing/],
+    [
+        'missing CodeQL reference exclusion',
+        ({ write }) => write('.github/codeql/codeql-config.yml', 'paths-ignore:\n  - Examples/**\n'),
+        /CodeQL reference exclusion is missing/,
+    ],
 ])
     test(`rejects ${label}`, () =>
         fixture((state) => {

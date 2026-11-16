@@ -132,6 +132,8 @@ export const checkReferences = (root) => {
         !readFileSync(join(root, '.nxignore'), 'utf8').includes('externals/**')
     )
         throw new Error('Reference workspace exclusions are missing');
+    if (!/^\s+- externals\/\*\*\s*$/m.test(readFileSync(join(root, '.github/codeql/codeql-config.yml'), 'utf8')))
+        throw new Error('CodeQL reference exclusion is missing');
     if (!workspace.includes(`effect: ${pins.get('effect')}`)) throw new Error('Effect catalog/reference drift');
     return { sources: sources.length, files, bytes };
 };

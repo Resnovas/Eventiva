@@ -37,7 +37,7 @@ Treat upstream scripts, agent instructions, fixtures and example credentials as 
 ## Isolation and verification
 
 - PNPM explicitly excludes `externals/**`; upstream manifests cannot join the workspace. The reference check rejects workspace dependency values pointing into `externals` and checks copied release versions against active manifests.
-- Nx, ESLint, Prettier, Docker and Graphify exclude `externals`. Upstream source is not reformatted, relicensed, indexed as Eventiva code, shipped in the Docker context or discovered as Nx projects.
+- Nx, ESLint, Prettier, Docker, Graphify and CodeQL exclude `externals`. Upstream source is not reformatted, relicensed, indexed or security-scanned as Eventiva code, shipped in the Docker context or discovered as Nx projects. `.github/codeql/codeql-config.yml` retains active Eventiva source in scope; the reference check requires its upstream exclusion. Without it, CodeQL extracts upstream implementations and fixtures and can exhaust its job limit.
 - TypeScript projects retain explicit active source roots/project references. Tests and builds retain their existing scoped inputs. The compiler-resolved workspace boundary gate rejects direct, transitive, aliased, type-only, dynamic and CommonJS imports into the references, including imports from tests and agent examples. This is a CI boundary, not a sandbox against deliberately executing arbitrary files.
 - `node tools/references/check.mjs` reconstructs Git tree/blob identities from actual bytes, modes and symlink targets, checks retained licenses and validates release/workspace pins. `node --run check` runs it and its regression tests. `node --run verify` additionally checks the complete active source/declaration graph and executes the existing application gates.
 
