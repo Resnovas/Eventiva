@@ -28,6 +28,8 @@ export default defineConfig({
             '../telemetry/src/**/*.spec.ts',
             '../ui-modules/src/**/*.spec.tsx',
             '../runtime/src/kernel-runtime.spec.ts',
+            '../runtime/src/marketplace.spec.ts',
+            '../runtime/src/trust.spec.ts',
         ],
     },
 });

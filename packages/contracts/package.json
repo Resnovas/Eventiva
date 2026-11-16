@@ -42,6 +42,16 @@
             "types": "./dist/identity.d.ts",
             "default": "./dist/identity.js"
         },
+        "./trust": {
+            "@eventiva/source": "./src/trust.ts",
+            "types": "./dist/trust.d.ts",
+            "default": "./dist/trust.js"
+        },
+        "./marketplace": {
+            "@eventiva/source": "./src/marketplace.ts",
+            "types": "./dist/marketplace.d.ts",
+            "default": "./dist/marketplace.js"
+        },
         "./storage": {
             "@eventiva/source": "./src/storage.ts",
             "types": "./dist/storage.d.ts",
