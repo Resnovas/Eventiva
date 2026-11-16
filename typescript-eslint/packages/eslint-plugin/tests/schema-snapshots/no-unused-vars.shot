@@ -1,0 +1,126 @@
+
+# SCHEMA:
+
+[
+  {
+    "oneOf": [
+      {
+        "description": "Broad setting for unused variables to target.",
+        "enum": ["all", "local"],
+        "type": "string"
+      },
+      {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "description": "Whether to check all, some, or no arguments.",
+            "enum": ["after-used", "all", "none"],
+            "type": "string"
+          },
+          "argsIgnorePattern": {
+            "description": "Regular expressions of argument names to not check for usage.",
+            "type": "string"
+          },
+          "caughtErrors": {
+            "description": "Whether to check catch block arguments.",
+            "enum": ["all", "none"],
+            "type": "string"
+          },
+          "caughtErrorsIgnorePattern": {
+            "description": "Regular expressions of catch block argument names to not check for usage.",
+            "type": "string"
+          },
+          "destructuredArrayIgnorePattern": {
+            "description": "Regular expressions of destructured array variable names to not check for usage.",
+            "type": "string"
+          },
+          "enableAutofixRemoval": {
+            "additionalProperties": false,
+            "description": "Configurable automatic fixes for different types of unused variables.",
+            "properties": {
+              "imports": {
+                "description": "Whether to enable automatic removal of unused imports.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "ignoreClassWithStaticInitBlock": {
+            "description": "Whether to ignore classes with at least one static initialization block.",
+            "type": "boolean"
+          },
+          "ignoreRestSiblings": {
+            "description": "Whether to ignore sibling properties in `...` destructuring.",
+            "type": "boolean"
+          },
+          "ignoreUsingDeclarations": {
+            "description": "Whether to ignore using or await using declarations.",
+            "type": "boolean"
+          },
+          "reportUsedIgnorePattern": {
+            "description": "Whether to report variables that match any of the valid ignore pattern options if they have been used.",
+            "type": "boolean"
+          },
+          "vars": {
+            "description": "Whether to check all variables or only locally-declared variables.",
+            "enum": ["all", "local"],
+            "type": "string"
+          },
+          "varsIgnorePattern": {
+            "description": "Regular expressions of variable names to not check for usage.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    ]
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  | 'local'
+  | {
+      /** Whether to check all, some, or no arguments. */
+      args?:
+        | 'all'
+        | 'none'
+        /** Whether to check all, some, or no arguments. */
+        | 'after-used';
+      /** Regular expressions of argument names to not check for usage. */
+      argsIgnorePattern?: string;
+      /** Whether to check catch block arguments. */
+      caughtErrors?:
+        | 'none'
+        /** Whether to check catch block arguments. */
+        | 'all';
+      /** Regular expressions of catch block argument names to not check for usage. */
+      caughtErrorsIgnorePattern?: string;
+      /** Regular expressions of destructured array variable names to not check for usage. */
+      destructuredArrayIgnorePattern?: string;
+      /** Configurable automatic fixes for different types of unused variables. */
+      enableAutofixRemoval?: {
+        /** Whether to enable automatic removal of unused imports. */
+        imports?: boolean;
+      };
+      /** Whether to ignore classes with at least one static initialization block. */
+      ignoreClassWithStaticInitBlock?: boolean;
+      /** Whether to ignore sibling properties in `...` destructuring. */
+      ignoreRestSiblings?: boolean;
+      /** Whether to ignore using or await using declarations. */
+      ignoreUsingDeclarations?: boolean;
+      /** Whether to report variables that match any of the valid ignore pattern options if they have been used. */
+      reportUsedIgnorePattern?: boolean;
+      /** Whether to check all variables or only locally-declared variables. */
+      vars?:
+        | 'local'
+        /** Whether to check all variables or only locally-declared variables. */
+        | 'all';
+      /** Regular expressions of variable names to not check for usage. */
+      varsIgnorePattern?: string;
+    }
+  /** Broad setting for unused variables to target. */
+  | 'all',
+];

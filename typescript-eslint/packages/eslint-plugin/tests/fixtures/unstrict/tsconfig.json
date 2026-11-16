@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "target": "es2015",
+    "module": "commonjs",
+    "strict": false,
+    "types": ["node", "react"],
+    "lib": ["es2015", "es2017", "esnext"],
+    "experimentalDecorators": true,
+    "stableTypeOrdering": true
+  },
+  "include": ["file.ts", "react.tsx"]
+}

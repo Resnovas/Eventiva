@@ -1,0 +1,91 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+// Fetch all dependencies upfront
+task fetchDependencies() {
+    description 'Download all dependencies to the Gradle cache'
+    group 'android'
+    doLast {
+        project.rootProject.allprojects.each { subProject ->
+            subProject.buildscript.configurations.each { config ->
+                if (config.canBeResolved) {
+                    config.files
+                }
+            }
+            subProject.configurations.each { config ->
+                if (config.canBeResolved) {
+                    // DefaultLenientConfiguration$ArtifactResolveException
+                    try {
+                        config.files
+                    } catch(e) {
+                        println e
+                    }
+                }
+            }
+        }
+    }
+}
+
+buildscript {
+    apply(from: {
+        def searchDir = rootDir.toPath()
+        do {
+            def p = searchDir.resolve("node_modules/react-native-test-app/android/dependencies.gradle")
+            if (p.toFile().exists()) {
+                return p.toRealPath().toString()
+            }
+        } while (searchDir = searchDir.getParent())
+        throw new GradleException("Could not find `react-native-test-app`");
+    }())
+
+    // Mainly for Detox testing for using Next Storage
+    // when building next, force using next storage
+    if (gradle.startParameter.getTaskNames().contains("assembleNext")) {
+        rootProject.setProperty("AsyncStorage_useNextStorage", "true")
+    }
+    Boolean nextStorageFlag = rootProject.hasProperty("AsyncStorage_useNextStorage") ? rootProject.properties["AsyncStorage_useNextStorage"] == "true" : false
+    println("[AsyncStorage] Using Next storage: " + nextStorageFlag)
+
+    repositories {
+        mavenCentral()
+        google()
+    }
+
+    dependencies {
+        getReactNativeDependencies().each { dependency ->
+            classpath(dependency)
+        }
+    }
+}
+
+allprojects {
+    afterEvaluate { project ->
+        def androidExtension = project.extensions.findByName('android')
+
+        if(androidExtension != null && project.name == 'app') {
+            // android extension from test-app pacakge
+            androidExtension.defaultConfig {
+                applicationId 'com.microsoft.ReactTestApp'
+                ndk {
+                    abiFilters 'arm64-v8a', 'x86', 'x86_64'
+                }
+            }
+
+            androidExtension.signingConfigs {
+                test {
+                    storeFile file('debug.keystore')
+                    storePassword 'android'
+                    keyAlias 'androiddebugkey'
+                    keyPassword 'android'
+                }
+            }
+            androidExtension.buildTypes.release.signingConfig = androidExtension.signingConfigs.test
+            androidExtension.buildTypes {
+                next {
+                    // this build type is used on CI (to have app with and without nextStorage)
+                    initWith release
+                    matchingFallbacks = ["debug", "release"]
+                }
+            }
+        }
+    }
+}

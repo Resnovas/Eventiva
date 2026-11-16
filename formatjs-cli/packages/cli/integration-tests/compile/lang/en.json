@@ -1,0 +1,22 @@
+{
+  "ashd2": {
+    "defaultMessage": "a message",
+    "description": "foo"
+  },
+  "a1dd2": {
+    "defaultMessage": "my name is {name}",
+    "description": "foo"
+  },
+  "a1d12": {
+    "defaultMessage": "I have {count, plural, one{a dog} other{many dogs}}",
+    "description": "foo"
+  },
+  "a1d13": {
+    "defaultMessage": "I have {count, plural, one{<b>a dog</b>} other{many dogs}}",
+    "description": "foo"
+  },
+  "a1d14": {
+    "defaultMessage": "I have {count, plural, one{<b>a <i>dog</i></b>} other{many dogs}}",
+    "description": "foo"
+  }
+}

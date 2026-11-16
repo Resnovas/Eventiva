@@ -1,0 +1,194 @@
+import { workspaceRoot } from '../../utils/workspace-root';
+import type { Server, Socket } from 'net';
+import { serverLogger } from '../logger';
+import { serializeResult } from '../socket-utils';
+import { deleteDaemonJsonProcessCache } from '../cache';
+import {
+  DaemonProjectGraphError,
+  ProjectGraphError,
+} from '../../project-graph/error-types';
+import { cleanupPlugins } from '../../project-graph/plugins/get-plugins';
+import { writeMessage } from '../../utils/consume-messages-from-socket';
+import { cleanupLatestNx } from './latest-nx';
+import { flushAnalytics } from '../../analytics';
+import { spawn } from 'child_process';
+import { join } from 'path';
+import { mkdirSync, existsSync, writeFileSync } from 'node:fs';
+import { open } from 'fs/promises';
+import {
+  DAEMON_DIR_FOR_CURRENT_WORKSPACE,
+  DAEMON_OUTPUT_LOG_FILE,
+} from '../tmp-dir';
+
+export const SERVER_INACTIVITY_TIMEOUT_MS = 10800000 as const; // 10800000 ms = 3 hours
+
+async function startNewDaemonInBackground() {
+  mkdirSync(DAEMON_DIR_FOR_CURRENT_WORKSPACE, { recursive: true });
+  if (!existsSync(DAEMON_OUTPUT_LOG_FILE)) {
+    writeFileSync(DAEMON_OUTPUT_LOG_FILE, '');
+  }
+
+  const out = await open(DAEMON_OUTPUT_LOG_FILE, 'a');
+  const err = await open(DAEMON_OUTPUT_LOG_FILE, 'a');
+
+  // Use require.resolve to find the currently installed version's start.js
+  // instead of using __dirname which points to the old running daemon's path
+  // Resolve from workspace root to pick up the correct symlink target
+  let startScriptPath: string;
+  try {
+    startScriptPath = require.resolve('nx/src/daemon/server/start.js', {
+      paths: [workspaceRoot],
+    });
+  } catch (e) {
+    // Fall back to using __dirname if resolution fails
+    serverLogger.log(
+      `Failed to resolve nx package, falling back to __dirname: ${e.message}`
+    );
+    startScriptPath = join(__dirname, '../server/start.js');
+  }
+  serverLogger.log(`Restarting daemon with script: ${startScriptPath}`);
+  serverLogger.log(`Old daemon __dirname: ${__dirname}`);
+  serverLogger.log(`Current process.execPath: ${process.execPath}`);
+
+  const backgroundProcess = spawn(process.execPath, [startScriptPath], {
+    cwd: workspaceRoot,
+    stdio: ['ignore', out.fd, err.fd],
+    detached: true,
+    windowsHide: true,
+    shell: false,
+    env: process.env,
+  });
+  backgroundProcess.unref();
+
+  serverLogger.log('Started new daemon process in background');
+}
+
+interface HandleServerProcessTerminationParams {
+  server: Server;
+  reason: string;
+  sockets: Iterable<Socket>;
+}
+
+export async function handleServerProcessTermination({
+  server,
+  reason,
+  sockets,
+}: HandleServerProcessTerminationParams) {
+  await performShutdown(server, reason, sockets);
+}
+
+export async function handleServerProcessTerminationWithRestart({
+  server,
+  reason,
+  sockets,
+}: HandleServerProcessTerminationParams) {
+  // Clean up old daemon cache before starting new instance
+  deleteDaemonJsonProcessCache();
+  // Start new daemon before shutting down
+  await startNewDaemonInBackground();
+  await performShutdown(server, reason, sockets);
+}
+
+async function performShutdown(
+  server: Server,
+  reason: string,
+  sockets: Iterable<Socket>
+) {
+  try {
+    await new Promise((res) => {
+      server.close(() => {
+        res(null);
+      });
+
+      for (const socket of sockets) {
+        socket.destroy();
+      }
+    });
+
+    deleteDaemonJsonProcessCache();
+    cleanupPlugins();
+
+    // Clean up shared latest Nx installation
+    cleanupLatestNx();
+
+    // Flush analytics before exiting
+    flushAnalytics();
+
+    serverLogger.log(`Server stopped because: "${reason}"`);
+  } finally {
+    process.exit(0);
+  }
+}
+
+let serverInactivityTimerId: NodeJS.Timeout | undefined;
+
+export function resetInactivityTimeout(cb: () => void): void {
+  if (serverInactivityTimerId) {
+    clearTimeout(serverInactivityTimerId);
+  }
+  serverInactivityTimerId = setTimeout(cb, SERVER_INACTIVITY_TIMEOUT_MS);
+}
+
+export function respondToClient(
+  socket: Socket,
+  response: Buffer,
+  description: string
+) {
+  return new Promise(async (res) => {
+    if (description) {
+      serverLogger.requestLog(`Responding to the client.`, description);
+    }
+    writeMessage(socket, response, (err) => {
+      if (err) {
+        serverLogger.log(
+          `Socket write error (client likely disconnected): ${err.message}`
+        );
+      }
+      serverLogger.log(`Done responding to the client`, description);
+      res(null);
+    });
+  });
+}
+
+/**
+ * Send an error to the client without terminating the daemon. Use this when the
+ * daemon should keep running for other clients after refusing a request.
+ */
+export async function respondWithError(
+  socket: Socket,
+  description: string,
+  error: Error
+) {
+  const normalizedError =
+    error instanceof DaemonProjectGraphError
+      ? ProjectGraphError.fromDaemonProjectGraphError(error)
+      : error;
+
+  // print some extra stuff in the error message
+  serverLogger.requestLog(
+    `Responding to the client with an error.`,
+    description,
+    normalizedError.message
+  );
+  console.error(normalizedError.stack);
+
+  // Respond with the original error
+  await respondToClient(
+    socket,
+    Buffer.from(serializeResult(error, null, null), 'utf8'),
+    null
+  );
+}
+
+export async function respondWithErrorAndExit(
+  socket: Socket,
+  description: string,
+  error: Error
+) {
+  await respondWithError(socket, description, error);
+
+  // Project Graph errors are okay. Restarting the daemon won't help with this.
+  if (!(error instanceof DaemonProjectGraphError)) {
+    process.exit(1);
+  }
+}

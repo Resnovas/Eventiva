@@ -1,0 +1,1181 @@
+import { EOL } from 'os';
+import { stripVTControlCharacters } from 'util';
+import { Task } from '../../config/task-graph';
+import { TaskStatus as NativeTaskStatus } from '../../native';
+import * as taskHistoryUtils from '../../utils/task-history';
+import { getTuiTerminalSummaryLifeCycle } from './tui-summary-life-cycle';
+import { TaskMetadata } from '../life-cycle';
+
+let originalHrTime: typeof process.hrtime;
+let originalColumns: typeof process.stdout.columns;
+
+describe('getTuiTerminalSummaryLifeCycle', () => {
+  beforeAll(() => {
+    originalHrTime = process.hrtime;
+    originalColumns = process.stdout.columns;
+    process.stdout.columns = 80;
+    process.hrtime = ((x: Parameters<typeof process.hrtime>[0]) => {
+      if (x !== undefined) {
+        return [x[0] + 1, x[1]];
+      }
+      return [22229415, 668399708];
+    }) as any;
+    vi.spyOn(taskHistoryUtils, 'getTaskHistory').mockReturnValue(null);
+  });
+
+  afterAll(() => {
+    process.hrtime = originalHrTime;
+    process.stdout.columns = originalColumns;
+  });
+
+  beforeEach(() => {});
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('runOne', () => {
+    it('should handle failed run-one tasks', async () => {
+      const target = {
+        id: 'test:test',
+      } as Partial<Task> as Task;
+      const dep = {
+        id: 'test:pre-test',
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        taskGraph: {
+          tasks: { dep },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [],
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [target, dep],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([dep], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(dep.id, 'boom', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 1,
+            status: 'failure',
+            task: dep,
+            terminalOutput: 'boom',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(dep, 'failure', 'boom');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:pre-test
+
+        boom
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target test for project test and 1 task(s) they depend on (37w)
+
+           ✖  1/2 failed
+           ✔  0/2 succeeded [0 read from cache]
+        "
+      `);
+    });
+
+    it('should handle canceled run-one tasks', async () => {
+      const target = {
+        id: 'test:test',
+      } as Partial<Task> as Task;
+      const dep = {
+        id: 'test:pre-test',
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        taskGraph: {
+          tasks: { dep, target },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [],
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [target, dep],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([dep], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(dep.id, ':)', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 1,
+            status: 'success',
+            task: dep,
+            terminalOutput: ':)',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(dep, 'success', ':)');
+      lifeCycle.startTasks?.([target], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(target.id, "Wait, I'm not done yet", true);
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:pre-test
+
+        :)
+        > nx run test:test
+
+        Wait, I'm not done yet
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Cancelled running target test for project test (37w)
+        "
+      `);
+    });
+
+    it('should handle successful run-one tasks', async () => {
+      const target = {
+        id: 'test:test',
+      } as Partial<Task> as Task;
+      const dep = {
+        id: 'test:pre-test',
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [],
+        taskGraph: {
+          tasks: { dep, target },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [target, dep],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([dep], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(dep.id, ':)', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: dep,
+            terminalOutput: ':)',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(dep, 'success', ':)');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:pre-test
+
+        :)
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target test for project test and 1 task(s) they depend on (37w)
+
+           ✖  0/2 failed
+           ✔  1/2 succeeded [0 read from cache]
+        "
+      `);
+    });
+
+    it('should not print headers or mark the run as cancelled for skipped batch peers', async () => {
+      const target = {
+        id: 'test:test',
+      } as Partial<Task> as Task;
+      const dep = {
+        id: 'test:pre-test',
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        taskGraph: {
+          tasks: { dep, target },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [],
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [target, dep],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([dep, target], null as unknown as TaskMetadata);
+      // The dep ran and failed.
+      lifeCycle.appendTaskOutput?.(dep.id, 'boom', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 1,
+            status: 'failure',
+            task: dep,
+            terminalOutput: 'boom',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(dep, 'failure', 'boom');
+      // Target was skipped because dep failed in the same batch.
+      lifeCycle.setTaskStatus?.(target.id, NativeTaskStatus.Skipped);
+      lifeCycle.printTaskTerminalOutput?.(target, 'skipped', '');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      // The skipped target should not get a `> nx run test:test` header, and
+      // the run summary should report a real failure (not Cancelled) that
+      // counts the skipped target.
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:pre-test
+
+        boom
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target test for project test and 1 task(s) they depend on (37w)
+
+           ✖  1/2 failed
+           ✔  0/2 succeeded [0 read from cache]
+           ⏭  1/2 skipped
+        "
+      `);
+    });
+
+    it.each([
+      ['skipped', NativeTaskStatus.Skipped, 'Ran target test'],
+      ['stopped', NativeTaskStatus.Stopped, 'Cancelled running target test'],
+    ])(
+      'should point at the batch worker log when its tasks were %s',
+      async (_, nativeStatus, headline) => {
+        const target = {
+          id: 'test:test',
+        } as Partial<Task> as Task;
+
+        const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+          args: {
+            targets: ['test'],
+          },
+          taskGraph: {
+            tasks: { target },
+            dependencies: {},
+            continuousDependencies: {},
+            roots: [],
+          },
+          initiatingProject: 'test',
+          initiatingTasks: [],
+          overrides: {},
+          projectNames: ['test'],
+          tasks: [target],
+          resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+        });
+
+        lifeCycle.startTasks?.([target], null as unknown as TaskMetadata);
+        if (nativeStatus === NativeTaskStatus.Stopped) {
+          lifeCycle.endTasks?.(
+            [{ code: 1, status: 'stopped', task: target, terminalOutput: '' }],
+            null as unknown as TaskMetadata
+          );
+        }
+        lifeCycle.setTaskStatus?.(target.id, nativeStatus);
+        lifeCycle.batchOutputAvailable?.(
+          'batchy:run 1',
+          '/ws/.nx/cache/batchOutputs/batchy-run-1.log'
+        );
+        lifeCycle.endCommand?.();
+
+        const output = getOutputLines(printSummary).join('\n');
+
+        expect(output).toContain(headline);
+        expect(output).toContain(
+          'batchy:run 1: /ws/.nx/cache/batchOutputs/batchy-run-1.log'
+        );
+      }
+    );
+
+    it('should display cancelled for single continuous task', async () => {
+      const target = {
+        id: 'test:dev',
+        continuous: true,
+        target: {
+          target: 'dev',
+          project: 'test',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['dev'],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [],
+        taskGraph: {
+          tasks: { [target.id]: target },
+          dependencies: {
+            [target.id]: [],
+          },
+          continuousDependencies: {},
+          roots: [],
+        },
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [target],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([target], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(target.id, 'I was a happy dev server', true);
+      // With the new flow, continuous tasks are properly ended via endTasks
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: target,
+            terminalOutput: 'I was a happy dev server',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.setTaskStatus?.(target.id, NativeTaskStatus.Stopped);
+      lifeCycle.printTaskTerminalOutput?.(
+        target,
+        'success',
+        'I was a happy dev server'
+      );
+      lifeCycle.endCommand?.();
+      // Continuous tasks are marked as stopped when the command is stopped
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:dev
+
+        I was a happy dev server
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Cancelled running target dev for project test (37w)
+        "
+      `);
+    });
+
+    it('should display success for discrete task with stopped continuous dependency', async () => {
+      const devServer = {
+        id: 'test:serve',
+        continuous: true,
+        target: {
+          target: 'serve',
+          project: 'test',
+        },
+      } as Partial<Task> as Task;
+
+      const e2eTest = {
+        id: 'test:e2e',
+        continuous: false,
+        target: {
+          target: 'e2e',
+          project: 'test',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['e2e'],
+        },
+        initiatingProject: 'test',
+        initiatingTasks: [e2eTest],
+        taskGraph: {
+          tasks: { [devServer.id]: devServer, [e2eTest.id]: e2eTest },
+          dependencies: {
+            [devServer.id]: [],
+            [e2eTest.id]: [{ id: devServer.id }],
+          },
+          continuousDependencies: {
+            [e2eTest.id]: [{ id: devServer.id }],
+          },
+          roots: [devServer.id],
+        },
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [devServer, e2eTest],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      // Dev server starts
+      lifeCycle.startTasks?.([devServer], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(
+        devServer.id,
+        'Server running on port 4200',
+        true
+      );
+
+      // E2E test starts and succeeds
+      lifeCycle.startTasks?.([e2eTest], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(e2eTest.id, 'All tests passed', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: e2eTest,
+            terminalOutput: 'All tests passed',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(
+        e2eTest,
+        'success',
+        'All tests passed'
+      );
+
+      // Dev server is stopped (no longer needed)
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: devServer,
+            terminalOutput: 'Server running on port 4200',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.setTaskStatus?.(devServer.id, NativeTaskStatus.Stopped);
+      lifeCycle.printTaskTerminalOutput?.(
+        devServer,
+        'success',
+        'Server running on port 4200'
+      );
+
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      // Should show success, not cancelled, because the discrete task (e2e) is the initiating task
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+        > nx run test:serve
+
+        Server running on port 4200
+        > nx run test:e2e
+
+        All tests passed
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Successfully ran target e2e for project test and 1 task it depends on (37w)
+        "
+      `);
+    });
+  });
+
+  describe('runMany', () => {
+    it('should handle failed run-many tasks', async () => {
+      const foo = {
+        id: 'foo:test',
+        target: {
+          target: 'test',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:test',
+        target: {
+          target: 'test',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        taskGraph: {
+          tasks: { foo, bar },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        overrides: {},
+        projectNames: ['foo', 'bar'],
+        tasks: [foo, bar],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([foo, bar], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(foo.id, ':)', true);
+      lifeCycle.appendTaskOutput?.(bar.id, 'boom', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 1,
+            status: 'failure',
+            task: bar,
+            terminalOutput: 'boom',
+          },
+          {
+            code: 0,
+            status: 'success',
+            task: foo,
+            terminalOutput: 'foo',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(foo, 'success', ':)');
+      lifeCycle.printTaskTerminalOutput?.(bar, 'failure', 'boom');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+        > nx run bar:test
+
+        boom
+
+           ✔  nx run foo:test
+           ✖  nx run bar:test
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target test for 2 projects (37w)
+
+           ✔  1/2 succeeded [0 read from cache]
+
+           ✖  1/2 targets failed, including the following:
+
+              - nx run bar:test
+
+        "
+      `);
+    });
+
+    it('should handle canceled run-many tasks', async () => {
+      const foo = {
+        id: 'foo:test',
+        target: {
+          target: 'test',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:test',
+        target: {
+          target: 'test',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+      const baz = {
+        id: 'baz:test',
+        target: {
+          target: 'test',
+          project: 'baz',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        taskGraph: {
+          tasks: { foo, bar, baz },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        overrides: {},
+        projectNames: ['foo', 'bar', 'baz'],
+        tasks: [foo, bar, baz],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([bar, foo], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(foo.id, 'Stop, in the name of', true);
+      lifeCycle.appendTaskOutput?.(bar.id, 'Love', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: foo,
+            terminalOutput: 'foo',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(foo, 'success', ':)');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+        > nx run bar:test
+
+        Love
+
+           ✔  nx run foo:test
+           ◼  nx run bar:test
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Cancelled while running target test for 3 projects (37w)
+
+           ✔  1/3 succeeded [0 read from cache]
+
+           …  1/3 targets were in progress, including the following:
+
+              - nx run bar:test
+
+           …  1/3 targets had not started.
+
+        "
+      `);
+    });
+
+    it('should display stopped icon for stopped continuous task in run-many', async () => {
+      const devServer = {
+        id: 'test:serve',
+        continuous: true,
+        target: {
+          target: 'serve',
+          project: 'test',
+        },
+      } as Partial<Task> as Task;
+
+      const e2eTest = {
+        id: 'test:e2e',
+        continuous: false,
+        target: {
+          target: 'e2e',
+          project: 'test',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['e2e'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [e2eTest],
+        taskGraph: {
+          tasks: { [devServer.id]: devServer, [e2eTest.id]: e2eTest },
+          dependencies: {
+            [devServer.id]: [],
+            [e2eTest.id]: [{ id: devServer.id }],
+          },
+          continuousDependencies: {
+            [e2eTest.id]: [{ id: devServer.id }],
+          },
+          roots: [devServer.id],
+        },
+        overrides: {},
+        projectNames: ['test'],
+        tasks: [devServer, e2eTest],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      // Dev server starts
+      lifeCycle.startTasks?.([devServer], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(
+        devServer.id,
+        'Server running on port 4200',
+        true
+      );
+
+      // E2E test starts and succeeds
+      lifeCycle.startTasks?.([e2eTest], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(e2eTest.id, 'All tests passed', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: e2eTest,
+            terminalOutput: 'All tests passed',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(
+        e2eTest,
+        'success',
+        'All tests passed'
+      );
+
+      // Dev server is stopped (via endTasks with success status, then setTaskStatus)
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: devServer,
+            terminalOutput: 'Server running on port 4200',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.setTaskStatus?.(devServer.id, NativeTaskStatus.Stopped);
+      lifeCycle.printTaskTerminalOutput?.(
+        devServer,
+        'success',
+        'Server running on port 4200'
+      );
+
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      // The stopped task (devServer) should show cyan ◼ icon, not green ✔
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+        > nx run test:serve
+
+        Server running on port 4200
+
+           ◼  nx run test:serve
+           ✔  nx run test:e2e
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Successfully ran target e2e for project test and 1 task it depends on (37w)
+        "
+      `);
+    });
+
+    it('should handle successful run-many tasks', async () => {
+      const foo = {
+        id: 'foo:test',
+        target: {
+          target: 'test',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:test',
+        target: {
+          target: 'test',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['test'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        overrides: {},
+        taskGraph: {
+          tasks: { foo, bar },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        projectNames: ['foo', 'bar'],
+        tasks: [foo, bar],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([foo, bar], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(foo.id, ':)', true);
+      lifeCycle.appendTaskOutput?.(bar.id, ':)', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 0,
+            status: 'success',
+            task: bar,
+            terminalOutput: ':)',
+          },
+          {
+            code: 0,
+            status: 'success',
+            task: foo,
+            terminalOutput: ':)',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(foo, 'success', ':)');
+      lifeCycle.printTaskTerminalOutput?.(bar, 'success', ':)');
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+           ✔  nx run foo:test
+           ✔  nx run bar:test
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Successfully ran target test for 2 projects (37w)
+        "
+      `);
+    });
+
+    it('should mark skipped batch tasks and point at the batch worker log', async () => {
+      const foo = {
+        id: 'foo:check',
+        target: {
+          target: 'check',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:check',
+        target: {
+          target: 'check',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['check'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        overrides: {},
+        taskGraph: {
+          tasks: { foo, bar },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        projectNames: ['foo', 'bar'],
+        tasks: [foo, bar],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      // The batch worker stopped before reaching either task
+      lifeCycle.startTasks?.([foo, bar], null as unknown as TaskMetadata);
+      lifeCycle.setTaskStatus?.(foo.id, NativeTaskStatus.Skipped);
+      lifeCycle.setTaskStatus?.(bar.id, NativeTaskStatus.Skipped);
+      lifeCycle.batchOutputAvailable?.(
+        'batchy:run 1',
+        '/ws/.nx/cache/batchOutputs/batchy-run-1.log'
+      );
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+           ⏭  nx run foo:check
+           ⏭  nx run bar:check
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target check for 2 projects (37w)
+
+           ⏭  2/2 targets were skipped.
+
+           Batch worker logs:
+
+              - batchy:run 1: /ws/.nx/cache/batchOutputs/batchy-run-1.log
+
+        "
+      `);
+    });
+
+    it('should list and count tasks skipped because a dependency failed', async () => {
+      const foo = {
+        id: 'foo:check',
+        target: {
+          target: 'check',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:check',
+        target: {
+          target: 'check',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['check'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        overrides: {},
+        taskGraph: {
+          tasks: { foo, bar },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        projectNames: ['foo', 'bar'],
+        tasks: [foo, bar],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      lifeCycle.startTasks?.([foo], null as unknown as TaskMetadata);
+      lifeCycle.appendTaskOutput?.(foo.id, 'boom', true);
+      lifeCycle.endTasks?.(
+        [
+          {
+            code: 1,
+            status: 'failure',
+            task: foo,
+            terminalOutput: 'boom',
+          },
+        ],
+        null as unknown as TaskMetadata
+      );
+      lifeCycle.printTaskTerminalOutput?.(foo, 'failure', 'boom');
+      // bar never starts: the orchestrator only reports it skipped
+      lifeCycle.setTaskStatus?.(bar.id, NativeTaskStatus.Skipped);
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+        > nx run foo:check
+
+        boom
+
+           ⏭  nx run bar:check
+           ✖  nx run foo:check
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target check for 2 projects (37w)
+
+           ✖  1/2 targets failed, including the following:
+
+              - nx run foo:check
+
+           ⏭  1/2 targets were skipped.
+
+        "
+      `);
+    });
+
+    it.each([
+      [
+        'failure',
+        NativeTaskStatus.Failure,
+        '✖  1/1 targets failed, including the following:',
+      ],
+      [
+        'stopped',
+        NativeTaskStatus.Stopped,
+        '…  1/1 targets were in progress, including the following:',
+      ],
+    ] as const)(
+      'should not count a task as skipped when its crashed batch ends it as %s',
+      async (status, nativeStatus, resultLine) => {
+        const task = {
+          id: 'b1:check',
+          target: {
+            target: 'check',
+            project: 'b1',
+          },
+        } as Partial<Task> as Task;
+
+        const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+          args: {
+            targets: ['check'],
+          },
+          initiatingProject: '',
+          initiatingTasks: [],
+          overrides: {},
+          taskGraph: {
+            tasks: { task },
+            dependencies: {},
+            continuousDependencies: {},
+            roots: [],
+          },
+          projectNames: ['b1'],
+          tasks: [task],
+          resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+        });
+
+        lifeCycle.startTasks?.([task], null as unknown as TaskMetadata);
+        // The batch reports the task skipped, then its worker crashes
+        lifeCycle.setTaskStatus?.(task.id, NativeTaskStatus.Skipped);
+        lifeCycle.endTasks?.(
+          [{ code: 1, status, task, terminalOutput: '' }],
+          null as unknown as TaskMetadata
+        );
+        lifeCycle.setTaskStatus?.(task.id, nativeStatus);
+        lifeCycle.endCommand?.();
+
+        const output = getOutputLines(printSummary).join('\n');
+        expect(output).toContain(resultLine);
+        expect(output).toContain('- nx run b1:check');
+        expect(output).not.toContain('skipped');
+      }
+    );
+
+    it('should list a task re-run in a later batch wave once, with every wave worker log', async () => {
+      const foo = {
+        id: 'foo:check',
+        target: {
+          target: 'check',
+          project: 'foo',
+        },
+      } as Partial<Task> as Task;
+      const bar = {
+        id: 'bar:check',
+        target: {
+          target: 'check',
+          project: 'bar',
+        },
+      } as Partial<Task> as Task;
+
+      const { lifeCycle, printSummary } = getTuiTerminalSummaryLifeCycle({
+        args: {
+          targets: ['check'],
+        },
+        initiatingProject: '',
+        initiatingTasks: [],
+        overrides: {},
+        taskGraph: {
+          tasks: { foo, bar },
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        },
+        projectNames: ['foo', 'bar'],
+        tasks: [foo, bar],
+        resolveRenderIsDonePromise: vi.fn().mockResolvedValue(null),
+      });
+
+      // The first worker reports only foo, so bar re-runs under the same batch
+      // id in a second worker with its own log.
+      lifeCycle.startTasks?.([foo, bar], null as unknown as TaskMetadata);
+      lifeCycle.setTaskStatus?.(foo.id, NativeTaskStatus.Skipped);
+      lifeCycle.batchOutputAvailable?.(
+        'batchy:run 1',
+        '/ws/.nx/cache/batchOutputs/batchy-run-1-1.log'
+      );
+      lifeCycle.startTasks?.([bar], null as unknown as TaskMetadata);
+      lifeCycle.setTaskStatus?.(bar.id, NativeTaskStatus.Skipped);
+      lifeCycle.batchOutputAvailable?.(
+        'batchy:run 1',
+        '/ws/.nx/cache/batchOutputs/batchy-run-1-2.log'
+      );
+      lifeCycle.endCommand?.();
+
+      const lines = getOutputLines(printSummary);
+
+      expect(lines.join('\n')).toMatchInlineSnapshot(`
+        "
+
+           ⏭  nx run foo:check
+           ⏭  nx run bar:check
+
+        ———————————————————————————————————————————————————————————————————————————————
+
+         NX   Ran target check for 2 projects (37w)
+
+           ⏭  2/2 targets were skipped.
+
+           Batch worker logs:
+
+              - batchy:run 1: /ws/.nx/cache/batchOutputs/batchy-run-1-1.log
+              - batchy:run 1: /ws/.nx/cache/batchOutputs/batchy-run-1-2.log
+
+        "
+      `);
+    });
+  });
+});
+
+function getOutputLines(cb: () => void): string[] {
+  const lines: string[] = [];
+  const originalLog = console.log;
+  const originalStdout = process.stdout.write;
+  let buf = '';
+  console.log = (...args) => {
+    lines.push(buf + stripVTControlCharacters(args.join(' ')));
+    buf = '';
+  };
+  process.stdout.write = (
+    chunk: string | Uint8Array,
+    encodingOrCallback?: BufferEncoding | ((err?: Error) => void),
+    callback?: (err?: Error) => void
+  ): boolean => {
+    buf += chunk;
+    if (buf.includes('boom')) {
+    }
+    if (buf.includes(EOL)) {
+      const l = buf.split(EOL);
+      if (l[l.length - 1] === '') {
+        l.pop();
+      }
+      for (const line of l) {
+        lines.push(stripVTControlCharacters(line));
+      }
+      buf = '';
+    }
+    // Handle both overload signatures
+    const cb =
+      typeof encodingOrCallback === 'function' ? encodingOrCallback : callback;
+    if (cb) {
+      cb();
+    }
+    return true;
+  };
+  cb();
+  console.log = originalLog;
+  process.stdout.write = originalStdout;
+  return lines;
+}

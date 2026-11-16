@@ -1,0 +1,113 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        FunctionNameDefinition$1 {
+          name: Identifier<"f">,
+          node: FunctionDeclaration$1,
+        },
+      ],
+      name: "f",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"f">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ClassNameDefinition$2 {
+          name: Identifier<"A">,
+          node: ClassDeclaration$2,
+        },
+      ],
+      name: "A",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        ClassNameDefinition$3 {
+          name: Identifier<"A">,
+          node: ClassDeclaration$2,
+        },
+      ],
+      name: "A",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$3,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "f" => Variable$2,
+        "A" => Variable$4,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$4,
+      ],
+    },
+    FunctionScope$2 {
+      block: FunctionDeclaration$1,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "arguments" => Variable$3,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+      ],
+    },
+    ClassScope$3 {
+      block: ClassDeclaration$2,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "A" => Variable$5,
+      },
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$5,
+      ],
+    },
+    ClassStaticBlockScope$4 {
+      block: StaticBlock$4,
+      isStrict: true,
+      references: [
+        Reference$1,
+      ],
+      set: Map {},
+      type: "class-static-block",
+      upper: ClassScope$3,
+      variables: [],
+    },
+  ],
+}

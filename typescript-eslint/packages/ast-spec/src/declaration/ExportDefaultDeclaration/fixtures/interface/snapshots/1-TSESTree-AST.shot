@@ -1,0 +1,55 @@
+Program {
+  type: "Program",
+  body: [
+    ExportDefaultDeclaration {
+      type: "ExportDefaultDeclaration",
+      declaration: TSInterfaceDeclaration {
+        type: "TSInterfaceDeclaration",
+        body: TSInterfaceBody {
+          type: "TSInterfaceBody",
+          body: [],
+
+          range: [29, 31],
+          loc: {
+            start: { column: 29, line: 1 },
+            end: { column: 31, line: 1 },
+          },
+        },
+        declare: false,
+        extends: [],
+        id: Identifier {
+          type: "Identifier",
+          decorators: [],
+          name: "Foo",
+          optional: false,
+
+          range: [25, 28],
+          loc: {
+            start: { column: 25, line: 1 },
+            end: { column: 28, line: 1 },
+          },
+        },
+
+        range: [15, 31],
+        loc: {
+          start: { column: 15, line: 1 },
+          end: { column: 31, line: 1 },
+        },
+      },
+      exportKind: "value",
+
+      range: [0, 31],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 31, line: 1 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 32],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

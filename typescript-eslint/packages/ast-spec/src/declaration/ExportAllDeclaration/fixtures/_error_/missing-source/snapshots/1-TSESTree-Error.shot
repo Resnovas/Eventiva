@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportAllDeclaration > _error_ > missing-source > TSESTree - Error`]
+TSError
+> 1 | export * from;
+    |              ^ Expression expected.
+  2 |

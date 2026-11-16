@@ -1,0 +1,462 @@
+import type {
+  ProjectGraph,
+  ProjectGraphProjectNode,
+} from '../../config/project-graph';
+import type { ProjectConfiguration } from '../../config/workspace-json-project-json';
+import { showProjectsHandler } from './projects';
+
+let graph: ProjectGraph = {
+  nodes: {},
+  dependencies: {},
+  externalNodes: {},
+};
+
+vi.mock('../../project-graph/project-graph', async () => ({
+  ...((await vi.importActual(
+    '../../project-graph/project-graph'
+  )) as typeof import('../../project-graph/project-graph')),
+  createProjectGraphAsync: vi
+    .fn()
+    .mockImplementation(() => Promise.resolve(graph)),
+}));
+
+performance.mark = vi.fn();
+performance.measure = vi.fn();
+
+// The affected path is mocked at its two boundaries rather than driven for
+// real: the point of the tests below is what show projects passes to the
+// renderer, not how the selection was computed.
+vi.mock('../../project-graph/file-utils', async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  calculateFileChanges: () => [],
+}));
+const printAffectedExplanation = vi.hoisted(() => vi.fn());
+vi.mock('../../project-graph/affected/print-explanation', () => ({
+  printAffectedExplanation,
+}));
+vi.mock('../../project-graph/affected/affected-tasks', () => ({
+  selectsAffectedTasks: () => true,
+  computeAffectedTasks: async () => ({
+    affectedTaskIds: new Set(['ui:build']),
+    requiredTaskIds: ['core:build', 'ui:build'],
+    taskGraph: {
+      tasks: {
+        'ui:build': { id: 'ui:build', target: { project: 'ui' } },
+        'core:build': { id: 'core:build', target: { project: 'core' } },
+      },
+      dependencies: { 'ui:build': [{ id: 'core:build' }], 'core:build': [] },
+      continuousDependencies: { 'ui:build': [], 'core:build': [] },
+      roots: ['core:build'],
+    },
+    explanation: {
+      affected: {
+        'ui:build': [{ kind: 'input-file', file: 'libs/ui/src/x.ts' }],
+      },
+      upstream: {},
+    },
+  }),
+}));
+
+describe('show projects', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    performance.mark('init-local');
+  });
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should print out projects with provided seperator value', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      sep: ',',
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj1,proj2,proj3');
+  });
+
+  it('should default to printing one project per line', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({});
+
+    expect(console.log).toHaveBeenCalledWith('proj1');
+    expect(console.log).toHaveBeenCalledWith('proj2');
+    expect(console.log).toHaveBeenCalledWith('proj3');
+    expect(console.log).toHaveBeenCalledTimes(3);
+  });
+
+  it('should print out projects in json format', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      json: true,
+    });
+
+    expect(console.log).toHaveBeenCalledWith('["proj1","proj2","proj3"]');
+  });
+
+  it('should filter projects by type', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      type: 'lib',
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj2');
+    expect(console.log).toHaveBeenCalledWith('proj3');
+    expect(console.log).toHaveBeenCalledTimes(2);
+  });
+
+  it('should filter projects by name', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      projects: ['proj1', 'proj3'],
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj1');
+    expect(console.log).toHaveBeenCalledWith('proj3');
+    expect(console.log).toHaveBeenCalledTimes(2);
+  });
+
+  it('should exclude projects by name', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      exclude: ['proj1', 'proj3'],
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj2');
+    expect(console.log).toHaveBeenCalledTimes(1);
+  });
+
+  it('should find projects with wildcard', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      projects: ['*1'],
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj1');
+    expect(console.log).toHaveBeenCalledTimes(1);
+  });
+
+  it('should find projects with specific tag', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+          tags: ['tag1'],
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+          tags: ['tag2'],
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+          tags: ['tag1'],
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      projects: ['tag:tag1'],
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj1');
+    expect(console.log).toHaveBeenCalledWith('proj3');
+    expect(console.log).toHaveBeenCalledTimes(2);
+  });
+
+  it('should list projects with specific target', async () => {
+    graph = new GraphBuilder()
+      .addProjectConfiguration(
+        {
+          root: 'proj1',
+          name: 'proj1',
+          targets: {
+            build: {
+              executor: 'build',
+            },
+          },
+        },
+        'app'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj2',
+          name: 'proj2',
+          targets: {
+            build: {
+              executor: 'build',
+            },
+          },
+        },
+        'lib'
+      )
+      .addProjectConfiguration(
+        {
+          root: 'proj3',
+          name: 'proj3',
+          targets: {
+            test: {
+              executor: 'test',
+            },
+          },
+        },
+        'lib'
+      )
+      .build();
+
+    await showProjectsHandler({
+      withTarget: ['build'],
+    });
+
+    expect(console.log).toHaveBeenCalledWith('proj1');
+    expect(console.log).toHaveBeenCalledWith('proj2');
+    expect(console.log).toHaveBeenCalledTimes(2);
+  });
+  // Without a target there is no task selection, and nothing to explain.
+  it('refuses to explain without a target', async () => {
+    await expect(
+      showProjectsHandler({
+        affected: true,
+        explain: true,
+        files: ['libs/ui/src/x.ts'],
+      } as any)
+    ).rejects.toThrow('--explain needs targets passed with --withTarget (-t).');
+  });
+
+  it('hands the explanation to the renderer with --verbose', async () => {
+    await showProjectsHandler({
+      affected: true,
+      withTarget: ['build'],
+      explain: true,
+      verbose: true,
+      files: ['libs/ui/src/x.ts'],
+    } as any);
+    expect(printAffectedExplanation).toHaveBeenCalledWith(
+      expect.objectContaining({ affected: expect.any(Object) }),
+      'Affected tasks',
+      true,
+      { verbose: true }
+    );
+  });
+
+  it('prints the explanation as JSON for --json', async () => {
+    await showProjectsHandler({
+      affected: true,
+      withTarget: ['build'],
+      explain: true,
+      json: true,
+      files: ['libs/ui/src/x.ts'],
+    } as any);
+    expect(printAffectedExplanation).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'Affected tasks',
+      'stdout',
+      { verbose: undefined }
+    );
+  });
+
+  it('names each thing explaining is missing or conflicts with', async () => {
+    await expect(
+      showProjectsHandler({
+        explain: true,
+        projects: ['proj1'],
+      } as any)
+    ).rejects.toThrow(
+      "--explain needs --affected and targets passed with --withTarget (-t). --explain can't be combined with --projects."
+    );
+  });
+});
+
+class GraphBuilder {
+  nodes: Record<string, ProjectGraphProjectNode> = {};
+
+  addProjectConfiguration(
+    project: ProjectConfiguration,
+    type: ProjectGraph['nodes'][string]['type']
+  ) {
+    this.nodes[project.name] = {
+      name: project.name,
+      type,
+      data: { ...project },
+    };
+    return this;
+  }
+
+  build(): ProjectGraph {
+    return {
+      nodes: this.nodes,
+      dependencies: {},
+      externalNodes: {},
+    };
+  }
+}

@@ -1,0 +1,46 @@
+Program {
+  type: "Program",
+  body: [
+    ExportAllDeclaration {
+      type: "ExportAllDeclaration",
+      attributes: [],
+      exported: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "mod",
+        optional: false,
+
+        range: [12, 15],
+        loc: {
+          start: { column: 12, line: 1 },
+          end: { column: 15, line: 1 },
+        },
+      },
+      exportKind: "value",
+      source: Literal {
+        type: "Literal",
+        raw: "'module'",
+        value: "module",
+
+        range: [21, 29],
+        loc: {
+          start: { column: 21, line: 1 },
+          end: { column: 29, line: 1 },
+        },
+      },
+
+      range: [0, 30],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 30, line: 1 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 31],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

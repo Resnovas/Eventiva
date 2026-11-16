@@ -1,0 +1,300 @@
+import { Task } from '../config/task-graph';
+import {
+  BatchInfo,
+  BatchStatus,
+  ExternalObject,
+  PerformanceSummaryPayload,
+  TaskReadiness,
+  TaskResult,
+  TaskStatus as NativeTaskStatus,
+} from '../native';
+import { TaskStatus } from './tasks-runner';
+
+/**
+ * The result of a completed {@link Task}.
+ *
+ * Defined as a Rust struct in `packages/nx/src/native/tasks/types.rs` and
+ * exposed to TypeScript via NAPI. Re-exported here so existing imports
+ * keep working.
+ *
+ * Task timing information (start and end timestamps) is available
+ * on the {@link Task} object itself via {@link Task.startTime} and
+ * {@link Task.endTime}.
+ */
+export type { TaskResult };
+
+/**
+ * A map of {@link TaskResult} keyed by the ID of the completed {@link Task}s
+ */
+export type TaskResults = Record<string, TaskResult>;
+
+export interface TaskMetadata {
+  groupId: number;
+}
+
+export interface LifeCycle {
+  /**
+   * @param threadCount total thread-pool size (drives the TUI display)
+   * @param parallel resolved `--parallel` (discrete slots), for the performance report
+   */
+  startCommand?(threadCount?: number, parallel?: number): void | Promise<void>;
+
+  /** @param summary performance report payload for the TUI exit popup (TUI runs only) */
+  endCommand?(summary?: PerformanceSummaryPayload): void | Promise<void>;
+
+  scheduleTask?(task: Task): void | Promise<void>;
+
+  /**
+   * @deprecated use startTasks
+   *
+   * startTask won't be supported after Nx 14 is released.
+   */
+  startTask?(task: Task): void;
+
+  /**
+   * @deprecated use endTasks
+   *
+   * endTask won't be supported after Nx 14 is released.
+   */
+  endTask?(task: Task, code: number): void;
+
+  startTasks?(task: Task[], metadata: TaskMetadata): void | Promise<void>;
+
+  endTasks?(
+    taskResults: TaskResult[],
+    metadata: TaskMetadata
+  ): void | Promise<void>;
+
+  printTaskTerminalOutput?(
+    task: Task,
+    status: TaskStatus,
+    output: string
+  ): void;
+
+  registerRunningTask?(
+    taskId: string,
+    ptyHandles: ExternalObject<[any, any, any]>
+  ): void;
+
+  registerRunningTaskWithEmptyParser?(taskId: string): void;
+
+  appendTaskOutput?(taskId: string, output: string, isPtyTask: boolean): void;
+
+  setTaskStatus?(taskId: string, status: NativeTaskStatus): void;
+
+  /** Only continuous tasks that declare a `readyWhen` report readiness. */
+  setTaskReadiness?(taskId: string, readiness: TaskReadiness): void;
+
+  setTaskTiming?(taskId: string, startTime: number, endTime: number): void;
+
+  registerForcedShutdownCallback?(callback: () => void): void;
+
+  setEstimatedTaskTimings?(timings: Record<string, number>): void;
+
+  // Batch-specific lifecycle methods
+  registerRunningBatch?(batchId: string, batchInfo: BatchInfo): void;
+
+  appendBatchOutput?(batchId: string, output: string): void;
+
+  /**
+   * The batch worker's own log is on disk and worth reading — its tasks did not
+   * all succeed. One log per worker, so this is addressed once for the batch
+   * rather than copied into any task's output.
+   */
+  batchOutputAvailable?(batchId: string, path: string): void;
+
+  setBatchStatus?(batchId: string, status: BatchStatus): void;
+
+  /**
+   * Set a clickable Nx Cloud link in the terminal UI: `label` is the text
+   * shown, `url` is opened when it's clicked. Implemented by the TUI lifecycle;
+   * callers (e.g. the Nx Cloud client) should feature-detect it.
+   */
+  setCloudLink?(label: string, url: string): void | Promise<void>;
+}
+
+export class CompositeLifeCycle implements LifeCycle {
+  constructor(private readonly lifeCycles: LifeCycle[]) {}
+
+  async startCommand(threadCount?: number, parallel?: number): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.startCommand) {
+        await l.startCommand(threadCount, parallel);
+      }
+    }
+  }
+
+  async endCommand(summary?: PerformanceSummaryPayload): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.endCommand) {
+        await l.endCommand(summary);
+      }
+    }
+  }
+
+  async scheduleTask(task: Task): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.scheduleTask) {
+        await l.scheduleTask(task);
+      }
+    }
+  }
+
+  startTask(task: Task): void {
+    for (let l of this.lifeCycles) {
+      if (l.startTask) {
+        l.startTask(task);
+      }
+    }
+  }
+
+  endTask(task: Task, code: number): void {
+    for (let l of this.lifeCycles) {
+      if (l.endTask) {
+        l.endTask(task, code);
+      }
+    }
+  }
+
+  async startTasks(tasks: Task[], metadata: TaskMetadata): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.startTasks) {
+        await l.startTasks(tasks, metadata);
+      } else if (l.startTask) {
+        tasks.forEach((t) => l.startTask(t));
+      }
+    }
+  }
+
+  async endTasks(
+    taskResults: TaskResult[],
+    metadata: TaskMetadata
+  ): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.endTasks) {
+        await l.endTasks(taskResults, metadata);
+      } else if (l.endTask) {
+        taskResults.forEach((t) => l.endTask(t.task, t.code));
+      }
+    }
+  }
+
+  printTaskTerminalOutput(
+    task: Task,
+    status: TaskStatus,
+    output: string
+  ): void {
+    for (let l of this.lifeCycles) {
+      if (l.printTaskTerminalOutput) {
+        l.printTaskTerminalOutput(task, status, output);
+      }
+    }
+  }
+
+  registerRunningTask(
+    taskId: string,
+    ptyHandles: ExternalObject<[any, any, any]>
+  ): void {
+    for (let l of this.lifeCycles) {
+      if (l.registerRunningTask) {
+        l.registerRunningTask(taskId, ptyHandles);
+      }
+    }
+  }
+
+  registerRunningTaskWithEmptyParser(taskId: string): void {
+    for (let l of this.lifeCycles) {
+      if (l.registerRunningTaskWithEmptyParser) {
+        l.registerRunningTaskWithEmptyParser(taskId);
+      }
+    }
+  }
+
+  appendTaskOutput(taskId: string, output: string, isPtyTask: boolean): void {
+    for (let l of this.lifeCycles) {
+      if (l.appendTaskOutput) {
+        l.appendTaskOutput(taskId, output, isPtyTask);
+      }
+    }
+  }
+
+  setTaskStatus(taskId: string, status: NativeTaskStatus): void {
+    for (let l of this.lifeCycles) {
+      if (l.setTaskStatus) {
+        l.setTaskStatus(taskId, status);
+      }
+    }
+  }
+
+  setTaskReadiness(taskId: string, readiness: TaskReadiness): void {
+    for (let l of this.lifeCycles) {
+      if (l.setTaskReadiness) {
+        l.setTaskReadiness(taskId, readiness);
+      }
+    }
+  }
+
+  setTaskTiming(taskId: string, startTime: number, endTime: number): void {
+    for (let l of this.lifeCycles) {
+      if (l.setTaskTiming) {
+        l.setTaskTiming(taskId, startTime, endTime);
+      }
+    }
+  }
+
+  registerForcedShutdownCallback(callback: () => void): void {
+    for (let l of this.lifeCycles) {
+      if (l.registerForcedShutdownCallback) {
+        l.registerForcedShutdownCallback(callback);
+      }
+    }
+  }
+
+  setEstimatedTaskTimings(timings: Record<string, number>): void {
+    for (let l of this.lifeCycles) {
+      if (l.setEstimatedTaskTimings) {
+        l.setEstimatedTaskTimings(timings);
+      }
+    }
+  }
+
+  registerRunningBatch(batchId: string, batchInfo: BatchInfo): void {
+    for (let l of this.lifeCycles) {
+      if (l.registerRunningBatch) {
+        l.registerRunningBatch(batchId, batchInfo);
+      }
+    }
+  }
+
+  appendBatchOutput(batchId: string, output: string): void {
+    for (let l of this.lifeCycles) {
+      if (l.appendBatchOutput) {
+        l.appendBatchOutput(batchId, output);
+      }
+    }
+  }
+
+  batchOutputAvailable(batchId: string, path: string): void {
+    for (let l of this.lifeCycles) {
+      if (l.batchOutputAvailable) {
+        l.batchOutputAvailable(batchId, path);
+      }
+    }
+  }
+
+  setBatchStatus(batchId: string, status: BatchStatus): void {
+    for (let l of this.lifeCycles) {
+      if (l.setBatchStatus) {
+        l.setBatchStatus(batchId, status);
+      }
+    }
+  }
+
+  async setCloudLink(label: string, url: string): Promise<void> {
+    for (let l of this.lifeCycles) {
+      if (l.setCloudLink) {
+        await l.setCloudLink(label, url);
+      }
+    }
+  }
+}

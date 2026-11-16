@@ -1,0 +1,290 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"outer">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "outer",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"outer">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: Literal$2,
+        },
+        Reference$7 {
+          identifier: Identifier<"outer">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        VariableDefinition$2 {
+          name: Identifier<"foo">,
+          node: VariableDeclarator$3,
+        },
+      ],
+      name: "foo",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"foo">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$3,
+          writeExpr: FunctionExpression$4,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"a">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "a",
+      references: [
+        Reference$5 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$5,
+        },
+        Reference$8 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$5,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$6 {
+      defs: [
+        ParameterDefinition$4 {
+          name: Identifier<"b">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "b",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$7 {
+      defs: [
+        ParameterDefinition$5 {
+          name: Identifier<"c">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "c",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$8 {
+      defs: [
+        ParameterDefinition$6 {
+          name: Identifier<"d">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "d",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"d">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$8,
+          writeExpr: Literal$5,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$9 {
+      defs: [
+        ParameterDefinition$7 {
+          name: Identifier<"e">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "e",
+      references: [
+        Reference$4 {
+          identifier: Identifier<"e">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$9,
+          writeExpr: Identifier<"a">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$10 {
+      defs: [
+        ParameterDefinition$8 {
+          name: Identifier<"f">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "f",
+      references: [
+        Reference$6 {
+          identifier: Identifier<"f">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$10,
+          writeExpr: Identifier<"outer">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$11 {
+      defs: [
+        ParameterDefinition$9 {
+          name: Identifier<"g">,
+          node: FunctionExpression$4,
+        },
+      ],
+      name: "g",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$12 {
+      defs: [
+        VariableDefinition$10 {
+          name: Identifier<"unresolved">,
+          node: VariableDeclarator$6,
+        },
+      ],
+      name: "unresolved",
+      references: [
+        Reference$9 {
+          identifier: Identifier<"unresolved">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$12,
+          writeExpr: Identifier<"g">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$7,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+        Reference$9,
+        Reference$10 {
+          identifier: Identifier<"g">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "outer" => Variable$2,
+        "foo" => Variable$3,
+        "unresolved" => Variable$12,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+        Variable$12,
+      ],
+    },
+    FunctionScope$2 {
+      block: FunctionExpression$4,
+      isStrict: false,
+      references: [
+        Reference$3,
+        Reference$4,
+        Reference$5,
+        Reference$6,
+        Reference$7,
+        Reference$8,
+      ],
+      set: Map {
+        "arguments" => Variable$4,
+        "a" => Variable$5,
+        "b" => Variable$6,
+        "c" => Variable$7,
+        "d" => Variable$8,
+        "e" => Variable$9,
+        "f" => Variable$10,
+        "g" => Variable$11,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+        Variable$5,
+        Variable$6,
+        Variable$7,
+        Variable$8,
+        Variable$9,
+        Variable$10,
+        Variable$11,
+      ],
+    },
+  ],
+}

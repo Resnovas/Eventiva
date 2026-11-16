@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`recommended-does-not-require-program > eslint > should work successfully 1`] = `
+[
+  {
+    "errorCount": 1,
+    "fatalErrorCount": 0,
+    "filePath": "<root>/index.ts",
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [
+      {
+        "column": 7,
+        "endColumn": 10,
+        "endLine": 1,
+        "line": 1,
+        "message": "'foo' is assigned a value but never used.",
+        "messageId": "unusedVar",
+        "ruleId": "@typescript-eslint/no-unused-vars",
+        "severity": 2,
+      },
+    ],
+    "output": "const foo: unknown = true;
+",
+    "suppressedMessages": [],
+    "usedDeprecatedRules": [],
+    "warningCount": 0,
+  },
+]
+`;

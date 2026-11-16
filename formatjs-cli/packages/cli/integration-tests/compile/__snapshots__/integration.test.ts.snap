@@ -1,0 +1,2501 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`'Rust' CLI > AST 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a message"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > basic case: empty json 1`] = `
+{
+  "stderr": "Warning: No messages found in translation files
+",
+  "stdout": "{}
+",
+}
+`;
+
+exports[`'Rust' CLI > basic case: help 1`] = `
+{
+  "stderr": "",
+  "stdout": "Compile extracted translation files into react-intl consumable JSON. Verifies that messages are valid ICU and not malformed
+
+Usage: formatjs_cli compile [OPTIONS] [TRANSLATION_FILES]...
+
+Arguments:
+  [TRANSLATION_FILES]...
+          Glob patterns for translation files (e.g., foo/**/en.json)
+
+Options:
+      --format <FORMATTER>
+          Formatter to use for converting input files to Record<string, string>. Available: default, simple, transifex, smartling, lokalise, crowdin
+
+          Possible values:
+          - default:   Default formatter: extracts defaultMessage from MessageDescriptor objects
+          - simple:    Simple formatter: pass-through for Record<string, string>
+          - transifex: Transifex formatter: extracts string field
+          - smartling: Smartling formatter: extracts message field
+          - lokalise:  Lokalise formatter: extracts translation field
+          - crowdin:   Crowdin formatter: extracts message field
+
+      --out-file <PATH>
+          Output file path. If not provided, prints to stdout
+
+      --ast
+          Whether to compile to AST instead of strings
+
+      --skip-errors
+          Continue compiling after errors. Keys with errors are excluded from output
+
+      --pseudo-locale <LOCALE>
+          Generate pseudo-locale files. Requires --ast
+          
+          [possible values: xx-LS, xx-AC, xx-HA, en-XA, en-XB]
+
+      --ignore-tag
+          Treat HTML/XML tags as string literals instead of parsing them as tag tokens
+
+      --follow-links <FOLLOW_LINKS>
+          Whether to follow symbolic links when traversing directories. Defaults to true for compatibility with fast-glob behavior (e.g., pnpm symlinked node_modules). Use --no-follow-links to disable
+          
+          [default: true]
+          [possible values: true, false]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+",
+}
+`;
+
+exports[`'Rust' CLI > compile glob 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "1": "a message",
+  "2": "my name is {name}",
+  "3": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > en-XA json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ȧȧ ḓǿǿɠ"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ȧȧ ḓǿǿɠ"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ȧȧ "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "ḓǿǿɠ"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "ḿẏ ƞȧȧḿḗḗ īş "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "ȧȧ ḿḗḗşşȧȧɠḗḗ"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > en-XB json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɐ poƃ"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ɐ poƃ"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ɐ "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "poƃ"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "ɯʎ uɐɯǝ ıs "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "ɐ ɯǝssɐƃǝ"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d13": "I have {count, plural, one{<b>a dog</b>} other{many dogs}}",
+  "a1d14": "I have {count, plural, one{<b>a <i>dog</i></b>} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json with crowdin 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json with lokalise 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json with simple 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json with smartling 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > normal json with transifex 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > out-file --ast 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'Rust' CLI > out-file --ast 2`] = `
+{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog",
+                },
+              ],
+              "type": 8,
+              "value": "b",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a ",
+                },
+                {
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog",
+                    },
+                  ],
+                  "type": 8,
+                  "value": "i",
+                },
+              ],
+              "type": 8,
+              "value": "b",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is ",
+    },
+    {
+      "type": 1,
+      "value": "name",
+    },
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a message",
+    },
+  ],
+}
+`;
+
+exports[`'Rust' CLI > out-file --ignore-tag 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'Rust' CLI > out-file --ignore-tag 2`] = `
+{
+  "brmsg": "a message with a non-explicit <br> self-closing tag",
+  "linkmsg": "a message containing <a href="https://formatjs.github.io/">a link</a>",
+}
+`;
+
+exports[`'Rust' CLI > out-file 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'Rust' CLI > out-file 2`] = `
+{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d13": "I have {count, plural, one{<b>a dog</b>} other{many dogs}}",
+  "a1d14": "I have {count, plural, one{<b>a <i>dog</i></b>} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message",
+}
+`;
+
+exports[`'Rust' CLI > skipped malformed ICU message json 1`] = `
+"{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "ashd2": "a message"
+}
+"
+`;
+
+exports[`'Rust' CLI > xx-AC json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "A DOG"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "A DOG"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "A "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "DOG"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "MY NAME IS "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "A MESSAGE"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > xx-HA json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "[javascript]my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "[javascript]a message"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'Rust' CLI > xx-LS json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a messageSSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > AST 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a message"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > basic case: empty json 1`] = `
+{
+  "stderr": "Warning: No messages found in translation files
+",
+  "stdout": "{}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > basic case: help 1`] = `
+{
+  "stderr": "",
+  "stdout": "Usage: formatjs compile [options] [translation_files...]
+
+Compile extracted translation file into react-intl consumable JSON We also
+verify that the messages are valid ICU and not malformed. <translation_files>
+can be a glob like "foo/**/en.json"
+
+Options:
+  --format <name-or-path>         Built-in formatter name that converts
+                                  \`<translation_file>\` to \`Record<string,
+                                  string>\` so we can compile. Custom formatter
+                                  file paths are deprecated. Built-in
+                                  formatters: default, simple, transifex,
+                                  smartling, lokalise, crowdin.
+  --out-file <path>               Compiled translation output file. If this is
+                                  not provided, result will be printed to stdout
+  --ast                           Whether to compile to AST. See
+                                  https://formatjs.github.io/docs/guides/advanced-usage#pre-parsing-messages
+                                  for more information
+  --skip-errors                   Whether to continue compiling messages after
+                                  encountering an error. Any keys with errors
+                                  will not be included in the output file.
+  --pseudo-locale <pseudoLocale>  Whether to generate pseudo-locale files. See
+                                  https://formatjs.github.io/docs/tooling/cli#--pseudo-locale-pseudolocale
+                                  for possible values. "--ast" is required for
+                                  this to work.
+  --ignore-tag                    Whether the parser to treat HTML/XML tags as
+                                  string literal instead of parsing them as tag
+                                  token. When this is false we only allow simple
+                                  tags without any attributes.
+  --follow-links                  Whether to follow symbolic links when
+                                  traversing directories. Defaults to true for
+                                  compatibility with pnpm symlinked
+                                  node_modules. Use --no-follow-links to
+                                  disable. (default: true)
+  -h, --help                      display help for command
+",
+}
+`;
+
+exports[`'TypeScript' CLI > compile glob 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "1": "a message",
+  "2": "my name is {name}",
+  "3": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > en-XA json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ȧȧ ḓǿǿɠ"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ȧȧ ḓǿǿɠ"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "Ī ħȧȧṽḗḗ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ȧȧ "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "ḓǿǿɠ"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ḿȧȧƞẏ ḓǿǿɠş"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "ḿẏ ƞȧȧḿḗḗ īş "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "["
+    },
+    {
+      "type": 0,
+      "value": "ȧȧ ḿḗḗşşȧȧɠḗḗ"
+    },
+    {
+      "type": 0,
+      "value": "]"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > en-XB json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɐ poƃ"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ɐ poƃ"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "I ɥɐʌǝ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "ɐ "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "poƃ"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ɯɐuʎ poƃs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "ɯʎ uɐɯǝ ıs "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "‮"
+    },
+    {
+      "type": 0,
+      "value": "ɐ ɯǝssɐƃǝ"
+    },
+    {
+      "type": 0,
+      "value": "‬"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d13": "I have {count, plural, one{<b>a dog</b>} other{many dogs}}",
+  "a1d14": "I have {count, plural, one{<b>a <i>dog</i></b>} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with crowdin 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with formatter 1`] = `
+{
+  "stderr": "[@formatjs/cli] [WARN] Passing a custom formatter file to --format during compilation is deprecated and will be removed in a future release. Prefer a built-in formatter name or pre-process translation files before running formatjs compile.
+",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with lokalise 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with simple 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with smartling 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > normal json with transifex 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message"
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > out-file --ast 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'TypeScript' CLI > out-file --ast 2`] = `
+{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog",
+                },
+              ],
+              "type": 8,
+              "value": "b",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have ",
+    },
+    {
+      "offset": 0,
+      "options": {
+        "one": {
+          "value": [
+            {
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a ",
+                },
+                {
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog",
+                    },
+                  ],
+                  "type": 8,
+                  "value": "i",
+                },
+              ],
+              "type": 8,
+              "value": "b",
+            },
+          ],
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs",
+            },
+          ],
+        },
+      },
+      "pluralType": "cardinal",
+      "type": 6,
+      "value": "count",
+    },
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is ",
+    },
+    {
+      "type": 1,
+      "value": "name",
+    },
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a message",
+    },
+  ],
+}
+`;
+
+exports[`'TypeScript' CLI > out-file --ignore-tag 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'TypeScript' CLI > out-file --ignore-tag 2`] = `
+{
+  "brmsg": "a message with a non-explicit <br> self-closing tag",
+  "linkmsg": "a message containing <a href="https://formatjs.github.io/">a link</a>",
+}
+`;
+
+exports[`'TypeScript' CLI > out-file 1`] = `
+{
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`'TypeScript' CLI > out-file 2`] = `
+{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "a1d13": "I have {count, plural, one{<b>a dog</b>} other{many dogs}}",
+  "a1d14": "I have {count, plural, one{<b>a <i>dog</i></b>} other{many dogs}}",
+  "a1dd2": "my name is {name}",
+  "ashd2": "a message",
+}
+`;
+
+exports[`'TypeScript' CLI > skipped malformed ICU message json 1`] = `
+"{
+  "a1d12": "I have {count, plural, one{a dog} other{many dogs}}",
+  "ashd2": "a message"
+}
+"
+`;
+
+exports[`'TypeScript' CLI > xx-AC json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "A DOG"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "A DOG"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I HAVE "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "A "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "DOG"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "MANY DOGS"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "MY NAME IS "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "A MESSAGE"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > xx-HA json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "[javascript]I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "[javascript]my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "[javascript]a message"
+    }
+  ]
+}
+",
+}
+`;
+
+exports[`'TypeScript' CLI > xx-LS json 1`] = `
+{
+  "stderr": "",
+  "stdout": "{
+  "a1d12": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a dog"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1d13": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a dog"
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1d14": [
+    {
+      "type": 0,
+      "value": "I have "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 8,
+              "value": "b",
+              "children": [
+                {
+                  "type": 0,
+                  "value": "a "
+                },
+                {
+                  "type": 8,
+                  "value": "i",
+                  "children": [
+                    {
+                      "type": 0,
+                      "value": "dog"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "many dogs"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "a1dd2": [
+    {
+      "type": 0,
+      "value": "my name is "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "SSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ],
+  "ashd2": [
+    {
+      "type": 0,
+      "value": "a messageSSSSSSSSSSSSSSSSSSSSSSSSS"
+    }
+  ]
+}
+",
+}
+`;

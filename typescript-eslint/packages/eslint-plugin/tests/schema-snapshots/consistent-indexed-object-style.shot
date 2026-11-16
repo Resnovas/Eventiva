@@ -1,0 +1,20 @@
+
+# SCHEMA:
+
+[
+  {
+    "description": "Which indexed object syntax to prefer.",
+    "enum": ["index-signature", "record"],
+    "type": "string"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  /** Which indexed object syntax to prefer. */
+  | 'record'
+  /** Which indexed object syntax to prefer. */
+  | 'index-signature',
+];

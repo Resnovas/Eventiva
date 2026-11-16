@@ -1,0 +1,45 @@
+Program {
+  type: "Program",
+  body: [
+    TSInterfaceDeclaration {
+      type: "TSInterfaceDeclaration",
+      body: TSInterfaceBody {
+        type: "TSInterfaceBody",
+        body: [],
+
+        range: [20, 22],
+        loc: {
+          start: { column: 20, line: 1 },
+          end: { column: 22, line: 1 },
+        },
+      },
+      declare: true,
+      extends: [],
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "F",
+        optional: false,
+
+        range: [18, 19],
+        loc: {
+          start: { column: 18, line: 1 },
+          end: { column: 19, line: 1 },
+        },
+      },
+
+      range: [0, 22],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 22, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 23],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

@@ -1,0 +1,178 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        ClassNameDefinition$1 {
+          name: Identifier<"Foo">,
+          node: ClassDeclaration$1,
+        },
+      ],
+      name: "Foo",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"Foo">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        ClassNameDefinition$2 {
+          name: Identifier<"Foo">,
+          node: ClassDeclaration$1,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        TypeDefinition$3 {
+          name: Identifier<"T">,
+          node: TSTypeParameter$2,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$4,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        ClassNameDefinition$4 {
+          name: Identifier<"Bar">,
+          node: ClassDeclaration$3,
+        },
+      ],
+      name: "Bar",
+      references: [
+        Reference$4 {
+          identifier: Identifier<"Bar">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$5,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$6 {
+      defs: [
+        ClassNameDefinition$5 {
+          name: Identifier<"Bar">,
+          node: ClassDeclaration$3,
+        },
+      ],
+      name: "Bar",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$7 {
+      defs: [
+        TypeDefinition$6 {
+          name: Identifier<"T">,
+          node: TSTypeParameter$4,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$7,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$5,
+      isStrict: false,
+      references: [
+        Reference$4,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Foo" => Variable$2,
+        "Bar" => Variable$5,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$5,
+      ],
+    },
+    ClassScope$2 {
+      block: ClassDeclaration$1,
+      isStrict: true,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "Foo" => Variable$3,
+        "T" => Variable$4,
+      },
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+      ],
+    },
+    ClassScope$3 {
+      block: ClassDeclaration$3,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "Bar" => Variable$6,
+        "T" => Variable$7,
+      },
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$6,
+        Variable$7,
+      ],
+    },
+    ClassFieldInitializerScope$4 {
+      block: TSInstantiationExpression$6,
+      isStrict: true,
+      references: [
+        Reference$2,
+        Reference$3,
+      ],
+      set: Map {},
+      type: "class-field-initializer",
+      upper: ClassScope$3,
+      variables: [],
+    },
+  ],
+}

@@ -1,0 +1,35 @@
+Program {
+  type: "Program",
+  body: [
+    ImportDeclaration {
+      type: "ImportDeclaration",
+      attributes: [],
+      importKind: "value",
+      source: Literal {
+        type: "Literal",
+        raw: "'mod'",
+        value: "mod",
+
+        range: [7, 12],
+        loc: {
+          start: { column: 7, line: 1 },
+          end: { column: 12, line: 1 },
+        },
+      },
+      specifiers: [],
+
+      range: [0, 13],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 13, line: 1 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 14],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

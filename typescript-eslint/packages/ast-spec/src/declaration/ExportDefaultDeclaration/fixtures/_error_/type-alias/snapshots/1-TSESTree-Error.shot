@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportDefaultDeclaration > _error_ > type-alias > TSESTree - Error`]
+TSError
+> 1 | export default type Foo = 1;
+    |                     ^ ';' expected.
+  2 |

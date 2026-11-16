@@ -1,0 +1,65 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"A">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "A",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"A">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: ClassExpression$2,
+        },
+        Reference$2 {
+          identifier: Identifier<"A">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$3,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "A" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+    ClassScope$2 {
+      block: ClassExpression$2,
+      isStrict: true,
+      references: [],
+      set: Map {},
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [],
+    },
+  ],
+}

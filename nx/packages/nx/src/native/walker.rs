@@ -1,0 +1,926 @@
+use ignore::{WalkBuilder, WalkState};
+use std::fmt::Debug;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
+
+use anyhow::{Context, Result};
+use parking_lot::Mutex;
+
+use crate::native::glob::{NxGlobSet, build_glob_set};
+
+use crate::native::utils::{Normalize, get_mod_time, git::parent_gitignore_files};
+use walkdir::WalkDir;
+
+#[derive(PartialEq, Debug, Ord, PartialOrd, Eq, Clone)]
+pub struct NxFile {
+    pub full_path: String,
+    pub normalized_path: String,
+    pub mod_time: i64,
+}
+
+/// Walks the directory in a single thread and does not ignore any files
+/// Should only be used for small directories, and not traversing the whole workspace
+///
+/// The `ignores` argument is used to filter entries. This is important to make sure that any ignore globs are applied on the `filter_entry` function
+pub fn nx_walker_sync<'a, P>(
+    directory: P,
+    ignores: Option<&[String]>,
+) -> impl Iterator<Item = PathBuf>
+where
+    P: AsRef<Path> + 'a,
+{
+    let directory: PathBuf = directory.as_ref().into();
+    walk_from(directory.clone(), directory, sync_ignores(ignores))
+}
+
+/// The hardcoded ignores plus `ignores` at any depth, as `nx_walker_sync`
+/// applies them.
+fn sync_ignores(ignores: Option<&[String]>) -> Arc<NxGlobSet> {
+    let mut patterns: Vec<String> = HARDCODED_IGNORE_PATTERNS
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
+    if let Some(ignores) = ignores {
+        patterns.extend(ignores.iter().map(|s| format!("**/{}", s)));
+    }
+    build_glob_set(&patterns).expect("Should be valid globs")
+}
+
+/// Every entry from `start` down that `ignored` does not prune, relative to
+/// `base`. `start` itself is left out when it is `base`.
+fn walk_from(
+    base: PathBuf,
+    start: PathBuf,
+    ignored: Arc<NxGlobSet>,
+) -> impl Iterator<Item = PathBuf> {
+    // Use WalkDir instead of ignore::WalkBuilder because it's faster
+    WalkDir::new(start)
+        .into_iter()
+        .filter_entry(move |entry| !ignored.is_match(entry.path().to_string_lossy().as_ref()))
+        .filter_map(move |entry| {
+            let path = entry.ok()?.path().strip_prefix(&base).ok()?.to_owned();
+            (!path.as_os_str().is_empty()).then_some(path)
+        })
+}
+
+/// The path of `root` under `directory`, if the full walk from `directory`
+/// would reach it: no part of it is pruned, and no part above it is a link or
+/// a file.
+fn reachable_root(directory: &Path, root: &str, ignored: &NxGlobSet) -> Option<PathBuf> {
+    let mut path = directory.to_path_buf();
+    let parts: Vec<&str> = root.split('/').collect();
+    for (depth, part) in parts.iter().enumerate() {
+        path.push(part);
+        let link = std::fs::symlink_metadata(&path).ok()?;
+        let is_root = depth == parts.len() - 1;
+        if ignored.is_match(path.to_string_lossy().as_ref())
+            || (!is_root && (!link.is_dir() || link.file_type().is_symlink()))
+        {
+            return None;
+        }
+    }
+    Some(path)
+}
+
+/// What `nx_walker_sync` yields at or under any of `roots`, relative to
+/// `directory`, without walking the rest of it: a root is skipped where the
+/// full walk would never reach it (a vetoed or linked parent), and a linked
+/// root is yielded but not entered. Roots keep the case they are given, so on
+/// a case-insensitive filesystem paths can differ in case from the full walk's.
+pub fn nx_walker_sync_under(
+    directory: &Path,
+    roots: &[String],
+    ignores: Option<&[String]>,
+) -> Vec<PathBuf> {
+    let roots: Vec<String> = roots
+        .iter()
+        .map(|root| Path::new(root).to_normalized_string())
+        .collect();
+    let mut roots: Vec<&str> = roots
+        .iter()
+        .map(|root| root.trim_matches('/'))
+        .map(|root| if root == "." { "" } else { root })
+        .collect();
+    if roots.contains(&"") {
+        return nx_walker_sync(directory, ignores).collect();
+    }
+    roots.sort();
+    roots.dedup();
+    let nested = |root: &str| {
+        roots.iter().any(|other| {
+            root.strip_prefix(other)
+                .is_some_and(|rest| rest.starts_with('/'))
+        })
+    };
+    let roots: Vec<&str> = roots.iter().copied().filter(|root| !nested(root)).collect();
+
+    let ignored = sync_ignores(ignores);
+    if ignored.is_match(directory.to_string_lossy().as_ref()) {
+        return vec![];
+    }
+    let mut found = vec![];
+    for root in roots {
+        let Some(path) = reachable_root(directory, root, &ignored) else {
+            continue;
+        };
+        // WalkDir would follow a linked start; the full walk never enters a link.
+        if std::fs::symlink_metadata(&path).is_ok_and(|link| link.file_type().is_symlink()) {
+            found.push(PathBuf::from(root));
+            continue;
+        }
+        found.extend(walk_from(
+            directory.to_path_buf(),
+            path,
+            Arc::clone(&ignored),
+        ));
+    }
+    found
+}
+
+/// Walk the directory and ignore files from .gitignore and .nxignore
+#[cfg(target_arch = "wasm32")]
+pub fn nx_walker<P>(directory: P, use_ignores: bool) -> impl Iterator<Item = NxFile>
+where
+    P: AsRef<Path>,
+{
+    let directory: PathBuf = directory.as_ref().into();
+    let walker = create_walker(&directory, use_ignores);
+
+    let entries = walker.build();
+
+    entries.filter_map(move |entry| {
+        let Ok(dir_entry) = entry else {
+            return None;
+        };
+
+        if dir_entry.file_type().is_some_and(|d| d.is_dir()) {
+            return None;
+        }
+
+        let Ok(file_path) = dir_entry.path().strip_prefix(&directory) else {
+            return None;
+        };
+
+        let Ok(metadata) = dir_entry.metadata() else {
+            return None;
+        };
+
+        if !is_hashable_file(&metadata.file_type()) {
+            return None;
+        }
+
+        Some(NxFile {
+            full_path: String::from(dir_entry.path().to_string_lossy()),
+            normalized_path: file_path.to_normalized_string(),
+            mod_time: get_mod_time(&metadata),
+        })
+    })
+}
+
+/// Walk the directory and ignore files from .gitignore and .nxignore
+#[cfg(not(target_arch = "wasm32"))]
+pub fn nx_walker<P>(directory: P, use_ignores: bool) -> impl Iterator<Item = NxFile>
+where
+    P: AsRef<Path>,
+{
+    walk_and_find_ignore_files(directory.as_ref(), use_ignores, false)
+        .0
+        .into_iter()
+}
+
+/// `nx_walker` with ignores, plus the `.gitignore` and `.nxignore` of every
+/// directory it entered, relative to `directory`. Those are the files the walk
+/// applied, including one that ignores itself and so is missing from the files.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn nx_walker_with_ignore_files<P>(directory: P) -> (Vec<NxFile>, Vec<PathBuf>)
+where
+    P: AsRef<Path>,
+{
+    walk_and_find_ignore_files(directory.as_ref(), true, true)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn walk_and_find_ignore_files(
+    directory: &Path,
+    use_ignores: bool,
+    collect_ignore_files: bool,
+) -> (Vec<NxFile>, Vec<PathBuf>) {
+    use std::thread::available_parallelism;
+
+    use crossbeam_channel::unbounded;
+    use tracing::trace;
+
+    let mut walker = create_walker(directory, use_ignores);
+
+    let cpus = available_parallelism().map_or(2, |n| n.get()) - 1;
+
+    let (sender, receiver) = unbounded();
+    let ignore_files = Mutex::new(Vec::new());
+
+    trace!(?directory, "walking");
+
+    let now = std::time::Instant::now();
+    walker.threads(cpus).build_parallel().run(|| {
+        let tx = sender.clone();
+        let ignore_files = &ignore_files;
+        Box::new(move |entry| {
+            use ignore::WalkState::*;
+
+            let Ok(dir_entry) = entry else {
+                return Continue;
+            };
+
+            if dir_entry.file_type().is_some_and(|d| d.is_dir()) {
+                if collect_ignore_files && let Ok(dir) = dir_entry.path().strip_prefix(directory) {
+                    for name in [".gitignore", ".nxignore"] {
+                        if dir_entry.path().join(name).is_file() {
+                            ignore_files.lock().push(dir.join(name));
+                        }
+                    }
+                }
+                return Continue;
+            };
+
+            let Ok(file_path) = dir_entry.path().strip_prefix(directory) else {
+                return Continue;
+            };
+
+            let Ok(metadata) = dir_entry.metadata() else {
+                return Continue;
+            };
+
+            if !is_hashable_file(&metadata.file_type()) {
+                trace!(path = ?dir_entry.path(), "skipping non-regular file");
+                return Continue;
+            }
+
+            tx.send(NxFile {
+                full_path: String::from(dir_entry.path().to_string_lossy()),
+                normalized_path: file_path.to_normalized_string(),
+                mod_time: get_mod_time(&metadata),
+            })
+            .ok();
+
+            Continue
+        })
+    });
+    trace!("walked in {:?}", now.elapsed());
+
+    drop(sender);
+    (receiver.into_iter().collect(), ignore_files.into_inner())
+}
+
+/// Returns true when the entry should be hashed as a workspace file.
+/// Excludes anything that is not a regular file or a symlink (e.g. named
+/// pipes/FIFOs, sockets, block/char devices) because `std::fs::read` can
+/// block indefinitely on such paths (FIFOs wait for a writer).
+fn is_hashable_file(file_type: &std::fs::FileType) -> bool {
+    file_type.is_file() || file_type.is_symlink()
+}
+
+/// Files tools write and remove moments later. Vite and vitest write them
+/// while loading a config, and pnpm 12 writes `_tmp_<pid>_<hex>` on every
+/// command while it probes where to put its store. The watch never reports
+/// them, so a walk that feeds a hash skips them too.
+pub(crate) const TRANSIENT_FILE_GLOBS: &[&str] = &[
+    "vitest.config.ts.timestamp*.mjs",
+    "vite.config.ts.timestamp*.mjs",
+    "vitest.config.mts.timestamp*.mjs",
+    "vite.config.mts.timestamp*.mjs",
+    "_tmp_*_*",
+];
+
+/// Directories the walker and the watcher never enter.
+pub(crate) const HARDCODED_IGNORE_PATTERNS: &[&str] = &[
+    "**/node_modules",
+    "**/.git",
+    "**/.nx/cache",
+    "**/.nx/workspace-data",
+    "**/.yarn/cache",
+];
+
+/// The same list, for JavaScript callers that walk a tree rather than the
+/// filesystem - `visitNotIgnoredFiles` - so both sides apply one baseline
+/// instead of maintaining a second copy that drifts.
+///
+/// The patterns are gitignore-shaped, so they read the same to the `ignore`
+/// crate here and the `ignore` npm package there.
+#[napi]
+pub fn get_hardcoded_ignore_patterns() -> Vec<String> {
+    HARDCODED_IGNORE_PATTERNS
+        .iter()
+        .map(|pattern| pattern.to_string())
+        .collect()
+}
+
+pub(crate) fn create_walker<P>(directory: P, use_ignores: bool) -> WalkBuilder
+where
+    P: AsRef<Path>,
+{
+    create_walker_vetoing(directory, use_ignores, None, Vec::new())
+}
+
+/// `create_walker` with `extra` and the `skip` directories (absolute) vetoed
+/// on top of the hardcoded ignores. The ignore crate keeps one filter
+/// predicate, so a caller that needs more has to have them composed here
+/// rather than add its own.
+pub(crate) fn create_walker_vetoing<P>(
+    directory: P,
+    use_ignores: bool,
+    extra: Option<Arc<NxGlobSet>>,
+    skip: Vec<PathBuf>,
+) -> WalkBuilder
+where
+    P: AsRef<Path>,
+{
+    let directory: PathBuf = directory.as_ref().into();
+
+    let ignore_glob_set =
+        build_glob_set(HARDCODED_IGNORE_PATTERNS).expect("These static ignores always build");
+
+    let mut walker = WalkBuilder::new(&directory);
+    walker.require_git(false);
+    walker.hidden(false);
+
+    // `.ignore` is a ripgrep convention the ignore crate enables by default.
+    // Nx never chose it, and the watcher does not read it, so honouring it here
+    // would drop files the watcher still admits.
+    walker.ignore(false);
+
+    if use_ignores {
+        // Handle parent .gitignore files based on git repository boundaries
+        if let Some(gitignore_paths) = parent_gitignore_files(&directory) {
+            // Workspace is git root or nested in git repo - use manual parent traversal
+            walker.parents(false);
+            for gitignore_path in gitignore_paths {
+                walker.add_ignore(gitignore_path);
+            }
+        } else {
+            // No git repo found - use automatic parent traversal for backwards compatibility
+            walker.parents(true);
+        }
+
+        walker.add_custom_ignore_filename(".nxignore");
+    } else {
+        // Don't filter out ignored files
+        walker.standard_filters(false);
+    }
+
+    // We should make sure to always ignore node_modules and the .git folder
+    walker.filter_entry(move |entry| {
+        let path = entry.path().to_string_lossy();
+        !ignore_glob_set.is_match(path.as_ref())
+            && extra
+                .as_ref()
+                .is_none_or(|set| !set.is_match(path.as_ref()))
+            && !skip.iter().any(|dir| entry.path() == dir)
+    });
+    walker
+}
+
+// ---------------------------------------------------------------------------
+// Reading a directory's files, for the hashers and for the ignored index.
+// Both want the same thing: every file under a directory, workspace-relative.
+// ---------------------------------------------------------------------------
+
+/// The transient files the watch never reports. The hardcoded directories
+/// come from `create_walker`, which vetoes them for every walk.
+fn transient_skips() -> Result<Arc<NxGlobSet>> {
+    static SKIPS: OnceLock<Option<Arc<NxGlobSet>>> = OnceLock::new();
+    SKIPS
+        .get_or_init(|| {
+            let patterns: Vec<String> = TRANSIENT_FILE_GLOBS
+                .iter()
+                .map(|g| format!("**/{g}"))
+                .collect();
+            build_glob_set(&patterns).ok()
+        })
+        .clone()
+        .context("the transient-file globs always build")
+}
+
+/// Files under `start`, workspace-relative, with the stamp read on the way
+/// for anything the context does not vouch for. The walker skips what it
+/// skips for every walk, but never the root it is given, so a glob rooted at
+/// `node_modules` reads it. A linked file is read where it points; a linked
+/// directory is not entered.
+pub(crate) fn walk_files(
+    start: &Path,
+    workspace_root: &Path,
+    accept: PathPredicate,
+    skip: &[String],
+) -> Result<Vec<String>> {
+    let relative_of = |path: &Path| -> Option<String> {
+        Some(
+            path.strip_prefix(workspace_root)
+                .ok()?
+                .to_string_lossy()
+                .replace('\\', "/"),
+        )
+    };
+    let visit = |path: &Path, file_type: std::fs::FileType| -> Option<String> {
+        let relative = relative_of(path)?;
+        if file_type.is_symlink() {
+            // Read where a linked file points, but never enter a linked
+            // directory.
+            let target = std::fs::metadata(path).ok()?;
+            if target.is_dir() || !accept(&relative) {
+                return None;
+            }
+            return Some(relative);
+        }
+        if !file_type.is_file() || !accept(&relative) {
+            return None;
+        }
+        Some(relative)
+    };
+
+    let found = Mutex::new(Vec::new());
+    let skip = skip.iter().map(|dir| workspace_root.join(dir)).collect();
+    create_walker_vetoing(start, false, Some(transient_skips()?), skip)
+        .follow_links(false)
+        .build_parallel()
+        .run(|| {
+            Box::new(|entry| {
+                if let Ok(entry) = entry
+                    && let Some(file_type) = entry.file_type()
+                    && let Some(one) = visit(entry.path(), file_type)
+                {
+                    found.lock().push(one);
+                }
+                WalkState::Continue
+            })
+        });
+    Ok(found.into_inner())
+}
+
+/// A question asked about one path: does this glob admit it, does the
+/// workspace context already track it. Borrowed and shared across the walk's
+/// threads, so it is always behind a reference and `Sync`.
+pub(crate) type PathPredicate<'a> = &'a (dyn Fn(&str) -> bool + Sync);
+
+/// The files under `dir` that `accept` admits, workspace-relative, read from
+/// disk. The one implementation of "what does this directory hold"; the
+/// ignored index caches on top of it, and everything else calls it directly.
+/// A path is read wherever it points, so an entry or a linked file may lead
+/// out of the workspace. `None` when `dir` cannot be read at all. The order
+/// is the walk's, not sorted. Directories in `skip` are not entered.
+pub(crate) fn read_directory(
+    workspace_root: &Path,
+    dir: &str,
+    accept: PathPredicate,
+    skip: &[String],
+) -> Option<Vec<String>> {
+    let start = workspace_root.join(dir);
+    if !dunce::canonicalize(&start).ok()?.is_dir() {
+        return Some(Vec::new());
+    }
+    walk_files(&start, workspace_root, accept, skip).ok()
+}
+
+/// Every file under `dir`, for the index adopting it as a listing. A
+/// directory that does not exist yet is empty rather than missing, so
+/// tracking one before its task writes it is not an error.
+pub(crate) fn seed_walk(workspace_root: &Path, dir: &str) -> Option<Vec<String>> {
+    if std::fs::symlink_metadata(workspace_root.join(dir)).is_err() {
+        return Some(Vec::new());
+    }
+    read_directory(workspace_root, dir, &|_| true, &[])
+}
+
+#[cfg(test)]
+mod test {
+    use std::{assert_eq, vec};
+
+    use assert_fs::TempDir;
+    use assert_fs::prelude::*;
+
+    use super::*;
+
+    ///
+    /// Setup a temporary directory to do testing in
+    ///
+    fn setup_fs() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        temp.child("test.txt").write_str("content").unwrap();
+        temp.child("foo.txt").write_str("content1").unwrap();
+        temp.child("bar.txt").write_str("content2").unwrap();
+        temp.child("baz")
+            .child("qux.txt")
+            .write_str("content@qux")
+            .unwrap();
+        temp.child("node_modules")
+            .child("node-module-dep")
+            .write_str("content")
+            .unwrap();
+        temp
+    }
+
+    #[test]
+    fn it_walks_a_directory() {
+        // handle empty workspaces
+        let content = nx_walker("/does/not/exist", true).collect::<Vec<_>>();
+        assert!(content.is_empty());
+
+        let temp_dir = setup_fs();
+
+        let mut content = nx_walker(&temp_dir, true).collect::<Vec<_>>();
+        content.sort();
+        let content = content
+            .into_iter()
+            .map(|f| (f.full_path.into(), f.normalized_path.into()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            content,
+            vec![
+                (temp_dir.join("bar.txt"), PathBuf::from("bar.txt")),
+                (temp_dir.join("baz/qux.txt"), PathBuf::from("baz/qux.txt")),
+                (temp_dir.join("foo.txt"), PathBuf::from("foo.txt")),
+                (temp_dir.join("test.txt"), PathBuf::from("test.txt")),
+            ]
+        );
+    }
+
+    #[test]
+    fn handles_nx_ignore() {
+        let temp_dir = setup_fs();
+
+        temp_dir
+            .child("nested")
+            .child("child.txt")
+            .write_str("data")
+            .unwrap();
+        temp_dir
+            .child("nested")
+            .child("child-two")
+            .child("grand_child.txt")
+            .write_str("data")
+            .unwrap();
+        temp_dir
+            .child("v1")
+            .child("packages")
+            .child("pkg-a")
+            .child("pkg-a.txt")
+            .write_str("data")
+            .unwrap();
+        temp_dir
+            .child("v1")
+            .child("packages")
+            .child("pkg-b")
+            .child("pkg-b.txt")
+            .write_str("data")
+            .unwrap();
+        temp_dir
+            .child("packages")
+            .child("pkg-c")
+            .child("pkg-c.txt")
+            .write_str("data")
+            .unwrap();
+
+        // add nxignore file
+        temp_dir
+            .child(".nxignore")
+            .write_str(
+                r"baz/
+nested/child.txt
+nested/child-two/
+
+# this should only ignore root level packages, not nested
+/packages
+    ",
+            )
+            .unwrap();
+
+        let mut file_names = nx_walker(temp_dir, true)
+            .map(
+                |NxFile {
+                     normalized_path: relative_path,
+                     ..
+                 }| relative_path,
+            )
+            .collect::<Vec<_>>();
+
+        file_names.sort();
+
+        assert_eq!(
+            file_names,
+            vec!(
+                ".nxignore",
+                "bar.txt",
+                "foo.txt",
+                "test.txt",
+                "v1/packages/pkg-a/pkg-a.txt",
+                "v1/packages/pkg-b/pkg-b.txt"
+            )
+        );
+    }
+
+    #[test]
+    fn ignores_parent_gitignore_when_workspace_is_git_root() {
+        let parent_temp = assert_fs::TempDir::new().unwrap();
+        parent_temp.child(".gitignore").write_str("*").unwrap();
+        parent_temp.child("workspace/.git").touch().unwrap();
+        parent_temp
+            .child("workspace/file1.txt")
+            .write_str("test")
+            .unwrap();
+        parent_temp
+            .child("workspace/project.json")
+            .write_str("test")
+            .unwrap();
+
+        let workspace_path = parent_temp.path().join("workspace");
+        let mut files: Vec<_> = nx_walker(&workspace_path, true)
+            .map(|f| f.normalized_path)
+            .collect();
+        files.sort();
+
+        assert_eq!(
+            files,
+            vec!["file1.txt".to_string(), "project.json".to_string()]
+        );
+    }
+
+    #[test]
+    fn respects_gitignore_within_git_repo_but_not_above() {
+        let temp_dir = assert_fs::TempDir::new().unwrap();
+
+        // Create a .gitignore file above the git repository (should be ignored)
+        temp_dir
+            .child(".gitignore")
+            .write_str("ignored_by_parent.txt")
+            .unwrap();
+
+        // Create the git repository root
+        temp_dir.child("repo/.git").touch().unwrap();
+
+        // Create a .gitignore file within the git repository (should be respected)
+        temp_dir
+            .child("repo/.gitignore")
+            .write_str("ignored_by_repo.txt")
+            .unwrap();
+
+        // Create test files
+        temp_dir
+            .child("repo/workspace/file1.txt")
+            .write_str("test")
+            .unwrap();
+        temp_dir
+            .child("repo/workspace/project.json")
+            .write_str("test")
+            .unwrap();
+        temp_dir
+            .child("repo/workspace/ignored_by_parent.txt")
+            .write_str("test")
+            .unwrap();
+        temp_dir
+            .child("repo/workspace/ignored_by_repo.txt")
+            .write_str("test")
+            .unwrap();
+
+        let workspace_path = temp_dir.path().join("repo/workspace");
+        let mut files: Vec<_> = nx_walker(&workspace_path, true)
+            .map(|f| f.normalized_path)
+            .collect();
+        files.sort();
+
+        // Should include ignored_by_parent.txt (parent .gitignore is ignored)
+        // Should exclude ignored_by_repo.txt (repo .gitignore is respected)
+        assert_eq!(
+            files,
+            vec![
+                "file1.txt".to_string(),
+                "ignored_by_parent.txt".to_string(),
+                "project.json".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn respects_parent_gitignore_when_no_git_repo_found() {
+        let parent_temp = assert_fs::TempDir::new().unwrap();
+        parent_temp.child(".gitignore").write_str("*").unwrap();
+        parent_temp
+            .child("workspace/file1.txt")
+            .write_str("test")
+            .unwrap();
+        parent_temp
+            .child("workspace/project.json")
+            .write_str("test")
+            .unwrap();
+
+        let workspace_path = parent_temp.path().join("workspace");
+        let mut files: Vec<_> = nx_walker(&workspace_path, true)
+            .map(|f| f.normalized_path)
+            .collect();
+        files.sort();
+
+        // All files should be ignored by parent .gitignore since no git repo was found
+        assert!(files.is_empty());
+    }
+
+    // FIFOs only exist on unix-like systems. This is the primary hazard the
+    // `is_hashable_file` filter has to guard against: opening a FIFO and
+    // calling `std::fs::read` on it blocks the reader indefinitely waiting
+    // for a writer.
+    #[cfg(all(unix, not(target_arch = "wasm32")))]
+    #[test]
+    fn skips_named_pipes() {
+        use nix::sys::stat::Mode;
+        use nix::unistd::mkfifo;
+
+        let temp_dir = setup_fs();
+        let fifo_path = temp_dir.path().join("a-named-pipe");
+        mkfifo(&fifo_path, Mode::S_IRUSR | Mode::S_IWUSR).expect("mkfifo");
+
+        let mut files: Vec<_> = nx_walker(temp_dir.path(), true)
+            .map(|f| f.normalized_path)
+            .collect();
+        files.sort();
+
+        assert!(
+            !files.iter().any(|f| f == "a-named-pipe"),
+            "FIFO should be skipped, got: {:?}",
+            files
+        );
+    }
+
+    // Unix sockets are another non-regular file type the walker should
+    // skip. Reading from one wouldn't block the way a FIFO does, but the
+    // contents aren't meaningful for hashing either.
+    #[cfg(all(unix, not(target_arch = "wasm32")))]
+    #[test]
+    fn skips_unix_sockets() {
+        use std::os::unix::net::UnixListener;
+
+        let temp_dir = setup_fs();
+        let socket_path = temp_dir.path().join("a-unix-socket");
+        let _listener = UnixListener::bind(&socket_path).expect("bind unix socket");
+
+        let mut files: Vec<_> = nx_walker(temp_dir.path(), true)
+            .map(|f| f.normalized_path)
+            .collect();
+        files.sort();
+
+        assert!(
+            !files.iter().any(|f| f == "a-unix-socket"),
+            "unix socket should be skipped, got: {:?}",
+            files
+        );
+    }
+
+    // `.ignore` is a ripgrep convention the ignore crate turns on by default.
+    // Nx never chose it and the watch filterer does not read it, so the walk
+    // must not either.
+    #[test]
+    fn does_not_honour_dot_ignore() {
+        let temp_dir = setup_fs();
+        temp_dir.child(".ignore").write_str("foo.txt\n").unwrap();
+
+        let files: Vec<_> = nx_walker(temp_dir.path(), true)
+            .map(|f| f.normalized_path)
+            .collect();
+
+        assert!(
+            files.iter().any(|f| f == "foo.txt"),
+            "a .ignore entry should not exclude foo.txt, got: {:?}",
+            files
+        );
+    }
+
+    #[test]
+    fn read_directory_does_not_enter_a_skipped_directory() {
+        let temp = TempDir::new().unwrap();
+        for path in ["pkg/src/a.ts", "pkg/nested/src/b.ts", "pkg/nested-two/c.ts"] {
+            temp.child(path).write_str("x").unwrap();
+        }
+        let mut files =
+            read_directory(temp.path(), "pkg", &|_| true, &["pkg/nested".to_string()]).unwrap();
+        files.sort();
+        // Whole segments only: `nested-two` is not under `nested`.
+        assert_eq!(files, vec!["pkg/nested-two/c.ts", "pkg/src/a.ts"]);
+    }
+
+    // The reference semantics the watch filterer's rank-before-depth sort
+    // mirrors: the ignore crate keeps the deepest match per class and then
+    // prefers the higher class, so a .nxignore wins over a .gitignore that
+    // sits deeper.
+    #[test]
+    fn nxignore_outranks_a_deeper_gitignore_negation() {
+        let temp_dir = setup_fs();
+        temp_dir
+            .child("pkg/.nxignore")
+            .write_str("keep.tmp\n")
+            .unwrap();
+        temp_dir
+            .child("pkg/deep/.gitignore")
+            .write_str("!keep.tmp\n")
+            .unwrap();
+        temp_dir
+            .child("pkg/deep/keep.tmp")
+            .write_str("data")
+            .unwrap();
+
+        let files: Vec<_> = nx_walker(temp_dir.path(), true)
+            .map(|f| f.normalized_path)
+            .collect();
+
+        assert!(
+            !files.iter().any(|f| f == "pkg/deep/keep.tmp"),
+            "the shallower .nxignore should outrank the deeper .gitignore negation, got: {:?}",
+            files
+        );
+    }
+
+    #[test]
+    fn skips_transient_tool_files() {
+        let temp = TempDir::new().unwrap();
+        for file in [
+            "keep.ts",
+            "_tmp_notes.txt",
+            "apps/web/vite.config.ts.timestamp-1700000000000-abc.mjs",
+            "_tmp_216074_1a910ab3",
+            "apps/web/_tmp_38717_33967778",
+            "_tmp_38717_3397f260/_tmp_38717_3397f261",
+        ] {
+            temp.child(file).write_str("").unwrap();
+        }
+
+        let mut files = seed_walk(temp.path(), "").unwrap();
+        files.sort();
+        assert_eq!(files, vec!["_tmp_notes.txt", "keep.ts"]);
+    }
+
+    fn walk_fixture() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        for file in [
+            "dist/app/a.js",
+            "dist/app/nested/b.js",
+            "dist/app/node_modules/dep/c.js",
+            "dist/app/cache/d.bin",
+            "dist/other/e.js",
+            "node_modules/pkg/dist/f.js",
+            "libs/lib/g.js",
+        ] {
+            temp.child(file).write_str(file).unwrap();
+        }
+        temp
+    }
+
+    /// Walking under each set of `roots` yields what the full walk yields
+    /// there, with and without ignores that prune a root or its parent.
+    fn assert_walks_under_match_the_full_walk(temp: &TempDir, root_sets: &[Vec<&str>]) {
+        for roots in root_sets {
+            for ignores in [
+                None,
+                Some(vec!["dist/app/cache".to_string()]),
+                Some(vec!["dist".to_string()]),
+            ] {
+                let roots: Vec<String> = roots.iter().map(|r| r.to_string()).collect();
+                let under = |path: &PathBuf| {
+                    roots.iter().any(|root| {
+                        root.is_empty() || path == Path::new(root) || path.starts_with(root)
+                    })
+                };
+                let mut expected: Vec<_> = nx_walker_sync(temp.path(), ignores.as_deref())
+                    .filter(under)
+                    .collect();
+                let mut actual = nx_walker_sync_under(temp.path(), &roots, ignores.as_deref());
+                expected.sort();
+                actual.sort();
+                assert_eq!(actual, expected, "roots {roots:?}, ignores {ignores:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn walking_under_roots_yields_what_the_full_walk_yields_there() {
+        let temp = walk_fixture();
+        assert_walks_under_match_the_full_walk(
+            &temp,
+            &[
+                vec!["dist/app"],
+                vec!["dist", "dist/app"],
+                vec!["dist/app/node_modules", "node_modules/pkg/dist"],
+                vec!["missing", "dist/app/a.js", "dist/app/a.js/below"],
+                vec![""],
+            ],
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn walking_under_linked_roots_yields_what_the_full_walk_yields_there() {
+        let temp = walk_fixture();
+        let link = |target: &str, link: &str| {
+            std::os::unix::fs::symlink(temp.path().join(target), temp.path().join(link)).unwrap()
+        };
+        link("dist/app", "linked-app");
+        link("dist", "linked-dist");
+        link("dist/app/a.js", "dist/linked-a.js");
+        assert_walks_under_match_the_full_walk(
+            &temp,
+            &[vec!["linked-app", "linked-dist/app", "dist/linked-a.js"]],
+        );
+    }
+}

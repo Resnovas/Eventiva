@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSNamespaceExportDeclaration > _error_ > missing-id > TSESTree - Error`]
+TSError
+> 1 | export as namespace;
+    |                    ^ Identifier expected.
+  2 |

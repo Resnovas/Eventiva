@@ -1,0 +1,54 @@
+{
+  "private": true,
+  "name": "@react-native-async-storage/root",
+  "version": "0.0.1-dev",
+  "scripts": {
+    "build": "turbo run build",
+    "format": "concurrently 'yarn:format:*'",
+    "format:c": "clang-format -i $(git ls-files '*.cpp' '*.h' '*.m' '*.mm') --style file:.config/.clang-format",
+    "format:js": "prettier --write $(git ls-files '*.js' '*.json' '*.ts' '*.tsx' '*.yml' 'README.md')",
+    "test:lint": "turbo run test:lint",
+    "test:ts": "turbo run test:ts",
+    "test:format": "prettier --check --loglevel warn $(git ls-files '*.js' '*.json' '*.ts' '*.tsx' '*.yml' 'README.md')",
+    "release:version": "./.github/scripts/setup-ci-git-user.sh && changeset version",
+    "release:publish": "./.github/scripts/setup-ci-git-user.sh && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.7",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.54.0",
+    "prettier": "^2.8.8",
+    "turbo": "^1.12.5",
+    "typescript": "^5.3.0"
+  },
+  "resolutions": {
+    "@react-native-mac/virtualized-lists": "^0.76.0",
+    "@react-native-community/cli": "^15.0.0",
+    "@react-native-community/cli-platform-android": "^15.0.0",
+    "@react-native-community/cli-platform-ios": "^15.0.0",
+    "@react-native/assets-registry": "^0.76.0",
+    "@react-native/babel-plugin-codegen": "^0.76.0",
+    "@react-native/babel-preset": "^0.76.0",
+    "@react-native/codegen": "^0.76.0",
+    "@react-native/community-cli-plugin": "^0.76.0",
+    "@react-native/community-cli-plugin/@react-native-community/cli-server-api": "^15.0.0",
+    "@react-native/community-cli-plugin/@react-native-community/cli-tools": "^15.0.0",
+    "@react-native/gradle-plugin": "^0.76.0",
+    "@react-native/js-polyfills": "^0.76.0",
+    "@react-native/normalize-colors": "^0.76.0",
+    "@react-native/virtualized-lists": "^0.76.0"
+  },
+  "engines": {
+    "node": "v20.11.1"
+  },
+  "packageManager": "yarn@4.2.2",
+  "workspaces": [
+    "packages/api",
+    "packages/default-storage",
+    "packages/default-storage/example",
+    "packages/sqlite-storage",
+    "packages/sqlite-storage/example",
+    "packages/eslint-config",
+    "packages/website"
+  ]
+}

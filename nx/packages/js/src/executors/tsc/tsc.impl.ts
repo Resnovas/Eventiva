@@ -1,0 +1,209 @@
+import * as ts from 'typescript';
+import {
+  ExecutorContext,
+  isDaemonEnabled,
+  joinPathFragments,
+  output,
+  readJsonFile,
+} from '@nx/devkit';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import type { TypeScriptCompilationOptions } from '../../utils/typescript/compilation';
+import { CopyAssetsHandler } from '../../utils/assets/copy-assets-handler';
+import { checkDependencies } from '../../utils/check-dependencies';
+import {
+  getHelperDependency,
+  HelperDependency,
+} from '../../utils/compiler-helper-dependency';
+import { updatePackageJson } from '../../utils/package-json/update-package-json';
+import { ExecutorOptions, NormalizedExecutorOptions } from '../../utils/schema';
+import { compileTypeScriptFiles } from '../../utils/typescript/compile-typescript-files';
+import { watchForSingleFileChanges } from '../../utils/watch-for-single-file-changes';
+import { getCustomTrasformersFactory, normalizeOptions } from './lib';
+import { readTsConfig } from '../../utils/typescript/ts-config';
+import { createEntryPoints } from '../../utils/package-json/create-entry-points';
+
+export function determineModuleFormatFromTsConfig(
+  absolutePathToTsConfig: string,
+  projectRoot?: string,
+  workspaceRoot?: string
+): 'cjs' | 'esm' {
+  const tsConfig = readTsConfig(absolutePathToTsConfig);
+
+  // NodeNext is context-dependent - check package.json type field
+  // NodeNext outputs ESM only when package.json has "type": "module"
+  // Otherwise it outputs CJS (when "type": "commonjs" or no type field)
+  if (tsConfig.options.module === ts.ModuleKind.NodeNext) {
+    if (projectRoot && workspaceRoot) {
+      const packageJsonPath = join(workspaceRoot, projectRoot, 'package.json');
+      if (existsSync(packageJsonPath)) {
+        try {
+          const packageJson = readJsonFile(packageJsonPath);
+          if (packageJson.type === 'module') {
+            return 'esm';
+          }
+        } catch {
+          // Fall through to default CJS
+        }
+      }
+    }
+    // NodeNext defaults to CJS when no type field or when we can't check
+    return 'cjs';
+  }
+
+  if (
+    tsConfig.options.module === ts.ModuleKind.ES2015 ||
+    tsConfig.options.module === ts.ModuleKind.ES2020 ||
+    tsConfig.options.module === ts.ModuleKind.ES2022 ||
+    tsConfig.options.module === ts.ModuleKind.ESNext
+  ) {
+    return 'esm';
+  } else {
+    return 'cjs';
+  }
+}
+
+export function createTypeScriptCompilationOptions(
+  normalizedOptions: NormalizedExecutorOptions,
+  context: ExecutorContext
+): TypeScriptCompilationOptions {
+  return {
+    outputPath: joinPathFragments(normalizedOptions.outputPath),
+    projectName: context.projectName,
+    projectRoot: normalizedOptions.projectRoot,
+    // Keep the Windows drive letter on rootDir/tsConfig (only forward-slash them).
+    // joinPathFragments strips it via normalizePath, leaving them drive-less while
+    // the generated path mappings stay absolute drive-full, so alias-resolved files
+    // fail TypeScript's rootDir containment check (TS6059) on Windows.
+    rootDir: normalizedOptions.rootDir.replace(/\\/g, '/'),
+    tsConfig: normalizedOptions.tsConfig.replace(/\\/g, '/'),
+    watch: normalizedOptions.watch,
+    deleteOutputPath: normalizedOptions.clean,
+    getCustomTransformers: getCustomTrasformersFactory(
+      normalizedOptions.transformers
+    ),
+  };
+}
+
+export async function* tscExecutor(
+  _options: ExecutorOptions,
+  context: ExecutorContext
+) {
+  const { sourceRoot, root } =
+    context.projectsConfigurations.projects[context.projectName];
+  const options = normalizeOptions(_options, context.root, sourceRoot, root);
+
+  const { projectRoot, tmpTsConfig, target, dependencies } = checkDependencies(
+    context,
+    options.tsConfig
+  );
+
+  if (tmpTsConfig) {
+    options.tsConfig = tmpTsConfig;
+  }
+
+  const tsLibDependency = getHelperDependency(
+    HelperDependency.tsc,
+    options.tsConfig,
+    dependencies,
+    context.projectGraph
+  );
+
+  if (tsLibDependency) {
+    dependencies.push(tsLibDependency);
+  }
+
+  const assetHandler = new CopyAssetsHandler({
+    projectDir: projectRoot,
+    rootDir: context.root,
+    outputDir: _options.outputPath,
+    assets: _options.assets,
+    includeIgnoredFiles: _options.includeIgnoredAssetFiles,
+  });
+
+  const tsCompilationOptions = createTypeScriptCompilationOptions(
+    options,
+    context
+  );
+
+  const typescriptCompilation = compileTypeScriptFiles(
+    options,
+    tsCompilationOptions,
+    async () => {
+      await assetHandler.processAllAssetsOnce();
+      if (options.generatePackageJson) {
+        updatePackageJson(
+          {
+            ...options,
+            additionalEntryPoints: createEntryPoints(
+              options.additionalEntryPoints,
+              context.root
+            ),
+            format: [
+              determineModuleFormatFromTsConfig(
+                options.tsConfig,
+                options.projectRoot,
+                context.root
+              ),
+            ],
+          },
+          context,
+          target,
+          dependencies
+        );
+      }
+    }
+  );
+
+  if (!isDaemonEnabled() && options.watch) {
+    output.warn({
+      title:
+        'Nx Daemon is not enabled. Assets and package.json files will not be updated when files change.',
+    });
+  }
+
+  if (isDaemonEnabled() && options.watch) {
+    const disposeWatchAssetChanges =
+      await assetHandler.watchAndProcessOnAssetChange();
+    let disposePackageJsonChanges: undefined | (() => void);
+    if (options.generatePackageJson) {
+      disposePackageJsonChanges = await watchForSingleFileChanges(
+        context.projectName,
+        options.projectRoot,
+        'package.json',
+        () =>
+          updatePackageJson(
+            {
+              ...options,
+              additionalEntryPoints: createEntryPoints(
+                options.additionalEntryPoints,
+                context.root
+              ),
+              format: [
+                determineModuleFormatFromTsConfig(
+                  options.tsConfig,
+                  options.projectRoot,
+                  context.root
+                ),
+              ],
+            },
+            context,
+            target,
+            dependencies
+          )
+      );
+    }
+    const handleTermination = async (exitCode: number) => {
+      await typescriptCompilation.close();
+      disposeWatchAssetChanges();
+      disposePackageJsonChanges?.();
+      process.exit(exitCode);
+    };
+    process.on('SIGINT', () => handleTermination(128 + 2));
+    process.on('SIGTERM', () => handleTermination(128 + 15));
+  }
+
+  return yield* typescriptCompilation.iterator;
+}
+
+export default tscExecutor;

@@ -1,0 +1,21 @@
+import { CommandModule } from 'yargs';
+import { handleImport } from '../../../utils/handle-import';
+import { withVerbose } from '../../yargs-utils/shared-options';
+
+export const yargsStartCiRunCommand: CommandModule = {
+  command: 'start-ci-run [options]',
+  describe:
+    'Starts a new CI run for distributed task execution. This command is an alias for [`nx-cloud start-ci-run`](/docs/reference/nx-cloud-cli#nx-cloud-start-ci-run).',
+  builder: (yargs) =>
+    withVerbose(yargs)
+      .help(false)
+      .showHelpOnFail(false)
+      .option('help', { describe: 'Show help.', type: 'boolean' }),
+  handler: async (args: any) => {
+    process.exit(
+      await (
+        await handleImport('./start-ci-run.js', __dirname)
+      ).startCiRunHandler(args)
+    );
+  },
+};

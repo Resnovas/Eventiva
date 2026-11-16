@@ -1,0 +1,112 @@
+import { spawn } from 'child_process';
+import * as path from 'path';
+import { killProcessTreeGraceful } from '../../native';
+import type { ExecutorContext } from '../../config/misc-interfaces';
+import {
+  createPseudoTerminal,
+  PseudoTerminal,
+} from '../../tasks-runner/pseudo-terminal';
+import { getPackageManagerCommand } from '../../utils/package-manager';
+
+export interface RunScriptOptions {
+  script: string;
+  __unparsed__: string[];
+}
+
+export default async function (
+  options: RunScriptOptions,
+  context: ExecutorContext
+) {
+  const pm = getPackageManagerCommand();
+  try {
+    let command = pm.run(options.script, options.__unparsed__.join(' '));
+    let cwd = path.join(
+      context.root,
+      context.projectsConfigurations.projects[context.projectName].root
+    );
+
+    let env = process.env;
+    // when running nx through npx with node_modules installed with npm, the path gets modified to include the full workspace path with the node_modules folder
+    // This causes issues when running in a pty process, so we filter out the node_modules paths from the PATH
+    // Since the command here will be run with the package manager script command, the path will be modified again within the PTY process itself.
+    let filteredPath =
+      env.PATH?.split(path.delimiter)
+        .filter((p) => !p.startsWith(path.join(context.root, 'node_modules')))
+        .join(path.delimiter) ?? '';
+    env.PATH = filteredPath;
+
+    if (PseudoTerminal.isSupported()) {
+      await ptyProcess(command, cwd, env);
+    } else {
+      await nodeProcess(command, cwd, env);
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false };
+  }
+}
+
+function nodeProcess(
+  command: string,
+  cwd: string,
+  env: Record<string, string>
+): Promise<void> {
+  return new Promise<void>((res, rej) => {
+    let cp = spawn(command, [], {
+      shell: true,
+      cwd,
+      env,
+      windowsHide: true,
+    });
+
+    // Forward stdout/stderr to parent process
+    cp.stdout.pipe(process.stdout);
+    cp.stderr.pipe(process.stderr);
+
+    cp.on('error', (error) => {
+      rej(error);
+    });
+
+    cp.on('exit', (code) => {
+      if (code === 0) {
+        res();
+      } else {
+        rej(new Error(`Command "${command}" exited with non-zero status code`));
+      }
+    });
+
+    const exitHandler = (signal: NodeJS.Signals) => {
+      if (cp && cp.pid && !cp.killed) {
+        killProcessTreeGraceful(cp.pid, signal).finally(() => {
+          res();
+        });
+      }
+    };
+
+    process.on('SIGINT', () => exitHandler('SIGINT'));
+    process.on('SIGTERM', () => exitHandler('SIGTERM'));
+    process.on('SIGHUP', () => exitHandler('SIGHUP'));
+  });
+}
+
+async function ptyProcess(
+  command: string,
+  cwd: string,
+  env: Record<string, string>
+) {
+  const terminal = createPseudoTerminal();
+  await terminal.init();
+
+  return new Promise<void>((res, rej) => {
+    let cp = terminal.runCommand(command, { cwd, jsEnv: env });
+    cp.onExit((code) => {
+      if (code === 0) {
+        res();
+      } else if (code >= 128) {
+        process.exit(code);
+      } else {
+        rej();
+      }
+    });
+  });
+}

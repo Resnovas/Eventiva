@@ -1,0 +1,271 @@
+import { spawn } from 'child_process';
+import {
+  ChangedFile,
+  daemonClient,
+  WatcherFailedError,
+} from '../../daemon/client/client';
+import { VersionMismatchError } from '../../daemon/client/daemon-socket-messenger';
+import { output } from '../../utils/output';
+
+export interface WatchArguments {
+  projects?: string[];
+  all?: boolean;
+  includeDependencies?: boolean;
+  includeGlobalWorkspaceFiles?: boolean;
+  verbose?: boolean;
+  command?: string;
+  initialRun?: boolean;
+
+  projectNameEnvName?: string;
+  fileChangesEnvName?: string;
+}
+
+const DEFAULT_PROJECT_NAME_ENV = 'NX_PROJECT_NAME';
+const DEFAULT_FILE_CHANGES_ENV = 'NX_FILE_CHANGES';
+
+export class BatchFunctionRunner {
+  private running = false;
+
+  private pendingProjects = new Set<string>();
+  private pendingFiles = new Set<string>();
+
+  protected get _verbose() {
+    return process.env.NX_VERBOSE_LOGGING === 'true';
+  }
+
+  private get hasPending() {
+    return this.pendingProjects.size > 0 || this.pendingFiles.size > 0;
+  }
+
+  constructor(
+    private callback: (
+      projects: Set<string>,
+      files: Set<string>
+    ) => Promise<unknown>
+  ) {}
+
+  enqueue(projectNames: string[], fileChanges: ChangedFile[]) {
+    projectNames.forEach((projectName) => {
+      this.pendingProjects.add(projectName);
+    });
+    fileChanges.forEach((fileChange) => {
+      this.pendingFiles.add(fileChange.path);
+    });
+
+    return this.process(true);
+  }
+
+  private async process(runAnyway: boolean) {
+    if (!this.running && (this.hasPending || runAnyway)) {
+      this.running = true;
+
+      // Clone the pending projects and files before clearing
+      const projects = new Set(this.pendingProjects);
+      const files = new Set(this.pendingFiles);
+
+      // Clear the pending projects and files
+      this.pendingProjects.clear();
+      this.pendingFiles.clear();
+
+      return this.callback(projects, files).then(() => {
+        this.running = false;
+        this.process(false);
+      });
+    } else {
+      this._verbose &&
+        this.running &&
+        output.logSingleLine('waiting for function to finish executing');
+
+      this._verbose &&
+        !this.hasPending &&
+        output.logSingleLine('no more function to process');
+    }
+  }
+}
+
+class BatchCommandRunner extends BatchFunctionRunner {
+  constructor(
+    private command: string,
+    private projectNameEnv: string = DEFAULT_PROJECT_NAME_ENV,
+    private fileChangesEnv: string = DEFAULT_FILE_CHANGES_ENV
+  ) {
+    super((projects, files) => {
+      // process all pending commands together
+      const envs = this.createCommandEnvironments(projects, files);
+
+      return this.run(envs);
+    });
+  }
+
+  private createCommandEnvironments(
+    projects: Set<string>,
+    files: Set<string>
+  ): Record<string, string>[] {
+    const commandsToRun = [];
+
+    if (projects.size > 0) {
+      projects.forEach((projectName) => {
+        commandsToRun.push({
+          [this.projectNameEnv]: projectName,
+          [this.fileChangesEnv]: Array.from(files).join(' '),
+        });
+      });
+    } else {
+      commandsToRun.push({
+        [this.projectNameEnv]: '',
+        [this.fileChangesEnv]: Array.from(files).join(' '),
+      });
+    }
+
+    return commandsToRun;
+  }
+
+  async run(envs: Record<string, string>[]) {
+    this._verbose &&
+      output.logSingleLine(
+        'about to run commands with these environments: ' + JSON.stringify(envs)
+      );
+
+    return Promise.all(
+      envs.map((env) => {
+        return new Promise<void>((resolve, reject) => {
+          const commandExec = spawn(this.command, {
+            stdio: 'inherit',
+            shell: true,
+            cwd: process.cwd(),
+            env: {
+              ...process.env,
+              [this.projectNameEnv]: env[this.projectNameEnv],
+              [this.fileChangesEnv]: env[this.fileChangesEnv],
+            },
+            windowsHide: true,
+          });
+          commandExec.on('close', () => {
+            resolve();
+          });
+          commandExec.on('exit', () => {
+            resolve();
+          });
+        });
+      })
+    ).then((r) => {
+      this._verbose &&
+        output.logSingleLine('running complete, processing the next batch');
+      return r;
+    });
+  }
+}
+
+export async function watch(args: WatchArguments) {
+  const projectReplacementRegex = new RegExp(
+    args.projectNameEnvName ?? DEFAULT_PROJECT_NAME_ENV,
+    'g'
+  );
+
+  if (!daemonClient.enabled()) {
+    output.error({
+      title:
+        'Daemon is not running. The watch command is not supported without the Nx Daemon.',
+    });
+    process.exit(1);
+  }
+
+  if (
+    args.includeGlobalWorkspaceFiles &&
+    args.command.match(projectReplacementRegex)
+  ) {
+    output.error({
+      title: 'Invalid command',
+      bodyLines: [
+        'The command you provided has a replacement for projects ($NX_PROJECT_NAME), but you are also including global workspace files.',
+        'You cannot use a replacement for projects when including global workspace files because there will be scenarios where there are file changes not associated with a project.',
+      ],
+    });
+    process.exit(1);
+  }
+
+  args.verbose &&
+    output.logSingleLine('running with args: ' + JSON.stringify(args));
+  args.verbose && output.logSingleLine('starting watch process');
+
+  const whatToWatch = args.all ? 'all' : args.projects;
+
+  const batchQueue = new BatchCommandRunner(
+    args.command ?? '',
+    args.projectNameEnvName,
+    args.fileChangesEnvName
+  );
+
+  // Run the command initially if requested
+  if (args.initialRun) {
+    args.verbose && output.logSingleLine('running command initially...');
+
+    const initialProjects = args.all
+      ? [] // When using --all, we don't need to pass specific projects
+      : args.projects || [];
+
+    // Execute the initial run
+    await batchQueue.enqueue(initialProjects, []);
+  }
+
+  await daemonClient.registerFileWatcher(
+    {
+      watchProjects: whatToWatch,
+      includeDependencies: args.includeDependencies,
+      includeGlobalWorkspaceFiles: args.includeGlobalWorkspaceFiles,
+    },
+    async (err, data) => {
+      if (err === 'reconnecting') {
+        // Silent - daemon restarts automatically on lockfile changes
+        return;
+      } else if (err === 'reconnected') {
+        // Silent - reconnection succeeded
+        return;
+      } else if (err === 'closed') {
+        output.error({
+          title: 'Failed to reconnect to daemon after multiple attempts',
+          bodyLines: ['Please restart your watch command.'],
+        });
+        process.exit(1);
+      } else if (err instanceof VersionMismatchError) {
+        output.error({
+          title: 'Nx version changed. Please restart your command.',
+        });
+        process.exit(1);
+      } else if (err instanceof WatcherFailedError) {
+        output.error({
+          title: 'The Nx Daemon stopped watching for file changes',
+          bodyLines: [
+            err.message,
+            'On Linux this is usually the inotify watch limit. See https://askubuntu.com/questions/1088272/inotify-add-watch-failed-no-space-left-on-device',
+            'Please restart your watch command.',
+          ],
+        });
+        process.exit(1);
+      } else if (err !== null) {
+        output.error({
+          title: 'Watch error',
+          bodyLines: [
+            'An error occurred during the watch process:',
+            err.message,
+          ],
+        });
+        // `data` is null on the error path; falling through dereferences it.
+        return;
+      }
+
+      // Only pass the projects to the queue if the command has a replacement for projects
+      if (args.command.match(projectReplacementRegex)) {
+        batchQueue.enqueue(data.changedProjects, data.changedFiles);
+      } else {
+        batchQueue.enqueue([], data.changedFiles);
+      }
+    }
+  );
+  args.verbose && output.logSingleLine('watch process waiting...');
+
+  // Keep the process alive while watching for file changes
+  // The file watcher callbacks will handle incoming events
+  // The process will exit when Ctrl+C is pressed or if the connection closes
+  await new Promise(() => {});
+}

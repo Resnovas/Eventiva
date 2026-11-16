@@ -1,0 +1,6 @@
+[*]
+@isomorphic/**
+@utils/**
+../
+../../package.ts
+node_modules/mime

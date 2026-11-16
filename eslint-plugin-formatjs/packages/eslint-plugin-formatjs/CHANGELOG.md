@@ -1,0 +1,2083 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [8.1.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.1.2...eslint-plugin-formatjs@8.1.3) (2026-10-31)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/ts-transformer bumped to 4.5.2
+
+## [8.1.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.1.1...eslint-plugin-formatjs@8.1.2) (2026-10-19)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.22
+    * @formatjs/ts-transformer bumped to 4.5.1
+
+## [8.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.1.0...eslint-plugin-formatjs@8.1.1) (2026-10-05)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.21
+    * @formatjs/ts-transformer bumped to 4.5.0
+
+## [8.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.5...eslint-plugin-formatjs@8.1.0) (2026-09-24)
+
+
+### Features
+
+* **eslint-plugin-formatjs:** autofix prefer-formatted-message ([#7498](https://github.com/formatjs/formatjs/issues/7498)) ([5ccbc3a](https://github.com/formatjs/formatjs/commit/5ccbc3a67ce94d5ab2dd55257bf83f24eedd2b72))
+
+## [8.0.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.4...eslint-plugin-formatjs@8.0.5) (2026-09-19)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.20
+    * @formatjs/ts-transformer bumped to 4.4.22
+
+## [8.0.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.3...eslint-plugin-formatjs@8.0.4) (2026-09-18)
+
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** generate lint-compatible empty message contracts ([#7442](https://github.com/formatjs/formatjs/issues/7442)) ([799efaf](https://github.com/formatjs/formatjs/commit/799efafaebbd242cca5bf8f421e40c416dc89276))
+
+## [8.0.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.2...eslint-plugin-formatjs@8.0.3) (2026-09-16)
+
+
+### Bug Fixes
+
+* default message helpers to empty ICU contracts ([#7428](https://github.com/formatjs/formatjs/issues/7428)) ([7bd3c8b](https://github.com/formatjs/formatjs/commit/7bd3c8bb3c4fc0cf298c3f05c6d331910caa9da7))
+
+## [8.0.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.1...eslint-plugin-formatjs@8.0.2) (2026-09-15)
+
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** preserve annotated descriptor contracts ([#7425](https://github.com/formatjs/formatjs/issues/7425)) ([eeccf6b](https://github.com/formatjs/formatjs/commit/eeccf6baacdbe5118c79371aa1aa7f6608b528b5))
+
+## [8.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@8.0.0...eslint-plugin-formatjs@8.0.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** migrate existing message catalogs cleanly ([#7421](https://github.com/formatjs/formatjs/issues/7421)) ([2708367](https://github.com/formatjs/formatjs/commit/27083670c047e208d0288f67f687462b01c8a49c))
+
+## [8.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@7.0.0...eslint-plugin-formatjs@8.0.0) (2026-09-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** simplify typed helper calls and generated contracts ([#7420](https://github.com/formatjs/formatjs/issues/7420))
+
+### Features
+
+* **@formatjs/intl:** simplify typed helper calls and generated contracts ([#7420](https://github.com/formatjs/formatjs/issues/7420)) ([0710507](https://github.com/formatjs/formatjs/commit/07105075b60929603b220c82aa8b435174a941af))
+
+## [7.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@7.0.0-rc.0...eslint-plugin-formatjs@7.0.0) (2026-09-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **vue-intl:** vue-intl and @formatjs/svelte-intl return readonly descriptors and catalog entries. Formatter generics use values first and rich output second. Requires TypeScript 5.4. Keep RC publishing until the messaging group graduates together.
+
+### Features
+
+* **vue-intl:** align Vue and Svelte message contracts ([#7404](https://github.com/formatjs/formatjs/issues/7404)) ([5764367](https://github.com/formatjs/formatjs/commit/5764367c8b37bed818f3de03fd446c2f8d6e0188))
+
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** load Unicode ESM data files ([#7400](https://github.com/formatjs/formatjs/issues/7400)) ([5d752aa](https://github.com/formatjs/formatjs/commit/5d752aa40d4a320dcf94eb1bda66280d202d4d94))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.19
+    * @formatjs/ts-transformer bumped to 4.4.21
+
+## [7.0.0-rc.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.7.0-rc.0...eslint-plugin-formatjs@7.0.0-rc.0) (2026-09-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** @formatjs/intl and react-intl reserve the two-generic typed catalog form for contracts and descriptor metadata. Legacy defineMessages instantiation expressions must supply their third generic.
+* **eslint-plugin-formatjs:** eslint-plugin-formatjs generates actual catalog keys instead of preserving broad index signatures, optional entries, or separately declared key sets. Narrow dynamic keys to `keyof typeof messages`. All generated contract properties are now readonly, including optional ignored arguments; autofix refreshes existing writable contracts.
+
+### Features
+
+* **@formatjs/intl:** check registered message arguments by ID ([#7384](https://github.com/formatjs/formatjs/issues/7384)) ([95d719b](https://github.com/formatjs/formatjs/commit/95d719bd7cf4462131371a04fdce9631cca25628))
+* **@formatjs/intl:** retain typed descriptor metadata ([#7382](https://github.com/formatjs/formatjs/issues/7382)) ([c00e27f](https://github.com/formatjs/formatjs/commit/c00e27f677f3913139269c41181950d80d85c6d8))
+* **eslint-plugin-formatjs:** generate exact catalog annotations ([#7379](https://github.com/formatjs/formatjs/issues/7379)) ([3432055](https://github.com/formatjs/formatjs/commit/3432055d7df4849879b2d9a9717d1c932807e04f))
+
+## [6.7.0-rc.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.6.3...eslint-plugin-formatjs@6.7.0-rc.0) (2026-09-13)
+
+
+### Features
+
+* **eslint-plugin-formatjs:** align placeholder checks and simplify generated types ([#7374](https://github.com/formatjs/formatjs/issues/7374)) ([f655fae](https://github.com/formatjs/formatjs/commit/f655fae3bc77c3fdaa662d5d579c4e1de0037647))
+* **eslint-plugin-formatjs:** autofix ICU argument contracts ([#7369](https://github.com/formatjs/formatjs/issues/7369)) ([4bda2fa](https://github.com/formatjs/formatjs/commit/4bda2fa5974e4337ea6618370a2137cd89fdc35e))
+
+## [6.6.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.6.2...eslint-plugin-formatjs@6.6.3) (2026-09-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.18
+    * @formatjs/ts-transformer bumped to 4.4.20
+
+## 6.6.2 (2026-09-03)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* build(deps): align Renovate Bazel lock command by @longlho in https://github.com/formatjs/formatjs/pull/7122
+* build: cross-compile Python release wheels by @longlho in https://github.com/formatjs/formatjs/pull/7121
+* fix: rename Python intl distribution by @longlho in https://github.com/formatjs/formatjs/pull/7123
+* fix: validate released Python versions by @longlho in https://github.com/formatjs/formatjs/pull/7125
+* feat(formatjs_cli): extract Python format_message calls by @longlho in https://github.com/formatjs/formatjs/pull/7129
+* feat(formatjs_intl): align Python runtime fallback by @longlho in https://github.com/formatjs/formatjs/pull/7130
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7133
+* build(deps): update Bazel lockfiles for Renovate PRs by @longlho in https://github.com/formatjs/formatjs/pull/7135
+* build(deps): publish dispatched Renovate check results by @longlho in https://github.com/formatjs/formatjs/pull/7136
+* build(deps): publish Renovate required statuses by @longlho in https://github.com/formatjs/formatjs/pull/7137
+* fix(eslint-plugin-formatjs): align message recognition across tools by @longlho in https://github.com/formatjs/formatjs/pull/7151
+* fix(babel-plugin-formatjs): support transparent expression wrappers by @longlho in https://github.com/formatjs/formatjs/pull/7156
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.6.1...eslint-plugin-formatjs@6.6.2
+
+## 6.6.1 (2026-08-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* test: use neutral brands in skill evals by @longlho in https://github.com/formatjs/formatjs/pull/7090
+* feat(formatjs_cli): extract messages from Python by @longlho in https://github.com/formatjs/formatjs/pull/7097
+* fix: tighten formatted value placeholder guidance by @longlho in https://github.com/formatjs/formatjs/pull/7099
+* fix: retain binary-only Cargo release candidates by @longlho in https://github.com/formatjs/formatjs/pull/7102
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7079
+* fix: enable Git long paths for Windows release by @longlho in https://github.com/formatjs/formatjs/pull/7105
+* build: cross-compile release artifacts on Linux by @longlho in https://github.com/formatjs/formatjs/pull/7106
+* build: add Python native wheel scaffolding by @longlho in https://github.com/formatjs/formatjs/pull/7108
+* build: migrate to bazel_lib by @longlho in https://github.com/formatjs/formatjs/pull/7109
+* feat: add Python bindings for Rust intl packages by @longlho in https://github.com/formatjs/formatjs/pull/7111
+* fix: configure Python Release Please strategy by @longlho in https://github.com/formatjs/formatjs/pull/7114
+* fix: bootstrap Python package versions by @longlho in https://github.com/formatjs/formatjs/pull/7117
+* build(deps): regenerate Bazel lockfile in Renovate updates by @longlho in https://github.com/formatjs/formatjs/pull/7119
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.6.0...eslint-plugin-formatjs@6.6.1
+
+## 6.6.0 (2026-08-23)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* fix(@formatjs/cli-lib): use native extraction by @longlho in https://github.com/formatjs/formatjs/pull/7046
+* fix: recover partial npm releases by @longlho in https://github.com/formatjs/formatjs/pull/7053
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7047
+* docs: sync i18n best practices skill and guide by @longlho in https://github.com/formatjs/formatjs/pull/7062
+* feat: add localization review and translation skills by @longlho in https://github.com/formatjs/formatjs/pull/7065
+* docs: add top-level skills section by @longlho in https://github.com/formatjs/formatjs/pull/7066
+* refactor: replace Vike with static Vite docs by @longlho in https://github.com/formatjs/formatjs/pull/7068
+* docs: add agent skills overview by @longlho in https://github.com/formatjs/formatjs/pull/7069
+* docs: document native date range formatting by @longlho in https://github.com/formatjs/formatjs/pull/7070
+* test: add local Codex skill evals by @longlho in https://github.com/formatjs/formatjs/pull/7071
+* feat(eslint-plugin-formatjs): allow conditional ICU element blocklists by @longlho in https://github.com/formatjs/formatjs/pull/7073
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.5.0...eslint-plugin-formatjs@6.6.0
+
+## 6.5.0 (2026-08-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(formatjs_intl): accept inline named values by @longlho in https://github.com/formatjs/formatjs/pull/7031
+* chore(deps): exclude Renovate from release notes by @longlho in https://github.com/formatjs/formatjs/pull/7030
+* feat(eslint-plugin-formatjs): detect glued placeholders by @longlho in https://github.com/formatjs/formatjs/pull/7036
+* docs: cover units and calendar names in i18n skill by @longlho in https://github.com/formatjs/formatjs/pull/7042
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.21...eslint-plugin-formatjs@6.5.0
+
+## 6.4.21 (2026-08-07)
+
+## What's Changed
+* chore(deps): update dependency svelte to v5.56.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6940
+* chore(deps): update dependency ts-jest to v29.4.12 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6941
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6942
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6947
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6948
+* chore(deps): update tailwindcss monorepo to v4.3.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6949
+* chore(deps): update vue monorepo to v3.5.40 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6950
+* chore(deps): update dependency svelte to v5.56.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6951
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6952
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.19 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6953
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6954
+* chore(deps): update dependency fs-extra to v11.4.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6959
+* chore(deps): update dependency happy-dom to v20.11.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6960
+* chore(deps): update dependency lucide-react to v1.27.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6963
+* chore(deps): update dependency oxlint to v1.75.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6964
+* fix(formatjs_cli): extract id-only messages by @longlho in https://github.com/formatjs/formatjs/pull/6962
+* chore(deps): update dependency tinybench to v6.1.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6966
+* chore(deps): update dependency webpack to v5.109.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6967
+* chore(deps): update dependency rollup to v4.62.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6970
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6955
+* docs: add internationalization best practices by @longlho in https://github.com/formatjs/formatjs/pull/6972
+* docs: add i18n best practices skill by @longlho in https://github.com/formatjs/formatjs/pull/6973
+* feat(formatjs_icu_messageformat): add Rust message formatter by @longlho in https://github.com/formatjs/formatjs/pull/6974
+* feat(formatjs_intl): add Rust intl runtime by @longlho in https://github.com/formatjs/formatjs/pull/6975
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6977
+* Documented how to use ember-intl by @ijlee2 in https://github.com/formatjs/formatjs/pull/6946
+* fix: support Rust 1.92 in new intl crates by @longlho in https://github.com/formatjs/formatjs/pull/6978
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6979
+* fix: queue crate release workflows by @longlho in https://github.com/formatjs/formatjs/pull/6980
+* docs: document Rust support by @longlho in https://github.com/formatjs/formatjs/pull/6981
+* feat(formatjs_intl): add message fallbacks by @longlho in https://github.com/formatjs/formatjs/pull/6982
+* chore(deps): update dependency @vitejs/plugin-react to v6.0.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6983
+* chore(deps): update dependency @rspack/core to v2.1.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6986
+* feat(formatjs_intl): support precompiled catalogs by @longlho in https://github.com/formatjs/formatjs/pull/6985
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6984
+* chore(deps): update dependency webpack to v5.109.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6987
+* build: remove root npmrc by @longlho in https://github.com/formatjs/formatjs/pull/6988
+* fix: skip unpublished Rust crates by @longlho in https://github.com/formatjs/formatjs/pull/6992
+* chore(deps): update rust crate serde_json to v1.0.151 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6945
+* chore(deps): update rust crate serde to v1.0.229 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6944
+* chore(deps): update rust crate anyhow to v1.0.104 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6943
+* fix(deps): update rust crate base64 to 0.23 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6971
+* chore(deps): update rust crate fast-glob to v1.1.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6969
+* chore(deps): update rust crate proc-macro2 to v1.0.107 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6990
+* fix: handle Cargo publish and merge options by @longlho in https://github.com/formatjs/formatjs/pull/6993
+* chore(deps): update pnpm to v11.18.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6968
+* chore(deps): update rust crate quote to v1.0.47 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6995
+* chore(deps): update rust crate syn to v2.0.119 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6996
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6999
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.20 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6998
+* chore(deps): update dependency rolldown to v1.2.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6965
+* chore(deps): update dependency eslint to v10.8.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6957
+* fix(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6956
+* chore(deps): update dependency lucide-react to v1.28.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7001
+* chore(deps): update dependency codescythe to ^0.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7000
+* chore(deps): update dependency oxlint to v1.76.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7003
+* chore(deps): update dependency vite to v8.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7007
+* fix(formatjs_cli): fail on input resolution errors by @longlho in https://github.com/formatjs/formatjs/pull/7005
+* feat(formatjs_intl): add extractable format_message macro by @longlho in https://github.com/formatjs/formatjs/pull/7018
+* fix(deps): update rust crate syn to v3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7017
+* fix(deps): update dependency babel-plugin-formatjs to v13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7014
+* chore(deps): update actions/stale action to v11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7011
+
+## New Contributors
+* @ijlee2 made their first contribution in https://github.com/formatjs/formatjs/pull/6946
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.20...eslint-plugin-formatjs@6.4.21
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.17
+    * @formatjs/ts-transformer bumped to 4.4.19
+
+## 6.4.20 (2026-07-30)
+
+## What's Changed
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.17 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6885
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6886
+* chore(deps): update dependency vite to v8.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6887
+* chore(deps): update dependency @babel/types to v8.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6888
+* chore(deps): update dependency lucide-react to v1.24.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6889
+* fix(@formatjs/intl-datetimeformat): apply Date method defaults by @longlho in https://github.com/formatjs/formatjs/pull/6893
+* chore(deps): update rust crate regex to v1.13.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6890
+* chore(deps): update pnpm to v11.11.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6892
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6894
+* fix(@formatjs/unplugin): parse module ids with queries by @longlho in https://github.com/formatjs/formatjs/pull/6896
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.18 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6900
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6899
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6898
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6901
+* chore(deps): update dependency fast-xml-parser to v5.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6902
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6904
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6905
+* chore(deps): update dependency oxlint to v1.74.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6911
+* chore(deps): update dependency svelte to v5.56.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6914
+* chore(deps): update dependency @rspack/core to v2.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6913
+* chore(deps): update dependency fast-xml-parser to v5.10.1 [security] by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6920
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6922
+* chore(deps): update dependency svelte to v5.56.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6923
+* chore(deps): update dependency vite to v8.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6924
+* fix: repair corrupted `patches/typescript@7.0.2.patch` by @andersk in https://github.com/formatjs/formatjs/pull/6929
+* fix(babel-plugin-formatjs): stop enabling JSX syntax implicitly by @andersk in https://github.com/formatjs/formatjs/pull/6930
+* test(@formatjs/intl-datetimeformat): cover ar-EG locale data by @longlho in https://github.com/formatjs/formatjs/pull/6933
+* feat: upgrade CLDR to 48.2.0 by @longlho in https://github.com/formatjs/formatjs/pull/6934
+* fix(@formatjs/intl): include context in missing id errors by @longlho in https://github.com/formatjs/formatjs/pull/6935
+* fix(deps): make native release deps host-independent by @longlho in https://github.com/formatjs/formatjs/pull/6936
+* fix(icu-messageformat-parser): preserve plural context in tags by @eoinest in https://github.com/formatjs/formatjs/pull/6908
+* chore(deps): update rust crate regex to v1.13.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6926
+* chore(deps): update rust crate clap to v4.6.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6925
+* chore(deps): update dependency oxfmt to ^0.60.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6910
+* chore(deps): update dependency bazel to v9.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6906
+* chore(deps): update napi-rs by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6903
+* fix(deps): update dependency typescript to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6882
+* chore(deps): update actions/setup-node action to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6909
+* chore(deps): update dependency eslint to v10.7.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6897
+* chore(deps): update dependency @rspack/core to v2.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6937
+* fix(deps): update oxc to 0.141 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6915
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6939
+* chore(deps): update dependency @vitejs/plugin-react to v6.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6938
+
+## New Contributors
+* @eoinest made their first contribution in https://github.com/formatjs/formatjs/pull/6908
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.19...eslint-plugin-formatjs@6.4.20
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.16
+    * @formatjs/ts-transformer bumped to 4.4.18
+
+## 6.4.19 (2026-07-16)
+
+## What's Changed
+* docs: add Korean (ko-KR) to homepage live demo by @moduvoice in https://github.com/formatjs/formatjs/pull/6858
+* chore(deps): update OXC packages to 0.138 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6826
+* chore(deps): update dependency oxfmt to ^0.57.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6824
+* chore(deps): update dependency eslint to v10.6.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6821
+* chore(deps): update rust crate anyhow to v1.0.103 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6861
+* fix(deps): align NAPI runtime and derive by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6862
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6863
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6864
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6865
+* chore(deps): update actions/checkout action to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6867
+* chore(deps): update jest monorepo to v30 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6868
+* fix(deps): restore Jest 29 compatibility by @longlho in https://github.com/formatjs/formatjs/pull/6872
+* chore(deps): update dependency rolldown to v1.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6860
+* fix(deps): update oxc to 0.139 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6870
+* feat(babel-plugin-formatjs): require Babel 8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6869
+* chore(deps): adopt TypeScript 7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6819
+* chore(deps): update dependency oxfmt to ^0.58.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6875
+* chore(deps): update dependency rolldown-plugin-dts to ^0.27.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6825
+* chore(deps): update pnpm to v11.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6866
+* chore(deps): update dependency rolldown to v1.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6878
+* fix(deps): update example TypeScript to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6881
+* fix(icu_messageformat_parser): dedupe structural variables by @longlho in https://github.com/formatjs/formatjs/pull/6883
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.15 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6884
+
+## New Contributors
+* @moduvoice made their first contribution in https://github.com/formatjs/formatjs/pull/6858
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.18...eslint-plugin-formatjs@6.4.19
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.15
+    * @formatjs/ts-transformer bumped to 4.4.17
+
+## 6.4.18 (2026-07-11)
+
+## What's Changed
+* fix(@formatjs/icu-skeleton-parser): map e/c weekday counts 4/5/6 to long/narrow/short by @spokodev in https://github.com/formatjs/formatjs/pull/6852
+* fix(deps): materialize published package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6844
+* feat(@formatjs/intl-datetimeformat): update IANA timezone database to 2026c by @longlho in https://github.com/formatjs/formatjs/pull/6854
+* build(@formatjs/intl-datetimeformat): make tzdata generation hermetic by @longlho in https://github.com/formatjs/formatjs/pull/6855
+* fix(deps): update package manifests in release PRs by @longlho in https://github.com/formatjs/formatjs/pull/6856
+* docs: update upgrade guide to reflect relaxed React 18 support by @yslpn in https://github.com/formatjs/formatjs/pull/6818
+
+## New Contributors
+* @yslpn made their first contribution in https://github.com/formatjs/formatjs/pull/6818
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.17...eslint-plugin-formatjs@6.4.18
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.14
+    * @formatjs/ts-transformer bumped to 4.4.16
+
+## 6.4.17 (2026-07-09)
+
+## What's Changed
+* chore(deps): update rust crate regex to v1.12.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6813
+* chore(deps): update rust crate napi to v3.9.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6812
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6815
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.15 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6816
+* fix(deps): update dependency react-intl to v10.1.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6820
+* fix(deps): update rust crate oxc_data_structures to 0.137 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6830
+* chore(deps): fix pnpm install warnings by @longlho in https://github.com/formatjs/formatjs/pull/6833
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6831
+* feat(@formatjs/unplugin): add rsbuild adapter by @longlho in https://github.com/formatjs/formatjs/pull/6838
+* fix(@formatjs/intl-relativetimeformat): honor numberingSystem option by @greymoth-jp in https://github.com/formatjs/formatjs/pull/6835
+* fix(@formatjs/icu-messageformat-parser): coalesce adjacent syntax chars when escaping by @spokodev in https://github.com/formatjs/formatjs/pull/6837
+* chore: apply pre-commit cleanup by @longlho in https://github.com/formatjs/formatjs/pull/6841
+* fix(@formatjs/cli-lib): handle fast-glob esm import by @longlho in https://github.com/formatjs/formatjs/pull/6845
+* fix(@formatjs/intl-datetimeformat): honor hour12 with timeStyle by @longlho in https://github.com/formatjs/formatjs/pull/6846
+* fix(formatjs_cli): parse JSX in JavaScript extract inputs by @longlho in https://github.com/formatjs/formatjs/pull/6850
+
+## New Contributors
+* @greymoth-jp made their first contribution in https://github.com/formatjs/formatjs/pull/6835
+* @spokodev made their first contribution in https://github.com/formatjs/formatjs/pull/6837
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.16...eslint-plugin-formatjs@6.4.17
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.13
+    * @formatjs/ts-transformer bumped to 4.4.15
+
+## 6.4.16 (2026-06-25)
+
+## What's Changed
+* ci: pass repository to release workflow dispatch by @longlho in https://github.com/formatjs/formatjs/pull/6740
+* fix(formatjs_cli): build native packages in opt mode by @longlho in https://github.com/formatjs/formatjs/pull/6744
+* fix(@formatjs/cli-lib): support Alpine native bindings by @longlho in https://github.com/formatjs/formatjs/pull/6743
+* fix(deps): use Bazel graph for native release propagation by @longlho in https://github.com/formatjs/formatjs/pull/6747
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6745
+* chore(deps): update dependency svelte to v5.56.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6741
+* chore(deps): update commitlint monorepo to v21.0.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6748
+* chore(deps): update dependency lefthook to v2.1.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6749
+* fix(formatjs_cli_napi): build musl packages with bazel by @longlho in https://github.com/formatjs/formatjs/pull/6754
+* fix(formatjs_cli_napi): package musl runtime library by @longlho in https://github.com/formatjs/formatjs/pull/6756
+* ci(formatjs_cli): build release artifacts in opt mode by @longlho in https://github.com/formatjs/formatjs/pull/6757
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6755
+* chore(deps): update dependency rolldown-plugin-dts to v0.25.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6750
+* chore(deps): update eslint monorepo to v10.4.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6751
+* chore(deps): update vue monorepo to v3.5.35 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6753
+* chore(deps): update rspack monorepo to v2.0.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6752
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260603.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6765
+* chore(deps): update dependency svelte to v5.56.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6766
+* chore(deps): update dependency vue-eslint-parser to v10.4.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6769
+* chore(deps): update dependency vite to v8.0.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6768
+* chore(deps): update oxc dependencies to 0.134 by @longlho in https://github.com/formatjs/formatjs/pull/6764
+* chore(deps): update dependency bazel to v9.1.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6773
+* fix(@formatjs/intl-datetimeformat): honor numberingSystem option by @longlho in https://github.com/formatjs/formatjs/pull/6775
+* fix(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6774
+* chore(deps): update dependency oxfmt to ^0.53.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6777
+* chore(deps): update vitest monorepo to v4.1.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6772
+* chore(deps): update typescript-eslint monorepo to v8.61.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6771
+* chore(deps): update dependency oxc-parser to ^0.134.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6776
+* chore(deps): update dependency rolldown to v1.1.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6779
+* chore(deps): update react monorepo to v19.2.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6778
+* chore(deps): remove unused root dependencies by @longlho in https://github.com/formatjs/formatjs/pull/6782
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6770
+* fix(@formatjs/intl-durationformat): respect numberingSystem option by @longlho in https://github.com/formatjs/formatjs/pull/6795
+* fix(babel-plugin-formatjs): respect throws false for extraction errors by @longlho in https://github.com/formatjs/formatjs/pull/6798
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6797
+* fix(react-intl): support react 18 peer range by @longlho in https://github.com/formatjs/formatjs/pull/6800
+* test(react-intl): add React 17 typecheck fixture by @longlho in https://github.com/formatjs/formatjs/pull/6805
+* test(react-intl): add React 16.8 typecheck fixture by @longlho in https://github.com/formatjs/formatjs/pull/6806
+* fix(react-intl): support React 18+ consumers by @longlho in https://github.com/formatjs/formatjs/pull/6807
+* fix(@formatjs/icu-messageformat-parser): print plural/select branches in canonical order by @Amund211 in https://github.com/formatjs/formatjs/pull/6802
+* chore(deps): update dependency esbuild to v0.28.1 [security] by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6793
+* chore(deps): update dependency oxlint to v1.70.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6786
+* chore(deps): update dependency happy-dom to v20.10.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6784
+* chore(deps): update pnpm to v11.8.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6790
+* chore(deps): update dependency semver to v7.8.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6788
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260618.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6783
+* chore(deps): update dependency lucide-react to v1.21.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6785
+* chore(deps): update dependency @vue/test-utils to v2.4.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6787
+* chore(deps): update dependency ts-loader to v9.6.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6781
+* chore(deps): update dependency svelte to v5.56.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6789
+* chore(deps): update dependency @rspack/core to v2.0.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6808
+* build(deps): bump vite from 8.0.0 to 8.1.0 by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6803
+* build(deps): bump esbuild from 0.28.0 to 0.28.1 by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6792
+* chore(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6811
+* chore(deps): update dependency rolldown to v1.1.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6810
+
+## New Contributors
+* @Amund211 made their first contribution in https://github.com/formatjs/formatjs/pull/6802
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.15...eslint-plugin-formatjs@6.4.16
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.12
+    * @formatjs/ts-transformer bumped to 4.4.14
+
+## 6.4.15 (2026-06-05)
+
+## What's Changed
+* build: fix release-please multiline outputs by @longlho in https://github.com/formatjs/formatjs/pull/6726
+* chore(deps): update pnpm to v11.4.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6727
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260527.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6729
+* build: remove checked-in package intradeps by @longlho in https://github.com/formatjs/formatjs/pull/6728
+* fix(formatjs_cli): support loader-utils id templates by @longlho in https://github.com/formatjs/formatjs/pull/6731
+* fix(@formatjs/cli-lib): extract Svelte FormattedMessage components by @longlho in https://github.com/formatjs/formatjs/pull/6732
+* fix(deps): publish generated workspace packages by @longlho in https://github.com/formatjs/formatjs/pull/6734
+* chore(deps): isolate React Intl example workspaces by @longlho in https://github.com/formatjs/formatjs/pull/6737
+* fix: normalize Unicode whitespace for generated ids by @longlho in https://github.com/formatjs/formatjs/pull/6736
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.14...eslint-plugin-formatjs@6.4.15
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/ts-transformer bumped to 4.4.13
+
+## 6.4.14 (2026-06-03)
+
+## What's Changed
+* build: dispatch release workflow for npm publishing by @longlho in https://github.com/formatjs/formatjs/pull/6677
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260521.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6679
+* chore(deps): update dependency vite to v8.0.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6680
+* chore(deps): update dependency ts-jest to v29.4.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6682
+* chore(deps): update dependency webpack to v5.107.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6683
+* chore(deps): update pnpm to v11.2.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6685
+* chore(deps): update rust crate serde_json to v1.0.150 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6686
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260522.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6687
+* chore: keep gazelle idempotent by @longlho in https://github.com/formatjs/formatjs/pull/6689
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260523.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6690
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260524.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6691
+* chore(deps): update pnpm to v11.3.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6692
+* chore(deps): update codescythe to 0.6.1 by @longlho in https://github.com/formatjs/formatjs/pull/6693
+* fix(formatjs_cli): support id interpolation hash algorithms by @longlho in https://github.com/formatjs/formatjs/pull/6695
+* chore(deps): update babel monorepo to v7.29.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6696
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260526.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6697
+* chore(deps): update dependency oxc-transform to ^0.133.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6699
+* chore(deps): update dependency webpack to v5.107.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6698
+* chore(deps): update dependency oxfmt to ^0.52.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6702
+* chore(deps): update dependency oxlint to v1.67.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6703
+* chore(deps): update typescript-eslint monorepo to v8.60.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6704
+* fix(deps): update dependency oxc-parser to ^0.133.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6705
+* fix(formatjs_cli): speed up skipped message diagnostics by @longlho in https://github.com/formatjs/formatjs/pull/6709
+* fix(deps): update rust crate oxc_data_structures to 0.133 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6713
+* fix(deps): update rust OXC crates to 0.133 by @longlho in https://github.com/formatjs/formatjs/pull/6714
+* build: verify generated package manifests from bazel deps by @longlho in https://github.com/formatjs/formatjs/pull/6701
+* build: generate package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6718
+* chore(deps): update dependency @rescripts/cli to v0.0.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6716
+* chore(deps): update dependency react-scripts to v5.0.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6719
+* build: align release-please with generated package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6720
+* chore(deps): update dependency @rescripts/rescript-env to v0.0.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6717
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260527.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6724
+* build: add bazel release-please workspace plugin by @longlho in https://github.com/formatjs/formatjs/pull/6723
+* chore(deps): update dependency rolldown to v1.0.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6725
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.13...eslint-plugin-formatjs@6.4.14
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.11
+    * @formatjs/ts-transformer bumped to 4.4.12
+
+## 6.4.13 (2026-05-27)
+
+## What's Changed
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260516.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6629
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260517.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6630
+* chore(deps): update dependency syncpack to v15.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6631
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260518.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6632
+* chore(deps): update dependency oxc-transform to ^0.132.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6633
+* chore(deps): update dependency svelte to v5.55.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6634
+* chore(deps): update pnpm to v11.1.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6635
+* chore(deps): update typescript-eslint monorepo to v8.59.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6636
+* chore(deps): update dependency syncpack to v15.3.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6637
+* fix(deps): update dependency oxc-parser to ^0.132.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6638
+* perf(formatjs_cli): parallelize catalog parsing by @longlho in https://github.com/formatjs/formatjs/pull/6642
+* ci: add crates trusted publishing workflow by @longlho in https://github.com/formatjs/formatjs/pull/6645
+* build: add release-please pilot by @longlho in https://github.com/formatjs/formatjs/pull/6582
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260519.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6647
+* chore(deps): update dependency syncpack to v15.3.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6648
+* chore(deps): update dependency ts-jest to v29.4.10 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6649
+* chore(deps): update dependency oxfmt to ^0.51.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6650
+* chore(deps): update googleapis/release-please-action action to v5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6646
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6654
+* chore(deps): update dependency lefthook to v2.1.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6651
+* chore(deps): update dependency oxlint to v1.66.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6652
+* ci(formatjs_cli): cross-compile release binaries on linux by @longlho in https://github.com/formatjs/formatjs/pull/6656
+* ci: fix crates release dependency polling by @longlho in https://github.com/formatjs/formatjs/pull/6655
+* fix(deps): update rust crate oxc to 0.132 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6639
+* ci: use node24 crates auth action by @longlho in https://github.com/formatjs/formatjs/pull/6658
+* build(deps): bump qs and express in /packages/react-intl/example-sandboxes/rescripts by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6623
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6657
+* fix(@formatjs/unplugin): decode JSX bull entity by @longlho in https://github.com/formatjs/formatjs/pull/6662
+* fix(@formatjs/cli-lib): expose native extract binding by @longlho in https://github.com/formatjs/formatjs/pull/6663
+* build: publish npm from release please by @longlho in https://github.com/formatjs/formatjs/pull/6664
+* fix: align release-please package components by @longlho in https://github.com/formatjs/formatjs/pull/6665
+* fix: preserve release-please workspace candidates by @longlho in https://github.com/formatjs/formatjs/pull/6667
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6666
+* chore(deps): update dependency rolldown to v1.0.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6669
+* chore(deps): update dependency svelte to v5.55.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6670
+* chore(deps): update dependency @rspack/core to v2.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6671
+* chore(deps): update dependency vitest to v4.1.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6672
+* chore(deps): update pnpm to v11.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6674
+* chore(deps): update dependency webpack to v5.107.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6673
+* chore: add codescythe hook by @longlho in https://github.com/formatjs/formatjs/pull/6668
+* chore(deps): update pnpm to v11.2.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6675
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.12...eslint-plugin-formatjs@6.4.13
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/ts-transformer bumped to 4.4.11
+
+## [6.4.12](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.11...eslint-plugin-formatjs@6.4.12) (2026-05-22)
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.4.0 ([#6612](https://github.com/formatjs/formatjs/issues/6612)) ([105c369](https://github.com/formatjs/formatjs/commit/105c369dc4e17c6b31407400bb6b00ae01e34c85)) - by @renovate[bot]
+
+## [6.4.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.10...eslint-plugin-formatjs@6.4.11) (2026-05-22)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.4.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.9...eslint-plugin-formatjs@6.4.10) (2026-05-15)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.4.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.8...eslint-plugin-formatjs@6.4.9) (2026-05-12)
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.3.0 ([#6526](https://github.com/formatjs/formatjs/issues/6526)) ([d1d9dbe](https://github.com/formatjs/formatjs/commit/d1d9dbe462ed789bb51d1af93812a76193a5efb3)) - by @renovate[bot]
+
+## [6.4.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.7...eslint-plugin-formatjs@6.4.8) (2026-05-05)
+
+### Bug Fixes
+
+* **formatjs:** support TS assertions in message extraction ([#6475](https://github.com/formatjs/formatjs/issues/6475)) ([06e7cf6](https://github.com/formatjs/formatjs/commit/06e7cf6c25b83012cb023fb7882cdffd9f370012)), closes [#6474](https://github.com/formatjs/formatjs/issues/6474) - by @longlho
+
+## [6.4.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.6...eslint-plugin-formatjs@6.4.7) (2026-04-29)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.4.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.5...eslint-plugin-formatjs@6.4.6) (2026-04-24)
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.2.1 ([#6384](https://github.com/formatjs/formatjs/issues/6384)) ([5163cd5](https://github.com/formatjs/formatjs/commit/5163cd58d3d63a2e50490507d592206748507964)) - by @renovate[bot]
+
+## [6.4.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.4...eslint-plugin-formatjs@6.4.5) (2026-04-13)
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.2.0 ([#6331](https://github.com/formatjs/formatjs/issues/6331)) ([18f397e](https://github.com/formatjs/formatjs/commit/18f397ef65fd01ff4373a75c45e09cfea0e6e0fa)) - by @renovate[bot]
+
+### Reverts
+
+* **deps:** revert gazelle migration phases 1-3 ([#6205](https://github.com/formatjs/formatjs/issues/6205)) ([4c04aa2](https://github.com/formatjs/formatjs/commit/4c04aa2726107ab1d0b9dab8a54a82fa62a73680)), closes [#6197](https://github.com/formatjs/formatjs/issues/6197) [#6198](https://github.com/formatjs/formatjs/issues/6198) [#6199](https://github.com/formatjs/formatjs/issues/6199) [#6195](https://github.com/formatjs/formatjs/issues/6195) [#6196](https://github.com/formatjs/formatjs/issues/6196) - by @longlho
+
+## [6.4.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.3...eslint-plugin-formatjs@6.4.4) (2026-03-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.4.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.2...eslint-plugin-formatjs@6.4.3) (2026-03-17)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** restore ability to import util module ([#6144](https://github.com/formatjs/formatjs/issues/6144)) ([94f6f5e](https://github.com/formatjs/formatjs/commit/94f6f5e97489edd59601ea363962381fdae5a51a)) - by @timmorey
+
+## [6.4.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.1...eslint-plugin-formatjs@6.4.2) (2026-03-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.4.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.4.0...eslint-plugin-formatjs@6.4.1) (2026-03-16)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [6.4.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.3.0...eslint-plugin-formatjs@6.4.0) (2026-03-15)
+
+### Features
+
+* **eslint-plugin-formatjs:** support minimum description length in `enforce-description` rule ([#6066](https://github.com/formatjs/formatjs/issues/6066)) ([08bb74c](https://github.com/formatjs/formatjs/commit/08bb74c6e0761272d596c422e53966b65f6ed943)) - by @William-Feng
+
+# [6.3.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.2.0...eslint-plugin-formatjs@6.3.0) (2026-03-09)
+
+### Features
+
+* **eslint-plugin-formatjs:** add ESLint v10 support ([#6054](https://github.com/formatjs/formatjs/issues/6054)) ([b7a3723](https://github.com/formatjs/formatjs/commit/b7a3723e030b1a7d8f7dab5c223ba8ace02b0e46)), closes [#6047](https://github.com/formatjs/formatjs/issues/6047) - by @longlho
+
+# [6.2.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.1.4...eslint-plugin-formatjs@6.2.0) (2026-02-23)
+
+### Features
+
+* **eslint-plugin-formatjs:** add prefer-full-sentence rule ([#6034](https://github.com/formatjs/formatjs/issues/6034)) ([2d47bee](https://github.com/formatjs/formatjs/commit/2d47bee3b51b0036cfc7d578122930b4d7413040)) - by @longlho
+
+## [6.1.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.1.3...eslint-plugin-formatjs@6.1.4) (2026-02-19)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** rm typescript-eslint dep ([#6028](https://github.com/formatjs/formatjs/issues/6028)) ([db3a76b](https://github.com/formatjs/formatjs/commit/db3a76bb67865716067deffbbb3f3f683382029c)) - by @longlho
+
+## [6.1.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.1.2...eslint-plugin-formatjs@6.1.3) (2026-02-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.1.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.1.1...eslint-plugin-formatjs@6.1.2) (2026-02-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.1.0...eslint-plugin-formatjs@6.1.1) (2026-01-19)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix emoji false positives, fix [#5957](https://github.com/formatjs/formatjs/issues/5957) ([#5960](https://github.com/formatjs/formatjs/issues/5960)) ([141a110](https://github.com/formatjs/formatjs/commit/141a110bb4bdb275b84eeace08a1d0f147afdcea)) - by @longlho
+
+# [6.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.10...eslint-plugin-formatjs@6.1.0) (2026-01-15)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** remove obsolete @types/eslint ([#5884](https://github.com/formatjs/formatjs/issues/5884)) ([0e7b93b](https://github.com/formatjs/formatjs/commit/0e7b93b62dc332ec7a6e316674b9bbf39189c0b7)) - by @andersk
+
+### Features
+
+* **@formatjs/intl-segmenter:** improve Unicode 17.0 Format/Extend transparency and upgrade deps ([#5862](https://github.com/formatjs/formatjs/issues/5862)) ([effeb9c](https://github.com/formatjs/formatjs/commit/effeb9cd9d26f8c43c1e3df64a84c42dc7b12043)), closes [#29](https://github.com/formatjs/formatjs/issues/29) - by @longlho
+* **eslint-plugin-formatjs:** replace unicode-emoji-utils with native implementation ([#5865](https://github.com/formatjs/formatjs/issues/5865)) ([7ebcf95](https://github.com/formatjs/formatjs/commit/7ebcf9538830002c3859f5d1bdc94f035e725d9a)) - by @longlho
+
+## [6.0.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.9...eslint-plugin-formatjs@6.0.10) (2026-01-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.8...eslint-plugin-formatjs@6.0.9) (2026-01-02)
+
+### Bug Fixes
+
+* **@formatjs/cli:** don't try to parse non core fields ([#5747](https://github.com/formatjs/formatjs/issues/5747)) ([6395940](https://github.com/formatjs/formatjs/commit/63959400061f6e573efa828b4e113559f11c9146)), closes [#5069](https://github.com/formatjs/formatjs/issues/5069) [#5069](https://github.com/formatjs/formatjs/issues/5069) [#5069](https://github.com/formatjs/formatjs/issues/5069) - by @longlho
+* **eslint-plugin-formatjs:** handle formatMessage when it's being destructured, fix [#4890](https://github.com/formatjs/formatjs/issues/4890) ([#5749](https://github.com/formatjs/formatjs/issues/5749)) ([fcd87fd](https://github.com/formatjs/formatjs/commit/fcd87fdd7b5378f8dc976ef3aa8eb2e4a2fd3404)) - by @longlho
+* **eslint-plugin-formatjs:** relax eslint dep req ([#5715](https://github.com/formatjs/formatjs/issues/5715)) ([a2965e7](https://github.com/formatjs/formatjs/commit/a2965e70dec9167d524ed709881bd5fc1094c6c7)) - by @longlho
+
+## [6.0.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.7...eslint-plugin-formatjs@6.0.8) (2025-12-28)
+
+### Bug Fixes
+
+* **deps:** update dependency @types/picomatch to v4 ([#5703](https://github.com/formatjs/formatjs/issues/5703)) ([ad4d273](https://github.com/formatjs/formatjs/commit/ad4d2735829b3f7b43e880b5c3fdb0f168d6cb5e)) - by @renovate[bot]
+* **eslint-plugin-formatjs:** make err node reporting more accurate ([#5709](https://github.com/formatjs/formatjs/issues/5709)) ([f54d058](https://github.com/formatjs/formatjs/commit/f54d058ac6633d031209b11c771e7b8f403e802b)) - by @longlho
+
+## [6.0.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.6...eslint-plugin-formatjs@6.0.7) (2025-12-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.5...eslint-plugin-formatjs@6.0.6) (2025-12-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.4...eslint-plugin-formatjs@6.0.5) (2025-12-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.3...eslint-plugin-formatjs@6.0.4) (2025-12-19)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.2...eslint-plugin-formatjs@6.0.3) (2025-12-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.1...eslint-plugin-formatjs@6.0.2) (2025-12-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@6.0.0...eslint-plugin-formatjs@6.0.1) (2025-12-15)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [6.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.4.2...eslint-plugin-formatjs@6.0.0) (2025-12-15)
+
+### ⚠ BREAKING CHANGES
+
+* **eslint-plugin-formatjs:** convert to ESM only (#5207)
+
+### Features
+
+* add `quoteStyle` option to eslint `enforce-id` rule ([#5131](https://github.com/formatjs/formatjs/issues/5131)) ([d71b0b6](https://github.com/formatjs/formatjs/commit/d71b0b6de178422e980be68887f29f25e30b6c20)) - by @vpontis
+* **eslint-plugin-formatjs:** convert to ESM only ([#5207](https://github.com/formatjs/formatjs/issues/5207)) ([029f821](https://github.com/formatjs/formatjs/commit/029f8218b3b10f0572b23d579edc6a0dc3c516a7)) - by @longlho
+* **eslint-plugin-formatjs:** support `children` for `exclude` in no-literal-string-in-jsx ([42de4e0](https://github.com/formatjs/formatjs/commit/42de4e0d01e1835e8bb72e63703c5eec9f5ec10b)) - by @longlho
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** disallow extra properties in rule options ([#5158](https://github.com/formatjs/formatjs/issues/5158)) ([71c90e2](https://github.com/formatjs/formatjs/commit/71c90e2ee5e57649a691168499534adce7b053a6)) - by @andreww2012
+* **eslint-plugin-formatjs:** fix imports to be backwards compat ([#5174](https://github.com/formatjs/formatjs/issues/5174)) ([9687cf1](https://github.com/formatjs/formatjs/commit/9687cf1be33c9ee70a34f8496b69e9fc5ec4f3e8)) - by @longlho
+* **eslint:** emit plugin types correctly ([#5153](https://github.com/formatjs/formatjs/issues/5153)) ([0e9db71](https://github.com/formatjs/formatjs/commit/0e9db7108971c8729a7fe4e1d7eabfd593711523)), closes [#5133](https://github.com/formatjs/formatjs/issues/5133) - by @sushichan044
+
+## [5.4.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.4.1...eslint-plugin-formatjs@5.4.2) (2025-10-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.4.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.4.0...eslint-plugin-formatjs@5.4.1) (2025-10-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [5.4.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.3.1...eslint-plugin-formatjs@5.4.0) (2025-06-15)
+
+### Features
+
+* **eslint-plugin-formatjs:** support tagged template expression like dedent ([#5016](https://github.com/formatjs/formatjs/issues/5016)) ([be97996](https://github.com/formatjs/formatjs/commit/be979961e54ea8c5369e8631a293909f5a5dcd61)), closes [#5015](https://github.com/formatjs/formatjs/issues/5015) - by @longlho
+
+## [5.3.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.3.0...eslint-plugin-formatjs@5.3.1) (2025-03-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [5.3.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.14...eslint-plugin-formatjs@5.3.0) (2025-03-23)
+
+### Bug Fixes
+
+* **deps:** update typescript-eslint monorepo to v8.23.0 ([#4838](https://github.com/formatjs/formatjs/issues/4838)) ([a03c6cb](https://github.com/formatjs/formatjs/commit/a03c6cb92a68b9d7a5c5a376a946c7c4e2de4a12)) - by @renovate[bot]
+* **deps:** update typescript-eslint monorepo to v8.24.0 ([#4874](https://github.com/formatjs/formatjs/issues/4874)) ([f49edec](https://github.com/formatjs/formatjs/commit/f49edecf9c242235309271ecd3fb3c2680a2c047)) - by @renovate[bot]
+
+### Features
+
+* **eslint-plugin-formatjs:** add no-literal-string-in-object rule with tests ([52d97b2](https://github.com/formatjs/formatjs/commit/52d97b2c5d0cece0072aa9e210b09680149413ac)) - by @niuniuanran
+
+## [5.2.14](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.13...eslint-plugin-formatjs@5.2.14) (2025-02-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.13](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.12...eslint-plugin-formatjs@5.2.13) (2025-01-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.12](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.11...eslint-plugin-formatjs@5.2.12) (2025-01-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.10...eslint-plugin-formatjs@5.2.11) (2025-01-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.9...eslint-plugin-formatjs@5.2.10) (2025-01-17)
+
+### Bug Fixes
+
+* **deps:** update typescript-eslint monorepo to v8.20.0 ([#4744](https://github.com/formatjs/formatjs/issues/4744)) ([4367831](https://github.com/formatjs/formatjs/commit/4367831e3f9ef5b53e9106cca50e3a5c1bcf6f31)) - by @renovate[bot]
+
+## [5.2.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.8...eslint-plugin-formatjs@5.2.9) (2025-01-02)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.7...eslint-plugin-formatjs@5.2.8) (2024-12-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.6...eslint-plugin-formatjs@5.2.7) (2024-12-09)
+
+### Bug Fixes
+
+* turn on isolatedDeclarations and specify explicit types everywhere ([4d855c2](https://github.com/formatjs/formatjs/commit/4d855c2324426633eb84c346c76a5fd1ac854780)) - by @longlho
+
+## [5.2.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.5...eslint-plugin-formatjs@5.2.6) (2024-12-08)
+
+### Bug Fixes
+
+* **deps:** update dependency @typescript-eslint/utils to v8.15.0 ([#4716](https://github.com/formatjs/formatjs/issues/4716)) ([0abf5a6](https://github.com/formatjs/formatjs/commit/0abf5a659512394849ae597c80ba0e94e1bc26ae)) - by @renovate[bot]
+
+## [5.2.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.4...eslint-plugin-formatjs@5.2.5) (2024-11-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.3...eslint-plugin-formatjs@5.2.4) (2024-11-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.2...eslint-plugin-formatjs@5.2.3) (2024-11-17)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** account for possibly undefined parserServices ([#4708](https://github.com/formatjs/formatjs/issues/4708)) ([cad6613](https://github.com/formatjs/formatjs/commit/cad6613cbc3f7cac877d134b540bbc7e8566efd9)), closes [#4524](https://github.com/formatjs/formatjs/issues/4524) - by @michaelfaith
+* **eslint-plugin-formatjs:** make shareable configs compatible with flat config ([#4706](https://github.com/formatjs/formatjs/issues/4706)) ([b64b8fe](https://github.com/formatjs/formatjs/commit/b64b8feb865316237e6244ab5b7605a834b02384)), closes [#4501](https://github.com/formatjs/formatjs/issues/4501) [#4705](https://github.com/formatjs/formatjs/issues/4705) - by @michaelfaith
+
+## [5.2.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.1...eslint-plugin-formatjs@5.2.2) (2024-11-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.2.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.2.0...eslint-plugin-formatjs@5.2.1) (2024-11-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [5.2.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.5...eslint-plugin-formatjs@5.2.0) (2024-11-02)
+
+### Features
+
+* **eslint-plugin-formatjs:** add recommended and strict shareable eslint config ([a4fc437](https://github.com/formatjs/formatjs/commit/a4fc4379700283448350b6982338f169f15d9bba)), closes [#4501](https://github.com/formatjs/formatjs/issues/4501) - by @longlho
+
+## [5.1.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.4...eslint-plugin-formatjs@5.1.5) (2024-10-25)
+
+### Bug Fixes
+
+* relax tslib req to 2 instead of 2.7 ([930c3e8](https://github.com/formatjs/formatjs/commit/930c3e8ddcc160fde7466449575455f135f78ca6)) - by @longlho
+
+## [5.1.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.3...eslint-plugin-formatjs@5.1.4) (2024-10-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.1.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.2...eslint-plugin-formatjs@5.1.3) (2024-10-24)
+
+### Bug Fixes
+
+* **deps:** update dependency commander to v12 ([#4621](https://github.com/formatjs/formatjs/issues/4621)) ([3c1d046](https://github.com/formatjs/formatjs/commit/3c1d0463e708b2b0bd4ff1b36a83479276b62e8f)) - by @renovate[bot]
+* **deps:** update dependency picomatch to v4 ([#4623](https://github.com/formatjs/formatjs/issues/4623)) ([9bed6b6](https://github.com/formatjs/formatjs/commit/9bed6b61146401f3339071f1530465263ef4eb70)) - by @renovate[bot]
+* **eslint-plugin-formatjs:** restore picomatch dep range ([dad1e7d](https://github.com/formatjs/formatjs/commit/dad1e7d3da10b897b7086b6676944c8ed10f2422)) - by @longlho
+
+## [5.1.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.1...eslint-plugin-formatjs@5.1.2) (2024-10-21)
+
+### Bug Fixes
+
+* **deps:** update dependency @types/picomatch to v3 ([#4618](https://github.com/formatjs/formatjs/issues/4618)) ([ce1e814](https://github.com/formatjs/formatjs/commit/ce1e814a62f714193685d75f0fc7316023ea6c3e)) - by @renovate[bot]
+
+## [5.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.1.0...eslint-plugin-formatjs@5.1.1) (2024-10-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [5.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.0.1...eslint-plugin-formatjs@5.1.0) (2024-10-12)
+
+### Features
+
+* **eslint-plugin-formatjs:** introduce no no-explicit-icu-plural lint rule ([0fa83d4](https://github.com/formatjs/formatjs/commit/0fa83d47efc04e65acacb6cad8fc585b8882a77f)) - by @cungminh2710
+
+## [5.0.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.0.1...eslint-plugin-formatjs@5.0.2) (2024-10-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [5.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@5.0.0...eslint-plugin-formatjs@5.0.1) (2024-10-08)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [5.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.14.0...eslint-plugin-formatjs@5.0.0) (2024-09-25)
+
+### Features
+
+* **eslint-plugin-formatjs:** drop support for eslint 7 & 8 ([e6dcd3e](https://github.com/formatjs/formatjs/commit/e6dcd3e8751befd4daefe426bc616cda9d1ab08f)) - by @longlho
+
+### BREAKING CHANGES
+
+* **eslint-plugin-formatjs:** This drops support for eslint 7 & 8
+
+# [4.14.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.13.3...eslint-plugin-formatjs@4.14.0) (2024-09-23)
+
+### Features
+
+* **eslint-plugin-formatjs:** add support for eslint v9 ([f9a0e1b](https://github.com/formatjs/formatjs/commit/f9a0e1b4a7c8517afef3b7a049a68edd76863121)) - by @michaelfaith
+
+## [4.13.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.13.2...eslint-plugin-formatjs@4.13.3) (2024-05-19)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.13.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.13.1...eslint-plugin-formatjs@4.13.2) (2024-05-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.13.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.13.0...eslint-plugin-formatjs@4.13.1) (2024-05-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [4.13.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.12.2...eslint-plugin-formatjs@4.13.0) (2024-04-06)
+
+### Features
+
+* **eslint-plugin-formatjs:** lint `this.intl.formatMessage(...)` calls ([#4383](https://github.com/formatjs/formatjs/issues/4383)) ([d019691](https://github.com/formatjs/formatjs/commit/d0196918fca64ea76bde3a6f5e24934227f9fe7f)) - by @timmorey
+
+## [4.12.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.12.1...eslint-plugin-formatjs@4.12.2) (2024-01-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.12.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.12.0...eslint-plugin-formatjs@4.12.1) (2024-01-16)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [4.12.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.11.3...eslint-plugin-formatjs@4.12.0) (2024-01-16)
+
+### Features
+
+* **eslint-plugin-formatjs:** improve codebase with better types ([#4294](https://github.com/formatjs/formatjs/issues/4294)) ([c49a38b](https://github.com/formatjs/formatjs/commit/c49a38b690e5c1dd1f45aa29691af83b441f000e)) - by @cungminh2710
+
+## [4.11.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.11.2...eslint-plugin-formatjs@4.11.3) (2023-11-14)
+
+### Bug Fixes
+
+* **@formatjs/intl-durationformat:** add polyfill detector + docs ([d6d237a](https://github.com/formatjs/formatjs/commit/d6d237a2ffca73d5e3824df17bf5ebf7e7b135a8)) - by @
+
+## [4.11.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.11.1...eslint-plugin-formatjs@4.11.2) (2023-11-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.11.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.11.0...eslint-plugin-formatjs@4.11.1) (2023-11-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [4.11.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.5...eslint-plugin-formatjs@4.11.0) (2023-10-16)
+
+### Bug Fixes
+
+* **deps:** update dependency tslib to v2.6.2 ([#4196](https://github.com/formatjs/formatjs/issues/4196)) ([b541fb2](https://github.com/formatjs/formatjs/commit/b541fb261ce66ea88690e23ca9626f58daa62f35))
+
+### Features
+
+* **eslint-plugin-formatjs:** upgrade typescript-eslint packages ([a3c7310](https://github.com/formatjs/formatjs/commit/a3c7310fa4e7a37c9a482b9060fb1937d37d8d96))
+
+## [4.10.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.4...eslint-plugin-formatjs@4.10.5) (2023-09-10)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.10.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.3...eslint-plugin-formatjs@4.10.4) (2023-09-07)
+
+### Bug Fixes
+
+* **deps:** update dependency @typescript-eslint/typescript-estree to v5.62.0 ([#4119](https://github.com/formatjs/formatjs/issues/4119)) ([520cbe5](https://github.com/formatjs/formatjs/commit/520cbe5c63e8aecc256206c844108784b4f7c73f))
+* **deps:** update dependency tslib to v2.6.0 ([#4120](https://github.com/formatjs/formatjs/issues/4120)) ([6b57122](https://github.com/formatjs/formatjs/commit/6b571225925dc953946b8f782a15c07b76e418ca))
+* **eslint-plugin-formatjs:** check intl.$t function calls ([#4183](https://github.com/formatjs/formatjs/issues/4183)) ([572be8b](https://github.com/formatjs/formatjs/commit/572be8b7bca6fc8ae7e2d4edab3dbd98e5e85d14))
+
+## [4.10.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.2...eslint-plugin-formatjs@4.10.3) (2023-06-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.10.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.1...eslint-plugin-formatjs@4.10.2) (2023-06-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.10.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.10.0...eslint-plugin-formatjs@4.10.1) (2023-05-01)
+
+### Bug Fixes
+
+* **deps:** update dependency @typescript-eslint/typescript-estree to v5.59.0 ([#4055](https://github.com/formatjs/formatjs/issues/4055)) ([11206c8](https://github.com/formatjs/formatjs/commit/11206c83c8e48fe07591d9e5e6c4746a6cdd623c))
+* **deps:** update dependency magic-string to ^0.30.0 ([#4056](https://github.com/formatjs/formatjs/issues/4056)) ([8f46ca1](https://github.com/formatjs/formatjs/commit/8f46ca13bec5f5d19996cd0e7d12f67ca0523b99))
+* **deps:** update dependency tslib to v2.5.0 ([#4059](https://github.com/formatjs/formatjs/issues/4059)) ([b9ec209](https://github.com/formatjs/formatjs/commit/b9ec2099f00b58dfc512cc15f20da2da26167a12))
+
+# [4.10.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.9.1...eslint-plugin-formatjs@4.10.0) (2023-04-17)
+
+### Features
+
+* upgrade TS support to v5 ([2c43dc1](https://github.com/formatjs/formatjs/commit/2c43dc1275d7ca940fae80419e3d6e4143bfbfef))
+
+## [4.9.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.9.0...eslint-plugin-formatjs@4.9.1) (2023-03-28)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** gracefully handle invalid message in enforce-placeholders ([6b64a3e](https://github.com/formatjs/formatjs/commit/6b64a3e2dd911cafcff79dbf1f5e7a11144515fc))
+
+# [4.9.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.8.0...eslint-plugin-formatjs@4.9.0) (2023-02-27)
+
+### Features
+
+* **eslint-plugin-formatjs:** more performant and versatile no-complex-selectors ([#4007](https://github.com/formatjs/formatjs/issues/4007)) ([4affca2](https://github.com/formatjs/formatjs/commit/4affca23beed7a0ec1bedc65e92bb0081a89b697))
+
+# [4.8.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.7.2...eslint-plugin-formatjs@4.8.0) (2023-02-25)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** do not throw while hoisting during no-complex-selectors ([29ecbec](https://github.com/formatjs/formatjs/commit/29ecbec2be0b528d1a91d49042265e91cf43df9c))
+
+### Features
+
+* **eslint-plugin-formatjs:** report unused values in `enforce-placeholders` ([#4006](https://github.com/formatjs/formatjs/issues/4006)) ([dabd04c](https://github.com/formatjs/formatjs/commit/dabd04c2cce8282e1cbd6e2a5756d7422ebfbe8e))
+
+## [4.7.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.7.1...eslint-plugin-formatjs@4.7.2) (2023-02-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.7.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.7.0...eslint-plugin-formatjs@4.7.1) (2023-02-19)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** handles multi-line JSX attribute ([f41f855](https://github.com/formatjs/formatjs/commit/f41f855f35088c21b038a0bf579b7e1374ff49f9))
+* **eslint-plugin-formatjs:** report the JSXExpressionContainer for `prefer-formatted-message` ([32b97d5](https://github.com/formatjs/formatjs/commit/32b97d5e519ff7dbd3e29492b16deff7c1a75324))
+
+# [4.7.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.6.0...eslint-plugin-formatjs@4.7.0) (2023-02-19)
+
+### Features
+
+* **eslint-plugin-formatjs:** new linter rules `prefer-formatted-message`and`prefer-pound-in-plural` ([#3998](https://github.com/formatjs/formatjs/issues/3998)) ([768a73a](https://github.com/formatjs/formatjs/commit/768a73a55a1e3ac600d0e2c7aa484e6ba0b20355))
+
+# [4.6.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.5.0...eslint-plugin-formatjs@4.6.0) (2023-01-30)
+
+### Features
+
+* **eslint-plugin-formatjs:** emoji version above config ([fd7776a](https://github.com/formatjs/formatjs/commit/fd7776a0f8c5e07da019a4c6e3158b734ed40169))
+
+# [4.5.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.4.0...eslint-plugin-formatjs@4.5.0) (2023-01-27)
+
+### Features
+
+* **eslint-plugin-formatjs:** capture literals in the logical expression ([#3975](https://github.com/formatjs/formatjs/issues/3975)) ([1cc638c](https://github.com/formatjs/formatjs/commit/1cc638c0a56cc19949327e55580e3a3e82a4116a))
+
+# [4.4.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.9...eslint-plugin-formatjs@4.4.0) (2023-01-26)
+
+### Features
+
+* **eslint-plugin-formatjs:** capture literals in the conditional expression ([#3974](https://github.com/formatjs/formatjs/issues/3974)) ([1deed4d](https://github.com/formatjs/formatjs/commit/1deed4d6978d1a48f4cf789920e8af8db29e7758))
+* **eslint-plugin-formatjs:** introduce no-useless-message linter rule ([#3973](https://github.com/formatjs/formatjs/issues/3973)) ([9ec4491](https://github.com/formatjs/formatjs/commit/9ec44911bc4b71616f4d5db3a7d7dbf4144a5a6a))
+
+## [4.3.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.8...eslint-plugin-formatjs@4.3.9) (2022-12-27)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** adding $t, an alternative to formatMessage ([#3943](https://github.com/formatjs/formatjs/issues/3943)) ([6d9623f](https://github.com/formatjs/formatjs/commit/6d9623f7fb3eb3bf68acfacdb5e0d88939e70156))
+
+## [4.3.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.7...eslint-plugin-formatjs@4.3.8) (2022-12-02)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.5...eslint-plugin-formatjs@4.3.7) (2022-12-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.5...eslint-plugin-formatjs@4.3.6) (2022-12-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.4...eslint-plugin-formatjs@4.3.5) (2022-11-29)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.3...eslint-plugin-formatjs@4.3.4) (2022-10-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.2...eslint-plugin-formatjs@4.3.3) (2022-10-13)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** no-literal-string-in-jsx now ignores empty string ([#3871](https://github.com/formatjs/formatjs/issues/3871)) ([3a7ae3b](https://github.com/formatjs/formatjs/commit/3a7ae3b72dee6550c16c0655f1caf7bebdc4f4b3))
+
+## [4.3.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.1...eslint-plugin-formatjs@4.3.2) (2022-09-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.3.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.3.0...eslint-plugin-formatjs@4.3.1) (2022-09-06)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix [#3652](https://github.com/formatjs/formatjs/issues/3652) eslint enforce-id, append correct id ([0bf0daf](https://github.com/formatjs/formatjs/commit/0bf0dafcb893950a7556e8343f7c4a1ac94afcae))
+
+# [4.3.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.2.2...eslint-plugin-formatjs@4.3.0) (2022-08-27)
+
+### Features
+
+* **@formatjs/ts-transformer:** support TypeScript 4.7 syntax ([#3764](https://github.com/formatjs/formatjs/issues/3764)) ([1b3388e](https://github.com/formatjs/formatjs/commit/1b3388e9344de3a948068f5cf449341c1eb597a8))
+
+## [4.2.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.2.1...eslint-plugin-formatjs@4.2.2) (2022-08-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.2.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.2.0...eslint-plugin-formatjs@4.2.1) (2022-08-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [4.2.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.1.0...eslint-plugin-formatjs@4.2.0) (2022-08-18)
+
+### Features
+
+* **eslint-plugin-formatjs:** allow scoping settings to formatjs ([#3766](https://github.com/formatjs/formatjs/issues/3766)) ([0db373f](https://github.com/formatjs/formatjs/commit/0db373fad7e4b4cf3bef6136b0b820536683125f))
+
+# [4.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.0.2...eslint-plugin-formatjs@4.1.0) (2022-08-08)
+
+### Features
+
+* **eslint-plugin-formatjs:** add no-invalid-icu eslint rule ([#3740](https://github.com/formatjs/formatjs/issues/3740)) ([d394a5e](https://github.com/formatjs/formatjs/commit/d394a5e6d20577fd5e7bf0b15bbbee5dd9bc9d67))
+
+## [4.0.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.0.1...eslint-plugin-formatjs@4.0.2) (2022-07-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [4.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@4.0.0...eslint-plugin-formatjs@4.0.1) (2022-06-21)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** actually add no-literal-string-in-jsx to the plugin registry ([#3680](https://github.com/formatjs/formatjs/issues/3680)) ([f834cd5](https://github.com/formatjs/formatjs/commit/f834cd590e7b01052e017515c284e6512babcfd9))
+
+# [4.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.5...eslint-plugin-formatjs@4.0.0) (2022-06-21)
+
+### Bug Fixes
+
+* **@formatjs/eslint-plugin-formatjs:** handle ICU message syntax error in no-complex-selectors rule ([dc8ecdc](https://github.com/formatjs/formatjs/commit/dc8ecdcb94efd592d4169a618ab60b6b80122290))
+
+### Features
+
+* **eslint-plugin-formatjs:** introduce no-literal-string-in-jsx ([#3674](https://github.com/formatjs/formatjs/issues/3674)) ([a5da037](https://github.com/formatjs/formatjs/commit/a5da0375a1703f60be1da06903e0982ddfc3b06e))
+* **eslint-plugin-formatjs:** no-multiple-whitespaces now allows whitespaces in non-literals ([#3671](https://github.com/formatjs/formatjs/issues/3671)) ([3cf262a](https://github.com/formatjs/formatjs/commit/3cf262a3c74ce1989aaec44d3459c32f65bad452))
+
+## [3.1.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.4...eslint-plugin-formatjs@3.1.5) (2022-06-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [3.1.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.3...eslint-plugin-formatjs@3.1.4) (2022-05-20)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix description obj serialization, fix [#3575](https://github.com/formatjs/formatjs/issues/3575) ([83c1fe0](https://github.com/formatjs/formatjs/commit/83c1fe0fade75b568b0600badbc9e4e09f5cba5a))
+
+## [3.1.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.2...eslint-plugin-formatjs@3.1.3) (2022-05-19)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [3.1.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.1...eslint-plugin-formatjs@3.1.2) (2022-05-19)
+
+### Bug Fixes
+
+* **react-intl:** fix type issue with react18, fix [#3550](https://github.com/formatjs/formatjs/issues/3550) ([2567b93](https://github.com/formatjs/formatjs/commit/2567b932c5d18b097a43842563046c20ce0c49f1))
+
+## [3.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.1.0...eslint-plugin-formatjs@3.1.1) (2022-04-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [3.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.0.1...eslint-plugin-formatjs@3.1.0) (2022-03-26)
+
+### Features
+
+* **eslint-plugin-formatjs:** allow eslint 7 ([260b0ec](https://github.com/formatjs/formatjs/commit/260b0ec2e74fb634f469ef640131a1b0f1fae72d))
+
+## [3.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@3.0.0...eslint-plugin-formatjs@3.0.1) (2022-03-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [3.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.21.0...eslint-plugin-formatjs@3.0.0) (2022-02-06)
+
+### Features
+
+* **eslint-plugin-formatjs:** rename `blacklist` to `blocklist`, fix [#3399](https://github.com/formatjs/formatjs/issues/3399) ([d363881](https://github.com/formatjs/formatjs/commit/d363881c87e6d792c4e933cd0167d1b3faa0897a))
+
+### BREAKING CHANGES
+
+* **eslint-plugin-formatjs:** This changes the rule name from `blacklist-elements` to `blocklist-elements`
+
+# [2.21.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.5...eslint-plugin-formatjs@2.21.0) (2022-02-06)
+
+### Features
+
+* **eslint-plugin-formatjs:** add `idWhitelist` option to `enforce-id` rule ([#3374](https://github.com/formatjs/formatjs/issues/3374)) ([7538296](https://github.com/formatjs/formatjs/commit/75382963a515d22ed295dd461333fd2ed91bcc0f))
+
+## [2.20.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.4...eslint-plugin-formatjs@2.20.5) (2022-01-24)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.20.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.3...eslint-plugin-formatjs@2.20.4) (2022-01-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.20.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.2...eslint-plugin-formatjs@2.20.3) (2022-01-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.20.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.1...eslint-plugin-formatjs@2.20.2) (2022-01-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.20.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.20.0...eslint-plugin-formatjs@2.20.1) (2022-01-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.20.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.19.1...eslint-plugin-formatjs@2.20.0) (2022-01-03)
+
+### Features
+
+* **eslint-plugin-formatjs:** bump eslint peerDep version to 8 ([d143d38](https://github.com/formatjs/formatjs/commit/d143d38ea1115b2481e2dad71b2d934ca2e3cedc))
+
+## [2.19.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.19.0...eslint-plugin-formatjs@2.19.1) (2021-12-20)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix empty FormatMessage case, fix [#3304](https://github.com/formatjs/formatjs/issues/3304) ([e71a705](https://github.com/formatjs/formatjs/commit/e71a70509b104e81e70e66c6e6d2678e27aa4411))
+* **eslint-plugin-formatjs:** fix missing error when missing placeholder used inside tag ([#3310](https://github.com/formatjs/formatjs/issues/3310)) ([d65306a](https://github.com/formatjs/formatjs/commit/d65306aacc6fbe5109c3a4a6b898873a482cf7ec))
+
+# [2.19.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.18.0...eslint-plugin-formatjs@2.19.0) (2021-12-01)
+
+### Features
+
+* support TS 4.5, fix [#3276](https://github.com/formatjs/formatjs/issues/3276) ([31e0699](https://github.com/formatjs/formatjs/commit/31e069972aa16e14532531b9e597cff73a3f4897))
+
+# [2.18.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.9...eslint-plugin-formatjs@2.18.0) (2021-10-22)
+
+### Features
+
+* **eslint-plugin-formatjs:** upgrade to TS 4.4 ([d45d3c1](https://github.com/formatjs/formatjs/commit/d45d3c19e37f64fdf3eb4dfefa6f976fadedbd9f))
+
+## [2.17.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.8...eslint-plugin-formatjs@2.17.9) (2021-10-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.7...eslint-plugin-formatjs@2.17.8) (2021-09-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.6...eslint-plugin-formatjs@2.17.7) (2021-09-26)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** remove deprecated @types/emoji-regex 9 ([#3159](https://github.com/formatjs/formatjs/issues/3159)) ([49b9dfb](https://github.com/formatjs/formatjs/commit/49b9dfb969f08d3ba4b5fbefddecdd82070f156c))
+
+## [2.17.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.5...eslint-plugin-formatjs@2.17.6) (2021-08-24)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.4...eslint-plugin-formatjs@2.17.5) (2021-08-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.3...eslint-plugin-formatjs@2.17.4) (2021-08-15)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.2...eslint-plugin-formatjs@2.17.3) (2021-08-06)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** declare dep on typescript, fix [#3099](https://github.com/formatjs/formatjs/issues/3099) ([d97e301](https://github.com/formatjs/formatjs/commit/d97e301f77b96e70c536e6bc668152e47a85ce6c))
+
+## [2.17.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.1...eslint-plugin-formatjs@2.17.2) (2021-07-24)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.17.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.17.0...eslint-plugin-formatjs@2.17.1) (2021-07-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.17.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.16.1...eslint-plugin-formatjs@2.17.0) (2021-06-26)
+
+### Features
+
+* **eslint-plugin-formatjs:** allow setting ignoreTag as global linter settings, fix [#2998](https://github.com/formatjs/formatjs/issues/2998) ([8aaa11c](https://github.com/formatjs/formatjs/commit/8aaa11c4322d95e409f40c86d6ee9ccd6b556474))
+
+## [2.16.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.16.0...eslint-plugin-formatjs@2.16.1) (2021-06-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.16.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.7...eslint-plugin-formatjs@2.16.0) (2021-06-13)
+
+### Features
+
+* **eslint-plugin-formatjs:** allow additionalFunctionNames & additionalComponentNames in shared settings, fix [#2967](https://github.com/formatjs/formatjs/issues/2967) ([c19b0ea](https://github.com/formatjs/formatjs/commit/c19b0eae3b28d99276a6c2da288b51d0c32ff3be))
+* **eslint-plugin-formatjs:** rm react-intl package import check for function names and components ([5c7aeba](https://github.com/formatjs/formatjs/commit/5c7aeba2d6e281de390b50811691a40e08f8b34d))
+
+## [2.15.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.6...eslint-plugin-formatjs@2.15.7) (2021-06-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.5...eslint-plugin-formatjs@2.15.6) (2021-06-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.4...eslint-plugin-formatjs@2.15.5) (2021-06-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.3...eslint-plugin-formatjs@2.15.4) (2021-06-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.2...eslint-plugin-formatjs@2.15.3) (2021-05-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.1...eslint-plugin-formatjs@2.15.2) (2021-05-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.15.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.15.0...eslint-plugin-formatjs@2.15.1) (2021-05-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.15.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.10...eslint-plugin-formatjs@2.15.0) (2021-05-10)
+
+### Features
+
+* **eslint-plugin-formatjs:** update typescript-eslint ([#2865](https://github.com/formatjs/formatjs/issues/2865)) ([3a692ab](https://github.com/formatjs/formatjs/commit/3a692ab1a9474db835f7884b91852f690c07eb7c))
+
+## [2.14.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.9...eslint-plugin-formatjs@2.14.10) (2021-05-02)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.8...eslint-plugin-formatjs@2.14.9) (2021-04-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.7...eslint-plugin-formatjs@2.14.8) (2021-04-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.6...eslint-plugin-formatjs@2.14.7) (2021-04-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.5...eslint-plugin-formatjs@2.14.6) (2021-04-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.4...eslint-plugin-formatjs@2.14.5) (2021-04-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.3...eslint-plugin-formatjs@2.14.4) (2021-04-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.2...eslint-plugin-formatjs@2.14.3) (2021-03-30)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.1...eslint-plugin-formatjs@2.14.2) (2021-03-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.14.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.14.0...eslint-plugin-formatjs@2.14.1) (2021-03-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.14.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.13.2...eslint-plugin-formatjs@2.14.0) (2021-03-28)
+
+### Features
+
+* **eslint-plugin-formatjs:** add no-complex-selectors rule ([f3b1c15](https://github.com/formatjs/formatjs/commit/f3b1c15a510818ade85ff5d5efefda815eeea5a2))
+
+## [2.13.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.13.1...eslint-plugin-formatjs@2.13.2) (2021-03-28)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** rm unnecessary imports, fix [#2756](https://github.com/formatjs/formatjs/issues/2756) ([8920a6a](https://github.com/formatjs/formatjs/commit/8920a6aab10bb2c8bbdf40aa41229af66e3810fe))
+
+## [2.13.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.13.0...eslint-plugin-formatjs@2.13.1) (2021-03-27)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix missing dep ([d3b1532](https://github.com/formatjs/formatjs/commit/d3b15329fed2f2ab63e81f13172c7dee33b5baa1))
+
+# [2.13.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.9...eslint-plugin-formatjs@2.13.0) (2021-03-27)
+
+### Features
+
+* **eslint-plugin-formatjs:** switch parser to @formatjs/icu-messageformat-parser (6x faster) ([09ff05e](https://github.com/formatjs/formatjs/commit/09ff05e843767f75690c11149a55cb8672271126))
+
+## [2.12.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.8...eslint-plugin-formatjs@2.12.9) (2021-03-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.7...eslint-plugin-formatjs@2.12.8) (2021-03-15)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.6...eslint-plugin-formatjs@2.12.7) (2021-03-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.5...eslint-plugin-formatjs@2.12.6) (2021-02-25)
+
+### Bug Fixes
+
+* bump tslib version dep ([37577d2](https://github.com/formatjs/formatjs/commit/37577d22bf28d23de1d8013ba0047cf221ad8840)), closes [#2645](https://github.com/formatjs/formatjs/issues/2645)
+
+## [2.12.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.4...eslint-plugin-formatjs@2.12.5) (2021-02-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.3...eslint-plugin-formatjs@2.12.4) (2021-02-22)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.2...eslint-plugin-formatjs@2.12.3) (2021-02-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.1...eslint-plugin-formatjs@2.12.2) (2021-02-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.12.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.12.0...eslint-plugin-formatjs@2.12.1) (2021-02-13)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.12.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.7...eslint-plugin-formatjs@2.12.0) (2021-02-02)
+
+### Features
+
+* **eslint-plugin-formatjs:** support template literal without var, fix [#2527](https://github.com/formatjs/formatjs/issues/2527) ([a048e25](https://github.com/formatjs/formatjs/commit/a048e25a5f4cc32b1602b00dbf982282aac97773))
+
+# [2.11.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.7...eslint-plugin-formatjs@2.11.0) (2021-01-29)
+
+### Features
+
+* **eslint-plugin-formatjs:** support template literal without var, fix [#2527](https://github.com/formatjs/formatjs/issues/2527) ([a048e25](https://github.com/formatjs/formatjs/commit/a048e25a5f4cc32b1602b00dbf982282aac97773))
+
+## [2.10.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.6...eslint-plugin-formatjs@2.10.7) (2021-01-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.5...eslint-plugin-formatjs@2.10.6) (2021-01-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.4...eslint-plugin-formatjs@2.10.5) (2021-01-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.3...eslint-plugin-formatjs@2.10.4) (2021-01-22)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.2...eslint-plugin-formatjs@2.10.3) (2021-01-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.1...eslint-plugin-formatjs@2.10.2) (2021-01-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.10.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.10.0...eslint-plugin-formatjs@2.10.1) (2021-01-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.10.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.13...eslint-plugin-formatjs@2.10.0) (2021-01-02)
+
+### Features
+
+* **eslint-plugin-formatjs:** add support for .vue ([2f73827](https://github.com/formatjs/formatjs/commit/2f73827b22c06ce4ee98744c48de6357097c4816))
+
+## [2.9.13](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.12...eslint-plugin-formatjs@2.9.13) (2021-01-02)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.12](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.11...eslint-plugin-formatjs@2.9.12) (2021-01-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.10...eslint-plugin-formatjs@2.9.11) (2020-12-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.9...eslint-plugin-formatjs@2.9.10) (2020-11-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.8...eslint-plugin-formatjs@2.9.9) (2020-11-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.7...eslint-plugin-formatjs@2.9.8) (2020-11-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.6...eslint-plugin-formatjs@2.9.7) (2020-11-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.5...eslint-plugin-formatjs@2.9.6) (2020-11-10)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.4...eslint-plugin-formatjs@2.9.5) (2020-11-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.3...eslint-plugin-formatjs@2.9.4) (2020-11-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.2...eslint-plugin-formatjs@2.9.3) (2020-11-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.9.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.1...eslint-plugin-formatjs@2.9.2) (2020-11-05)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** lock down monorepo dep version ([3b425a3](https://github.com/formatjs/formatjs/commit/3b425a3107afbb710cfeaebc27d4dfd9a42d08ed))
+
+## [2.9.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.9.0...eslint-plugin-formatjs@2.9.1) (2020-11-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.9.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.8.0...eslint-plugin-formatjs@2.9.0) (2020-10-30)
+
+### Features
+
+* **eslint-plugin-formatjs:** add ignoreList option to enforce-placeholders, fix [#2262](https://github.com/formatjs/formatjs/issues/2262) ([a10e00c](https://github.com/formatjs/formatjs/commit/a10e00c0c923c51c493c34de95d4b07c93f1bf12))
+* **eslint-plugin-formatjs:** makes idInterpolationPattern optional in enforce-id, fix [#2263](https://github.com/formatjs/formatjs/issues/2263) ([6289c28](https://github.com/formatjs/formatjs/commit/6289c28acf7671ee8ed08f73d3b72dc73522dc18))
+
+# [2.8.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.17...eslint-plugin-formatjs@2.8.0) (2020-10-28)
+
+### Features
+
+* **eslint-plugin-formatjs:** support string concat, fix [#2252](https://github.com/formatjs/formatjs/issues/2252) ([cbeee5e](https://github.com/formatjs/formatjs/commit/cbeee5e2d2be610374cad3dda8cf12adf81781b6))
+
+## [2.7.17](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.16...eslint-plugin-formatjs@2.7.17) (2020-10-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.16](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.15...eslint-plugin-formatjs@2.7.16) (2020-10-25)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix extraction filter, fix [#2238](https://github.com/formatjs/formatjs/issues/2238) ([f9f2c3e](https://github.com/formatjs/formatjs/commit/f9f2c3eadff49b1245d80c21efd4912eefd53c3d))
+
+## [2.7.15](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.14...eslint-plugin-formatjs@2.7.15) (2020-10-10)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.14](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.13...eslint-plugin-formatjs@2.7.14) (2020-10-08)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.13](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.12...eslint-plugin-formatjs@2.7.13) (2020-10-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.12](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.11...eslint-plugin-formatjs@2.7.12) (2020-09-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.10...eslint-plugin-formatjs@2.7.11) (2020-09-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.9...eslint-plugin-formatjs@2.7.10) (2020-09-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.8...eslint-plugin-formatjs@2.7.9) (2020-09-09)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix enforce-id fixer logic, fix [#2072](https://github.com/formatjs/formatjs/issues/2072) ([00f56cb](https://github.com/formatjs/formatjs/commit/00f56cb63ff9790626d2b660331251df8e16de16))
+
+## [2.7.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.7...eslint-plugin-formatjs@2.7.8) (2020-09-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.6...eslint-plugin-formatjs@2.7.7) (2020-08-30)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.5...eslint-plugin-formatjs@2.7.6) (2020-08-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.4...eslint-plugin-formatjs@2.7.5) (2020-08-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.3...eslint-plugin-formatjs@2.7.4) (2020-08-22)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.2...eslint-plugin-formatjs@2.7.3) (2020-08-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.7.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.1...eslint-plugin-formatjs@2.7.2) (2020-08-20)
+
+### Bug Fixes
+
+* bump intl-messageformat-parser ([8bbfa04](https://github.com/formatjs/formatjs/commit/8bbfa047da159662700b7e500879da20e54c0f0b))
+
+## [2.7.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.7.0...eslint-plugin-formatjs@2.7.1) (2020-08-19)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.7.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.5...eslint-plugin-formatjs@2.7.0) (2020-08-19)
+
+### Features
+
+* **eslint-plugin-formatjs:** remove supported-datetime-skeleton ([ad60b3b](https://github.com/formatjs/formatjs/commit/ad60b3bb641ba73a1cc9524aace10b7b2615035b))
+
+## [2.6.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.4...eslint-plugin-formatjs@2.6.5) (2020-08-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.6.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.3...eslint-plugin-formatjs@2.6.4) (2020-08-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.6.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.2...eslint-plugin-formatjs@2.6.3) (2020-08-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.6.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.1...eslint-plugin-formatjs@2.6.2) (2020-08-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.6.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.6.0...eslint-plugin-formatjs@2.6.1) (2020-08-13)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.6.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.7...eslint-plugin-formatjs@2.6.0) (2020-08-10)
+
+### Features
+
+* **eslint-plugin-formatjs:** add enforce-id rule ([5205b68](https://github.com/formatjs/formatjs/commit/5205b680f5e72f7197aced538c775d6615858501)), closes [#1907](https://github.com/formatjs/formatjs/issues/1907)
+
+## [2.5.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.6...eslint-plugin-formatjs@2.5.7) (2020-07-24)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.5...eslint-plugin-formatjs@2.5.6) (2020-07-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.4...eslint-plugin-formatjs@2.5.5) (2020-07-17)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.3...eslint-plugin-formatjs@2.5.4) (2020-07-16)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.1...eslint-plugin-formatjs@2.5.3) (2020-07-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.1...eslint-plugin-formatjs@2.5.2) (2020-07-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.5.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.5.0...eslint-plugin-formatjs@2.5.1) (2020-07-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.5.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.21...eslint-plugin-formatjs@2.5.0) (2020-07-14)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** bump eslint peerDep to v7, fix [#1827](https://github.com/formatjs/formatjs/issues/1827) ([60056dc](https://github.com/formatjs/formatjs/commit/60056dc27b691f2407a49c2e34631f89cfb5d776))
+
+### Features
+
+* publish ([b6e3465](https://github.com/formatjs/formatjs/commit/b6e3465ac95b3fa481f3c89f077a66ac004f7c27))
+* **eslint-plugin-formatjs:** remove references to @formatjs/macro ([831feed](https://github.com/formatjs/formatjs/commit/831feed1a5db0557038f2d5a246e808511775b84))
+
+# [2.4.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.21...eslint-plugin-formatjs@2.4.0) (2020-07-09)
+
+### Features
+
+* **eslint-plugin-formatjs:** remove references to @formatjs/macro ([831feed](https://github.com/formatjs/formatjs/commit/831feed1a5db0557038f2d5a246e808511775b84))
+
+## [2.3.21](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.20...eslint-plugin-formatjs@2.3.21) (2020-07-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.20](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.19...eslint-plugin-formatjs@2.3.20) (2020-07-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.19](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.18...eslint-plugin-formatjs@2.3.19) (2020-07-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.18](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.17...eslint-plugin-formatjs@2.3.18) (2020-07-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.17](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.16...eslint-plugin-formatjs@2.3.17) (2020-06-26)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.16](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.15...eslint-plugin-formatjs@2.3.16) (2020-06-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.15](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.14...eslint-plugin-formatjs@2.3.15) (2020-06-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.14](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.13...eslint-plugin-formatjs@2.3.14) (2020-06-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.13](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.12...eslint-plugin-formatjs@2.3.13) (2020-06-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.12](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.11...eslint-plugin-formatjs@2.3.12) (2020-06-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.10...eslint-plugin-formatjs@2.3.11) (2020-06-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.9...eslint-plugin-formatjs@2.3.10) (2020-06-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.8...eslint-plugin-formatjs@2.3.9) (2020-06-03)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.7...eslint-plugin-formatjs@2.3.8) (2020-05-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.6...eslint-plugin-formatjs@2.3.7) (2020-05-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.5...eslint-plugin-formatjs@2.3.6) (2020-05-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.4...eslint-plugin-formatjs@2.3.5) (2020-05-23)
+
+- Extracted CLDR unit data has breaking schema change
+
+## [2.3.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.3...eslint-plugin-formatjs@2.3.4) (2020-05-23)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.2...eslint-plugin-formatjs@2.3.3) (2020-05-22)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** add no-id to index ([8e5c0af](https://github.com/formatjs/formatjs/commit/8e5c0afe69944d52653b92c2f08e15363246834a))
+* **eslint-plugin-formatjs:** fix issue where highlight was not on message/description node ([0ab41a9](https://github.com/formatjs/formatjs/commit/0ab41a96b1d0d5ffb35e0f7f8e407d621417a3f2))
+
+## [2.3.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.1...eslint-plugin-formatjs@2.3.2) (2020-05-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.3.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.3.0...eslint-plugin-formatjs@2.3.1) (2020-05-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.3.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.2.5...eslint-plugin-formatjs@2.3.0) (2020-05-16)
+
+### Features
+
+* **eslint-plugin-formatjs:** add rule for no-id ([d7d8159](https://github.com/formatjs/formatjs/commit/d7d81595e9154bf929cc0ea772acfe66719f6104))
+
+## [2.2.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.2.4...eslint-plugin-formatjs@2.2.5) (2020-05-06)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.2.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.2.3...eslint-plugin-formatjs@2.2.4) (2020-05-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## 2.2.3 (2020-04-28)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.2.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.2.1...eslint-plugin-formatjs@2.2.2) (2020-04-25)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** rm hard dep on @typescript-eslint/typescript-estree, fix [#666](https://github.com/formatjs/formatjs/issues/666) ([ed40a8b](https://github.com/formatjs/formatjs/commit/ed40a8b366d370783fcf75e6c98dc6356a9aa03f))
+
+## [2.2.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.2.0...eslint-plugin-formatjs@2.2.1) (2020-04-24)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** add missing dep ([776390e](https://github.com/formatjs/formatjs/commit/776390e9d6cb3bc1eef07b2e92057136cfe95b76))
+
+# [2.2.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.5...eslint-plugin-formatjs@2.2.0) (2020-04-24)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** fix issues with spread element in ([68acfaf](https://github.com/formatjs/formatjs/commit/68acfafdf86907db26a59b447f31bed7d4724466))
+
+### Features
+
+* **eslint-plugin-formatjs:** Add `literal` option to `enforce-description` & `enforce-default-message` ([f20a2d4](https://github.com/formatjs/formatjs/commit/f20a2d4546d2c8cbffec5fa05792649488bbfda1))
+
+## [2.1.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.4...eslint-plugin-formatjs@2.1.5) (2020-04-20)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.1.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.3...eslint-plugin-formatjs@2.1.4) (2020-04-14)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.1.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.2...eslint-plugin-formatjs@2.1.3) (2020-04-12)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.1.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.1...eslint-plugin-formatjs@2.1.2) (2020-04-11)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.1.0...eslint-plugin-formatjs@2.1.1) (2020-03-30)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.0.2...eslint-plugin-formatjs@2.1.0) (2020-03-29)
+
+### Features
+
+* **eslint-plugin-formatjs:** add no-multiple-whitespaces rule ([27222ab](https://github.com/formatjs/formatjs/commit/27222ab58d15511f67fb058ab2c045889682742f))
+
+## [2.0.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.0.1...eslint-plugin-formatjs@2.0.2) (2020-03-18)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [2.0.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@2.0.0...eslint-plugin-formatjs@2.0.1) (2020-03-05)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [2.0.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.6.0...eslint-plugin-formatjs@2.0.0) (2020-03-04)
+
+### Features
+
+* **intl-messageformat-parser:** Add native support for parsing XML tag ([51c49fa](https://github.com/formatjs/formatjs/commit/51c49faa46880ae6e005125c59fa23b59f0e7083))
+
+### BREAKING CHANGES
+
+* **intl-messageformat-parser:** This changes the AST and causes potential conflicts
+with previous parser version
+fix(eslint-plugin-formatjs): Adapt to new parser
+chore(babel-plugin-react-intl): update package lock
+
+# [1.6.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.11...eslint-plugin-formatjs@1.6.0) (2020-03-01)
+
+### Features
+
+* **eslint-plugin-formatjs:** add support for defaultMessage ([#524](https://github.com/formatjs/formatjs/issues/524)) ([63742d6](https://github.com/formatjs/formatjs/commit/63742d697732f2e88176c8f310f89bf65c2f9576))
+
+## [1.5.11](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.10...eslint-plugin-formatjs@1.5.11) (2020-01-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.10](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.9...eslint-plugin-formatjs@1.5.10) (2020-01-22)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.9](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.8...eslint-plugin-formatjs@1.5.9) (2020-01-09)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.8](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.7...eslint-plugin-formatjs@1.5.8) (2020-01-08)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.7](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.6...eslint-plugin-formatjs@1.5.7) (2020-01-06)
+
+### Bug Fixes
+
+* **eslint-plugin-format:** fix eslint-plugin-formatjs type error ([b647552](https://github.com/formatjs/formatjs/commit/b6475523bf816e2ac3be6c03d0b565fccb2b5c29))
+
+## [1.5.6](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.5...eslint-plugin-formatjs@1.5.6) (2019-12-27)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.5](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.4...eslint-plugin-formatjs@1.5.5) (2019-12-26)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** ignore msg decl for enforce-placeholders, fix [#356](https://github.com/formatjs/formatjs/issues/356) ([91915b8](https://github.com/formatjs/formatjs/commit/91915b84eb9c37e069c6b457f4a7249908d58a56))
+
+## [1.5.4](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.3...eslint-plugin-formatjs@1.5.4) (2019-12-04)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.2...eslint-plugin-formatjs@1.5.3) (2019-12-02)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.1...eslint-plugin-formatjs@1.5.2) (2019-12-01)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.5.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.5.0...eslint-plugin-formatjs@1.5.1) (2019-11-26)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** handle non-literal value in descriptor ([b74e0f6](https://github.com/formatjs/formatjs/commit/b74e0f63a022e1bff505df3dd2d8165c9c7ba8fc)), closes [#304](https://github.com/formatjs/formatjs/issues/304)
+
+# [1.5.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.4.3...eslint-plugin-formatjs@1.5.0) (2019-11-25)
+
+### Bug Fixes
+
+* **intl-messageformat-parser:** exclude some more unsupported pattern ([07ec1d1](https://github.com/formatjs/formatjs/commit/07ec1d119169879617f17c542d6992c31ec85856))
+
+### Features
+
+* **eslint-plugin-formatjs:** add supported-datetime-skeleton rules ([c121a9a](https://github.com/formatjs/formatjs/commit/c121a9a9a52f21fbe1fdfc70e31c0275efbd0f8d))
+
+## [1.4.3](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.4.2...eslint-plugin-formatjs@1.4.3) (2019-11-25)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## [1.4.2](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.4.1...eslint-plugin-formatjs@1.4.2) (2019-11-23)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** handle spread attributes in JSX, fix [#292](https://github.com/formatjs/formatjs/issues/292) ([c7e0f6c](https://github.com/formatjs/formatjs/commit/c7e0f6c09fe78688c919c1654a6474f227aa29e9))
+
+## [1.4.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.4.0...eslint-plugin-formatjs@1.4.1) (2019-11-21)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+# [1.4.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.3.1...eslint-plugin-formatjs@1.4.0) (2019-11-20)
+
+### Features
+
+* **eslint-plugin-formatjs:** report when message is invalid ICU ([916d063](https://github.com/formatjs/formatjs/commit/916d06361d6bb30f728fd6e948cf0ae724ba635f))
+
+## [1.3.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.3.0...eslint-plugin-formatjs@1.3.1) (2019-11-10)
+
+### Bug Fixes
+
+* **intl-messageformat:** pass raw locales down to individual formatters ([3a74c2e](https://github.com/formatjs/formatjs/commit/3a74c2e7c6592de3a4f5ca182c5846fe095abe55)), closes [#255](https://github.com/formatjs/formatjs/issues/255)
+
+# [1.3.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.2.0...eslint-plugin-formatjs@1.3.0) (2019-11-07)
+
+### Features
+
+* **eslint-plugin-formatjs:** Add enforce-placeholders rule ([12b9ac1](https://github.com/formatjs/formatjs/commit/12b9ac11a5fb1da4308cf4b6abeb6e8b6adce59f))
+
+# [1.2.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.1.1...eslint-plugin-formatjs@1.2.0) (2019-10-31)
+
+### Features
+
+* **eslint-plugin-formatjs:** add enforce-plural-rules rule ([b6765a6](https://github.com/formatjs/formatjs/commit/b6765a6533b6a749abf79aff2d5801a8d8ad9b22))
+* **eslint-plugin-formatjs:** Also check `intl.formatMessage` calls ([d036de7](https://github.com/formatjs/formatjs/commit/d036de71721e4cf22d6149bde3d7c8006a1497b0))
+
+## [1.1.1](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.1.0...eslint-plugin-formatjs@1.1.1) (2019-10-30)
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** Fix selectordinal check in blacklist-elements ([2149789](https://github.com/formatjs/formatjs/commit/2149789d18f2dc65ae362d9fc9f52e17f44fd682))
+
+# [1.1.0](https://github.com/formatjs/formatjs/compare/eslint-plugin-formatjs@1.0.2...eslint-plugin-formatjs@1.1.0) (2019-10-30)
+
+### Bug Fixes
+
+* **@formatjs/macro:** fix tsconfig build to output the correct dir ([825d2cb](https://github.com/formatjs/formatjs/commit/825d2cb035b76276be259fbff08e0bf456203207))
+
+### Features
+
+* **eslint-plugin-formatjs:** Add support for FormattedMessage ([2df544e](https://github.com/formatjs/formatjs/commit/2df544e6b56d314460204f3f6f11003b57eda47e))
+
+## 1.0.2 (2019-10-30)
+
+**Note:** Version bump only for package eslint-plugin-formatjs
+
+## 1.0.1 (2019-10-30)
+
+**Note:** Version bump only for package eslint-plugin-formatjs

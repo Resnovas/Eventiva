@@ -1,0 +1,657 @@
+import { PostHog } from '@/entrypoints/index.node'
+import { apiImplementation } from './utils'
+import { waitForPromises } from './utils'
+
+vi.mock('../version', () => ({ version: '1.2.3' }))
+
+const mockedFetch = vi.spyOn(globalThis, 'fetch').mockImplementation()
+
+const waitForFlush = async (): Promise<void> => {
+  await waitForPromises()
+  vi.runOnlyPendingTimers()
+  await waitForPromises()
+}
+
+const getLastBatchEvents = (): any[] | undefined => {
+  const call = mockedFetch.mock.calls
+    .slice()
+    .reverse()
+    .find((x) => (x[0] as string).includes('/batch/'))
+  if (!call) return undefined
+  return JSON.parse((call[1] as any).body as any).batch
+}
+
+describe('PostHog Context', () => {
+  let posthog: PostHog
+
+  vi.useFakeTimers()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    posthog = new PostHog('TEST_API_KEY', {
+      host: 'http://example.com',
+      flushAt: 1,
+      fetchRetryCount: 0,
+      disableCompression: true,
+    })
+
+    mockedFetch.mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve('ok'),
+      json: () => Promise.resolve({ status: 'ok' }),
+    } as any)
+  })
+
+  afterEach(async () => {
+    await posthog.shutdown()
+  })
+
+  describe('context lifetime signals', () => {
+    it.each(['withContext', 'enterContext'] as const)('expires %s without cancelling its callback', async (method) => {
+      const controller = new AbortController()
+      const data = { distinctId: 'request-user', sessionId: 'request-session' }
+      const callback = async (): Promise<string> => {
+        expect(posthog.getContext()).toMatchObject(data)
+        controller.abort()
+        await Promise.resolve()
+        expect(posthog.getContext()).toBeUndefined()
+        return 'handler completed'
+      }
+      const result =
+        method === 'withContext'
+          ? posthog.withContext(data, callback, { signal: controller.signal })
+          : posthog.withContext({}, () => {
+              posthog.enterContext(data, { signal: controller.signal })
+              return callback()
+            })
+      expect(await result).toBe('handler completed')
+      expect(posthog.getContext()).toBeUndefined()
+    })
+
+    it.each([
+      ['parent', false],
+      ['parent', true],
+      ['child', false],
+      ['child', true],
+    ] as const)('composes %s expiry with fresh=%s nested scopes', (expired, fresh) => {
+      const parent = new AbortController()
+      const child = new AbortController()
+      posthog.withContext(
+        { distinctId: 'parent-user', sessionId: 'parent-session' },
+        () => {
+          posthog.withContext(
+            { distinctId: 'child-user' },
+            () => {
+              expect(posthog.getContext()).toMatchObject({ distinctId: 'child-user' })
+              const controller = expired === 'parent' ? parent : child
+              controller.abort()
+              if (expired === 'parent' && fresh) expect(posthog.getContext()).toEqual({ distinctId: 'child-user' })
+              else expect(posthog.getContext()).toBeUndefined()
+            },
+            { fresh, signal: child.signal }
+          )
+          if (expired === 'parent') expect(posthog.getContext()).toBeUndefined()
+          else expect(posthog.getContext()).toMatchObject({ distinctId: 'parent-user', sessionId: 'parent-session' })
+        },
+        { signal: parent.signal }
+      )
+    })
+
+    it.each([{ distinctId: 'new-user' }, { sessionId: 'new-session' }])(
+      'starts explicit scopes after expiry with %j',
+      (data) => {
+        const controller = new AbortController()
+        posthog.withContext(
+          { distinctId: 'ended-user', sessionId: 'ended-session' },
+          () => {
+            controller.abort()
+            posthog.withContext(data, () => expect(posthog.getContext()).toEqual(data), { fresh: true })
+            posthog.withContext(data, () => {
+              expect(posthog.getContext()?.distinctId).toBe(data.distinctId)
+              expect(posthog.getContext()?.sessionId).toBe(data.sessionId)
+            })
+          },
+          { signal: controller.signal }
+        )
+      }
+    )
+
+    it('runs a callback with no active context when its signal is already aborted', () => {
+      const controller = new AbortController()
+      controller.abort()
+      const result = posthog.withContext(
+        { distinctId: 'ended-user' },
+        () => {
+          expect(posthog.getContext()).toBeUndefined()
+          return 'handler completed'
+        },
+        { signal: controller.signal }
+      )
+      expect(result).toBe('handler completed')
+    })
+
+    it('isolates signal expiry across concurrent async contexts', async () => {
+      const controllers = [new AbortController(), new AbortController()]
+      const releases: (() => void)[] = []
+      const results = controllers.map((controller, index) =>
+        posthog.withContext(
+          { sessionId: `session-${index}` },
+          async () => {
+            await new Promise<void>((resolve) => releases.push(resolve))
+            return posthog.getContext()?.sessionId
+          },
+          { signal: controller.signal }
+        )
+      )
+      controllers[0].abort()
+      releases.forEach((release) => release())
+      expect(await Promise.all(results)).toEqual([undefined, 'session-1'])
+    })
+  })
+
+  it('should attach context tags to events', async () => {
+    posthog.withContext({ properties: { plan: 'premium', region: 'us-east' } }, () => {
+      posthog.capture({ distinctId: 'user-1', event: 'test_event' })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events).toHaveLength(1)
+    expect(events?.[0].properties).toMatchObject({
+      plan: 'premium',
+      region: 'us-east',
+    })
+  })
+
+  it('should allow explicit properties to override context tags', async () => {
+    posthog.withContext({ properties: { plan: 'free', region: 'us-west' } }, () => {
+      posthog.capture({
+        distinctId: 'user-2',
+        event: 'test_event',
+        properties: { plan: 'enterprise' },
+      })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].properties).toMatchObject({
+      plan: 'enterprise',
+      region: 'us-west',
+    })
+  })
+
+  it('should set $session_id from context sessionId', async () => {
+    posthog.withContext({ sessionId: 'session-123', properties: { env: 'prod' } }, () => {
+      posthog.capture({ distinctId: 'user-3', event: 'test_event' })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].properties).toMatchObject({
+      $session_id: 'session-123',
+      env: 'prod',
+    })
+  })
+
+  it('should use distinctId from context if not explicitly provided', async () => {
+    posthog.withContext({ distinctId: 'context-user' }, () => {
+      posthog.capture({ event: 'test_event' })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].distinct_id).toBe('context-user')
+  })
+
+  it('should merge contexts by default (fresh: false)', async () => {
+    posthog.withContext({ properties: { outer: 'value1', shared: 'parent' } }, () => {
+      posthog.withContext({ properties: { inner: 'value2', shared: 'child' } }, () => {
+        posthog.capture({ distinctId: 'user-4', event: 'test_event' })
+      })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].properties).toMatchObject({
+      outer: 'value1',
+      inner: 'value2',
+      shared: 'child',
+    })
+  })
+
+  it('should isolate contexts when fresh: true', async () => {
+    posthog.withContext({ properties: { outer: 'value1' } }, () => {
+      posthog.withContext(
+        { properties: { inner: 'value2' } },
+        () => {
+          posthog.capture({ distinctId: 'user-5', event: 'test_event' })
+        },
+        { fresh: true }
+      )
+    })
+
+    await waitForPromises()
+    vi.runOnlyPendingTimers()
+    await waitForPromises()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].properties).toMatchObject({
+      inner: 'value2',
+    })
+    expect(events?.[0].properties.outer).toBeUndefined()
+  })
+
+  it('should merge sessionId from parent context', async () => {
+    posthog.withContext({ sessionId: 'session-parent', properties: { level: '1' } }, () => {
+      posthog.withContext({ properties: { level: '2' } }, () => {
+        posthog.capture({ distinctId: 'user-6', event: 'test_event' })
+      })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events?.[0].properties).toMatchObject({
+      $session_id: 'session-parent',
+      level: '2',
+    })
+  })
+
+  it('should use personless processing when no distinctId provided', async () => {
+    posthog.withContext({ properties: { plan: 'free' } }, () => {
+      posthog.capture({ event: 'test_event' })
+    })
+
+    await waitForFlush()
+
+    const events = getLastBatchEvents()
+    expect(events).toHaveLength(1)
+
+    expect(events?.[0].distinct_id).toBeTruthy()
+    expect(typeof events?.[0].distinct_id).toBe('string')
+    expect(events?.[0].properties).toMatchObject({
+      $process_person_profile: false,
+      plan: 'free',
+    })
+  })
+
+  it('should preserve user-to-context pairing across concurrent async operations', async () => {
+    const releases: (() => void)[] = []
+    const operations = Array.from({ length: 50 }, (_, index) => {
+      return posthog.withContext({ properties: { index, operation: `op-${index}` } }, async () => {
+        await new Promise<void>((resolve) => {
+          releases[index] = resolve
+        })
+
+        posthog.capture({
+          distinctId: `user-${index}`,
+          event: 'concurrent_test',
+          properties: { step: 'after_delay' },
+        })
+      })
+    })
+
+    for (let index = operations.length - 1; index >= 0; index--) {
+      releases[index]()
+      await operations[index]
+    }
+
+    await waitForFlush()
+
+    const allEvents: any[] = []
+    mockedFetch.mock.calls.forEach((call) => {
+      if ((call[0] as string).includes('/batch/')) {
+        const batch = JSON.parse((call[1] as any).body as any).batch
+        allEvents.push(...batch)
+      }
+    })
+
+    expect(allEvents).toHaveLength(50)
+
+    expect(allEvents).toEqual(
+      expect.arrayContaining(
+        Array.from({ length: operations.length }, (_, index) =>
+          expect.objectContaining({
+            distinct_id: `user-${index}`,
+            event: 'concurrent_test',
+            properties: expect.objectContaining({
+              index,
+              operation: `op-${index}`,
+              step: 'after_delay',
+            }),
+          })
+        )
+      )
+    )
+  })
+
+  it('should properly inherit and restore context through nested enter/exit operations', async () => {
+    // Enter context A
+    posthog.withContext({ properties: { contextA: 'valueA', level: 'A' } }, () => {
+      // Enter context B (inherits from A by default)
+      posthog.withContext({ properties: { contextB: 'valueB', level: 'B' } }, () => {
+        // Enter context C1 (inherits from B, which has A's stuff)
+        posthog.withContext({ properties: { contextC1: 'valueC1', level: 'C1' } }, () => {
+          // Event 1: Should have A, B, and C1 context
+          posthog.capture({ distinctId: 'user-nested', event: 'event_in_C1' })
+        })
+
+        // Exit C1 - Event 2: Should have A and B, but not C1
+        posthog.capture({ distinctId: 'user-nested', event: 'event_after_C1' })
+
+        // Enter context C2 (inherits from B, which still has A's stuff)
+        posthog.withContext({ properties: { contextC2: 'valueC2', level: 'C2' } }, () => {
+          // Event 3: Should have A, B, and C2 (but not C1)
+          posthog.capture({ distinctId: 'user-nested', event: 'event_in_C2' })
+        })
+
+        // Exit C2 - Event 4: Should have A and B again (no C1 or C2)
+        posthog.capture({ distinctId: 'user-nested', event: 'event_after_C2' })
+      })
+    })
+
+    await waitForFlush()
+
+    const allEvents: any[] = []
+    mockedFetch.mock.calls.forEach((call) => {
+      if ((call[0] as string).includes('/batch/')) {
+        const batch = JSON.parse((call[1] as any).body as any).batch
+        allEvents.push(...batch)
+      }
+    })
+
+    expect(allEvents).toHaveLength(4)
+
+    // Event 1: In context C1 (has A, B, C1)
+    const eventInC1 = allEvents.find((e) => e.event === 'event_in_C1')
+    expect(eventInC1?.properties).toMatchObject({
+      contextA: 'valueA',
+      contextB: 'valueB',
+      contextC1: 'valueC1',
+      level: 'C1', // C1 overrides level
+    })
+    expect(eventInC1?.properties.contextC2).toBeUndefined()
+
+    // Event 2: After exiting C1 (has A, B, but not C1)
+    const eventAfterC1 = allEvents.find((e) => e.event === 'event_after_C1')
+    expect(eventAfterC1?.properties).toMatchObject({
+      contextA: 'valueA',
+      contextB: 'valueB',
+      level: 'B', // Back to B's level
+    })
+    expect(eventAfterC1?.properties.contextC1).toBeUndefined()
+    expect(eventAfterC1?.properties.contextC2).toBeUndefined()
+
+    // Event 3: In context C2 (has A, B, C2, but not C1)
+    const eventInC2 = allEvents.find((e) => e.event === 'event_in_C2')
+    expect(eventInC2?.properties).toMatchObject({
+      contextA: 'valueA',
+      contextB: 'valueB',
+      contextC2: 'valueC2',
+      level: 'C2', // C2 overrides level
+    })
+    expect(eventInC2?.properties.contextC1).toBeUndefined()
+
+    // Event 4: After exiting C2 (has A, B again, no C1 or C2)
+    const eventAfterC2 = allEvents.find((e) => e.event === 'event_after_C2')
+    expect(eventAfterC2?.properties).toMatchObject({
+      contextA: 'valueA',
+      contextB: 'valueB',
+      level: 'B', // Back to B's level again
+    })
+    expect(eventAfterC2?.properties.contextC1).toBeUndefined()
+    expect(eventAfterC2?.properties.contextC2).toBeUndefined()
+  })
+
+  describe('enterContext', () => {
+    it('should set context without a callback wrapper', async () => {
+      posthog.enterContext({ distinctId: 'entered-user', properties: { source: 'test' } })
+
+      posthog.capture({ event: 'test_event' })
+
+      await waitForFlush()
+
+      const events = getLastBatchEvents()
+      expect(events).toHaveLength(1)
+      expect(events?.[0].distinct_id).toBe('entered-user')
+      expect(events?.[0].properties).toMatchObject({
+        source: 'test',
+      })
+    })
+
+    it('should merge with existing context by default', async () => {
+      posthog.enterContext({ distinctId: 'user-1', properties: { outer: 'value1' } })
+      posthog.enterContext({ properties: { inner: 'value2' } })
+
+      posthog.capture({ event: 'test_event' })
+
+      await waitForFlush()
+
+      const events = getLastBatchEvents()
+      expect(events?.[0].distinct_id).toBe('user-1')
+      expect(events?.[0].properties).toMatchObject({
+        outer: 'value1',
+        inner: 'value2',
+      })
+    })
+
+    it('should replace context when fresh: true', async () => {
+      posthog.enterContext({ distinctId: 'user-1', properties: { outer: 'value1' } })
+      posthog.enterContext({ distinctId: 'user-2', properties: { inner: 'value2' } }, { fresh: true })
+
+      posthog.capture({ event: 'test_event' })
+
+      await waitForFlush()
+
+      const events = getLastBatchEvents()
+      expect(events?.[0].distinct_id).toBe('user-2')
+      expect(events?.[0].properties).toMatchObject({
+        inner: 'value2',
+      })
+      expect(events?.[0].properties.outer).toBeUndefined()
+    })
+  })
+
+  describe('feature flag methods with context', () => {
+    it('should return undefined when calling getFeatureFlagResult without distinctId and no context', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      const result = await posthog.getFeatureFlagResult('test-flag')
+
+      expect(result).toBeUndefined()
+    })
+
+    it('should use distinctId from context for getFeatureFlagResult', async () => {
+      mockedFetch.mockImplementation(
+        apiImplementation({
+          decideFlags: { 'test-flag': 'variant-a' },
+          flagsPayloads: { 'test-flag': { key: 'value' } },
+        })
+      )
+
+      const result = await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        return posthog.getFeatureFlagResult('test-flag')
+      })
+
+      expect(result).toMatchObject({
+        key: 'test-flag',
+        enabled: true,
+        variant: 'variant-a',
+      })
+
+      // Verify the /flags/ call used the correct distinctId
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('context-user')
+    })
+
+    it('should prefer explicit distinctId over context', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        await posthog.getFeatureFlagResult('test-flag', 'explicit-user')
+      })
+
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('explicit-user')
+    })
+
+    it('should return empty when calling getAllFlags without distinctId and no context', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      const result = await posthog.getAllFlags()
+
+      expect(result).toEqual({})
+    })
+
+    it('should use distinctId from context for getAllFlags', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': 'variant-a' } }))
+
+      const result = await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        return posthog.getAllFlags()
+      })
+
+      expect(result).toEqual({ 'test-flag': 'variant-a' })
+
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('context-user')
+    })
+
+    it('should prefer explicit distinctId over context for getAllFlags', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        await posthog.getAllFlags('explicit-user')
+      })
+
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('explicit-user')
+    })
+
+    it('should return empty when calling getAllFlagsAndPayloads without distinctId and no context', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      const result = await posthog.getAllFlagsAndPayloads()
+
+      expect(result).toEqual({ featureFlags: {}, featureFlagPayloads: {} })
+    })
+
+    it('should use distinctId from context for getAllFlagsAndPayloads', async () => {
+      mockedFetch.mockImplementation(
+        apiImplementation({
+          decideFlags: { 'test-flag': 'variant-a' },
+          flagsPayloads: { 'test-flag': { key: 'value' } },
+        })
+      )
+
+      const result = await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        return posthog.getAllFlagsAndPayloads()
+      })
+
+      expect(result.featureFlags).toEqual({ 'test-flag': 'variant-a' })
+      expect(result.featureFlagPayloads).toEqual({ 'test-flag': { key: 'value' } })
+
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('context-user')
+    })
+
+    it('should prefer explicit distinctId over context for getAllFlagsAndPayloads', async () => {
+      mockedFetch.mockImplementation(apiImplementation({ decideFlags: { 'test-flag': true } }))
+
+      await posthog.withContext({ distinctId: 'context-user' }, async () => {
+        await posthog.getAllFlagsAndPayloads('explicit-user')
+      })
+
+      const flagsCall = mockedFetch.mock.calls.find((c) => (c[0] as string).includes('/flags/'))
+      const body = JSON.parse((flagsCall?.[1] as any)?.body)
+      expect(body.distinct_id).toBe('explicit-user')
+    })
+  })
+
+  it.each(
+    (['buffered', 'immediate'] as const).flatMap((mode) =>
+      (['context', 'explicit', 'personless'] as const).map((identity) => ({ mode, identity }))
+    )
+  )('keeps $mode exception context after signal expiry with $identity identity', async ({ mode, identity }) => {
+    const controller = new AbortController()
+    const explicit = identity === 'explicit'
+    const contextId = identity === 'personless' ? undefined : 'request-user'
+    const data = { distinctId: contextId, sessionId: 'request-session', properties: { route: '/work' } }
+    let pending: Promise<void> | undefined
+    const capture = (): void => {
+      const error = new Error('operation failed')
+      const properties = explicit ? { $session_id: 'explicit-session', route: '/explicit' } : undefined
+      const distinctId = explicit ? 'explicit-user' : undefined
+      if (mode === 'immediate') pending = posthog.captureExceptionImmediate(error, distinctId, properties)
+      else posthog.captureException(error, distinctId, properties)
+      controller.abort()
+      expect(posthog.getContext()).toBeUndefined()
+    }
+
+    posthog.withContext(data, capture, { signal: controller.signal })
+    await pending
+    await posthog.flush()
+
+    const events = getLastBatchEvents()
+    expect(events).toHaveLength(1)
+    const event = events?.[0]
+    expect(event.event).toBe('$exception')
+    expect(event.properties.$session_id).toBe(explicit ? 'explicit-session' : 'request-session')
+    expect(event.properties.route).toBe(explicit ? '/explicit' : '/work')
+    expect(event.properties.$process_person_profile).toBe(identity === 'personless' ? false : undefined)
+    if (identity === 'personless') expect(event.distinct_id).toEqual(expect.any(String))
+    else expect(event.distinct_id).toBe(explicit ? 'explicit-user' : 'request-user')
+  })
+
+  it.each([
+    {
+      label: 'no distinctId and no context → personless',
+      contextDistinctId: undefined,
+      explicitDistinctId: undefined,
+      expectedDistinctId: (id: string) => expect(typeof id).toBe('string'),
+      expectedProcessPersonProfile: false,
+    },
+    {
+      label: 'context distinctId only → uses context',
+      contextDistinctId: 'context-user',
+      explicitDistinctId: undefined,
+      expectedDistinctId: (id: string) => expect(id).toBe('context-user'),
+      expectedProcessPersonProfile: undefined,
+    },
+    {
+      label: 'explicit distinctId overrides context',
+      contextDistinctId: 'context-user',
+      explicitDistinctId: 'explicit-user',
+      expectedDistinctId: (id: string) => expect(id).toBe('explicit-user'),
+      expectedProcessPersonProfile: undefined,
+    },
+  ])(
+    'captureException $label',
+    async ({ contextDistinctId, explicitDistinctId, expectedDistinctId, expectedProcessPersonProfile }) => {
+      const run = () => posthog.captureException(new Error('test error'), explicitDistinctId)
+      contextDistinctId ? posthog.withContext({ distinctId: contextDistinctId }, run) : run()
+
+      // captureException uses addPendingPromise around an async buildEventMessage that
+      // performs fs I/O for source-context lines. A fixed setTimeout-based wait races
+      // that I/O on slow CI runners. Drain the promise queue deterministically so the
+      // build → capture → flush chain has fully resolved before we assert.
+      await (posthog as any).promiseQueue.join()
+      await waitForFlush()
+
+      const events = getLastBatchEvents()
+      expect(events).toHaveLength(1)
+      expect(events?.[0].event).toBe('$exception')
+      expectedDistinctId(events?.[0].distinct_id)
+      expect(events?.[0].properties.$process_person_profile).toBe(expectedProcessPersonProfile)
+    }
+  )
+})

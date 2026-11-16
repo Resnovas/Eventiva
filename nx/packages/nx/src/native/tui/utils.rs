@@ -1,0 +1,771 @@
+use hashbrown::HashSet;
+
+use crate::native::tui::components::tasks_list::{TaskItem, TaskStatus};
+use crate::native::utils::time::current_timestamp_millis;
+
+/// The single duration formatter — used by the task list, terminal report, and TUI
+/// popup. Exposed to JS as `formatDuration` so all three share one implementation.
+/// 0 (or sub-millisecond) → "<1ms", then "470ms", "13.4s", "1m 30s".
+#[napi(js_name = "formatDuration")]
+pub fn format_duration(ms: f64) -> String {
+    if ms < 1000.0 {
+        let rounded = ms.round() as i64;
+        if rounded == 0 {
+            return "<1ms".to_string();
+        }
+        return format!("{}ms", rounded);
+    }
+    let seconds = (ms / 100.0).round() / 10.0;
+    if seconds >= 60.0 {
+        let total = (ms / 1000.0).round() as i64;
+        return format!("{}m {}s", total / 60, total % 60);
+    }
+    format!("{:.1}s", seconds)
+}
+
+/// Task-list durations call this i64 wrapper: it shares `format_duration` but keeps
+/// live sub-second durations deterministic in snapshots via the cfg(test) guard.
+fn format_task_duration(duration_ms: i64) -> String {
+    #[cfg(test)]
+    {
+        if duration_ms < 1000 {
+            // In tests, return a deterministic value to avoid timing flakiness in snapshots
+            return "<1ms".to_string();
+        }
+    }
+    format_duration(duration_ms as f64)
+}
+
+pub fn format_duration_since(start_ms: i64, end_ms: i64) -> String {
+    format_task_duration(end_ms.saturating_sub(start_ms))
+}
+
+/// Formats the duration from a start time to the current time
+pub fn format_live_duration(start_ms: i64) -> String {
+    let current_ms = current_timestamp_millis();
+    format_task_duration(current_ms.saturating_sub(start_ms))
+}
+
+/// Formats a duration with an optional estimated time.
+///
+/// Returns a string in the format "{actual} ({estimated} avg)" if estimated is provided,
+/// otherwise just "{actual}".
+///
+/// This is the shared formatting pattern used by both the terminal pane and inline app
+/// for displaying task durations.
+pub fn format_duration_with_estimate(actual_ms: i64, estimated_ms: Option<i64>) -> String {
+    let actual_formatted = format_task_duration(actual_ms);
+    if let Some(estimated) = estimated_ms {
+        let estimated_formatted = format_task_duration(estimated);
+        format!("{} ({} avg)", actual_formatted, estimated_formatted)
+    } else {
+        actual_formatted
+    }
+}
+
+/// Append "s" unless `count` is 1 (mirrors the TS `pluralize`; regular plurals).
+pub fn pluralize(count: u32, noun: &str) -> String {
+    if count == 1 {
+        noun.to_string()
+    } else {
+        format!("{noun}s")
+    }
+}
+
+/// Calculate actual duration in milliseconds from epoch-based timing.
+///
+/// This handles the different cases:
+/// - For in-progress tasks: duration from start to now
+/// - For completed tasks: duration from start to end
+/// - For other states: None
+///
+/// # Arguments
+///
+/// * `status` - The task's current status
+/// * `start_time` - Task start time in milliseconds since epoch
+/// * `end_time` - Task end time in milliseconds since epoch (for completed tasks)
+///
+/// # Returns
+///
+/// The duration in milliseconds, or None if duration cannot be calculated.
+pub fn calculate_actual_duration_ms(
+    status: TaskStatus,
+    start_time: Option<i64>,
+    end_time: Option<i64>,
+) -> Option<i64> {
+    let start = start_time?;
+    match status {
+        TaskStatus::InProgress => {
+            // For in-progress tasks, calculate duration from start to now
+            let now = current_timestamp_millis();
+            Some(now - start)
+        }
+        TaskStatus::Success
+        | TaskStatus::Failure
+        | TaskStatus::LocalCache
+        | TaskStatus::LocalCacheKeptExisting
+        | TaskStatus::RemoteCache => {
+            // For completed tasks, calculate duration from start to end
+            let end = end_time?;
+            Some(end - start)
+        }
+        _ => None,
+    }
+}
+
+/// Ensures that all newlines in the output are properly handled by converting
+/// lone \n to \r\n sequences. This mimics terminal driver behavior.
+pub fn normalize_newlines(input: &[u8]) -> Vec<u8> {
+    let mut output = Vec::with_capacity(input.len());
+    let mut i = 0;
+    while i < input.len() {
+        if input[i] == b'\n' {
+            // If this \n isn't preceded by \r, add the \r
+            if i == 0 || input[i - 1] != b'\r' {
+                output.push(b'\r');
+            }
+        }
+        output.push(input[i]);
+        i += 1;
+    }
+    output
+}
+
+use super::pty::PtyInstance;
+
+/// ANSI escape sequence to hide the cursor
+/// This is appended to output to prevent a confusing blinking cursor
+/// when viewing cache hits or completed task output.
+const HIDE_CURSOR_ESCAPE: &str = "\x1b[?25l";
+
+/// Writes output to a PTY instance, normalizing newlines and hiding the cursor.
+///
+/// This is the common implementation used by both App and InlineApp for
+/// processing terminal output from tasks.
+///
+/// # Arguments
+///
+/// * `pty` - The PTY instance to write output to
+/// * `output` - The raw output string to process
+pub fn write_output_to_pty(pty: &PtyInstance, output: &str) {
+    let output_with_hidden_cursor = format!("{}{}", output, HIDE_CURSOR_ESCAPE);
+    let normalized_output = normalize_newlines(output_with_hidden_cursor.as_bytes());
+    pty.process_output(&normalized_output);
+}
+
+use super::theme::THEME;
+use ratatui::style::{Modifier, Style};
+use ratatui::text::Span;
+
+/// Returns the base style (with foreground color) for a given task status.
+///
+/// This provides consistent color coding across different TUI components:
+/// - Success/Cache: Green
+/// - Failure: Red
+/// - Skipped: Yellow/Warning
+/// - InProgress/Shared: Blue/Info
+/// - NotStarted/Stopped: Gray/Secondary
+pub fn get_task_status_style(status: TaskStatus) -> Style {
+    Style::default().fg(match status {
+        TaskStatus::Success
+        | TaskStatus::LocalCacheKeptExisting
+        | TaskStatus::LocalCache
+        | TaskStatus::RemoteCache => THEME.success,
+        TaskStatus::Failure => THEME.error,
+        TaskStatus::Skipped => THEME.warning,
+        TaskStatus::InProgress | TaskStatus::Shared => THEME.info,
+        TaskStatus::NotStarted | TaskStatus::Stopped => THEME.secondary_fg,
+    })
+}
+
+/// Returns a styled icon Span for a given task status.
+///
+/// Icons:
+/// - ✔ for success/cache states
+/// - ✖ for failure
+/// - ⏭ for skipped
+/// - ● for in progress/shared
+/// - ◼ for stopped
+/// - · for not started
+pub fn get_task_status_icon(status: TaskStatus, padding: usize) -> Span<'static> {
+    match status {
+        TaskStatus::Success
+        | TaskStatus::LocalCacheKeptExisting
+        | TaskStatus::LocalCache
+        | TaskStatus::RemoteCache => Span::styled(
+            pad_symbol("✔", padding),
+            Style::default()
+                .fg(THEME.success)
+                .add_modifier(Modifier::BOLD),
+        ),
+        TaskStatus::Failure => Span::styled(
+            pad_symbol("✖", padding),
+            Style::default()
+                .fg(THEME.error)
+                .add_modifier(Modifier::BOLD),
+        ),
+        TaskStatus::Skipped => Span::styled(
+            pad_symbol("⏭", padding),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        ),
+        TaskStatus::InProgress | TaskStatus::Shared => Span::styled(
+            pad_symbol("●", padding),
+            Style::default().fg(THEME.info).add_modifier(Modifier::BOLD),
+        ),
+        TaskStatus::Stopped => Span::styled(
+            pad_symbol("◼", padding),
+            Style::default()
+                .fg(THEME.secondary_fg)
+                .add_modifier(Modifier::BOLD),
+        ),
+        TaskStatus::NotStarted => Span::styled(
+            pad_symbol("·", padding),
+            Style::default()
+                .fg(THEME.secondary_fg)
+                .add_modifier(Modifier::BOLD),
+        ),
+    }
+}
+
+/// Sorts a list of TaskItems with a stable, total ordering.
+///
+/// The sort order is:
+/// 1. InProgress tasks first
+/// 2. Highlighted tasks second (tasks whose names appear in the highlighted_names list)
+/// 3. Failure tasks third
+/// 4. Other completed tasks fourth (sorted by end_time if available)
+/// 5. NotStarted tasks last
+///
+/// Within each status category:
+/// - For in-progress tasks: sort by start_time if available, then by name
+/// - For completed tasks: sort by end_time if available, then by name
+/// - For other statuses: sort by name
+pub fn sort_task_items(tasks: &mut [TaskItem], highlighted_names: &HashSet<String>) {
+    tasks.sort_by(|a, b| {
+        // Map status to a numeric category for sorting
+        let status_to_category = |status: &TaskStatus, name: &str| -> u8 {
+            if highlighted_names.contains(&name.to_string()) {
+                return 1; // Highlighted tasks come second
+            }
+
+            match status {
+                TaskStatus::InProgress | TaskStatus::Shared => 0,
+                TaskStatus::Failure => 2,
+                TaskStatus::Success
+                | TaskStatus::LocalCacheKeptExisting
+                | TaskStatus::LocalCache
+                | TaskStatus::RemoteCache
+                | TaskStatus::Skipped
+                | TaskStatus::Stopped => 3,
+                TaskStatus::NotStarted => 4,
+            }
+        };
+
+        let a_category = status_to_category(&a.status, &a.name);
+        let b_category = status_to_category(&b.status, &b.name);
+
+        // First compare by status category
+        if a_category != b_category {
+            return a_category.cmp(&b_category);
+        }
+
+        // For in-progress tasks, sort by start_time first, then name
+        if a_category == 0 {
+            match (a.start_time, b.start_time) {
+                (Some(time_a), Some(time_b)) => {
+                    let time_cmp = time_a.cmp(&time_b);
+                    if time_cmp != std::cmp::Ordering::Equal {
+                        return time_cmp;
+                    }
+                }
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+                (None, None) => {}
+            }
+            // Tiebreaker: sort by name alphabetically
+            return a.name.cmp(&b.name);
+        }
+
+        // For completed tasks, sort by end_time if available
+        if a_category == 2 || a_category == 3 {
+            // Failure or Success categories
+            match (a.end_time, b.end_time) {
+                (Some(time_a), Some(time_b)) => {
+                    let time_cmp = time_a.cmp(&time_b);
+                    if time_cmp != std::cmp::Ordering::Equal {
+                        return time_cmp;
+                    }
+                }
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+                (None, None) => {}
+            }
+        }
+
+        // For all other cases or as a tiebreaker, sort by name
+        a.name.cmp(&b.name)
+    });
+}
+
+fn pad_symbol(symbol: &str, padding: usize) -> String {
+    format!("{:^width$}", symbol, width = padding * 2 + 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Kept in lockstep with the TS formatDuration; drift would make the popup and
+    // the terminal report disagree.
+    #[test]
+    fn format_duration_matches_ts() {
+        assert_eq!(format_duration(0.0), "<1ms");
+        assert_eq!(format_duration(0.4), "<1ms"); // rounds to 0
+        assert_eq!(format_duration(0.6), "1ms");
+        assert_eq!(format_duration(470.0), "470ms");
+        assert_eq!(format_duration(999.0), "999ms");
+        assert_eq!(format_duration(1000.0), "1.0s");
+        assert_eq!(format_duration(1500.0), "1.5s");
+        assert_eq!(format_duration(9999.0), "10.0s");
+        assert_eq!(format_duration(10000.0), "10.0s");
+        assert_eq!(format_duration(59950.0), "1m 0s");
+        assert_eq!(format_duration(60000.0), "1m 0s");
+        assert_eq!(format_duration(90000.0), "1m 30s");
+        assert_eq!(format_duration(119500.0), "2m 0s");
+    }
+
+    #[test]
+    fn pluralize_matches_ts() {
+        assert_eq!(pluralize(0, "task"), "tasks");
+        assert_eq!(pluralize(1, "task"), "task");
+        assert_eq!(pluralize(2, "task"), "tasks");
+    }
+
+    // Helper function to create a TaskItem for testing
+    fn create_task(name: &str, status: TaskStatus, end_time: Option<i64>) -> TaskItem {
+        let mut task = TaskItem::new(name.to_string(), false);
+        task.status = status;
+        task.end_time = end_time;
+        task
+    }
+
+    #[test]
+    fn test_sort_by_status_category() {
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::NotStarted, None),
+            create_task("task2", TaskStatus::InProgress, None),
+            create_task("task3", TaskStatus::Success, Some(100)),
+            create_task("task4", TaskStatus::Failure, Some(200)),
+        ];
+
+        sort_task_items(&mut tasks, &HashSet::new());
+
+        // Expected order: InProgress, Failure, Success, NotStarted
+        assert_eq!(tasks[0].status, TaskStatus::InProgress);
+        assert_eq!(tasks[1].status, TaskStatus::Failure);
+        assert_eq!(tasks[2].status, TaskStatus::Success);
+        assert_eq!(tasks[3].status, TaskStatus::NotStarted);
+    }
+
+    #[test]
+    fn test_highlighted_tasks() {
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::NotStarted, None),
+            create_task("task2", TaskStatus::InProgress, None),
+            create_task("task3", TaskStatus::Success, Some(100)),
+            create_task("task4", TaskStatus::Failure, Some(200)),
+            create_task("highlighted1", TaskStatus::NotStarted, None),
+            create_task("highlighted2", TaskStatus::Success, Some(300)),
+        ];
+
+        // Highlight two tasks, one that is NotStarted and one that is Success
+        let highlighted = HashSet::from(["highlighted1".to_string(), "highlighted2".to_string()]);
+        sort_task_items(&mut tasks, &highlighted);
+
+        // Expected order: InProgress (task2), Highlighted (highlighted1, highlighted2),
+        // Failure (task4), Success (task3), NotStarted (task1)
+        assert_eq!(tasks[0].name, "task2"); // InProgress
+        assert!(tasks[1].name == "highlighted1" || tasks[1].name == "highlighted2");
+        assert!(tasks[2].name == "highlighted1" || tasks[2].name == "highlighted2");
+        assert_eq!(tasks[3].name, "task4"); // Failure
+        assert_eq!(tasks[4].name, "task3"); // Success
+        assert_eq!(tasks[5].name, "task1"); // NotStarted
+    }
+
+    #[test]
+    fn test_sort_completed_tasks_by_end_time() {
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::Success, Some(300)),
+            create_task("task2", TaskStatus::Success, Some(100)),
+            create_task("task3", TaskStatus::Success, Some(200)),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Should be sorted by end_time: 100, 200, 300
+        assert_eq!(tasks[0].name, "task2");
+        assert_eq!(tasks[1].name, "task3");
+        assert_eq!(tasks[2].name, "task1");
+    }
+
+    #[test]
+    fn test_sort_with_missing_end_times() {
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::Success, None),
+            create_task("task2", TaskStatus::Success, Some(100)),
+            create_task("task3", TaskStatus::Success, None),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Tasks with end_time come before those without
+        assert_eq!(tasks[0].name, "task2");
+        // Then alphabetical for those without end_time
+        assert_eq!(tasks[1].name, "task1");
+        assert_eq!(tasks[2].name, "task3");
+    }
+
+    #[test]
+    fn test_sort_same_status_no_end_time_by_name() {
+        let mut tasks = vec![
+            create_task("c", TaskStatus::NotStarted, None),
+            create_task("a", TaskStatus::NotStarted, None),
+            create_task("b", TaskStatus::NotStarted, None),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Should be sorted alphabetically: a, b, c
+        assert_eq!(tasks[0].name, "a");
+        assert_eq!(tasks[1].name, "b");
+        assert_eq!(tasks[2].name, "c");
+    }
+
+    #[test]
+    fn test_sort_in_progress_tasks_by_start_time() {
+        // Create in-progress tasks with different start times
+        let mut task1 = TaskItem::new("task1".to_string(), false);
+        task1.status = TaskStatus::InProgress;
+        task1.start_time = Some(300);
+
+        let mut task2 = TaskItem::new("task2".to_string(), false);
+        task2.status = TaskStatus::InProgress;
+        task2.start_time = Some(100);
+
+        let mut task3 = TaskItem::new("task3".to_string(), false);
+        task3.status = TaskStatus::InProgress;
+        task3.start_time = Some(200);
+
+        let mut tasks = vec![task1, task2, task3];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Should be sorted by start_time: 100, 200, 300
+        assert_eq!(tasks[0].name, "task2");
+        assert_eq!(tasks[1].name, "task3");
+        assert_eq!(tasks[2].name, "task1");
+    }
+
+    #[test]
+    fn test_sort_in_progress_tasks_with_same_start_time() {
+        // Create in-progress tasks with the same start time
+        let mut task_c = TaskItem::new("c".to_string(), false);
+        task_c.status = TaskStatus::InProgress;
+        task_c.start_time = Some(100);
+
+        let mut task_a = TaskItem::new("a".to_string(), false);
+        task_a.status = TaskStatus::InProgress;
+        task_a.start_time = Some(100);
+
+        let mut task_b = TaskItem::new("b".to_string(), false);
+        task_b.status = TaskStatus::InProgress;
+        task_b.start_time = Some(100);
+
+        let mut tasks = vec![task_c, task_a, task_b];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // When start_times are the same, should sort by name alphabetically
+        assert_eq!(tasks[0].name, "a");
+        assert_eq!(tasks[1].name, "b");
+        assert_eq!(tasks[2].name, "c");
+    }
+
+    #[test]
+    fn test_sort_in_progress_tasks_with_missing_start_times() {
+        // Create in-progress tasks, some without start times
+        let mut task1 = TaskItem::new("task1".to_string(), false);
+        task1.status = TaskStatus::InProgress;
+        task1.start_time = None;
+
+        let mut task2 = TaskItem::new("task2".to_string(), false);
+        task2.status = TaskStatus::InProgress;
+        task2.start_time = Some(100);
+
+        let mut task3 = TaskItem::new("task3".to_string(), false);
+        task3.status = TaskStatus::InProgress;
+        task3.start_time = None;
+
+        let mut tasks = vec![task1, task2, task3];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Tasks with start_time come before those without
+        assert_eq!(tasks[0].name, "task2");
+        // Then alphabetical for those without start_time
+        assert_eq!(tasks[1].name, "task1");
+        assert_eq!(tasks[2].name, "task3");
+    }
+
+    #[test]
+    fn test_sort_mixed_statuses_and_end_times() {
+        let mut tasks = vec![
+            create_task("z", TaskStatus::NotStarted, None),
+            create_task("y", TaskStatus::InProgress, None),
+            create_task("x", TaskStatus::Success, Some(300)),
+            create_task("w", TaskStatus::Failure, Some(200)),
+            create_task("v", TaskStatus::Success, None),
+            create_task("u", TaskStatus::InProgress, None),
+            create_task("t", TaskStatus::Failure, None),
+            create_task("s", TaskStatus::NotStarted, None),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Check the order within each status group
+        let names: Vec<&str> = tasks.iter().map(|t| &t.name[..]).collect();
+
+        // First group: InProgress
+        assert_eq!(tasks[0].status, TaskStatus::InProgress);
+        assert_eq!(tasks[1].status, TaskStatus::InProgress);
+        assert!(names[0..2].contains(&"u"));
+        assert!(names[0..2].contains(&"y"));
+        assert_eq!(names[0], "u"); // Alphabetical within group
+
+        // Second group: Failure
+        assert_eq!(tasks[2].status, TaskStatus::Failure);
+        assert_eq!(tasks[3].status, TaskStatus::Failure);
+        assert_eq!(names[2], "w"); // With end_time comes first
+        assert_eq!(names[3], "t"); // Without end_time comes second
+
+        // Third group: Success
+        assert_eq!(tasks[4].status, TaskStatus::Success);
+        assert_eq!(tasks[5].status, TaskStatus::Success);
+        assert_eq!(names[4], "x"); // With end_time comes first
+        assert_eq!(names[5], "v"); // Without end_time comes second
+
+        // Fourth group: NotStarted
+        assert_eq!(tasks[6].status, TaskStatus::NotStarted);
+        assert_eq!(tasks[7].status, TaskStatus::NotStarted);
+        assert_eq!(names[6], "s"); // Alphabetical within group
+        assert_eq!(names[7], "z");
+    }
+
+    #[test]
+    fn test_sort_with_same_end_times() {
+        let mut tasks = vec![
+            create_task("c", TaskStatus::Success, Some(100)),
+            create_task("a", TaskStatus::Success, Some(100)),
+            create_task("b", TaskStatus::Success, Some(100)),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // When end_times are the same, should sort by name
+        assert_eq!(tasks[0].name, "a");
+        assert_eq!(tasks[1].name, "b");
+        assert_eq!(tasks[2].name, "c");
+    }
+
+    #[test]
+    fn test_sort_empty_list() {
+        let mut tasks: Vec<TaskItem> = vec![];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        // Should not panic on empty list
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        assert!(tasks.is_empty());
+    }
+
+    #[test]
+    fn test_sort_single_task() {
+        let mut tasks = vec![create_task("task", TaskStatus::Success, Some(100))];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        // Should not change a single-element list
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].name, "task");
+    }
+
+    #[test]
+    fn test_sort_stability_for_equal_elements() {
+        // Create tasks with identical properties
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::Success, Some(100)),
+            create_task("task1", TaskStatus::Success, Some(100)),
+        ];
+
+        // Mark the original positions
+        let original_names = tasks.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        // Sort should maintain original order for equal elements
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        let sorted_names = tasks.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
+        assert_eq!(sorted_names, original_names);
+    }
+
+    #[test]
+    fn test_sort_edge_cases() {
+        // Test with extreme end_time values
+        let mut tasks = vec![
+            create_task("a", TaskStatus::Success, Some(i64::MAX)),
+            create_task("b", TaskStatus::Success, Some(0)),
+            create_task("c", TaskStatus::Success, Some(i64::MAX / 2)),
+        ];
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Should sort by end_time: 0, MAX/2, MAX
+        assert_eq!(tasks[0].name, "b");
+        assert_eq!(tasks[1].name, "c");
+        assert_eq!(tasks[2].name, "a");
+    }
+
+    #[test]
+    fn test_highlighted_tasks_empty_list() {
+        let mut tasks = vec![
+            create_task("task1", TaskStatus::NotStarted, None),
+            create_task("task2", TaskStatus::InProgress, None),
+            create_task("task3", TaskStatus::Success, Some(100)),
+            create_task("task4", TaskStatus::Failure, Some(200)),
+        ];
+
+        // Empty highlighted list should not affect sorting
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Expected order: InProgress, Failure, Success, NotStarted
+        assert_eq!(tasks[0].name, "task2"); // InProgress
+        assert_eq!(tasks[1].name, "task4"); // Failure
+        assert_eq!(tasks[2].name, "task3"); // Success
+        assert_eq!(tasks[3].name, "task1"); // NotStarted
+    }
+
+    #[test]
+    fn test_large_random_dataset() {
+        use rand::rngs::StdRng;
+        use rand::{Rng, SeedableRng};
+
+        // Use a fixed seed for reproducibility
+        let mut rng = StdRng::seed_from_u64(42);
+
+        // Generate a large dataset with random properties
+        let statuses = [
+            TaskStatus::InProgress,
+            TaskStatus::Failure,
+            TaskStatus::Success,
+            TaskStatus::NotStarted,
+        ];
+
+        let mut tasks: Vec<TaskItem> = (0..1000)
+            .map(|i| {
+                let name = format!("task{}", i);
+                let status = statuses[rng.random_range(0..statuses.len())];
+                let end_time = if rng.random_bool(0.7) {
+                    Some(rng.random_range(100..10000))
+                } else {
+                    None
+                };
+
+                create_task(&name, status, end_time)
+            })
+            .collect();
+
+        let empty_highlighted: HashSet<String> = HashSet::new();
+        // Sort should not panic with large random dataset
+        sort_task_items(&mut tasks, &empty_highlighted);
+
+        // Verify the sort maintains the expected ordering rules
+        for i in 1..tasks.len() {
+            let a = &tasks[i - 1];
+            let b = &tasks[i];
+
+            // Map status to category for comparison
+            let status_to_category = |status: &TaskStatus, _: &str| -> u8 {
+                // In this test we're using an empty highlighted list
+                match status {
+                    TaskStatus::InProgress | TaskStatus::Shared => 0,
+                    TaskStatus::Failure => 2,
+                    TaskStatus::Success
+                    | TaskStatus::LocalCacheKeptExisting
+                    | TaskStatus::LocalCache
+                    | TaskStatus::RemoteCache
+                    | TaskStatus::Stopped
+                    | TaskStatus::Skipped => 3,
+                    TaskStatus::NotStarted => 4,
+                }
+            };
+
+            let a_category = status_to_category(&a.status, &a.name);
+            let b_category = status_to_category(&b.status, &b.name);
+
+            if a_category < b_category {
+                // If a's category is less than b's, that's correct
+                continue;
+            } else if a_category > b_category {
+                // If a's category is greater than b's, that's an error
+                panic!(
+                    "Sort order violation: {:?} should come before {:?}",
+                    b.name, a.name
+                );
+            }
+
+            // Same category, check end_time for completed tasks
+            if a_category == 2 || a_category == 3 {
+                match (a.end_time, b.end_time) {
+                    (Some(time_a), Some(time_b)) => {
+                        if time_a > time_b {
+                            panic!(
+                                "Sort order violation: task with end_time {} should come before task with end_time {}",
+                                time_b, time_a
+                            );
+                        } else if time_a < time_b {
+                            continue;
+                        }
+                        // If end times are equal, fall through to name check
+                    }
+                    (Some(_), None) => continue, // Correct order
+                    (None, Some(_)) => panic!(
+                        "Sort order violation: task with end_time should come before task without end_time"
+                    ),
+                    (None, None) => {} // Fall through to name check
+                }
+            }
+
+            // If we get here, we're comparing names within the same category
+            // and with the same end_time status
+            if a.name > b.name {
+                panic!(
+                    "Sort order violation: task named {} should come before task named {}",
+                    b.name, a.name
+                );
+            }
+        }
+    }
+}

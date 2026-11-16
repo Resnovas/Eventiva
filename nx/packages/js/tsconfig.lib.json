@@ -1,0 +1,51 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "declarationDir": "dist",
+    "declarationMap": false,
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "types": ["node"],
+    "composite": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "./src/**/test-fixtures/**/*",
+    "jest.config.ts",
+    "jest.config.cts"
+  ],
+  "include": ["*.ts", "src/**/*.ts", "plugins/**/*.ts"],
+  "nx": {
+    "sync": {
+      // devDependencies only so pnpm links them for `ensurePackage` to resolve;
+      // nothing here imports them, and each already references `js`, so the
+      // reference sync would otherwise add is a cycle TypeScript rejects.
+      "ignoredDependencies": [
+        "@nx/oxlint",
+        "esbuild",
+        "eslint",
+        "jest",
+        "rollup",
+        "vite",
+        "vitest"
+      ]
+    }
+  },
+  "references": [
+    {
+      "path": "../devkit/tsconfig.lib.json"
+    },
+    {
+      "path": "../nx/tsconfig.lib.json"
+    },
+    {
+      "path": "../workspace/tsconfig.lib.json"
+    }
+  ]
+}

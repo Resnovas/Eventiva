@@ -1,0 +1,25 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowSingleExtends": {
+        "description": "Whether to allow empty interfaces that extend a single other interface.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to allow empty interfaces that extend a single other interface. */
+    allowSingleExtends?: boolean;
+  },
+];

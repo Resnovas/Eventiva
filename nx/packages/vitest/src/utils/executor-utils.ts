@@ -1,0 +1,9 @@
+export function loadViteDynamicImport() {
+  return Function('return import("vite")')() as Promise<typeof import('vite')>;
+}
+
+export function loadVitestConfigDynamicImport() {
+  return Function('return import("vitest/config")')() as Promise<
+    typeof import('vitest/config')
+  >;
+}

@@ -1,0 +1,112 @@
+import type { TSESTree } from '@typescript-eslint/utils';
+import type * as ts from 'typescript';
+
+import * as tsutils from 'ts-api-utils';
+
+import {
+  createRule,
+  getConstrainedTypeAtLocation,
+  getParserServices,
+  getTypeName,
+  isStaticMemberAccessOfValue,
+} from '../util';
+
+export type Options = [
+  {
+    ignoreStringArrays?: boolean;
+  },
+];
+export type MessageIds = 'requireCompare';
+
+export default createRule<Options, MessageIds>({
+  name: 'require-array-sort-compare',
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Require `Array#sort` and `Array#toSorted` calls to always provide a `compareFunction`',
+      requiresTypeChecking: true,
+    },
+    messages: {
+      requireCompare: "Require 'compare' argument.",
+    },
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ignoreStringArrays: {
+            type: 'boolean',
+            description:
+              'Whether to ignore arrays in which all elements are strings.',
+          },
+        },
+      },
+    ],
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- For compatibility with ESLint 8, see #12842
+  defaultOptions: [
+    {
+      ignoreStringArrays: true,
+    },
+  ],
+
+  create(context, [options]) {
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
+
+    /**
+     * Check if a given node is an array which all elements are string.
+     */
+    function isStringArrayNode(node: TSESTree.Expression): boolean {
+      const type = getConstrainedTypeAtLocation(services, node);
+
+      if (checker.isArrayType(type) || checker.isTupleType(type)) {
+        // Before TS 5.1, a constrained type parameter's array type has an extra `this` type argument
+        const typeArgs = checker
+          .getTypeArguments(type)
+          .slice(0, type.target.typeParameters?.length);
+
+        return typeArgs.every(arg => {
+          const typeName = getTypeName(
+            checker,
+            checker.getBaseConstraintOfType(arg) ?? arg,
+          );
+
+          return typeName === 'string';
+        });
+      }
+      return false;
+    }
+
+    function checkSortArgument(callee: TSESTree.MemberExpression): void {
+      if (!isStaticMemberAccessOfValue(callee, context, 'sort', 'toSorted')) {
+        return;
+      }
+      const calleeObjType = getConstrainedTypeAtLocation(
+        services,
+        callee.object,
+      );
+
+      if (options.ignoreStringArrays && isStringArrayNode(callee.object)) {
+        return;
+      }
+
+      if (isAlwaysArray(calleeObjType, checker)) {
+        context.report({ node: callee.parent, messageId: 'requireCompare' });
+      }
+    }
+
+    return {
+      'CallExpression[arguments.length=0] > MemberExpression':
+        checkSortArgument,
+    };
+  },
+});
+
+function isAlwaysArray(type: ts.Type, checker: ts.TypeChecker): boolean {
+  return tsutils
+    .unionConstituents(type)
+    .every(t => checker.isArrayType(t) || checker.isTupleType(t));
+}

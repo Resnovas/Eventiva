@@ -1,0 +1,753 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { EventEmitter } from 'events';
+import { types } from 'util';
+import debug from 'debug';
+import { asLocator } from '@isomorphic/locatorGenerators';
+import { locatorOrSelectorAsSelector } from '@isomorphic/locatorParser';
+import { ManualPromise } from '@isomorphic/manualPromise';
+import { eventsHelper } from '@utils/eventsHelper';
+import { disposeAll } from '@isomorphic/disposable';
+import { waitForCompletion, eventWaiter } from './utils';
+import { LogFile } from './logFile';
+import { ModalState } from './tool';
+import { handleDialog } from './dialogs';
+import { uploadFile } from './files';
+import { listWebMCPTools } from './webmcp';
+
+import type { AriaSnapshotJSON } from '@isomorphic/ariaSnapshot';
+import type { Disposable } from '@isomorphic/disposable';
+import type { Context, ContextConfig } from './context';
+import type { WebMCPListing } from './webmcp';
+import type * as playwright from '../../..';
+
+const TabEvents = {
+  modalState: 'modalState'
+};
+
+type TabEventsInterface = {
+  [TabEvents.modalState]: [modalState: ModalState];
+};
+
+type Download = {
+  download: playwright.Download;
+  finished: boolean;
+  outputFile: string;
+};
+
+type ConsoleLogEntry = {
+  type: 'console';
+  wallTime: number;
+  message: ConsoleMessage;
+};
+
+type DownloadStartLogEntry = {
+  type: 'download-start';
+  wallTime: number;
+  download: Download;
+};
+
+type DownloadFinishLogEntry = {
+  type: 'download-finish';
+  wallTime: number;
+  download: Download;
+};
+
+type RequestLogEntry = {
+  type: 'request';
+  wallTime: number;
+  request: playwright.Request;
+};
+
+type EventEntry = ConsoleLogEntry | DownloadStartLogEntry | DownloadFinishLogEntry | RequestLogEntry;
+
+type RequestEntry = {
+  index: number;
+  request: playwright.Request;
+};
+
+// Avoid unbounded memory growth.
+const kMaxEarlierNavigationRequests = 200;
+
+
+export type TabHeader = {
+  title: string;
+  url: string;
+  current: boolean;
+  crashed: boolean;
+  mainDocumentStatus?: { status: number, statusText: string };
+  console: { total: number, warnings: number, errors: number };
+  webmcpToolCount?: number;
+  isolatedContext?: string;
+};
+
+type TabSnapshot = {
+  ariaSnapshot: string;
+  ariaSnapshotJSON?: AriaSnapshotJSON;
+  modalStates: ModalState[];
+  events: EventEntry[];
+  consoleLink?: string;
+};
+
+export class Tab extends EventEmitter<TabEventsInterface> {
+  readonly context: Context;
+  readonly page: playwright.Page;
+  readonly isolatedContext: string | undefined;
+  private _lastHeader: TabHeader = { title: 'about:blank', url: 'about:blank', current: false, crashed: false, console: { total: 0, warnings: 0, errors: 0 } };
+  private _downloads: Download[] = [];
+  private _requests: RequestEntry[] = [];
+  private _lastRequestIndex = 0;
+  private _navigationRequestIndex = 0;
+  private _mainDocumentStatus: { status: number, statusText: string } | undefined;
+  private _onPageClose: (tab: Tab) => void;
+  crashed = false;
+  private _modalStates: ModalState[] = [];
+  private _initializedPromise: Promise<void>;
+  private _recentEventEntries: EventEntry[] = [];
+  private _webmcpTools: WebMCPListing | undefined;
+  private _consoleLog: LogFile;
+  private _eventHandlerErrors: ConsoleMessage[] = [];
+  private _disposables: Disposable[];
+  readonly actionTimeoutOptions: { timeout?: number; };
+  readonly navigationTimeoutOptions: { timeout?: number; };
+  readonly expectTimeoutOptions: { timeout?: number; };
+
+  constructor(context: Context, page: playwright.Page, isolatedContext: string | undefined, onPageClose: (tab: Tab) => void) {
+    super();
+    this.context = context;
+    this.page = page;
+    this.isolatedContext = isolatedContext;
+    this._onPageClose = onPageClose;
+    const p = page;
+    this._disposables = [
+      eventsHelper.addEventListener(p, 'console', event => this._handleConsoleMessage(messageToConsoleMessage(event))),
+      eventsHelper.addEventListener(p, 'pageerror', error => this._handleConsoleMessage(pageErrorToConsoleMessage(error))),
+      eventsHelper.addEventListener(p, 'error', error => this.logError(error)),
+      eventsHelper.addEventListener(p, 'request', request => this._handleRequest(request)),
+      eventsHelper.addEventListener(p, 'response', response => this._handleResponse(response)),
+      eventsHelper.addEventListener(p, 'requestfailed', request => this._handleRequestFailed(request)),
+      eventsHelper.addEventListener(p, 'close', () => this._onClose()),
+      eventsHelper.addEventListener(p, 'crash', () => { this.crashed = true; }),
+      eventsHelper.addEventListener(p, 'filechooser', chooser => {
+        this.setModalState({
+          type: 'fileChooser',
+          description: 'File chooser',
+          fileChooser: chooser,
+          clearedBy: { tool: uploadFile.schema.name, skill: 'upload' }
+        });
+      }),
+      eventsHelper.addEventListener(p, 'dialog', dialog => this._dialogShown(dialog)),
+      eventsHelper.addEventListener(p, 'dialogclosed', dialog => this._dialogClosed(dialog)),
+      eventsHelper.addEventListener(p, 'download', download => {
+        this._downloadStarted(download).catch(e => debug('pw:tools:error')(e));
+      }),
+    ];
+    // eslint-disable-next-line no-restricted-syntax
+    (page as any)[tabSymbol] = this;
+    const wallTime = Date.now();
+    this._consoleLog = new LogFile(this.context, wallTime, 'console', 'Console');
+    this._initializedPromise = this._initialize();
+    this.actionTimeoutOptions = { timeout: context.config.timeouts?.action };
+    this.navigationTimeoutOptions = { timeout: context.config.timeouts?.navigation };
+    this.expectTimeoutOptions = { timeout: context.config.timeouts?.expect };
+  }
+
+  async dispose() {
+    await disposeAll(this._disposables);
+    this._consoleLog.stop();
+  }
+
+  async waitForInitialized() {
+    await this._initializedPromise;
+  }
+
+  static forPage(page: playwright.Page): Tab | undefined {
+    // eslint-disable-next-line no-restricted-syntax
+    return (page as any)[tabSymbol];
+  }
+
+  static async collectConsoleMessages(page: playwright.Page): Promise<ConsoleMessage[]> {
+    const result: ConsoleMessage[] = [];
+    const messages = await page.consoleMessages().catch(() => []);
+    for (const message of messages)
+      result.push(messageToConsoleMessage(message));
+    const errors = await page.pageErrors().catch(() => []);
+    for (const error of errors)
+      result.push(pageErrorToConsoleMessage(error));
+    return result;
+  }
+
+  private async _initialize() {
+    for (const message of await Tab.collectConsoleMessages(this.page))
+      this._handleConsoleMessage(message);
+    const requests = await this.page.requests().catch(() => []);
+    for (const request of requests.filter(r => r.existingResponse() || r.failure()))
+      this._addRequest(request);
+    for (const initPage of this.context.config.browser?.initPage || []) {
+      try {
+        const { default: func } = require(initPage);
+        await func({ page: this.page });
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        throw new Error(`Failed to load init page "${initPage}": ${reason}`, { cause: e });
+      }
+    }
+  }
+
+  modalStates(): ModalState[] {
+    return this._modalStates;
+  }
+
+  setModalState(modalState: ModalState) {
+    this._modalStates.push(modalState);
+    this.emit(TabEvents.modalState, modalState);
+  }
+
+  clearModalState(modalState: ModalState) {
+    this._modalStates = this._modalStates.filter(state => state !== modalState);
+  }
+
+  private _dialogShown(dialog: playwright.Dialog) {
+    this.setModalState({
+      type: 'dialog',
+      description: `"${dialog.type()}" dialog with message "${dialog.message()}"`,
+      dialog,
+      clearedBy: { tool: handleDialog.schema.name, skill: 'dialog-accept or dialog-dismiss' }
+    });
+  }
+
+  private _dialogClosed(dialog: playwright.Dialog) {
+    const modalState = this._modalStates.find(state => state.type === 'dialog' && state.dialog === dialog);
+    if (modalState)
+      this.clearModalState(modalState);
+  }
+
+  private async _downloadStarted(download: playwright.Download) {
+    // Do not trust web names.
+    const outputFile = await this.context.outputFile({ suggestedFilename: sanitizeForFilePath(download.suggestedFilename()), prefix: 'download', ext: 'bin' }, { origin: 'code' });
+    const entry = {
+      download,
+      finished: false,
+      outputFile,
+    };
+    this._downloads.push(entry);
+    this._addLogEntry({ type: 'download-start', wallTime: Date.now(), download: entry });
+    await download.saveAs(entry.outputFile);
+    entry.finished = true;
+    this._addLogEntry({ type: 'download-finish', wallTime: Date.now(), download: entry });
+  }
+
+  private _clearCollectedArtifacts() {
+    this._webmcpTools = undefined;
+    this._downloads.length = 0;
+    this._markRequestsNavigation();
+    this._mainDocumentStatus = undefined;
+    this._recentEventEntries.length = 0;
+    this._resetLogs();
+  }
+
+  private _resetLogs() {
+    const wallTime = Date.now();
+    this._consoleLog.stop();
+    this._consoleLog = new LogFile(this.context, wallTime, 'console', 'Console');
+  }
+
+  private _addRequest(request: playwright.Request) {
+    this._requests.push({ index: ++this._lastRequestIndex, request });
+  }
+
+  private _markRequestsNavigation() {
+    const earlierRequestCount = this._requests.length;
+    if (earlierRequestCount > kMaxEarlierNavigationRequests)
+      this._requests.splice(0, earlierRequestCount - kMaxEarlierNavigationRequests);
+    this._navigationRequestIndex = this._lastRequestIndex;
+  }
+
+  private _handleRequest(request: playwright.Request) {
+    this._addRequest(request);
+    // TODO: request start time is not available for fetch() before the
+    // response is received, so we use Date.now() as a fallback.
+    const wallTime = request.timing().startTime || Date.now();
+    this._addLogEntry({ type: 'request', wallTime, request });
+  }
+
+  private _handleResponse(response: playwright.Response) {
+    const request = response.request();
+    if (request.isNavigationRequest() && response.frame() === this.page.mainFrame() && !request.redirectedTo())
+      this._mainDocumentStatus = { status: response.status(), statusText: response.statusText() };
+    const timing = request.timing();
+    const wallTime = timing.responseStart + timing.startTime;
+    this._addLogEntry({ type: 'request', wallTime, request });
+  }
+
+  private _handleRequestFailed(request: playwright.Request) {
+    const timing = request.timing();
+    const wallTime = timing.responseEnd + timing.startTime;
+    this._addLogEntry({ type: 'request', wallTime, request });
+  }
+
+  private _handleConsoleMessage(message: ConsoleMessage) {
+    const wallTime = message.timestamp;
+    this._addLogEntry({ type: 'console', wallTime, message });
+    if (shouldIncludeMessage(this.context.config.console?.level, message.type))
+      this._consoleLog.appendLine(wallTime, message.toString());
+  }
+
+  logErrorMessage(text: string) {
+    this._handleConsoleMessage(pageErrorToConsoleMessage(new Error(text)));
+  }
+
+  logError(error: unknown) {
+    const message = pageErrorToConsoleMessage(error);
+    this._eventHandlerErrors.push(message);
+    if (this._eventHandlerErrors.length > 200)
+      this._eventHandlerErrors.shift();
+    this._handleConsoleMessage(message);
+  }
+
+  private _addLogEntry(entry: EventEntry) {
+    this._recentEventEntries.push(entry);
+  }
+
+  private _onClose() {
+    this._clearCollectedArtifacts();
+    this._onPageClose(this);
+  }
+
+  async headerSnapshot(): Promise<TabHeader & { changed: boolean }> {
+    let title: string | undefined;
+    let consoleCounts = { total: 0, errors: 0, warnings: 0 };
+    if (!this.crashed) {
+      await this._raceAgainstModalStates(async () => {
+        title = await this.page.title();
+      });
+      consoleCounts = await this.consoleMessageCount();
+    }
+    const newHeader: TabHeader = {
+      title: title ?? '',
+      url: this.page.url(),
+      current: this.isCurrentTab(),
+      crashed: this.crashed,
+      mainDocumentStatus: this._mainDocumentStatus,
+      console: consoleCounts,
+      webmcpToolCount: this._webmcpTools?.tools.length,
+      isolatedContext: this.isolatedContext,
+    };
+
+    if (!tabHeaderEquals(this._lastHeader, newHeader)) {
+      this._lastHeader = newHeader;
+      return { ...this._lastHeader, changed: true };
+    }
+    return { ...this._lastHeader, changed: false };
+  }
+
+  isCurrentTab(): boolean {
+    return this === this.context.currentTab();
+  }
+
+  async waitForLoadState(state: 'load', options?: { timeout?: number }): Promise<void> {
+    await this._initializedPromise;
+    await this.page.waitForLoadState(state, options).catch(e => debug('pw:tools:error')(e));
+  }
+
+  async checkUrlAndNavigate(url: string): Promise<string> {
+    const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url) || /^(about|data|blob|javascript):/i.test(url);
+    if (!hasScheme) {
+      if (url.startsWith('localhost') || url.startsWith('127.0.0.1') || url.startsWith('0.0.0.0') || url.startsWith('[::1]'))
+        url = 'http://' + url;
+      else
+        url = 'https://' + url;
+    }
+    this.context.checkUrlAllowed(url);
+    await this.navigate(url);
+    return url;
+  }
+
+  async navigate(url: string) {
+    await this._initializedPromise;
+
+    this._clearCollectedArtifacts();
+
+    const { promise: downloadEvent, abort: abortDownloadEvent } = eventWaiter<playwright.Download>(this.page, 'download', 3000);
+    let modalStates: ModalState[];
+    try {
+      modalStates = await this._raceAgainstModalStates(async () => {
+        await this.page.goto(url, { waitUntil: 'domcontentloaded', ...this.navigationTimeoutOptions });
+      });
+      abortDownloadEvent();
+    } catch (_e: unknown) {
+      const e = _e as Error;
+      if (!e.message.includes('Download is starting')) {
+        abortDownloadEvent();
+        throw e;
+      }
+      const download = await downloadEvent;
+      if (!download)
+        throw e;
+      // Make sure other "download" listeners are notified first.
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return;
+    }
+    if (modalStates.length)
+      return;
+
+    // Cap load event to 5 seconds, the page is operational at this point.
+    await this.waitForLoadState('load', { timeout: 5000 });
+  }
+
+  async reload() {
+    await this._initializedPromise;
+    await this._raceAgainstModalStates(async () => {
+      await this.page.reload(this.navigationTimeoutOptions);
+    });
+  }
+
+  async goBack() {
+    await this._initializedPromise;
+    await this._raceAgainstModalStates(async () => {
+      await this.page.goBack({ waitUntil: 'commit', ...this.navigationTimeoutOptions });
+    });
+  }
+
+  async goForward() {
+    await this._initializedPromise;
+    await this._raceAgainstModalStates(async () => {
+      await this.page.goForward({ waitUntil: 'commit', ...this.navigationTimeoutOptions });
+    });
+  }
+
+
+  async consoleMessageCount(all?: boolean): Promise<{ total: number, errors: number, warnings: number }> {
+    await this._initializedPromise;
+    const filter = all ? 'all' : 'since-navigation';
+    const messages = await this.page.consoleMessages({ filter });
+    const pageErrors = await this.page.pageErrors({ filter });
+    const eventHandlerErrors = this._eventHandlerErrors;
+    let errors = pageErrors.length + eventHandlerErrors.length;
+    let warnings = 0;
+    for (const message of messages) {
+      if (message.type() === 'error')
+        errors++;
+      else if (message.type() === 'warning')
+        warnings++;
+    }
+    return { total: messages.length + pageErrors.length + eventHandlerErrors.length, errors, warnings };
+  }
+
+  async consoleMessages(level: ConsoleMessageLevel, all?: boolean): Promise<ConsoleMessage[]> {
+    await this._initializedPromise;
+    const result: ConsoleMessage[] = [];
+    const messages = await this.page.consoleMessages({ filter: all ? 'all' : 'since-navigation' });
+    for (const message of messages) {
+      const cm = messageToConsoleMessage(message);
+      if (shouldIncludeMessage(level, cm.type))
+        result.push(cm);
+    }
+    if (shouldIncludeMessage(level, 'error')) {
+      const errors = await this.page.pageErrors({ filter: all ? 'all' : 'since-navigation' });
+      for (const error of errors)
+        result.push(pageErrorToConsoleMessage(error));
+      result.push(...this._eventHandlerErrors);
+    }
+    return result;
+  }
+
+  async clearConsoleMessages() {
+    await this._initializedPromise;
+    this._eventHandlerErrors.length = 0;
+    await Promise.all([
+      this.page.clearConsoleMessages(),
+      this.page.clearPageErrors()
+    ]);
+  }
+
+  async requests(all?: boolean): Promise<RequestEntry[]> {
+    await this._initializedPromise;
+    if (all)
+      return this._requests;
+    return this._requests.filter(entry => entry.index > this._navigationRequestIndex);
+  }
+
+  async request(index: number): Promise<playwright.Request | undefined> {
+    await this._initializedPromise;
+    return this._requests.find(entry => entry.index === index)?.request;
+  }
+
+  async clearRequests() {
+    await this._initializedPromise;
+    this._requests.length = 0;
+  }
+
+  async captureSnapshot(root: playwright.Locator | undefined, depth: number | undefined, boxes: boolean | undefined, relativeTo: string | undefined, ariaFormat: 'none' | 'text' | 'json' = 'text', updateWebMCP: boolean = false): Promise<TabSnapshot> {
+    await this._initializedPromise;
+    // Kick the WebMCP refresh off next to the aria snapshot so its latency hides behind the tree walk.
+    const webmcpPromise = updateWebMCP ? this.updateWebMCPTools() : undefined;
+    let tabSnapshot: TabSnapshot | undefined;
+    let modalStates: ModalState[] = [];
+    if (ariaFormat !== 'none') {
+      modalStates = await this._raceAgainstModalStates(async () => {
+        if (ariaFormat === 'json') {
+          const ariaSnapshotJSON = root
+            ? await root.ariaSnapshotJSON({ mode: 'ai', depth, boxes })
+            : await this.page.ariaSnapshotJSON({ mode: 'ai', depth, boxes });
+          tabSnapshot = {
+            ariaSnapshot: '',
+            ariaSnapshotJSON,
+            modalStates: [],
+            events: [],
+          };
+        } else {
+          const ariaSnapshot = root
+            ? await root.ariaSnapshot({ mode: 'ai', depth, boxes })
+            : await this.page.ariaSnapshot({ mode: 'ai', depth, boxes });
+          tabSnapshot = {
+            ariaSnapshot,
+            modalStates: [],
+            events: [],
+          };
+        }
+      });
+    } else if (this.modalStates().length) {
+      // Matches the aria path's modal fallback below, without the race: there
+      // is no tree walk for a modal to interrupt.
+      modalStates = this.modalStates();
+    } else {
+      // The caller will not render the aria snapshot, so skip the accessibility
+      // tree walk, which dominates response latency on heavy pages. Console and
+      // events are still reported via the shared tail below.
+      tabSnapshot = { ariaSnapshot: '', modalStates: [], events: [] };
+    }
+    if (tabSnapshot) {
+      tabSnapshot.consoleLink = await this._consoleLog.take(relativeTo);
+      tabSnapshot.events = this._recentEventEntries;
+      this._recentEventEntries = [];
+    }
+
+    const result = tabSnapshot ?? {
+      ariaSnapshot: '',
+      modalStates,
+      events: [],
+    };
+    if (webmcpPromise)
+      await this._raceAgainstModalStates(() => webmcpPromise);
+    return result;
+  }
+
+  webmcpTools(): WebMCPListing | undefined {
+    return this._webmcpTools;
+  }
+
+  async updateWebMCPTools(): Promise<void> {
+    if (this.context.config.webmcp === false)
+      return;
+    if (this._javaScriptBlocked())
+      return;
+    const listing = await listWebMCPTools(this);
+    // A dialog that opened while probing produces the same empty listing as a page
+    // with no tools, so keep what we had rather than clobbering the cache with it.
+    if (this._javaScriptBlocked())
+      return;
+    this._webmcpTools = listing;
+    this.context.maybeNotifyWebMCPToolsChanged();
+  }
+
+  private _javaScriptBlocked(): boolean {
+    return this._modalStates.some(state => state.type === 'dialog');
+  }
+
+  private async _raceAgainstModalStates(action: () => Promise<void>): Promise<ModalState[]> {
+    if (this.modalStates().length)
+      return this.modalStates();
+
+    const promise = new ManualPromise<ModalState[]>();
+    const listener = (modalState: ModalState) => promise.resolve([modalState]);
+    this.once(TabEvents.modalState, listener);
+
+    try {
+      return await Promise.race([action().then(() => []), promise]);
+    } finally {
+      this.off(TabEvents.modalState, listener);
+    }
+  }
+
+  async waitForCompletion(callback: () => Promise<void>) {
+    await this._initializedPromise;
+    await this._raceAgainstModalStates(() => waitForCompletion(this, callback));
+  }
+
+  async targetLocator(params: { element?: string, target: string }): Promise<{ locator: playwright.Locator, resolved: string, selector: string }> {
+    await this._initializedPromise;
+    return (await this.targetLocators([params]))[0];
+  }
+
+  async targetLocators(params: { element?: string, target: string }[]): Promise<{ locator: playwright.Locator, resolved: string, selector: string }[]> {
+    await this._initializedPromise;
+    return Promise.all(params.map(async param => {
+      if (!param.target.match(/^(f\d+)?e\d+$/)) {
+        const selector = targetAsSelector(param.target, this.context.config.testIdAttribute || 'data-testid');
+        const handle = selector ? await this.page.$(selector) : null;
+        if (!handle)
+          throw new Error(targetErrorMessage(param.target, !!selector));
+        handle.dispose().catch(() => {});
+        return { locator: this.page.locator(selector), resolved: asLocator('javascript', selector), selector };
+      } else {
+        try {
+          let locator = this.page.getByRef(param.target);
+          if (param.element)
+            locator = locator.describe(param.element);
+          const resolved = await locator.normalize();
+          return { locator, resolved: resolved.toString(), selector: locatorSelector(resolved) };
+        } catch (e) {
+          throw new Error(`Ref ${param.target} not found in the current page snapshot. Try capturing new snapshot.`);
+        }
+      }
+    }));
+  }
+
+  async waitForTimeout(time: number) {
+    await new Promise(f => setTimeout(f, time));
+  }
+}
+
+export type ConsoleMessage = {
+  type: ReturnType<playwright.ConsoleMessage['type']>;
+  timestamp: number;
+  text: string;
+  toString(): string;
+};
+
+export function locatorSelector(locator: playwright.Locator): string {
+  return (locator as unknown as { _selector: string })._selector;
+}
+
+// Accepts a selector or a locator in any language, e.g. `getByRole('button')` or `get_by_role("button")`.
+function targetAsSelector(target: string, testIdAttributeName: string): string {
+  for (const language of ['javascript', 'python', 'java', 'csharp'] as const) {
+    const selector = locatorOrSelectorAsSelector(language, target, testIdAttributeName);
+    if (selector)
+      return selector;
+  }
+  return '';
+}
+
+function targetErrorMessage(target: string, isSelector: boolean): string {
+  const message = isSelector ? `"${target}" does not match any elements.` : `"${target}" is not a valid target.`;
+  const ref = target.match(/\[ref=((?:f\d+)?e\d+)\]/)?.[1];
+  if (ref)
+    return `${message} To use the element with [ref=${ref}] from the page snapshot, pass "${ref}" as the target.`;
+  if (!isSelector)
+    return `${message} Use a ref from the page snapshot (e.g. "e5"), a CSS selector, or a locator (e.g. "getByRole('button', { name: 'Submit' })").`;
+  return message;
+}
+
+function messageToConsoleMessage(message: playwright.ConsoleMessage): ConsoleMessage {
+  return {
+    type: message.type(),
+    timestamp: message.timestamp(),
+    text: message.text(),
+    toString: () => `[${message.type().toUpperCase()}] ${message.text()} @ ${message.location().url}:${message.location().lineNumber}`,
+  };
+}
+
+function pageErrorToConsoleMessage(errorOrValue: unknown): ConsoleMessage {
+  if (types.isNativeError(errorOrValue)) {
+    return {
+      type: 'error',
+      timestamp: Date.now(),
+      text: errorOrValue.message,
+      toString: () => errorOrValue.stack || errorOrValue.message,
+    };
+  }
+  return {
+    type: 'error',
+    timestamp: Date.now(),
+    text: String(errorOrValue),
+    toString: () => String(errorOrValue),
+  };
+}
+
+export function renderModalStates(config: ContextConfig, modalStates: ModalState[]): string[] {
+  const result: string[] = [];
+  if (modalStates.length === 0)
+    result.push('- There is no modal state present');
+  for (const state of modalStates)
+    result.push(`- [${state.description}]: can be handled by ${config.skillMode ? state.clearedBy.skill : state.clearedBy.tool}`);
+  return result;
+}
+
+type ConsoleMessageType = ReturnType<playwright.ConsoleMessage['type']>;
+type ConsoleMessageLevel = 'error' | 'warning' | 'info' | 'debug';
+const consoleMessageLevels: ConsoleMessageLevel[] = ['error', 'warning', 'info', 'debug'];
+
+export function shouldIncludeMessage(thresholdLevel: ConsoleMessageLevel | undefined, type: ConsoleMessageType): boolean {
+  const messageLevel = consoleLevelForMessageType(type);
+  return consoleMessageLevels.indexOf(messageLevel) <= consoleMessageLevels.indexOf(thresholdLevel || 'info');
+}
+
+function consoleLevelForMessageType(type: ConsoleMessageType): ConsoleMessageLevel {
+  switch (type) {
+    case 'assert':
+    case 'error':
+      return 'error';
+    case 'warning':
+      return 'warning';
+    case 'count':
+    case 'dir':
+    case 'dirxml':
+    case 'info':
+    case 'log':
+    case 'table':
+    case 'time':
+    case 'timeEnd':
+      return 'info';
+    case 'clear':
+    case 'debug':
+    case 'endGroup':
+    case 'profile':
+    case 'profileEnd':
+    case 'startGroup':
+    case 'startGroupCollapsed':
+    case 'trace':
+      return 'debug';
+    default:
+      return 'info';
+  }
+}
+
+const tabSymbol = Symbol('tabSymbol');
+
+function sanitizeForFilePath(s: string) {
+  const sanitize = (s: string) => s.replace(/[\x00-\x2C\x2E-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F]+/g, '-');
+  const separator = s.lastIndexOf('.');
+  if (separator === -1)
+    return sanitize(s);
+  return sanitize(s.substring(0, separator)) + '.' + sanitize(s.substring(separator + 1));
+}
+
+function tabHeaderEquals(a: TabHeader, b: TabHeader): boolean {
+  return a.title === b.title &&
+      a.url === b.url &&
+      a.current === b.current &&
+      a.crashed === b.crashed &&
+      a.mainDocumentStatus?.status === b.mainDocumentStatus?.status &&
+      a.mainDocumentStatus?.statusText === b.mainDocumentStatus?.statusText &&
+      a.console.errors === b.console.errors &&
+      a.console.warnings === b.console.warnings &&
+      a.console.total === b.console.total &&
+      a.webmcpToolCount === b.webmcpToolCount &&
+      a.isolatedContext === b.isolatedContext;
+}

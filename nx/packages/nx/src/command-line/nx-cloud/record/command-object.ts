@@ -1,0 +1,22 @@
+import { CommandModule } from 'yargs';
+import { handleImport } from '../../../utils/handle-import';
+import { withVerbose } from '../../yargs-utils/shared-options';
+
+export const yargsRecordCommand: CommandModule = {
+  command: 'record [options]',
+  describe:
+    'Records a command execution for distributed task execution. This command is an alias for [`nx-cloud record`](/docs/reference/nx-cloud-cli#nx-cloud-record).',
+  builder: (yargs) =>
+    withVerbose(yargs)
+      .parserConfiguration({
+        'populate--': true,
+      })
+      .help(false)
+      .showHelpOnFail(false)
+      .option('help', { describe: 'Show help.', type: 'boolean' }),
+  handler: async (args: any) => {
+    process.exit(
+      await (await handleImport('./record.js', __dirname)).recordHandler(args)
+    );
+  },
+};

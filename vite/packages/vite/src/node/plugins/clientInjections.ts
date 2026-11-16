@@ -1,0 +1,254 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { exactRegex } from 'rolldown/filter'
+import { cleanUrl } from '../../shared/utils'
+import type { ResolvedConfig } from '../config'
+import {
+  BUNDLED_DEV_CLIENT_ENTRY,
+  BUNDLED_DEV_CLIENT_FILENAME,
+  BUNDLED_DEV_ROLLDOWN_RUNTIME_DIR,
+  CLIENT_ENTRY,
+  CLIENT_PUBLIC_PATH,
+  ENV_ENTRY,
+  ENV_PUBLIC_PATH,
+} from '../constants'
+import { perEnvironmentState } from '../environment'
+import type { Plugin } from '../plugin'
+import { escapeRegex, isObject, normalizePath, resolveHostname } from '../utils'
+import { replaceDefine, serializeDefine } from './define'
+
+// ids in transform are normalized to unix style
+const normalizedClientEntry = normalizePath(CLIENT_ENTRY)
+const normalizedBundledDevClientEntry = normalizePath(BUNDLED_DEV_CLIENT_ENTRY)
+const normalizedEnvEntry = normalizePath(ENV_ENTRY)
+
+/**
+ * some values used by the client needs to be dynamically injected by the server
+ * @server-only
+ */
+export function clientInjectionsPlugin(config: ResolvedConfig): Plugin {
+  let injectConfigValues: (code: string) => string
+
+  const getDefineReplacer = perEnvironmentState((environment) => {
+    const userDefine: Record<string, any> = {}
+    for (const key in environment.config.define) {
+      // import.meta.env.* is handled in `importAnalysis` plugin
+      if (!key.startsWith('import.meta.env.')) {
+        userDefine[key] = environment.config.define[key]
+      }
+    }
+    const serializedDefines = serializeDefine(userDefine)
+    const definesReplacement = () => serializedDefines
+    return (code: string) => code.replace(`__DEFINES__`, definesReplacement)
+  })
+
+  return {
+    name: 'vite:client-inject',
+    applyToEnvironment(environment) {
+      return !environment.config.isBundled
+    },
+    async buildStart() {
+      injectConfigValues = await createClientConfigValueReplacer(config)
+    },
+    transform(code, id) {
+      const ssr = this.environment.config.consumer === 'server'
+      const cleanId = cleanUrl(id)
+      if (cleanId === normalizedClientEntry || cleanId === normalizedEnvEntry) {
+        const defineReplacer = getDefineReplacer(this)
+        return defineReplacer(injectConfigValues(code))
+      } else if (!ssr && code.includes('process.env.NODE_ENV')) {
+        // replace process.env.NODE_ENV instead of defining a global
+        // for it to avoid shimming a `process` object during dev,
+        // avoiding inconsistencies between dev and build
+        const nodeEnv =
+          this.environment.config.define?.['process.env.NODE_ENV'] ||
+          JSON.stringify(process.env.NODE_ENV || config.mode)
+        return replaceDefine(this.environment, code, id, {
+          'process.env.NODE_ENV': nodeEnv,
+          'global.process.env.NODE_ENV': nodeEnv,
+          'globalThis.process.env.NODE_ENV': nodeEnv,
+        })
+      }
+    },
+  }
+}
+
+function escapeReplacement(value: string | number | boolean | null) {
+  const jsonValue = JSON.stringify(value)
+  return () => jsonValue
+}
+
+async function createClientConfigValueReplacer(
+  config: ResolvedConfig,
+): Promise<(code: string) => string> {
+  const resolvedServerHostname = (await resolveHostname(config.server.host))
+    .name
+  const resolvedServerPort = config.server.port!
+  const devBase = config.base
+
+  const serverHost = `${resolvedServerHostname}:${resolvedServerPort}${devBase}`
+
+  const wsConfig = isObject(config.server.ws) ? config.server.ws : undefined
+  const host = wsConfig?.host || null
+  const protocol = wsConfig?.protocol || null
+  const timeout = wsConfig?.timeout || 30000
+  const isWsServerSpecified = !!wsConfig?.server
+  const hmrConfigName = path.basename(config.configFile || 'vite.config.js')
+
+  const hmrConfig = isObject(config.server.hmr) ? config.server.hmr : undefined
+  const overlay = hmrConfig?.overlay !== false
+
+  // ws.clientPort -> ws.port
+  // -> (24678 if middleware mode and WS server is not specified) -> new URL(import.meta.url).port
+  let port = wsConfig?.clientPort || wsConfig?.port || null
+  if (config.server.middlewareMode && !isWsServerSpecified) {
+    port ||= 24678
+  }
+
+  let directTarget = wsConfig?.host || resolvedServerHostname
+  directTarget += `:${wsConfig?.port || resolvedServerPort}`
+  directTarget += devBase
+
+  let hmrBase = devBase
+  if (wsConfig?.path) {
+    hmrBase = path.posix.join(hmrBase, wsConfig.path)
+  }
+
+  const modeReplacement = escapeReplacement(config.mode)
+  const baseReplacement = escapeReplacement(devBase)
+  const serverHostReplacement = escapeReplacement(serverHost)
+  const hmrProtocolReplacement = escapeReplacement(protocol)
+  const hmrHostnameReplacement = escapeReplacement(host)
+  const hmrPortReplacement = escapeReplacement(port)
+  const hmrDirectTargetReplacement = escapeReplacement(directTarget)
+  const hmrBaseReplacement = escapeReplacement(hmrBase)
+  const hmrTimeoutReplacement = escapeReplacement(timeout)
+  const hmrEnableOverlayReplacement = escapeReplacement(overlay)
+  const hmrConfigNameReplacement = escapeReplacement(hmrConfigName)
+  const hmrPartialAcceptReplacement = escapeReplacement(
+    config.experimental.hmrPartialAccept,
+  )
+  const wsTokenReplacement = escapeReplacement(config.webSocketToken)
+  const serverForwardConsoleReplacement = escapeReplacement(
+    config.server.forwardConsole as any,
+  )
+
+  return (code) =>
+    code
+      .replace(`__MODE__`, modeReplacement)
+      .replace(/__BASE__/g, baseReplacement)
+      .replace(`__SERVER_HOST__`, serverHostReplacement)
+      .replace(`__HMR_PROTOCOL__`, hmrProtocolReplacement)
+      .replace(`__HMR_HOSTNAME__`, hmrHostnameReplacement)
+      .replace(`__HMR_PORT__`, hmrPortReplacement)
+      .replace(`__HMR_DIRECT_TARGET__`, hmrDirectTargetReplacement)
+      .replace(`__HMR_BASE__`, hmrBaseReplacement)
+      .replace(`__HMR_TIMEOUT__`, hmrTimeoutReplacement)
+      .replace(`__HMR_ENABLE_OVERLAY__`, hmrEnableOverlayReplacement)
+      .replace(`__HMR_CONFIG_NAME__`, hmrConfigNameReplacement)
+      .replace(`__HMR_PARTIAL_ACCEPT__`, hmrPartialAcceptReplacement)
+      .replace(`__WS_TOKEN__`, wsTokenReplacement)
+      .replace(`__SERVER_FORWARD_CONSOLE__`, serverForwardConsoleReplacement)
+}
+
+const ROLLDOWN_DEV_RUNTIME_ENTRY = 'rolldown/experimental/runtime'
+
+export async function getHmrImplementation(
+  config: ResolvedConfig,
+): Promise<string> {
+  const content = fs.readFileSync(normalizedBundledDevClientEntry, 'utf-8')
+  const replacer = await createClientConfigValueReplacer(config)
+  return (
+    replacer(content)
+      // `/@vite/env` is not served in bundled dev
+      .replace(/import\s*['"]@vite\/env['"]/, '')
+      // absolute under `base`: a relative specifier would resolve against a sub-page's URL
+      .replace(
+        new RegExp(`(from\\s*['"])${ROLLDOWN_DEV_RUNTIME_ENTRY}(['"])`),
+        (_, before, after) =>
+          `${before}${path.posix.join(
+            config.base,
+            BUNDLED_DEV_ROLLDOWN_RUNTIME_DIR,
+            path.basename(rolldownDevRuntimeEntryPath()),
+          )}${after}`,
+      )
+  )
+}
+
+function rolldownDevRuntimeEntryPath(): string {
+  return fileURLToPath(import.meta.resolve(ROLLDOWN_DEV_RUNTIME_ENTRY))
+}
+
+/**
+ * The dev runtime must match the rolldown that generates the bundle, so it is read from the
+ * installed package at serve time instead of being bundled into the client. The entry imports
+ * its helper file with a relative path, so both are served under the same directory.
+ */
+export function getRolldownDevRuntimeFiles(): Map<string, string> {
+  const entry = rolldownDevRuntimeEntryPath()
+  const dir = path.dirname(entry)
+  const files = new Map<string, string>()
+  for (const name of fs.readdirSync(dir)) {
+    if (name.startsWith('experimental-runtime') && name.endsWith('.mjs')) {
+      files.set(
+        `${BUNDLED_DEV_ROLLDOWN_RUNTIME_DIR}/${name}`,
+        fs.readFileSync(path.join(dir, name), 'utf-8'),
+      )
+    }
+  }
+  if (
+    !files.has(`${BUNDLED_DEV_ROLLDOWN_RUNTIME_DIR}/${path.basename(entry)}`)
+  ) {
+    throw new Error(`rolldown dev runtime entry ${entry} was not found`)
+  }
+  return files
+}
+
+export function getBundledDevClientAliases(
+  config: ResolvedConfig,
+): Map<string, string> {
+  const clientUrl = path.posix.join(config.base, BUNDLED_DEV_CLIENT_FILENAME)
+  return new Map([
+    [CLIENT_PUBLIC_PATH.slice(1), `export * from ${JSON.stringify(clientUrl)}`],
+    // defines are replaced at build time in bundled dev
+    [ENV_PUBLIC_PATH.slice(1), ''],
+  ])
+}
+
+export function bundledDevClientImportsPlugin(config: ResolvedConfig): Plugin {
+  const clientUrl = path.posix.join(config.base, BUNDLED_DEV_CLIENT_FILENAME)
+  return {
+    name: 'vite:bundled-dev-client-imports',
+    applyToEnvironment(environment) {
+      return (
+        config.command === 'serve' &&
+        environment.config.isBundled &&
+        environment.config.consumer === 'client'
+      )
+    },
+    resolveId: {
+      filter: {
+        id: [
+          exactRegex(clientUrl),
+          exactRegex(path.posix.join(config.base, CLIENT_PUBLIC_PATH)),
+        ],
+      },
+      handler() {
+        return { id: clientUrl, external: true }
+      },
+    },
+    load: {
+      filter: {
+        id: new RegExp(
+          `^(?:${escapeRegex(normalizedClientEntry)}|${escapeRegex(normalizedEnvEntry)})(?:\\?.*)?$`,
+        ),
+      },
+      handler(id) {
+        return cleanUrl(id) === normalizedClientEntry
+          ? `export * from ${JSON.stringify(clientUrl)}`
+          : ''
+      },
+    },
+  }
+}

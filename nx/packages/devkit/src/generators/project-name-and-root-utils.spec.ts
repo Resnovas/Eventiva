@@ -1,0 +1,355 @@
+import { createTreeWithEmptyWorkspace } from 'nx/src/generators/testing-utils/create-tree-with-empty-workspace';
+import type { Tree } from 'nx/src/generators/tree';
+import { updateJson } from 'nx/src/generators/utils/json';
+import { addProjectConfiguration } from 'nx/src/generators/utils/project-configuration';
+import { workspaceRoot } from 'nx/src/utils/workspace-root';
+import { join } from 'path';
+import { setCwd } from '../../internal-testing-utils';
+import { determineProjectNameAndRootOptions } from './project-name-and-root-utils';
+
+describe('determineProjectNameAndRootOptions', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTreeWithEmptyWorkspace();
+
+    setCwd('');
+
+    vi.clearAllMocks();
+  });
+
+  it('should return the last part of the directory as name', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'shared/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toStrictEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'shared/lib-name',
+    });
+  });
+
+  it('should use "@" scoped directory as the project name and import path', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'packages/@scope/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: '@scope/lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@scope/lib-name',
+      projectRoot: 'packages/@scope/lib-name',
+    });
+  });
+
+  it('should use "@" scoped directory as the project name and import path in deeply nested directory', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'packages/shared/@scope/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: '@scope/lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@scope/lib-name',
+      projectRoot: 'packages/shared/@scope/lib-name',
+    });
+  });
+
+  it('should handle Windows path correctly', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'shared\\lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toStrictEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'shared/lib-name',
+    });
+  });
+
+  it('should use provided import path over scoped name', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      name: '@scope/lib-name',
+      directory: 'shared',
+      projectType: 'library',
+      importPath: '@custom-scope/lib-name',
+    });
+
+    expect(result).toEqual({
+      projectName: '@scope/lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@custom-scope/lib-name',
+      projectRoot: 'shared',
+    });
+  });
+
+  it('should append the directory to the cwd when the provided directory does not start with the cwd and format is "as-provided"', async () => {
+    // simulate running in a subdirectory
+    const originalInitCwd = process.env.INIT_CWD;
+    process.env.INIT_CWD = join(workspaceRoot, 'some/path');
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'nested/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'some/path/nested/lib-name',
+    });
+
+    // restore original cwd
+    if (originalInitCwd === undefined) {
+      delete process.env.INIT_CWD;
+    } else {
+      process.env.INIT_CWD = originalInitCwd;
+    }
+  });
+
+  it('should not duplicate the cwd when the provided directory starts with the cwd and format is "as-provided"', async () => {
+    // simulate running in a subdirectory
+    const originalInitCwd = process.env.INIT_CWD;
+    process.env.INIT_CWD = join(workspaceRoot, 'some/path');
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'some/path/nested/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'some/path/nested/lib-name',
+    });
+
+    // restore original cwd
+    if (originalInitCwd === undefined) {
+      delete process.env.INIT_CWD;
+    } else {
+      process.env.INIT_CWD = originalInitCwd;
+    }
+  });
+
+  it('should return the directory considering the cwd', async () => {
+    // simulate running in a subdirectory
+    const originalInitCwd = process.env.INIT_CWD;
+    process.env.INIT_CWD = join(workspaceRoot, 'some/path');
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'some/path/lib-name',
+    });
+
+    // restore original cwd
+    if (originalInitCwd === undefined) {
+      delete process.env.INIT_CWD;
+    } else {
+      process.env.INIT_CWD = originalInitCwd;
+    }
+  });
+
+  it('should support a directory outside of the cwd', async () => {
+    // simulate running in a subdirectory
+    const originalInitCwd = process.env.INIT_CWD;
+    process.env.INIT_CWD = join(workspaceRoot, 'some/path');
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: '../../libs/lib-name',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: '@proj/lib-name',
+      projectRoot: 'libs/lib-name',
+    });
+
+    // restore original cwd
+    if (originalInitCwd === undefined) {
+      delete process.env.INIT_CWD;
+    } else {
+      process.env.INIT_CWD = originalInitCwd;
+    }
+  });
+
+  it('should throw when the resolved directory is outside of the workspace root', async () => {
+    // simulate running in a subdirectory
+    const originalInitCwd = process.env.INIT_CWD;
+    process.env.INIT_CWD = join(workspaceRoot, 'some/path');
+
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        directory: '../../../libs/lib-name',
+        projectType: 'library',
+      })
+    ).rejects.toThrow(/is outside of the workspace root/);
+
+    // restore original cwd
+    if (originalInitCwd === undefined) {
+      delete process.env.INIT_CWD;
+    } else {
+      process.env.INIT_CWD = originalInitCwd;
+    }
+  });
+
+  it('should return the project name and directory as provided for root projects', async () => {
+    updateJson(tree, 'package.json', (json) => {
+      json.name = 'lib-name';
+      return json;
+    });
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      name: 'lib-name',
+      directory: '.',
+      projectType: 'library',
+      rootProject: true,
+    });
+
+    expect(result).toEqual({
+      projectName: 'lib-name',
+      names: {
+        projectSimpleName: 'lib-name',
+        projectFileName: 'lib-name',
+      },
+      importPath: 'lib-name',
+      projectRoot: '.',
+    });
+  });
+
+  it('should throw when a name is not provided for a root project', async () => {
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        directory: '.',
+        projectType: 'library',
+      })
+    ).rejects.toThrow(/you must also specify the name option/);
+  });
+
+  it('should throw when a directory is provided where the derived name is invalid', async () => {
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        directory: '@scope/lib-name/invalid-extra-segment',
+        projectType: 'library',
+      })
+    ).rejects.toThrow(/directory should match/);
+  });
+
+  it('should throw when an invalid name is provided', async () => {
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        name: '!scope/lib-name',
+        directory: 'shared',
+        projectType: 'library',
+      })
+    ).rejects.toThrow(/name should match/);
+  });
+
+  it('should throw when the derived name conflicts with an existing project', async () => {
+    addProjectConfiguration(tree, 'server', {
+      root: 'apps/server',
+    });
+
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        directory: 'apps/nested/server',
+        projectType: 'application',
+      })
+    ).rejects.toThrow(
+      'The name "server" was derived from the provided directory "apps/nested/server", but it is already used by the project at "apps/server". Please provide a unique name for the new project with the "--name" option.'
+    );
+  });
+
+  it('should throw when the provided name conflicts with an existing project', async () => {
+    addProjectConfiguration(tree, 'server', {
+      root: 'apps/server',
+    });
+
+    await expect(
+      determineProjectNameAndRootOptions(tree, {
+        directory: 'apps/nested/api',
+        name: 'server',
+        projectType: 'application',
+      })
+    ).rejects.toThrow(
+      'The provided name "server" is already used by the project at "apps/server". Please provide a unique name for the new project.'
+    );
+  });
+
+  it('should not throw a name conflict error when the existing project is at the resolved project root', async () => {
+    // generating on top of an existing project is handled elsewhere with a
+    // more accurate error
+    addProjectConfiguration(tree, 'server', {
+      root: 'apps/server',
+    });
+
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'apps/server',
+      projectType: 'application',
+    });
+
+    expect(result.projectName).toBe('server');
+    expect(result.projectRoot).toBe('apps/server');
+  });
+
+  it('should handle providing a path including multiple "@" as the project name', async () => {
+    const result = await determineProjectNameAndRootOptions(tree, {
+      directory: 'shared/@foo/@scope/libName',
+      projectType: 'library',
+    });
+
+    expect(result).toEqual({
+      projectName: '@scope/libName',
+      names: {
+        projectSimpleName: 'libName',
+        projectFileName: 'libName',
+      },
+      importPath: '@scope/libName',
+      projectRoot: 'shared/@foo/@scope/libName',
+    });
+  });
+});

@@ -1,0 +1,133 @@
+{
+  "name": "posthog-node",
+  "version": "5.63.1",
+  "bugs": {
+    "url": "https://github.com/PostHog/posthog-js/issues"
+  },
+  "description": "PostHog Node.js integration",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PostHog/posthog-js.git",
+    "directory": "packages/node"
+  },
+  "scripts": {
+    "check-types": "pnpm prebuild && tsc --noEmit --project tsconfig.build.json && tsc --noEmit --project tsconfig.test-types.json",
+    "clean": "rimraf dist coverage",
+    "lint": "oxlint --report-unused-disable-directives-severity error src",
+    "lint:fix": "oxlint --report-unused-disable-directives-severity error src --fix",
+    "test:unit": "vitest run",
+    "test:benchmarks": "node --expose-gc --test --test-isolation=none benchmarks/controls.mjs",
+    "test:edge-compat": "vitest run --config vitest.edge.config.ts",
+    "prebuild": "node ../../tooling/write-version.mjs",
+    "build": "rslib build",
+    "dev": "rslib build -w",
+    "prepublishOnly": "pnpm lint && pnpm build && pnpm test:unit",
+    "package": "pnpm pack --out $PACKAGE_DEST/%s.tgz",
+    "generate-references": "pnpm exec api-extractor run --config ./api-extractor.jsonc --local && node scripts/generate-docs.mjs"
+  },
+  "engines": {
+    "node": "^20.20.0 || >=22.22.0"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!src/**/*.spec.md"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "PostHog",
+    "email": "engineering@posthog.com",
+    "url": "https://posthog.com"
+  },
+  "main": "dist/entrypoints/index.node.js",
+  "module": "dist/entrypoints/index.node.mjs",
+  "types": "dist/entrypoints/index.node.d.ts",
+  "dependencies": {
+    "@posthog/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^2.2.0",
+    "@opentelemetry/sdk-trace-base": "^2.10.0",
+    "@posthog-tooling/tsconfig-base": "workspace:*",
+    "@posthog/types": "workspace:^",
+    "@rslib/core": "catalog:",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.25.0",
+    "@vitest/coverage-v8": "catalog:",
+    "rxjs": "^7.8.0",
+    "typescript": "catalog:native",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.2.0",
+    "rxjs": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "posthog",
+    "stats",
+    "analysis",
+    "funnels"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/entrypoints/index.node.d.ts",
+      "edge": {
+        "import": "./dist/entrypoints/index.edge.mjs",
+        "require": "./dist/entrypoints/index.edge.js",
+        "default": "./dist/entrypoints/index.edge.js"
+      },
+      "node": {
+        "import": "./dist/entrypoints/index.node.mjs",
+        "require": "./dist/entrypoints/index.node.js",
+        "default": "./dist/entrypoints/index.node.js"
+      },
+      "edge-light": {
+        "import": "./dist/entrypoints/index.edge.mjs",
+        "require": "./dist/entrypoints/index.edge.js",
+        "default": "./dist/entrypoints/index.edge.js"
+      },
+      "workerd": {
+        "import": "./dist/entrypoints/index.edge.mjs",
+        "require": "./dist/entrypoints/index.edge.js",
+        "default": "./dist/entrypoints/index.edge.js"
+      },
+      "import": "./dist/entrypoints/index.node.mjs",
+      "require": "./dist/entrypoints/index.node.js"
+    },
+    "./edge": {
+      "types": "./dist/entrypoints/index.edge.d.ts",
+      "import": "./dist/entrypoints/index.edge.mjs",
+      "require": "./dist/entrypoints/index.edge.js",
+      "default": "./dist/entrypoints/index.edge.js"
+    },
+    "./nestjs": {
+      "types": "./dist/entrypoints/nestjs.d.ts",
+      "import": "./dist/entrypoints/nestjs.mjs",
+      "require": "./dist/entrypoints/nestjs.js"
+    },
+    "./experimental": {
+      "types": "./dist/experimental.d.ts",
+      "import": "./dist/experimental.mjs",
+      "require": "./dist/experimental.js",
+      "default": "./dist/experimental.js"
+    },
+    "./otel": {
+      "types": "./dist/entrypoints/otel.d.ts",
+      "import": "./dist/entrypoints/otel.mjs",
+      "require": "./dist/entrypoints/otel.js",
+      "default": "./dist/entrypoints/otel.js"
+    }
+  }
+}

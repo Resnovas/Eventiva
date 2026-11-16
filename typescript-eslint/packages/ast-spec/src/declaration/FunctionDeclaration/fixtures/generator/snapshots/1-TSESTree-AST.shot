@@ -1,0 +1,48 @@
+Program {
+  type: "Program",
+  body: [
+    FunctionDeclaration {
+      type: "FunctionDeclaration",
+      async: false,
+      body: BlockStatement {
+        type: "BlockStatement",
+        body: [],
+
+        range: [16, 18],
+        loc: {
+          start: { column: 16, line: 1 },
+          end: { column: 18, line: 1 },
+        },
+      },
+      declare: false,
+      expression: false,
+      generator: true,
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "foo",
+        optional: false,
+
+        range: [10, 13],
+        loc: {
+          start: { column: 10, line: 1 },
+          end: { column: 13, line: 1 },
+        },
+      },
+      params: [],
+
+      range: [0, 18],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 18, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 19],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

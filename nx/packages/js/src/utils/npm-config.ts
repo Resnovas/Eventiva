@@ -1,0 +1,149 @@
+import { existsSync } from 'fs';
+import { join, relative } from 'path';
+import { PackageJson, safeSpawn } from '@nx/devkit/internal';
+
+export async function parseRegistryOptions(
+  cwd: string,
+  pkg: {
+    packageRoot: string;
+    packageJson: PackageJson;
+  },
+  options: {
+    registry?: string;
+    tag?: string;
+  },
+  logWarnFn: (message: string) => void = console.warn
+): Promise<{
+  registry: string | undefined;
+  tag: string;
+  registryConfigKey: string;
+}> {
+  const npmRcPath = join(pkg.packageRoot, '.npmrc');
+  if (existsSync(npmRcPath)) {
+    const relativeNpmRcPath = relative(cwd, npmRcPath);
+    logWarnFn(
+      `\nIgnoring .npmrc file detected in the package root: ${relativeNpmRcPath}. Nested .npmrc files are not supported by npm. Only the .npmrc file at the root of the workspace will be used. To customize the registry or tag for specific packages, see https://nx.dev/recipes/nx-release/configure-custom-registries\n`
+    );
+  }
+
+  const scope = pkg.packageJson.name.startsWith('@')
+    ? pkg.packageJson.name.split('/')[0]
+    : '';
+
+  // If the package is scoped, then the registry argument that will
+  // correctly override the registry in the .npmrc file must be scoped.
+  const registryConfigKey = scope ? `${scope}:registry` : 'registry';
+
+  const publishConfigRegistry =
+    pkg.packageJson.publishConfig?.[registryConfigKey];
+
+  // Even though it won't override the actual registry that's actually used,
+  // the user might think otherwise, so we should still warn if the user has
+  // set a 'registry' in 'publishConfig' for a scoped package.
+  if (publishConfigRegistry || pkg.packageJson.publishConfig?.registry) {
+    const relativePackageJsonPath = relative(
+      cwd,
+      join(pkg.packageRoot, 'package.json')
+    );
+    if (options.registry) {
+      logWarnFn(
+        `\nRegistry detected in the 'publishConfig' of the package manifest: ${relativePackageJsonPath}. This will override your registry option set in the project configuration or passed via the --registry argument, which is why configuring the registry with 'publishConfig' is not recommended. For details, see https://nx.dev/recipes/nx-release/configure-custom-registries\n`
+      );
+    } else {
+      logWarnFn(
+        `\nRegistry detected in the 'publishConfig' of the package manifest: ${relativePackageJsonPath}. Configuring the registry in this way is not recommended because it prevents the registry from being overridden in project configuration or via the --registry argument. To customize the registry for specific packages, see https://nx.dev/recipes/nx-release/configure-custom-registries\n`
+      );
+    }
+  }
+
+  const registry =
+    // `npm publish` will always use the publishConfig registry if it exists, even over the --registry arg
+    publishConfigRegistry ||
+    options.registry ||
+    (await getNpmRegistry(cwd, scope));
+  const tag = options.tag || (await getNpmTag(cwd));
+
+  return { registry, tag, registryConfigKey };
+}
+
+/**
+ * Returns the npm registry that is used for publishing.
+ *
+ * @param scope the scope of the package for which to determine the registry
+ * @param cwd the directory where the npm config should be read from
+ */
+export async function getNpmRegistry(
+  cwd: string,
+  scope?: string
+): Promise<string | undefined> {
+  if (scope) {
+    let scopedRegistry: string | undefined;
+    try {
+      scopedRegistry = await readNpmConfigValue(`${scope}:registry`, cwd);
+    } catch {
+      // npm refuses to print values it would redact, so the scope may still
+      // have a registry. Falling back to the unscoped one would override it.
+      return undefined;
+    }
+    if (scopedRegistry) {
+      return scopedRegistry;
+    }
+  }
+
+  return getNpmConfigValue('registry', cwd);
+}
+
+/**
+ * Returns the npm tag that is used for publishing.
+ *
+ * @param cwd the directory where the npm config should be read from
+ */
+export async function getNpmTag(cwd: string): Promise<string> {
+  // npm does not support '@scope:tag' in the npm config, so we only need to check for 'tag'.
+  return getNpmConfigValue('tag', cwd);
+}
+
+async function getNpmConfigValue(
+  key: string,
+  cwd: string
+): Promise<string | undefined> {
+  try {
+    return await readNpmConfigValue(key, cwd);
+  } catch {
+    return undefined;
+  }
+}
+
+async function readNpmConfigValue(
+  key: string,
+  cwd: string
+): Promise<string | undefined> {
+  const result = await npmConfigGet(key, cwd);
+  return result === 'undefined' ? undefined : result;
+}
+
+// `key` carries the package's own scope, so it goes to npm as an argument
+// rather than through a shell.
+async function npmConfigGet(key: string, cwd: string): Promise<string> {
+  // Must be non-blocking async to allow spinner to render
+  return new Promise<string>((resolve, reject) => {
+    const child = safeSpawn('npm', ['config', 'get', key], {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf-8').on('data', (chunk) => (stdout += chunk));
+    child.stderr.setEncoding('utf-8').on('data', (chunk) => (stderr += chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        return reject(
+          (stderr ? `${stderr}\n` : '') +
+            `npm config get ${key} exited with code ${code}`
+        );
+      }
+      return resolve(stdout.trim());
+    });
+  });
+}

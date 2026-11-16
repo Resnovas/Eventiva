@@ -1,0 +1,80 @@
+import { ProjectGraph, readNxJson, Tree, updateNxJson } from '@nx/devkit';
+import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
+
+import { initGenerator } from './init';
+
+let projectGraph: ProjectGraph;
+vi.mock('@nx/devkit', async () => ({
+  ...(await vi.importActual<any>('@nx/devkit')),
+  createProjectGraphAsync: vi.fn().mockImplementation(async () => {
+    return projectGraph;
+  }),
+}));
+
+describe('@nx/playwright:init', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    projectGraph = {
+      nodes: {},
+      dependencies: {},
+    };
+    tree = createTreeWithEmptyWorkspace();
+  });
+
+  it('should add the plugin', async () => {
+    await initGenerator(tree, {
+      skipFormat: true,
+      skipPackageJson: false,
+    });
+    const nxJson = readNxJson(tree);
+    expect(nxJson.plugins).toMatchInlineSnapshot(`
+      [
+        {
+          "options": {
+            "targetName": "e2e",
+          },
+          "plugin": "@nx/playwright/plugin",
+        },
+      ]
+    `);
+  });
+
+  it('should not overwrite existing plugins', async () => {
+    updateNxJson(tree, {
+      plugins: ['foo'],
+    });
+    await initGenerator(tree, {
+      skipFormat: true,
+      skipPackageJson: false,
+    });
+    const nxJson = readNxJson(tree);
+    expect(nxJson.plugins).toMatchInlineSnapshot(`
+      [
+        "foo",
+        {
+          "options": {
+            "targetName": "e2e",
+          },
+          "plugin": "@nx/playwright/plugin",
+        },
+      ]
+    `);
+  });
+
+  it('should not add plugin if already in array', async () => {
+    updateNxJson(tree, {
+      plugins: ['@nx/playwright/plugin'],
+    });
+    await initGenerator(tree, {
+      skipFormat: true,
+      skipPackageJson: false,
+    });
+    const nxJson = readNxJson(tree);
+    expect(nxJson.plugins).toMatchInlineSnapshot(`
+      [
+        "@nx/playwright/plugin",
+      ]
+    `);
+  });
+});

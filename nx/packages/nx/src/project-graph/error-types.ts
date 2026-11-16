@@ -1,0 +1,676 @@
+import { ProjectGraph } from '../config/project-graph';
+import { ProjectConfiguration } from '../config/workspace-json-project-json';
+import { CreateNodesFunction } from './plugins/public-api';
+import { ConfigurationResult } from './utils/project-configuration-utils';
+import type { ConfigurationSourceMaps } from './utils/project-configuration/source-maps';
+import type { WorktreeConflictAdvice } from '../utils/git-worktrees';
+
+export type ProjectGraphErrorTypes =
+  | AggregateCreateNodesError
+  | MergeNodesError
+  | CreateMetadataError
+  | ProjectsWithNoNameError
+  | MultipleProjectsWithSameNameError
+  | ProcessDependenciesError
+  | WorkspaceValidityError;
+
+export class StaleProjectGraphCacheError extends Error {
+  constructor() {
+    super(
+      'The project graph cache was stale. Ensure that it has been recently created before using `readCachedProjectGraph`.'
+    );
+  }
+}
+
+export class ProjectGraphError extends Error {
+  readonly #partialProjectGraph: ProjectGraph;
+  readonly #partialSourceMaps: ConfigurationSourceMaps;
+
+  constructor(
+    private readonly errors: Array<ProjectGraphErrorTypes>,
+    partialProjectGraph: ProjectGraph,
+    partialSourceMaps: ConfigurationSourceMaps | null
+  ) {
+    const messageFragments = ['Failed to process project graph.'];
+    const mergeNodesErrors = [];
+    const unknownErrors = [];
+    // Lets us throw aggregate errors without special handling,
+    // to avoid cases where users fix an error and get hit with another one
+    // which was already there but not reported.
+    let flat = errors.flatMap((e) =>
+      e instanceof AggregateError ? e.errors : e
+    );
+    for (const e of flat) {
+      if (
+        // Known errors that are self-explanatory
+        isAggregateCreateNodesError(e) ||
+        isCreateMetadataError(e) ||
+        isProcessDependenciesError(e) ||
+        isProjectsWithNoNameError(e) ||
+        isMultipleProjectsWithSameNameError(e) ||
+        isWorkspaceValidityError(e)
+      ) {
+      } else if (
+        // Known error type, but unlikely to be caused by the user
+        isMergeNodesError(e)
+      ) {
+        mergeNodesErrors.push(e);
+      } else {
+        unknownErrors.push(e);
+      }
+    }
+    if (mergeNodesErrors.length > 0) {
+      messageFragments.push(
+        `This type of error most likely points to an issue within Nx. Please report it.`
+      );
+    }
+    if (unknownErrors.length > 0) {
+      messageFragments.push(
+        `If the error cause is not obvious from the below error messages, running "nx reset" may fix it. Please report the issue if you keep seeing it.`
+      );
+    }
+    super(messageFragments.join(' '));
+    this.name = this.constructor.name;
+    this.errors = errors;
+    this.#partialProjectGraph = partialProjectGraph;
+    this.#partialSourceMaps = partialSourceMaps;
+    this.stack = errors
+      .map((error) => indentString(formatErrorStackAndCause(error), 2))
+      .join('\n');
+  }
+
+  /**
+   * The daemon cannot throw errors which contain methods as they are not serializable.
+   *
+   * This method creates a new {@link ProjectGraphError} from a {@link DaemonProjectGraphError} with the methods based on the same serialized data.
+   */
+  static fromDaemonProjectGraphError(e: DaemonProjectGraphError) {
+    return new ProjectGraphError(e.errors, e.projectGraph, e.sourceMaps);
+  }
+
+  /**
+   * This gets the partial project graph despite the errors which occurred.
+   * This partial project graph may be missing nodes, properties of nodes, or dependencies.
+   * This is useful mostly for visualization/debugging. It should not be used for running tasks.
+   */
+  getPartialProjectGraph() {
+    return this.#partialProjectGraph;
+  }
+
+  getPartialSourcemaps() {
+    return this.#partialSourceMaps;
+  }
+
+  getErrors() {
+    return this.errors;
+  }
+}
+
+export class MultipleProjectsWithSameNameError extends Error {
+  constructor(
+    public conflicts: Map<string, string[]>,
+    public projects: Record<string, ProjectConfiguration>,
+    /**
+     * Set when some of the duplicates come from git worktrees nested in the
+     * workspace, which is a different fix than renaming them.
+     */
+    public worktreeAdvice?: WorktreeConflictAdvice
+  ) {
+    super(
+      [
+        `The following projects are defined in multiple locations:`,
+        ...Array.from(conflicts.entries()).map(([project, roots]) =>
+          [`- ${project}: `, ...roots.map((r) => `  - ${r}`)].join('\n')
+        ),
+        '',
+        ...(worktreeAdvice?.ignoreTargets.length
+          ? [
+              'Some of these are inside git worktrees nested in this workspace. A worktree is a full checkout, so every project in it collides with the one it was checked out from.',
+              '',
+              // Which `.gitignore` matters: a leading slash anchors to the
+              // directory holding the file, and these paths are relative to
+              // the workspace, which is not always the repository root.
+              'To fix those, add the following to the .gitignore in the workspace root:',
+              ...worktreeAdvice.ignoreTargets.map((target) => `  ${target}`),
+              // Ignoring the worktrees settles only the duplicates they
+              // explain; anything left is an ordinary name collision and still
+              // needs the ordinary answer.
+              ...(worktreeAdvice.explainsAllConflicts
+                ? []
+                : ['', `The rest are not from worktrees. ${RENAME_ADVICE}`]),
+            ]
+          : [
+              `To fix this, ${RENAME_ADVICE[0].toLowerCase()}${RENAME_ADVICE.slice(1)}`,
+            ]),
+      ].join('\n')
+    );
+    this.name = this.constructor.name;
+  }
+}
+
+const RENAME_ADVICE =
+  "Set a unique name for each project in a project.json inside the project's root. If the project does not currently have a project.json, you can create one that contains only a name.";
+
+export class ProjectWithExistingNameError extends Error {
+  constructor(
+    public projectName: string,
+    public projectRoot: string
+  ) {
+    super(`The project "${projectName}" is defined in multiple locations.`);
+    this.name = this.constructor.name;
+  }
+}
+
+export function isProjectWithExistingNameError(
+  e: unknown
+): e is ProjectWithExistingNameError {
+  return (
+    e instanceof ProjectWithExistingNameError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === ProjectWithExistingNameError.name)
+  );
+}
+
+export function isMultipleProjectsWithSameNameError(
+  e: unknown
+): e is MultipleProjectsWithSameNameError {
+  return (
+    e instanceof MultipleProjectsWithSameNameError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === MultipleProjectsWithSameNameError.name)
+  );
+}
+
+export class ProjectsWithNoNameError extends Error {
+  constructor(
+    public projectRoots: string[],
+    public projects: Record<string, ProjectConfiguration>
+  ) {
+    super(
+      `The projects in the following directories have no name provided:\n  - ${projectRoots.join(
+        '\n  - '
+      )}`
+    );
+    this.name = this.constructor.name;
+  }
+}
+
+export function isProjectsWithNoNameError(
+  e: unknown
+): e is ProjectsWithNoNameError {
+  return (
+    e instanceof ProjectsWithNoNameError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === ProjectsWithNoNameError.name)
+  );
+}
+
+export class ProjectWithNoNameError extends Error {
+  constructor(public projectRoot: string) {
+    super(`The project in ${projectRoot} has no name provided.`);
+    this.name = this.constructor.name;
+  }
+}
+
+export function isProjectWithNoNameError(
+  e: unknown
+): e is ProjectWithNoNameError {
+  return (
+    e instanceof ProjectWithNoNameError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === ProjectWithNoNameError.name)
+  );
+}
+
+export class ProjectConfigurationsError extends Error {
+  constructor(
+    public readonly errors: Array<
+      | MergeNodesError
+      | AggregateCreateNodesError
+      | ProjectsWithNoNameError
+      | MultipleProjectsWithSameNameError
+      | WorkspaceValidityError
+    >,
+    public readonly partialProjectConfigurationsResult: ConfigurationResult
+  ) {
+    const messageFragments = ['Failed to create project configurations.'];
+    const mergeNodesErrors = [];
+    const unknownErrors = [];
+    for (const e of errors) {
+      if (
+        // Known error type, but unlikely to be caused by the user
+        isMergeNodesError(e)
+      ) {
+        mergeNodesErrors.push(e);
+      } else if (
+        // Known errors that are self-explanatory
+        !isAggregateCreateNodesError(e) &&
+        !isProjectsWithNoNameError(e) &&
+        !isMultipleProjectsWithSameNameError(e)
+      ) {
+        unknownErrors.push(e);
+      }
+    }
+    if (mergeNodesErrors.length > 0) {
+      messageFragments.push(
+        `This type of error most likely points to an issue within Nx. Please report it.`
+      );
+    }
+    if (unknownErrors.length > 0) {
+      messageFragments.push(
+        `If the error cause is not obvious from the below error messages, running "nx reset" may fix it. Please report the issue if you keep seeing it.`
+      );
+    }
+    super(messageFragments.join(' '));
+    this.name = this.constructor.name;
+    this.errors = errors;
+    this.stack = errors
+      .map((error) => indentString(formatErrorStackAndCause(error), 2))
+      .join('\n');
+  }
+}
+
+export function isProjectConfigurationsError(
+  e: unknown
+): e is ProjectConfigurationsError {
+  return (
+    e instanceof ProjectConfigurationsError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === ProjectConfigurationsError.name)
+  );
+}
+
+export function formatProjectGraphError(
+  error: ProjectGraphError | ProjectConfigurationsError,
+  isVerbose: boolean
+): { title: string; bodyLines: string[] } {
+  const errors = isProjectConfigurationsError(error)
+    ? error.errors
+    : error.getErrors();
+
+  let title = error.message;
+  if (
+    error.cause &&
+    typeof error.cause === 'object' &&
+    'message' in error.cause
+  ) {
+    title += ' ' + error.cause.message + '.';
+  }
+
+  return {
+    title,
+    bodyLines: isVerbose
+      ? [formatErrorStackAndCause(error)]
+      : [
+          ...errors.map((e) => e.message),
+          '',
+          'Pass --verbose to see the stacktraces.',
+        ],
+  };
+}
+
+/**
+ * This error should be thrown when a `createNodesV2` function hits a recoverable error.
+ * It allows Nx to recieve partial results and continue processing for better UX.
+ */
+export class AggregateCreateNodesError extends Error {
+  public pluginIndex: number | undefined;
+  /**
+   * Throwing this error from a `createNodesV2` function will allow Nx to continue processing and recieve partial results from your plugin.
+   * @example
+   * export async function createNodesV2(
+   *  files: string[],
+   * ) {
+   *   const partialResults = [];
+   *   const errors = [];
+   *   await Promise.all(files.map(async (file) => {
+   *     try {
+   *        const result = await createNodes(file);
+   *        partialResults.push(result);
+   *     } catch (e) {
+   *        errors.push([file, e]);
+   *     }
+   *   }));
+   *  if (errors.length > 0) {
+   *     throw new AggregateCreateNodesError(errors, partialResults);
+   *   }
+   *   return partialResults;
+   * }
+   *
+   * @param errors An array of tuples that represent errors encountered when processing a given file. An example entry might look like ['path/to/project.json', [Error: 'Invalid JSON. Unexpected token 'a' in JSON at position 0]]
+   * @param partialResults The partial results of the `createNodesV2` function. This should be the results for each file that didn't encounter an issue.
+   */
+  constructor(
+    public readonly errors: Array<[file: string | null, error: Error]>,
+    public readonly partialResults: Awaited<ReturnType<CreateNodesFunction>>
+  ) {
+    super('Failed to create nodes');
+    this.name = this.constructor.name;
+    if (
+      // Errors should be an array
+      !Array.isArray(errors) ||
+      !errors.every(
+        // Where every element is a tuple
+        (errorTuple) =>
+          Array.isArray(errorTuple) &&
+          // That has a length of 2
+          errorTuple.length === 2
+      )
+    ) {
+      throw new Error(
+        'AggregateCreateNodesError must be constructed with an array of tuples where the first element is a filename or undefined and the second element is the underlying error.'
+      );
+    }
+    // Plugins pass through whatever value they caught, which is not
+    // guaranteed to be an Error. Coerce so formatting can rely on
+    // message and stack being present.
+    for (const errorTuple of errors) {
+      errorTuple[1] = coerceToError(errorTuple[1]);
+    }
+  }
+}
+
+function coerceToError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  let message: string;
+  let stack: string | undefined;
+  if (typeof value === 'object' && value !== null) {
+    const candidate = value as { message?: unknown; stack?: unknown };
+    if (typeof candidate.message === 'string') {
+      message = candidate.message;
+      if (typeof candidate.stack === 'string') {
+        stack = candidate.stack;
+      }
+    } else {
+      try {
+        message = JSON.stringify(value);
+      } catch {
+        // Circular structures cannot be stringified.
+        message = String(value);
+      }
+    }
+  } else {
+    message = String(value);
+  }
+  const error = new Error(message);
+  // A synthesized stack would point at this coercion site rather than
+  // the original failure, so prefer the original stack or just the message.
+  error.stack = stack ?? message;
+  return error;
+}
+
+export function formatAggregateCreateNodesError(
+  error: AggregateCreateNodesError,
+  pluginName: string
+) {
+  const errorCount =
+    error.errors.length > 1 ? `${error.errors.length} errors` : 'An error';
+  const pluginLocation = error.pluginIndex
+    ? ` (Defined at nx.json#plugins[${error.pluginIndex}])`
+    : '';
+  const errorBodyLines = [
+    `${errorCount} occurred while processing files for the ${pluginName} plugin${pluginLocation}.`,
+  ];
+  const errorStackLines = [];
+
+  // Group errors by file so repeated file paths aren't printed multiple times
+  const groupedErrors = new Map<string | null, Error[]>();
+  for (const [file, e] of error.errors) {
+    const key = file ?? null;
+    if (!groupedErrors.has(key)) {
+      groupedErrors.set(key, []);
+    }
+    groupedErrors.get(key).push(e);
+  }
+
+  for (const [file, errors] of groupedErrors) {
+    if (file) {
+      errorBodyLines.push(`  - ${file}:`);
+      errorStackLines.push(` - ${file}:`);
+    }
+    for (const e of errors) {
+      const messageLines = e.message.split('\n');
+      // Errors deserialized from a plugin worker may arrive without a stack.
+      const stackLines = (e.stack ?? e.message).split('\n');
+      if (file) {
+        errorBodyLines.push(...messageLines.map((line) => `      ${line}`));
+        errorStackLines.push(...stackLines.map((line) => `     ${line}`));
+      } else {
+        errorBodyLines.push(
+          `  - ${messageLines[0]}`,
+          ...messageLines.slice(1).map((line) => `    ${line}`)
+        );
+        errorStackLines.push(
+          ` - ${stackLines[0]}`,
+          ...stackLines.slice(1).map((line) => `   ${line}`)
+        );
+      }
+      if (e.stack && process.env.NX_VERBOSE_LOGGING === 'true') {
+        const verboseIndent = file ? '       ' : '     ';
+        const innerStackTrace = e.stack
+          .split('\n')
+          .map((line) => `${verboseIndent}${line}`)
+          .join('\n');
+        errorStackLines.push(innerStackTrace);
+      }
+    }
+  }
+
+  error.stack = errorStackLines.join('\n');
+  error.message = errorBodyLines.join('\n');
+}
+
+export class MergeNodesError extends Error {
+  file: string;
+  pluginName: string;
+  pluginIndex: number;
+
+  constructor({
+    file,
+    pluginName,
+    error,
+    pluginIndex,
+  }: {
+    file: string;
+    pluginName: string;
+    error: Error;
+    pluginIndex?: number;
+  }) {
+    const msg = `The nodes created from ${file} by the "${pluginName}" ${
+      pluginIndex === undefined
+        ? ''
+        : `at index ${pluginIndex} in nx.json#plugins `
+    }could not be merged into the project graph.`;
+
+    super(msg, { cause: error });
+    this.name = this.constructor.name;
+    this.file = file;
+    this.pluginName = pluginName;
+    this.pluginIndex = pluginIndex;
+    this.stack = `${this.message}\n${indentString(
+      formatErrorStackAndCause(error),
+      2
+    )}`;
+  }
+}
+
+export class CreateMetadataError extends Error {
+  constructor(
+    public readonly error: Error,
+    public readonly plugin: string
+  ) {
+    super(
+      `The "${plugin}" plugin threw an error while creating metadata: ${error.message}`,
+      {
+        cause: error,
+      }
+    );
+    this.name = this.constructor.name;
+  }
+}
+
+export class ProcessDependenciesError extends Error {
+  constructor(
+    public readonly pluginName: string,
+    { cause }
+  ) {
+    super(
+      `The "${pluginName}" plugin threw an error while creating dependencies: ${cause.message}`,
+      {
+        cause,
+      }
+    );
+    this.name = this.constructor.name;
+    this.stack = `${this.message}\n  ${cause.stack.split('\n').join('\n  ')}`;
+  }
+}
+
+function isProcessDependenciesError(e: unknown): e is ProcessDependenciesError {
+  return (
+    e instanceof ProcessDependenciesError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === ProcessDependenciesError.name)
+  );
+}
+
+export class WorkspaceValidityError extends Error {
+  constructor(public message: string) {
+    super(message);
+    this.message = `[Configuration Error]:\n${message}`;
+    this.name = this.constructor.name;
+  }
+
+  toString() {
+    return this.message;
+  }
+}
+
+export function isWorkspaceValidityError(
+  e: unknown
+): e is WorkspaceValidityError {
+  return (
+    e instanceof WorkspaceValidityError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === WorkspaceValidityError.name)
+  );
+}
+export class AggregateProjectGraphError extends Error {
+  constructor(
+    public readonly errors: Array<
+      CreateMetadataError | ProcessDependenciesError | WorkspaceValidityError
+    >,
+    public readonly partialProjectGraph: ProjectGraph
+  ) {
+    super('Failed to create project graph. See above for errors');
+    this.name = this.constructor.name;
+  }
+}
+
+export function isAggregateProjectGraphError(
+  e: unknown
+): e is AggregateProjectGraphError {
+  return (
+    e instanceof AggregateProjectGraphError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === AggregateProjectGraphError.name)
+  );
+}
+
+export function isCreateMetadataError(e: unknown): e is CreateMetadataError {
+  return (
+    e instanceof CreateMetadataError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === CreateMetadataError.name)
+  );
+}
+
+export function isAggregateCreateNodesError(
+  e: unknown
+): e is AggregateCreateNodesError {
+  return (
+    e instanceof AggregateCreateNodesError ||
+    (typeof e === 'object' &&
+      'name' in e &&
+      e?.name === AggregateCreateNodesError.name)
+  );
+}
+
+export function isMergeNodesError(e: unknown): e is MergeNodesError {
+  return (
+    e instanceof MergeNodesError ||
+    (typeof e === 'object' && 'name' in e && e?.name === MergeNodesError.name)
+  );
+}
+
+export class DaemonProjectGraphError extends Error {
+  constructor(
+    public errors: any[],
+    readonly projectGraph: ProjectGraph,
+    readonly sourceMaps: ConfigurationSourceMaps
+  ) {
+    super(
+      `The Daemon Process threw an error while calculating the project graph. Convert this error to a ProjectGraphError to get more information.`
+    );
+    this.name = this.constructor.name;
+  }
+}
+
+export class LoadPluginError extends Error {
+  constructor(
+    public plugin: string,
+    cause: Error
+  ) {
+    super(`Could not load plugin ${plugin}`, {
+      cause,
+    });
+    this.name = this.constructor.name;
+  }
+}
+
+function indentString(str: string, indent: number): string {
+  return (
+    ' '.repeat(indent) +
+    str
+      .split('\n')
+      .map((line) => ' '.repeat(indent) + line)
+      .join('\n')
+  );
+}
+
+export function formatErrorStackAndCause(error: Error): string {
+  const cause = describeCause(error.cause);
+  return (
+    (error.stack ?? error.message) +
+    (cause ? `\nCaused by: \n${indentString(cause, 2)}` : '')
+  );
+}
+
+function describeCause(cause: unknown): string | null {
+  if (!cause) {
+    return null;
+  }
+  if (cause instanceof Error) {
+    return cause.stack ?? cause.message;
+  }
+  if (typeof cause === 'object') {
+    const { stack, message } = cause as { stack?: unknown; message?: unknown };
+    if (typeof stack === 'string') {
+      return stack;
+    }
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  return String(cause);
+}

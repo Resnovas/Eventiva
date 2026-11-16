@@ -1,0 +1,129 @@
+import { LinterType } from '@nx/js';
+import {
+  addDependenciesToPackageJson,
+  GeneratorCallback,
+  runTasksInSerial,
+  Tree,
+} from '@nx/devkit';
+import { extraEslintDependencies } from '@nx/react';
+import {
+  addExtendsToLintConfig,
+  addIgnoresToLintConfig,
+  addOverrideToLintConfig,
+  addPredefinedConfigToFlatLintConfig,
+  isEslintConfigSupported,
+  updateOverrideInLintConfig,
+  useFlatConfig,
+} from '@nx/eslint/internal';
+import { addLintingToProject } from '@nx/js/internal';
+
+interface NormalizedSchema {
+  linter?: LinterType;
+  projectName: string;
+  projectRoot: string;
+  enableTypedLinting?: boolean;
+  tsConfigPaths: string[];
+  unitTestRunner?: string;
+  skipPackageJson?: boolean;
+  buildable?: boolean;
+  isTsSolutionSetup?: boolean;
+}
+
+export async function addLinting(host: Tree, options: NormalizedSchema) {
+  const tasks: GeneratorCallback[] = [];
+  tasks.push(
+    await addLintingToProject(host, {
+      oxlintPlugins: ['react', 'react-perf'],
+      linter: options.linter,
+      project: options.projectName,
+      tsConfigPaths: options.tsConfigPaths,
+      unitTestRunner: options.unitTestRunner,
+      skipPackageJson: options.skipPackageJson,
+      enableTypedLinting: options.enableTypedLinting,
+      addPackageJsonDependencyChecks: options.buildable,
+    })
+  );
+
+  // Everything below configures ESLint — predefined configs, `extends`, ignore
+  // entries — which have no equivalent in other linters.
+  if (options.linter && options.linter !== 'eslint') {
+    return runTasksInSerial(...tasks);
+  }
+
+  // Add ignored dependencies and files to dependency-checks rule
+  if (isEslintConfigSupported(host)) {
+    updateOverrideInLintConfig(
+      host,
+      options.projectRoot,
+      (override) => Boolean(override.rules?.['@nx/dependency-checks']),
+      (override) => {
+        const rule = override.rules['@nx/dependency-checks'] as
+          | string
+          | [string, { ignoredDependencies?: string[] }];
+        if (Array.isArray(rule) && rule.length > 1) {
+          // Ensure ignoredDependencies array exists
+          if (!rule[1].ignoredDependencies) {
+            rule[1].ignoredDependencies = [];
+          }
+
+          // Add ignored dependencies if they don't already exist
+          const ignoredDeps = [
+            '@nx/jest',
+            '@nx/rollup',
+            '@rollup/plugin-url',
+            '@svgr/rollup',
+            'jest-expo',
+          ];
+          for (const dep of ignoredDeps) {
+            if (!rule[1].ignoredDependencies.includes(dep)) {
+              rule[1].ignoredDependencies.push(dep);
+            }
+          }
+        }
+        return override;
+      }
+    );
+  }
+
+  if (isEslintConfigSupported(host)) {
+    if (useFlatConfig(host)) {
+      addPredefinedConfigToFlatLintConfig(
+        host,
+        options.projectRoot,
+        'flat/react',
+        { checkBaseConfig: true }
+      );
+      // Add an empty rules object to users know how to add/override rules
+      addOverrideToLintConfig(host, options.projectRoot, {
+        files: ['*.ts', '*.tsx', '*.js', '*.jsx'],
+        rules: {},
+      });
+    } else {
+      const addExtendsTask = addExtendsToLintConfig(host, options.projectRoot, {
+        name: 'plugin:@nx/react',
+        needCompatFixup: true,
+      });
+      tasks.push(addExtendsTask);
+    }
+    addIgnoresToLintConfig(host, options.projectRoot, [
+      '.expo',
+      'web-build',
+      'cache',
+      'dist',
+      ...(options.isTsSolutionSetup ? ['**/out-tsc'] : []),
+    ]);
+  }
+
+  if (!options.skipPackageJson) {
+    const installTask = await addDependenciesToPackageJson(
+      host,
+      extraEslintDependencies.dependencies,
+      extraEslintDependencies.devDependencies,
+      undefined,
+      true
+    );
+    tasks.push(installTask);
+  }
+
+  return runTasksInSerial(...tasks);
+}

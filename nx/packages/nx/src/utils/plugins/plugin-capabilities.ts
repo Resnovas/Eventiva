@@ -1,0 +1,136 @@
+import { dirname, join, relative } from 'path';
+import {
+  ExecutorsJsonEntry,
+  GeneratorsJsonEntry,
+} from '../../config/misc-interfaces';
+import { ProjectConfiguration } from '../../config/workspace-json-project-json';
+import { readJsonFile } from '../fileutils';
+import { getNxRequirePaths } from '../installation-directory';
+import { readPluginPackageJson } from '../../project-graph/plugins';
+import { loadNxPlugin } from '../../project-graph/plugins/in-process-loader';
+import { PackageJson } from '../package-json';
+import type { LoadedNxPlugin } from '../../project-graph/plugins/loaded-nx-plugin';
+
+export interface PluginCapabilities {
+  name: string;
+  path?: string;
+  executors?: { [name: string]: ExecutorsJsonEntry };
+  generators?: { [name: string]: GeneratorsJsonEntry };
+  projectInference?: boolean;
+  projectGraphExtension?: boolean;
+}
+
+function tryGetCollection<T extends object>(
+  packageJsonPath: string,
+  collectionFile: string | undefined,
+  propName: string
+): T | null {
+  if (!collectionFile) {
+    return null;
+  }
+
+  try {
+    const collectionFilePath = join(dirname(packageJsonPath), collectionFile);
+    return readJsonFile<T>(collectionFilePath)[propName];
+  } catch {
+    return null;
+  }
+}
+
+export async function getPluginCapabilities(
+  workspaceRoot: string,
+  pluginName: string,
+  projects: Record<string, ProjectConfiguration>,
+  includeRuntimeCapabilities = false
+): Promise<PluginCapabilities | null> {
+  try {
+    const { json: packageJson, path: packageJsonPath } = readPluginPackageJson(
+      pluginName,
+      projects,
+      getNxRequirePaths(workspaceRoot)
+    );
+    const pluginModule = includeRuntimeCapabilities
+      ? await tryGetModule(packageJson, workspaceRoot)
+      : ({} as Record<string, unknown>);
+    const pluginPath = relative(workspaceRoot, dirname(packageJsonPath)) || '.';
+    return {
+      name: pluginName,
+      path: pluginPath,
+      generators: {
+        ...tryGetCollection(
+          packageJsonPath,
+          packageJson.schematics,
+          'schematics'
+        ),
+        ...tryGetCollection(
+          packageJsonPath,
+          packageJson.generators,
+          'schematics'
+        ),
+        ...tryGetCollection(
+          packageJsonPath,
+          packageJson.schematics,
+          'generators'
+        ),
+        ...tryGetCollection(
+          packageJsonPath,
+          packageJson.generators,
+          'generators'
+        ),
+      },
+      executors: {
+        ...tryGetCollection(packageJsonPath, packageJson.builders, 'builders'),
+        ...tryGetCollection(packageJsonPath, packageJson.executors, 'builders'),
+        ...tryGetCollection(packageJsonPath, packageJson.builders, 'executors'),
+        ...tryGetCollection(
+          packageJsonPath,
+          packageJson.executors,
+          'executors'
+        ),
+      },
+      projectGraphExtension:
+        pluginModule &&
+        ('processProjectGraph' in pluginModule ||
+          'createNodes' in pluginModule ||
+          'createNodesV2' in pluginModule ||
+          'createMetadata' in pluginModule ||
+          'createDependencies' in pluginModule),
+      projectInference:
+        pluginModule &&
+        ('projectFilePatterns' in pluginModule ||
+          'createNodes' in pluginModule ||
+          'createNodesV2' in pluginModule),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function tryGetModule(
+  packageJson: PackageJson,
+  workspaceRoot: string
+): Promise<LoadedNxPlugin | null> {
+  try {
+    if (
+      packageJson.generators ??
+      packageJson.executors ??
+      packageJson['nx-migrations'] ??
+      packageJson['schematics'] ??
+      packageJson['builders']
+    ) {
+      return await loadNxPlugin(packageJson.name, workspaceRoot);
+    } else {
+      return {
+        name: packageJson.name,
+        capabilities: () => ({
+          hasCreateDependencies: false,
+          hasCreateMetadata: false,
+          hasPreTasksExecution: false,
+          hasPostTasksExecution: false,
+        }),
+      };
+    }
+  } catch {
+    return null;
+  }
+}

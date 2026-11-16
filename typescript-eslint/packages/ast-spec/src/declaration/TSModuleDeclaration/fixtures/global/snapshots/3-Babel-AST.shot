@@ -1,0 +1,46 @@
+Program {
+  type: "Program",
+  body: [
+    TSModuleDeclaration {
+      type: "TSModuleDeclaration",
+      body: TSModuleBlock {
+        type: "TSModuleBlock",
+        body: [],
+
+        range: [15, 17],
+        loc: {
+          start: { column: 15, line: 1 },
+          end: { column: 17, line: 1 },
+        },
+      },
+      declare: true,
+      global: true,
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "global",
+        optional: false,
+
+        range: [8, 14],
+        loc: {
+          start: { column: 8, line: 1 },
+          end: { column: 14, line: 1 },
+        },
+      },
+      kind: "global",
+
+      range: [0, 17],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 17, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 18],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

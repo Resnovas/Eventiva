@@ -1,0 +1,72 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+# gazelle:ignore
+load("@bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("@npm//:http-server/package_json.bzl", "bin")
+load("//tools:package_json.bzl", "generate_package_json")
+load("//tools:rolldown.bzl", "rolldown_bundle")
+load("//tools:tsconfig.bzl", "packages_tsconfig")
+
+generate_package_json(
+    package_name = "examples",
+    private = True,
+)
+
+EXAMPLES_SRC_DEPS = [
+    "//packages/ecma402-abstract",
+    "//:node_modules/@formatjs/intl-datetimeformat",
+    "//:node_modules/@formatjs/intl-getcanonicallocales",
+    "//:node_modules/@formatjs/intl-locale",
+    "//:node_modules/intl-messageformat",
+    "//:node_modules/@formatjs/icu-messageformat-parser",
+    "//:node_modules/@formatjs/intl-numberformat",
+    "//:node_modules/@formatjs/intl-pluralrules",
+    "//:node_modules/react-intl",
+    "//:node_modules/@types/react",
+    "//:node_modules/@types/react-dom",
+    "//:node_modules/react",
+    "//:node_modules/react-dom",
+]
+
+ts_project(
+    name = "examples-esm",
+    srcs = glob(
+        [
+            "**/*.ts*",
+            "**/*.json",
+        ],
+        exclude = ["package.json"],
+    ),
+    declaration = True,
+    out_dir = "examples-lib",
+    resolve_json_module = True,
+    tsconfig = packages_tsconfig(),
+    deps = EXAMPLES_SRC_DEPS,
+)
+
+rolldown_bundle(
+    name = "main",
+    define = {
+        "process.env.NODE_ENV": '"development"',
+    },
+    entry_point = "examples-lib/index.js",
+    format = "iife",
+    target = "es2020",
+    deps = [":examples-esm"] + EXAMPLES_SRC_DEPS,
+)
+
+copy_to_bin(
+    name = "index",
+    srcs = ["index.html"],
+)
+
+bin.http_server_binary(
+    name = "examples",
+    args = [
+        "packages/react-intl/examples",
+    ],
+    data = [
+        ":index",
+        ":main",
+    ],
+)

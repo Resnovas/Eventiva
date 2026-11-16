@@ -1,0 +1,70 @@
+import { Platform } from 'react-native'
+
+// Re-export remote config utilities from core
+export { getRemoteConfigBool, getRemoteConfigNumber, isValidSampleRate } from '@posthog/core'
+
+type ReactNativeGlobal = {
+  HermesInternal?: {
+    enablePromiseRejectionTracker?: (args: {
+      allRejections: boolean
+      onUnhandled?: (id: string, error: any) => void
+      onHandled?: (id: string, error: any) => void
+    }) => void
+    hasPromise?: () => boolean
+  }
+  ErrorUtils?: {
+    getGlobalHandler?: () => (error: Error, isFatal: boolean) => void
+    setGlobalHandler?: (handler: (error: Error, isFatal: boolean) => void) => void
+  }
+  onunhandledrejection?: (event: unknown) => void
+}
+
+// fallback for older environments
+const _global: typeof global | undefined = typeof global !== 'undefined' ? global : undefined
+
+// works after for ECMAScript 2020 (React Native >= 0.63)
+const _globalThis: typeof globalThis | undefined = typeof globalThis !== 'undefined' ? globalThis : undefined
+
+export const GLOBAL_OBJ = (_globalThis ?? _global) as unknown as ReactNativeGlobal
+
+export function getPlatformOS(): string | undefined {
+  try {
+    return Platform?.OS
+  } catch {
+    return undefined
+  }
+}
+
+/** Checks if the current platform is web */
+export function isWeb(): boolean {
+  return getPlatformOS() === 'web'
+}
+
+/** Checks if the current platform is macOS */
+export function isMacOS(): boolean {
+  return getPlatformOS() === 'macos'
+}
+
+/** Checks if the current platform is Windows */
+export function isWindows(): boolean {
+  return getPlatformOS() === 'windows'
+}
+
+export const isHermes = () => !!GLOBAL_OBJ.HermesInternal
+
+type ReactNativeVersion = { major: number; minor: number; patch: number; prerelease?: number | string | null }
+
+/** React Native version like "0.79.6" or "0.80.0-rc.2", or undefined where Platform.constants doesn't report it (e.g. web) */
+export function getReactNativeVersion(): string | undefined {
+  try {
+    const version = (Platform as { constants?: { reactNativeVersion?: ReactNativeVersion } }).constants
+      ?.reactNativeVersion
+    if (!version || typeof version.major !== 'number') {
+      return undefined
+    }
+    const { major, minor, patch, prerelease } = version
+    return `${major}.${minor}.${patch}${prerelease != null ? `-${prerelease}` : ''}`
+  } catch {
+    return undefined
+  }
+}

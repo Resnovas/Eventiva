@@ -1,0 +1,119 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"T">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TypeDefinition$2 {
+          name: Identifier<"A">,
+          node: TSTypeAliasDeclaration$2,
+        },
+      ],
+      name: "A",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        TypeDefinition$3 {
+          name: Identifier<"U">,
+          node: TSTypeParameter$3,
+        },
+      ],
+      name: "U",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"U">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$4,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        ParameterDefinition$4 {
+          name: Identifier<"arg">,
+          node: TSConstructorType$4,
+        },
+      ],
+      name: "arg",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$5,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "T" => Variable$2,
+        "A" => Variable$3,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+      ],
+    },
+    TypeScope$2 {
+      block: TSTypeAliasDeclaration$2,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "U" => Variable$4,
+      },
+      type: "type",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+      ],
+    },
+    FunctionTypeScope$3 {
+      block: TSConstructorType$4,
+      isStrict: true,
+      references: [
+        Reference$1,
+        Reference$2,
+      ],
+      set: Map {
+        "arg" => Variable$5,
+      },
+      type: "functionType",
+      upper: TypeScope$2,
+      variables: [
+        Variable$5,
+      ],
+    },
+  ],
+}

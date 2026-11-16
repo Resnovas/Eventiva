@@ -1,0 +1,159 @@
+import { detectFormatterInTree } from '@nx/devkit/internal';
+import {
+  addDependenciesToPackageJson,
+  ensurePackage,
+  formatFiles,
+  generateFiles,
+  GeneratorCallback,
+  readJson,
+  runTasksInSerial,
+  Tree,
+} from '@nx/devkit';
+import { join } from 'path';
+import { assertSupportedTypescriptVersion } from '../../utils/assert-supported-typescript-version';
+import { addTypescriptPlugin } from '../../utils/typescript/add-typescript-plugin';
+import { getFormatterSetup } from '../../utils/formatter-setup';
+import { assertNxSupportsFormatters } from '../../utils/nx-formatter-internals';
+import { getTsConfigBaseOptions } from '../../utils/typescript/create-ts-config';
+import { getRootTsConfigFileName } from '../../utils/typescript/ts-config';
+import { getCustomConditionName } from '../../utils/typescript/ts-solution-setup';
+import {
+  nxVersion,
+  swcHelpersVersion,
+  tsLibVersion,
+  typescriptVersion,
+} from '../../utils/versions';
+import { InitSchema } from './schema';
+
+export async function initGenerator(
+  tree: Tree,
+  schema: InitSchema
+): Promise<GeneratorCallback> {
+  schema.addTsPlugin ??= false;
+  // Detection is the only thing here that needs the nx-side helpers, so the
+  // assert belongs with it: `'none'` must still work on an older peer-compatible
+  // nx, and it reaches no formatter code at all. An explicit `'prettier'` or
+  // `'oxfmt'` does not - both setups assert for themselves.
+  if (schema.formatter == null) {
+    assertNxSupportsFormatters();
+    // Defer to `detectFormatterInTree` rather than re-deriving: it encodes the
+    // oxfmt-over-prettier precedence, which a prettier-first check gets
+    // backwards for a workspace configured with both. Falling back to "none"
+    // rather than a formatter keeps this from installing one the caller never
+    // asked for.
+    schema.formatter = detectFormatterInTree(tree) ?? 'none';
+  }
+
+  return initGeneratorInternal(tree, {
+    addTsConfigBase: true,
+    ...schema,
+  });
+}
+
+export async function initGeneratorInternal(
+  tree: Tree,
+  schema: InitSchema
+): Promise<GeneratorCallback> {
+  assertSupportedTypescriptVersion(tree);
+
+  const tasks: GeneratorCallback[] = [];
+
+  schema.addTsPlugin ??= true;
+
+  if (schema.addTsPlugin) {
+    await addTypescriptPlugin(tree, schema.updatePackageScripts);
+  }
+
+  if (schema.addTsConfigBase && !getRootTsConfigFileName(tree)) {
+    if (schema.addTsPlugin) {
+      const platform = schema.platform ?? 'node';
+      const customCondition = getCustomConditionName(tree);
+      generateFiles(tree, join(__dirname, './files/ts-solution'), '.', {
+        platform,
+        customCondition,
+        tmpl: '',
+      });
+    } else {
+      generateFiles(tree, join(__dirname, './files/non-ts-solution'), '.', {
+        fileName: schema.tsConfigName ?? 'tsconfig.base.json',
+        moduleResolution: getTsConfigBaseOptions(tree).moduleResolution,
+      });
+    }
+  }
+
+  const devDependencies: Record<string, string> = {
+    '@nx/js': nxVersion,
+    // Required by SWC-compiled output (decorators -> @swc/helpers/_/_ts_decorate
+    // imports). The default @nx/jest setup transforms with @swc/jest, so any
+    // workspace using decorators (NestJS, Angular, etc.) needs @swc/helpers
+    // resolvable at test time. Cheap to ship and avoids per-generator install.
+    '@swc/helpers': swcHelpersVersion,
+  };
+  // @swc-node/register and @swc/core are no longer installed by init - native
+  // Node.js type stripping handles .ts config loading on Node 23+ (or 22.6+
+  // with --experimental-strip-types). loadTsFile registers swc/ts-node lazily
+  // when a config uses syntax native strip can't handle.
+
+  if (!schema.js) {
+    devDependencies['typescript'] = typescriptVersion;
+  }
+
+  // One table drives both halves of formatter setup - writing the config and
+  // making the package resolvable further down. They were separate `if` chains
+  // over the same union, forty lines apart, so a third formatter meant finding
+  // both.
+  const formatterSetup = getFormatterSetup(schema.formatter);
+
+  if (formatterSetup) {
+    tasks.push(
+      formatterSetup.setUp(tree, {
+        skipPackageJson: schema.skipPackageJson,
+        keepExistingVersions: schema.keepExistingVersions,
+      })
+    );
+  }
+
+  const rootTsConfigFileName = getRootTsConfigFileName(tree);
+  // If the root tsconfig file uses `importHelpers` then we must install tslib
+  // in order to run tsc for build and typecheck.
+  if (rootTsConfigFileName) {
+    const rootTsConfig = readJson(tree, rootTsConfigFileName);
+    if (rootTsConfig.compilerOptions?.importHelpers) {
+      devDependencies['tslib'] = tsLibVersion;
+    }
+  }
+
+  const installTask = !schema.skipPackageJson
+    ? addDependenciesToPackageJson(
+        tree,
+        {},
+        devDependencies,
+        undefined,
+        schema.keepExistingVersions ?? true
+      )
+    : () => {};
+  tasks.push(installTask);
+
+  // `installTask` is queued, not run, so the formatter just added to
+  // package.json is not on disk yet; ensurePackage installs it out of band.
+  // Not gated on `skipFormat` - callers that pass it format later in this same
+  // process.
+  const isDryRun =
+    !!process.env.NX_DRY_RUN && process.env.NX_DRY_RUN !== 'false';
+  if (
+    formatterSetup &&
+    !schema.skipPackageJson &&
+    !isDryRun &&
+    process.env.NX_SKIP_FORMAT !== 'true'
+  ) {
+    ensurePackage(schema.formatter, formatterSetup.version);
+  }
+
+  if (!schema.skipFormat) {
+    await formatFiles(tree);
+  }
+
+  return runTasksInSerial(...tasks);
+}
+
+export default initGenerator;

@@ -1,0 +1,97 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"arg">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "arg",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"arg">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: Literal$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        TypeDefinition$2 {
+          name: Identifier<"A">,
+          node: TSTypeAliasDeclaration$3,
+        },
+      ],
+      name: "A",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"arg">,
+          node: TSFunctionType$4,
+        },
+      ],
+      name: "arg",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"arg">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$4,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$5,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "arg" => Variable$2,
+        "A" => Variable$3,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+      ],
+    },
+    FunctionTypeScope$2 {
+      block: TSFunctionType$4,
+      isStrict: true,
+      references: [
+        Reference$2,
+      ],
+      set: Map {
+        "arg" => Variable$4,
+      },
+      type: "functionType",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+      ],
+    },
+  ],
+}

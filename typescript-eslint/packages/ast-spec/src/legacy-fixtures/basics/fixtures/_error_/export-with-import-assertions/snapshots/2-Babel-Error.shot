@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > legacy-fixtures > basics > _error_ > export-with-import-assertions > Babel - Error`]
+BabelError
+  1 | // TODO: This fixture might be too large, and if so should be split up.
+  2 |
+> 3 | export { foo } from "mod" assert { type: "json" };
+    |                          ^ Missing semicolon. (3:25)
+  4 |
+  

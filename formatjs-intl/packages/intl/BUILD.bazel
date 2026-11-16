@@ -1,0 +1,119 @@
+load("//tools:ast_grep.bzl", "ast_grep_test")
+load("//tools:compile.bzl", "formatjs_library")
+load("//tools:test.bzl", "formatjs_test")
+load("//tools:tsconfig.bzl", "ESNEXT_TSCONFIG", "packages_tsconfig")
+
+formatjs_test(
+    name = "no_parser_bundle_test",
+    size = "small",
+    data = [
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/@formatjs/intl",
+        "//:node_modules/intl-messageformat",
+        "//:node_modules/rolldown",
+    ],
+    entry_point = "tests/no-parser-bundle.ts",
+)
+
+PACKAGE_NAME = "intl"
+
+ENTRY_POINTS = [
+    "index.ts",
+]
+
+formatjs_library(
+    name = "intl",
+    package_name = "@formatjs/intl",
+    srcs = [
+        "create-intl.ts",
+        "dateTime.ts",
+        "displayName.ts",
+        "duration.ts",
+        "error.ts",
+        "index.ts",
+        "list.ts",
+        "message.ts",
+        "number.ts",
+        "plural.ts",
+        "relativeTime.ts",
+        "typed-message.ts",
+        "types.ts",
+        "utils.ts",
+    ],
+    allow_overwrites = True,
+    author = "Long Ho <holevietlong@gmail.com>",
+    bugs = "https://github.com/formatjs/formatjs/issues",
+    description = "Internationalize JS apps. This library provides an API to format dates, numbers, and strings, including pluralization and handling translations.",
+    entry_points = ENTRY_POINTS,
+    homepage = "https://formatjs.github.io",
+    keywords = [
+        "format",
+        "formatting",
+        "globalization",
+        "i18n",
+        "internationalization",
+        "intl",
+        "locale",
+        "localization",
+        "react-intl",
+        "translate",
+        "translation",
+    ],
+    license = "MIT",
+    package_types = "index.d.ts",
+    repository = "git@github.com:formatjs/formatjs.git",
+    side_effects = False,
+    type = "module",
+    types = True,
+    version = "6.1.4",  # x-release-please-version
+    visibility = ["//visibility:public"],
+    exports = {
+        ".": "./index.js",
+    },
+    deps = [
+        "//:node_modules/@formatjs/fast-memoize",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/intl-messageformat",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+ast_grep_test(
+    name = "node_env_preserved_test",
+    size = "small",
+    data = [
+        ":index-bundle",
+    ],
+    pattern = "process.env.NODE_ENV",
+)
+
+formatjs_test(
+    name = "intl_test",
+    srcs = [
+        "tests/create-intl.test.ts",
+        "tests/error.test.ts",
+        "tests/formatDate.test.ts",
+        "tests/formatDisplayNames.test.ts",
+        "tests/formatDuration.test.ts",
+        "tests/formatList.test.ts",
+        "tests/formatMessage.test.ts",
+        "tests/formatNumber.test.ts",
+        "tests/formatPlural.test.ts",
+        "tests/formatRelativeTime.test.ts",
+        "tests/formatTime.test.ts",
+        "tests/no-parser-bundle.ts",
+        "tests/typed-message.test.ts",
+    ],
+    no_copy_to_bin = ["//:package.json"],
+    snapshots = glob(["tests/__snapshots__/*.snap"]),
+    tsconfig = packages_tsconfig(ESNEXT_TSCONFIG),
+    tsconfig_types = ["node"],
+    deps = [
+        ":intl",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/@types/node",
+        "//:node_modules/intl-messageformat",
+        "//:node_modules/rolldown",
+        "//:node_modules/vitest",
+    ],
+)

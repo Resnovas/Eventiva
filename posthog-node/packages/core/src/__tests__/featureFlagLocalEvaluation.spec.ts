@@ -1,0 +1,371 @@
+import {
+  getFeatureFlagHash,
+  getFeatureFlagVariant,
+  getFeatureFlagVariantLookupTable,
+  hashSHA1,
+  InconclusiveMatchError,
+  matchFeatureFlagProperty,
+  parseFeatureFlagSemver,
+  relativeDateParseForFeatureFlagMatching,
+  resolveFeatureFlagPayload,
+} from '../featureFlagLocalEvaluation'
+import type { FeatureFlagProperty } from '../featureFlagLocalEvaluation'
+
+const property = (operator: string, value: FeatureFlagProperty['value']): FeatureFlagProperty => ({
+  key: 'key',
+  operator,
+  value,
+})
+
+describe('feature flag local evaluation primitives', () => {
+  describe('scalar property matching golden cases', () => {
+    test.each([
+      ['exact', 'PRO', 'pro', true],
+      ['exact', ['free', 'PRO'], 'pro', true],
+      ['is_not', 'free', 'pro', true],
+      ['icontains', 'RO', 'Pro plan', true],
+      ['not_icontains', 'enterprise', 'Pro plan', true],
+      ['starts_with', 'pro', 'Pro plan', true],
+      ['not_starts_with', 'free', 'Pro plan', true],
+      ['ends_with', 'PLAN', 'Pro plan', true],
+      ['not_ends_with', 'tier', 'Pro plan', true],
+      ['regex', '^pro', 'pro plan', true],
+      ['not_regex', '^free', 'pro plan', true],
+      ['gt', 9, '10', true],
+      ['gte', 10, '10', true],
+      ['lt', 10, 9, true],
+      ['lte', 10, 10, true],
+      ['semver_eq', '1.2', 'v1.2.0+build', true],
+      ['semver_neq', '1.2.4', '1.2.3', true],
+      ['semver_gt', '1.2.3', '1.2.4', true],
+      ['semver_gte', '1.2.3', '1.2.3', true],
+      ['semver_lt', '1.2.4', '1.2.3', true],
+      ['semver_lte', '1.2.3', '1.2.3', true],
+      ['semver_tilde', '1.2.3', '1.2.9', true],
+      ['semver_caret', '1.2.3', '1.9.0', true],
+      ['semver_wildcard', '1.2.*', '1.2.99', true],
+    ] as const)('%s target %p and actual %p returns %p', (operator, target, actual, expected) => {
+      expect(matchFeatureFlagProperty(property(operator, target), { key: actual })).toBe(expected)
+    })
+
+    test.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['false', false],
+      ['zero', 0],
+      ['empty string', ''],
+      ['empty array', []],
+      ['empty object', {}],
+    ])('treats present %s as set', (_, value) => {
+      expect(matchFeatureFlagProperty(property('is_set', ''), { key: value })).toBe(true)
+      expect(matchFeatureFlagProperty(property('is_not_set', ''), { key: value })).toBe(false)
+    })
+
+    test.each(['is_set', 'is_not_set'])('%s is inconclusive when the property is omitted', (operator) => {
+      expect(() => matchFeatureFlagProperty(property(operator, ''), {})).toThrow(InconclusiveMatchError)
+    })
+
+    test.each([
+      ['icontains', 'RO', 'Pro plan', true],
+      ['not_icontains', 'RO', 'Pro plan', false],
+      ['starts_with', 'PRO', 'Pro plan', true],
+      ['not_starts_with', 'PRO', 'Pro plan', false],
+      ['ends_with', 'PLAN', 'Pro plan', true],
+      ['not_ends_with', 'PLAN', 'Pro plan', false],
+      ['icontains', 'ä', 'Äbc', false],
+      ['not_icontains', 'ä', 'Äbc', true],
+      ['starts_with', 'ä', 'Äbc', false],
+      ['not_starts_with', 'ä', 'Äbc', true],
+      ['ends_with', 'ä', 'bcÄ', false],
+      ['not_ends_with', 'ä', 'bcÄ', true],
+    ] as const)('%s uses ASCII-only folding for target %p and actual %p', (operator, target, actual, expected) => {
+      expect(matchFeatureFlagProperty(property(operator, target), { key: actual })).toBe(expected)
+    })
+
+    test.each([
+      ['Ä', 'ä', true],
+      ['ß', 'ss', false],
+      ['Σ', 'ς', false],
+      ['ΟΣ', 'ος', true],
+      ['ΟΣ', 'οσ', false],
+      ['ΟΔΟΣ', 'οδος', true],
+      ['ΟΔΟΣ', 'οδοσ', false],
+      ['İ', 'i\u0307', true],
+      ['İ', 'i', false],
+    ] as const)('uses full Unicode lowercase for exact target %p and actual %p', (target, actual, expected) => {
+      expect(matchFeatureFlagProperty(property('exact', target), { key: actual })).toBe(expected)
+      expect(matchFeatureFlagProperty(property('is_not', target), { key: actual })).toBe(!expected)
+    })
+
+    test.each([
+      [false, 'banana', true],
+      ['false', 0, true],
+      [['false'], null, true],
+      [['true', 'false'], 'true', false],
+      [['true', 'false'], 'pro', true],
+      [[], true, true],
+      [[], [], true],
+      [[], false, false],
+      [['FREE', 'Ä'], 'ä', true],
+      [['FREE', 'PRO'], 'starter', false],
+    ] as const)('matches backend exact truthiness for target %p and actual %p', (target, actual, expected) => {
+      expect(matchFeatureFlagProperty(property('exact', target), { key: actual })).toBe(expected)
+      expect(matchFeatureFlagProperty(property('is_not', target), { key: actual })).toBe(!expected)
+    })
+
+    test.each([
+      ['["one","two"]', ['one', 'two']],
+      ['{"a":"x","b":true}', { b: true, a: 'x' }],
+      ['{"a":{"y":"x","z":1e-7},"b":[true,null]}', { b: [true, null], a: { z: 1e-7, y: 'x' } }],
+      ['{"":"bmp","𐀀":"supplementary"}', { '𐀀': 'supplementary', '': 'bmp' }],
+    ])('uses canonical JSON stringification for exact filter %p', (target, actual) => {
+      expect(matchFeatureFlagProperty(property('exact', target), { key: actual })).toBe(true)
+      expect(matchFeatureFlagProperty(property('is_not', target), { key: actual })).toBe(false)
+    })
+
+    test('treats sparse array entries like JSON null values', () => {
+      const sparse = new Array(2)
+      sparse[1] = 'value'
+      expect(matchFeatureFlagProperty(property('exact', '[null,"value"]'), { key: sparse })).toBe(true)
+      expect(matchFeatureFlagProperty(property('exact', true), { key: new Array(1) })).toBe(false)
+    })
+
+    test('falls back for strings that cannot be represented by the flags service', () => {
+      expect(() => matchFeatureFlagProperty(property('exact', '\ud800'), { key: '\ud800' })).toThrow(
+        InconclusiveMatchError
+      )
+      expect(() => matchFeatureFlagProperty(property('exact', false), { key: '\ud800' })).toThrow(
+        InconclusiveMatchError
+      )
+    })
+
+    test.each([
+      ['exact', 'undefined'],
+      ['is_not', 'undefined'],
+      ['icontains', 'undefined'],
+      ['not_icontains', 'undefined'],
+      ['starts_with', 'undefined'],
+      ['not_starts_with', 'undefined'],
+      ['ends_with', 'undefined'],
+      ['not_ends_with', 'undefined'],
+      ['regex', 'undefined'],
+      ['not_regex', 'undefined'],
+      ['gt', 10],
+      ['is_date_before', '2025-01-01'],
+      ['semver_eq', '1.2.3'],
+    ] as const)('%s is inconclusive for an explicit undefined property value', (operator, target) => {
+      const warnFunction = vi.fn()
+      expect(() => matchFeatureFlagProperty(property(operator, target), { key: undefined }, { warnFunction })).toThrow(
+        InconclusiveMatchError
+      )
+      expect(warnFunction).toHaveBeenCalledWith(
+        `Property key cannot have a value of undefined with the ${operator} operator`
+      )
+    })
+
+    test.each([
+      ['one,two', ['one', 'two']],
+      ['[object Object]', { a: 'x' }],
+    ])('does not match JavaScript-specific stringification %p', (target, actual) => {
+      expect(matchFeatureFlagProperty(property('exact', target), { key: actual })).toBe(false)
+    })
+
+    test.each([
+      ['1e-7', 1e-7],
+      ['0.00001', 1e-5],
+      ['0.000099', 9.9e-5],
+    ])('uses representable serde JSON number spelling %p', (target, actual) => {
+      expect(matchFeatureFlagProperty(property('exact', target), { key: actual })).toBe(true)
+    })
+
+    test.each([
+      ['323', 323],
+      ['323.0', 323],
+      ['1e+16', 1e16],
+      ['-0.0', -0],
+      ['[1,2]', [1, 2]],
+      ['{"a":2}', { a: 2 }],
+    ])('falls back when JavaScript loses the numeric type for %p', (target, actual) => {
+      expect(() => matchFeatureFlagProperty(property('exact', target), { key: actual })).toThrow(InconclusiveMatchError)
+    })
+
+    test('does not treat inherited object properties as present map entries', () => {
+      const inheritedPropertyValues = Object.create({ key: 'inherited' })
+
+      expect(() => matchFeatureFlagProperty(property('is_set', ''), inheritedPropertyValues)).toThrow(
+        InconclusiveMatchError
+      )
+    })
+
+    test('matches explicit null values and keeps missing properties inconclusive', () => {
+      expect(matchFeatureFlagProperty(property('exact', null), { key: null })).toBe(true)
+      expect(matchFeatureFlagProperty(property('is_not', null), { key: null })).toBe(false)
+      expect(matchFeatureFlagProperty(property('exact', 'x'), { key: null })).toBe(false)
+      expect(matchFeatureFlagProperty(property('is_not', 'x'), { key: null })).toBe(true)
+      expect(() => matchFeatureFlagProperty(property('exact', 'x'), {})).toThrow(InconclusiveMatchError)
+    })
+
+    test.each([
+      ['icontains', 'nul', true],
+      ['icontains', 'x', false],
+      ['not_icontains', 'x', true],
+      ['not_icontains', 'nul', false],
+      ['starts_with', 'x', false],
+      ['not_starts_with', 'x', true],
+      ['ends_with', 'x', false],
+      ['not_ends_with', 'x', true],
+      ['regex', '^nu', true],
+      ['regex', 'Nu', false],
+      ['regex', 'x', false],
+      ['not_regex', 'x', true],
+      ['not_regex', '^nu', false],
+      ['gt', '5', false],
+    ])('matches %s %p against an explicit null as the string "null"', (operator, value, expected) => {
+      expect(matchFeatureFlagProperty(property(operator, value), { key: null })).toBe(expected)
+    })
+
+    test('preserves invalid regex and unknown operator behavior', () => {
+      expect(matchFeatureFlagProperty(property('regex', '['), { key: 'value' })).toBe(false)
+      expect(matchFeatureFlagProperty(property('not_regex', '['), { key: 'value' })).toBe(false)
+      expect(() => matchFeatureFlagProperty(property('unknown', 'x'), { key: 'x' })).toThrow(InconclusiveMatchError)
+    })
+
+    test('preserves absolute and relative date matching under fixed time', () => {
+      vi.setSystemTime(new Date('2025-01-10T12:00:00.000Z'))
+      expect(relativeDateParseForFeatureFlagMatching('-2d')).toEqual(new Date('2025-01-08T12:00:00.000Z'))
+      expect(matchFeatureFlagProperty(property('is_date_after', '-2d'), { key: '2025-01-09T00:00:00Z' })).toBe(true)
+      expect(
+        matchFeatureFlagProperty(property('is_date_before', '2025-01-11T00:00:00Z'), {
+          key: '2025-01-10T00:00:00Z',
+        })
+      ).toBe(true)
+    })
+
+    test('makes strict and legacy-permissive SemVer parsing an explicit policy', () => {
+      expect(() => parseFeatureFlagSemver('01.02.03')).toThrow(InconclusiveMatchError)
+      expect(parseFeatureFlagSemver('01.02.03', 'legacy-permissive')).toEqual([1, 2, 3])
+      expect(
+        matchFeatureFlagProperty(
+          property('semver_wildcard', '1x.*'),
+          { key: '1.8.0' },
+          {
+            semverParsingPolicy: 'legacy-permissive',
+          }
+        )
+      ).toBe(true)
+      expect(() => matchFeatureFlagProperty(property('semver_wildcard', '1x.*'), { key: '1.8.0' })).toThrow(
+        InconclusiveMatchError
+      )
+    })
+  })
+
+  describe('inconclusive match reasons', () => {
+    const reasonFor = (prop: FeatureFlagProperty, propertyValues: Record<string, any>): string | undefined => {
+      try {
+        matchFeatureFlagProperty(prop, propertyValues)
+      } catch (e) {
+        return e instanceof InconclusiveMatchError ? e.reason : undefined
+      }
+      return undefined
+    }
+
+    test('defaults to unsupported_definition', () => {
+      expect(new InconclusiveMatchError('message').reason).toBe('unsupported_definition')
+    })
+
+    test.each([
+      ['a missing property', property('exact', 'x'), {}, 'missing_context'],
+      ['an unknown operator and a missing property', property('unknown', 'x'), {}, 'unsupported_definition'],
+      ['an invalid semver filter and a missing property', property('semver_gt', 'x.y'), {}, 'unsupported_definition'],
+      ['an unknown operator', property('unknown', 'x'), { key: 'x' }, 'unsupported_definition'],
+      ['a boolean date filter', property('is_date_after', true), { key: '2025-01-01' }, 'unsupported_definition'],
+      [
+        'an invalid date filter',
+        property('is_date_after', 'not-a-date'),
+        { key: '2025-01-01' },
+        'unsupported_definition',
+      ],
+      ['an invalid context date', property('is_date_after', '2025-01-01'), { key: 'not-a-date' }, 'missing_context'],
+      ['an invalid semver filter', property('semver_gt', 'x.y'), { key: '1.2.3' }, 'unsupported_definition'],
+      ['an invalid wildcard filter', property('semver_wildcard', '1x.*'), { key: '1.8.0' }, 'unsupported_definition'],
+      ['an invalid context semver', property('semver_gt', '1.2.3'), { key: 'x.y' }, 'missing_context'],
+      ['an invalid semver filter and context', property('semver_gt', 'x.y'), { key: 'a.b' }, 'unsupported_definition'],
+      [
+        'an invalid wildcard filter and context',
+        property('semver_wildcard', '1x.*'),
+        { key: 'a.b' },
+        'unsupported_definition',
+      ],
+      ['an ambiguous context number', property('exact', '323'), { key: 323 }, 'missing_context'],
+      ['an ambiguous filter number', property('exact', [323]), { key: 'x' }, 'unsupported_definition'],
+      ['an ambiguous filter and context number', property('exact', [323]), { key: 323 }, 'unsupported_definition'],
+      ['a non-JSON context value', property('exact', true), { key: new Date(0) }, 'missing_context'],
+    ])('reports %s', (_, prop, propertyValues, reason) => {
+      expect(reasonFor(prop, propertyValues)).toBe(reason)
+    })
+  })
+
+  describe('deterministic hashing and variants', () => {
+    test.each([
+      ['abc', 'a9993e364706816aba3e25717850c26c9cd0d89d'],
+      ['flag.user', '6f8c733f9f8a78ae53b6ae4ec3c39fd6b7805287'],
+    ])('SHA-1(%s)', async (input, expected) => {
+      await expect(hashSHA1(input)).resolves.toBe(expected)
+    })
+
+    test.each([
+      ['flag', 'user', '', 0.4357368498163313],
+      ['flag', 'user', 'variant', 0.4727021985667222],
+      ['beta-feature', 'distinct-id', '', 0.2299884300760246],
+    ])('hashes %s / %s / %s without assignment drift', async (key, bucketingValue, salt, expected) => {
+      await expect(getFeatureFlagHash(key, bucketingValue, salt)).resolves.toBe(expected)
+    })
+
+    test('constructs exact half-open variant intervals', () => {
+      expect(
+        getFeatureFlagVariantLookupTable([
+          { key: 'a', rollout_percentage: 20 },
+          { key: 'b', rollout_percentage: 30 },
+          { key: 'c', rollout_percentage: 50 },
+        ])
+      ).toEqual([
+        { key: 'a', valueMin: 0, valueMax: 0.2 },
+        { key: 'b', valueMin: 0.2, valueMax: 0.5 },
+        { key: 'c', valueMin: 0.5, valueMax: 1 },
+      ])
+    })
+
+    test('selects a stable variant from the shared hash', async () => {
+      await expect(
+        getFeatureFlagVariant('flag', 'user', [
+          { key: 'left', rollout_percentage: 47 },
+          { key: 'right', rollout_percentage: 53 },
+        ])
+      ).resolves.toBe('right')
+    })
+  })
+
+  describe('payload resolution', () => {
+    test.each([
+      ['object', { nested: true }, { nested: true }],
+      ['array', '[1,2]', [1, 2]],
+      ['number', '0', 0],
+      ['boolean', 'false', false],
+      ['empty string JSON', '""', ''],
+      ['JSON null', 'null', null],
+      ['invalid JSON', 'plain text', 'plain text'],
+    ])('resolves %s payloads', (_name, configured, expected) => {
+      expect(resolveFeatureFlagPayload({ true: configured }, true)).toEqual(expected)
+    })
+
+    test('selects variant keys and skips disabled, missing, or raw falsey payloads', () => {
+      expect(resolveFeatureFlagPayload({ red: '"payload"' }, 'red')).toBe('payload')
+      expect(resolveFeatureFlagPayload({ true: 'value' }, false)).toBeNull()
+      expect(resolveFeatureFlagPayload({}, true)).toBeNull()
+      expect(resolveFeatureFlagPayload(undefined, true)).toBeNull()
+      expect(resolveFeatureFlagPayload({ true: '' }, true)).toBeNull()
+      expect(resolveFeatureFlagPayload({ true: 0 }, true)).toBeNull()
+      expect(resolveFeatureFlagPayload({ true: false }, true)).toBeNull()
+    })
+  })
+})

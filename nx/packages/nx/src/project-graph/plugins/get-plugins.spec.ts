@@ -1,0 +1,299 @@
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
+import type { Mock } from 'vitest';
+import { createSerializableError } from '../../utils/serializable-error';
+import { reasonToError } from './get-plugins';
+
+// Isolation off so loadingMethod() routes to loadNxPlugin, which we mock.
+vi.mock('./isolation/enabled', () => ({
+  isIsolationEnabled: () => false,
+}));
+vi.mock('./isolation', () => ({
+  loadIsolatedNxPlugin: vi.fn(),
+  disposeIsolatedPlugins: vi.fn(),
+  wantPlugins: vi.fn(),
+}));
+vi.mock('../../adapter/angular-json', () => ({
+  shouldMergeAngularProjects: () => false,
+}));
+vi.mock('./in-process-loader', () => ({
+  loadNxPlugin: vi.fn(),
+}));
+// Resolution of local plugins relies on a cached workspace snapshot;
+// loadSpecifiedNxPlugins must drop it on every reload. Mocked so the test can
+// assert that wiring without touching the real filesystem-backed resolver.
+vi.mock('./resolve-plugin', () => ({
+  resetResolvePluginCache: vi.fn(),
+}));
+
+describe('reasonToError', () => {
+  it('should return the same Error instance when given a real Error', () => {
+    const error = new Error('real error');
+    const result = reasonToError(error);
+    expect(result).toBe(error);
+  });
+
+  it('should extract message from a serialized error object', () => {
+    const original = new Error('Cannot find module @repro/my-plugin/plugin');
+    const serialized = createSerializableError(original);
+
+    // Serialized errors are plain objects, not Error instances
+    expect(serialized).not.toBeInstanceOf(Error);
+
+    const result = reasonToError(serialized);
+    expect(result).toBeInstanceOf(Error);
+    expect(result.message).toBe('Cannot find module @repro/my-plugin/plugin');
+    expect(result.stack).toBe(original.stack);
+  });
+
+  it('should handle a plain object with only a message property', () => {
+    const result = reasonToError({ message: 'something went wrong' });
+    expect(result).toBeInstanceOf(Error);
+    expect(result.message).toBe('something went wrong');
+  });
+
+  it('should fall back to String() for non-object reasons', () => {
+    expect(reasonToError('string reason').message).toBe('string reason');
+    expect(reasonToError(42).message).toBe('42');
+    expect(reasonToError(null).message).toBe('null');
+    expect(reasonToError(undefined).message).toBe('undefined');
+  });
+});
+
+describe('getPluginsSeparated', () => {
+  let getPluginsSeparated: typeof import('./get-plugins').getPluginsSeparated;
+  let getPluginsIfLoadedOrLoading: typeof import('./get-plugins').getPluginsIfLoadedOrLoading;
+  let loadNxPlugin: Mock;
+  let wantPlugins: Mock;
+  // Resolver for each deferred specified-plugin load, keyed by plugin name.
+  let pendingPluginLoads: Map<string, (plugin: unknown) => void>;
+
+  beforeEach(async () => {
+    // Fresh module state per test — getPluginsSeparated caches at module
+    // level, so a stale cache would mask the behavior under test.
+    vi.resetModules();
+    pendingPluginLoads = new Map();
+
+    ({ wantPlugins } = (await import('./isolation')) as any);
+    wantPlugins.mockClear();
+
+    ({ loadNxPlugin } = await import('./in-process-loader'));
+    // Unlike jest, resetModules does not re-run vi.mock factories, so the
+    // mock fns persist across tests — clear their recorded calls.
+    loadNxPlugin.mockClear();
+    (
+      (await import('./resolve-plugin')).resetResolvePluginCache as Mock
+    ).mockClear();
+    loadNxPlugin.mockImplementation((plugin: unknown) => {
+      const name = typeof plugin === 'string' ? plugin : (plugin as any).plugin;
+      // Default plugins load from absolute paths — resolve them immediately.
+      // Only the `test-*` specified plugins are deferred, so a test controls
+      // which load finishes first.
+      if (!name.startsWith('test-')) {
+        return Promise.resolve({ name });
+      }
+      return new Promise((resolve) => {
+        pendingPluginLoads.set(name, resolve);
+      });
+    });
+
+    ({ getPluginsSeparated, getPluginsIfLoadedOrLoading } =
+      await import('./get-plugins'));
+  });
+
+  function finishLoading(pluginName: string) {
+    const resolve = pendingPluginLoads.get(pluginName);
+    if (!resolve) {
+      throw new Error(`No pending load for plugin "${pluginName}"`);
+    }
+    resolve({ name: pluginName });
+  }
+
+  function failLoading(pluginName: string) {
+    const resolve = pendingPluginLoads.get(pluginName);
+    if (!resolve) {
+      throw new Error(`No pending load for plugin "${pluginName}"`);
+    }
+    resolve(Promise.reject(new Error(`${pluginName} blew up`)) as never);
+  }
+
+  function wantedBy(loader: string): string[][] {
+    return wantPlugins.mock.calls
+      .filter(([which]) => which === loader)
+      .map(([, loads]) => loads.map(({ plugin }) => plugin));
+  }
+
+  it('says which plugins it wants before each load of the specified set', async () => {
+    const superseded = getPluginsSeparated({ plugins: ['test-a'] });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(wantedBy('specified')).toEqual([['test-a']]);
+
+    // nx.json changes while test-a is still loading.
+    const current = getPluginsSeparated({ plugins: ['test-b'] });
+
+    expect(wantedBy('specified')).toEqual([['test-a'], ['test-b']]);
+
+    finishLoading('test-a');
+    finishLoading('test-b');
+    await Promise.all([superseded, current]);
+  });
+
+  it("does not retract another load's plugins when a superseded load fails", async () => {
+    const superseded = getPluginsSeparated({ plugins: ['test-a'] });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // nx.json changes, so test-b's load is the one that counts now.
+    const current = getPluginsSeparated({ plugins: ['test-b'] });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    failLoading('test-a');
+    await expect(superseded).rejects.toThrow();
+
+    expect(wantedBy('specified')).toEqual([['test-a'], ['test-b']]);
+
+    finishLoading('test-b');
+    await current;
+  });
+
+  it('does not re-declare for two concurrent callers sharing a load', async () => {
+    const first = getPluginsSeparated({ plugins: ['test-a'] });
+    const second = getPluginsSeparated({ plugins: ['test-a'] });
+
+    finishLoading('test-a');
+    await Promise.all([first, second]);
+
+    expect(wantedBy('specified')).toEqual([['test-a']]);
+  });
+
+  it('does not poison the cache when an older recompute finishes after a newer one', async () => {
+    // Two recomputes race — as happens when a daemon restart fires an
+    // initial recompute and a watcher recompute together — each snapshotting
+    // a different nx.json plugin set.
+    const olderCall = getPluginsSeparated({ plugins: ['test-a'] });
+    const newerCall = getPluginsSeparated({ plugins: ['test-b'] });
+
+    // The newer recompute (test-b) finishes first and commits the cache.
+    finishLoading('test-b');
+    const newerResult = await newerCall;
+    expect(newerResult.specifiedPlugins.map((p) => p.name)).toEqual(['test-b']);
+
+    // The older recompute (test-a) finishes last. It must NOT overwrite the
+    // cache the newer recompute committed.
+    finishLoading('test-a');
+    await olderCall;
+
+    // A later recompute reading the newer nx.json must get the newer plugin
+    // set — not the stale set the older recompute loaded.
+    const afterRace = await getPluginsSeparated({ plugins: ['test-b'] });
+    expect(afterRace.specifiedPlugins.map((p) => p.name)).toEqual(['test-b']);
+  });
+
+  it('shares a single load between concurrent calls for the same plugin set', async () => {
+    const first = getPluginsSeparated({ plugins: ['test-a'] });
+    const second = getPluginsSeparated({ plugins: ['test-a'] });
+
+    finishLoading('test-a');
+    await Promise.all([first, second]);
+
+    // test-a was loaded once, not once per caller.
+    const testALoads = loadNxPlugin.mock.calls.filter(
+      ([plugin]) => plugin === 'test-a'
+    );
+    expect(testALoads).toHaveLength(1);
+  });
+
+  it('drops the cached local-plugin resolution snapshot when loading the specified plugins', async () => {
+    const { resetResolvePluginCache } = await import('./resolve-plugin');
+    expect(resetResolvePluginCache).not.toHaveBeenCalled();
+
+    const load = getPluginsSeparated({ plugins: ['test-a'] });
+    finishLoading('test-a');
+    await load;
+
+    // Loading the specified plugins must reset the resolver's workspace
+    // snapshot. Without this a plugin added to nx.json after an earlier
+    // resolution would be resolved against a stale project layout — missing
+    // its own project — and collapse to the workspace root.
+    expect(resetResolvePluginCache).toHaveBeenCalled();
+  });
+
+  describe('getPluginsIfLoadedOrLoading', () => {
+    it('returns undefined before any load and does not trigger one', () => {
+      expect(getPluginsIfLoadedOrLoading()).toBeUndefined();
+      expect(loadNxPlugin).not.toHaveBeenCalled();
+    });
+
+    it('returns an in-flight load without starting a second one', async () => {
+      const load = getPluginsSeparated({ plugins: ['test-a'] });
+      const peek = getPluginsIfLoadedOrLoading();
+      expect(peek).toBeDefined();
+      const loadsWhilePending = loadNxPlugin.mock.calls.length;
+
+      finishLoading('test-a');
+      await load;
+
+      const plugins = await peek;
+      expect(plugins.map((p) => p.name)).toContain('test-a');
+      expect(loadNxPlugin.mock.calls.length).toBe(loadsWhilePending);
+    });
+
+    it('returns the committed set once a load resolves', async () => {
+      const load = getPluginsSeparated({ plugins: ['test-a'] });
+      finishLoading('test-a');
+      await load;
+
+      const plugins = await getPluginsIfLoadedOrLoading();
+      expect(plugins.map((p) => p.name)).toContain('test-a');
+    });
+  });
+});
+
+describe.skipIf(process.platform === 'win32')(
+  'loading a plugin into the daemon',
+  () => {
+    const originalEnv = process.env;
+    let root: string;
+    let folder: string;
+    let loadingMethod: typeof import('./get-plugins').loadingMethod;
+    let daemonHostsPluginsInProcess: typeof import('./get-plugins').daemonHostsPluginsInProcess;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      root = mkdtempSync(join(tmpdir(), 'nx-berry-'));
+      folder = join(root, 'xfs-1a2b3c4d');
+      mkdirSync(folder, { mode: 0o755 });
+      process.env = { PATH: '/usr/bin' };
+      const { setLiveClientBerryEnv } =
+        await import('../../daemon/client/daemon-environment');
+      setLiveClientBerryEnv({
+        BERRY_BIN_FOLDER: folder,
+        PATH: [folder, '/usr/bin'].join(delimiter),
+      });
+      ({ loadingMethod, daemonHostsPluginsInProcess } =
+        await import('./get-plugins'));
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+      delete global.NX_DAEMON;
+      rmSync(root, { recursive: true, force: true });
+    });
+
+    it("puts the live client's bin folders on the daemon PATH", async () => {
+      global.NX_DAEMON = true;
+
+      await loadingMethod('p', '/root');
+
+      expect(daemonHostsPluginsInProcess()).toBe(true);
+      expect(process.env.PATH).toEqual([folder, '/usr/bin'].join(delimiter));
+    });
+
+    it('leaves a client process PATH alone', async () => {
+      await loadingMethod('p', '/root');
+
+      expect(daemonHostsPluginsInProcess()).toBe(false);
+      expect(process.env.PATH).toEqual('/usr/bin');
+    });
+  }
+);

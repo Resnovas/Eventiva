@@ -1,0 +1,20 @@
+
+# SCHEMA:
+
+[
+  {
+    "description": "The method signature style to enforce using.",
+    "enum": ["method", "property"],
+    "type": "string"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  /** The method signature style to enforce using. */
+  | 'property'
+  /** The method signature style to enforce using. */
+  | 'method',
+];

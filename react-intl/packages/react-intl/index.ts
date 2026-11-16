@@ -1,0 +1,142 @@
+'use client'
+/*
+ * Copyright 2015, Yahoo Inc.
+ * Copyrights licensed under the New BSD License.
+ * See the accompanying LICENSE file for terms.
+ */
+import {type NumberFormatOptions} from '#packages/ecma402-abstract/types/number.js'
+import {
+  type CustomFormatConfig,
+  type FormatDateOptions,
+  type FormatDurationOptions,
+  type FormatTimeOptions,
+} from '@formatjs/intl'
+import * as React from 'react'
+import {
+  createFormattedComponent,
+  createFormattedDateTimePartsComponent,
+} from '#packages/react-intl/components/createFormattedComponent.js'
+import {createIntl} from '#packages/react-intl/components/createIntl.js'
+import {
+  Context as IntlContext,
+  Provider as RawIntlProvider,
+} from '#packages/react-intl/components/context.js'
+import FormattedDateTimeRange from '#packages/react-intl/components/dateTimeRange.js'
+import FormattedMessage from '#packages/react-intl/components/message.js'
+import FormattedPlural from '#packages/react-intl/components/plural.js'
+import IntlProvider from '#packages/react-intl/components/provider.js'
+import FormattedRelativeTime from '#packages/react-intl/components/relative.js'
+import useIntl from '#packages/react-intl/components/useIntl.js'
+import {type IntlShape} from '#packages/react-intl/types.js'
+export {
+  createIntlCache,
+  type CustomFormatConfig,
+  type CustomFormats,
+  type FormatDateOptions,
+  type FormatDurationOptions,
+  type FormatDisplayNameOptions,
+  type FormatListOptions,
+  type FormatNumberOptions,
+  type FormatPluralOptions,
+  type FormatRelativeTimeOptions,
+  type Formatters,
+  type IntlCache,
+  type IntlFormatters,
+  InvalidConfigError,
+  type MessageDescriptor,
+  type FormattedText,
+  type MessageTextOutput,
+  type TextMessageFormatter,
+  MessageFormatError,
+  MissingDataError,
+  MissingTranslationError,
+  IntlError as ReactIntlError,
+  IntlErrorCode as ReactIntlErrorCode,
+  UnsupportedFormatterError,
+} from '@formatjs/intl'
+export {
+  type IntlConfig,
+  type IntlShape,
+  type ResolvedIntlConfig,
+} from '#packages/react-intl/types.js'
+export {
+  createIntl,
+  FormattedDateTimeRange,
+  FormattedMessage,
+  FormattedPlural,
+  FormattedRelativeTime,
+  IntlContext,
+  IntlProvider,
+  RawIntlProvider,
+  useIntl,
+}
+
+export {
+  defineMessages,
+  type MessageValue,
+  type MessageValuesOf,
+  type MessageTag,
+  type NoMessageValues,
+  type TypedMessageDescriptor,
+  type MessageArgumentsFromCatalog,
+} from '@formatjs/intl'
+// IMPORTANT: Explicit here to prevent api-extractor from outputing `import('./types').CustomFormatConfig`
+export const FormattedDate: React.FC<
+  Intl.DateTimeFormatOptions &
+    CustomFormatConfig<'date'> & {
+      value: string | number | Date | undefined
+      children?(formattedDate: string): React.ReactElement | null
+    }
+> = createFormattedComponent('formatDate')
+export const FormattedTime: React.FC<
+  Intl.DateTimeFormatOptions &
+    CustomFormatConfig<'time'> & {
+      value: string | number | Date | undefined
+      children?(formattedTime: string): React.ReactElement | null
+    }
+> = createFormattedComponent('formatTime')
+export const FormattedNumber: React.FC<
+  Omit<NumberFormatOptions, 'localeMatcher'> &
+    CustomFormatConfig<'number'> & {
+      value: Parameters<IntlShape['formatNumber']>[0]
+      children?(formattedNumber: string): React.ReactElement | null
+    }
+> = createFormattedComponent('formatNumber')
+export const FormattedDuration: React.FC<
+  FormatDurationOptions & {
+    value: Parameters<IntlShape['formatDuration']>[0]
+    children?(formattedDuration: string): React.ReactElement | null
+  }
+> = createFormattedComponent('formatDuration')
+export const FormattedList: React.FC<
+  Intl.ListFormatOptions & {
+    value: Parameters<IntlShape['formatList']>[0]
+  }
+> = createFormattedComponent('formatList')
+export const FormattedDisplayName: React.FC<
+  Intl.DisplayNamesOptions & {
+    value: string
+  }
+> = createFormattedComponent('formatDisplayName')
+export const FormattedDateParts: React.FC<
+  FormatDateOptions & {
+    value: Parameters<Intl.DateTimeFormat['format']>[0] | string
+    children(val: Intl.DateTimeFormatPart[]): React.ReactElement | null
+  }
+> = createFormattedDateTimePartsComponent('formatDate')
+export const FormattedTimeParts: React.FC<
+  FormatTimeOptions & {
+    value: Parameters<Intl.DateTimeFormat['format']>[0] | string
+    children(val: Intl.DateTimeFormatPart[]): React.ReactElement | null
+  }
+> = createFormattedDateTimePartsComponent('formatTime')
+
+export type {MessageFormatElement} from '@formatjs/icu-messageformat-parser'
+export type {PrimitiveType} from 'intl-messageformat'
+export {
+  FormattedDurationParts,
+  FormattedListParts,
+  FormattedNumberParts,
+} from '#packages/react-intl/components/createFormattedComponent.js'
+
+export {defineMessage} from '#packages/react-intl/define-message.js'

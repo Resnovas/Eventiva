@@ -1,0 +1,94 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TSEnumNameDefinition$1 {
+          name: Identifier<"Foo">,
+          node: TSEnumDeclaration$1,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TSEnumMemberDefinition$2 {
+          name: Identifier<"a">,
+          node: TSEnumMember$2,
+        },
+      ],
+      name: "a",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        VariableDefinition$3 {
+          name: Identifier<"unresolved">,
+          node: VariableDeclarator$3,
+        },
+      ],
+      name: "unresolved",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"unresolved">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$4,
+          writeExpr: Identifier<"a">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$4,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Foo" => Variable$2,
+        "unresolved" => Variable$4,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$4,
+      ],
+    },
+    TSEnumScope$2 {
+      block: TSEnumDeclaration$1,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "a" => Variable$3,
+      },
+      type: "tsEnum",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+      ],
+    },
+  ],
+}

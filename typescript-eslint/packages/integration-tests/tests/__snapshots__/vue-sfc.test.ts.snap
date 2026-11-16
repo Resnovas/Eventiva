@@ -1,0 +1,208 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`vue-sfc > eslint > should work successfully 1`] = `
+[
+  {
+    "errorCount": 1,
+    "fatalErrorCount": 0,
+    "filePath": "<root>/Hello.vue",
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [
+      {
+        "column": 39,
+        "endColumn": 42,
+        "endLine": 26,
+        "line": 26,
+        "message": "Unexpected any. Specify a different type.",
+        "messageId": "unexpectedAny",
+        "ruleId": "@typescript-eslint/no-explicit-any",
+        "severity": 2,
+        "suggestions": [
+          {
+            "desc": "Use \`unknown\` instead, this will force you to explicitly, and safely assert the type is correct.",
+            "fix": {
+              "range": [
+                575,
+                578,
+              ],
+              "text": "unknown",
+            },
+            "messageId": "suggestUnknown",
+          },
+          {
+            "desc": "Use \`never\` instead, this is useful when instantiating generic type parameters that you don't need to know the type of.",
+            "fix": {
+              "range": [
+                575,
+                578,
+              ],
+              "text": "never",
+            },
+            "messageId": "suggestNever",
+          },
+        ],
+      },
+    ],
+    "source": "<!-- Hello.vue -->
+<template>
+  <div>
+    <div>
+      <!-- !!!!! expected error !!!!! -->
+      Hello {{ name as any }}{{ exclamationMarks }}
+    </div>
+    <button @click="decrement">-</button>
+    <button @click="increment">+</button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+interface Props {
+  initialEnthusiasm?: number;
+  name?: string;
+}
+
+const { initialEnthusiasm = 1, name = 'World' } = defineProps<Props>();
+
+const enthusiasm = ref(initialEnthusiasm);
+
+// !!!!! expected error !!!!!
+const exclamationMarks = computed((): any => '!'.repeat(enthusiasm.value));
+
+function increment(): void {
+  enthusiasm.value++;
+}
+
+function decrement(): void {
+  if (enthusiasm.value > 1) {
+    enthusiasm.value--;
+  }
+}
+</script>
+",
+    "suppressedMessages": [],
+    "usedDeprecatedRules": [
+      {
+        "info": {
+          "availableUntil": "11.0.0",
+          "deprecatedSince": "8.53.0",
+          "message": "Formatting rules are being moved out of ESLint core.",
+          "replacedBy": [
+            {
+              "message": "ESLint Stylistic now maintains deprecated stylistic core rules.",
+              "plugin": {
+                "name": "@stylistic/eslint-plugin",
+                "url": "https://eslint.style",
+              },
+              "rule": {
+                "name": "semi-spacing",
+                "url": "https://eslint.style/rules/semi-spacing",
+              },
+              "url": "https://eslint.style/guide/migration",
+            },
+          ],
+          "url": "https://eslint.org/blog/2023/10/deprecating-formatting-rules/",
+        },
+        "replacedBy": [
+          "@stylistic/semi-spacing",
+        ],
+        "ruleId": "semi-spacing",
+      },
+    ],
+    "warningCount": 0,
+  },
+  {
+    "errorCount": 0,
+    "fatalErrorCount": 0,
+    "filePath": "<root>/Utility.vue",
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [],
+    "output": "<script lang="ts">
+/* https://github.com/typescript-eslint/typescript-eslint/issues/2591 */
+export default class Utility {
+  get a() {
+    const list: Array<string> = [];
+    return list;
+  }
+
+  get b() {
+    const a = this.a;
+    return a;
+  }
+}
+</script>
+",
+    "suppressedMessages": [],
+    "usedDeprecatedRules": [
+      {
+        "info": {
+          "availableUntil": "11.0.0",
+          "deprecatedSince": "8.53.0",
+          "message": "Formatting rules are being moved out of ESLint core.",
+          "replacedBy": [
+            {
+              "message": "ESLint Stylistic now maintains deprecated stylistic core rules.",
+              "plugin": {
+                "name": "@stylistic/eslint-plugin",
+                "url": "https://eslint.style",
+              },
+              "rule": {
+                "name": "semi-spacing",
+                "url": "https://eslint.style/rules/semi-spacing",
+              },
+              "url": "https://eslint.style/guide/migration",
+            },
+          ],
+          "url": "https://eslint.org/blog/2023/10/deprecating-formatting-rules/",
+        },
+        "replacedBy": [
+          "@stylistic/semi-spacing",
+        ],
+        "ruleId": "semi-spacing",
+      },
+    ],
+    "warningCount": 0,
+  },
+  {
+    "errorCount": 0,
+    "fatalErrorCount": 0,
+    "filePath": "<root>/World.vue",
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [],
+    "suppressedMessages": [],
+    "usedDeprecatedRules": [
+      {
+        "info": {
+          "availableUntil": "11.0.0",
+          "deprecatedSince": "8.53.0",
+          "message": "Formatting rules are being moved out of ESLint core.",
+          "replacedBy": [
+            {
+              "message": "ESLint Stylistic now maintains deprecated stylistic core rules.",
+              "plugin": {
+                "name": "@stylistic/eslint-plugin",
+                "url": "https://eslint.style",
+              },
+              "rule": {
+                "name": "semi-spacing",
+                "url": "https://eslint.style/rules/semi-spacing",
+              },
+              "url": "https://eslint.style/guide/migration",
+            },
+          ],
+          "url": "https://eslint.org/blog/2023/10/deprecating-formatting-rules/",
+        },
+        "replacedBy": [
+          "@stylistic/semi-spacing",
+        ],
+        "ruleId": "semi-spacing",
+      },
+    ],
+    "warningCount": 0,
+  },
+]
+`;

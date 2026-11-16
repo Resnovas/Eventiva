@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportDefaultDeclaration > _error_ > variable-declaration > TSESTree - Error`]
+TSError
+> 1 | export default const x = 1;
+    |                ^ Expression expected.
+  2 |

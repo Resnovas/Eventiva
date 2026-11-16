@@ -1,0 +1,1799 @@
+import { createHash } from 'crypto';
+import { execSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { VersionMismatchError } from '../../daemon/client/daemon-socket-messenger';
+import * as http from 'node:http';
+import { minimatch } from 'minimatch';
+import { URL } from 'node:url';
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  parse,
+  relative,
+} from 'node:path';
+import * as net from 'node:net';
+import { performance } from 'node:perf_hooks';
+import { readNxJson, workspaceLayout } from '../../config/configuration';
+import {
+  FileData,
+  ProjectFileMap,
+  ProjectGraph,
+  ProjectGraphDependency,
+  ProjectGraphProjectNode,
+} from '../../config/project-graph';
+import { writeJsonFile } from '../../utils/fileutils';
+import { output } from '../../utils/output';
+import { workspaceRoot } from '../../utils/workspace-root';
+
+import { TaskGraph } from '../../config/task-graph';
+import { daemonClient } from '../../daemon/client/client';
+import { getRootTsConfigPath } from '../../plugins/js/utils/typescript';
+import { pruneExternalNodes } from '../../project-graph/operators';
+import {
+  createProjectGraphAndSourceMapsAsync,
+  createProjectGraphAsync,
+  handleProjectGraphError,
+} from '../../project-graph/project-graph';
+import { createTaskGraph } from '../../tasks-runner/create-task-graph';
+import { pruneToSelectedTasks } from '../../tasks-runner/utils';
+import {
+  selectTasksForProjects,
+  type TaskSelection,
+} from '../../tasks-runner/run-command';
+import type { NxArgs } from '../../utils/command-line-utils';
+import { runnableForTarget } from '../../utils/project-graph-utils';
+import { allFileData } from '../../utils/all-file-data';
+import { splitArgsIntoNxArgsAndOverrides } from '../../utils/command-line-utils';
+import { expandFilesInput, HashPlanner, openUrl } from '../../native';
+import { transformProjectGraphForRust } from '../../native/transform-objects';
+import { getAffectedGraphNodes } from '../affected/affected';
+import { readFileMapCache } from '../../project-graph/nx-deps-cache';
+import { filterUsingGlobPatterns } from '../../hasher/task-hasher';
+import { ConfigurationSourceMaps } from '../../project-graph/utils/project-configuration/source-maps';
+import { findMatchingProjects } from '../../utils/find-matching-projects';
+
+import { createTaskHasher } from '../../hasher/create-task-hasher';
+import { getTaskSpecificEnv } from '../../tasks-runner/task-env';
+import { ProjectGraphError } from '../../project-graph/error-types';
+import { isNxCloudUsed } from '../../utils/nx-cloud-utils';
+import {
+  isUltracacheOnInCI,
+  ultracacheModeInCI,
+} from '../../ultracache/ci-status';
+import { hasCustomHasher } from '../show/show-target/utils';
+import { splitTargetFromNodes } from '../../utils/split-target';
+
+export interface GraphError {
+  message: string;
+  stack: string;
+  cause: unknown;
+  name: string;
+  pluginName: string;
+  fileName?: string;
+}
+
+export interface ProjectGraphClientResponse {
+  hash: string;
+  projects: ProjectGraphProjectNode[];
+  dependencies: Record<string, ProjectGraphDependency[]>;
+  fileMap?: ProjectFileMap;
+  layout: { appsDir: string; libsDir: string };
+  affected: string[];
+  focus: string;
+  groupByFolder: boolean;
+  exclude: string[];
+  isPartial: boolean;
+  errors?: GraphError[];
+  connectedToCloud?: boolean;
+  disabledTaskSyncGenerators?: string[];
+}
+
+export interface TaskGraphClientResponse {
+  taskGraph: TaskGraph;
+  plans?: Record<string, string[]>;
+  error?: string | null;
+}
+
+export interface ExpandedTaskInputsReponse {
+  [taskId: string]: Record<string, string[]>;
+}
+
+// maps file extention to MIME types
+const mimeType = {
+  '.ico': 'image/x-icon',
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.json': 'application/json',
+  '.css': 'text/css',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.eot': 'appliaction/vnd.ms-fontobject',
+  '.ttf': 'aplication/font-sfnt',
+};
+
+function buildEnvironmentJs(
+  exclude: string[],
+  watchMode: boolean,
+  localMode: 'build' | 'serve',
+  depGraphClientResponse?: ProjectGraphClientResponse,
+  taskGraphClientResponse?: TaskGraphClientResponse,
+  expandedTaskInputsReponse?: ExpandedTaskInputsReponse,
+  sourceMapsResponse?: ConfigurationSourceMaps
+) {
+  let environmentJs = `window.exclude = ${JSON.stringify(exclude)};
+  window.watch = ${!!watchMode};
+  window.environment = 'release';
+  window.localMode = '${localMode}';
+
+  window.appConfig = {
+    showDebugger: false,
+    showExperimentalFeatures: false,
+    workspaces: [
+      {
+        id: 'local',
+        label: 'local',
+        projectGraphUrl: 'project-graph.json',
+        taskGraphUrl: 'task-graph.json',
+        taskInputsUrl: 'task-inputs.json',
+        sourceMapsUrl: 'source-maps.json'
+      }
+    ],
+    defaultWorkspaceId: 'local',
+  };
+  `;
+
+  if (localMode === 'build') {
+    environmentJs += `window.projectGraphResponse = ${JSON.stringify(
+      depGraphClientResponse
+    )};
+    `;
+
+    environmentJs += `window.taskGraphResponse = ${JSON.stringify(
+      taskGraphClientResponse
+    )};
+    `;
+    environmentJs += `window.expandedTaskInputsResponse = ${JSON.stringify(
+      expandedTaskInputsReponse
+    )};`;
+
+    environmentJs += `window.sourceMapsResponse = ${JSON.stringify(
+      sourceMapsResponse
+    )};`;
+  } else {
+    environmentJs += `window.projectGraphResponse = null;`;
+    environmentJs += `window.taskGraphResponse = null;`;
+    environmentJs += `window.expandedTaskInputsResponse = null;`;
+    environmentJs += `window.sourceMapsResponse = null;`;
+  }
+
+  return environmentJs;
+}
+
+function projectExists(
+  projects: ProjectGraphProjectNode[],
+  projectToFind: string
+) {
+  return (
+    projects.find((project) => project.name === projectToFind) !== undefined
+  );
+}
+
+function hasPath(
+  graph: ProjectGraph,
+  target: string,
+  node: string,
+  visited: Set<string>
+) {
+  if (target === node) return true;
+
+  for (const d of graph.dependencies[node] || []) {
+    if (visited.has(d.target)) continue;
+    visited.add(d.target);
+    if (hasPath(graph, target, d.target, visited)) return true;
+  }
+  return false;
+}
+
+function filterGraph(
+  graph: ProjectGraph,
+  focus: string,
+  exclude: string[]
+): ProjectGraph {
+  let projectNames = (
+    Object.values(graph.nodes) as ProjectGraphProjectNode[]
+  ).map((project) => project.name);
+
+  let filteredProjectNames: Set<string>;
+
+  if (focus !== null) {
+    filteredProjectNames = new Set<string>();
+    projectNames.forEach((p) => {
+      const isInPath =
+        hasPath(graph, p, focus, new Set()) ||
+        hasPath(graph, focus, p, new Set());
+
+      if (isInPath) {
+        filteredProjectNames.add(p);
+      }
+    });
+  } else {
+    filteredProjectNames = new Set<string>(projectNames);
+  }
+
+  if (exclude.length !== 0) {
+    exclude.forEach((p) => filteredProjectNames.delete(p));
+  }
+
+  let filteredGraph: ProjectGraph = {
+    nodes: {},
+    dependencies: {},
+  };
+
+  filteredProjectNames.forEach((p) => {
+    filteredGraph.nodes[p] = graph.nodes[p];
+    filteredGraph.dependencies[p] = graph.dependencies[p];
+  });
+
+  return filteredGraph;
+}
+
+export async function generateGraph(
+  args: {
+    file?: string;
+    print?: boolean;
+    host?: string;
+    port?: number;
+    groupByFolder?: boolean;
+    watch?: boolean;
+    open?: boolean;
+    view: 'projects' | 'tasks' | 'project-details';
+    projects?: string[];
+    all?: boolean;
+    targets?: string[];
+    focus?: string;
+    exclude?: string[];
+    affected?: boolean;
+    /**
+     * What the command would run for `targets`, or how to build it. A builder
+     * is only called where an output needs it, so the live graph can still
+     * open, and show the error, when the task graph cannot be built.
+     */
+    taskSelection?: TaskSelection | (() => TaskSelection);
+    /** The `-c` the tasks run with; their ids carry it. */
+    configuration?: string;
+  },
+  affectedProjects: string[]
+): Promise<void> {
+  if (args.view === 'project-details' && !args.focus) {
+    output.error({
+      title: `The project details view requires the --focus option.`,
+    });
+    process.exit(1);
+  }
+  if (args.view === 'project-details' && (args.targets || args.affected)) {
+    output.error({
+      title: `The project details view can only be used with the --focus option.`,
+      bodyLines: [
+        `You passed ${args.targets ? '--targets ' : ''}${
+          args.affected ? '--affected ' : ''
+        }`,
+      ],
+    });
+    process.exit(1);
+  }
+
+  let rawGraph: ProjectGraph;
+  let sourceMaps: ConfigurationSourceMaps;
+  try {
+    const projectGraphAndSourceMaps =
+      await createProjectGraphAndSourceMapsAsync({ exitOnError: false });
+    rawGraph = projectGraphAndSourceMaps.projectGraph;
+    sourceMaps = projectGraphAndSourceMaps.sourceMaps;
+  } catch (e) {
+    if (e instanceof ProjectGraphError) {
+      rawGraph = e.getPartialProjectGraph();
+      sourceMaps = e.getPartialSourcemaps();
+    }
+    if (!rawGraph) {
+      handleProjectGraphError({ exitOnError: true }, e);
+    } else {
+      const errors = e.getErrors();
+      if (errors?.length > 0) {
+        errors.forEach((e) => {
+          output.error({ title: e.message, bodyLines: [e.stack] });
+        });
+      }
+      output.warn({
+        title: `${
+          errors?.length > 1 ? `${errors.length} errors` : `An error`
+        } occurred while processing the project graph. Showing partial graph.`,
+      });
+    }
+  }
+  let prunedGraph = pruneExternalNodes(rawGraph);
+
+  // `nx graph --targets` has no command to take a selection from, so it draws
+  // the projects' targets.
+  const jsonTaskSelection = () =>
+    args.targets?.length
+      ? (resolveSelection(args.taskSelection) ??
+        selectTasksForProjects(
+          rawGraph,
+          args.projects?.length
+            ? args.projects
+            : [...runnableForTarget(rawGraph.nodes, args.targets)],
+          {
+            targets: args.targets,
+            configuration: args.configuration,
+          } as NxArgs,
+          {},
+          {},
+          false
+        ))
+      : undefined;
+
+  const projects = Object.values(
+    prunedGraph.nodes
+  ) as ProjectGraphProjectNode[];
+  projects.sort((a, b) => {
+    return a.name.localeCompare(b.name);
+  });
+
+  if (args.focus) {
+    if (!projectExists(projects, args.focus)) {
+      output.error({
+        title: `Project to focus does not exist.`,
+        bodyLines: [`You provided --focus=${args.focus}`],
+      });
+      process.exit(1);
+    }
+  }
+
+  try {
+    affectedProjects = (
+      await getAffectedGraphNodes(
+        splitArgsIntoNxArgsAndOverrides(
+          args,
+          'affected',
+          {
+            printWarnings:
+              args.affected && !args.print && args.file !== 'stdout',
+          },
+          readNxJson()
+        ).nxArgs,
+        rawGraph
+      )
+    ).map((n) => n.name);
+  } catch (e) {
+    // if `--affected` is explicitly passed in or
+    // resolved `args.affected` is true, then calculating affected projects
+    // is intended (and expected) so we rethrow the error here.
+    if (args.affected) {
+      throw e;
+    }
+
+    // if `affected` is falsy, and we calculate affected projects for default case
+    // and the operation might fail (i.e: in e2e tests), we fallback to empty array
+    affectedProjects = [];
+  }
+
+  let excludePatterns: string[] = [];
+  if (args.exclude && args.exclude.length > 0) {
+    try {
+      // Use findMatchingProjects to expand patterns (supports globs, tags, directories, etc.)
+      excludePatterns = findMatchingProjects(args.exclude, prunedGraph.nodes);
+
+      // If no projects matched any of the exclude patterns, show a warning
+      if (excludePatterns.length === 0) {
+        output.warn({
+          title: `No projects matched the following exclude patterns:`,
+          bodyLines: args.exclude,
+        });
+      }
+    } catch (e) {
+      output.error({
+        title: `Invalid exclude pattern:`,
+        bodyLines: [e.message],
+      });
+      process.exit(1);
+    }
+  }
+
+  let html = readFileSync(
+    join(__dirname, '../../core/graph/index.html'),
+    'utf-8'
+  );
+
+  prunedGraph = filterGraph(prunedGraph, args.focus || null, excludePatterns);
+
+  if (args.print || args.file === 'stdout') {
+    console.log(
+      JSON.stringify(
+        await createJsonOutput(prunedGraph, rawGraph, jsonTaskSelection()),
+        null,
+        2
+      )
+    );
+    await output.drain();
+    await new Promise((res) => setImmediate(res));
+    process.exit(0);
+  }
+
+  if (args.file) {
+    const workspaceFolder = workspaceRoot;
+    const ext = extname(args.file);
+    const fullFilePath = isAbsolute(args.file)
+      ? args.file
+      : join(workspaceFolder, args.file);
+    const fileFolderPath = dirname(fullFilePath);
+
+    if (ext === '.html') {
+      const assetsFolder = join(fileFolderPath, 'static');
+      const assets: string[] = [];
+      cpSync(join(__dirname, '../../core/graph'), assetsFolder, {
+        filter: (_src, dest) => {
+          const isntHtml = !/index\.html/.test(dest);
+          if (isntHtml && dest.includes('.')) {
+            assets.push(dest);
+          }
+          return isntHtml;
+        },
+        recursive: true,
+      });
+
+      const { projectGraphClientResponse } =
+        await createProjectGraphAndSourceMapClientResponse(affectedProjects);
+
+      const taskGraphClientResponse = args.targets
+        ? await createTaskGraphForTargetsAndProjects(
+            args.targets,
+            args.projects,
+            args.configuration,
+            args.taskSelection
+          )
+        : await createTaskGraphClientResponse();
+
+      const taskInputsReponse = await createExpandedTaskInputResponse(
+        taskGraphClientResponse,
+        projectGraphClientResponse
+      );
+
+      const environmentJs = buildEnvironmentJs(
+        excludePatterns,
+        args.watch,
+        !!args.file && args.file.endsWith('html') ? 'build' : 'serve',
+        projectGraphClientResponse,
+        taskGraphClientResponse,
+        taskInputsReponse,
+        sourceMaps
+      );
+      html = html.replace(/src="/g, 'src="static/');
+      html = html.replace(/href="styles/g, 'href="static/styles');
+      html = html.replace(/<base href="\/".*>/g, '');
+      html = html.replace(/type="module"/g, '');
+
+      writeFileSync(fullFilePath, html);
+      writeFileSync(join(assetsFolder, 'environment.js'), environmentJs);
+
+      output.success({
+        title: `HTML output created in ${fileFolderPath}`,
+        bodyLines: [fileFolderPath, ...assets],
+      });
+    } else if (ext === '.json') {
+      mkdirSync(dirname(fullFilePath), { recursive: true });
+
+      const json = await createJsonOutput(
+        prunedGraph,
+        rawGraph,
+        jsonTaskSelection()
+      );
+
+      writeJsonFile(fullFilePath, json);
+
+      output.success({
+        title: `JSON output created in ${fileFolderPath}`,
+        bodyLines: [fullFilePath],
+      });
+    } else {
+      output.error({
+        title: `Please specify a filename with either .json or .html extension.`,
+        bodyLines: [`You provided --file=${args.file}`],
+      });
+      process.exit(1);
+    }
+    await new Promise((res) => setImmediate(res));
+    process.exit(0);
+  } else {
+    const environmentJs = buildEnvironmentJs(
+      excludePatterns,
+      args.watch,
+      !!args.file && args.file.endsWith('html') ? 'build' : 'serve'
+    );
+
+    let app: net.Server;
+    let url: URL;
+    try {
+      const result = await startServer(
+        html,
+        environmentJs,
+        args.host || '127.0.0.1',
+        args.port || 4211,
+        args.watch,
+        affectedProjects,
+        args.focus,
+        args.groupByFolder,
+        excludePatterns,
+        typeof args.taskSelection === 'object' && args.taskSelection.taskIds
+          ? {
+              targets: args.targets,
+              configuration: args.configuration,
+              taskIds: args.taskSelection.taskIds,
+            }
+          : undefined
+      );
+      app = result.app;
+      url = result.url;
+    } catch (err) {
+      output.error({
+        title: 'Failed to start graph server',
+        bodyLines: [err.message],
+      });
+      process.exit(1);
+    }
+
+    // setting up `?graph=serialized-graph-state`
+    let graphState:
+      | {
+          config: Record<string, unknown>;
+          state?: Record<string, unknown>;
+        }
+      | undefined = undefined;
+    url.pathname = args.view;
+
+    if (args.focus) {
+      if (args.view === 'project-details') {
+        url.pathname += '/' + encodeURIComponent(args.focus);
+      } else if (args.view === 'projects') {
+        graphState ??= { config: {} };
+        graphState.state = {
+          type: 'focused',
+          nodeId: encodeURIComponent(`project-${args.focus}`),
+        };
+      }
+    }
+
+    // Add targets as query parameters for tasks view
+    if (args.view === 'tasks' && args.targets && args.targets.length > 0) {
+      const targets = Array.isArray(args.targets)
+        ? args.targets
+        : [args.targets];
+      url.searchParams.append('targets', targets.join(' '));
+    }
+
+    if (args.all) {
+      if (args.view === 'tasks') {
+        url.pathname += '/all';
+      }
+    } else if (args.projects) {
+      url.searchParams.append(
+        'projects',
+        args.projects.map((projectName) => projectName).join(' ')
+      );
+    } else if (args.affected) {
+      graphState ??= { config: {} };
+      graphState.config = { ...graphState.config, showMode: 'affected' };
+    }
+
+    if (graphState && args.view === 'projects') {
+      // only projects graph restore-able state  is relevant at the moment
+      url.searchParams.set('rawGraph', JSON.stringify(graphState));
+    }
+
+    output.success({
+      title: `Project graph started at ${url.toString()}`,
+    });
+
+    if (args.open) {
+      // Best-effort: openUrl never throws, returning false if no opener could be
+      // spawned. The URL is printed above, so a failure is silent.
+      openUrl(url.toString());
+    }
+
+    return new Promise((res) => {
+      app.once('close', res);
+    });
+  }
+}
+
+function findAvailablePort(
+  startPort: number,
+  host: string = '127.0.0.1'
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+
+    server.listen(startPort, host, () => {
+      const port = (server.address() as net.AddressInfo).port;
+      server.close(() => {
+        resolve(port);
+      });
+    });
+
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        // Port is in use, try the next one
+        findAvailablePort(startPort + 1, host)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
+
+export async function startServer(
+  html: string,
+  environmentJs: string,
+  host: string,
+  port = 4211,
+  watchForChanges = true,
+  affected: string[] = [],
+  focus: string = null,
+  groupByFolder: boolean = false,
+  exclude: string[] = [],
+  selection?: TaskSelectionForGraph
+) {
+  let unregisterFileWatcher: (() => void) | undefined;
+
+  if (watchForChanges && !daemonClient.enabled()) {
+    output.warn({
+      title:
+        'Nx Daemon is not enabled. Graph will not refresh on file changes.',
+    });
+  }
+
+  if (watchForChanges && daemonClient.enabled()) {
+    unregisterFileWatcher = await createProjectGraphListener();
+  }
+
+  const { projectGraphClientResponse, sourceMapResponse } =
+    await createProjectGraphAndSourceMapClientResponse(
+      affected,
+      focus,
+      exclude
+    );
+
+  currentProjectGraphClientResponse = projectGraphClientResponse;
+  currentProjectGraphClientResponse.focus = focus;
+  currentProjectGraphClientResponse.groupByFolder = groupByFolder;
+  currentProjectGraphClientResponse.exclude = exclude;
+
+  currentSourceMapsClientResponse = sourceMapResponse;
+
+  isFilteredGraph = !!(focus || exclude.length > 0);
+
+  const handleRequest = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ) => {
+    if (!isSameOriginLocalRequest(req, host)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden');
+      return;
+    }
+
+    // parse URL
+    const parsedUrl = new URL(req.url, `http://${host}:${port}`);
+    // extract URL path
+    // Avoid https://en.wikipedia.org/wiki/Directory_traversal_attack
+    // e.g curl --path-as-is http://localhost:9000/../fileInDanger.txt
+    // by limiting the path to current directory only
+
+    const sanitizePath = basename(parsedUrl.pathname);
+    if (sanitizePath === 'project-graph.json') {
+      const requestFull = parsedUrl.searchParams.get('full') === 'true';
+
+      // If client requests full graph and current is filtered, regenerate
+      if (requestFull && isFilteredGraph) {
+        const { projectGraphClientResponse, sourceMapResponse } =
+          await createProjectGraphAndSourceMapClientResponse([], null, []);
+
+        currentProjectGraphClientResponse = projectGraphClientResponse;
+        currentProjectGraphClientResponse.focus = null;
+        currentProjectGraphClientResponse.groupByFolder = false;
+        currentProjectGraphClientResponse.exclude = [];
+        currentSourceMapsClientResponse = sourceMapResponse;
+        isFilteredGraph = false;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(currentProjectGraphClientResponse));
+      return;
+    }
+
+    if (sanitizePath === 'task-graph.json') {
+      const projectsParam = parsedUrl.searchParams.get('projects');
+      const targetsParam = parsedUrl.searchParams.get('targets');
+      const configuration =
+        parsedUrl.searchParams.get('configuration') || undefined;
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+
+      if (targetsParam) {
+        const targetNames = targetsParam.split(' ').filter(Boolean);
+        const projectNames = projectsParam
+          ? projectsParam.split(' ').filter(Boolean)
+          : undefined;
+
+        const request = selectedFor(targetNames, configuration, selection);
+        return res.end(
+          JSON.stringify(
+            await createTaskGraphForTargetsAndProjects(
+              targetNames,
+              projectNames,
+              request.configuration,
+              { taskIds: request.taskIds }
+            )
+          )
+        );
+      }
+
+      // load all task graphs if there's no targets specified
+      return res.end(JSON.stringify(await createTaskGraphClientResponse()));
+    }
+
+    if (sanitizePath === 'task-inputs.json') {
+      performance.mark('task input generation:start');
+
+      const taskId = parsedUrl.searchParams.get('taskId');
+      if (!taskId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing taskId' }));
+        return;
+      }
+      const inputs = await getExpandedTaskInputs(
+        currentProjectGraphClientResponse,
+        expandedTaskInputsCache,
+        taskId
+      );
+      performance.mark('task input generation:end');
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ [taskId]: inputs }));
+      performance.measure(
+        'task input generation',
+        'task input generation:start',
+        'task input generation:end'
+      );
+
+      return;
+    }
+
+    if (sanitizePath === 'source-maps.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(currentSourceMapsClientResponse));
+      return;
+    }
+
+    if (sanitizePath === 'currentHash') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ hash: currentProjectGraphClientResponse.hash }));
+      return;
+    }
+
+    if (sanitizePath === 'environment.js') {
+      res.writeHead(200, { 'Content-Type': 'application/javascript' });
+      res.end(environmentJs);
+      return;
+    }
+
+    if (sanitizePath === 'help') {
+      const project = parsedUrl.searchParams.get('project');
+      const target = parsedUrl.searchParams.get('target');
+
+      try {
+        const text = getHelpTextFromTarget(project, target);
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end(JSON.stringify({ text, success: true }));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end(JSON.stringify({ text: err.message, success: false }));
+      }
+      return;
+    }
+
+    let pathname = join(__dirname, '../../core/graph/', sanitizePath);
+    // if the file is not found or is a directory, return index.html
+    if (!existsSync(pathname) || statSync(pathname).isDirectory()) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+      return;
+    }
+
+    try {
+      const data = readFileSync(pathname);
+
+      const ext = parse(pathname).ext;
+      res.setHeader('Content-type', mimeType[ext] || 'text/plain');
+      res.end(data);
+    } catch (err) {
+      res.statusCode = 500;
+      res.end(`Error getting the file: ${err}.`);
+    }
+  };
+
+  const app = http.createServer((req, res) => {
+    handleRequest(req, res).catch((err) => {
+      output.error({
+        title: `Failed to handle graph request ${req.url}`,
+        bodyLines: [err?.stack ?? String(err)],
+      });
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+      }
+      res.end();
+    });
+  });
+
+  const handleTermination = async (exitCode: number) => {
+    if (unregisterFileWatcher) {
+      unregisterFileWatcher();
+    }
+    process.exit(exitCode);
+  };
+  process.on('SIGINT', () => handleTermination(128 + 2));
+  process.on('SIGTERM', () => handleTermination(128 + 15));
+
+  // Find an available port starting from the requested port
+  const availablePort = await findAvailablePort(port, host);
+
+  return new Promise<{ app: net.Server; url: URL }>((res, rej) => {
+    app.on('error', (err: NodeJS.ErrnoException) => {
+      rej(err);
+    });
+
+    app.listen(availablePort, host, () => {
+      if (availablePort !== port) {
+        output.note({
+          title: `Port ${port} was already in use, using port ${availablePort} instead`,
+        });
+      }
+      res({ app, url: new URL(`http://${host}:${availablePort}`) });
+    });
+  });
+}
+
+export function isSameOriginLocalRequest(
+  req: Pick<http.IncomingMessage, 'headers'> & {
+    socket: Pick<net.Socket, 'localPort'>;
+  },
+  host: string
+): boolean {
+  const authority = parseHostHeader(req.headers.host);
+  if (
+    !authority ||
+    Number(authority.port || 80) !== req.socket.localPort ||
+    !isAllowedHostname(authority.hostname.replace(/^\[|\]$/g, ''), host)
+  ) {
+    return false;
+  }
+
+  const fetchSite = req.headers['sec-fetch-site'];
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') {
+    return false;
+  }
+
+  const origin = req.headers.origin;
+  return !origin || origin.toLowerCase() === authority.origin;
+}
+
+function parseHostHeader(hostHeader: string | undefined): URL | null {
+  if (!hostHeader || /[/\\@?#]/.test(hostHeader)) {
+    return null;
+  }
+  try {
+    return new URL(`http://${hostHeader}`);
+  } catch {
+    return null;
+  }
+}
+
+const loopbackHostnames = new Set(['localhost', '127.0.0.1', '::1']);
+
+function isAllowedHostname(hostname: string, boundHost: string): boolean {
+  const bound = boundHost.toLowerCase();
+  if (loopbackHostnames.has(hostname) || hostname === bound) {
+    return true;
+  }
+  // DNS rebinding needs a domain name, so an IP literal is safe to accept
+  // once the user binds a non-loopback interface.
+  return !loopbackHostnames.has(bound) && net.isIP(hostname) !== 0;
+}
+
+let currentProjectGraphClientResponse: ProjectGraphClientResponse = {
+  hash: null,
+  projects: [],
+  dependencies: {},
+  fileMap: {},
+  layout: {
+    appsDir: '',
+    libsDir: '',
+  },
+  affected: [],
+  focus: null,
+  groupByFolder: false,
+  exclude: [],
+  isPartial: false,
+  errors: [],
+};
+let currentSourceMapsClientResponse: ConfigurationSourceMaps = {};
+let isFilteredGraph = false;
+
+function debounce<T extends (...args: any[]) => void>(fn: T, time: number): T {
+  let timeout: NodeJS.Timeout;
+
+  return ((...args: Parameters<T>) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(() => fn(...args), time);
+  }) as T;
+}
+
+function createProjectGraphListener() {
+  return daemonClient.registerProjectGraphRecomputationListener(
+    debounce(async (error, data) => {
+      if (error === 'reconnecting') {
+        output.note({ title: 'Daemon restarting, reconnecting...' });
+        return;
+      } else if (error === 'reconnected') {
+        output.note({ title: 'Reconnected to daemon' });
+        return;
+      } else if (error === 'closed') {
+        output.error({
+          title: `Failed to reconnect to daemon after multiple attempts`,
+        });
+        process.exit(1);
+      } else if (error instanceof VersionMismatchError) {
+        output.error({
+          title: 'Nx version changed. Please restart your command.',
+        });
+        process.exit(1);
+      } else if (error) {
+        output.error({
+          title: `Watch error: ${error?.message ?? 'Unknown'}`,
+        });
+      } else if (data !== null) {
+        output.note({ title: 'Project graph recomputed, updating...' });
+
+        let projectGraph = data.projectGraph;
+        let sourceMaps = data.sourceMaps;
+        let errors: GraphError[] | undefined;
+
+        if (data.error instanceof ProjectGraphError) {
+          projectGraph = data.error.getPartialProjectGraph();
+          sourceMaps = data.error.getPartialSourcemaps();
+          errors = data.error.getErrors().map((e) => ({
+            message: e.message,
+            stack: e.stack,
+            cause: e.cause,
+            name: e.name,
+            pluginName: (e as any).pluginName,
+            fileName:
+              (e as any).file ?? (e.cause as any)?.errors?.[0]?.location?.file,
+          }));
+        }
+
+        const { projectGraphClientResponse, sourceMapResponse } =
+          transformProjectGraphToClientResponse(
+            projectGraph,
+            sourceMaps,
+            errors,
+            currentProjectGraphClientResponse.affected,
+            isFilteredGraph ? currentProjectGraphClientResponse.focus : null,
+            isFilteredGraph ? currentProjectGraphClientResponse.exclude : [],
+            await isUltracacheOnInCI(readNxJson())
+          );
+
+        if (
+          projectGraphClientResponse.hash !==
+            currentProjectGraphClientResponse.hash &&
+          sourceMapResponse
+        ) {
+          if (projectGraphClientResponse.errors?.length > 0) {
+            projectGraphClientResponse.errors.forEach((e) => {
+              output.error({
+                title: e.message,
+                bodyLines: [e.stack],
+              });
+            });
+            output.warn({
+              title: `${
+                projectGraphClientResponse.errors.length > 1
+                  ? `${projectGraphClientResponse.errors.length} errors`
+                  : `An error`
+              } occurred while processing the project graph. Showing partial graph.`,
+            });
+          }
+          output.note({ title: 'Graph changes updated.' });
+
+          currentProjectGraphClientResponse = projectGraphClientResponse;
+          currentSourceMapsClientResponse = sourceMapResponse;
+          // Clear task graph cache when project graph changes
+          clearTaskGraphCache();
+        } else {
+          output.note({ title: 'No graph changes found.' });
+        }
+      }
+    }, 500)
+  );
+}
+
+/** The graph's nodes, with `ultracacheInCI` set to each target's Ultracache mode in CI. */
+function markTargetsHashedFromUltracacheInCI(
+  graph: ProjectGraph
+): ProjectGraphProjectNode[] {
+  return Object.values(graph.nodes).map((node) => {
+    const targets = Object.entries(node.data.targets ?? {});
+    const modes = new Map(
+      targets.flatMap(([name, target]) => {
+        const mode = ultracacheModeInCI(
+          target,
+          hasCustomHasher(node.name, name, graph)
+        );
+        return mode ? [[name, mode] as const] : [];
+      })
+    );
+    if (!modes.size) {
+      return node;
+    }
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        targets: Object.fromEntries(
+          targets.map(([name, target]) => [
+            name,
+            modes.has(name)
+              ? { ...target, ultracacheInCI: modes.get(name) }
+              : target,
+          ])
+        ),
+      },
+    };
+  });
+}
+
+function transformProjectGraphToClientResponse(
+  projectGraph: ProjectGraph,
+  sourceMaps: ConfigurationSourceMaps,
+  errors: GraphError[] | null,
+  affected: string[] = [],
+  focus: string = null,
+  exclude: string[] = [],
+  ultracacheOnInCI = false
+): {
+  projectGraphClientResponse: ProjectGraphClientResponse;
+  sourceMapResponse: ConfigurationSourceMaps;
+} {
+  performance.mark('project graph transform:start');
+
+  let graph = pruneExternalNodes(projectGraph);
+
+  // Apply focus and exclude filters
+  graph = filterGraph(graph, focus, exclude);
+
+  const fileMap: ProjectFileMap =
+    readFileMapCache()?.fileMap.projectFileMap || {};
+
+  const layout = workspaceLayout();
+  const projects: ProjectGraphProjectNode[] = ultracacheOnInCI
+    ? markTargetsHashedFromUltracacheInCI(graph)
+    : Object.values(graph.nodes);
+  const dependencies = graph.dependencies;
+
+  const nxJson = readNxJson();
+  const connectedToCloud = isNxCloudUsed(nxJson);
+  const disabledTaskSyncGenerators = nxJson.sync?.disabledTaskSyncGenerators;
+
+  const hasher = createHash('sha256');
+  hasher.update(
+    JSON.stringify({
+      layout,
+      projects,
+      dependencies,
+      sourceMaps,
+      connectedToCloud,
+      disabledTaskSyncGenerators,
+    })
+  );
+
+  const hash = hasher.digest('hex');
+
+  performance.mark('project graph transform:end');
+  performance.measure(
+    'project graph transform',
+    'project graph transform:start',
+    'project graph transform:end'
+  );
+
+  return {
+    projectGraphClientResponse: {
+      ...currentProjectGraphClientResponse,
+      hash,
+      layout,
+      projects,
+      dependencies,
+      affected,
+      fileMap,
+      isPartial: false,
+      errors,
+      connectedToCloud,
+      disabledTaskSyncGenerators,
+    },
+    sourceMapResponse: sourceMaps,
+  };
+}
+
+async function createProjectGraphAndSourceMapClientResponse(
+  affected: string[] = [],
+  focus: string = null,
+  exclude: string[] = []
+): Promise<{
+  projectGraphClientResponse: ProjectGraphClientResponse;
+  sourceMapResponse: ConfigurationSourceMaps;
+}> {
+  performance.mark('project graph watch calculation:start');
+
+  let projectGraph: ProjectGraph;
+  let sourceMaps: ConfigurationSourceMaps;
+  let errors: GraphError[] | undefined;
+  try {
+    const projectGraphAndSourceMaps =
+      await createProjectGraphAndSourceMapsAsync({ exitOnError: false });
+    projectGraph = projectGraphAndSourceMaps.projectGraph;
+    sourceMaps = projectGraphAndSourceMaps.sourceMaps;
+  } catch (e) {
+    if (e instanceof ProjectGraphError) {
+      projectGraph = e.getPartialProjectGraph();
+      sourceMaps = e.getPartialSourcemaps();
+      errors = e.getErrors().map((e) => ({
+        message: e.message,
+        stack: e.stack,
+        cause: e.cause,
+        name: e.name,
+        pluginName: (e as any).pluginName,
+        fileName:
+          (e as any).file ?? (e.cause as any)?.errors?.[0]?.location?.file,
+      }));
+    }
+
+    if (!projectGraph) {
+      handleProjectGraphError({ exitOnError: true }, e);
+    }
+  }
+
+  performance.mark('project graph watch calculation:end');
+  performance.mark('project graph response generation:start');
+
+  let { projectGraphClientResponse, sourceMapResponse } =
+    transformProjectGraphToClientResponse(
+      projectGraph,
+      sourceMaps,
+      errors,
+      affected,
+      focus,
+      exclude,
+      await isUltracacheOnInCI(readNxJson())
+    );
+
+  performance.mark('project graph response generation:end');
+
+  performance.measure(
+    'project graph watch calculation',
+    'project graph watch calculation:start',
+    'project graph watch calculation:end'
+  );
+
+  performance.measure(
+    'project graph response generation',
+    'project graph response generation:start',
+    'project graph response generation:end'
+  );
+
+  return {
+    projectGraphClientResponse,
+    sourceMapResponse,
+  };
+}
+
+async function createTaskGraphClientResponse(
+  pruneExternal: boolean = false
+): Promise<TaskGraphClientResponse> {
+  let graph: ProjectGraph;
+  try {
+    graph = await createProjectGraphAsync({ exitOnError: false });
+  } catch (e) {
+    if (e instanceof ProjectGraphError) {
+      graph = e.getPartialProjectGraph();
+    }
+  }
+  if (pruneExternal) {
+    graph = pruneExternalNodes(graph);
+  }
+
+  const nxJson = readNxJson();
+
+  performance.mark('task graph generation:start');
+
+  const projects = Object.keys(graph.nodes);
+  const allTargets = new Set<string>();
+
+  for (const projectName in graph.nodes) {
+    const project = graph.nodes[projectName];
+    Object.keys(project.data.targets ?? {}).forEach((target) => {
+      allTargets.add(target);
+    });
+  }
+
+  const targets = Array.from(allTargets);
+
+  try {
+    const taskGraph = createTaskGraph(
+      graph,
+      {},
+      projects,
+      targets,
+      undefined,
+      {}
+    );
+
+    performance.mark('task graph generation:end');
+
+    const planner = new HashPlanner(
+      nxJson,
+      transformProjectGraphForRust(graph)
+    );
+    performance.mark('task hash plan generation:start');
+
+    const taskIds = Object.keys(taskGraph.tasks);
+    const plans =
+      taskIds.length > 0 ? planner.getPlans(taskIds, taskGraph) : {};
+
+    performance.mark('task hash plan generation:end');
+
+    performance.measure(
+      'task graph generation',
+      'task graph generation:start',
+      'task graph generation:end'
+    );
+
+    performance.measure(
+      'task hash plan generation',
+      'task hash plan generation:start',
+      'task hash plan generation:end'
+    );
+
+    return { taskGraph, plans, error: null };
+  } catch (err) {
+    performance.mark('task graph generation:end');
+    performance.measure(
+      'task graph generation (failed)',
+      'task graph generation:start',
+      'task graph generation:end'
+    );
+
+    return {
+      taskGraph: {
+        tasks: {},
+        dependencies: {},
+        continuousDependencies: {},
+        roots: [],
+      },
+      plans: {},
+      error: err.message,
+    };
+  }
+}
+
+async function createExpandedTaskInputResponse(
+  taskGraphClientResponse: TaskGraphClientResponse,
+  depGraphClientResponse: ProjectGraphClientResponse
+): Promise<ExpandedTaskInputsReponse> {
+  performance.mark('task input static generation:start');
+
+  const allWorkspaceFiles = await allFileData();
+  const response: Record<string, Record<string, string[]>> = {};
+
+  Object.entries(taskGraphClientResponse.plans).forEach(([key, inputs]) => {
+    const [project] = key.split(':');
+
+    const expandedInputs = expandInputs(
+      inputs,
+      depGraphClientResponse.projects.find((p) => p.name === project),
+      allWorkspaceFiles,
+      depGraphClientResponse
+    );
+
+    response[key] = expandedInputs;
+  });
+  performance.mark('task input static generation:end');
+  performance.measure(
+    'task input static generation',
+    'task input static generation:start',
+    'task input static generation:end'
+  );
+  return response;
+}
+
+// Performance optimized functions for lazy loading task graphs
+
+// In-memory cache for task graphs to avoid regeneration
+const taskGraphCache = new Map<string, TaskGraphClientResponse>();
+
+// In-memory cache for expanded task inputs to avoid regeneration
+const expandedTaskInputsCache = new Map<string, Record<string, string[]>>();
+
+// Clear cache when project graph changes
+function clearTaskGraphCache() {
+  taskGraphCache.clear();
+  expandedTaskInputsCache.clear();
+}
+
+export interface TaskSelectionForGraph {
+  targets: string[];
+  configuration?: string;
+  taskIds: string[];
+}
+
+/**
+ * The selection applies only to a page asking for its exact targets with its configuration
+ * or none (the ids carry it); anything else would prune to nothing, so it is shown whole.
+ */
+export function selectedFor(
+  targets: string[],
+  configuration: string | undefined,
+  selection: TaskSelectionForGraph | undefined
+): { configuration?: string; taskIds?: string[] } {
+  const applies =
+    selection &&
+    targets.length === selection.targets.length &&
+    targets.every((target) => selection.targets.includes(target)) &&
+    (configuration === undefined || configuration === selection.configuration);
+  return applies
+    ? { configuration: selection.configuration, taskIds: selection.taskIds }
+    : { configuration };
+}
+
+function resolveSelection<T>(
+  selection: T | (() => T) | undefined
+): T | undefined {
+  return typeof selection === 'function' ? (selection as () => T)() : selection;
+}
+
+/**
+ * The task graph to draw: the selection's own when it has one, otherwise built
+ * and, given ids, pruned to them. The live graph rebuilds per request, so it
+ * passes only ids.
+ */
+export function taskGraphForSelection(
+  build: () => TaskGraph,
+  selection?: { taskGraph?: TaskGraph; taskIds?: string[] }
+): TaskGraph {
+  if (selection?.taskGraph) {
+    return selection.taskGraph;
+  }
+  const taskGraph = build();
+  return selection?.taskIds
+    ? pruneToSelectedTasks(taskGraph, selection.taskIds)
+    : taskGraph;
+}
+
+/**
+ * The task graph client response for `targetNames`: `selection`'s graph when given,
+ * else built for `projectNames` (default: every project with one of the targets).
+ */
+async function createTaskGraphForTargetsAndProjects(
+  targetNames: string[],
+  projectNames?: string[],
+  configuration?: string,
+  selection?:
+    | { taskGraph?: TaskGraph; taskIds?: string[] }
+    | (() => TaskSelection)
+): Promise<TaskGraphClientResponse> {
+  // Get project graph
+  let graph: ProjectGraph;
+  try {
+    graph = await createProjectGraphAsync({ exitOnError: false });
+  } catch (e) {
+    if (e instanceof ProjectGraphError) {
+      graph = e.getPartialProjectGraph();
+    }
+  }
+  const nxJson = readNxJson();
+
+  performance.mark(`task graph generation:start`);
+
+  let projectsToUse: string[];
+  if (projectNames && projectNames.length > 0) {
+    projectsToUse = projectNames;
+  } else {
+    // Get all projects that have at least one of the targets
+    projectsToUse = Object.entries(graph.nodes)
+      .filter(([_, project]) =>
+        targetNames.some((targetName) => project.data.targets?.[targetName])
+      )
+      .map(([projectName]) => projectName);
+  }
+
+  try {
+    const taskGraph = taskGraphForSelection(
+      () =>
+        createTaskGraph(
+          graph,
+          {},
+          projectsToUse,
+          targetNames,
+          configuration,
+          {}
+        ),
+      // Built in here, so an error is reported in the page like any other.
+      resolveSelection(selection)
+    );
+
+    performance.mark(`task graph generation:end`);
+
+    const planner = new HashPlanner(
+      nxJson,
+      transformProjectGraphForRust(graph)
+    );
+    performance.mark('task hash plan generation:start');
+
+    const taskIds = Object.keys(taskGraph.tasks);
+    const plans =
+      taskIds.length > 0 ? planner.getPlans(taskIds, taskGraph) : {};
+
+    performance.mark('task hash plan generation:end');
+
+    performance.measure(
+      `task graph generation for ${targetNames.join(', ')}`,
+      `task graph generation:start`,
+      `task graph generation:end`
+    );
+    performance.measure(
+      'task hash plan generation',
+      'task hash plan generation:start',
+      'task hash plan generation:end'
+    );
+
+    return { taskGraph, plans, error: null };
+  } catch (err) {
+    performance.mark(`task graph generation:end`);
+    performance.measure(
+      `task graph generation for ${targetNames.join(', ')} (failed)`,
+      `task graph generation:start`,
+      `task graph generation:end`
+    );
+
+    return {
+      taskGraph: {
+        tasks: {},
+        dependencies: {},
+        continuousDependencies: {},
+        roots: [],
+      },
+      plans: {},
+      error: err.message,
+    };
+  }
+}
+
+export async function getExpandedTaskInputs(
+  depGraphClientResponse: ProjectGraphClientResponse,
+  expandedTaskInputsCache: Map<string, Record<string, string[]>>,
+  taskId: string
+): Promise<Record<string, string[]>> {
+  // Check cache first
+  if (expandedTaskInputsCache.has(taskId)) {
+    return expandedTaskInputsCache.get(taskId)!;
+  }
+
+  // Use the optimized version that only creates the specific task graph needed
+  // Use colon-aware splitting so that target names containing colons
+  // (e.g. "test:integration") are parsed correctly instead of being
+  // mistaken for a target + configuration pair.
+  const projectNodes = Object.fromEntries(
+    depGraphClientResponse.projects.map((p) => [p.name, p])
+  );
+  const [projectName, targetName, configuration] = splitTargetFromNodes(
+    taskId,
+    projectNodes,
+    { silent: true }
+  );
+  const taskGraphResponse = await createTaskGraphForTargetsAndProjects(
+    [targetName],
+    [projectName],
+    configuration
+  );
+
+  const allWorkspaceFiles = await allFileData();
+
+  const inputs = taskGraphResponse.plans?.[taskId];
+  let result: Record<string, string[]> = {};
+
+  if (inputs) {
+    result = expandInputs(
+      inputs,
+      depGraphClientResponse.projects.find((p) => p.name === projectName),
+      allWorkspaceFiles,
+      depGraphClientResponse
+    );
+  }
+
+  // Cache the result
+  expandedTaskInputsCache.set(taskId, result);
+
+  return result;
+}
+
+// A brace group ({a,b}.json) carries commas, so a glob list joined with
+// commas can only be split at brace depth zero.
+function splitGlobGroup(group: string): string[] {
+  const globs: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (const char of group) {
+    if (char === '{') {
+      depth++;
+    } else if (char === '}' && depth > 0) {
+      depth--;
+    }
+    if (char === ',' && depth === 0) {
+      globs.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  globs.push(current);
+  // An unbalanced `{` would swallow the rest of the list; a plain split is
+  // the better guess then.
+  return depth === 0 ? globs : group.split(',');
+}
+
+function expandInputs(
+  inputs: string[],
+  project: ProjectGraphProjectNode,
+  allWorkspaceFiles: FileData[],
+  depGraphClientResponse: ProjectGraphClientResponse
+): Record<string, string[]> {
+  const projectNames = depGraphClientResponse.projects.map((p) => p.name);
+
+  const workspaceRootInputs: string[] = [];
+  const projectRootInputs: string[] = [];
+  const externalInputs: string[] = [];
+  const otherInputs: string[] = [];
+  const filesInputs: string[][] = [];
+  inputs.forEach((input) => {
+    // grouped workspace inputs look like workspace:[pattern,otherPattern]
+    if (input.startsWith('workspace:[')) {
+      workspaceRootInputs.push(
+        ...splitGlobGroup(input.substring(11, input.length - 1))
+      );
+      return;
+    }
+    // Disk-backed groups look like files:[glob,!otherGlob]. They expand on
+    // disk, so they must be matched before the `:` catch-all below classifies
+    // them as external dependencies.
+    const diskBacked = /^files:\[(.*)\]$/.exec(input);
+    if (diskBacked) {
+      filesInputs.push(splitGlobGroup(diskBacked[1]));
+      return;
+    }
+    const maybeProjectName = input.split(':')[0];
+    if (projectNames.includes(maybeProjectName)) {
+      projectRootInputs.push(input);
+      return;
+    }
+    if (
+      input === 'ProjectConfiguration' ||
+      input === 'TsConfig' ||
+      input === 'AllExternalDependencies'
+    ) {
+      otherInputs.push(input);
+      return;
+    }
+    // there shouldn't be any other imports in here, but external ones are always going to have a modifier in front
+    if (input.includes(':')) {
+      externalInputs.push(input);
+      return;
+    }
+  });
+
+  const workspaceRootsExpanded: string[] = getExpandedWorkspaceRoots(
+    workspaceRootInputs,
+    allWorkspaceFiles
+  );
+  const projectRoots = depGraphClientResponse.projects.map((p) => p.data.root);
+  const filesExpanded = filesInputs.flatMap((globs) =>
+    expandFilesInput(workspaceRoot, globs, projectRoots)
+  );
+
+  const otherInputsExpanded = otherInputs.map((input) => {
+    if (input === 'TsConfig') {
+      return relative(workspaceRoot, getRootTsConfigPath());
+    }
+    if (input === 'ProjectConfiguration') {
+      return depGraphClientResponse.fileMap[project.name].find(
+        (file) =>
+          file.file === `${project.data.root}/project.json` ||
+          file.file === `${project.data.root}/package.json`
+      ).file;
+    }
+
+    return input;
+  });
+
+  const projectRootsExpanded = projectRootInputs
+    .map((input) => {
+      const fileSetProjectName = input.split(':')[0];
+      const fileSetProject = depGraphClientResponse.projects.find(
+        (p) => p.name === fileSetProjectName
+      );
+      const fileSets = input.replace(`${fileSetProjectName}:`, '').split(',');
+
+      const projectInputExpanded = {
+        [fileSetProject.name]: filterUsingGlobPatterns(
+          fileSetProject.data.root,
+          depGraphClientResponse.fileMap[fileSetProject.name] || [],
+          fileSets
+        ).map((f) => f.file),
+      };
+
+      return projectInputExpanded;
+    })
+    .reduce((curr, acc) => {
+      for (let key in curr) {
+        acc[key] = curr[key];
+      }
+      return acc;
+    }, {});
+
+  return {
+    general: [
+      ...workspaceRootsExpanded,
+      ...filesExpanded,
+      ...otherInputsExpanded,
+    ],
+    ...projectRootsExpanded,
+    external: externalInputs,
+  };
+}
+
+/**
+ * The data type that `nx graph --file graph.json` or `nx build --graph graph.json` contains
+ */
+export interface GraphJson {
+  /**
+   * A graph of tasks populated with `nx build --graph`
+   */
+  tasks?: TaskGraph;
+  /**
+   * The plans for hashing a task in the task graph
+   */
+  taskPlans?: Record<string, string[]>;
+  /**
+   * The project graph
+   */
+  graph: ProjectGraph;
+}
+
+function getExpandedWorkspaceRoots(
+  workspaceRootInputs: string[],
+  allWorkspaceFiles: FileData[]
+) {
+  const workspaceRootsExpanded: string[] = [];
+  const negativeWRPatterns = [];
+  const positiveWRPatterns = [];
+  for (const fileset of workspaceRootInputs) {
+    if (fileset.startsWith('!')) {
+      negativeWRPatterns.push(fileset.substring(17));
+    } else {
+      positiveWRPatterns.push(fileset.substring(16));
+    }
+  }
+  for (const pattern of positiveWRPatterns) {
+    const matchingFile = allWorkspaceFiles.find((t) => t.file === pattern);
+    if (
+      matchingFile &&
+      !negativeWRPatterns.some((p) => minimatch(matchingFile.file, p))
+    ) {
+      workspaceRootsExpanded.push(matchingFile.file);
+    } else {
+      allWorkspaceFiles
+        .filter(
+          (f) =>
+            minimatch(f.file, pattern) &&
+            !negativeWRPatterns.some((p) => minimatch(f.file, p))
+        )
+        .forEach((f) => {
+          workspaceRootsExpanded.push(f.file);
+        });
+    }
+  }
+  workspaceRootsExpanded.sort();
+  return workspaceRootsExpanded;
+}
+
+async function createJsonOutput(
+  prunedGraph: ProjectGraph,
+  rawGraph: ProjectGraph,
+  taskSelection?: TaskSelection
+): Promise<GraphJson> {
+  const response: GraphJson = {
+    graph: prunedGraph,
+  };
+
+  if (taskSelection) {
+    const taskGraph = taskSelection.taskGraph;
+
+    const hasher = createTaskHasher(rawGraph, readNxJson());
+    let tasks = Object.values(taskGraph.tasks);
+    // Match the runtime path: each task is hashed against its own env so
+    // the graph-view hash matches the hash used when the task actually runs.
+    const perTaskEnvs: Record<string, NodeJS.ProcessEnv> = {};
+    for (const task of tasks) {
+      perTaskEnvs[task.id] = getTaskSpecificEnv(task, rawGraph);
+    }
+    const hashes = await hasher.hashTasks(tasks, taskGraph, perTaskEnvs);
+    response.tasks = taskGraph;
+    response.taskPlans = tasks.reduce((acc, task, index) => {
+      acc[task.id] = Object.keys(hashes[index].details.nodes).sort();
+      return acc;
+    }, {});
+  }
+
+  return response;
+}
+
+function getHelpTextFromTarget(
+  projectName: string,
+  targetName: string
+): string {
+  if (!projectName) throw new Error(`Missing project`);
+  if (!targetName) throw new Error(`Missing target`);
+
+  const project = currentProjectGraphClientResponse.projects?.find(
+    (p) => p.name === projectName
+  );
+  if (!project) throw new Error(`Cannot find project ${projectName}`);
+
+  const target = project.data.targets[targetName];
+  if (!target) throw new Error(`Cannot find target ${targetName}`);
+
+  const command = target.metadata?.help?.command;
+  if (!command)
+    throw new Error(`No help command found for ${projectName}:${targetName}`);
+
+  return execSync(command, {
+    cwd: target.options?.cwd ?? workspaceRoot,
+    windowsHide: true,
+  }).toString();
+}

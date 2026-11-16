@@ -1,0 +1,43 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowDefaultCaseForExhaustiveSwitch": {
+        "description": "If 'true', allow 'default' cases on switch statements with exhaustive cases.",
+        "type": "boolean"
+      },
+      "considerDefaultExhaustiveForUnions": {
+        "description": "If 'true', the 'default' clause is used to determine whether the switch statement is exhaustive for union type",
+        "type": "boolean"
+      },
+      "defaultCaseCommentPattern": {
+        "description": "Regular expression for a comment that can indicate an intentionally omitted default case.",
+        "type": "string"
+      },
+      "requireDefaultForNonUnion": {
+        "description": "If 'true', require a 'default' clause for switches on non-union types.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** If 'true', allow 'default' cases on switch statements with exhaustive cases. */
+    allowDefaultCaseForExhaustiveSwitch?: boolean;
+    /** If 'true', the 'default' clause is used to determine whether the switch statement is exhaustive for union type */
+    considerDefaultExhaustiveForUnions?: boolean;
+    /** Regular expression for a comment that can indicate an intentionally omitted default case. */
+    defaultCaseCommentPattern?: string;
+    /** If 'true', require a 'default' clause for switches on non-union types. */
+    requireDefaultForNonUnion?: boolean;
+  },
+];

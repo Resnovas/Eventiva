@@ -1,0 +1,56 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        ParameterDefinition$1 {
+          name: Identifier<"a">,
+          node: ArrowFunctionExpression$1,
+        },
+      ],
+      name: "a",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$2,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+      ],
+    },
+    FunctionScope$2 {
+      block: ArrowFunctionExpression$1,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "a" => Variable$2,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$2,
+      ],
+    },
+  ],
+}

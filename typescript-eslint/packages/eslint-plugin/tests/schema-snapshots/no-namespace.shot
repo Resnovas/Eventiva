@@ -1,0 +1,31 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowDeclarations": {
+        "description": "Whether to allow `declare` with custom TypeScript namespaces.",
+        "type": "boolean"
+      },
+      "allowDefinitionFiles": {
+        "description": "Whether to allow `declare` with custom TypeScript namespaces inside definition files.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to allow `declare` with custom TypeScript namespaces. */
+    allowDeclarations?: boolean;
+    /** Whether to allow `declare` with custom TypeScript namespaces inside definition files. */
+    allowDefinitionFiles?: boolean;
+  },
+];

@@ -1,0 +1,235 @@
+import {interpolateName} from '@formatjs/ts-transformer'
+import type {Node} from 'estree-jsx'
+import type {Rule} from 'eslint'
+import {
+  extractMessages,
+  getSettings,
+} from '#packages/eslint-plugin-formatjs/util.js'
+
+/** @internal */
+export type Option = {
+  idInterpolationPattern: string
+  idWhitelist?: string[]
+  quoteStyle?: 'single' | 'double'
+}
+
+type MessageIds =
+  | 'enforceId'
+  | 'enforceIdDefaultMessage'
+  | 'enforceIdDescription'
+  | 'enforceIdMatching'
+  | 'enforceIdMatchingAllowlisted'
+
+type MatchingMessageData = {
+  idInterpolationPattern: string
+  expected: string
+  actual: string | undefined
+  idWhitelist?: string
+}
+
+function checkNode(
+  context: Rule.RuleContext,
+  node: Node,
+  {
+    idInterpolationPattern,
+    idWhitelistRegexps,
+    quoteStyle,
+  }: {
+    idInterpolationPattern: string
+    idWhitelistRegexps?: RegExp[]
+    quoteStyle: 'single' | 'double'
+  }
+) {
+  const msgs = extractMessages(node, getSettings(context))
+  for (const [
+    {
+      message: {defaultMessage, description, id},
+      idPropNode,
+      descriptionNode,
+      messagePropNode,
+      messageDescriptorNode,
+    },
+  ] of msgs) {
+    if (!idInterpolationPattern && !idPropNode) {
+      context.report({
+        node: messageDescriptorNode ?? node,
+        messageId: 'enforceId',
+      })
+      return
+    }
+
+    if (idInterpolationPattern) {
+      if (!defaultMessage) {
+        context.report({
+          node: messageDescriptorNode ?? node,
+          messageId: 'enforceIdDefaultMessage',
+        })
+      } else if (!description && descriptionNode) {
+        context.report({
+          node: messageDescriptorNode ?? node,
+          messageId: 'enforceIdDescription',
+        })
+      } else {
+        if (
+          idWhitelistRegexps &&
+          id &&
+          idWhitelistRegexps.some((r: RegExp) => r.test(id))
+        ) {
+          // messageId is allowlisted so skip interpolation id check
+          continue
+        }
+
+        const correctId = interpolateName(
+          {
+            resourcePath: context.filename,
+          },
+          idInterpolationPattern,
+          {
+            content: description
+              ? `${defaultMessage}#${description}`
+              : defaultMessage,
+          }
+        )
+        if (id !== correctId) {
+          let messageId: MessageIds = 'enforceIdMatching'
+          let messageData: MatchingMessageData = {
+            idInterpolationPattern,
+            expected: correctId,
+            actual: id,
+          }
+          if (idWhitelistRegexps) {
+            messageId = 'enforceIdMatchingAllowlisted'
+            messageData = {
+              ...messageData,
+              idWhitelist: idWhitelistRegexps
+                .map(r => `"${r.toString()}"`)
+                .join(', '),
+            }
+          }
+
+          const quote = quoteStyle === 'double' ? '"' : "'"
+          context.report({
+            node: idPropNode ?? messageDescriptorNode ?? node,
+            messageId,
+            data: messageData,
+            fix(fixer) {
+              if (idPropNode) {
+                if (idPropNode.type === 'JSXAttribute') {
+                  // Always use double quotes for JSX attributes
+                  return fixer.replaceText(idPropNode, `id="${correctId}"`)
+                }
+                return fixer.replaceText(
+                  idPropNode,
+                  `id: ${quote}${correctId}${quote}`
+                )
+              }
+
+              if (messagePropNode) {
+                // Insert after default message node
+                if (messagePropNode.type === 'JSXAttribute') {
+                  // Always use double quotes for JSX attributes
+                  return fixer.insertTextAfter(
+                    messagePropNode,
+                    ` id="${correctId}"`
+                  )
+                }
+                return fixer.insertTextAfter(
+                  messagePropNode,
+                  `, id: ${quote}${correctId}${quote}`
+                )
+              }
+              return null
+            },
+          })
+        }
+      }
+    }
+  }
+}
+
+export const name = 'enforce-id'
+
+export const rule: Rule.RuleModule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Enforce (generated) ID in message descriptor',
+      url: 'https://formatjs.github.io/docs/tooling/linter#enforce-id',
+    },
+    fixable: 'code',
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          idInterpolationPattern: {
+            type: 'string',
+            description:
+              'Pattern to verify ID against. Recommended value: [sha512:contenthash:base64:6]',
+          },
+          idWhitelist: {
+            type: 'array',
+            description:
+              "An array of strings with regular expressions. This array allows allowlist custom ids for messages. For example '`\\\\.`' allows any id which has dot; `'^payment_.*'` - allows any custom id which has prefix `payment_`. Be aware that any backslash \\ provided via string must be escaped with an additional backslash.",
+            items: {
+              type: 'string',
+            },
+          },
+          quoteStyle: {
+            type: 'string',
+            enum: ['single', 'double'],
+            description:
+              'Quote style for generated IDs. Defaults to single quotes.',
+          },
+        },
+        required: ['idInterpolationPattern'],
+        additionalProperties: false,
+      },
+    ],
+    messages: {
+      enforceId: `id must be specified`,
+      enforceIdDefaultMessage: `defaultMessage must be a string literal to calculate generated IDs`,
+      enforceIdDescription: `description must be a string literal to calculate generated IDs`,
+      enforceIdMatching: `"id" does not match with hash pattern {{idInterpolationPattern}}.
+Expected: {{expected}}
+Actual: {{actual}}`,
+      enforceIdMatchingAllowlisted: `"id" does not match with hash pattern {{idInterpolationPattern}} or allowlisted patterns {{idWhitelist}}.
+Expected: {{expected}}
+Actual: {{actual}}`,
+    },
+  },
+  create(context) {
+    const tmp = context.options[0]
+    let opts: {
+      idInterpolationPattern: string
+      idWhitelistRegexps?: RegExp[]
+      quoteStyle: 'single' | 'double'
+    } = {
+      idInterpolationPattern: tmp?.idInterpolationPattern,
+      quoteStyle: tmp?.quoteStyle || 'single',
+    }
+    if (Array.isArray(tmp?.idWhitelist)) {
+      const {idWhitelist} = tmp
+      opts.idWhitelistRegexps = idWhitelist.map(
+        (str: string) => new RegExp(str, 'i')
+      )
+    }
+
+    const callExpressionVisitor = (node: Node) => checkNode(context, node, opts)
+
+    const parserServices = context.sourceCode.parserServices
+    if (parserServices?.defineTemplateBodyVisitor) {
+      return parserServices.defineTemplateBodyVisitor(
+        {
+          CallExpression: callExpressionVisitor,
+        },
+        {
+          CallExpression: callExpressionVisitor,
+        }
+      )
+    }
+    return {
+      JSXOpeningElement: (node: Node) => checkNode(context, node, opts),
+      CallExpression: callExpressionVisitor,
+    }
+  },
+}

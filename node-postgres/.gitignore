@@ -1,0 +1,13 @@
+*~
+build/
+.lock-wscript
+*.log
+node_modules/
+package-lock.json
+*.swp
+dist
+.DS_Store
+/.eslintcache
+.vscode/
+manually-test-on-heroku.js
+tsconfig.tsbuildinfo

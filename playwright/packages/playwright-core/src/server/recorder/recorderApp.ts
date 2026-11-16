@@ -1,0 +1,471 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import fs from 'fs';
+import path from 'path';
+
+import mime from 'mime';
+import { isUnderTest } from '@utils/debug';
+import { eventsHelper } from '@utils/eventsHelper';
+import { languageSet } from '@isomorphic/codegen/languages';
+import { generateCode } from '@isomorphic/codegen/language';
+import { libPath } from '../../package';
+import { syncLocalStorageWithSettings } from '../launchApp';
+import { launchApp } from '../launchApp';
+import { nullProgress, ProgressController } from '../progress';
+import { ThrottledFile } from './throttledFile';
+import { collapseActions, shouldMergeAction } from './recorderUtils';
+import { Recorder, RecorderEvent } from '../recorder';
+import { BrowserContext } from '../browserContext';
+
+import type { Page } from '../page';
+import type * as actions from '@isomorphic/codegen/actions';
+import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, Source } from '@recorder/recorderTypes';
+import type { Language, LanguageGeneratorOptions } from '@isomorphic/codegen/types';
+import type * as channels from '../channels';
+import type { Progress } from '../progress';
+import type { AriaTemplateNode } from '@isomorphic/ariaSnapshot';
+import type { RegisteredListener } from '@utils/eventsHelper';
+
+export type RecorderAppParams = channels.BrowserContextShowRecorderParams & {
+  browserName: string;
+  sdkLanguage: Language;
+  headed: boolean;
+  executablePath?: string;
+  channel?: string;
+};
+
+export class RecorderApp {
+  private _recorder: Recorder;
+  private _page: Page;
+  readonly wsEndpointForTest: string | undefined;
+  private _languageGeneratorOptions: LanguageGeneratorOptions;
+  private _throttledOutputFile: ThrottledFile | null = null;
+  private _actions: actions.ActionInContext[] = [];
+  private _userSources: Source[] = [];
+  private _recorderSources: Source[] = [];
+  private _primaryGeneratorId: string;
+  private _selectedGeneratorId: string;
+  private _frontend: RecorderFrontend;
+
+  private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
+    this._page = page;
+    this._recorder = recorder;
+    this._frontend = createRecorderFrontend(page);
+    this.wsEndpointForTest = wsEndpointForTest;
+
+    // Make a copy of options to modify them later.
+    this._languageGeneratorOptions = {
+      browserName: params.browserName,
+      launchOptions: { headless: false, ...params.launchOptions, tracesDir: undefined },
+      contextOptions: { ...params.contextOptions },
+      deviceName: params.device,
+      saveStorage: params.saveStorage,
+    };
+
+    this._throttledOutputFile = params.outputFile ? new ThrottledFile(params.outputFile) : null;
+    this._primaryGeneratorId = process.env.TEST_INSPECTOR_LANGUAGE || params.language || determinePrimaryGeneratorId(params.sdkLanguage);
+    this._selectedGeneratorId = this._primaryGeneratorId;
+    for (const languageGenerator of languageSet()) {
+      if (languageGenerator.id === this._primaryGeneratorId)
+        this._recorder.setLanguage(languageGenerator.highlighter);
+    }
+  }
+
+  private async _init(inspectedContext: BrowserContext) {
+    await syncLocalStorageWithSettings(this._page, 'recorder');
+
+    const controller = new ProgressController();
+    await controller.run(async progress => {
+      await this._page.addRequestInterceptor(progress, route => {
+        if (!route.request().url().startsWith('https://playwright/')) {
+          route.continue({ isFallback: true }).catch(() => {});
+          return;
+        }
+
+        const uri = route.request().url().substring('https://playwright/'.length);
+        const file = path.join(libPath('vite', 'recorder'), uri);
+        fs.promises.readFile(file).then(buffer => {
+          route.fulfill({
+            status: 200,
+            headers: [
+              { name: 'Content-Type', value: mime.getType(path.extname(file)) || 'application/octet-stream' }
+            ],
+            body: buffer.toString('base64'),
+            isBase64: true
+          }).catch(() => {});
+        });
+      });
+
+      await this._createDispatcher(progress);
+
+      this._page.once('close', () => {
+        this._recorder.close();
+        this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
+        delete (inspectedContext as any)[recorderAppSymbol];
+      });
+
+      await this._page.mainFrame().goto(progress, 'https://playwright/index.html');
+    });
+
+    const url = this._recorder.url();
+    if (url)
+      this._frontend.pageNavigated({ url });
+    this._frontend.modeChanged({ mode: this._recorder.mode() });
+    this._frontend.pauseStateChanged({ paused: this._recorder.paused() });
+    this._updateActions('reveal');
+    // Update paused sources *after* generated ones, to reveal the currently paused source if any.
+    this._onUserSourcesChanged(this._recorder.userSources(), this._recorder.pausedSourceId());
+    this._frontend.callLogsUpdated({ callLogs: this._recorder.callLog() });
+    this._wireListeners(this._recorder);
+  }
+
+  private async _createDispatcher(progress: Progress) {
+    const dispatcher: RecorderBackend = {
+      clear: async () => {
+        this._actions = [];
+        this._updateActions('reveal');
+        this._recorder.clear();
+      },
+      fileChanged: async (params: { fileId: string }) => {
+        const source = [...this._recorderSources, ...this._userSources].find(s => s.id === params.fileId);
+        if (source) {
+          if (source.isRecorded)
+            this._selectedGeneratorId = source.id;
+          await this._recorder.setLanguage(source.language);
+        }
+      },
+      setAutoExpect: async (params: { autoExpect: boolean }) => {
+        this._languageGeneratorOptions.generateExpectSignal = params.autoExpect;
+        this._updateActions();
+      },
+      setMode: async (params: { mode: Mode }) => {
+        await this._recorder.setMode(params.mode);
+      },
+      resume: async () => {
+        this._recorder.resume();
+      },
+      pause: async () => {
+        this._recorder.pause();
+      },
+      step: async () => {
+        this._recorder.step();
+      },
+      highlightRequested: async (params: { selector?: string; ariaTemplate?: AriaTemplateNode }) => {
+        if (params.selector)
+          await this._recorder.setHighlightedSelector(params.selector);
+        if (params.ariaTemplate)
+          await this._recorder.setHighlightedAriaTemplate(params.ariaTemplate);
+      },
+    };
+
+    await this._page.exposeBinding(progress, 'sendCommand', async (_, data: any) => {
+      const { method, params } = data as { method: string; params: any };
+      return await (dispatcher as any)[method].call(dispatcher, params);
+    });
+  }
+
+  static async show(context: BrowserContext, params: channels.BrowserContextShowRecorderParams) {
+    if (process.env.PW_CODEGEN_NO_INSPECTOR)
+      return;
+    if (programmaticRecorderApps(context).size)
+      throw new Error('Recording is in progress, stop it before showing the recorder.');
+    const recorder = await Recorder.forContext(context, params);
+    if (!(context as any)[recorderAppSymbol])
+      (context as any)[recorderAppSymbol] = await RecorderApp._show(recorder, context, params);
+    if (params.mode)
+      await recorder.setMode(params.mode);
+  }
+
+  async close() {
+    await this._page.close(nullProgress);
+  }
+
+  private static async _show(recorder: Recorder, inspectedContext: BrowserContext, params: channels.BrowserContextShowRecorderParams): Promise<RecorderApp> {
+    const sdkLanguage = inspectedContext._browser.sdkLanguage();
+    const isChromium = inspectedContext._browser.options.browserType === 'chromium';
+    const headed = !!inspectedContext._browser.options.headful;
+    const { createPlaywright } = require('../playwright') as typeof import('../playwright');
+    const recorderPlaywright = createPlaywright({ sdkLanguage: 'javascript', isInternalPlaywright: true });
+    const { context: appContext, page } = await launchApp(recorderPlaywright.chromium, {
+      sdkLanguage,
+      windowSize: { width: 600, height: 600 },
+      windowPosition: { x: 1020, y: 10 },
+      persistentContextOptions: {
+        noDefaultViewport: true,
+        headless: !!process.env.PWTEST_CLI_HEADLESS || (isUnderTest() && !headed),
+        args: isUnderTest() ? ['--remote-debugging-port=0'] : undefined,
+        handleSIGINT: params.handleSIGINT,
+        executablePath: isChromium ? inspectedContext._browser.options.customExecutablePath : undefined,
+        // Use the same channel as the inspected context to guarantee that the browser is installed.
+        channel: isChromium ? inspectedContext._browser.options.channel : undefined,
+      }
+    });
+    const controller = new ProgressController();
+    await controller.run(async progress => {
+      await appContext._browser._defaultContext!.loadDefaultContextAsIs(progress);
+    });
+
+    const appParams = {
+      browserName: inspectedContext._browser.options.name,
+      sdkLanguage: inspectedContext._browser.sdkLanguage(),
+      wsEndpointForTest: inspectedContext._browser.options.wsEndpoint,
+      headed: !!inspectedContext._browser.options.headful,
+      executablePath: isChromium ? inspectedContext._browser.options.customExecutablePath : undefined,
+      channel: isChromium ? inspectedContext._browser.options.channel : undefined,
+      ...params,
+    };
+
+    const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint);
+    await recorderApp._init(inspectedContext);
+    (inspectedContext as any).recorderAppForTest = recorderApp;
+    return recorderApp;
+  }
+
+  private _wireListeners(recorder: Recorder) {
+    recorder.on(RecorderEvent.ActionAdded, (action: actions.ActionInContext) => {
+      this._onActionAdded(action);
+    });
+
+    recorder.on(RecorderEvent.SignalAdded, (signal: actions.SignalInContext) => {
+      this._onSignalAdded(signal);
+    });
+
+    recorder.on(RecorderEvent.PageNavigated, (url: string) => {
+      this._frontend.pageNavigated({ url });
+    });
+
+    recorder.on(RecorderEvent.ContextClosed, () => {
+      this._throttledOutputFile?.flush();
+      this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
+    });
+
+    recorder.on(RecorderEvent.ModeChanged, (mode: Mode) => {
+      this._frontend.modeChanged({ mode });
+    });
+
+    recorder.on(RecorderEvent.PausedStateChanged, (paused: boolean) => {
+      this._frontend.pauseStateChanged({ paused });
+    });
+
+    recorder.on(RecorderEvent.UserSourcesChanged, (sources: Source[], pausedSourceId?: string) => {
+      this._onUserSourcesChanged(sources, pausedSourceId);
+    });
+
+    recorder.on(RecorderEvent.ElementPicked, (elementInfo: ElementInfo, userGesture?: boolean) => {
+      if (userGesture)
+        this._page.bringToFront(nullProgress).catch(() => {});
+      this._frontend.elementPicked({ elementInfo, userGesture });
+    });
+
+    recorder.on(RecorderEvent.CallLogsUpdated, (callLogs: CallLog[]) => {
+      this._frontend.callLogsUpdated({ callLogs });
+    });
+  }
+
+  private _onActionAdded(action: actions.ActionInContext) {
+    this._actions.push(action);
+    this._updateActions('reveal');
+  }
+
+  private _onSignalAdded(signal: actions.SignalInContext) {
+    const lastAction = this._actions.findLast(a => a.pageGuid === signal.pageGuid);
+    if (lastAction)
+      lastAction.signals.push(signal.signal);
+    this._updateActions();
+  }
+
+  private _onUserSourcesChanged(sources: Source[], pausedSourceId: string | undefined) {
+    if (!sources.length && !this._userSources.length)
+      return;
+    this._userSources = sources;
+    this._pushAllSources();
+    this._revealSource(pausedSourceId);
+  }
+
+  private _pushAllSources() {
+    const sources = [...this._userSources, ...this._recorderSources];
+    this._frontend.sourcesUpdated({ sources });
+  }
+
+  private _revealSource(sourceId: string | undefined) {
+    if (!sourceId)
+      return;
+    this._frontend.sourceRevealRequested({ sourceId });
+  }
+
+  private _updateActions(reveal?: 'reveal') {
+    const recorderSources = [];
+    const actions = collapseActions(this._actions);
+    let revealSourceId: string | undefined;
+    for (const languageGenerator of languageSet()) {
+      const { header, footer, actionTexts, text } = generateCode(actions, languageGenerator, this._languageGeneratorOptions);
+      const source: Source = {
+        isRecorded: true,
+        label: languageGenerator.name,
+        group: languageGenerator.groupName,
+        id: languageGenerator.id,
+        text,
+        header,
+        footer,
+        actions: actionTexts,
+        language: languageGenerator.highlighter,
+        highlight: []
+      };
+      source.revealLine = text.split('\n').length - 1;
+      recorderSources.push(source);
+      if (languageGenerator.id === this._primaryGeneratorId)
+        this._throttledOutputFile?.setContent(source.text);
+      if (reveal === 'reveal' && source.id === this._selectedGeneratorId)
+        revealSourceId = source.id;
+    }
+
+    this._recorderSources = recorderSources;
+    this._pushAllSources();
+    this._revealSource(revealSourceId);
+  }
+}
+
+// For example, if the SDK language is 'javascript', this returns 'playwright-test'.
+function determinePrimaryGeneratorId(sdkLanguage: Language): string {
+  for (const language of languageSet()) {
+    if (language.highlighter === sdkLanguage)
+      return language.id;
+  }
+  return sdkLanguage;
+}
+
+export type ProgrammaticRecorderEvent = {
+  event: 'actionAdded' | 'actionUpdated' | 'signalAdded';
+  data: any;
+  page: Page;
+  code: string;
+};
+
+// Each client that records through the api gets its own app, so that clients
+// sharing the context only receive events of the recordings they started.
+export class ProgrammaticRecorderApp {
+  private _context: BrowserContext;
+  private _recorder: Recorder;
+  private _listeners: RegisteredListener[];
+
+  static async start(context: BrowserContext, params: channels.BrowserContextStartRecordingParams, onEvent: (event: ProgrammaticRecorderEvent) => void): Promise<ProgrammaticRecorderApp> {
+    if ((context as any)[recorderAppSymbol])
+      throw new Error('Recorder is shown, close it before starting a recording.');
+    const recorder = await Recorder.forContext(context, { language: params.language, mode: 'recording', recorderMode: 'api', omitCallTracking: true });
+    // Deliver the buffered action to the existing recordings only, it happened before this one started.
+    recorder.flushPendingActions();
+    const app = new ProgrammaticRecorderApp(context, recorder, params, onEvent);
+    programmaticRecorderApps(context).add(app);
+    await recorder.setMode('recording');
+    return app;
+  }
+
+  private constructor(inspectedContext: BrowserContext, recorder: Recorder, params: channels.BrowserContextStartRecordingParams, onEvent: (event: ProgrammaticRecorderEvent) => void) {
+    this._context = inspectedContext;
+    this._recorder = recorder;
+    let lastAction: actions.ActionInContext | undefined;
+    let lastActionPage: Page | undefined;
+    const languages = [...languageSet()];
+
+    // Only actions are generated, so the header options do not matter.
+    const languageGeneratorOptions = {
+      browserName: inspectedContext._browser.options.name,
+      launchOptions: { headless: false },
+      contextOptions: {},
+    };
+    const languageGenerator = languages.find(l => l.id === params.language) ?? languages.find(l => l.id === 'playwright-test')!;
+
+    this._listeners = [
+      eventsHelper.addEventListener(recorder, RecorderEvent.ActionAdded, recordedAction => {
+        const page = findPageByGuid(inspectedContext, recordedAction.pageGuid);
+        if (!page)
+          return;
+        // Other apps receive the same object, so keep the signals of this app separate.
+        const actionInContext = { ...recordedAction, signals: [...recordedAction.signals] };
+        let event: 'actionAdded' | 'actionUpdated' = 'actionAdded';
+        if (shouldMergeAction(actionInContext, lastAction)) {
+          event = 'actionUpdated';
+          // Signals already reported for the superseded action still belong to this one.
+          actionInContext.signals.unshift(...lastAction!.signals);
+        }
+        lastAction = actionInContext;
+        lastActionPage = page;
+        const code = languageGenerator.generateAction(actionInContext, languageGeneratorOptions);
+        onEvent({ event, data: actionInContext.action, page, code });
+      }),
+      eventsHelper.addEventListener(recorder, RecorderEvent.SignalAdded, signalInContext => {
+        const page = findPageByGuid(inspectedContext, signalInContext.pageGuid);
+        if (!page)
+          return;
+        let code = '';
+        // The signal belongs to the last action, so re-generate its code with the signal
+        // included (e.g. a popup or download wait around the action).
+        if (lastAction && page === lastActionPage) {
+          lastAction.signals.push(signalInContext.signal);
+          code = languageGenerator.generateAction(lastAction, languageGeneratorOptions);
+        }
+        onEvent({ event: 'signalAdded', data: signalInContext.signal, page, code });
+      }),
+    ];
+  }
+
+  async stop() {
+    const apps = programmaticRecorderApps(this._context);
+    apps.delete(this);
+    try {
+      if (this._context.isClosingOrClosed())
+        return;
+      // Deliver the buffered action before detaching. Other clients may still be recording.
+      if (apps.size)
+        this._recorder.flushPendingActions();
+      else
+        await this._recorder.setMode('none');
+    } finally {
+      eventsHelper.removeEventListeners(this._listeners);
+    }
+  }
+}
+
+function programmaticRecorderApps(context: BrowserContext): Set<ProgrammaticRecorderApp> {
+  let apps = (context as any)[programmaticRecorderAppsSymbol] as Set<ProgrammaticRecorderApp> | undefined;
+  if (!apps) {
+    apps = new Set();
+    (context as any)[programmaticRecorderAppsSymbol] = apps;
+  }
+  return apps;
+}
+
+function findPageByGuid(context: BrowserContext, guid: string) {
+  return context.pages().find(p => p.guid === guid);
+}
+
+function createRecorderFrontend(page: Page): RecorderFrontend {
+  return new Proxy({} as RecorderFrontend, {
+    get: (_target, prop: string | symbol) => {
+      if (typeof prop !== 'string')
+        return undefined;
+      return (params: any) => {
+        page.mainFrame().evaluateExpression(nullProgress, ((event: { method: string, params?: any }) => {
+          window.dispatch(event);
+        }).toString(), { isFunction: true }, { method: prop, params }).catch(() => {});
+      };
+    },
+  });
+}
+
+const recorderAppSymbol = Symbol('recorderApp');
+const programmaticRecorderAppsSymbol = Symbol('programmaticRecorderApps');

@@ -1,0 +1,112 @@
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@npm//:tsd/package_json.bzl", tsd_bin = "bin")
+
+# tsd type-tests use a custom copy_to_directory pipeline; an auto-generated
+# formatjs_library for the .test-d.ts file would conflict.
+# gazelle:ts_enabled false
+
+PACKAGE_NAME = "intl"
+
+copy_to_directory(
+    name = "global_type_overrides_test_files",
+    srcs = [
+        "global_type_overrides.test-d.ts",
+        "//packages/intl:pkg",
+        "//packages/intl:tsconfig_json_generated",
+    ],
+    out = "global_type_overrides_test_files",
+    replace_prefixes = {
+        "packages/intl/pkg": "",
+        "packages/intl/tsconfig_json.generated.json": "tsconfig.json",
+        "global_type_overrides.test-d.ts": "tests/global_type_overrides.test-d.ts",
+    },
+)
+
+tsd_bin.tsd_test(
+    name = "global_type_overrides_test",
+    size = "small",
+    args = [
+        "--files",
+        "tests/global_type_overrides.test-d.ts",
+    ],
+    chdir = "packages/%s/tests/tsd/global_type_overrides_test_files" % PACKAGE_NAME,
+    data = [
+        ":global_type_overrides_test_files",
+        "//:node_modules/@formatjs/fast-memoize",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/intl-messageformat",
+        "//:node_modules/tsd",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+# Compile each mode separately so global augmentation cannot leak between tests.
+
+copy_to_directory(
+    name = "branded_text_test_files",
+    srcs = [
+        "branded_text.test-d.ts",
+        "//packages/intl:pkg",
+        "//packages/intl:tsconfig_json_generated",
+    ],
+    out = "branded_text_test_files",
+    replace_prefixes = {
+        "packages/intl/pkg": "",
+        "packages/intl/tsconfig_json.generated.json": "tsconfig.json",
+        "branded_text.test-d.ts": "tests/branded_text.test-d.ts",
+    },
+)
+
+tsd_bin.tsd_test(
+    name = "branded_text_test",
+    size = "small",
+    args = [
+        "--files",
+        "tests/branded_text.test-d.ts",
+    ],
+    chdir = "packages/intl/tests/tsd/branded_text_test_files",
+    data = [
+        ":branded_text_test_files",
+        "//:node_modules/@formatjs/fast-memoize",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/intl-messageformat",
+        "//:node_modules/tsd",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+copy_to_directory(
+    name = "default_text_test_files",
+    srcs = [
+        "default_text.test-d.ts",
+        "//packages/intl:pkg",
+        "//packages/intl:tsconfig_json_generated",
+    ],
+    out = "default_text_test_files",
+    replace_prefixes = {
+        "packages/intl/pkg": "",
+        "packages/intl/tsconfig_json.generated.json": "tsconfig.json",
+        "default_text.test-d.ts": "tests/default_text.test-d.ts",
+    },
+)
+
+tsd_bin.tsd_test(
+    name = "default_text_test",
+    size = "small",
+    args = [
+        "--files",
+        "tests/default_text.test-d.ts",
+    ],
+    chdir = "packages/intl/tests/tsd/default_text_test_files",
+    data = [
+        ":default_text_test_files",
+        "//:node_modules/@formatjs/fast-memoize",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/intl-messageformat",
+        "//:node_modules/tsd",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/types",
+    ],
+)

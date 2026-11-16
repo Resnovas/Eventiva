@@ -1,0 +1,177 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* eslint-disable no-console */
+
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+import { getAsBooleanFromENV, guessClientName } from '@utils/env';
+import { gracefullyProcessExitDoNotHang } from '@utils/processLauncher';
+import { startCliDaemonServer } from './daemon';
+import { setupExitWatchdog } from '../mcp/watchdog';
+import { createBrowserWithInfo } from '../mcp/browserFactory';
+import * as configUtils from '../mcp/config';
+import { createClientInfo } from '../cli-client/registry';
+import { installSkills } from '../utils/installSkills';
+import { registry as browserRegistry } from '../../server/registry/index';
+import { processExit } from '../../bootstrap';
+import type { Command } from 'commander';
+
+export function decorateProgram(program: Command) {
+  program.argument('[session-name]', 'name of the session to create or connect to', 'default')
+      .option('--headed', 'run in headed mode (non-headless)')
+      .option('--device <device>', 'emulate a specific device, for example "iPhone 15"')
+      .option('--mobile', 'emulate a generic mobile device (Pixel 10 for Chromium, iPhone 17 for WebKit)')
+      .option('--extension', 'run with the extension')
+      .option('--browser <name>', 'browser to use (chromium, chrome, firefox, webkit)')
+      .option('--persistent', 'use a persistent browser context')
+      .option('--profile <path>', 'path to the user data dir')
+      .option('--config <path>', 'path to the config file; by default uses .playwright/cli.config.json in the project directory and ~/.playwright/cli.config.json as global config')
+      .option('--cdp <url>', 'connect to an existing browser via CDP endpoint URL')
+      .option('--endpoint <endpoint>', 'attach to a running Playwright browser endpoint')
+      .option('--idle-timeout <timeout>', 'shut the session down after this many milliseconds without a command, defaults to one hour for headless browsers', configUtils.numberParser)
+      .option('--init-workspace', 'initialize workspace')
+      .option('--init-skills <value>', 'install skills for the given agent type ("claude" or "agents")')
+      .option('--init-skills-global <value>', 'install skills for the given agent type ("claude" or "agents") into the home directory')
+
+      .action(async (sessionName: string, options: any) => {
+        if (options.initWorkspace) {
+          await initWorkspace(options.initSkills, options.initSkillsGlobal);
+          return;
+        }
+
+        setupExitWatchdog();
+        const clientInfo = createClientInfo();
+        const mcpConfig = await configUtils.resolveCLIConfigForCLI(clientInfo.daemonProfilesDir, sessionName, options);
+        const mcpClientInfo = {
+          cwd: process.cwd(),
+          clientName: guessClientName(),
+        };
+
+        try {
+          const { browser, browserInfo, ownership, idleTimer } = await createBrowserWithInfo(mcpConfig, mcpClientInfo, options, { title: sessionName, workspaceDir: clientInfo.workspaceDir });
+          const browserContext = mcpConfig.browser.isolated ? await browser.newContext(mcpConfig.browser.contextOptions) : browser.contexts()[0];
+          if (!browserContext)
+            throw new Error('Error: unable to connect to a browser that does not have any contexts');
+          const persistent = options.persistent || options.profile || mcpConfig.browser.userDataDir ? true : undefined;
+          const socketPath = await startCliDaemonServer(sessionName, browserContext, browserInfo, mcpConfig, clientInfo, mcpClientInfo, { persistent, ownership, idleTimer });
+          console.log(`Daemon listening on ${socketPath}\n`);
+        } catch (error) {
+          console.log(error);
+          gracefullyProcessExitDoNotHang(1);
+        }
+      });
+}
+
+function defaultConfigFile(): string {
+  return path.resolve('.playwright', 'cli.config.json');
+}
+
+function globalConfigFile(): string {
+  return path.join(process.env['PWTEST_CLI_GLOBAL_CONFIG'] ?? os.homedir(), '.playwright', 'cli.config.json');
+}
+
+export async function initWorkspace(initSkills: string | undefined, initSkillsGlobal?: string) {
+  const globalSkills = !!initSkillsGlobal;
+  if (!globalSkills) {
+    const cwd = process.cwd();
+    const playwrightDir = path.join(cwd, '.playwright');
+    await fs.promises.mkdir(playwrightDir, { recursive: true });
+    console.log(`✅ Workspace initialized at \`${cwd}\`.`);
+    await patchGitIgnore(cwd);
+  }
+
+  const skills = initSkillsGlobal ?? initSkills;
+  if (skills) {
+    const target = skills === 'agents' ? 'agents' : 'claude';
+    try {
+      await installSkills(['playwright-cli'], target, { global: globalSkills });
+    } catch (error) {
+      console.error('❌', error instanceof Error ? error.message : error);
+      // eslint-disable-next-line no-restricted-syntax
+      processExit(1);
+    }
+  }
+
+  if (!globalSkills)
+    await ensureConfiguredBrowserInstalled();
+}
+
+async function patchGitIgnore(cwd: string) {
+  if (!fs.existsSync(path.join(cwd, '.git')))
+    return;
+  try {
+    const gitIgnorePath = path.join(cwd, '.gitignore');
+    const existing = await fs.promises.readFile(gitIgnorePath, 'utf8').catch(() => '');
+    if (existing.split('\n').some(line => line.trim() === '.playwright-cli/'))
+      return;
+    const separator = existing && !existing.endsWith('\n') ? '\n' : '';
+    await fs.promises.appendFile(gitIgnorePath, separator + '# Playwright CLI output (may contain credentials)\n.playwright-cli/\n');
+    console.log('✅ Added `.playwright-cli/` to `.gitignore`.');
+  } catch (error) {
+    console.log(`⚠️ Failed to update \`.gitignore\`: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
+async function ensureConfiguredBrowserInstalled() {
+  if (getAsBooleanFromENV('PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD'))
+    return;
+  if (fs.existsSync(defaultConfigFile()) || fs.existsSync(globalConfigFile())) {
+    // Config exists, ensure configured browser is installed
+    const clientInfo = createClientInfo();
+    const config = await configUtils.resolveCLIConfigForCLI(clientInfo.daemonProfilesDir, 'default', {});
+    const browserName = config.browser.browserName;
+    const channel = config.browser.launchOptions.channel;
+    if (!channel || channel.startsWith('chromium'))
+      await resolveAndInstall(channel ?? browserName);
+  } else {
+    const channel = await findOrInstallDefaultBrowser();
+    if (channel !== 'chrome')
+      await createDefaultConfig(channel);
+  }
+}
+
+async function findOrInstallDefaultBrowser() {
+  const channels = ['chrome', 'msedge'];
+  for (const channel of channels) {
+    const executable = browserRegistry.findExecutable(channel);
+    if (!executable?.executablePath())
+      continue;
+    await resolveAndInstall('ffmpeg');
+    console.log(`✅ Found ${channel}, will use it as the default browser.`);
+    return channel;
+  }
+  await resolveAndInstall('chromium');
+  return 'chromium';
+}
+
+async function resolveAndInstall(nameOrChannel: string) {
+  const executables = browserRegistry.resolveBrowsers([nameOrChannel], { shell: 'no' });
+  await browserRegistry.install(executables, { gc: false });
+}
+
+async function createDefaultConfig(channel: string) {
+  const config = {
+    browser: {
+      browserName: 'chromium',
+      launchOptions: { channel },
+    },
+  };
+  await fs.promises.writeFile(defaultConfigFile(), JSON.stringify(config, null, 2));
+  console.log(`✅ Created default config for ${channel} at ${path.relative(process.cwd(), defaultConfigFile())}.`);
+}

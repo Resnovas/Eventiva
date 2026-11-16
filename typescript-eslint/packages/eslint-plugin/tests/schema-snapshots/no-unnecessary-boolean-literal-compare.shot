@@ -1,0 +1,37 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowComparingNullableBooleansToFalse": {
+        "description": "Whether to allow comparisons between nullable boolean variables and `false`.",
+        "type": "boolean"
+      },
+      "allowComparingNullableBooleansToTrue": {
+        "description": "Whether to allow comparisons between nullable boolean variables and `true`.",
+        "type": "boolean"
+      },
+      "allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing": {
+        "description": "Unless this is set to `true`, the rule will error on every file whose `tsconfig.json` does _not_ have the `strictNullChecks` compiler option (or `strict`) set to `true`.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to allow comparisons between nullable boolean variables and `false`. */
+    allowComparingNullableBooleansToFalse?: boolean;
+    /** Whether to allow comparisons between nullable boolean variables and `true`. */
+    allowComparingNullableBooleansToTrue?: boolean;
+    /** Unless this is set to `true`, the rule will error on every file whose `tsconfig.json` does _not_ have the `strictNullChecks` compiler option (or `strict`) set to `true`. */
+    allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing?: boolean;
+  },
+];

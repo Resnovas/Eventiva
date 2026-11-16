@@ -1,0 +1,827 @@
+import type { Mock, MockInstance } from 'vitest';
+import type { CompilerOptions } from 'typescript';
+import { JsxEmit, ModuleKind, ScriptTarget } from 'typescript';
+import { join } from 'path';
+import { TempFs } from '../../../internal-testing-utils/temp-fs';
+import {
+  getTranspiler,
+  loadTsFile,
+  getTsNodeCompilerOptions,
+  isCjsSyntaxError,
+  isNativeTypeStripError,
+  isRequireInEsmScopeError,
+  isTsEsmNamedExportLinkageError,
+  isTsEsmSyntaxError,
+  NODENEXT_ESM_RESOLVER_SOURCE,
+  nodeNextEsmResolveHook,
+  registerTsConfigPaths,
+  resolveTsNodeEsmCompilerOptions,
+} from './register';
+
+// Avoid a real swc registration side effect when exercising getTranspiler.
+// The source loads this with a bare require (CJS channel), so stub the
+// require cache rather than vi.mock.
+import { createRequire, Module } from 'node:module';
+import {
+  mockCjsModule,
+  resetCjsMocks,
+  unmockCjsModule,
+} from '../../../internal-testing-utils/cjs-mock';
+{
+  const req = createRequire(import.meta.url);
+  const modPath = req.resolve('@swc-node/register/register');
+  const stub = new (Module as any)(modPath);
+  stub.exports = { register: () => () => {} };
+  stub.loaded = true;
+  req.cache[modPath] = stub;
+}
+
+describe('getTsNodeCompilerOptions', () => {
+  it('should replace enum value with enum key for module', () => {
+    expect(
+      getTsNodeCompilerOptions({
+        module: ModuleKind.CommonJS,
+      }).module
+    ).toEqual('CommonJS');
+  });
+
+  it('should replace enum value with enum key for target', () => {
+    expect(
+      getTsNodeCompilerOptions({
+        target: ScriptTarget.ES2020,
+      }).target
+    ).toEqual('ES2020');
+  });
+
+  it('should remove jsx option', () => {
+    expect(
+      getTsNodeCompilerOptions({
+        jsx: JsxEmit.ReactJSX,
+      }).jsx
+    ).toBeUndefined();
+  });
+
+  it('should use correct lib value', () => {
+    expect(
+      getTsNodeCompilerOptions({
+        lib: ['lib.es2022.d.ts'],
+      }).lib
+    ).toEqual(['es2022']);
+  });
+});
+
+describe('isNativeStripPreferred', () => {
+  const originalEnv = { ...process.env };
+  const featuresDescriptor = Object.getOwnPropertyDescriptor(
+    process.features,
+    'typescript'
+  );
+
+  function setNativeTypescriptSupport(value: 'strip' | 'transform' | false) {
+    Object.defineProperty(process.features, 'typescript', {
+      value,
+      configurable: true,
+    });
+  }
+
+  async function loadIsNativeStripPreferred(): boolean {
+    let result: boolean;
+    vi.resetModules();
+    result = (await import('./register')).isNativeStripPreferred();
+    return result;
+  }
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    if (featuresDescriptor) {
+      Object.defineProperty(process.features, 'typescript', featuresDescriptor);
+    } else {
+      delete (process.features as { typescript?: unknown }).typescript;
+    }
+  });
+
+  it('prefers native strip when the runtime supports it', async () => {
+    setNativeTypescriptSupport('strip');
+    delete process.env.NX_PREFER_TS_NODE;
+    delete process.env.NX_PREFER_NODE_STRIP_TYPES;
+    expect(await loadIsNativeStripPreferred()).toBe(true);
+  });
+
+  it('does not prefer native strip when the runtime lacks support', async () => {
+    setNativeTypescriptSupport(false);
+    delete process.env.NX_PREFER_TS_NODE;
+    delete process.env.NX_PREFER_NODE_STRIP_TYPES;
+    expect(await loadIsNativeStripPreferred()).toBe(false);
+  });
+
+  it('does not prefer native strip when NX_PREFER_NODE_STRIP_TYPES is false', async () => {
+    setNativeTypescriptSupport('strip');
+    process.env.NX_PREFER_NODE_STRIP_TYPES = 'false';
+    expect(await loadIsNativeStripPreferred()).toBe(false);
+  });
+
+  it('does not prefer native strip when NX_PREFER_TS_NODE is true', async () => {
+    setNativeTypescriptSupport('strip');
+    process.env.NX_PREFER_TS_NODE = 'true';
+    delete process.env.NX_PREFER_NODE_STRIP_TYPES;
+    expect(await loadIsNativeStripPreferred()).toBe(false);
+  });
+});
+
+describe('getTranspiler', () => {
+  // Each case swaps the lazily-required `typescript`; drop the swap afterwards
+  // so the doctored version does not leak into later tests in this file.
+  afterEach(() => {
+    resetCjsMocks();
+  });
+
+  // TS6 requires the suppression flag to avoid hard-erroring on deprecated options.
+  it('sets ignoreDeprecations to "6.0" on TypeScript >= 6', async () => {
+    vi.resetModules();
+    // register.ts lazy-requires typescript (CJS channel); replace it there.
+    mockCjsModule(import.meta.url, 'typescript', {
+      ...require('typescript'),
+      versionMajorMinor: '6.0',
+    });
+    const { getTranspiler: fresh } =
+      (await import('./register')) as typeof import('./register');
+    const opts: CompilerOptions = {};
+    fresh(opts);
+    expect(opts.ignoreDeprecations).toEqual('6.0');
+  });
+
+  // TS5 rejects the '6.0' value (TS5103) so the option must stay absent.
+  it('leaves ignoreDeprecations unset on TypeScript < 6', async () => {
+    vi.resetModules();
+    mockCjsModule(import.meta.url, 'typescript', {
+      ...require('typescript'),
+      versionMajorMinor: '5.9',
+    });
+    const { getTranspiler: fresh } =
+      (await import('./register')) as typeof import('./register');
+    const opts: CompilerOptions = {};
+    fresh(opts);
+    expect(opts.ignoreDeprecations).toBeUndefined();
+  });
+});
+
+describe('isNativeTypeStripError', () => {
+  it('returns true for ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX', () => {
+    const err = Object.assign(new Error('boom'), {
+      code: 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX',
+    });
+    expect(isNativeTypeStripError(err)).toBe(true);
+  });
+
+  it('returns false for unrelated error codes', () => {
+    expect(
+      isNativeTypeStripError(
+        Object.assign(new Error(), { code: 'ERR_REQUIRE_ESM' })
+      )
+    ).toBe(false);
+    expect(
+      isNativeTypeStripError(
+        Object.assign(new Error(), { code: 'MODULE_NOT_FOUND' })
+      )
+    ).toBe(false);
+  });
+
+  it('returns false for non-error inputs', () => {
+    expect(isNativeTypeStripError(null)).toBe(false);
+    expect(isNativeTypeStripError(undefined)).toBe(false);
+    expect(isNativeTypeStripError('boom')).toBe(false);
+    expect(isNativeTypeStripError(new Error('no code'))).toBe(false);
+  });
+});
+
+describe('isCjsSyntaxError', () => {
+  it('returns true for SyntaxError thrown while parsing a .cts file', () => {
+    expect(
+      isCjsSyntaxError(
+        new SyntaxError("Unexpected token 'export'"),
+        '/abs/path/jest.config.cts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns true for SyntaxError thrown while parsing a .cjs file', () => {
+    expect(
+      isCjsSyntaxError(
+        new SyntaxError("Unexpected token 'export'"),
+        '/abs/path/jest.config.cjs'
+      )
+    ).toBe(true);
+  });
+
+  it('returns false for non-CJS extensions (.ts/.mts/.js/.mjs)', () => {
+    const err = new SyntaxError("Unexpected token 'export'");
+    expect(isCjsSyntaxError(err, '/abs/jest.config.ts')).toBe(false);
+    expect(isCjsSyntaxError(err, '/abs/jest.config.mts')).toBe(false);
+    expect(isCjsSyntaxError(err, '/abs/jest.config.js')).toBe(false);
+    expect(isCjsSyntaxError(err, '/abs/jest.config.mjs')).toBe(false);
+  });
+
+  it('returns false for non-SyntaxError inputs', () => {
+    expect(isCjsSyntaxError(new Error('boom'), '/x.cts')).toBe(false);
+    expect(isCjsSyntaxError(null, '/x.cts')).toBe(false);
+    expect(isCjsSyntaxError('boom', '/x.cts')).toBe(false);
+  });
+});
+
+describe('isRequireInEsmScopeError', () => {
+  it('returns true for require ReferenceError thrown while loading a .ts file as ESM', () => {
+    expect(
+      isRequireInEsmScopeError(
+        new ReferenceError('require is not defined in ES module scope'),
+        '/abs/path/webpack.config.prod.ts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns true for require ReferenceError thrown while loading a .mts file as ESM', () => {
+    expect(
+      isRequireInEsmScopeError(
+        new ReferenceError('require is not defined in ES module scope'),
+        '/abs/path/webpack.config.mts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns false for non-TS extensions', () => {
+    const err = new ReferenceError('require is not defined in ES module scope');
+    expect(isRequireInEsmScopeError(err, '/abs/webpack.config.js')).toBe(false);
+    expect(isRequireInEsmScopeError(err, '/abs/webpack.config.cjs')).toBe(
+      false
+    );
+  });
+
+  it('returns false for unrelated errors', () => {
+    expect(
+      isRequireInEsmScopeError(new ReferenceError('missing'), '/x.ts')
+    ).toBe(false);
+    expect(isRequireInEsmScopeError(new Error('boom'), '/x.ts')).toBe(false);
+    expect(isRequireInEsmScopeError(null, '/x.ts')).toBe(false);
+  });
+});
+
+describe('isTsEsmSyntaxError', () => {
+  it('returns true for import SyntaxError thrown while loading a .ts file as CJS', () => {
+    expect(
+      isTsEsmSyntaxError(
+        new SyntaxError('Cannot use import statement outside a module'),
+        '/abs/path/cypress.config.ts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns false for non-.ts files and unrelated syntax errors', () => {
+    const err = new SyntaxError('Cannot use import statement outside a module');
+    expect(isTsEsmSyntaxError(err, '/abs/cypress.config.cts')).toBe(false);
+    expect(isTsEsmSyntaxError(err, '/abs/cypress.config.mts')).toBe(false);
+    expect(
+      isTsEsmSyntaxError(new SyntaxError('Unexpected token'), '/x.ts')
+    ).toBe(false);
+    expect(isTsEsmSyntaxError(new Error('boom'), '/x.ts')).toBe(false);
+  });
+});
+
+describe('isTsEsmNamedExportLinkageError', () => {
+  it('returns true for named export SyntaxError thrown while loading a .ts file as ESM', () => {
+    expect(
+      isTsEsmNamedExportLinkageError(
+        new SyntaxError(
+          "The requested module '@nx/module-federation' does not provide an export named 'ModuleFederationConfig'"
+        ),
+        '/abs/path/module-federation.config.ts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns true for named export SyntaxError thrown while loading a .mts file as ESM', () => {
+    expect(
+      isTsEsmNamedExportLinkageError(
+        new SyntaxError(
+          "The requested module './module-federation.config' does not provide an export named 'config'"
+        ),
+        '/abs/path/module-federation.config.mts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns false for non-TS extensions', () => {
+    const err = new SyntaxError(
+      "The requested module './x' does not provide an export named 'y'"
+    );
+    expect(isTsEsmNamedExportLinkageError(err, '/abs/config.js')).toBe(false);
+    expect(isTsEsmNamedExportLinkageError(err, '/abs/config.cjs')).toBe(false);
+  });
+
+  it('returns false for unrelated errors', () => {
+    expect(
+      isTsEsmNamedExportLinkageError(
+        new SyntaxError('Unexpected token'),
+        '/x.ts'
+      )
+    ).toBe(false);
+    expect(isTsEsmNamedExportLinkageError(new Error('boom'), '/x.ts')).toBe(
+      false
+    );
+    expect(isTsEsmNamedExportLinkageError(null, '/x.ts')).toBe(false);
+  });
+});
+
+describe('NodeNext ESM resolve hook (NODENEXT_ESM_RESOLVER_SOURCE)', () => {
+  type ResolveHook = (
+    specifier: string,
+    context: { parentURL?: string },
+    nextResolve: (specifier: string, context?: unknown) => Promise<any>
+  ) => Promise<{ url: string }>;
+
+  let resolve: ResolveHook;
+
+  beforeAll(async () => {
+    // Load the shipped source through the same `data:` module `register()`
+    // builds, so the tests exercise what Node actually registers.
+    const mod = await import(
+      'data:text/javascript,' + encodeURIComponent(NODENEXT_ESM_RESOLVER_SOURCE)
+    );
+    resolve = mod.resolve;
+  });
+
+  const TS_PARENT = 'file:///ws/src/index.ts';
+
+  // Mimics Node's default resolver: resolves specifiers in `existing`, throws
+  // ERR_MODULE_NOT_FOUND otherwise. Records every specifier it was asked for.
+  function makeNextResolve(existing: string[]) {
+    const set = new Set(existing);
+    const calls: string[] = [];
+    const nextResolve = async (specifier: string) => {
+      calls.push(specifier);
+      if (set.has(specifier)) {
+        return { url: `file:///resolved/${specifier}`, shortCircuit: true };
+      }
+      throw Object.assign(new Error(`Cannot find module '${specifier}'`), {
+        code: 'ERR_MODULE_NOT_FOUND',
+      });
+    };
+    return { nextResolve, calls };
+  }
+
+  it('rewrites a NodeNext .js specifier to .ts from a TypeScript parent', async () => {
+    const { nextResolve, calls } = makeNextResolve(['./nodes.ts']);
+    const result = await resolve(
+      './nodes.js',
+      { parentURL: TS_PARENT },
+      nextResolve
+    );
+    expect(result.url).toBe('file:///resolved/./nodes.ts');
+    // Tried the original first, then the .ts fallback.
+    expect(calls).toEqual(['./nodes.js', './nodes.ts']);
+  });
+
+  it('rewrites .mjs -> .mts and .cjs -> .cts', async () => {
+    const mjs = makeNextResolve(['./a.mts']);
+    expect(
+      (await resolve('./a.mjs', { parentURL: TS_PARENT }, mjs.nextResolve)).url
+    ).toBe('file:///resolved/./a.mts');
+
+    const cjs = makeNextResolve(['./b.cts']);
+    expect(
+      (await resolve('./b.cjs', { parentURL: TS_PARENT }, cjs.nextResolve)).url
+    ).toBe('file:///resolved/./b.cts');
+  });
+
+  it('does not hijack when the real .js file resolves', async () => {
+    const { nextResolve, calls } = makeNextResolve(['./nodes.js']);
+    const result = await resolve(
+      './nodes.js',
+      { parentURL: TS_PARENT },
+      nextResolve
+    );
+    expect(result.url).toBe('file:///resolved/./nodes.js');
+    // No .ts fallback attempt when the .js resolves.
+    expect(calls).toEqual(['./nodes.js']);
+  });
+
+  it('does not rewrite when the parent is not a TypeScript file', async () => {
+    const { nextResolve, calls } = makeNextResolve(['./nodes.ts']);
+    await expect(
+      resolve(
+        './nodes.js',
+        { parentURL: 'file:///ws/src/index.js' },
+        nextResolve
+      )
+    ).rejects.toMatchObject({ code: 'ERR_MODULE_NOT_FOUND' });
+    expect(calls).toEqual(['./nodes.js']);
+  });
+
+  it('ignores bare (non-relative) specifiers', async () => {
+    const { nextResolve, calls } = makeNextResolve(['pkg/nodes.ts']);
+    await expect(
+      resolve('pkg/nodes.js', { parentURL: TS_PARENT }, nextResolve)
+    ).rejects.toMatchObject({ code: 'ERR_MODULE_NOT_FOUND' });
+    expect(calls).toEqual(['pkg/nodes.js']);
+  });
+
+  it('only rewrites .js/.mjs/.cjs, leaving other extensions untouched', async () => {
+    const { nextResolve, calls } = makeNextResolve(['./data.ts']);
+    await expect(
+      resolve('./data.json', { parentURL: TS_PARENT }, nextResolve)
+    ).rejects.toMatchObject({ code: 'ERR_MODULE_NOT_FOUND' });
+    expect(calls).toEqual(['./data.json']);
+  });
+
+  it('rethrows non-MODULE_NOT_FOUND errors untouched', async () => {
+    const boom = Object.assign(new SyntaxError('boom'), { code: 'ERR_OTHER' });
+    const nextResolve = async () => {
+      throw boom;
+    };
+    await expect(
+      resolve('./nodes.js', { parentURL: TS_PARENT }, nextResolve)
+    ).rejects.toBe(boom);
+  });
+});
+
+// The rewrite logic is exhaustively covered above against the shipped source;
+// these cases only verify the synchronous transcription used by
+// `module.registerHooks()` - `nextResolve` returns/throws synchronously here
+// rather than resolving/rejecting a promise.
+describe('NodeNext ESM resolve hook (nodeNextEsmResolveHook, sync)', () => {
+  const TS_PARENT = 'file:///ws/src/index.ts';
+
+  function makeNextResolve(existing: string[]) {
+    const set = new Set(existing);
+    const nextResolve = (specifier: string) => {
+      if (set.has(specifier)) return { url: `file:///resolved/${specifier}` };
+      throw Object.assign(new Error(`Cannot find module '${specifier}'`), {
+        code: 'ERR_MODULE_NOT_FOUND',
+      });
+    };
+    return nextResolve;
+  }
+
+  it('returns the .ts fallback when the .js specifier is missing', () => {
+    const result = nodeNextEsmResolveHook(
+      './nodes.js',
+      { parentURL: TS_PARENT },
+      makeNextResolve(['./nodes.ts'])
+    );
+    expect(result.url).toBe('file:///resolved/./nodes.ts');
+  });
+
+  it('returns the real .js without a fallback attempt when it resolves', () => {
+    const result = nodeNextEsmResolveHook(
+      './nodes.js',
+      { parentURL: TS_PARENT },
+      makeNextResolve(['./nodes.js'])
+    );
+    expect(result.url).toBe('file:///resolved/./nodes.js');
+  });
+
+  it('rethrows synchronously when no fallback resolves', () => {
+    expect(() =>
+      nodeNextEsmResolveHook(
+        './nodes.js',
+        { parentURL: TS_PARENT },
+        makeNextResolve([])
+      )
+    ).toThrow(expect.objectContaining({ code: 'ERR_MODULE_NOT_FOUND' }));
+  });
+});
+
+describe('resolveTsNodeEsmCompilerOptions', () => {
+  it('defaults to nodenext when no value is inherited', () => {
+    expect(JSON.parse(resolveTsNodeEsmCompilerOptions(undefined))).toEqual({
+      moduleResolution: 'nodenext',
+      module: 'nodenext',
+    });
+  });
+
+  it('forces nodenext while preserving other inherited options', () => {
+    const raw = JSON.stringify({
+      moduleResolution: 'node10',
+      module: 'commonjs',
+      customConditions: null,
+      paths: { '@lib': ['libs/lib'] },
+    });
+    expect(JSON.parse(resolveTsNodeEsmCompilerOptions(raw))).toEqual({
+      moduleResolution: 'nodenext',
+      module: 'nodenext',
+      customConditions: null,
+      paths: { '@lib': ['libs/lib'] },
+    });
+  });
+
+  it.each(['{oops', 'null', '7', 'true', '"hello"', '["commonjs"]'])(
+    'passes %s through unchanged for ts-node to handle',
+    (raw) => {
+      expect(resolveTsNodeEsmCompilerOptions(raw)).toBe(raw);
+    }
+  );
+});
+
+describe('forceRegisterEsmLoader', () => {
+  const originalEnv = { ...process.env };
+  let registerSpy: MockInstance;
+
+  beforeEach(() => {
+    registerSpy = vi
+      .spyOn(require('node:module'), 'register')
+      .mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    registerSpy.mockRestore();
+    process.env = { ...originalEnv };
+  });
+
+  async function loadForceRegisterEsmLoader(): Promise<() => void> {
+    vi.resetModules();
+    return (await import('./register')).forceRegisterEsmLoader;
+  }
+
+  function registeredSetterOptions(): unknown {
+    expect(String(registerSpy.mock.calls[0][0])).toMatch(
+      /^data:text\/javascript,/
+    );
+    const source = decodeURIComponent(
+      String(registerSpy.mock.calls[0][0]).replace('data:text/javascript,', '')
+    );
+    const rhs = source.match(
+      /^process\.env\.TS_NODE_COMPILER_OPTIONS = (.*);$/
+    )[1];
+    return JSON.parse(JSON.parse(rhs));
+  }
+
+  it('registers a compiler-options setter module before the ts-node/esm loader', async () => {
+    delete process.env.TS_NODE_COMPILER_OPTIONS;
+
+    (await loadForceRegisterEsmLoader())();
+
+    expect(registerSpy).toHaveBeenCalledTimes(2);
+    expect(String(registerSpy.mock.calls[1][0])).toMatch(/ts-node\/esm\.mjs$/);
+    expect(registeredSetterOptions()).toEqual({
+      moduleResolution: 'nodenext',
+      module: 'nodenext',
+    });
+  });
+
+  it('forces nodenext module and resolution over an inherited value', async () => {
+    process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
+      moduleResolution: 'node10',
+      module: 'commonjs',
+      customConditions: null,
+    });
+
+    (await loadForceRegisterEsmLoader())();
+
+    expect(registeredSetterOptions()).toEqual({
+      moduleResolution: 'nodenext',
+      module: 'nodenext',
+      customConditions: null,
+    });
+    // Child processes must keep seeing the inherited value.
+    expect(process.env.TS_NODE_COMPILER_OPTIONS).toBe(
+      JSON.stringify({
+        moduleResolution: 'node10',
+        module: 'commonjs',
+        customConditions: null,
+      })
+    );
+  });
+
+  it('passes a malformed inherited value through for ts-node to reject', async () => {
+    process.env.TS_NODE_COMPILER_OPTIONS = '{oops';
+
+    (await loadForceRegisterEsmLoader())();
+
+    const source = decodeURIComponent(
+      String(registerSpy.mock.calls[0][0]).replace('data:text/javascript,', '')
+    );
+    expect(source).toBe('process.env.TS_NODE_COMPILER_OPTIONS = "{oops";');
+  });
+
+  it('does not write a default value into the process env', async () => {
+    delete process.env.TS_NODE_COMPILER_OPTIONS;
+
+    (await loadForceRegisterEsmLoader())();
+
+    expect(process.env.TS_NODE_COMPILER_OPTIONS).toBeUndefined();
+  });
+});
+
+// A real `ts-node/esm` registration in a child process. `@swc-node/register`
+// loads the TypeScript source there and is hidden from the ESM loader pick so
+// `ts-node/esm` is the loader under test.
+describe('forceRegisterEsmLoader with ts-node/esm', () => {
+  const {
+    mkdtempSync,
+    realpathSync,
+    rmSync,
+    writeFileSync,
+  } = require('node:fs');
+  const { tmpdir } = require('node:os');
+  const { join } = require('node:path');
+  let dir: string;
+
+  beforeAll(() => {
+    // Real path: the loader reports the resolved url.
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'nx-ts-node-esm-')));
+    writeFileSync(
+      join(dir, 'config.mts'),
+      'export enum Kind { Esm = 1 }\nexport const url = import.meta.url;\n'
+    );
+    writeFileSync(
+      join(dir, 'entry.cjs'),
+      `
+const Module = require('node:module');
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, ...rest) {
+  if (request === '@swc-node/register/esm') {
+    throw Object.assign(new Error('hidden'), { code: 'MODULE_NOT_FOUND' });
+  }
+  return resolveFilename.call(this, request, ...rest);
+};
+const { forceRegisterEsmLoader } = require(process.argv[2]);
+process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
+  module: 'commonjs',
+  moduleResolution: 'node10',
+});
+forceRegisterEsmLoader();
+// Kept out of the transpiled source: a CommonJS transform would turn it into
+// a require, and the file exists to exercise the ESM loader.
+new Function('s', 'return import(s)')(process.argv[3]).then(
+  (m) => process.send({ ok: true, url: m.url, kind: m.Kind.Esm }),
+  (e) => process.send({ ok: false, message: String(e.diagnosticText ?? e) })
+);
+`
+    );
+  });
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('loads an ESM config despite an inherited CommonJS TS_NODE_COMPILER_OPTIONS', async () => {
+    const { fork } = require('node:child_process');
+    const { pathToFileURL } = require('node:url');
+    const configUrl = pathToFileURL(join(dir, 'config.mts')).href;
+    // The child sets the inherited value itself, after its own CommonJS loader
+    // has started, so that loader's options play no part.
+    const { TS_NODE_COMPILER_OPTIONS, NODE_OPTIONS, ...env } = process.env;
+    const child = fork(
+      join(dir, 'entry.cjs'),
+      [require.resolve('./register'), configUrl],
+      {
+        cwd: process.cwd(),
+        env,
+        execArgv: ['--require', '@swc-node/register'],
+        stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+      }
+    );
+    let stderr = '';
+    child.stderr.on('data', (chunk) => (stderr += chunk));
+    const result = await new Promise<any>((resolve, reject) => {
+      child.once('message', resolve);
+      child.once('error', reject);
+      child.once('exit', (code) =>
+        reject(new Error(`exited with ${code} before replying:\n${stderr}`))
+      );
+    });
+    child.kill();
+
+    expect(result).toEqual({ ok: true, url: configUrl, kind: 1 });
+  }, 60_000);
+});
+
+describe('registerTsConfigPaths', () => {
+  let tempFs: TempFs;
+  let registerPaths: Mock;
+
+  beforeEach(() => {
+    tempFs = new TempFs('register-ts-config-paths', false);
+    // register.ts lazy-requires tsconfig-paths (CJS channel); replace it there.
+    // Stubbing `register` captures the baseUrl without installing a resolver hook.
+    registerPaths = vi.fn(() => () => {});
+    mockCjsModule(import.meta.url, 'tsconfig-paths', {
+      ...require('tsconfig-paths'),
+      register: registerPaths,
+    });
+  });
+
+  afterEach(() => {
+    unmockCjsModule(import.meta.url, 'tsconfig-paths');
+    tempFs.cleanup();
+  });
+
+  it('should resolve the baseUrl through an extends chain containing JSONC', () => {
+    tempFs.createFileSync(
+      'tsconfig.base.json',
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: { '@lib/*': ['libs/*/src/index.ts'] },
+        },
+      })
+    );
+    tempFs.createFileSync(
+      'project/tsconfig.json',
+      `{
+  "extends": "../tsconfig.base.json",
+  /* a block comment */
+  "compilerOptions": {
+    // a line comment
+    "strictPropertyInitialization": false,
+  },
+}`
+    );
+
+    registerTsConfigPaths(join(tempFs.tempDir, 'project', 'tsconfig.json'));
+
+    expect(registerPaths).toHaveBeenCalledWith(
+      expect.objectContaining({ baseUrl: tempFs.tempDir })
+    );
+  });
+});
+
+describe('loadTsFile', () => {
+  it('should resolve NodeNext .js specifiers to .ts sources in an ESM package', () => {
+    const tempFs = new TempFs('nx-load-ts-file', false);
+    try {
+      tempFs.createFilesSync({
+        'package.json': '{ "type": "module" }',
+        'tsconfig.json': '{ "compilerOptions": { "module": "nodenext" } }',
+        'src/entry.ts':
+          "import { value } from './dep.js';\nexport default value;\n",
+        'src/dep.ts': 'export const value: number = 42;\n',
+      });
+
+      const loaded = loadTsFile<{ default: number }>(
+        join(tempFs.tempDir, 'src/entry.ts'),
+        join(tempFs.tempDir, 'tsconfig.json')
+      );
+      expect(loaded.default).toBe(42);
+    } finally {
+      tempFs.cleanup();
+    }
+  });
+  it('should not suggest disabling type stripping when a package does not export the subpath', () => {
+    const tempFs = new TempFs('nx-load-ts-file-subpath', false);
+    try {
+      tempFs.createFilesSync({
+        'tsconfig.json': '{}',
+        'node_modules/removed-subpath/package.json': JSON.stringify({
+          name: 'removed-subpath',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/removed-subpath/index.js': 'module.exports = {};\n',
+        'rspack.config.ts':
+          "import { withModuleFederation } from 'removed-subpath/module-federation';\nexport default withModuleFederation;\n",
+      });
+
+      let error: any;
+      try {
+        loadTsFile(
+          join(tempFs.tempDir, 'rspack.config.ts'),
+          join(tempFs.tempDir, 'tsconfig.json')
+        );
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.code).toBe('ERR_PACKAGE_PATH_NOT_EXPORTED');
+      expect(error.message).not.toContain('NX_PREFER_NODE_STRIP_TYPES');
+    } finally {
+      tempFs.cleanup();
+    }
+  });
+
+  it('should fall back to tsconfig paths when a linked package does not export the aliased subpath', () => {
+    const tempFs = new TempFs('nx-load-ts-file-shadowed-alias', false);
+    try {
+      tempFs.createFilesSync({
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: {
+            baseUrl: '.',
+            paths: { '@org/lib/*': ['libs/lib/src/*.js'] },
+          },
+        }),
+        'node_modules/@org/lib/package.json': JSON.stringify({
+          name: '@org/lib',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/@org/lib/index.js': 'module.exports = {};\n',
+        'libs/lib/src/sub.js': 'exports.value = 42;\n',
+        'webpack.config.ts':
+          "import { value } from '@org/lib/sub';\nexport default value;\n",
+      });
+
+      const loaded = loadTsFile<{ default: number }>(
+        join(tempFs.tempDir, 'webpack.config.ts'),
+        join(tempFs.tempDir, 'tsconfig.json')
+      );
+      expect(loaded.default).toBe(42);
+    } finally {
+      tempFs.cleanup();
+    }
+  });
+});

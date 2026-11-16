@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "vue-eslint-parser": "latest",
+    "eslint-plugin-vue": "latest",
+    "vue": "latest"
+  }
+}

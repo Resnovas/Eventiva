@@ -1,0 +1,1955 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
+import rule from '../../src/rules/no-invalid-this';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('no-invalid-this', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    `
+describe('foo', () => {
+  it('does something', function (this: Mocha.Context) {
+    this.timeout(100);
+    // done
+  });
+});
+    `,
+    `
+interface SomeType {
+  prop: string;
+}
+function foo(this: SomeType) {
+  this.prop;
+}
+    `,
+    `
+function foo(this: prop) {
+  this.propMethod();
+}
+    `,
+    `
+z(function (x, this: context) {
+  console.log(x, this);
+});
+    `,
+    // https://github.com/eslint/eslint/issues/3287
+
+    `
+function foo() {
+  /** @this Obj*/ return function bar() {
+    console.log(this);
+    z(x => console.log(x, this));
+  };
+}
+    `,
+
+    // https://github.com/eslint/eslint/issues/6824
+
+    `
+var Ctor = function () {
+  console.log(this);
+  z(x => console.log(x, this));
+};
+    `,
+    // Constructors.
+    {
+      code: `
+function Foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+}
+      `,
+    },
+    {
+      code: `
+function Foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+}
+      `,
+      options: [{}], // test the default value in schema
+    },
+    {
+      code: `
+function Foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+}
+      `,
+      options: [{ capIsConstructor: true }], // test explicitly set option to the default value
+    },
+    {
+      code: `
+var Foo = function Foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+};
+      `,
+    },
+    {
+      code: `
+class A {
+  constructor() {
+    console.log(this);
+    z(x => console.log(x, this));
+  }
+}
+      `,
+    },
+
+    // On a property.
+    {
+      code: `
+var obj = {
+  foo: function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+};
+      `,
+    },
+    {
+      code: `
+var obj = {
+  foo() {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+};
+      `,
+    },
+    {
+      code: `
+var obj = {
+  foo:
+    foo ||
+    function () {
+      console.log(this);
+      z(x => console.log(x, this));
+    },
+};
+      `,
+    },
+    {
+      code: `
+var obj = {
+  foo: hasNative
+    ? foo
+    : function () {
+        console.log(this);
+        z(x => console.log(x, this));
+      },
+};
+      `,
+    },
+    {
+      code: `
+var obj = {
+  foo: (function () {
+    return function () {
+      console.log(this);
+      z(x => console.log(x, this));
+    };
+  })(),
+};
+      `,
+    },
+    {
+      code: `
+Object.defineProperty(obj, 'foo', {
+  value: function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+});
+      `,
+    },
+    {
+      code: `
+Object.defineProperties(obj, {
+  foo: {
+    value: function () {
+      console.log(this);
+      z(x => console.log(x, this));
+    },
+  },
+});
+      `,
+    },
+
+    // Assigns to a property.
+    {
+      code: `
+obj.foo = function () {
+  console.log(this);
+  z(x => console.log(x, this));
+};
+      `,
+    },
+    {
+      code: `
+obj.foo =
+  foo ||
+  function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  };
+      `,
+    },
+    {
+      code: `
+obj.foo = foo
+  ? bar
+  : function () {
+      console.log(this);
+      z(x => console.log(x, this));
+    };
+      `,
+    },
+    {
+      code: `
+obj.foo = (function () {
+  return function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  };
+})();
+      `,
+    },
+    {
+      code: `
+obj.foo = (() =>
+  function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  })();
+      `,
+    },
+
+    // Bind/Call/Apply
+    `
+(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}).call(obj);
+    `,
+    `
+var foo = function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}.bind(obj);
+    `,
+    `
+Reflect.apply(
+  function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+  obj,
+  [],
+);
+    `,
+    `
+(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}).apply(obj);
+    `,
+
+    // Class Instance Methods.
+    `
+class A {
+  foo() {
+    console.log(this);
+    z(x => console.log(x, this));
+  }
+}
+    `,
+
+    // Class Properties.
+    `
+class A {
+  b = 0;
+  c = this.b;
+}
+    `,
+
+    `
+class A {
+  b = new Array(this, 1, 2, 3);
+}
+    `,
+
+    `
+class A {
+  b = () => {
+    console.log(this);
+  };
+}
+    `,
+
+    // Array methods.
+
+    `
+Array.from(
+  [],
+  function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+  obj,
+);
+    `,
+
+    `
+foo.every(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.filter(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.find(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.findIndex(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.forEach(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.map(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    `
+foo.some(function () {
+  console.log(this);
+  z(x => console.log(x, this));
+}, obj);
+    `,
+
+    // @this tag.
+
+    `
+/** @this Obj */ function foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+}
+    `,
+
+    `
+foo(
+  /* @this Obj */ function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+);
+    `,
+
+    `
+/**
+ * @returns {void}
+ * @this Obj
+ */
+function foo() {
+  console.log(this);
+  z(x => console.log(x, this));
+}
+    `,
+
+    `
+Ctor = function () {
+  console.log(this);
+  z(x => console.log(x, this));
+};
+    `,
+
+    `
+function foo(
+  Ctor = function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+) {}
+    `,
+
+    `
+[
+  obj.method = function () {
+    console.log(this);
+    z(x => console.log(x, this));
+  },
+] = a;
+    `,
+
+    // Static
+
+    `
+class A {
+  static foo() {
+    console.log(this);
+    z(x => console.log(x, this));
+  }
+}
+    `,
+    {
+      code: `
+class A {
+  a = 5;
+  b = this.a;
+  accessor c = this.a;
+}
+      `,
+      // `accessor` keyword requires TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+    },
+  ],
+
+  invalid: [
+    {
+      code: `
+interface SomeType {
+  prop: string;
+}
+function foo() {
+  this.prop;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 7,
+          endLine: 6,
+          line: 6,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    // Global.
+    {
+      code: `
+console.log(this);
+      `,
+      errors: [
+        {
+          column: 13,
+          endColumn: 17,
+          endLine: 2,
+          line: 2,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+z(x => console.log(x, this));
+      `,
+      errors: [
+        {
+          column: 23,
+          endColumn: 27,
+          endLine: 2,
+          line: 2,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+console.log(this);
+      `,
+      errors: [
+        {
+          column: 13,
+          endColumn: 17,
+          endLine: 2,
+          line: 2,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      languageOptions: {
+        parserOptions: { ecmaFeatures: { globalReturn: true } },
+      },
+    },
+    {
+      code: `
+z(x => console.log(x, this));
+      `,
+      errors: [
+        {
+          column: 23,
+          endColumn: 27,
+          endLine: 2,
+          line: 2,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      languageOptions: {
+        parserOptions: { ecmaFeatures: { globalReturn: true } },
+      },
+    },
+
+    // IIFE.
+    {
+      code: `
+(function () {
+  console.log(this);
+})();
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+(function () {
+  z(x => console.log(x, this));
+})();
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Just functions.
+    {
+      code: `
+function foo() {
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }], // test that the option doesn't reverse the logic and mistakenly allows lowercase functions
+    },
+    {
+      code: `
+function foo() {
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }], // test that the option doesn't reverse the logic and mistakenly allows lowercase functions
+    },
+    {
+      code: `
+function Foo() {
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+function Foo() {
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+function foo() {
+  'use strict';
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  'use strict';
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+function Foo() {
+  'use strict';
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+function Foo() {
+  'use strict';
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+return function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      languageOptions: {
+        parserOptions: { ecmaFeatures: { globalReturn: true } },
+      },
+    },
+    {
+      code: `
+return function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      languageOptions: {
+        parserOptions: { ecmaFeatures: { globalReturn: true } },
+      },
+    },
+    {
+      code: `
+var foo = function () {
+  console.log(this);
+}.bar(obj);
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var foo = function () {
+  z(x => console.log(x, this));
+}.bar(obj);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Functions in methods.
+    {
+      code: `
+var obj = {
+  foo: function () {
+    function foo() {
+      console.log(this);
+    }
+    foo();
+  },
+};
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo: function () {
+    function foo() {
+      z(x => console.log(x, this));
+    }
+    foo();
+  },
+};
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo() {
+    function foo() {
+      console.log(this);
+    }
+    foo();
+  },
+};
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo() {
+    function foo() {
+      z(x => console.log(x, this));
+    }
+    foo();
+  },
+};
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo: function () {
+    return function () {
+      console.log(this);
+    };
+  },
+};
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo: function () {
+    return function () {
+      z(x => console.log(x, this));
+    };
+  },
+};
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo: function () {
+    'use strict';
+    return function () {
+      console.log(this);
+    };
+  },
+};
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 6,
+          line: 6,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var obj = {
+  foo: function () {
+    'use strict';
+    return function () {
+      z(x => console.log(x, this));
+    };
+  },
+};
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 6,
+          line: 6,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = function () {
+  return function () {
+    console.log(this);
+  };
+};
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = function () {
+  return function () {
+    z(x => console.log(x, this));
+  };
+};
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = function () {
+  'use strict';
+  return function () {
+    console.log(this);
+  };
+};
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = function () {
+  'use strict';
+  return function () {
+    z(x => console.log(x, this));
+  };
+};
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Class Methods.
+
+    {
+      code: `
+class A {
+  foo() {
+    return function () {
+      console.log(this);
+    };
+  }
+}
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+class A {
+  foo() {
+    return function () {
+      z(x => console.log(x, this));
+    };
+  }
+}
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Class Properties.
+
+    {
+      code: `
+class A {
+  b = new Array(1, 2, function () {
+    console.log(this);
+  });
+}
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+class A {
+  b = new Array(1, 2, function () {
+    z(x => console.log(x, this));
+  });
+}
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+class A {
+  b = () => {
+    function c() {
+      console.log(this);
+    }
+  };
+}
+      `,
+      errors: [
+        {
+          column: 19,
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+class A {
+  b = () => {
+    function c() {
+      z(x => console.log(x, this));
+    }
+  };
+}
+      `,
+      errors: [
+        {
+          column: 29,
+          endColumn: 33,
+          endLine: 5,
+          line: 5,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Class Static methods.
+
+    {
+      code: `
+obj.foo = (function () {
+  return () => {
+    console.log(this);
+  };
+})();
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = (function () {
+  return () => {
+    z(x => console.log(x, this));
+  };
+})();
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = (() => () => {
+  console.log(this);
+})();
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+obj.foo = (() => () => {
+  z(x => console.log(x, this));
+})();
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    // Bind/Call/Apply
+
+    {
+      code: `
+var foo = function () {
+  console.log(this);
+}.bind(null);
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var foo = function () {
+  z(x => console.log(x, this));
+}.bind(null);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+(function () {
+  console.log(this);
+}).call(undefined);
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+(function () {
+  z(x => console.log(x, this));
+}).call(undefined);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+(function () {
+  console.log(this);
+}).apply(void 0);
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+(function () {
+  z(x => console.log(x, this));
+}).apply(void 0);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // Array methods.
+    {
+      code: `
+Array.from([], function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+Array.from([], function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.every(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.every(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.filter(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.filter(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.find(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.find(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.findIndex(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.findIndex(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.forEach(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.forEach(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.map(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.map(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.some(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.some(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.forEach(function () {
+  console.log(this);
+}, null);
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+foo.forEach(function () {
+  z(x => console.log(x, this));
+}, null);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+
+    // @this tag.
+
+    {
+      code: `
+/** @returns {void} */ function foo() {
+  console.log(this);
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+/** @returns {void} */ function foo() {
+  z(x => console.log(x, this));
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+/** @this Obj */ foo(function () {
+  console.log(this);
+});
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+/** @this Obj */ foo(function () {
+  z(x => console.log(x, this));
+});
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var Ctor = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+var Ctor = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+var func = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var func = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+var func = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+var func = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+Ctor = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+Ctor = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+func = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+func = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+func = function () {
+  console.log(this);
+};
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+func = function () {
+  z(x => console.log(x, this));
+};
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThis',
+        },
+      ],
+      options: [{ capIsConstructor: false }],
+    },
+    {
+      code: `
+function foo(
+  func = function () {
+    console.log(this);
+  },
+) {}
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(
+  func = function () {
+    z(x => console.log(x, this));
+  },
+) {}
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+[
+  func = function () {
+    console.log(this);
+  },
+] = a;
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+    {
+      code: `
+[
+  func = function () {
+    z(x => console.log(x, this));
+  },
+] = a;
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'unexpectedThis',
+        },
+      ],
+    },
+  ],
+});

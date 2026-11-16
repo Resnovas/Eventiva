@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > legacy-fixtures > basics > _error_ > abstract-class-with-override-property > TSESTree - Error`]
+TSError
+  2 |
+  3 | abstract class SpecializedComponent extends SomeComponent {
+> 4 |   abstract override foo = 1;
+    |                           ^ Abstract property cannot have an initializer.
+  5 | }
+  6 |

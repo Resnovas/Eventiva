@@ -1,0 +1,296 @@
+/* stylelint-disable docusaurus/copyright-header */
+
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+@import url('./prism.css');
+
+/* You can override the default Infima variables here. */
+html:root {
+  --color-blurple: #2656c7;
+  --color-blurple-shadow: #111e80;
+  --ifm-color-primary: #3535e5;
+  --ifm-color-primary-dark: #1b43d4;
+  --ifm-color-primary-darker: var(--color-blurple);
+  --ifm-color-primary-darkest: var(--color-blurple-shadow);
+  --ifm-color-primary-light: #1b3ad4;
+  --ifm-color-primary-lighter: #8096ef;
+  --ifm-color-primary-lightest: #a5c2f3;
+  --ifm-code-font-size: 95%;
+  --ifm-color-info: var(--ifm-color-primary-dark);
+  --ifm-link-color: var(--ifm-color-primary-dark);
+  --code-line-decoration: rgb(112 53 229 / 10%);
+  --code-editor-bg: #fff;
+  --docsearch-muted-color: #666;
+  --docusaurus-highlighted-code-line-bg: rgb(0 0 0 / 10%);
+}
+
+html[data-theme='dark']:root {
+  --ifm-color-feedback-background: #f0f8ff;
+  --ifm-color-primary: #6582d9;
+  --ifm-color-primary-dark: #1f459d;
+  --ifm-color-primary-darker: #1f417f;
+  --ifm-color-primary-darkest: #163162;
+  --ifm-color-primary-light: #889dfa;
+  --ifm-color-primary-lighter: #b1c5fd;
+  --ifm-color-primary-lightest: #c5d1ff;
+  --ifm-button-background-color: var(--ifm-color-primary-dark);
+  --ifm-code-background: rgb(43 40 54);
+  --ifm-code-color: rgb(248 248 242);
+  --ifm-color-info: var(--ifm-color-primary-light);
+  --ifm-link-color: var(--ifm-color-primary-light);
+  --ifm-menu-color-active: var(--ifm-color-primary-light);
+  --ifm-navbar-link-hover-color: var(--ifm-color-primary-light);
+  --code-line-decoration: rgb(255 255 255 / 10%);
+  --code-editor-bg: #1e1e1e;
+  --ifm-tabs-color-active: var(--ifm-color-primary-light);
+  --ifm-toc-border-color: var(--ifm-background-surface-color);
+  --ifm-footer-background-color: var(--ifm-background-surface-color);
+  --ifm-color-secondary-contrast-background: var(
+    --ifm-background-surface-color
+  );
+  --ifm-color-secondary-dark: #2c2d2f;
+  --ifm-color-secondary-darker: rgb(200 201 204);
+  --ifm-color-secondary-darkest: rgb(164 166 168);
+  --docsearch-muted-color: #aaa;
+  --docusaurus-highlighted-code-line-bg: rgb(0 0 0 / 30%);
+  --gray-border-shadow: var(--ifm-color-secondary-dark);
+
+  scrollbar-color: #454a4d #202324;
+}
+
+.image-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.image-link::before {
+  content: '';
+  display: flex;
+}
+
+/* assumes icons are black by default and inverts them for dark mode so they're white */
+html[data-theme='dark'] .image-link::before {
+  filter: invert(100%);
+}
+
+.bug-report-link::before {
+  background: url('/img/bug-report.svg') no-repeat;
+}
+
+.discord-link::before {
+  background: url('/img/discord.svg') no-repeat center;
+}
+
+.github-link::before {
+  background: url('/img/github.svg') no-repeat;
+}
+
+.mastodon-link::before {
+  background: url('/img/mastodon.svg') no-repeat;
+}
+
+.open-collective-link::before {
+  background: url('/img/open-collective.svg') no-repeat;
+}
+
+.www-link::before {
+  background: url('/img/www.svg') no-repeat;
+}
+
+.stack-overflow-link::before {
+  background: url('/img/stack-overflow.svg') no-repeat;
+}
+
+.bluesky-link::before {
+  background: url('/img/bluesky.svg') no-repeat;
+}
+
+.header-image-link:hover {
+  opacity: 0.6;
+}
+
+.header-image-link::before {
+  height: 24px;
+  width: 24px;
+}
+
+.social-link-icon::before {
+  height: 20px;
+  margin-right: 4px;
+  width: 20px;
+}
+
+.theme-doc-sidebar-item-link-level-1 > a,
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > a {
+  font-size: 1em;
+  font-weight: var(--ifm-font-weight-bold);
+}
+
+.theme-doc-sidebar-item-link-level-2 > a,
+.theme-doc-sidebar-item-category-level-2 > .menu__list-item-collapsible > a {
+  font-size: 0.9em;
+}
+
+.theme-doc-sidebar-item-link-level-3 > a,
+.theme-doc-sidebar-item-category-level-3 > .menu__list-item-collapsible > a {
+  font-size: 0.8em;
+}
+
+.menu__list-item > .menu__version-item {
+  color: var(--ifm-menu-color);
+  line-height: 1.25;
+  padding: var(--ifm-menu-link-padding-vertical)
+    var(--ifm-menu-link-padding-horizontal);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+.myLineDecoration {
+  background-color: var(--code-line-decoration);
+}
+
+.code-block-removed-line::before {
+  content: '-';
+  display: inline-block;
+  width: 0;
+  position: relative;
+  left: -0.7em;
+  color: red;
+}
+
+.code-block-removed-line {
+  background-color: #ff000020;
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+  user-select: none;
+}
+
+.code-block-added-line::before {
+  content: '+';
+  display: inline-block;
+  width: 0;
+  position: relative;
+  left: -0.7em;
+  color: rgb(2 164 113);
+  font-weight: 700;
+}
+
+.code-block-added-line {
+  background-color: #00ff9520;
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+}
+
+[data-theme='dark'] .code-block-added-line {
+  background-color: #00ff9510;
+}
+
+.code-block-covered-line {
+  background-color: #00ff9520;
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+}
+
+[data-theme='dark'] .code-block-covered-line {
+  background-color: #00ff9510;
+}
+
+.code-block-partially-covered-line::before {
+  content: '!';
+  display: inline-block;
+  width: 0;
+  position: relative;
+  left: -0.7em;
+  color: rgb(166 124 0);
+  font-weight: 700;
+}
+
+.code-block-partially-covered-line {
+  background-color: #ffcc0030;
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+}
+
+[data-theme='dark'] .code-block-partially-covered-line::before {
+  color: rgb(240 190 60);
+}
+
+[data-theme='dark'] .code-block-partially-covered-line {
+  background-color: #ffcc0018;
+}
+
+.code-block-uncovered-line::before {
+  content: 'x';
+  display: inline-block;
+  width: 0;
+  position: relative;
+  left: -0.7em;
+  color: red;
+}
+
+.code-block-uncovered-line {
+  background-color: #ff000020;
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+}
+
+[data-theme='dark'] .code-block-uncovered-line {
+  background-color: #ff000015;
+}
+
+.markdown a {
+  text-decoration: underline;
+}
+
+.markdown a:has(code) {
+  text-underline-offset: 0.25em;
+}
+
+.markdown a * {
+  vertical-align: baseline;
+}
+
+aside nav ul code {
+  vertical-align: baseline;
+}
+
+td > p:last-child {
+  margin-bottom: 0;
+}
+
+h5 {
+  font-weight: bold;
+}
+
+/* stylelint-disable-next-line selector-id-pattern */
+#__docusaurus > div[role='banner'] {
+  font-size: 150%;
+  height: initial;
+  position: sticky;
+  padding: 1rem 1.5rem;
+  margin: auto;
+  max-width: max(60%, 70rem);
+}
+
+/* stylelint-disable-next-line selector-id-pattern */
+#__docusaurus > div[role='banner'] a {
+  font-weight: bold;
+}

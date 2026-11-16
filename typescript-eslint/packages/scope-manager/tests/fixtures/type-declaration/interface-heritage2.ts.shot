@@ -1,0 +1,98 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"unreferenced">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "unreferenced",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TSModuleNameDefinition$2 {
+          name: Identifier<"Member">,
+          node: TSModuleDeclaration$2,
+        },
+      ],
+      name: "Member",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"Member">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        TypeDefinition$3 {
+          name: Identifier<"unreferenced">,
+          node: TSTypeAliasDeclaration$3,
+        },
+      ],
+      name: "unreferenced",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        TypeDefinition$4 {
+          name: Identifier<"Foo">,
+          node: TSInterfaceDeclaration$4,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$5,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "unreferenced" => Variable$2,
+        "Member" => Variable$3,
+        "Foo" => Variable$5,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+        Variable$5,
+      ],
+    },
+    TSModuleScope$2 {
+      block: TSModuleDeclaration$2,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "unreferenced" => Variable$4,
+      },
+      type: "tsModule",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+      ],
+    },
+  ],
+}

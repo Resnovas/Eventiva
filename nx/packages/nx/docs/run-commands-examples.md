@@ -1,0 +1,272 @@
+`project.json`:
+
+```json
+{
+  // ...
+  "targets": {
+    //...
+    "ls-project-root": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ls apps/frontend/src"
+      }
+    }
+  }
+}
+```
+
+```shell
+nx run frontend:ls-project-root
+```
+
+## Examples
+
+##### Chaining commands
+
+The `commands` option accepts as many commands as you want. By default, they all run in parallel.
+You can run them sequentially by setting `parallel: false`:
+
+```json
+"create-script": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+          "mkdir -p apps/frontend/scripts",
+          "touch apps/frontend/scripts/my-script.sh",
+          "chmod +x apps/frontend/scripts/my-script.sh"
+        ],
+        "parallel": false
+    }
+}
+```
+
+##### Setting the cwd
+
+By setting the `cwd` option, each command will run in the `apps/frontend` folder.
+
+```json
+"create-script": {
+    "executor": "nx:run-commands",
+    "options": {
+        "cwd": "apps/frontend",
+        "commands": [
+          "mkdir -p scripts",
+          "touch scripts/my-script.sh",
+          "chmod +x scripts/my-script.sh"
+        ],
+        "parallel": false
+    }
+}
+```
+
+##### Interpolating Args
+
+You can use custom arguments in your scripts with `{args.[someFlag]}`:
+
+```json
+"create-script": {
+    "executor": "nx:run-commands",
+    "options": {
+        "cwd": "apps/frontend",
+        "commands": [
+          "mkdir -p scripts",
+          "touch scripts/{args.name}.sh",
+          "chmod +x scripts/{args.name}.sh"
+        ],
+        "parallel": false
+    }
+}
+```
+
+We run the above with:
+
+```shell
+nx run frontend:create-script --args="--name=example"
+```
+
+or simply with:
+
+```shell
+nx run frontend:create-script --name=example
+```
+
+An argument that isn't passed resolves to an empty string. To use another value, list fallbacks after `??`. Nx uses the first one that is set and not empty. A fallback can read an environment variable of the command through `env.NAME`, including variables from the `env` and `envFile` options. `NAME` can contain only the letters `a` to `z` in either case, digits, `_`, `.`, `-`, and parentheses. The last fallback can be plain text:
+
+```json
+"serve-static": {
+    "executor": "nx:run-commands",
+    "options": {
+        "command": "http-server dist --port={args.port ?? env.PORT ?? 8080}"
+    }
+}
+```
+
+The resolved command is part of the task's terminal output, which Nx caches when the target is cacheable. To keep a secret out of that output, read it as a shell variable instead, such as `$TOKEN`.
+
+Keep in mind that any command in the list that does not include interpolation will still have all passed arguments forwarded to it by default. For example, given:
+
+```json
+"create-script": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+          "echo {args.name}",
+          "echo done"
+        ],
+        "parallel": false
+    }
+}
+```
+
+running `nx run frontend:create-script --name=example` also appends `--name=example` to the second command, executing `echo done --name=example`. Set `forwardAllArgs` to `false` on the commands that should not receive the arguments:
+
+```json
+"create-script": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+          "echo {args.name}",
+          {
+            "command": "echo done",
+            "forwardAllArgs": false
+          }
+        ],
+        "parallel": false
+    }
+}
+```
+
+##### Arguments forwarding
+
+When interpolation is not present in the command, all arguments are forwarded to the command by default.
+
+This is useful when you need to pass raw argument strings to your command.
+
+For example, when you run:
+
+```shell
+nx run frontend:webpack --args="--config=example.config.js"
+```
+
+```json
+"webpack": {
+    "executor": "nx:run-commands",
+    "options": {
+        "command": "webpack"
+    }
+}
+```
+
+The above command will execute: `webpack --config=example.config.js`
+
+This functionality can be disabled by using `commands` and expanding each `command` into an object
+that sets the `forwardAllArgs` option to `false` as shown below:
+
+```json
+"webpack": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+            {
+                "command": "webpack",
+                "forwardAllArgs": false
+            }
+        ]
+    }
+}
+```
+
+##### Shorthand
+
+When you only need to run a single command, you can use a shorthand for nx:run-commands:
+
+```json
+"webpack": {
+    "command": "webpack"
+}
+```
+
+##### Custom done conditions
+
+Normally, `run-commands` considers the commands done when all of them have finished running. If you don't need to wait until they're all done, you can set a special string that considers the commands finished the moment the string appears in `stdout` or `stderr`:
+
+```json
+"finish-when-ready": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+            "sleep 5 && echo 'FINISHED'",
+            "echo 'READY'"
+        ],
+        "readyWhen": "READY",
+        "parallel": true
+    }
+}
+```
+
+```shell
+nx run frontend:finish-when-ready
+```
+
+The above commands will finish immediately, instead of waiting for 5 seconds.
+
+When we have multiple commands running in parallel, there is a possibility that we want to wait for more than 1 string to appear in stdout or stderr.
+For example, imagine a case where we are running multiple commands to start multiple dev servers in parallel.
+
+```json
+"finish-when-multiple-ready": {
+    "executor": "nx:run-commands",
+    "options": {
+        "commands": [
+            "sleep $[ ( $RANDOM % 10 ) + 1 ] && echo 'READY1' && sleep 3600",
+            "sleep $[ ( $RANDOM % 10 ) + 1 ] && echo 'READY2' && sleep 3600",
+        ],
+        "readyWhen": ["READY1", "READY2"],
+        "parallel": true
+    }
+}
+```
+
+```shell
+nx run frontend:finish-when-multiple-ready
+```
+
+The above commands will finish as soon as both the 1st and the 2nd command echoed "READY" (between 1 and 10 seconds), instead of waiting for the extra hour.
+
+##### Nx Affected
+
+The true power of `run-commands` comes from the fact that it runs through `nx`, which knows about your project graph. So you can run **custom commands** only for the projects that have been affected by a change.
+
+We can create some configurations to generate docs, and if run using `nx affected`, it will only generate documentation for the projects that have been changed:
+
+```shell
+nx affected --target=generate-docs
+```
+
+```json
+//...
+"frontend": {
+    "targets": {
+        //...
+        "generate-docs": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "npx compodoc -p apps/frontend/tsconfig.app.json"
+            }
+        }
+    }
+},
+"api": {
+    "targets": {
+        //...
+        "generate-docs": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command":  "npx compodoc -p apps/api/tsconfig.app.json"
+            }
+        }
+    }
+}
+```
+
+---

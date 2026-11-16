@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "latest"
+  }
+}

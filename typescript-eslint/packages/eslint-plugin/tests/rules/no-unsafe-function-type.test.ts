@@ -1,0 +1,98 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
+import rule from '../../src/rules/no-unsafe-function-type';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('no-unsafe-function-type', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    'let value: () => void;',
+    'let value: <T>(t: T) => T;',
+    `
+// create a scope since it's illegal to declare a duplicate identifier
+// 'Function' in the global script scope.
+{
+  type Function = () => void;
+  let value: Function;
+}
+    `,
+  ],
+  invalid: [
+    {
+      code: 'let value: Function;',
+      errors: [
+        {
+          column: 12,
+          endColumn: 20,
+          endLine: 1,
+          line: 1,
+          messageId: 'bannedFunctionType',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: 'let value: Function[];',
+      errors: [
+        {
+          column: 12,
+          endColumn: 20,
+          endLine: 1,
+          line: 1,
+          messageId: 'bannedFunctionType',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: 'let value: Function | number;',
+      errors: [
+        {
+          column: 12,
+          endColumn: 20,
+          endLine: 1,
+          line: 1,
+          messageId: 'bannedFunctionType',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+class Weird implements Function {
+  // ...
+}
+      `,
+      errors: [
+        {
+          column: 24,
+          endColumn: 32,
+          endLine: 2,
+          line: 2,
+          messageId: 'bannedFunctionType',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+interface Weird extends Function {
+  // ...
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 33,
+          endLine: 2,
+          line: 2,
+          messageId: 'bannedFunctionType',
+        },
+      ],
+      output: null,
+    },
+  ],
+});

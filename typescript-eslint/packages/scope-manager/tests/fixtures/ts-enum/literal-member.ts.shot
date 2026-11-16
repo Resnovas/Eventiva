@@ -1,0 +1,59 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TSEnumNameDefinition$1 {
+          name: Identifier<"Foo">,
+          node: TSEnumDeclaration$1,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TSEnumMemberDefinition$2 {
+          name: Literal$2,
+          node: TSEnumMember$3,
+        },
+      ],
+      name: "a",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$4,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Foo" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+    TSEnumScope$2 {
+      block: TSEnumDeclaration$1,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "a" => Variable$3,
+      },
+      type: "tsEnum",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+      ],
+    },
+  ],
+}

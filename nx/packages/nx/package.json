@@ -1,0 +1,465 @@
+{
+  "name": "nx",
+  "version": "0.0.1",
+  "private": false,
+  "type": "commonjs",
+  "description": "The core Nx plugin contains the core functionality of Nx like the project graph, nx commands and task orchestration.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nrwl/nx.git",
+    "directory": "packages/nx"
+  },
+  "files": [
+    "dist/bin",
+    "dist/nx-cloud-internals.*",
+    "dist/plugins",
+    "dist/presets",
+    "dist/release",
+    "dist/src",
+    "dist/tasks-runners",
+    "schemas",
+    "migrations.json",
+    "executors.json",
+    "generators.json"
+  ],
+  "scripts": {
+    "postinstall": "node -e \"try{require('./dist/bin/post-install')}catch(e){}\""
+  },
+  "keywords": [
+    "Monorepo",
+    "Angular",
+    "React",
+    "Web",
+    "Node",
+    "Nest",
+    "Jest",
+    "Cypress",
+    "CLI",
+    "Testing",
+    "Front-end",
+    "Backend",
+    "Mobile"
+  ],
+  "bin": {
+    "nx": "./dist/bin/nx.js",
+    "nx-cloud": "./dist/bin/nx-cloud.js"
+  },
+  "author": "Victor Savkin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nrwl/nx/issues"
+  },
+  "homepage": "https://nx.dev",
+  "dependencies": {
+    "smol-toml": "1.9.0",
+    "@napi-rs/wasm-runtime": "0.2.4",
+    "@yarnpkg/lockfile": "^1.1.0",
+    "@zkochan/js-yaml": "catalog:",
+    "picocolors": "catalog:",
+    "cli-cursor": "3.1.0",
+    "cli-spinners": "2.6.1",
+    "cliui": "^8.0.1",
+    "dotenv": "~16.4.5",
+    "dotenv-expand": "~12.0.3",
+    "ejs": "5.0.1",
+    "@clack/prompts": "catalog:",
+    "figures": "3.2.0",
+    "ignore": "^7.0.5",
+    "@jest/diff-sequences": "30.0.1",
+    "jsonc-parser": "catalog:",
+    "lines-and-columns": "2.0.3",
+    "minimatch": "catalog:",
+    "npm-run-path": "^4.0.1",
+    "ora": "catalog:",
+    "resolve.exports": "2.0.3",
+    "semver": "catalog:",
+    "string-width": "^4.2.3",
+    "tar-stream": "~2.2.0",
+    "tmp": "catalog:",
+    "tsconfig-paths": "catalog:typescript",
+    "undici": "^7.30.1",
+    "tslib": "catalog:typescript",
+    "which": "catalog:",
+    "yaml": "^2.8.3",
+    "yargs": "catalog:",
+    "yargs-parser": "catalog:"
+  },
+  "peerDependencies": {
+    "@swc-node/register": "catalog:swc",
+    "@swc/core": "catalog:swc"
+  },
+  "peerDependenciesMeta": {
+    "@swc-node/register": {
+      "optional": true
+    },
+    "@swc/core": {
+      "optional": true
+    }
+  },
+  "optionalDependencies": {
+    "@nx/nx-darwin-arm64": "*",
+    "@nx/nx-darwin-x64": "*",
+    "@nx/nx-freebsd-x64": "*",
+    "@nx/nx-linux-arm-gnueabihf": "*",
+    "@nx/nx-linux-arm64-gnu": "*",
+    "@nx/nx-linux-arm64-musl": "*",
+    "@nx/nx-linux-x64-gnu": "*",
+    "@nx/nx-linux-x64-musl": "*",
+    "@nx/nx-win32-arm64-msvc": "*",
+    "@nx/nx-win32-x64-msvc": "*"
+  },
+  "nx-migrations": {
+    "migrations": "./migrations.json",
+    "packageGroup": [
+      "@nx/js",
+      "@nx/linter",
+      "@nx/eslint",
+      "@nx/workspace",
+      "@nx/angular",
+      "@nx/angular-rspack",
+      "@nx/angular-rspack-compiler",
+      "@nx/jest",
+      "@nx/cypress",
+      "@nx/detox",
+      "@nx/devkit",
+      "@nx/dotnet",
+      "@nx/esbuild",
+      "@nx/eslint-plugin",
+      "@nx/expo",
+      "@nx/express",
+      "@nx/gradle",
+      "@nx/maven",
+      "@nx/module-federation",
+      "@nx/nest",
+      "@nx/next",
+      "@nx/node",
+      "@nx/nuxt",
+      "@nx/oxlint",
+      "@nx/playwright",
+      "@nx/plugin",
+      "@nx/react",
+      "@nx/react-native",
+      "@nx/rolldown",
+      "@nx/rollup",
+      "@nx/remix",
+      "@nx/rspack",
+      "@nx/rsbuild",
+      "@nx/storybook",
+      "@nx/vite",
+      "@nx/vitest",
+      "@nx/vue",
+      "@nx/web",
+      "@nx/webpack",
+      "@nx/docker",
+      "create-nx-workspace",
+      {
+        "package": "nx-cloud",
+        "version": "latest"
+      },
+      {
+        "package": "@nrwl/nx-cloud",
+        "version": "latest"
+      }
+    ],
+    "supportsOptionalMigrations": true
+  },
+  "generators": "./generators.json",
+  "executors": "./executors.json",
+  "builders": "./executors.json",
+  "publishConfig": {
+    "access": "public"
+  },
+  "napi": {
+    "binaryName": "nx",
+    "packageName": "@nx/nx",
+    "dtsHeaderFile": "packages/nx/src/native/dts-header.d.ts",
+    "wasm": {
+      "initialMemory": 1024,
+      "maximumMemory": 32768
+    },
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc",
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "aarch64-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf",
+      "x86_64-unknown-linux-musl",
+      "x86_64-unknown-freebsd"
+    ]
+  },
+  "typesVersions": {
+    "*": {
+      "nx-cloud-internals": [
+        "dist/nx-cloud-internals.d.ts"
+      ],
+      "bin/*": [
+        "dist/bin/*.d.ts"
+      ],
+      "bin/*.js": [
+        "dist/bin/*.d.ts"
+      ],
+      "plugins/*": [
+        "dist/plugins/*.d.ts"
+      ],
+      "plugins/*.js": [
+        "dist/plugins/*.d.ts"
+      ],
+      "src/native": [
+        "dist/src/native/index.d.ts"
+      ],
+      "src/analytics": [
+        "dist/src/analytics/index.d.ts"
+      ],
+      "src/command-line": [
+        "dist/src/command-line/index.d.ts"
+      ],
+      "src/command-line/init/implementation/angular": [
+        "dist/src/command-line/init/implementation/angular/index.d.ts"
+      ],
+      "src/command-line/release": [
+        "dist/src/command-line/release/index.d.ts"
+      ],
+      "src/project-graph/plugins": [
+        "dist/src/project-graph/plugins/index.d.ts"
+      ],
+      "src/project-graph/plugins/isolation": [
+        "dist/src/project-graph/plugins/isolation/index.d.ts"
+      ],
+      "src/native/index": [
+        "dist/src/native/index.d.ts"
+      ],
+      "src/native/index.js": [
+        "dist/src/native/index.d.ts"
+      ],
+      "src/plugins/js": [
+        "dist/src/plugins/js/index.d.ts"
+      ],
+      "src/plugins/package-json": [
+        "dist/src/plugins/package-json/index.d.ts"
+      ],
+      "src/utils/plugins": [
+        "dist/src/utils/plugins/index.d.ts"
+      ],
+      "src/utils/catalog": [
+        "dist/src/utils/catalog/index.d.ts"
+      ],
+      "src/internal-testing-utils/*": [
+        "src/internal-testing-utils/*.ts"
+      ],
+      "src/*.js": [
+        "dist/src/*.d.ts"
+      ],
+      "src/*": [
+        "dist/src/*.d.ts"
+      ],
+      "release": [
+        "dist/release/index.d.ts"
+      ],
+      "release/changelog-renderer": [
+        "dist/release/changelog-renderer/index.d.ts"
+      ],
+      "release/*": [
+        "dist/release/*.d.ts"
+      ],
+      "release/*.js": [
+        "dist/release/*.d.ts"
+      ],
+      "tasks-runners/*": [
+        "dist/tasks-runners/*.d.ts"
+      ],
+      "tasks-runners/*.js": [
+        "dist/tasks-runners/*.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "@nx/nx-source": "./bin/nx.ts",
+      "types": "./dist/bin/nx.d.ts",
+      "default": "./dist/bin/nx.js"
+    },
+    "./package.json": "./package.json",
+    "./package": "./package.json",
+    "./nx-cloud-internals": {
+      "@nx/nx-source": "./nx-cloud-internals.ts",
+      "types": "./dist/nx-cloud-internals.d.ts",
+      "default": "./dist/nx-cloud-internals.js"
+    },
+    "./migrations.json": "./migrations.json",
+    "./migrations": "./migrations.json",
+    "./generators.json": "./generators.json",
+    "./generators": "./generators.json",
+    "./executors.json": "./executors.json",
+    "./executors": "./executors.json",
+    "./schemas/*": "./schemas/*.json",
+    "./schemas/*.json": "./schemas/*.json",
+    "./presets/*": {
+      "@nx/nx-source": "./presets/*.json",
+      "default": "./dist/presets/*.json"
+    },
+    "./presets/*.json": {
+      "@nx/nx-source": "./presets/*.json",
+      "default": "./dist/presets/*.json"
+    },
+    "./bin/*": {
+      "@nx/nx-source": "./bin/*.ts",
+      "types": "./dist/bin/*.d.ts",
+      "default": "./dist/bin/*.js"
+    },
+    "./bin/*.js": {
+      "@nx/nx-source": "./bin/*.ts",
+      "types": "./dist/bin/*.d.ts",
+      "default": "./dist/bin/*.js"
+    },
+    "./plugins/*": {
+      "@nx/nx-source": "./plugins/*.ts",
+      "types": "./dist/plugins/*.d.ts",
+      "default": "./dist/plugins/*.js"
+    },
+    "./plugins/*.js": {
+      "@nx/nx-source": "./plugins/*.ts",
+      "types": "./dist/plugins/*.d.ts",
+      "default": "./dist/plugins/*.js"
+    },
+    "./src/analytics": {
+      "@nx/nx-source": "./src/analytics/index.ts",
+      "types": "./dist/src/analytics/index.d.ts",
+      "default": "./dist/src/analytics/index.js"
+    },
+    "./src/command-line": {
+      "@nx/nx-source": "./src/command-line/index.ts",
+      "types": "./dist/src/command-line/index.d.ts",
+      "default": "./dist/src/command-line/index.js"
+    },
+    "./src/command-line/init/implementation/angular": {
+      "@nx/nx-source": "./src/command-line/init/implementation/angular/index.ts",
+      "types": "./dist/src/command-line/init/implementation/angular/index.d.ts",
+      "default": "./dist/src/command-line/init/implementation/angular/index.js"
+    },
+    "./src/command-line/release": {
+      "@nx/nx-source": "./src/command-line/release/index.ts",
+      "types": "./dist/src/command-line/release/index.d.ts",
+      "default": "./dist/src/command-line/release/index.js"
+    },
+    "./src/native": {
+      "@nx/nx-source": "./src/native/index.js",
+      "types": "./dist/src/native/index.d.ts",
+      "default": "./dist/src/native/index.js"
+    },
+    "./src/native/index": {
+      "@nx/nx-source": "./src/native/index.js",
+      "types": "./dist/src/native/index.d.ts",
+      "default": "./dist/src/native/index.js"
+    },
+    "./src/native/index.js": {
+      "@nx/nx-source": "./src/native/index.js",
+      "types": "./dist/src/native/index.d.ts",
+      "default": "./dist/src/native/index.js"
+    },
+    "./src/native/*.js": {
+      "@nx/nx-source": "./src/native/*.js",
+      "default": "./dist/src/native/*.js"
+    },
+    "./src/plugins/js": {
+      "@nx/nx-source": "./src/plugins/js/index.ts",
+      "types": "./dist/src/plugins/js/index.d.ts",
+      "default": "./dist/src/plugins/js/index.js"
+    },
+    "./src/plugins/package-json": {
+      "@nx/nx-source": "./src/plugins/package-json/index.ts",
+      "types": "./dist/src/plugins/package-json/index.d.ts",
+      "default": "./dist/src/plugins/package-json/index.js"
+    },
+    "./src/utils/plugins": {
+      "@nx/nx-source": "./src/utils/plugins/index.ts",
+      "types": "./dist/src/utils/plugins/index.d.ts",
+      "default": "./dist/src/utils/plugins/index.js"
+    },
+    "./src/utils/catalog": {
+      "@nx/nx-source": "./src/utils/catalog/index.ts",
+      "types": "./dist/src/utils/catalog/index.d.ts",
+      "default": "./dist/src/utils/catalog/index.js"
+    },
+    "./src/command-line/migrate/run-migration-process": {
+      "@nx/nx-source": "./src/command-line/migrate/run-migration-process.js",
+      "default": "./dist/src/command-line/migrate/run-migration-process.js"
+    },
+    "./src/command-line/migrate/run-migration-process.js": {
+      "@nx/nx-source": "./src/command-line/migrate/run-migration-process.js",
+      "default": "./dist/src/command-line/migrate/run-migration-process.js"
+    },
+    "./src/project-graph/plugins": {
+      "@nx/nx-source": "./src/project-graph/plugins/index.ts",
+      "types": "./dist/src/project-graph/plugins/index.d.ts",
+      "default": "./dist/src/project-graph/plugins/index.js"
+    },
+    "./src/project-graph/plugins/isolation": {
+      "@nx/nx-source": "./src/project-graph/plugins/isolation/index.ts",
+      "types": "./dist/src/project-graph/plugins/isolation/index.d.ts",
+      "default": "./dist/src/project-graph/plugins/isolation/index.js"
+    },
+    "./src/*/schema": {
+      "@nx/nx-source": "./src/*/schema.json",
+      "default": "./dist/src/*/schema.json"
+    },
+    "./src/*/schema.json": {
+      "@nx/nx-source": "./src/*/schema.json",
+      "default": "./dist/src/*/schema.json"
+    },
+    "./src/native/*.cjs": {
+      "@nx/nx-source": "./src/native/*.cjs",
+      "default": "./dist/src/native/*.cjs"
+    },
+    "./src/native/*.mjs": {
+      "@nx/nx-source": "./src/native/*.mjs",
+      "default": "./dist/src/native/*.mjs"
+    },
+    "./src/internal-testing-utils/*": {
+      "types": "./src/internal-testing-utils/*.ts",
+      "default": "./src/internal-testing-utils/*.ts"
+    },
+    "./src/*.js": {
+      "@nx/nx-source": "./src/*.ts",
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    },
+    "./src/*": {
+      "@nx/nx-source": "./src/*.ts",
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    },
+    "./release": {
+      "@nx/nx-source": "./release/index.ts",
+      "types": "./dist/release/index.d.ts",
+      "default": "./dist/release/index.js"
+    },
+    "./release/changelog-renderer": {
+      "@nx/nx-source": "./release/changelog-renderer/index.ts",
+      "types": "./dist/release/changelog-renderer/index.d.ts",
+      "default": "./dist/release/changelog-renderer/index.js"
+    },
+    "./release/*": {
+      "@nx/nx-source": "./release/*.ts",
+      "types": "./dist/release/*.d.ts",
+      "default": "./dist/release/*.js"
+    },
+    "./release/*.js": {
+      "@nx/nx-source": "./release/*.ts",
+      "types": "./dist/release/*.d.ts",
+      "default": "./dist/release/*.js"
+    },
+    "./tasks-runners/*": {
+      "@nx/nx-source": "./tasks-runners/*.ts",
+      "types": "./dist/tasks-runners/*.d.ts",
+      "default": "./dist/tasks-runners/*.js"
+    },
+    "./tasks-runners/*.js": {
+      "@nx/nx-source": "./tasks-runners/*.ts",
+      "types": "./dist/tasks-runners/*.d.ts",
+      "default": "./dist/tasks-runners/*.js"
+    }
+  }
+}

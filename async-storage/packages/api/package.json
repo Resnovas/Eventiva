@@ -1,0 +1,47 @@
+{
+  "name": "@react-native-async-storage/api",
+  "version": "0.0.0",
+  "description": "Core API of Async Storage",
+  "source": "src/index.ts",
+  "react-native": "src/index.ts",
+  "types": "lib/typescript/index.d.ts",
+  "exports": {
+    "import": "./lib/module/index.js",
+    "require": "./lib/commonjs/index.js"
+  },
+  "files": [
+    "src",
+    "lib"
+  ],
+  "scripts": {
+    "prepack": "yarn build",
+    "build": "bob build",
+    "test:lint": "eslint $(git ls-files '*.js' '*.ts' '*.tsx')",
+    "test:ts": "tsc --noEmit"
+  },
+  "keywords": [
+    "react-native",
+    "async-storage",
+    "storage",
+    "api",
+    "core api"
+  ],
+  "repository": "https://github.com/react-native-async-storage/async-storage/blob/main/packages/core",
+  "author": "Krzysztof Borowy <contact@kborowy.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "prettier": "^2.8.8",
+    "react-native-builder-bob": "0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      "typescript"
+    ]
+  }
+}

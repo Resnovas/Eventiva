@@ -1,0 +1,526 @@
+import type { Mock } from 'vitest';
+import * as stream from 'node:stream';
+import * as yargs from 'yargs';
+
+vi.mock('../../native', async () => ({
+  ...(await vi.importActual('../../native')),
+  isAiAgent: vi.fn(() => false),
+  IS_WASM: false,
+}));
+
+import {
+  readParallelFromArgsAndEnv,
+  withAffectedOptions,
+  withExplainOption,
+  withOutputStyleOption,
+  withRunManyOptions,
+  withRunOptions,
+  withTuiOptions,
+} from './shared-options';
+import { withEnvironmentVariables } from '../../internal-testing-utils/with-environment';
+import { isAiAgent } from '../../native';
+
+const argv = yargs.default([]);
+
+describe('shared-options', () => {
+  describe('withExplainOption', () => {
+    // yargs runs `coerce` only on an instance's first parse.
+    const explain = async (...flags: string[]) =>
+      (
+        await withExplainOption(yargs.default([])).parseAsync([
+          'affected',
+          ...flags,
+        ])
+      ).explain;
+
+    it('reads a bare flag as the human form', async () => {
+      expect(await explain('--explain')).toBe(true);
+    });
+
+    it('keeps a value as the destination', async () => {
+      expect(await explain('--explain=stdout')).toBe('stdout');
+      expect(await explain('--explain', 'reasons.json')).toBe('reasons.json');
+    });
+
+    it('reads false as off', async () => {
+      expect(await explain('--explain=false')).toBe(false);
+    });
+
+    // format, graph and release take the affected options too, and run
+    // anyway; a declared --explain would promise otherwise.
+    it('is not one of the shared affected options', async () => {
+      const result = await withAffectedOptions(yargs.default([])).parseAsync([
+        'format:write',
+        '--explain',
+      ]);
+      expect(result.explain).toBeUndefined();
+    });
+  });
+
+  describe('withAffectedOptions', () => {
+    const command = withAffectedOptions(argv);
+
+    it('should parse files to array', async () => {
+      const result = await command.parseAsync([
+        'affected',
+        '--files',
+        'file1',
+        '--files',
+        'file2',
+        '--tag',
+        '81919e4',
+        '--parallel',
+        '3',
+        '--maxParallel',
+        '2',
+      ]);
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected', '--tag', '81919e4'],
+          files: ['file1', 'file2'],
+          parallel: '3',
+          maxParallel: 2,
+        })
+      );
+    });
+
+    it('should split a --files value on every comma, while stdin keeps a comma-bearing path whole', async () => {
+      // yargs runs `coerce` only on an instance's first parse, so each case
+      // needs an instance of its own to see production's ordering.
+      const split = await withAffectedOptions(yargs.default([])).parseAsync([
+        'affected',
+        '--files',
+        'libs/a,b/src/index.ts',
+      ]);
+      expect(split.files).toEqual(['libs/a', 'b/src/index.ts']);
+
+      const stdinMock = new stream.PassThrough();
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+      stdinMock.push('libs/a,b/src/index.ts\n');
+      stdinMock.push(null);
+
+      const piped = await withAffectedOptions(yargs.default([])).parseAsync([
+        'affected',
+        '--stdin',
+      ]);
+      expect(piped.files).toEqual(['libs/a,b/src/index.ts']);
+      stdinMock.end();
+    });
+
+    it('should parse newline-delimited files from stdin', async () => {
+      const stdinMock = new stream.PassThrough();
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+
+      stdinMock.push('file1\nfile2\nfile3\n');
+      stdinMock.push(null);
+
+      const result = await command.parseAsync(['affected', '--stdin']);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected'],
+          files: ['file1', 'file2', 'file3'],
+        })
+      );
+
+      stdinMock.end();
+    });
+
+    it('should parse files from stdin split across chunks', async () => {
+      const stdinMock = new stream.PassThrough();
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+
+      stdinMock.push('file1\nfil');
+      stdinMock.push('e2\nfile3');
+      stdinMock.push(null);
+
+      const result = await command.parseAsync(['affected', '--stdin']);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected'],
+          files: ['file1', 'file2', 'file3'],
+        })
+      );
+
+      stdinMock.end();
+    });
+
+    it('should parse files from stdin and a single --files option', async () => {
+      const stdinMock = new stream.PassThrough();
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+
+      stdinMock.push('file1\nfile2\nfile3\n');
+      stdinMock.push(null);
+
+      const result = await command.parseAsync([
+        'affected',
+        '--stdin',
+        '--files',
+        'file4',
+      ]);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected'],
+          files: ['file1', 'file2', 'file3', 'file4'],
+        })
+      );
+
+      stdinMock.end();
+    });
+
+    it('should parse files from stdin and multiple --files options', async () => {
+      const stdinMock = new stream.PassThrough();
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+
+      stdinMock.push('file1\nfile2\n');
+      stdinMock.push(null);
+
+      const result = await command.parseAsync([
+        'affected',
+        '--stdin',
+        '--files',
+        'file3',
+        '--files',
+        'file4',
+      ]);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected'],
+          files: ['file1', 'file2', 'file3', 'file4'],
+        })
+      );
+
+      stdinMock.end();
+    });
+
+    it('should throw when --stdin is used with a TTY', async () => {
+      const stdinMock = new stream.PassThrough();
+      Object.defineProperty(stdinMock, 'isTTY', { value: true });
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue(stdinMock as any);
+
+      await expect(command.parseAsync(['affected', '--stdin'])).rejects.toThrow(
+        /--stdin option requires piped input/
+      );
+
+      stdinMock.end();
+    });
+
+    it('should parse head and base', async () => {
+      const result = await command.parseAsync([
+        'affected',
+        '--head',
+        'head',
+        '--base',
+        'base',
+      ]);
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['affected'],
+          head: 'head',
+          base: 'base',
+        })
+      );
+    });
+  });
+
+  describe('withRunManyOptions', () => {
+    const command = withRunManyOptions(argv);
+
+    it('should parse projects to array', async () => {
+      const result = await command.parseAsync([
+        'run-many',
+        '--projects',
+        'project1',
+        '--projects',
+        'project2',
+        '--tag',
+        '81919e4',
+        '--parallel',
+        '3',
+        '--maxParallel',
+        '2',
+      ]);
+      expect(result).toEqual(
+        expect.objectContaining({
+          _: ['run-many', '--tag', '81919e4'],
+          projects: ['project1', 'project2'],
+          parallel: '3',
+          maxParallel: 2,
+        })
+      );
+    });
+  });
+
+  describe('withOutputStyle', () => {
+    it('should coerce outputStyle based on NX_TUI', async () =>
+      withEnvironmentVariables(
+        {
+          NX_TUI: 'true',
+          CI: 'false',
+          NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+        },
+        async () => {
+          const command = withOutputStyleOption(argv);
+          const result = await command.parseAsync([]);
+          expect(result['output-style']).toEqual('tui');
+        }
+      ));
+
+    it('should leave the style unset when none was given', async () =>
+      withEnvironmentVariables(
+        { NX_TUI: false, CI: 'true', NX_TUI_SKIP_CAPABILITY_CHECK: 'true' },
+        async () => {
+          // The failures-only default is resolved where output is rendered, not
+          // here. outputStyle is also read by the orchestrator to decide whether
+          // a task streams, and naming a static style there stops
+          // shouldStreamOutput from being consulted at all - which silently
+          // stops continuous tasks from streaming.
+          const command = withOutputStyleOption(argv);
+          const result = await command.parseAsync([]);
+          expect(result.outputStyle).toBeUndefined();
+        }
+      ));
+
+    it('should default to summary when driven by an AI agent', async () => {
+      (isAiAgent as Mock).mockReturnValue(true);
+      try {
+        await withEnvironmentVariables(
+          { NX_TUI: false, CI: 'false', NX_TUI_SKIP_CAPABILITY_CHECK: 'true' },
+          async () => {
+            const command = withOutputStyleOption(argv);
+            const result = await command.parseAsync([]);
+            // The agent default is inferred, not named: it resolves the render
+            // style without claiming the user asked for it, which is what keeps
+            // the streaming decision reading absence.
+            expect(result.resolvedOutputStyle).toEqual('summary');
+            expect(result.specifiedOutputStyle).toBeUndefined();
+          }
+        );
+      } finally {
+        (isAiAgent as Mock).mockReturnValue(false);
+      }
+    });
+
+    it('should let an explicit style beat the AI agent default', async () => {
+      (isAiAgent as Mock).mockReturnValue(true);
+      try {
+        await withEnvironmentVariables(
+          { NX_TUI: false, CI: 'false', NX_TUI_SKIP_CAPABILITY_CHECK: 'true' },
+          async () => {
+            const command = withOutputStyleOption(argv);
+            const result = await command.parseAsync(['--output-style=static']);
+            // Assert the field the run renders with: `outputStyle` holds what
+            // yargs parsed, so it reads 'static' whether or not the agent
+            // default overrode it.
+            expect(result.resolvedOutputStyle).toEqual('static');
+            expect(result.specifiedOutputStyle).toEqual('static');
+            expect(result.outputStyle).toEqual('static');
+          }
+        );
+      } finally {
+        (isAiAgent as Mock).mockReturnValue(false);
+      }
+    });
+
+    it('should not default to summary when not an AI agent', async () =>
+      // NX_TUI is the string 'false', not the boolean: a boolean unsets the
+      // variable, and `shouldUseTui` then falls through to defaulting ON, so
+      // this would resolve to 'tui' and never exercise the non-agent default.
+      withEnvironmentVariables(
+        { NX_TUI: 'false', CI: 'false', NX_TUI_SKIP_CAPABILITY_CHECK: 'true' },
+        async () => {
+          const command = withOutputStyleOption(argv);
+          const result = await command.parseAsync([]);
+          // `outputStyle` is never written by resolution, so asserting on it
+          // alone passes even if summary became the default for everyone.
+          expect(result.resolvedOutputStyle).toEqual('static-failures-only');
+          expect(result.outputStyle).not.toEqual('summary');
+        }
+      ));
+
+    it('should use NX_DEFAULT_OUTPUT_STYLE if not set', async () =>
+      withEnvironmentVariables(
+        {
+          NX_TUI: false,
+          CI: 'false',
+          NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+          NX_DEFAULT_OUTPUT_STYLE: 'stream-without-prefixes',
+        },
+        async () => {
+          const command = withOutputStyleOption(argv);
+          const result = await command.parseAsync([]);
+          expect(result.outputStyle).toEqual('stream-without-prefixes');
+        }
+      ));
+
+    it('should set NX_TUI if using not set', async () =>
+      withEnvironmentVariables(
+        {
+          NX_TUI: false,
+          CI: 'false',
+          NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+        },
+        async () => {
+          const command = withOutputStyleOption(argv);
+          const result = await command.parseAsync([]);
+          expect(process.env.NX_TUI).toEqual('true');
+        }
+      ));
+
+    it.each(['dynamic', 'tui'])(
+      'should set NX_TUI if using output-style=%s',
+      async () =>
+        withEnvironmentVariables(
+          {
+            NX_TUI: false,
+            CI: 'false',
+            NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+          },
+          async () => {
+            const command = withOutputStyleOption(argv);
+            const result = await command.parseAsync([
+              '--output-style',
+              'dynamic',
+            ]);
+            expect(process.env.NX_TUI).toEqual('true');
+          }
+        )
+    );
+
+    it('should enable the tui when flag set', async () =>
+      withEnvironmentVariables(
+        {
+          NX_TUI: 'false',
+          CI: 'false',
+          NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+        },
+        async () => {
+          const command = withOutputStyleOption(withTuiOptions(argv));
+          await command.parseAsync(['--tui']);
+          expect(process.env.NX_TUI).toEqual('true');
+        }
+      ));
+
+    it('should disable the tui when flag set to false', async () =>
+      withEnvironmentVariables(
+        {
+          NX_TUI: 'true',
+          CI: 'false',
+          NX_TUI_SKIP_CAPABILITY_CHECK: 'true',
+        },
+        async () => {
+          const command = withOutputStyleOption(withTuiOptions(argv));
+          await command.parseAsync(['--tui=false']);
+          expect(process.env.NX_TUI).toEqual('false');
+        }
+      ));
+  });
+
+  describe('withTuiOptions', () => {
+    it('should parse tui flag', async () => {
+      const command = withTuiOptions(argv);
+      const result = await command.parseAsync(['--tui']);
+      expect(result.tui).toEqual(true);
+    });
+
+    it('should parse tui flag set to false', async () => {
+      const command = withTuiOptions(argv);
+      const result = await command.parseAsync(['--tui=false']);
+      expect(result.tui).toEqual(false);
+    });
+
+    it('should parse tuiAutoExit flag', async () => {
+      const command = withTuiOptions(argv);
+      const result = await command.parseAsync(['--tuiAutoExit=5']);
+      expect(result.tuiAutoExit).toEqual(5);
+    });
+  });
+
+  describe('withRunOptions nxBail', () => {
+    it('should use NX_BAIL env var if --nxBail is not set', async () =>
+      withEnvironmentVariables(
+        {
+          NX_BAIL: 'true',
+        },
+        async () => {
+          const command = withRunOptions(argv);
+          const result = await command.parseAsync([]);
+          expect(result.nxBail).toEqual(true);
+        }
+      ));
+
+    it('should default nxBail to false when NX_BAIL is not set', async () =>
+      withEnvironmentVariables(
+        {
+          NX_BAIL: undefined,
+        },
+        async () => {
+          const command = withRunOptions(argv);
+          const result = await command.parseAsync([]);
+          expect(result.nxBail).toEqual(false);
+        }
+      ));
+  });
+});
+
+describe('readParallelFromArgsAndEnv', () => {
+  let originalParallel: string;
+
+  beforeEach(() => {
+    originalParallel = process.env.NX_PARALLEL;
+    delete process.env.NX_PARALLEL;
+  });
+
+  afterEach(() => {
+    if (originalParallel === undefined) {
+      delete process.env.NX_PARALLEL;
+    } else {
+      process.env.NX_PARALLEL = originalParallel;
+    }
+  });
+
+  it('default parallel should be 3', () => {
+    const result = readParallelFromArgsAndEnv({ parallel: 'true' });
+    expect(result).toEqual(3);
+  });
+
+  it('use maxParallel', () => {
+    const result = readParallelFromArgsAndEnv({
+      parallel: '',
+      maxParallel: '4',
+    });
+    expect(result).toEqual(4);
+  });
+
+  it('use max-parallel', () => {
+    const result = readParallelFromArgsAndEnv({
+      parallel: '',
+      'max-parallel': '5',
+    });
+    expect(result).toEqual(5);
+  });
+
+  it('should read parallel 6', () => {
+    const result = readParallelFromArgsAndEnv({
+      parallel: '6',
+    });
+    expect(result).toEqual(6);
+  });
+
+  it('0% parallel should be 1', () => {
+    const result = readParallelFromArgsAndEnv({
+      parallel: '0%',
+    });
+    expect(result).toEqual(1);
+  });
+
+  it('100% parallel should not be less than 1', () => {
+    const result = readParallelFromArgsAndEnv({
+      parallel: '100%',
+    });
+    expect(result).toBeGreaterThanOrEqual(1);
+  });
+});

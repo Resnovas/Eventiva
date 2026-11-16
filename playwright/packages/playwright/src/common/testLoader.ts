@@ -1,0 +1,96 @@
+/**
+ * Copyright Microsoft Corporation. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import path from 'path';
+
+import { isWorkerProcess, setCurrentlyLoadingFileSuite } from '../globals';
+import { Suite } from './test';
+import { installTransformIfNeeded, requireOrImport, startCollectingFileDeps, stopCollectingFileDeps } from '../transform/transform';
+import { serializeError } from '../util';
+
+import type { Location, TestError } from '../../types/testReporter';
+import type { FullConfigInternal } from './config';
+
+export const defaultTimeout = 30000;
+
+// To allow multiple loaders in the same process without clearing require cache,
+// we make these maps global.
+const cachedFileSuites = new Map<string, Suite>();
+
+export async function loadTestFile(file: string, config: FullConfigInternal, testErrors?: TestError[]): Promise<Suite> {
+  if (cachedFileSuites.has(file))
+    return cachedFileSuites.get(file)!;
+  const suite = new Suite(path.relative(config.config.rootDir, file) || path.basename(file), 'file');
+  suite._requireFile = file;
+  suite.location = { file, line: 0, column: 0 };
+  suite._tags = [...config.config.tags];
+
+  setCurrentlyLoadingFileSuite(suite);
+  try {
+    installTransformIfNeeded();
+    if (!isWorkerProcess())
+      await startCollectingFileDeps();
+    await requireOrImport(file);
+    cachedFileSuites.set(file, suite);
+  } catch (e) {
+    if (!testErrors)
+      throw e;
+    testErrors.push(...serializeLoadErrors(e));
+  } finally {
+    setCurrentlyLoadingFileSuite(undefined);
+    if (!isWorkerProcess())
+      await stopCollectingFileDeps(file);
+  }
+
+  {
+    // Test locations that we discover potentially have different file name.
+    // This could be due to either
+    //   a) use of source maps or due to
+    //   b) require of one file from another.
+    // Try fixing (a) w/o regressing (b).
+
+    const files = new Set<string>();
+    suite.allTests().map(t => files.add(t.location.file));
+    if (files.size === 1) {
+      // All tests point to one file.
+      const mappedFile = files.values().next().value!;
+      if (suite.location.file !== mappedFile) {
+        // The file is different, check for a likely source map case.
+        if (path.extname(mappedFile) !== path.extname(suite.location.file))
+          suite.location.file = mappedFile;
+      }
+    }
+  }
+
+  return suite;
+}
+
+function serializeLoadErrors(error: Error | any): TestError[] {
+  if (error instanceof AggregateError)
+    return error.errors.flatMap(serializeLoadErrors);
+  const result: TestError = serializeError(error);
+  if (error instanceof Error)
+    result.location = parseErrorLocation(error);
+  return [result];
+}
+
+// Transform syntax errors have loc, bun parse errors have position.
+type ParseError = Error & { loc?: Location, position?: Location };
+
+function parseErrorLocation(error: ParseError): Location | undefined {
+  const location = error.loc ?? error.position;
+  return location && { file: location.file, line: location.line, column: location.column };
+}

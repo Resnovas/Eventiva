@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportNamedDeclaration > _error_ > anonymous-function-expression > TSESTree - Error`]
+TSError
+> 1 | export function () {}
+    |                 ^ Identifier expected.
+  2 |

@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`gts_extractor > gjs files 1`] = `
+[
+  {
+    "defaultMessage": "in template",
+    "description": "in template desc",
+    "id": "7MCO2v",
+  },
+  {
+    "defaultMessage": "G'day!, from a secondary component in the same GJS file",
+    "id": "FmytR9",
+  },
+  {
+    "defaultMessage": "js getter with an id",
+    "id": "getter-message",
+  },
+  {
+    "defaultMessage": "js getter with no id",
+    "id": "hdXT/o",
+  },
+  {
+    "defaultMessage": "{connectorName, select, none {Install Service} other {Install {connectorName}} }",
+    "id": "lMXYqa",
+  },
+  {
+    "defaultMessage": "Very long message with multiple'' breaklines and multiple spaces '<a href={href}>' Link '</a>'",
+    "description": "Nice description",
+    "id": "mkhWoT",
+  },
+]
+`;
+
+exports[`gts_extractor > gts files 1`] = `
+[
+  {
+    "defaultMessage": "in template",
+    "description": "in template desc",
+    "id": "7MCO2v",
+  },
+  {
+    "defaultMessage": "js getter with an id",
+    "id": "getter-message",
+  },
+  {
+    "defaultMessage": "js getter with no id",
+    "id": "hdXT/o",
+  },
+  {
+    "defaultMessage": "{connectorName, select, none {Install Service} other {Install {connectorName}} }",
+    "id": "lMXYqa",
+  },
+  {
+    "defaultMessage": "Very long message with multiple'' breaklines and multiple spaces '<a href={href}>' Link '</a>'",
+    "description": "Nice description",
+    "id": "mkhWoT",
+  },
+  {
+    "defaultMessage": "hello from a secondary component in the same file",
+    "id": "o1wtct",
+  },
+]
+`;

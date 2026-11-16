@@ -1,0 +1,53 @@
+import { waitForPromises, createTestClient, PostHogCoreTestClient, PostHogCoreTestClientMocks } from '@/testing'
+
+describe('PostHog Core', () => {
+  let posthog: PostHogCoreTestClient
+  let mocks: PostHogCoreTestClientMocks
+
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2022-01-01'))
+
+  beforeEach(() => {
+    ;[posthog, mocks] = createTestClient('TEST_API_KEY', { flushAt: 10 })
+  })
+
+  describe('on', () => {
+    it('should listen to various events', () => {
+      const mock = vi.fn()
+      const mockOther = vi.fn()
+      posthog.on('identify', mock)
+      posthog.on('identify', mockOther)
+
+      posthog.identify('user-1')
+      expect(mock).toHaveBeenCalledTimes(1)
+      expect(mockOther).toHaveBeenCalledTimes(1)
+      expect(mock.mock.lastCall[0]).toMatchObject({ event: '$identify' })
+      expect(mock.mock.lastCall[0]).not.toHaveProperty('type')
+    })
+
+    it('should unsubscribe when called', () => {
+      const mock = vi.fn()
+      const unsubscribe = posthog.on('identify', mock)
+
+      posthog.identify('user-1')
+      expect(mock).toHaveBeenCalledTimes(1)
+      // Calling identify with a different user should emit again
+      posthog.identify('user-2')
+      expect(mock).toHaveBeenCalledTimes(2)
+      unsubscribe()
+      posthog.identify('user-3')
+      // Should not be called again after unsubscribe
+      expect(mock).toHaveBeenCalledTimes(2)
+    })
+
+    it('should subscribe to flush events', async () => {
+      const mock = vi.fn()
+      posthog.on('flush', mock)
+      posthog.capture('event')
+      expect(mock).toHaveBeenCalledTimes(0)
+      vi.runOnlyPendingTimers()
+      await waitForPromises()
+      expect(mock).toHaveBeenCalledTimes(1)
+    })
+  })
+})

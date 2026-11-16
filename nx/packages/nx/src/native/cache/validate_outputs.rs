@@ -1,0 +1,93 @@
+use itertools::Itertools;
+use regex::Regex;
+use std::sync::LazyLock;
+
+use crate::native::glob::glob_transform::partition_glob;
+
+const ALLOWED_WORKSPACE_ROOT_OUTPUT_PREFIXES: [&str; 2] = ["!{workspaceRoot}", "{workspaceRoot}"];
+
+static OUTPUT_PREFIX_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^!?\{[\s\S]+\}").expect("Output pattern regex should compile"));
+
+fn is_missing_prefix(output: &str) -> bool {
+    !OUTPUT_PREFIX_RE.is_match(output)
+}
+
+#[napi]
+pub fn validate_outputs(outputs: Vec<String>) -> anyhow::Result<()> {
+    let outputs_len = outputs.len();
+    let mut missing_prefix = Vec::with_capacity(outputs_len);
+    let mut workspace_globs = Vec::with_capacity(outputs_len);
+
+    for output in outputs.iter() {
+        if is_missing_prefix(output) {
+            missing_prefix.push(output);
+        } else {
+            for prefix in ALLOWED_WORKSPACE_ROOT_OUTPUT_PREFIXES.iter() {
+                if let Some(trimmed) = output.strip_prefix(prefix)
+                    && let (root, Some(_)) = partition_glob(trimmed)
+                    && root.is_empty()
+                {
+                    workspace_globs.push(output);
+                }
+            }
+        }
+    }
+
+    if workspace_globs.is_empty() && missing_prefix.is_empty() {
+        return Ok(());
+    }
+
+    let mut error_message = String::new();
+    if !missing_prefix.is_empty() {
+        error_message.push_str(&format!(
+            "The following outputs are invalid: \n{}\n\nRun `nx repair` to fix this.",
+            missing_prefix.iter().map(|s| format!(" - {}\n   ** Reason: Outputs must start with either \"{{workspaceRoot}}/\" or \"{{projectRoot}}/\".", s)).join("\n")
+        ));
+    }
+    if !workspace_globs.is_empty() {
+        error_message.push_str(&format!(
+            "The following outputs are defined by a glob pattern from the workspace root: \n - {}\n\nThese can be slow, replace them with a more specific pattern.",
+            workspace_globs.iter().join("\n - ")
+        ));
+    }
+
+    Err(anyhow::anyhow!(error_message))
+}
+
+#[napi]
+pub fn get_transformable_outputs(outputs: Vec<String>) -> Vec<String> {
+    outputs
+        .into_iter()
+        .filter(|output| is_missing_prefix(output))
+        .collect()
+}
+
+#[cfg(test)]
+mod test {
+    use super::{is_missing_prefix, validate_outputs};
+
+    #[test]
+    fn test_is_missing_prefix() {
+        assert!(is_missing_prefix("dist"));
+        assert!(is_missing_prefix("!dist"));
+        assert!(!is_missing_prefix("{workspaceRoot}/dist"));
+        assert!(!is_missing_prefix("!{workspaceRoot}/dist"));
+    }
+
+    #[test]
+    fn a_workspace_root_output_must_name_a_directory_before_its_pattern() {
+        for accepted in ["{workspaceRoot}/@scope", "{workspaceRoot}/dist/**"] {
+            assert!(
+                validate_outputs(vec![accepted.into()]).is_ok(),
+                "{accepted}"
+            );
+        }
+        for rejected in ["{workspaceRoot}/brace}", "{workspaceRoot}/**"] {
+            assert!(
+                validate_outputs(vec![rejected.into()]).is_err(),
+                "{rejected}"
+            );
+        }
+    }
+}

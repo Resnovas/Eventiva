@@ -1,0 +1,79 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "detectObjects": {
+        "type": "boolean"
+      },
+      "enforceConst": {
+        "type": "boolean"
+      },
+      "ignore": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^[+-]?(?:0|[1-9][0-9]*)n$",
+              "type": "string"
+            }
+          ]
+        },
+        "type": "array",
+        "uniqueItems": true
+      },
+      "ignoreArrayIndexes": {
+        "type": "boolean"
+      },
+      "ignoreClassFieldInitialValues": {
+        "type": "boolean"
+      },
+      "ignoreDefaultValues": {
+        "type": "boolean"
+      },
+      "ignoreEnums": {
+        "description": "Whether enums used in TypeScript are considered okay.",
+        "type": "boolean"
+      },
+      "ignoreNumericLiteralTypes": {
+        "description": "Whether numbers used in TypeScript numeric literal types are considered okay.",
+        "type": "boolean"
+      },
+      "ignoreReadonlyClassProperties": {
+        "description": "Whether `readonly` class properties are considered okay.",
+        "type": "boolean"
+      },
+      "ignoreTypeIndexes": {
+        "description": "Whether numbers used to index types are okay.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    detectObjects?: boolean;
+    enforceConst?: boolean;
+    ignore?: (number | string)[];
+    ignoreArrayIndexes?: boolean;
+    ignoreClassFieldInitialValues?: boolean;
+    ignoreDefaultValues?: boolean;
+    /** Whether enums used in TypeScript are considered okay. */
+    ignoreEnums?: boolean;
+    /** Whether numbers used in TypeScript numeric literal types are considered okay. */
+    ignoreNumericLiteralTypes?: boolean;
+    /** Whether `readonly` class properties are considered okay. */
+    ignoreReadonlyClassProperties?: boolean;
+    /** Whether numbers used to index types are okay. */
+    ignoreTypeIndexes?: boolean;
+  },
+];

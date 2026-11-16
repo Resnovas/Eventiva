@@ -1,0 +1,8 @@
+{
+  "compileOnSave": "hello",
+  "compilerOptions": {
+    "target": "es2015",
+    "module": "commonjs",
+    "strict": true /* Enable all strict type-checking options. */
+  }
+}

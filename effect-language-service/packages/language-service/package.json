@@ -1,0 +1,53 @@
+{
+  "name": "@effect/language-service",
+  "version": "0.87.5",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "author": "Michael Arnaldi <ma@matechs.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/language-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/language-service/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/language-service",
+  "description": "A Language-Service Plugin to Refactor and Diagnostic effect-ts projects",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "codegen": "node --import tsx ./scripts/codegen.ts",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist build .tsbuildinfo",
+    "lint": "eslint src test",
+    "lint-fix": "eslint src test --fix",
+    "check": "tsc -b tsconfig.json",
+    "check:codegen": "node --import tsx ./scripts/codegen.ts --check",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
+    "test": "vitest",
+    "test-update": "vitest --update",
+    "test-patch": "pnpm clean && pnpm build && node dist/cli.js unpatch && node dist/cli.js patch && pnpm check",
+    "coverage": "vitest run --coverage",
+    "perf": "tsx test/perf.ts"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "4.0.5",
+    "@types/pako": "^2.0.4",
+    "@typescript-eslint/project-service": "^8.52.0",
+    "effect": "4.0.5",
+    "pako": "^2.1.0",
+    "ts-patch": "^3.3.0"
+  }
+}

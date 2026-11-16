@@ -1,0 +1,193 @@
+import { execSync } from 'node:child_process';
+import { isCI } from './is-ci';
+import { getPackageManagerCommand } from './package-manager';
+import { getCloudUrl } from '../nx-cloud/utilities/get-cloud-options';
+import { terminalLink } from './terminal-link';
+import { httpRequest } from './http-client';
+
+export const NX_CLOUD_URL = 'https://nx.dev/nx-cloud';
+export const NX_CLOUD_DEMO_URL = 'https://cloud.nx.app/demo/intro';
+
+/**
+ * Clickable Nx Cloud marketing link for cloud prompt footers. The visible text
+ * stays the clean `NX_CLOUD_URL` while clicks carry UTM attribution; terminals
+ * without OSC 8 support just render the bare URL (CLOUD-4642). The content tag
+ * is per-command because `nx init` and `nx migrate` share a footer but report
+ * different commands.
+ */
+export function nxCloudHyperlink(utmContent: string): string {
+  return trackedHyperlink(NX_CLOUD_URL, utmContent);
+}
+
+/** Same as `nxCloudHyperlink`, pointing at the Nx Cloud demo (CLOUD-4640). */
+export function nxCloudDemoHyperlink(utmContent: string): string {
+  return trackedHyperlink(NX_CLOUD_DEMO_URL, utmContent);
+}
+
+function trackedHyperlink(url: string, utmContent: string): string {
+  return terminalLink(
+    url,
+    `${url}?utm_source=nx-cli&utm_medium=cli&utm_campaign=nx-cloud-connect&utm_content=${utmContent}`
+  );
+}
+
+/**
+ * Meta payload types for recordStat telemetry (matches CNW format).
+ */
+export interface RecordStatMetaStart {
+  type: 'start';
+  [key: string]: string | boolean;
+}
+
+export interface RecordStatMetaComplete {
+  type: 'complete';
+  [key: string]: string | boolean;
+}
+
+export interface RecordStatMetaError {
+  type: 'error';
+  errorCode: string;
+  errorMessage: string;
+  [key: string]: string | boolean;
+}
+
+export type RecordStatMeta =
+  | RecordStatMetaStart
+  | RecordStatMetaComplete
+  | RecordStatMetaError;
+
+export type MessageOptionKey = 'yes' | 'skip';
+
+interface MessageData {
+  code: string;
+  message: string;
+  initial: number;
+  choices: Array<{ value: string; name: string; hint?: string }>;
+  footer: string;
+  hint?: string;
+}
+
+const messageOptions: Record<string, MessageData[]> = {
+  setupNxCloud: [
+    {
+      code: 'cloud-ci-providers-speed',
+      message: 'Speed up GitHub Actions, GitLab CI, and more with Nx Cloud?',
+      initial: 0,
+      choices: [
+        { value: 'yes', name: 'Yes' },
+        { value: 'skip', name: 'Skip for now' },
+      ],
+      footer:
+        '\nFree for small teams. Remote caching and task distribution. 2-minute setup:',
+    },
+    {
+      code: 'cloud-self-healing-remote-cache',
+      message: `Would you like to enable AI-powered Self-Healing CI and Remote Caching?`,
+      initial: 0,
+      choices: [
+        { value: 'yes', name: 'Yes' },
+        { value: 'skip', name: 'Skip for now' },
+      ],
+      footer: '\nLearn about it at',
+      hint: `\n(it's free and can be disabled any time)`,
+    },
+  ],
+  setupViewLogs: [
+    {
+      code: 'connect-to-view-logs',
+      message: `To view the logs, Nx needs to connect your workspace to Nx Cloud and upload the most recent run details`,
+      initial: 0,
+      choices: [
+        {
+          value: 'yes',
+          name: 'Yes',
+          hint: 'Connect to Nx Cloud and upload the run details',
+        },
+        { value: 'skip', name: 'No' },
+      ],
+      footer: '\nRead more about Nx Cloud at',
+      hint: `\n(it's free and can be disabled any time)`,
+    },
+  ],
+};
+
+export type MessageKey = keyof typeof messageOptions;
+
+export class PromptMessages {
+  private selectedMessages = {};
+
+  getPrompt(key: MessageKey): MessageData {
+    if (this.selectedMessages[key] === undefined) {
+      if (process.env.NX_GENERATE_DOCS_PROCESS === 'true') {
+        this.selectedMessages[key] = 0;
+      } else {
+        this.selectedMessages[key] = Math.floor(
+          Math.random() * messageOptions[key].length
+        );
+      }
+    }
+    return messageOptions[key][this.selectedMessages[key]];
+  }
+
+  codeOfSelectedPromptMessage(key: string): string {
+    if (this.selectedMessages[key] === undefined) return null;
+    return messageOptions[key][this.selectedMessages[key]].code;
+  }
+}
+
+export const messages = new PromptMessages();
+
+/**
+ * We are incrementing a counter to track how often create-nx-workspace is used in CI
+ * vs dev environments. No personal information is collected.
+ */
+export async function recordStat(opts: {
+  command: string;
+  nxVersion: string;
+  useCloud: boolean;
+  meta?: RecordStatMeta;
+}) {
+  try {
+    if (!shouldRecordStats()) {
+      return;
+    }
+    await httpRequest(`${getCloudUrl()}/nx-cloud/stats`, {
+      method: 'POST',
+      timeout: 400,
+      data: {
+        command: opts.command,
+        isCI: isCI(),
+        useCloud: opts.useCloud,
+        meta: opts.meta
+          ? JSON.stringify({ ...opts.meta, nxVersion: opts.nxVersion })
+          : opts.nxVersion,
+      },
+    });
+  } catch (e) {
+    if (process.env.NX_VERBOSE_LOGGING === 'true') {
+      console.error(e);
+    }
+  }
+}
+
+function shouldRecordStats(): boolean {
+  const pmc = getPackageManagerCommand();
+  if (!pmc.getRegistryUrl) {
+    // Fallback on true as Package management doesn't support reading config for registry.
+    // currently Bun doesn't support fetching config settings https://github.com/oven-sh/bun/issues/7140
+    return true;
+  }
+  try {
+    const stdout = execSync(pmc.getRegistryUrl, {
+      encoding: 'utf-8',
+      windowsHide: true,
+    });
+    const url = new URL(stdout.trim());
+
+    // don't record stats when testing locally
+    return url.hostname !== 'localhost';
+  } catch {
+    // fallback to true if we can't detect the registry
+    return true;
+  }
+}

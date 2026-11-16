@@ -1,0 +1,293 @@
+import { PostHogPersistedProperty } from '@/types'
+import {
+  createTestClient,
+  PostHogCoreTestClient,
+  PostHogCoreTestClientMocks,
+  parseBody,
+  waitForPromises,
+} from '@/testing'
+
+describe('PostHog Core', () => {
+  let posthog: PostHogCoreTestClient
+  let mocks: PostHogCoreTestClientMocks
+
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2022-01-01'))
+
+  beforeEach(() => {
+    ;[posthog, mocks] = createTestClient('TEST_API_KEY', { flushAt: 1 })
+  })
+
+  describe('setGroupPropertiesForFlags', () => {
+    it('should store setGroupPropertiesForFlags as persisted with group_properties key', () => {
+      const props = { organisation: { name: 'bar' }, project: { name: 'baz' } }
+      posthog.setGroupPropertiesForFlags(props)
+
+      expect(mocks.storage.setItem).toHaveBeenCalledWith('group_properties', props)
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual(props)
+    })
+
+    it('should update setGroupPropertiesForFlags appropriately', () => {
+      const props = { organisation: { name: 'bar' }, project: { name: 'baz' } }
+      posthog.setGroupPropertiesForFlags(props)
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual(props)
+
+      posthog.setGroupPropertiesForFlags({ organisation: { name: 'bar2' }, project: { name2: 'baz' } })
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual({
+        organisation: { name: 'bar2' },
+        project: { name: 'baz', name2: 'baz' },
+      })
+
+      posthog.setGroupPropertiesForFlags({ organisation2: { name: 'bar' } })
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual({
+        organisation: { name: 'bar2' },
+        project: { name: 'baz', name2: 'baz' },
+        organisation2: { name: 'bar' },
+      })
+    })
+
+    it('should clear setGroupPropertiesForFlags on reset', () => {
+      const props = { organisation: { name: 'bar' }, project: { name: 'baz' } }
+      posthog.setGroupPropertiesForFlags(props)
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual(props)
+
+      posthog.reset()
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual(undefined)
+
+      posthog.setGroupPropertiesForFlags(props)
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.GroupProperties)).toEqual(props)
+    })
+  })
+
+  describe('setPersonPropertiesForFlags', () => {
+    it('should store setPersonPropertiesForFlags as persisted with person_properties key', () => {
+      const props = { organisation: 'bar', project: 'baz' }
+      posthog.setPersonPropertiesForFlags(props)
+
+      expect(mocks.storage.setItem).toHaveBeenCalledWith('person_properties', props)
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual(props)
+    })
+
+    it('should update setPersonPropertiesForFlags appropriately', () => {
+      const props = { organisation: 'bar', project: 'baz' }
+      posthog.setPersonPropertiesForFlags(props)
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual(props)
+
+      posthog.setPersonPropertiesForFlags({ organisation: 'bar2', project2: 'baz' })
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        organisation: 'bar2',
+        project: 'baz',
+        project2: 'baz',
+      })
+
+      posthog.setPersonPropertiesForFlags({ organisation2: 'bar' })
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        organisation: 'bar2',
+        project: 'baz',
+        project2: 'baz',
+        organisation2: 'bar',
+      })
+    })
+
+    it('should clear setPersonPropertiesForFlags on reset', () => {
+      const props = { organisation: 'bar', project: 'baz' }
+      posthog.setPersonPropertiesForFlags(props)
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual(props)
+
+      posthog.reset()
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual(undefined)
+
+      posthog.setPersonPropertiesForFlags(props)
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual(props)
+    })
+
+    it('set_once properties skip keys that already exist in the cache', () => {
+      posthog.setPersonPropertiesForFlags({ $set_once: { first_date: '2025-01-01', plan: 'free' } })
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        first_date: '2025-01-01',
+        plan: 'free',
+      })
+
+      // Calling again with set_once should NOT overwrite existing keys
+      posthog.setPersonPropertiesForFlags({ $set_once: { first_date: '2026-03-30', new_key: 'hello' } })
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        first_date: '2025-01-01',
+        plan: 'free',
+        new_key: 'hello',
+      })
+    })
+
+    it('set properties overwrite existing keys even when set_once does not', () => {
+      posthog.setPersonPropertiesForFlags({ $set_once: { first_date: '2025-01-01' } })
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        first_date: '2025-01-01',
+      })
+
+      // $set should overwrite, $set_once should not
+      posthog.setPersonPropertiesForFlags({
+        $set: { first_date: 'overwritten' },
+        $set_once: { first_date: 'ignored-by-set-once' },
+      })
+
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        first_date: 'overwritten',
+      })
+    })
+  })
+
+  describe('setPersonProperties', () => {
+    it('should send a $set event with person properties', async () => {
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+
+      expect(mocks.fetch).toHaveBeenCalled()
+      const batchCall = mocks.fetch.mock.calls.find((call) => call[0].includes('/batch/'))
+      expect(batchCall).toBeDefined()
+      expect(parseBody(batchCall)).toMatchObject({
+        batch: [
+          {
+            event: '$set',
+            properties: {
+              $set: { email: 'test@example.com' },
+              $set_once: {},
+            },
+          },
+        ],
+      })
+    })
+
+    it('should not send duplicate $set events with the same properties', async () => {
+      // First call should send the event
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Second call with the same properties should be ignored
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Should not have made an additional batch call
+      expect(newCallCount).toBe(callCount)
+    })
+
+    it('should send $set event when properties change', async () => {
+      // First call
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Second call with different properties should send
+      posthog.setPersonProperties({ email: 'new@example.com' })
+      await waitForPromises()
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      expect(newCallCount).toBe(callCount + 1)
+    })
+
+    it('should clear cached person properties on reset', async () => {
+      // First call
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Reset should clear the cache
+      posthog.reset()
+      await waitForPromises()
+
+      // Same properties should now be sent again after reset
+      posthog.setPersonProperties({ email: 'test@example.com' })
+      await waitForPromises()
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      expect(newCallCount).toBeGreaterThan(callCount)
+    })
+
+    it('should send $set event when set_once properties are different', async () => {
+      // First call with set_once
+      posthog.setPersonProperties(undefined, { signup_date: '2024-01-01' })
+      await waitForPromises()
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Second call with same set but different set_once should send
+      posthog.setPersonProperties(undefined, { signup_date: '2024-01-02' })
+      await waitForPromises()
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      expect(newCallCount).toBe(callCount + 1)
+    })
+  })
+
+  describe('unsetPersonProperties', () => {
+    it.each([
+      ['single property', 'plan', ['plan']],
+      ['multiple properties', ['plan', 'email'], ['plan', 'email']],
+    ] as Array<[string, string | string[], string[]]>)(
+      'should send a $set event with a $unset array for %s',
+      async (_, propertyNames, expectedUnset) => {
+        posthog.unsetPersonProperties(propertyNames)
+        await waitForPromises()
+
+        const batchCall = mocks.fetch.mock.calls.find((call) => call[0].includes('/batch/'))
+        expect(batchCall).toBeDefined()
+        expect(parseBody(batchCall)).toMatchObject({
+          batch: [
+            {
+              event: '$set',
+              properties: {
+                $unset: expectedUnset,
+              },
+            },
+          ],
+        })
+      }
+    )
+
+    it('should remove the properties from the persisted flag person properties', () => {
+      posthog.setPersonPropertiesForFlags({ plan: 'free', email: 'test@example.com' }, false)
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        plan: 'free',
+        email: 'test@example.com',
+      })
+
+      posthog.unsetPersonProperties('plan')
+      expect(posthog.getPersistedProperty(PostHogPersistedProperty.PersonProperties)).toEqual({
+        email: 'test@example.com',
+      })
+    })
+
+    it('should not send an event when given no valid property names', async () => {
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      posthog.unsetPersonProperties([])
+      posthog.unsetPersonProperties('')
+      await waitForPromises()
+
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+      expect(newCallCount).toBe(callCount)
+    })
+
+    it('should let a previously-set property be re-sent after being unset', async () => {
+      posthog.setPersonProperties({ plan: 'free' })
+      await waitForPromises()
+
+      posthog.unsetPersonProperties('plan')
+      await waitForPromises()
+      const callCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      // Setting the same value again should not be deduped because the cache was invalidated
+      posthog.setPersonProperties({ plan: 'free' })
+      await waitForPromises()
+      const newCallCount = mocks.fetch.mock.calls.filter((call) => call[0].includes('/batch/')).length
+
+      expect(newCallCount).toBe(callCount + 1)
+    })
+  })
+})

@@ -1,0 +1,92 @@
+[
+  Keyword {
+    type: "Keyword",
+    value: "class",
+
+    range: [0, 5],
+    loc: {
+      start: { column: 0, line: 1 },
+      end: { column: 5, line: 1 },
+    },
+  },
+  Identifier {
+    type: "Identifier",
+    value: "Foo",
+
+    range: [6, 9],
+    loc: {
+      start: { column: 6, line: 1 },
+      end: { column: 9, line: 1 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: "{",
+
+    range: [10, 11],
+    loc: {
+      start: { column: 10, line: 1 },
+      end: { column: 11, line: 1 },
+    },
+  },
+  Identifier {
+    type: "Identifier",
+    value: "accessor",
+
+    range: [14, 22],
+    loc: {
+      start: { column: 2, line: 2 },
+      end: { column: 10, line: 2 },
+    },
+  },
+  String {
+    type: "String",
+    value: "'quoted-prop'",
+
+    range: [23, 36],
+    loc: {
+      start: { column: 11, line: 2 },
+      end: { column: 24, line: 2 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: "=",
+
+    range: [37, 38],
+    loc: {
+      start: { column: 25, line: 2 },
+      end: { column: 26, line: 2 },
+    },
+  },
+  String {
+    type: "String",
+    value: "'value'",
+
+    range: [39, 46],
+    loc: {
+      start: { column: 27, line: 2 },
+      end: { column: 34, line: 2 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: ";",
+
+    range: [46, 47],
+    loc: {
+      start: { column: 34, line: 2 },
+      end: { column: 35, line: 2 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: "}",
+
+    range: [48, 49],
+    loc: {
+      start: { column: 0, line: 3 },
+      end: { column: 1, line: 3 },
+    },
+  },
+]

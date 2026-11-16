@@ -1,0 +1,79 @@
+
+# SCHEMA:
+
+[
+  {
+    "$defs": {
+      "directiveConfigSchema": {
+        "oneOf": [
+          {
+            "default": true,
+            "type": "boolean"
+          },
+          {
+            "enum": ["allow-with-description"],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "descriptionFormat": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "minimumDescriptionLength": {
+        "description": "A minimum character length for descriptions when `allow-with-description` is enabled.",
+        "type": "number"
+      },
+      "ts-check": {
+        "$ref": "#/items/0/$defs/directiveConfigSchema",
+        "description": "Whether to allow ts-check directives, and with which restrictions."
+      },
+      "ts-expect-error": {
+        "$ref": "#/items/0/$defs/directiveConfigSchema",
+        "description": "Whether to allow ts-expect-error directives, and with which restrictions."
+      },
+      "ts-ignore": {
+        "$ref": "#/items/0/$defs/directiveConfigSchema",
+        "description": "Whether to allow ts-ignore directives, and with which restrictions."
+      },
+      "ts-nocheck": {
+        "$ref": "#/items/0/$defs/directiveConfigSchema",
+        "description": "Whether to allow ts-nocheck directives, and with which restrictions."
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type DirectiveConfigSchema =
+  | 'allow-with-description'
+  | {
+      descriptionFormat?: string;
+    }
+  | boolean;
+
+type Options = [
+  {
+    /** Whether to allow ts-check directives, and with which restrictions. */
+    'ts-check'?: DirectiveConfigSchema;
+    /** Whether to allow ts-expect-error directives, and with which restrictions. */
+    'ts-expect-error'?: DirectiveConfigSchema;
+    /** Whether to allow ts-ignore directives, and with which restrictions. */
+    'ts-ignore'?: DirectiveConfigSchema;
+    /** Whether to allow ts-nocheck directives, and with which restrictions. */
+    'ts-nocheck'?: DirectiveConfigSchema;
+    /** A minimum character length for descriptions when `allow-with-description` is enabled. */
+    minimumDescriptionLength?: number;
+  },
+];

@@ -1,0 +1,212 @@
+
+# SCHEMA:
+
+{
+  "anyOf": [
+    {
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "allowImportNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "allowTypeImports": {
+                "description": "Whether to allow type-only imports for a path.",
+                "type": "boolean"
+              },
+              "importNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["name"],
+            "type": "object"
+          }
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    {
+      "additionalItems": false,
+      "items": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "paths": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "allowImportNames": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "allowTypeImports": {
+                        "description": "Whether to allow type-only imports for a path.",
+                        "type": "boolean"
+                      },
+                      "importNames": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "message": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["name"],
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "patterns": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "allowImportNamePattern": {
+                        "type": "string"
+                      },
+                      "allowImportNames": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "allowTypeImports": {
+                        "description": "Whether to allow type-only imports for a path.",
+                        "type": "boolean"
+                      },
+                      "caseSensitive": {
+                        "type": "boolean"
+                      },
+                      "group": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "importNamePattern": {
+                        "type": "string"
+                      },
+                      "importNames": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "message": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "regex": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "uniqueItems": true
+                }
+              ]
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "type": "array"
+    }
+  ]
+}
+
+
+# TYPES:
+
+type Options =
+  | (
+      | {
+          allowImportNames?: string[];
+          /** Whether to allow type-only imports for a path. */
+          allowTypeImports?: boolean;
+          importNames?: string[];
+          message?: string;
+          name: string;
+        }
+      | string
+    )[]
+  | []
+  | [
+      {
+        paths?: (
+          | {
+              allowImportNames?: string[];
+              /** Whether to allow type-only imports for a path. */
+              allowTypeImports?: boolean;
+              importNames?: string[];
+              message?: string;
+              name: string;
+            }
+          | string
+        )[];
+        patterns?:
+          | {
+              allowImportNamePattern?: string;
+              allowImportNames?: string[];
+              /** Whether to allow type-only imports for a path. */
+              allowTypeImports?: boolean;
+              caseSensitive?: boolean;
+              group?: string[];
+              importNamePattern?: string;
+              importNames?: string[];
+              message?: string;
+              regex?: string;
+            }[]
+          | string[];
+      },
+    ];

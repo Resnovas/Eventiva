@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "declarationDir": "dist",
+    "declarationMap": false,
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "types": ["node"],
+    "composite": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*_spec.ts",
+    "**/*_test.ts",
+    "**/*.test-utils.ts",
+    "internal-testing-utils.ts",
+    "jest.config.ts",
+    ".eslintrc.json"
+  ],
+  "include": ["*.ts", "src/**/*.ts"],
+  "references": [
+    {
+      "path": "../nx/tsconfig.lib.json"
+    }
+  ]
+}

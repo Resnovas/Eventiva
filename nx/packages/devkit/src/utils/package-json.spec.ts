@@ -1,0 +1,790 @@
+// The shared vitest setup stubs ensurePackage at its source path.
+vi.unmock('./package-json');
+
+import * as packageManagerUtils from 'nx/src/utils/package-manager';
+import { createTree } from 'nx/src/generators/testing-utils/create-tree';
+import type { Tree } from 'nx/src/generators/tree';
+import { readJson, writeJson } from 'nx/src/generators/utils/json';
+import {
+  addDependenciesToPackageJson,
+  ensurePackage,
+  getDependencyVersionFromPackageJson,
+} from './package-json';
+
+describe('addDependenciesToPackageJson', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTree();
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        react: 'latest',
+      },
+      devDependencies: {
+        jest: 'latest',
+      },
+    });
+  });
+
+  it('should not add dependency if it is not greater', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        tslib: '^2.0.0',
+      },
+      devDependencies: {
+        jest: '28.1.3',
+      },
+    });
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        tslib: '^2.3.0',
+      },
+      { jest: '28.1.1' }
+    );
+
+    expect(readJson(tree, 'package.json')).toEqual({
+      dependencies: { tslib: '^2.3.0' },
+      devDependencies: { jest: '28.1.3' },
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should add dependencies to the package.json', () => {
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        'react-dom': 'latest',
+      },
+      {}
+    );
+    expect(readJson(tree, 'package.json').dependencies).toEqual({
+      react: 'latest',
+      'react-dom': 'latest',
+    });
+
+    expect(installTask).toBeDefined();
+  });
+
+  it('should overwrite existing dependencies in the package.json if the version tag is greater', () => {
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        react: 'next',
+      },
+      {}
+    );
+    expect(readJson(tree, 'package.json').dependencies).toEqual({
+      react: 'next',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should add devDependencies to the package.json', () => {
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {},
+      {
+        '@nx/react': 'latest',
+      }
+    );
+    expect(readJson(tree, 'package.json').devDependencies).toEqual({
+      jest: 'latest',
+      '@nx/react': 'latest',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should overwrite existing devDependencies in the package.json if the version tag is greater', () => {
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {},
+      {
+        jest: 'next',
+      }
+    );
+    expect(readJson(tree, 'package.json').devDependencies).toEqual({
+      jest: 'next',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should overwrite dependencies when they exist in devDependencies or vice versa and the version tag is greater', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': 'latest',
+      },
+      devDependencies: {
+        '@nx/next': 'latest',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': 'next',
+      },
+      {
+        '@nx/angular': 'next',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': 'next',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': 'next',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should not overwrite dependencies when they exist in devDependencies or vice versa and the version tag is lesser', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': 'next',
+      },
+      devDependencies: {
+        '@nx/next': 'next',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': 'latest',
+      },
+      {
+        '@nx/angular': 'latest',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': 'next',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': 'next',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should overwrite dependencies when they exist in devDependencies or vice versa and the version is greater', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': '14.0.0',
+      },
+      devDependencies: {
+        '@nx/next': '14.0.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': '14.1.0',
+      },
+      {
+        '@nx/angular': '14.1.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.1.0',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': '14.1.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should not overwrite dependencies when they exist in devDependencies or vice versa and the version is lesser', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': '14.1.0',
+      },
+      devDependencies: {
+        '@nx/next': '14.1.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': '14.0.0',
+      },
+      {
+        '@nx/angular': '14.0.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.1.0',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': '14.1.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should not overwrite dependencies when they exist in "dependencies" and one of the versions is lesser', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': '14.2.0',
+        '@nx/cypress': '14.1.1',
+      },
+      devDependencies: {
+        '@nx/next': '14.0.0',
+        '@nx/vite': '14.1.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/angular': '14.1.0',
+      },
+      {
+        '@nx/next': '14.1.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.2.0',
+      '@nx/cypress': '14.1.1',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': '14.1.0',
+      '@nx/vite': '14.1.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should not overwrite dependencies when they exist in "devDependencies" and one of the versions is lesser', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': '14.0.0',
+        '@nx/cypress': '14.1.1',
+      },
+      devDependencies: {
+        '@nx/next': '14.2.0',
+        '@nx/vite': '14.1.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/angular': '14.1.0',
+      },
+      {
+        '@nx/next': '14.1.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.1.0',
+      '@nx/cypress': '14.1.1',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': '14.2.0',
+      '@nx/vite': '14.1.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should only overwrite dependencies when their version is greater', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': '14.0.0',
+      },
+      devDependencies: {
+        '@nx/next': '14.1.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': '14.0.0',
+      },
+      {
+        '@nx/angular': '14.1.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.1.0',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': '14.1.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should overwrite dependencies when their version is not in a semver format', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': 'github:reponame/packageNameOne',
+        '@nx/vite': 'git://github.com/npm/cli.git#v14.2.0', // this format is parsable
+      },
+      devDependencies: {
+        '@nx/next': '14.1.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': 'github:reponame/packageNameTwo',
+        '@nx/cypress':
+          'git+https://username@github.com/reponame/packagename.git',
+        '@nx/vite': '14.0.1',
+      },
+      {
+        '@nx/angular': '14.1.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': '14.1.0',
+      '@nx/cypress': 'git+https://username@github.com/reponame/packagename.git',
+      '@nx/vite': 'git://github.com/npm/cli.git#v14.2.0',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': 'github:reponame/packageNameTwo',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should add additional dependencies when they dont exist in devDependencies or vice versa and not update the ones that do exist', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        '@nx/angular': 'latest',
+      },
+      devDependencies: {
+        '@nx/next': 'latest',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        '@nx/next': 'next',
+        '@nx/cypress': 'latest',
+      },
+      {
+        '@nx/angular': 'next',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      '@nx/angular': 'next',
+      '@nx/cypress': 'latest',
+    });
+    expect(devDependencies).toEqual({
+      '@nx/next': 'next',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should not overwrite dependencies when they exist in devDependencies or vice versa and the new version is tilde', () => {
+    // ARRANGE
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        tslib: '2.4.0',
+      },
+      devDependencies: {
+        nx: '15.0.0',
+      },
+    });
+
+    // ACT
+    const installTask = addDependenciesToPackageJson(
+      tree,
+      {
+        tslib: '~2.3.0',
+      },
+      {
+        nx: '15.0.0',
+      }
+    );
+
+    // ASSERT
+    const { dependencies, devDependencies } = readJson(tree, 'package.json');
+    expect(dependencies).toEqual({
+      tslib: '2.4.0',
+    });
+    expect(devDependencies).toEqual({
+      nx: '15.0.0',
+    });
+    expect(installTask).toBeDefined();
+  });
+
+  it('should allow existing versions to be kept', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: {
+        foo: '1.0.0',
+      },
+    });
+
+    addDependenciesToPackageJson(
+      tree,
+      {
+        foo: '2.0.0',
+      },
+      {},
+      undefined,
+      true
+    );
+
+    const result = readJson(tree, 'package.json');
+    expect(result.dependencies).toEqual({
+      foo: '1.0.0',
+    });
+  });
+
+  describe('catalog support', () => {
+    beforeEach(() => {
+      vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+        'pnpm'
+      );
+      tree.root = '/test-workspace';
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should update existing catalog dependencies in pnpm workspace', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `
+packages:
+  - packages/*
+catalog:
+  react: ^18.0.0
+`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.2.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: 'catalog:' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('react: ^18.2.0');
+    });
+
+    it('should add new dependencies as regular dependencies when no existing catalog reference', () => {
+      writeJson(tree, 'package.json', { dependencies: {} });
+
+      addDependenciesToPackageJson(tree, { lodash: '^4.17.21' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ lodash: '^4.17.21' });
+    });
+
+    it('should use direct dependencies with unsupported package managers', () => {
+      vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+        'npm'
+      );
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.0.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: '^18.0.0' });
+    });
+
+    it('should handle mixed catalog and direct dependencies', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog:\n  react: ^18.0.0`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:', lodash: '^4.17.20' },
+      });
+
+      addDependenciesToPackageJson(
+        tree,
+        { react: '^18.2.0', lodash: '^4.17.21' },
+        {}
+      );
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({
+        react: 'catalog:',
+        lodash: '^4.17.21',
+      });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('react: ^18.2.0');
+    });
+
+    it('should preserve existing catalog references when updating with direct versions', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog:\n  react: ^18.0.0`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.2.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: 'catalog:' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('react: ^18.2.0');
+    });
+
+    it('should update only the specific catalog when package exists in multiple catalogs', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog:\n  react: ^18.0.0\ncatalogs:\n  dev:\n    react: ^17.0.0`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:dev' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.2.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: 'catalog:dev' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toMatch(/catalogs:\s*dev:\s*react: "?\^18\.2\.0"?/);
+      expect(workspace).toMatch(/catalog:\s*react: "?\^18\.0\.0"?/);
+    });
+
+    it('should filter catalog dependencies using version comparison logic', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog:\n  react: ^18.2.0`
+      );
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.1.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: 'catalog:' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('react: ^18.2.0');
+    });
+
+    it('should handle named catalog references', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalogs:\n  dev:\n    jest: ^28.0.0`
+      );
+
+      writeJson(tree, 'package.json', {
+        devDependencies: { jest: 'catalog:dev' },
+      });
+
+      addDependenciesToPackageJson(tree, {}, { jest: '^29.0.0' });
+
+      const result = readJson(tree, 'package.json');
+      expect(result.devDependencies).toEqual({ jest: 'catalog:dev' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('jest: ^29.0.0');
+    });
+
+    it('should resolve catalog references for version comparison', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog:\n  react: ^18.2.0`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      addDependenciesToPackageJson(tree, { react: '^18.1.0' }, {});
+
+      const result = readJson(tree, 'package.json');
+      expect(result.dependencies).toEqual({ react: 'catalog:' });
+
+      const workspace = tree.read('pnpm-workspace.yaml', 'utf-8');
+      expect(workspace).toContain('react: ^18.2.0');
+    });
+
+    it('should throw an error for invalid catalog references', () => {
+      tree.write(
+        'pnpm-workspace.yaml',
+        `packages:\n  - packages/*\ncatalog: {}`
+      );
+
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:nonexistent' },
+      });
+
+      expect(() =>
+        addDependenciesToPackageJson(tree, { react: '^18.2.0' }, {})
+      ).toThrow(
+        "Failed to resolve catalog reference 'catalog:nonexistent' for package 'react'"
+      );
+    });
+  });
+});
+
+describe('getDependencyVersionFromPackageJson', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTree();
+    tree.root = '/test-workspace';
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should resolve a bun catalog reference to the catalog version', () => {
+    vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+      'bun'
+    );
+    writeJson(tree, 'package.json', {
+      workspaces: ['packages/*'],
+      catalog: { vite: '6.0.0' },
+    });
+    writeJson(tree, 'packages/app/package.json', {
+      devDependencies: { vite: 'catalog:' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'vite',
+      'packages/app/package.json'
+    );
+
+    expect(version).toBe('6.0.0');
+  });
+
+  it('should resolve a bun named catalog reference', () => {
+    vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+      'bun'
+    );
+    writeJson(tree, 'package.json', {
+      workspaces: ['packages/*'],
+      catalogs: { web: { react: '^18.2.0' } },
+    });
+    writeJson(tree, 'packages/app/package.json', {
+      dependencies: { react: 'catalog:web' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      'packages/app/package.json'
+    );
+
+    expect(version).toBe('^18.2.0');
+  });
+
+  it('should resolve a bun catalog reference nested under workspaces', () => {
+    vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+      'bun'
+    );
+    writeJson(tree, 'package.json', {
+      workspaces: { packages: ['packages/*'], catalog: { vite: '6.0.0' } },
+    });
+    writeJson(tree, 'packages/app/package.json', {
+      devDependencies: { vite: 'catalog:' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'vite',
+      'packages/app/package.json'
+    );
+
+    expect(version).toBe('6.0.0');
+  });
+
+  it('should return the raw specifier when no catalog manager applies', () => {
+    vi.spyOn(packageManagerUtils, 'detectPackageManager').mockReturnValue(
+      'npm'
+    );
+    writeJson(tree, 'package.json', {
+      catalog: { vite: '6.0.0' },
+    });
+    writeJson(tree, 'packages/app/package.json', {
+      devDependencies: { vite: 'catalog:' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'vite',
+      'packages/app/package.json'
+    );
+
+    // npm has no catalog manager, so the reference is left unresolved.
+    expect(version).toBe('catalog:');
+  });
+});
+
+describe('ensurePackage', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTree();
+  });
+
+  it('should return package when present', async () => {
+    writeJson(tree, 'package.json', {});
+
+    expect(ensurePackage('@nx/devkit', '>=15.0.0')).toEqual(
+      require('@nx/devkit')
+    ); // return void
+  });
+});

@@ -1,0 +1,1784 @@
+[
+  {
+    "id": "effect-stable",
+    "upstream": "https://github.com/Effect-TS/effect",
+    "commit": "5e8c4fe9e82fecdddb7812fa0090470b15a6fea0",
+    "ref": "effect@3.22.4",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "effect",
+        "version": "3.22.4"
+      },
+      {
+        "name": "@effect/platform",
+        "version": "0.97.3"
+      },
+      {
+        "name": "@effect/platform-node",
+        "version": "0.108.4"
+      },
+      {
+        "name": "@effect/sql",
+        "version": "0.52.2"
+      },
+      {
+        "name": "@effect/sql-sqlite-node",
+        "version": "0.54.1"
+      },
+      {
+        "name": "@effect/cluster",
+        "version": "0.60.5"
+      },
+      {
+        "name": "@effect/rpc",
+        "version": "0.76.4"
+      },
+      {
+        "name": "@effect/experimental",
+        "version": "0.61.2"
+      },
+      {
+        "name": "@effect/vitest",
+        "version": "0.30.1"
+      }
+    ],
+    "paths": [
+      ".",
+      "LICENSE",
+      "packages/ai/ai/LICENSE",
+      "packages/ai/amazon-bedrock/LICENSE",
+      "packages/ai/anthropic/LICENSE",
+      "packages/ai/google/LICENSE",
+      "packages/ai/openai/LICENSE",
+      "packages/ai/openrouter/LICENSE",
+      "packages/cli/LICENSE",
+      "packages/cluster/LICENSE",
+      "packages/effect/LICENSE",
+      "packages/experimental/LICENSE",
+      "packages/opentelemetry/LICENSE",
+      "packages/platform-browser/LICENSE",
+      "packages/platform-bun/LICENSE",
+      "packages/platform-node-shared/LICENSE",
+      "packages/platform-node/LICENSE",
+      "packages/platform/LICENSE",
+      "packages/printer-ansi/LICENSE",
+      "packages/printer/LICENSE",
+      "packages/rpc/LICENSE",
+      "packages/sql-clickhouse/LICENSE",
+      "packages/sql-d1/LICENSE",
+      "packages/sql-drizzle/LICENSE",
+      "packages/sql-kysely/LICENSE",
+      "packages/sql-libsql/LICENSE",
+      "packages/sql-mssql/LICENSE",
+      "packages/sql-mysql2/LICENSE",
+      "packages/sql-pg/LICENSE",
+      "packages/sql-sqlite-bun/LICENSE",
+      "packages/sql-sqlite-do/LICENSE",
+      "packages/sql-sqlite-node/LICENSE",
+      "packages/sql-sqlite-react-native/LICENSE",
+      "packages/sql-sqlite-wasm/LICENSE",
+      "packages/sql/LICENSE",
+      "packages/typeclass/LICENSE",
+      "packages/vitest/LICENSE",
+      "packages/workflow/LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE",
+      "packages/ai/ai/LICENSE",
+      "packages/ai/amazon-bedrock/LICENSE",
+      "packages/ai/anthropic/LICENSE",
+      "packages/ai/google/LICENSE",
+      "packages/ai/openai/LICENSE",
+      "packages/ai/openrouter/LICENSE",
+      "packages/cli/LICENSE",
+      "packages/cluster/LICENSE",
+      "packages/effect/LICENSE",
+      "packages/experimental/LICENSE",
+      "packages/opentelemetry/LICENSE",
+      "packages/platform-browser/LICENSE",
+      "packages/platform-bun/LICENSE",
+      "packages/platform-node-shared/LICENSE",
+      "packages/platform-node/LICENSE",
+      "packages/platform/LICENSE",
+      "packages/printer-ansi/LICENSE",
+      "packages/printer/LICENSE",
+      "packages/rpc/LICENSE",
+      "packages/sql-clickhouse/LICENSE",
+      "packages/sql-d1/LICENSE",
+      "packages/sql-drizzle/LICENSE",
+      "packages/sql-kysely/LICENSE",
+      "packages/sql-libsql/LICENSE",
+      "packages/sql-mssql/LICENSE",
+      "packages/sql-mysql2/LICENSE",
+      "packages/sql-pg/LICENSE",
+      "packages/sql-sqlite-bun/LICENSE",
+      "packages/sql-sqlite-do/LICENSE",
+      "packages/sql-sqlite-node/LICENSE",
+      "packages/sql-sqlite-react-native/LICENSE",
+      "packages/sql-sqlite-wasm/LICENSE",
+      "packages/sql/LICENSE",
+      "packages/typeclass/LICENSE",
+      "packages/vitest/LICENSE",
+      "packages/workflow/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      ".": "b751cc2a580bfc29ca54235e8e955876ba25f69a",
+      "LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/ai/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/amazon-bedrock/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/anthropic/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/google/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/openai/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/ai/openrouter/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/cli/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/cluster/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/effect/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/experimental/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/opentelemetry/LICENSE": "f8f4392a07f48fa545e656bd99eaa64c4b55711b",
+      "packages/platform-browser/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform-bun/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform-node-shared/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform-node/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/printer-ansi/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/printer/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/rpc/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-clickhouse/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-d1/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-drizzle/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-kysely/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-libsql/LICENSE": "8967b4b17685547cd54d306337e44a15b85bd23d",
+      "packages/sql-mssql/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-mysql2/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-pg/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-sqlite-bun/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-sqlite-do/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-sqlite-node/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-sqlite-react-native/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql-sqlite-wasm/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/typeclass/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/vitest/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/workflow/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "README.md": "aa9b4c6ec42d3c60c43f4e71e9afbe4a8d5dc077",
+      "package.json": "40b5463d2a69281605cf3b2c7be0a4794e389b05"
+    }
+  },
+  {
+    "id": "effect-main",
+    "upstream": "https://github.com/Effect-TS/effect",
+    "commit": "3d13d1e84a933bfd4b90952ad9a221728326e923",
+    "ref": "main snapshot 2026-11-16",
+    "license": "MIT",
+    "packages": [],
+    "paths": [
+      ".",
+      "LICENSE",
+      "packages/atom/react/LICENSE",
+      "packages/atom/solid/LICENSE",
+      "packages/atom/vue/LICENSE",
+      "packages/effect/LICENSE",
+      "packages/opentelemetry/LICENSE",
+      "packages/platform/browser/LICENSE",
+      "packages/platform/bun/LICENSE",
+      "packages/platform/cloudflare/LICENSE",
+      "packages/platform/deno/LICENSE",
+      "packages/platform/node-shared/LICENSE",
+      "packages/platform/node/LICENSE",
+      "packages/sql/clickhouse/LICENSE",
+      "packages/sql/d1/LICENSE",
+      "packages/sql/libsql/LICENSE",
+      "packages/sql/mssql/LICENSE",
+      "packages/sql/mysql2/LICENSE",
+      "packages/sql/pg/LICENSE",
+      "packages/sql/pglite/LICENSE",
+      "packages/sql/sqlite-bun/LICENSE",
+      "packages/sql/sqlite-do/LICENSE",
+      "packages/sql/sqlite-node/LICENSE",
+      "packages/sql/sqlite-react-native/LICENSE",
+      "packages/sql/sqlite-wasm/LICENSE",
+      "packages/tools/docgen/LICENSE",
+      "packages/tools/graphql-generator/LICENSE",
+      "packages/tools/openapi-generator/LICENSE",
+      "packages/vitest/LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE",
+      "packages/atom/react/LICENSE",
+      "packages/atom/solid/LICENSE",
+      "packages/atom/vue/LICENSE",
+      "packages/effect/LICENSE",
+      "packages/opentelemetry/LICENSE",
+      "packages/platform/browser/LICENSE",
+      "packages/platform/bun/LICENSE",
+      "packages/platform/cloudflare/LICENSE",
+      "packages/platform/deno/LICENSE",
+      "packages/platform/node-shared/LICENSE",
+      "packages/platform/node/LICENSE",
+      "packages/sql/clickhouse/LICENSE",
+      "packages/sql/d1/LICENSE",
+      "packages/sql/libsql/LICENSE",
+      "packages/sql/mssql/LICENSE",
+      "packages/sql/mysql2/LICENSE",
+      "packages/sql/pg/LICENSE",
+      "packages/sql/pglite/LICENSE",
+      "packages/sql/sqlite-bun/LICENSE",
+      "packages/sql/sqlite-do/LICENSE",
+      "packages/sql/sqlite-node/LICENSE",
+      "packages/sql/sqlite-react-native/LICENSE",
+      "packages/sql/sqlite-wasm/LICENSE",
+      "packages/tools/docgen/LICENSE",
+      "packages/tools/graphql-generator/LICENSE",
+      "packages/tools/openapi-generator/LICENSE",
+      "packages/vitest/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      ".": "d5cfc4e6598cab48db40562bc652e10efa7d217b",
+      "LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/atom/react/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/atom/solid/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/atom/vue/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/effect/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/opentelemetry/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/browser/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/bun/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/cloudflare/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/deno/LICENSE": "2d1e0c682d621069115fb15fcc6fb85a19c69061",
+      "packages/platform/node-shared/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/platform/node/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/sql/clickhouse/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/d1/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/libsql/LICENSE": "8967b4b17685547cd54d306337e44a15b85bd23d",
+      "packages/sql/mssql/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/mysql2/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/pg/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/pglite/LICENSE": "8967b4b17685547cd54d306337e44a15b85bd23d",
+      "packages/sql/sqlite-bun/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/sqlite-do/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/sqlite-node/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/sqlite-react-native/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/sql/sqlite-wasm/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "packages/tools/docgen/LICENSE": "f8f4392a07f48fa545e656bd99eaa64c4b55711b",
+      "packages/tools/graphql-generator/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/tools/openapi-generator/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "packages/vitest/LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "README.md": "23384e97a57426f078ace43845691cc399f36d72",
+      "package.json": "0b6383628161f14acd844d03bf09fd4e32708e5c"
+    }
+  },
+  {
+    "id": "effect-sql-pg",
+    "upstream": "https://github.com/Effect-TS/effect",
+    "commit": "ae2d716c139fd7d54b0a4853d60cf25544bda010",
+    "ref": "@effect/sql-pg@0.53.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@effect/sql-pg",
+        "version": "0.53.1"
+      }
+    ],
+    "paths": [
+      "packages/sql-pg",
+      "packages/sql-pg/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/sql-pg/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/sql-pg": "1158c9950179267074218da88805036fb2e0b835",
+      "packages/sql-pg/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "README.md": "aa9b4c6ec42d3c60c43f4e71e9afbe4a8d5dc077",
+      "package.json": "40b5463d2a69281605cf3b2c7be0a4794e389b05"
+    }
+  },
+  {
+    "id": "effect-workflow",
+    "upstream": "https://github.com/Effect-TS/effect",
+    "commit": "bd20125fb9b8ce42f814ba738513daaf83ce723d",
+    "ref": "@effect/workflow@0.19.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@effect/workflow",
+        "version": "0.19.1"
+      }
+    ],
+    "paths": [
+      "packages/workflow",
+      "packages/workflow/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/workflow/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/workflow": "6404d6070188b87d5f9c4118b7fb48b79a0d8166",
+      "packages/workflow/LICENSE": "7f6fe480f77d5ee022bca87016c0cbac65713470",
+      "LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "README.md": "aa9b4c6ec42d3c60c43f4e71e9afbe4a8d5dc077",
+      "package.json": "31a2a4ce9e6f7534a3b198ca61ae5678db2d672d"
+    }
+  },
+  {
+    "id": "effect-language-service",
+    "upstream": "https://github.com/Effect-TS/language-service",
+    "commit": "cb91d700a10e86de46d57b94261d4dcc9c92fc20",
+    "ref": "@effect/language-service@0.87.5",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@effect/language-service",
+        "version": "0.87.5"
+      }
+    ],
+    "paths": [
+      "packages/language-service",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/language-service": "1493e259b0999ca2a1763f3f2f157ed47e2a52b5",
+      "LICENSE": "be1f5c14c7b3bc63d9ae786dca566728999d3808",
+      "README.md": "119e65a6635ec8a76ca794668446d02b4ba400a8",
+      "package.json": "74ebac53d8226559e94b0ef43557cada14d01582"
+    }
+  },
+  {
+    "id": "react",
+    "upstream": "https://github.com/facebook/react",
+    "commit": "612e371fb215498edde4c853bd1e0c8e9203808f",
+    "ref": "v19.2.3",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "react",
+        "version": "19.2.3"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.3"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "f662f26c13dfdec11c44e6d16a49ebcfe3412dee",
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE": "b607bb36e96c33fd8ef50897db0336c585b6137a",
+      "LICENSE": "b93be90515ccd0b9daedaa589e42bf5929693f1f",
+      "README.md": "88f8e827b0255cf639043c83833c7a0c40ec0991",
+      "package.json": "1a52907f21ede13c1d83250cfc7481d1a50f156c"
+    }
+  },
+  {
+    "id": "react-native",
+    "upstream": "https://github.com/facebook/react-native",
+    "commit": "22ea81b5e37b0cf23be1d8fb32bb7f55e1fcf3d8",
+    "ref": "v0.85.3",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "react-native",
+        "version": "0.85.3"
+      }
+    ],
+    "paths": [
+      "packages/react-native",
+      "packages/react-native-codegen",
+      "packages/react-native/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/react-native/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/react-native": "60ee15d1083936317f5e9ed4846fb714d940139e",
+      "packages/react-native-codegen": "5fea26bb22fb2bc86d09ada32f0e77629de5c789",
+      "packages/react-native/LICENSE": "b93be90515ccd0b9daedaa589e42bf5929693f1f",
+      "LICENSE": "b93be90515ccd0b9daedaa589e42bf5929693f1f",
+      "README.md": "b4280bb6abd8fca5b49bb412471dce916e69ee06",
+      "package.json": "96f2a38af207eb9ac0c23f00eab3411b3fea2b61"
+    }
+  },
+  {
+    "id": "react-native-web",
+    "upstream": "https://github.com/necolas/react-native-web",
+    "commit": "e5f5751c69cbd9cd03fed40d880ad9fbb00d8f2b",
+    "ref": "0.21.4",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "react-native-web",
+        "version": "0.21.4"
+      }
+    ],
+    "paths": [
+      "packages/react-native-web",
+      "packages/react-native-web/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/react-native-web/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/react-native-web": "a7698d295e9d4fc25b3cb5875e9041693e26eecb",
+      "packages/react-native-web/LICENSE": "c9e1b5a96cd0228305bfb6a8f1b70711a540354e",
+      "LICENSE": "1240580554a8cd2a0e7aa30842ef18249738149d",
+      "README.md": "88569b9804a01ee4d589d6904c7a34d5be390eef",
+      "package.json": "d11e78ed48537bb57761cef4f17bbad3d34c3637"
+    }
+  },
+  {
+    "id": "expo",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "52c38e9c5f785a112e6632526bf4250918d4af14",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "expo",
+        "version": "56.0.24"
+      }
+    ],
+    "paths": [
+      "packages/expo",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/expo": "3755458eedda212b9cb953cb9a0e15898e96eab6",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "formatjs-intl",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "aa3f90b53b157481515a0f7a7f0d76fcbd7c3274",
+    "ref": "@formatjs/intl@6.1.4",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@formatjs/intl",
+        "version": "6.1.4"
+      }
+    ],
+    "paths": [
+      "packages/intl",
+      "packages/intl/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/intl/LICENSE.md"
+    ],
+    "trees": {
+      "packages/intl": "06de9aaa60e075c9c0474e2e364d2f65f96ea0ed",
+      "packages/intl/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "98b44689fc93a19f28e7df7ed365c08e15d8846f"
+    }
+  },
+  {
+    "id": "react-intl",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "a487f4e06c7da613256a2671000b855183c5f78f",
+    "ref": "react-intl@12.1.6",
+    "license": "BSD-3-Clause",
+    "packages": [
+      {
+        "name": "react-intl",
+        "version": "12.1.6"
+      }
+    ],
+    "paths": [
+      "packages/react-intl",
+      "packages/react-intl/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/react-intl/LICENSE.md"
+    ],
+    "trees": {
+      "packages/react-intl": "7fb1e481c2a1e0a380bbc10187bf12af0a7de949",
+      "packages/react-intl/LICENSE.md": "70a07299fe8287b1615b7453e649b2d4a6a5722e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "d9ef1a3b44000e82a38536458d86089af3bf27fb"
+    }
+  },
+  {
+    "id": "openfeature-server-sdk",
+    "upstream": "https://github.com/open-feature/js-sdk",
+    "commit": "ba1bfd0627ef63ffe9c26c600899f7aedd6f0087",
+    "ref": "server-sdk-v1.23.0",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "@openfeature/server-sdk",
+        "version": "1.23.0"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "cb1d9e826db373728188924d1da615929d0871fd",
+      "packages/server/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "packages/web/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "README.md": "c647c541a924ec0453dcabd90f4b0728c1d3b1cf",
+      "package.json": "386782e4248c4592f60ef008bd4cdb67afce9468"
+    }
+  },
+  {
+    "id": "openfeature-web-sdk",
+    "upstream": "https://github.com/open-feature/js-sdk",
+    "commit": "0fffbc0029a846912bca8ddb7af138eb5aece0de",
+    "ref": "web-sdk-v1.10.0",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "@openfeature/web-sdk",
+        "version": "1.10.0"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "167d1551b1b030f67a04ed4d6fd30e6dc2e155c0",
+      "packages/server/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "packages/web/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "README.md": "c647c541a924ec0453dcabd90f4b0728c1d3b1cf",
+      "package.json": "386782e4248c4592f60ef008bd4cdb67afce9468"
+    }
+  },
+  {
+    "id": "openfeature-react-sdk",
+    "upstream": "https://github.com/open-feature/js-sdk",
+    "commit": "3c01041559a04a4fb1bd511127ccdd5cda184c1b",
+    "ref": "react-sdk-v1.4.1",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "@openfeature/react-sdk",
+        "version": "1.4.1"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "eb4ec1317354f25f5c0c01c9a400bef33bda1cc6",
+      "packages/server/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "packages/web/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "README.md": "c647c541a924ec0453dcabd90f4b0728c1d3b1cf",
+      "package.json": "ef1441c0035d52e0e81188e16dd384344b619b17"
+    }
+  },
+  {
+    "id": "posthog-node",
+    "upstream": "https://github.com/PostHog/posthog-js",
+    "commit": "d2d8a2631a3492a3bee727728803099a6c588f70",
+    "ref": "posthog-node@5.63.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "posthog-node",
+        "version": "5.63.1"
+      }
+    ],
+    "paths": [
+      "packages/node/src",
+      "packages/node/package.json",
+      "packages/core/src",
+      "packages/core/package.json",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/node/src": "dc8157f7d8a9408b2ad623348d132557679aedd5",
+      "packages/node/package.json": "4235ffcb42933482e16e5ee235b04083ecbfa013",
+      "packages/core/src": "e75e9b0d79545628c870ef137161768ae4e7983b",
+      "packages/core/package.json": "cca4b379db04522a68d3a7236b162b1300e03f06",
+      "LICENSE": "dd16ba34802268548d52039ff3445cdb9323988d",
+      "README.md": "4d25d38b705159accfd0d5f6b4dddc3304654731",
+      "package.json": "ff860bf78e8e1946be80b58c1ecd7273bf281078"
+    }
+  },
+  {
+    "id": "posthog-react-native",
+    "upstream": "https://github.com/PostHog/posthog-js",
+    "commit": "5ce520f2e44c68ff782f4417840e37ef9642b029",
+    "ref": "posthog-react-native@4.85.3",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "posthog-react-native",
+        "version": "4.85.3"
+      }
+    ],
+    "paths": [
+      "packages/react-native/src",
+      "packages/react-native/package.json",
+      "packages/core/src",
+      "packages/core/package.json",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/react-native/src": "03eb12d46575685cb53d2e53e6ced20612916f40",
+      "packages/react-native/package.json": "5b25a7ca6051d8a9b7d32174bfac72739134fc57",
+      "packages/core/src": "64edcbbb492ec6c22742245d8cf8419b4edc0ad9",
+      "packages/core/package.json": "4c33e5e8a1c24cb2a642f9bc1467ffb14a5cb17c",
+      "LICENSE": "dd16ba34802268548d52039ff3445cdb9323988d",
+      "README.md": "4d25d38b705159accfd0d5f6b4dddc3304654731",
+      "package.json": "ff860bf78e8e1946be80b58c1ecd7273bf281078"
+    }
+  },
+  {
+    "id": "posthog-openfeature",
+    "upstream": "https://github.com/PostHog/posthog-js",
+    "commit": "6f11d8ec6aefd127baf86125f778de23de02913b",
+    "ref": "@posthog/openfeature-node-provider@0.1.3",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@posthog/openfeature-node-provider",
+        "version": "0.1.3"
+      }
+    ],
+    "paths": [
+      "packages/openfeature-node-provider/src",
+      "packages/openfeature-node-provider/package.json",
+      "packages/core/src",
+      "packages/core/package.json",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/openfeature-node-provider/src": "1d330d8082c3ae26a19a2ea5367cb0eea9d36c2e",
+      "packages/openfeature-node-provider/package.json": "399421fd0cdddd8ef8bc93ae494f51cb17977a34",
+      "packages/core/src": "ae9260c9b93f05fdc4653be9c9202c8012c7bc2a",
+      "packages/core/package.json": "4b1390b66392e79afeb50ca29ef9418b93240822",
+      "LICENSE": "dd16ba34802268548d52039ff3445cdb9323988d",
+      "README.md": "4d25d38b705159accfd0d5f6b4dddc3304654731",
+      "package.json": "24fb3d53c686c12c98c013a4ff806cb13a845fa6"
+    }
+  },
+  {
+    "id": "typescript",
+    "upstream": "https://github.com/microsoft/TypeScript",
+    "commit": "050880ce59e30b356b686bd3144efe24f875ebc8",
+    "ref": "v6.0.3",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "typescript",
+        "version": "6.0.3"
+      }
+    ],
+    "paths": [
+      "src",
+      "LICENSE.txt",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE.txt"
+    ],
+    "trees": {
+      "src": "afedcdb5e76c9746e9d0840fc09e2b27a366075c",
+      "LICENSE.txt": "8746124b277914d0f0fd9cf4aef2ed3b587143d9",
+      "README.md": "b6505f7362b6377112c4c1251194a6506f5efd97",
+      "package.json": "703fd46cf275d5f65a64363754857f67ee70b696"
+    }
+  },
+  {
+    "id": "nx",
+    "upstream": "https://github.com/nrwl/nx",
+    "commit": "19a9e5f4e525b517faa4b1ab086781c9d158957d",
+    "ref": "24.0.5",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "nx",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/devkit",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/eslint",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/eslint-plugin",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/expo",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/js",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/playwright",
+        "version": "24.0.5"
+      },
+      {
+        "name": "@nx/vitest",
+        "version": "24.0.5"
+      }
+    ],
+    "paths": [
+      "packages/nx",
+      "packages/devkit",
+      "packages/eslint",
+      "packages/eslint-plugin",
+      "packages/expo",
+      "packages/js",
+      "packages/playwright",
+      "packages/vitest",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/nx": "e5c8e245c7251a3b097c42528b8a2e8c590e4f1e",
+      "packages/devkit": "1a1ccc950487a9999183b2be40e59022eb966afa",
+      "packages/eslint": "680fd4323af3f6ad67f66b76212eaf73251a0800",
+      "packages/eslint-plugin": "0519e907eeec63cb7a4474981547fcd06b0653c3",
+      "packages/expo": "ec78747bf04f670db3ebc0d282f7105d283eb2e5",
+      "packages/js": "ea1c412e26e4c0a6db5cdb4c6fdf2b37755430a4",
+      "packages/playwright": "c692fff266743dce6fa28cb116c63f58bb877042",
+      "packages/vitest": "a61799271623b8d366c79584e099a6ad0e1065cf",
+      "LICENSE": "00fa6062439cf3d8b94d7d651332ae58b8248aa6",
+      "README.md": "397b065dbe283889acfa09b7248cdfb5c63ae03a",
+      "package.json": "d0e32eadc56c213e82cb9a69cdcd964150a07dff"
+    }
+  },
+  {
+    "id": "vite",
+    "upstream": "https://github.com/vitejs/vite",
+    "commit": "0fd9a29f57d49d496f39c952f44c1b5fc3e90769",
+    "ref": "v8.3.6",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "vite",
+        "version": "8.3.6"
+      }
+    ],
+    "paths": [
+      "packages/vite",
+      "packages/vite/LICENSE.md",
+      "packages/vite/src/node/__tests__/plugins/__snapshots__/license.spec.ts.snap",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-licence-cc0/licence",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-mit/license",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/license",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-nested-license-isc/LICENSE",
+      "packages/vite/src/node/__tests__/plugins/license.spec.ts",
+      "packages/vite/src/node/plugins/license.ts",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/vite/LICENSE.md",
+      "packages/vite/src/node/__tests__/plugins/__snapshots__/license.spec.ts.snap",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-licence-cc0/licence",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-mit/license",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/license",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-nested-license-isc/LICENSE",
+      "packages/vite/src/node/__tests__/plugins/license.spec.ts",
+      "packages/vite/src/node/plugins/license.ts",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/vite": "0176e3aa9daefd6d66dc57e3299775980bd472b9",
+      "packages/vite/LICENSE.md": "06481aa9d21aa40e438c0d263dc9df80eaaad717",
+      "packages/vite/src/node/__tests__/plugins/__snapshots__/license.spec.ts.snap": "1546143e444a7522d5b6f436bac15d3842a97141",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-licence-cc0/licence": "7837407e70efb51ec7d19b669ac3f9b2d8683273",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-mit/license": "1732da241e525286fde19609e27b3b26a456732b",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/license": "1732da241e525286fde19609e27b3b26a456732b",
+      "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-nested-license-isc/LICENSE": "40ce705e530b078496e716750f46a4c5e4e48ba0",
+      "packages/vite/src/node/__tests__/plugins/license.spec.ts": "67876e7b900bbe85380112132b838e2e5fc39b1e",
+      "packages/vite/src/node/plugins/license.ts": "266957c000e88c9dea6913246b6ce794a469e68b",
+      "LICENSE": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
+      "README.md": "069c468a98123f873f4626f6fb5a666389cdfb45",
+      "package.json": "b037c1b4d91f0d2d782584c52eefd2db407fc41e"
+    }
+  },
+  {
+    "id": "vitest",
+    "upstream": "https://github.com/vitest-dev/vitest",
+    "commit": "4766ce1e72ded629d3a37637f57eeae643789a8c",
+    "ref": "v4.1.12",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "vitest",
+        "version": "4.1.12"
+      },
+      {
+        "name": "@vitest/coverage-v8",
+        "version": "4.1.12"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/vitest/LICENSE.md",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/vitest/LICENSE.md",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "cad7628ab4eb0dff7320ba2c92e54027e3dba2e1",
+      "packages/vitest/LICENSE.md": "d2883c9b3d11cf0a3669b623f9506581bbb5a1e9",
+      "LICENSE": "0e5771dddf4e96ebc77c349f53fc763b910e63c0",
+      "README.md": "5d1db258e72a8d4f8c202f02e2a816e80d2f96c5",
+      "package.json": "9c56da3be844a27e5a038bb2a439deced687e29f"
+    }
+  },
+  {
+    "id": "playwright",
+    "upstream": "https://github.com/microsoft/playwright",
+    "commit": "a1f35e1955976e84411f9c10358228a80b763ebe",
+    "ref": "v1.65.0",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "@playwright/test",
+        "version": "1.65.0"
+      }
+    ],
+    "paths": [
+      "packages/playwright",
+      "packages/playwright-core",
+      "packages/playwright-test",
+      "packages/playwright-core/src/server/bidi/third_party/LICENSE",
+      "LICENSE",
+      "NOTICE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/playwright-core/src/server/bidi/third_party/LICENSE",
+      "LICENSE",
+      "NOTICE"
+    ],
+    "trees": {
+      "packages/playwright": "1ec0a50ac11e55c813d63d89c97ab4a7fc4d58f8",
+      "packages/playwright-core": "1a0ec63456c143c48f985118f8aaf1bd858f6a9a",
+      "packages/playwright-test": "00b13c5a6a2feb6cb5de9591596d2d7ac54ac4c4",
+      "packages/playwright-core/src/server/bidi/third_party/LICENSE": "d2c171df74e931892e20f9395041bf8529e45330",
+      "LICENSE": "df112373eb2e23e459bf93ec412be1764dc5a38b",
+      "NOTICE": "814ec1696f7ad36c1b524fb6adeef14b4b367fec",
+      "README.md": "43bc9ca68d1e0d5045fb4b3458ec427d6b06edc9",
+      "package.json": "34927803bf2f25303620ba3a22ff88f136404aa1"
+    }
+  },
+  {
+    "id": "eslint",
+    "upstream": "https://github.com/eslint/eslint",
+    "commit": "12cbff4125db3f6446f72fa0c48c46b92b120427",
+    "ref": "v10.14.0",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "eslint",
+        "version": "10.14.0"
+      }
+    ],
+    "paths": [
+      "lib",
+      "conf",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "lib": "8e6d7004ac8b0116b5732e8b412f963425c608a6",
+      "conf": "f638f4283536bce0461dbe76755da52c72c5044d",
+      "LICENSE": "b607bb36e96c33fd8ef50897db0336c585b6137a",
+      "README.md": "6870adeb3f289b8811f6f73add811388f0fce8f1",
+      "package.json": "c9fe0995c02b523ac810ee77f21b879cf9421867"
+    }
+  },
+  {
+    "id": "prettier",
+    "upstream": "https://github.com/prettier/prettier",
+    "commit": "1172b82c295c4f889fd787dc6c78c3e194ebf353",
+    "ref": "3.9.10",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "prettier",
+        "version": "3.9.10"
+      }
+    ],
+    "paths": [
+      "src",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "src": "904d26914390ad6bf4ac3f04a257a405841e20d1",
+      "LICENSE": "5767e34d30ab78796220f9492726dd2f677d4166",
+      "README.md": "2297b58e424367eaaaa6a22c8f9f3ed45e769cca",
+      "package.json": "9646b6d624fb8bbf1be2e068fa06528b45a6fe4e"
+    }
+  },
+  {
+    "id": "async-storage",
+    "upstream": "https://github.com/react-native-async-storage/async-storage",
+    "commit": "3c9560c8874cabb1200b5121815f932b397cf89e",
+    "ref": "@react-native-async-storage/async-storage@2.2.0",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@react-native-async-storage/async-storage",
+        "version": "2.2.0"
+      }
+    ],
+    "paths": [
+      "packages/default-storage",
+      "packages/api",
+      "packages/default-storage/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/default-storage/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/default-storage": "f7a6fc3eb6bc447db2412c338be1179eea7e6d09",
+      "packages/api": "2c526a0ff7fc44371e2885f36ade58cc71a87f25",
+      "packages/default-storage/LICENSE": "d9021534ac85dd7329c9dac029afafe52d7ff170",
+      "LICENSE": "d9021534ac85dd7329c9dac029afafe52d7ff170",
+      "README.md": "d0e92ae4a6b8246f2d3da0e34db99c23fadaf81d",
+      "package.json": "430b93e90de1092e6ce99676a889b85497aec841"
+    }
+  },
+  {
+    "id": "eslint-plugin-react-hooks",
+    "upstream": "https://github.com/facebook/react",
+    "commit": "d1727fbf987392749b374f3afe62227d2c70fc41",
+    "ref": "eslint-plugin-react-hooks@7.1.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "eslint-plugin-react-hooks",
+        "version": "7.1.1"
+      }
+    ],
+    "paths": [
+      "packages/eslint-plugin-react-hooks",
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/eslint-plugin-react-hooks": "e2449dd2d6236698f51069c16ac7ae8d5fbea78b",
+      "packages/eslint-plugin-react-hooks/src/code-path-analysis/LICENSE": "b607bb36e96c33fd8ef50897db0336c585b6137a",
+      "LICENSE": "b93be90515ccd0b9daedaa589e42bf5929693f1f",
+      "README.md": "88f8e827b0255cf639043c83833c7a0c40ec0991",
+      "package.json": "0ae925a1d4ecd7389a21d953ed05e151c9b03dbc"
+    }
+  },
+  {
+    "id": "openfeature-core",
+    "upstream": "https://github.com/open-feature/js-sdk",
+    "commit": "090bf55779267f60b0a25c8486a8644855683fc4",
+    "ref": "core-v1.12.0",
+    "license": "Apache-2.0",
+    "packages": [
+      {
+        "name": "@openfeature/core",
+        "version": "1.12.0"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/server/LICENSE",
+      "packages/web/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "3d4cc893a003de85dd5d9076243ee5c55e9f21c1",
+      "packages/server/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "packages/web/LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "LICENSE": "96b3dc8fc4d945a56bcd1496142d7cd89cdb6758",
+      "README.md": "c647c541a924ec0453dcabd90f4b0728c1d3b1cf",
+      "package.json": "386782e4248c4592f60ef008bd4cdb67afce9468"
+    }
+  },
+  {
+    "id": "formatjs-intl-getcanonicallocales",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "84d17110e122d2019f41e50a19bf3c24d6152f29",
+    "ref": "@formatjs/intl-getcanonicallocales@3.3.0",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@formatjs/intl-getcanonicallocales",
+        "version": "3.3.0"
+      }
+    ],
+    "paths": [
+      "packages/intl-getcanonicallocales",
+      "packages/intl-getcanonicallocales/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/intl-getcanonicallocales/LICENSE.md"
+    ],
+    "trees": {
+      "packages/intl-getcanonicallocales": "b10da7169b86fe3fc8ccf3d320b830fdc62e9782",
+      "packages/intl-getcanonicallocales/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "6001e798762c0fd0f90b1c82920fbf16b8e077ec"
+    }
+  },
+  {
+    "id": "formatjs-intl-locale",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "cd9daefa867152a0cc51ce737a509edb88dcdea9",
+    "ref": "@formatjs/intl-locale@5.4.2",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@formatjs/intl-locale",
+        "version": "5.4.2"
+      }
+    ],
+    "paths": [
+      "packages/intl-locale",
+      "packages/intl-locale/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/intl-locale/LICENSE.md"
+    ],
+    "trees": {
+      "packages/intl-locale": "5d85be52033e49894716d000953eab05a4dc98d3",
+      "packages/intl-locale/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "27f16bd8f144cab6f6b9d8d6c31016ffa0c9a15e"
+    }
+  },
+  {
+    "id": "formatjs-intl-pluralrules",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "e212dfa58c73f05eac1099f1c11e0364413199d2",
+    "ref": "@formatjs/intl-pluralrules@7.0.2",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@formatjs/intl-pluralrules",
+        "version": "7.0.2"
+      }
+    ],
+    "paths": [
+      "packages/intl-pluralrules",
+      "packages/intl-pluralrules/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/intl-pluralrules/LICENSE.md"
+    ],
+    "trees": {
+      "packages/intl-pluralrules": "3d008d07b16d044b3841f7584d2db97ec96aecaa",
+      "packages/intl-pluralrules/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "012dd0ada19fa147b5e2cc4813ef11dbeb22f05e"
+    }
+  },
+  {
+    "id": "formatjs-cli",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "73430970acbac6e144d7f4750ef1cd4354ce78dc",
+    "ref": "@formatjs/cli@6.18.0",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@formatjs/cli",
+        "version": "6.18.0"
+      }
+    ],
+    "paths": [
+      "packages/cli",
+      "packages/cli-lib",
+      "packages/cli-lib/LICENSE.md",
+      "packages/cli/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/cli-lib/LICENSE.md",
+      "packages/cli/LICENSE.md"
+    ],
+    "trees": {
+      "packages/cli": "e46638c20b575df6741536fcb2aec5becf3c2095",
+      "packages/cli-lib": "5f6c9ff0814be4ae37b72aea0cae5f93a8de00dd",
+      "packages/cli-lib/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "packages/cli/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "012dd0ada19fa147b5e2cc4813ef11dbeb22f05e"
+    }
+  },
+  {
+    "id": "eslint-plugin-formatjs",
+    "upstream": "https://github.com/formatjs/formatjs",
+    "commit": "cd9daefa867152a0cc51ce737a509edb88dcdea9",
+    "ref": "eslint-plugin-formatjs@8.1.3",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "eslint-plugin-formatjs",
+        "version": "8.1.3"
+      }
+    ],
+    "paths": [
+      "packages/eslint-plugin-formatjs",
+      "packages/eslint-plugin-formatjs/LICENSE.md",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/eslint-plugin-formatjs/LICENSE.md"
+    ],
+    "trees": {
+      "packages/eslint-plugin-formatjs": "52658ee52ac1bc46d52a19e3266db99ddcff2382",
+      "packages/eslint-plugin-formatjs/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
+      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
+      "package.json": "27f16bd8f144cab6f6b9d8d6c31016ffa0c9a15e"
+    }
+  },
+  {
+    "id": "babel-core",
+    "upstream": "https://github.com/babel/babel",
+    "commit": "69f7ed753cb6b96b1eb6cdf992b73a3e5d91c1b9",
+    "ref": "v7.29.13",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@babel/core",
+        "version": "7.29.13"
+      },
+      {
+        "name": "@babel/runtime",
+        "version": "7.29.13"
+      }
+    ],
+    "paths": [
+      "packages/babel-core",
+      "packages/babel-helpers",
+      "packages/babel-runtime",
+      "packages/babel-helpers/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/babel-helpers/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/babel-core": "61c440e96d8e7f2e182c0173bf6403ef38b9dae4",
+      "packages/babel-helpers": "e32acce8b54c2eb37bd2625ef0f091a5388be014",
+      "packages/babel-runtime": "80c4b30bc0bf811afc2527c5bcffab3def886729",
+      "packages/babel-helpers/LICENSE": "37b2c998c41e131cfdd18e93536c73cfaf919ed4",
+      "LICENSE": "f31575ec773bb199aeb7c0d0f1612cfe1c7038f1",
+      "README.md": "9c84263cccd07da97a19303613b50c9b2a6ebb45",
+      "package.json": "c6f2c535039b011962963f37e3d8b12216a1de1b"
+    }
+  },
+  {
+    "id": "expo-metro-runtime",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "1b8eb0e13635d3ef52c1c11d305ff927d01390ae",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@expo/metro-runtime",
+        "version": "56.0.21"
+      }
+    ],
+    "paths": [
+      "packages/@expo/metro-runtime",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/@expo/metro-runtime": "181e814bbf2e2e7374f2e5531cf35a485c2eb7eb",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "expo-cli",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "52c38e9c5f785a112e6632526bf4250918d4af14",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@expo/cli",
+        "version": "56.1.27"
+      }
+    ],
+    "paths": [
+      "packages/@expo/cli",
+      "packages/@expo/cli/LICENSE-third-party",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/@expo/cli/LICENSE-third-party",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/@expo/cli": "fe3afc030f6b8b8eeedf342b2809b8166c5226a4",
+      "packages/@expo/cli/LICENSE-third-party": "3fef7e70dd7e720044de98e835e838fd72909012",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "babel-preset-expo",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "52c38e9c5f785a112e6632526bf4250918d4af14",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "babel-preset-expo",
+        "version": "56.0.21"
+      }
+    ],
+    "paths": [
+      "packages/babel-preset-expo",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/babel-preset-expo": "9180f396ce7cd25dd351e9869f51dacfb9875b62",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "expo-localization",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "125e8225bf36a4b9b2a159441d9ea724bcf1110f",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "expo-localization",
+        "version": "56.0.6"
+      }
+    ],
+    "paths": [
+      "packages/expo-localization",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/expo-localization": "9882ab1c5512db649f2c14db64a0c19a759bb44c",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "expo-splash-screen",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "52c38e9c5f785a112e6632526bf4250918d4af14",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "expo-splash-screen",
+        "version": "56.0.16"
+      }
+    ],
+    "paths": [
+      "packages/expo-splash-screen",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/expo-splash-screen": "1c8c37fe988dc6efd79641010e77293505c2eda2",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "expo-status-bar",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "a8ab3da510a34b7bdb2262aa9887d4f78b102280",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "expo-status-bar",
+        "version": "56.0.4"
+      }
+    ],
+    "paths": [
+      "packages/expo-status-bar",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/expo-status-bar": "519f79a2d09903ea2cfa49b95c7f3a6173d430c6",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "1cbd454ab766591aea6c86a81d4d701fa65095ba"
+    }
+  },
+  {
+    "id": "expo-system-ui",
+    "upstream": "https://github.com/expo/expo",
+    "commit": "125e8225bf36a4b9b2a159441d9ea724bcf1110f",
+    "ref": "npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "expo-system-ui",
+        "version": "56.0.5"
+      }
+    ],
+    "paths": [
+      "packages/expo-system-ui",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/expo-system-ui": "2c013776e5ea724b29b620a5a56270b64709beea",
+      "LICENSE": "30b20e3b5f0f470947ba9480d90587ba07c137b4",
+      "README.md": "15e746dfea1f593b9318c97a1cfa2fbc50043ae1",
+      "package.json": "7777a9e7455c572020fb36bda896dddecb35b1fe"
+    }
+  },
+  {
+    "id": "metro",
+    "upstream": "https://github.com/facebook/metro",
+    "commit": "b71015ef83904e7086342ddb72205b7242dcd129",
+    "ref": "v0.84.5 (implementation dependencies of @expo/metro@56.0.2)",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "metro",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-core",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-cache",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-config",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-runtime",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-file-map",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-resolver",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-cache-key",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-source-map",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-symbolicate",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-minify-terser",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-transform-worker",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-babel-transformer",
+        "version": "0.84.5"
+      },
+      {
+        "name": "metro-transform-plugins",
+        "version": "0.84.5"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/buck-worker-tool/src/third-party/LICENSE.MIT",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/buck-worker-tool/src/third-party/LICENSE.MIT",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "4cc837256cd11b52c80a5cfc980761cebd972536",
+      "packages/buck-worker-tool/src/third-party/LICENSE.MIT": "6eafbd734a6e062459ba4b3b4a99f8aeb7178664",
+      "LICENSE": "b93be90515ccd0b9daedaa589e42bf5929693f1f",
+      "README.md": "f6a438129629681105adec5a2dbaaab486bc7343",
+      "package.json": "353be650d8e1665257fc022659a53b5b4571c5e7"
+    }
+  },
+  {
+    "id": "typescript-eslint",
+    "upstream": "https://github.com/typescript-eslint/typescript-eslint",
+    "commit": "4ad6b7553781fa3c93fc26642d7219d2e6624504",
+    "ref": "v8.72.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "typescript-eslint",
+        "version": "8.72.1"
+      }
+    ],
+    "paths": [
+      "packages",
+      "packages/ast-spec/LICENSE",
+      "packages/eslint-plugin-internal/LICENSE",
+      "packages/eslint-plugin/LICENSE",
+      "packages/integration-tests/LICENSE",
+      "packages/parser/LICENSE",
+      "packages/project-service/LICENSE",
+      "packages/rule-schema-to-typescript-types/LICENSE",
+      "packages/rule-tester/LICENSE",
+      "packages/scope-manager/LICENSE",
+      "packages/tsconfig-utils/LICENSE",
+      "packages/type-utils/LICENSE",
+      "packages/types/LICENSE",
+      "packages/typescript-eslint/LICENSE",
+      "packages/typescript-estree/LICENSE",
+      "packages/utils/LICENSE",
+      "packages/visitor-keys/LICENSE",
+      "packages/website-eslint/LICENSE",
+      "packages/website/LICENSE",
+      "packages/website/blog/authors.yml",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/ast-spec/LICENSE",
+      "packages/eslint-plugin-internal/LICENSE",
+      "packages/eslint-plugin/LICENSE",
+      "packages/integration-tests/LICENSE",
+      "packages/parser/LICENSE",
+      "packages/project-service/LICENSE",
+      "packages/rule-schema-to-typescript-types/LICENSE",
+      "packages/rule-tester/LICENSE",
+      "packages/scope-manager/LICENSE",
+      "packages/tsconfig-utils/LICENSE",
+      "packages/type-utils/LICENSE",
+      "packages/types/LICENSE",
+      "packages/typescript-eslint/LICENSE",
+      "packages/typescript-estree/LICENSE",
+      "packages/utils/LICENSE",
+      "packages/visitor-keys/LICENSE",
+      "packages/website-eslint/LICENSE",
+      "packages/website/LICENSE",
+      "packages/website/blog/authors.yml",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages": "ea6b9a7f695204ec3c99969f59d58b2f42a7bcb7",
+      "packages/ast-spec/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/eslint-plugin-internal/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/eslint-plugin/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/integration-tests/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/parser/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/project-service/LICENSE": "310a18f8a6cbbe878d7c2874d6e3323827709b99",
+      "packages/rule-schema-to-typescript-types/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/rule-tester/LICENSE": "d68c4a4557ee868adebd0dbc780b7af0225889e2",
+      "packages/scope-manager/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/tsconfig-utils/LICENSE": "310a18f8a6cbbe878d7c2874d6e3323827709b99",
+      "packages/type-utils/LICENSE": "dabd464af3a207c5f55cd5250caf63f05fc3b9fc",
+      "packages/types/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/typescript-eslint/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/typescript-estree/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/utils/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/visitor-keys/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/website-eslint/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/website/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "packages/website/blog/authors.yml": "01e38c980a114899a9cb06875df5032d88f12c80",
+      "LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
+      "README.md": "fde6040f8c7ef1b086dc1345d3f582c97714058b",
+      "package.json": "e208876f130578cdd1f8ca08c5263784daf0c088"
+    }
+  },
+  {
+    "id": "eslint-js",
+    "upstream": "https://github.com/eslint/eslint",
+    "commit": "84fb885d49ac810e79a9491276b4828b53d913e5",
+    "ref": "@eslint/js@10.0.1 npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "@eslint/js",
+        "version": "10.0.1"
+      }
+    ],
+    "paths": [
+      "packages/js",
+      "packages/js/LICENSE",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "packages/js/LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      "packages/js": "d6ebade0b87eaca8b632efa2108bb3c13da05ad3",
+      "packages/js/LICENSE": "b607bb36e96c33fd8ef50897db0336c585b6137a",
+      "LICENSE": "b607bb36e96c33fd8ef50897db0336c585b6137a",
+      "README.md": "74a50f061b36e3048214cf11c5be483055f89455",
+      "package.json": "1f4ac530621c311dd0eded676d5d620889bc3116"
+    }
+  },
+  {
+    "id": "node-postgres",
+    "upstream": "https://github.com/brianc/node-postgres",
+    "commit": "0980cefebe0ae461da8883703be049fe13ca96cf",
+    "ref": "pg@8.23.1",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "pg",
+        "version": "8.23.1"
+      }
+    ],
+    "paths": [
+      ".",
+      "LICENSE",
+      "packages/pg-connection-string/LICENSE",
+      "packages/pg-pool/LICENSE",
+      "packages/pg-query-stream/LICENSE",
+      "packages/pg/test/integration/client/notice-tests.js",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE",
+      "packages/pg-connection-string/LICENSE",
+      "packages/pg-pool/LICENSE",
+      "packages/pg-query-stream/LICENSE",
+      "packages/pg/test/integration/client/notice-tests.js",
+      "LICENSE"
+    ],
+    "trees": {
+      ".": "4f058be720c0f9f16a64e5ed965e86d406712da0",
+      "LICENSE": "5c1405646fa9dfc49a4638bfc5c8ca908d912505",
+      "packages/pg-connection-string/LICENSE": "b068a6cb2fe19df24ba034c3d27d78de8cd93ec7",
+      "packages/pg-pool/LICENSE": "4e9058148e75f05ca4125f34eff371d08c014f6b",
+      "packages/pg-query-stream/LICENSE": "c3ba81745ddb6ed81cdbe66b038368194ae10952",
+      "packages/pg/test/integration/client/notice-tests.js": "b5d4f3d5e55ded9c8f01d522abf51df28ca0e01a",
+      "README.md": "ecd94e792419af038ec647d78419d6d935a52ea8",
+      "package.json": "02581d784ddce205f34dfaa6a85c63bf38aaadcc"
+    }
+  },
+  {
+    "id": "eslint-config-prettier",
+    "upstream": "https://github.com/prettier/eslint-config-prettier",
+    "commit": "9b0b0a47ec28a7a83cf65e8436a8776910379385",
+    "ref": "v10.1.8 npm gitHead",
+    "license": "MIT",
+    "packages": [
+      {
+        "name": "eslint-config-prettier",
+        "version": "10.1.8"
+      }
+    ],
+    "paths": [
+      ".",
+      "LICENSE",
+      "README.md",
+      "package.json"
+    ],
+    "notices": [
+      "LICENSE",
+      "LICENSE"
+    ],
+    "trees": {
+      ".": "8497bd955f8e7e1fa538d86bf4c4b1a4e67d777a",
+      "LICENSE": "4b17469e8038a832051611418c2bf8d569f88c44",
+      "README.md": "2bdb30c30ebc4ec51c2108ed1c6b5256af412b6c",
+      "package.json": "a8fc177c72c93708c42d7ecfb4475db6154b25a9"
+    }
+  }
+]

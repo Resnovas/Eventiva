@@ -1,0 +1,120 @@
+import type { TSESLint } from '@typescript-eslint/utils';
+
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+
+import {
+  createRule,
+  isAssignee,
+  isNonNullAssertionPunctuator,
+  nullThrows,
+  NullThrowsReasons,
+} from '../util';
+
+export type MessageIds = 'noNonNull' | 'suggestOptionalChain';
+
+export default createRule<[], MessageIds>({
+  name: 'no-non-null-assertion',
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Disallow non-null assertions using the `!` postfix operator',
+      recommended: 'strict',
+    },
+    hasSuggestions: true,
+    messages: {
+      noNonNull: 'Forbidden non-null assertion.',
+      suggestOptionalChain:
+        'Consider using the optional chain operator `?.` instead. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator.',
+    },
+    schema: [],
+  },
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- For compatibility with ESLint 8, see #12842
+  defaultOptions: [],
+  create(context) {
+    return {
+      TSNonNullExpression(node): void {
+        const suggest: TSESLint.ReportSuggestionArray<MessageIds> = [];
+
+        // it always exists in non-null assertion
+        const nonNullOperator = nullThrows(
+          context.sourceCode.getTokenAfter(
+            node.expression,
+            isNonNullAssertionPunctuator,
+          ),
+          NullThrowsReasons.MissingToken('!', 'expression'),
+        );
+
+        function replaceTokenWithOptional(): TSESLint.ReportFixFunction {
+          return fixer => fixer.replaceText(nonNullOperator, '?.');
+        }
+
+        function removeToken(): TSESLint.ReportFixFunction {
+          return fixer => fixer.remove(nonNullOperator);
+        }
+
+        if (
+          node.parent.type === AST_NODE_TYPES.MemberExpression &&
+          node.parent.object === node &&
+          !isAssignee(node.parent)
+        ) {
+          if (!node.parent.optional) {
+            if (node.parent.computed) {
+              // it is x![y]?.z
+              suggest.push({
+                messageId: 'suggestOptionalChain',
+                fix: replaceTokenWithOptional(),
+              });
+            } else {
+              // it is x!.y?.z
+              suggest.push({
+                messageId: 'suggestOptionalChain',
+                fix(fixer) {
+                  // x!.y?.z
+                  //   ^ punctuator
+                  const punctuator = nullThrows(
+                    context.sourceCode.getTokenAfter(nonNullOperator),
+                    NullThrowsReasons.MissingToken('.', '!'),
+                  );
+                  return [
+                    fixer.remove(nonNullOperator),
+                    fixer.insertTextBefore(punctuator, '?'),
+                  ];
+                },
+              });
+            }
+          } else {
+            // it is x!?.[y].z or  x!?.y.z
+            suggest.push({
+              messageId: 'suggestOptionalChain',
+              fix: removeToken(),
+            });
+          }
+        } else if (
+          node.parent.type === AST_NODE_TYPES.CallExpression &&
+          node.parent.callee === node
+        ) {
+          if (!node.parent.optional) {
+            // it is x.y?.z!()
+            suggest.push({
+              messageId: 'suggestOptionalChain',
+              fix: replaceTokenWithOptional(),
+            });
+          } else {
+            // it is x.y.z!?.()
+            suggest.push({
+              messageId: 'suggestOptionalChain',
+              fix: removeToken(),
+            });
+          }
+        }
+
+        context.report({
+          node,
+          messageId: 'noNonNull',
+          suggest,
+        });
+      },
+    };
+  },
+});

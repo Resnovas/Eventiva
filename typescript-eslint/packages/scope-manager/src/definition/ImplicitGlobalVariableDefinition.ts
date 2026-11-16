@@ -1,0 +1,21 @@
+import type { NodeWithParent, TSESTree } from '@typescript-eslint/types';
+
+import { DefinitionBase } from './DefinitionBase';
+import { DefinitionType } from './DefinitionType';
+
+export class ImplicitGlobalVariableDefinition extends DefinitionBase<
+  DefinitionType.ImplicitGlobalVariable,
+  NodeWithParent,
+  null,
+  TSESTree.BindingName
+> {
+  public readonly isTypeDefinition = false;
+  public readonly isVariableDefinition = true;
+
+  constructor(
+    name: TSESTree.BindingName,
+    node: ImplicitGlobalVariableDefinition['node'],
+  ) {
+    super(DefinitionType.ImplicitGlobalVariable, name, node, null);
+  }
+}

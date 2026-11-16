@@ -1,0 +1,97 @@
+import { multiselectPrompt, textPrompt } from '../../../utils/prompt-helpers';
+import { join } from 'path';
+import { InitArgs } from '../init-v1';
+import { readJsonFile } from '../../../utils/fileutils';
+import { output } from '../../../utils/output';
+import {
+  detectPackageManager,
+  getPackageManagerCommand,
+} from '../../../utils/package-manager';
+import {
+  addDepsToPackageJson,
+  createNxJsonFile,
+  initCloud,
+  markPackageJsonAsNxProject,
+  markRootPackageJsonAsNxProjectLegacy,
+  runInstall,
+  updateGitIgnore,
+} from './utils';
+import { connectExistingRepoToNxCloudPrompt } from '../../nx-cloud/connect/connect-to-nx-cloud';
+import { MessageOptionKey } from '../../../utils/ab-testing';
+
+type Options = Pick<InitArgs, 'nxCloud' | 'interactive' | 'cacheable'> & {
+  legacy?: boolean;
+};
+
+export async function addNxToNpmRepo(options: Options, guided: boolean = true) {
+  const repoRoot = process.cwd();
+
+  output.log({ title: '🐳 Nx initialization' });
+
+  let cacheableOperations: string[];
+  let scriptOutputs = {};
+  let nxCloudChoice: MessageOptionKey;
+
+  const packageJson = readJsonFile('package.json');
+  const scripts = Object.keys(packageJson.scripts ?? {}).filter(
+    (s) => !s.startsWith('pre') && !s.startsWith('post')
+  );
+
+  if (options.interactive && scripts.length > 0 && guided) {
+    output.log({
+      title:
+        '🧑‍🔧 Please answer the following questions about the scripts found in your package.json in order to generate task runner configuration',
+    });
+
+    cacheableOperations = await multiselectPrompt({
+      message:
+        'Which of the following scripts are cacheable? (Produce the same output given the same input, e.g. build, test and lint usually are, serve and start are not). You can use spacebar to select one or more scripts.',
+      choices: scripts,
+    });
+
+    for (const scriptName of cacheableOperations) {
+      scriptOutputs[scriptName] = await textPrompt({
+        message: `Does the "${scriptName}" script create any outputs? If not, leave blank, otherwise provide a path (e.g. dist, lib, build, coverage)`,
+      });
+    }
+
+    nxCloudChoice =
+      options.nxCloud === true
+        ? 'yes'
+        : options.nxCloud === false
+          ? 'skip'
+          : await connectExistingRepoToNxCloudPrompt();
+  } else {
+    cacheableOperations = options.cacheable ?? [];
+    nxCloudChoice =
+      options.nxCloud === true
+        ? 'yes'
+        : options.nxCloud === false
+          ? 'skip'
+          : options.interactive
+            ? await connectExistingRepoToNxCloudPrompt()
+            : 'skip';
+  }
+
+  createNxJsonFile(repoRoot, [], cacheableOperations, scriptOutputs);
+
+  const packageManager = detectPackageManager(repoRoot);
+  const pmc = getPackageManagerCommand(packageManager);
+
+  updateGitIgnore(repoRoot);
+  addDepsToPackageJson(repoRoot, packageManager);
+  if (options.legacy) {
+    markRootPackageJsonAsNxProjectLegacy(repoRoot, cacheableOperations, pmc);
+  } else {
+    markPackageJsonAsNxProject(join(repoRoot, 'package.json'));
+  }
+
+  output.log({ title: '📦 Installing dependencies' });
+
+  runInstall(repoRoot, packageManager, pmc);
+
+  if (nxCloudChoice === 'yes') {
+    output.log({ title: '🛠️ Setting up Nx Cloud' });
+    await initCloud('nx-init-npm-repo');
+  }
+}

@@ -1,0 +1,170 @@
+import * as Prompt from "effect/cli/Prompt"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import { applyPresetDiagnosticSeverities, type DiagnosticPresetName, isPresetEnabled } from "../../presets"
+import type { Assessment } from "./assessment"
+import { getAllDiagnostics, getDiagnosticPresets } from "./diagnostic-info"
+import { createDiagnosticPrompt } from "./diagnostic-prompt"
+import type { Editor } from "./target"
+
+/**
+ * Context input for gathering target state
+ */
+export interface GatherTargetContext {
+  readonly defaultLspVersion: string // Default version to use when installing LSP
+}
+
+/**
+ * Gather target state from user based on current assessment
+ */
+export const gatherTargetState = (
+  assessment: Assessment.State,
+  context: GatherTargetContext
+) =>
+  Effect.gen(function*() {
+    // Determine current LSP installation state
+    const currentLspState = Option.match(assessment.packageJson.lspVersion, {
+      onNone: () => "no" as const,
+      onSome: (lsp) => lsp.dependencyType
+    })
+
+    // Ask what user wants to do
+    const lspDependencyType = yield* Prompt.Select({
+      message: "Language service installation:",
+      choices: [
+        {
+          title: "Install in devDependencies",
+          description: "This is the recommended default option",
+          value: "devDependencies" as const,
+          selected: currentLspState === "no" || currentLspState === "devDependencies"
+        },
+        {
+          title: "Install in dependencies",
+          description: "We usually don't recommend this, but if you need it for any reason",
+          value: "dependencies" as const,
+          selected: currentLspState === "dependencies"
+        },
+        {
+          title: "Uninstall",
+          description: "Language service won't be installed or will be removed if already present",
+          value: "no" as const
+        }
+      ]
+    })
+
+    // If user doesn't want to install the language service, return early with everything disabled
+    if (lspDependencyType === "no") {
+      return {
+        packageJson: {
+          lspVersion: Option.none(),
+          prepareScript: false
+        },
+        tsconfig: {
+          diagnosticSeverities: Option.none()
+        },
+        vscodeSettings: Option.none(),
+        editors: []
+      }
+    }
+
+    const allDiagnostics = getAllDiagnostics()
+    const currentDiagnosticSeverities = Option.match(assessment.tsconfig.currentOptions, {
+      onNone: () => ({}),
+      onSome: (options) => options.diagnosticSeverity
+    })
+
+    const selectedDiagnosticModes = yield* Prompt.MultiSelect({
+      message: "Which diagnostic presets would you like to use?",
+      choices: [
+        {
+          title: "Custom",
+          description: "Review and adjust individual diagnostic severities after presets are applied",
+          value: "custom" as const
+        },
+        ...getDiagnosticPresets().map((preset) => ({
+          title: preset.name,
+          description: preset.description,
+          value: preset.name as DiagnosticPresetName,
+          selected: isPresetEnabled(preset.name as DiagnosticPresetName, currentDiagnosticSeverities)
+        }))
+      ]
+    })
+
+    const shouldCustomizeDiagnostics = selectedDiagnosticModes.includes("custom")
+    const selectedPresetNames = selectedDiagnosticModes.filter((value): value is DiagnosticPresetName =>
+      value !== "custom"
+    )
+    const initialSeverities = applyPresetDiagnosticSeverities(currentDiagnosticSeverities, selectedPresetNames)
+
+    const diagnosticSeveritiesRecord = shouldCustomizeDiagnostics
+      ? yield* createDiagnosticPrompt(
+        allDiagnostics,
+        initialSeverities
+      )
+      : initialSeverities
+
+    const diagnosticSeverities = Object.keys(diagnosticSeveritiesRecord).length > 0
+      ? Option.some(diagnosticSeveritiesRecord)
+      : Option.none()
+
+    // Prepare Script Configuration
+    const currentPrepareState = Option.match(assessment.packageJson.prepareScript, {
+      onNone: () => false,
+      onSome: (script) => script.hasPatch
+    })
+
+    const prepareScript = yield* Prompt.Select({
+      message: "Enable language service diagnostics during TypeScript compilation?",
+      choices: [
+        {
+          title: "Yes",
+          description:
+            "Enable patching - Recommended for LLMs, diagnostics will appear in tsc output and CI/CD, will patch the tsc binary and typescript library locally.",
+          value: true,
+          selected: currentPrepareState
+        },
+        {
+          title: "No",
+          description: "Skip patching - diagnostics only available in your editor",
+          value: false,
+          selected: !currentPrepareState
+        }
+      ]
+    })
+
+    // Editor Selection - Using multi-select
+    // Pre-select VSCode if .vscode/settings.json exists
+    const hasVscodeSettings = Option.isSome(assessment.vscodeSettings)
+
+    const editors = yield* Prompt.MultiSelect({
+      message: "Which editors do you use?",
+      choices: [
+        {
+          title: "VS Code / Cursor / VS Code-based editors",
+          value: "vscode" as Editor,
+          selected: hasVscodeSettings
+        },
+        {
+          title: "Neovim",
+          value: "nvim" as Editor
+        },
+        {
+          title: "Emacs",
+          value: "emacs" as Editor
+        }
+      ]
+    })
+
+    // Build target state
+    return {
+      packageJson: {
+        lspVersion: Option.some({ dependencyType: lspDependencyType, version: context.defaultLspVersion }),
+        prepareScript
+      },
+      tsconfig: {
+        diagnosticSeverities
+      },
+      vscodeSettings: Option.none(),
+      editors
+    }
+  })

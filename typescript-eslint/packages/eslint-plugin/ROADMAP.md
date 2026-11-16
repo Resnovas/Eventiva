@@ -1,0 +1,3 @@
+# This page moved to [TSLINT_RULE_ALTERNATIVES.md](./TSLINT_RULE_ALTERNATIVES.md)
+
+👋

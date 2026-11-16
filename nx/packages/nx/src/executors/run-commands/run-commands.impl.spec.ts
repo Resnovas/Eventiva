@@ -1,0 +1,1622 @@
+// child_process's ESM namespace is frozen; spy mode wraps the real spawn so
+// the --color tests can observe env without changing behavior.
+vi.mock('child_process', { spy: true });
+
+import { readFileSync, writeFileSync } from 'fs';
+import { env } from 'npm-run-path';
+import { relative } from 'path';
+import { dirSync, fileSync } from 'tmp';
+import { PseudoTerminal } from '../../tasks-runner/pseudo-terminal';
+import runCommands, {
+  interpolateArgsIntoCommand,
+  runCommands as startRunCommands,
+  type RunCommandsOptions,
+} from './run-commands.impl';
+
+function normalize(p: string) {
+  return p.startsWith('/private') ? p.substring(8) : p;
+}
+
+function readFile(
+  f: string,
+  { preserveWhitespace }: { preserveWhitespace: boolean } = {
+    preserveWhitespace: false,
+  }
+) {
+  const fileContents = readFileSync(f).toString();
+  return preserveWhitespace ? fileContents : fileContents.replace(/\s/g, '');
+}
+
+describe('Run Commands', () => {
+  const context = {} as any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should handle empty commands array', async () => {
+    const result = await runCommands(
+      {
+        commands: [],
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result.success).toEqual(true);
+    expect(result.terminalOutput).toEqual('');
+  });
+
+  it('should interpolate provided --args', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: `echo {args.key} >> ${f}`,
+        args: '--key=123',
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('123');
+  });
+
+  it('should resolve ?? fallbacks in --args from the command env', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: `echo {args.port ?? env.RUN_COMMANDS_PORT ?? 3000}-{args.host ?? localhost}-{args.path ?? env.RUN_COMMANDS_UNSET ?? none} >> ${f}`,
+        args: '--host=h1',
+        env: { RUN_COMMANDS_PORT: '5000' },
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('5000-h1-none');
+  });
+
+  it.each([
+    {
+      unparsed: ['test1', '--args=--key=123', '--test2=1', '--test2=2'],
+      expected: 'test1 --test2=1 --test2=2',
+    },
+    {
+      unparsed: ['test', '--args=--key=123', '--test.a=1', '--test.b=2'],
+      expected: 'test --test.a=1 --test.b=2',
+    },
+    { unparsed: ['one', '-a=b', `--args=--key=123`], expected: 'one -a=b' },
+  ])(
+    'should pass command line args $unparsed to the command and ignore --args',
+    async ({ unparsed: unparsedOptions, expected }) => {
+      let result = (
+        await runCommands(
+          {
+            command: `echo`,
+            __unparsed__: unparsedOptions,
+            args: '--key=123',
+          },
+          context
+        )
+      ).terminalOutput.trim();
+      expect(result).not.toContain('--args=--key=123');
+      expect(result).toContain(`echo --key=123 ${expected}`);
+    }
+  );
+
+  it('should overwrite matching options with args', async () => {
+    let result = (
+      await runCommands(
+        {
+          command: `echo`,
+          __unparsed__: [],
+          key: 789,
+        },
+        context
+      )
+    ).terminalOutput.trim();
+    expect(result).toContain('echo --key=789'); // unknown options
+
+    result = (
+      await runCommands(
+        {
+          command: `echo`,
+          __unparsed__: ['--a.b=234'],
+          a: { b: 123 },
+        },
+        context
+      )
+    ).terminalOutput.trim();
+    expect(result).toContain('echo --a.b=234');
+
+    result = (
+      await runCommands(
+        {
+          command: `echo`,
+          __unparsed__: ['--key=456'],
+          key: 123,
+        },
+        context
+      )
+    ).terminalOutput.trim();
+    expect(result).not.toContain('--key=123');
+    expect(result).toContain('echo --key=456'); // should take unparsed over unknown options
+
+    result = (
+      await runCommands(
+        {
+          command: `echo`,
+          __unparsed__: ['--key=456'],
+          key: 123,
+          args: '--key=789',
+        },
+        context
+      )
+    ).terminalOutput.trim();
+    expect(result).not.toContain('--key=123');
+    expect(result).toContain('--key=789'); // should take args over unknown options
+
+    result = (
+      await runCommands(
+        {
+          command: 'echo',
+          __unparsed__: [],
+          key1: 'from options',
+          key2: 'from options',
+          args: '--key1="from args"',
+        },
+        context
+      )
+    ).terminalOutput.trim();
+    expect(result).not.toContain('--key1="from options"');
+    expect(result).toContain('echo --key2="from options" --key1="from args"'); // take args over options with the same name while keeping the rest
+  });
+
+  it('should not foward any args to underlying command if forwardAllArgs is false', async () => {
+    let result = await runCommands(
+      {
+        command: `echo`,
+        key: 123,
+        __unparsed__: [],
+        forwardAllArgs: false,
+      },
+      context
+    );
+    expect(result.terminalOutput.trim()).not.toContain('--key=123');
+
+    result = await runCommands(
+      {
+        command: `echo`,
+        key: 123,
+        __unparsed__: [],
+        forwardAllArgs: true,
+      },
+      context
+    );
+    expect(result.terminalOutput.trim()).toContain('--key=123');
+
+    result = await runCommands(
+      {
+        commands: [
+          {
+            command: `echo 1`,
+            forwardAllArgs: true,
+          },
+          {
+            command: `echo 2`,
+          },
+        ],
+        __unparsed__: ['--args=--key=123'],
+        args: '--key=123',
+        forwardAllArgs: false,
+      },
+      context
+    );
+    expect(result.terminalOutput).toContain('1 --key=123');
+    expect(result.terminalOutput).not.toContain('2 --key=123');
+  });
+
+  it('should interpolate all unknown args as if they were --args', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: `echo {args.key} >> ${f}`,
+        key: 123,
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('123');
+  });
+
+  it.each([
+    [`--key=123`, `args.key`, `123`],
+    [`--key="123.10"`, `args.key`, `123.10`],
+    [`--nested.key="123.10"`, `args.nested.key`, `123.10`],
+  ])(
+    'should interpolate %s into %s as %s',
+    async (cmdLineArg, argKey, expected) => {
+      const f = fileSync().name;
+      const result = await runCommands(
+        {
+          command: `echo {${argKey}} >> ${f}`,
+          __unparsed__: [cmdLineArg],
+        },
+        context
+      );
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(readFile(f)).toEqual(expected);
+    }
+  );
+
+  it('should interpolate {args} to contain all provided args', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: `echo {args} >> ${f}`,
+        __unparsed__: [`--publish 8080:80`, `--expose 80`],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f, { preserveWhitespace: true }).trim()).toEqual(
+      `--publish 8080:80 --expose 80`
+    );
+  });
+
+  it('should run commands serially', async () => {
+    const f = fileSync().name;
+    let result = await runCommands(
+      {
+        commands: [`sleep 0.2 && echo 1 >> ${f}`, `echo 2 >> ${f}`],
+        parallel: false,
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('12');
+
+    result = await runCommands(
+      {
+        commands: [`sleep 0.2 && echo 1 >> ${f}`, `echo 2 >> ${f}`],
+        __unparsed__: ['--no-parallel'],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('1212');
+  });
+
+  it('should run the command, but divided into paths', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: [`echo 1 >> ${f}`, '&&', `echo 2 >> ${f}`],
+        parallel: false,
+
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('12');
+  });
+
+  it('should run the command, but divided into several paths', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        command: [
+          `echo 1 >> ${f}  `,
+          `&&`,
+          `echo 2 >> ${f}`,
+          ';',
+          `echo 34 >> ${f}`,
+        ],
+        parallel: false,
+
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(readFile(f)).toEqual('1234');
+  });
+
+  it('should run commands in parallel', async () => {
+    const f = fileSync().name;
+    const result = await runCommands(
+      {
+        commands: [
+          {
+            command: `echo 1 >> ${f}`,
+          },
+          {
+            command: `echo 2 >> ${f}`,
+          },
+        ],
+        parallel: true,
+        __unparsed__: [],
+      },
+      context
+    );
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    const contents = readFile(f);
+    expect(contents).toContain('1');
+    expect(contents).toContain('2');
+  });
+
+  describe('readyWhen', () => {
+    describe('single string', () => {
+      it('should error when parallel = false', async () => {
+        try {
+          await runCommands(
+            {
+              commands: [{ command: 'echo foo' }, { command: 'echo bar' }],
+              parallel: false,
+              readyWhen: 'READY',
+              __unparsed__: [],
+            },
+            context
+          );
+          fail('should throw');
+        } catch (e) {
+          expect(e.message).toEqual(
+            `ERROR: Bad executor config for run-commands - "readyWhen" can only be used when "parallel=true".`
+          );
+        }
+      });
+
+      it('should return success true when the string specified as ready condition is found', async () => {
+        const f = fileSync().name;
+        const result = await runCommands(
+          {
+            commands: [`echo READY && sleep 5 && echo 1 >> ${f}`, `echo foo`],
+            parallel: true,
+            readyWhen: 'READY',
+            __unparsed__: [],
+          },
+
+          context
+        );
+        expect(result).toEqual(expect.objectContaining({ success: true }));
+        expect(readFile(f)).toEqual('');
+      });
+
+      it('should complete a single command when the string specified as ready condition is found in a terminal that supports a pseudo terminal', async () => {
+        const isSupported = vi
+          .spyOn(PseudoTerminal, 'isSupported')
+          .mockReturnValue(true);
+        try {
+          const f = fileSync().name;
+          const result = await runCommands(
+            {
+              command: `echo READY && sleep 1 && echo 1 >> ${f}`,
+              readyWhen: 'READY',
+              usePty: true,
+              __unparsed__: [],
+            },
+            context
+          );
+          expect(result).toEqual(expect.objectContaining({ success: true }));
+          expect(readFile(f)).toEqual('');
+          await vi.waitFor(() => expect(readFile(f)).toEqual('1'), {
+            timeout: 3000,
+          });
+        } finally {
+          isSupported.mockRestore();
+        }
+      });
+
+      it.each([
+        ['passed in', context, { id: 'app:serve', continuous: true }],
+        [
+          'resolved from the project graph',
+          {
+            projectName: 'app',
+            targetName: 'serve',
+            projectGraph: {
+              nodes: {
+                app: { data: { targets: { serve: { continuous: true } } } },
+              },
+            },
+          },
+          undefined,
+        ],
+      ])(
+        'should keep a continuous task running after the string specified as ready condition is found in a terminal that supports a pseudo terminal, with the task %s',
+        async (_, taskContext, task) => {
+          const isSupported = vi
+            .spyOn(PseudoTerminal, 'isSupported')
+            .mockReturnValue(true);
+          try {
+            const f = fileSync().name;
+            const runningTask = await startRunCommands(
+              {
+                command: `echo READY && sleep 1 && echo 1 >> ${f}`,
+                readyWhen: 'READY',
+                usePty: true,
+                __unparsed__: [],
+              },
+              taskContext as any,
+              task
+            );
+            const result = await runningTask.getResults();
+            expect(result.code).toBe(0);
+            expect(readFile(f)).toEqual('1');
+          } finally {
+            isSupported.mockRestore();
+          }
+        }
+      );
+
+      it('should return success true when the string specified as ready condition is found on stderr', async () => {
+        const result = await runCommands(
+          {
+            command: 'echo READY >&2',
+            readyWhen: 'READY',
+            __unparsed__: [],
+          },
+          context
+        );
+        expect(result).toEqual(expect.objectContaining({ success: true }));
+      });
+
+      it.each([
+        [
+          true,
+          'in two writes',
+          'READY',
+          [
+            `node -e "process.stdout.write('REA');setTimeout(()=>process.stdout.write('DY'),100)"`,
+          ],
+        ],
+        [
+          true,
+          'on stderr in two writes',
+          'READY',
+          [
+            `node -e "process.stderr.write('REA');setTimeout(()=>process.stderr.write('DY'),100)"`,
+          ],
+        ],
+        [
+          true,
+          'with an escape sequence inside it',
+          'READY',
+          [`node -e "process.stdout.write('RE\\u001b[1mADY')"`],
+        ],
+        [
+          true,
+          'with the escape sequence it holds',
+          '\u001b[1mREADY',
+          [`node -e "process.stdout.write('\\u001b[1mREADY')"`],
+        ],
+        [
+          true,
+          'in two writes with the escape sequence it holds',
+          '\u001b[1mREADY',
+          [
+            `node -e "process.stdout.write('\\u001b[1mREA');setTimeout(()=>process.stdout.write('DY'),100)"`,
+          ],
+        ],
+        [
+          false,
+          'across stdout and stderr',
+          'READY',
+          [
+            `node -e "process.stdout.write('REA');setTimeout(()=>process.stderr.write('DY'),100)"`,
+          ],
+        ],
+        [
+          false,
+          'across two commands',
+          'READY',
+          [
+            `node -e "process.stdout.write('REA')"`,
+            `node -e "setTimeout(()=>process.stdout.write('DY'),100)"`,
+          ],
+        ],
+      ])(
+        'should return success %s when the string specified as ready condition is printed %s',
+        async (success, _, readyWhen, commands) => {
+          const result = await runCommands(
+            {
+              commands,
+              parallel: true,
+              readyWhen,
+              __unparsed__: [],
+            },
+            context
+          );
+          expect(result.success).toBe(success);
+        }
+      );
+
+      it('should fail when every command exits before the string specified as ready condition is found', async () => {
+        const result = await runCommands(
+          {
+            commands: ['echo hi', 'echo there'],
+            parallel: true,
+            readyWhen: 'READY',
+            __unparsed__: [],
+          },
+          context
+        );
+        expect(result.success).toBe(false);
+        expect(result.terminalOutput).toContain('echo there');
+        expect(result.terminalOutput).toContain(
+          'exited before printing the readyWhen text "READY"'
+        );
+      });
+    });
+
+    describe('array of strings', () => {
+      it('should return success true when all strings specified as ready condition were found', async () => {
+        const f = fileSync().name;
+        const result = await runCommands(
+          {
+            commands: [`echo READY && sleep 5 && echo 1 >> ${f}`, `echo foo`],
+            parallel: true,
+            readyWhen: ['READY', 'foo'],
+            __unparsed__: [],
+          },
+
+          context
+        );
+        expect(result).toEqual(expect.objectContaining({ success: true }));
+        expect(readFile(f)).toEqual('');
+      });
+
+      it('should return success true when one output chunk holds every string specified as ready condition', async () => {
+        const result = await runCommands(
+          {
+            command: 'echo "READY foo"',
+            readyWhen: ['READY', 'foo'],
+            __unparsed__: [],
+          },
+          context
+        );
+        expect(result).toEqual(expect.objectContaining({ success: true }));
+      });
+
+      it('should keep waiting when not all strings specified as ready condition were found, then fail naming the missing ones', async () => {
+        const f = fileSync().name;
+        let result: { success: boolean } | null = null;
+
+        const run = runCommands(
+          {
+            commands: [`echo 1 >> ${f} && echo READY`, `echo foo && sleep 1`],
+            parallel: true,
+            readyWhen: ['READY', 'bar'],
+            __unparsed__: [],
+          },
+
+          context
+        );
+        run.then((res) => {
+          result = res;
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(readFile(f)).toEqual('1');
+        expect(result).toBeNull();
+
+        const { success, terminalOutput } = await run;
+        expect(success).toBe(false);
+        expect(terminalOutput).toContain('readyWhen text "bar"');
+      });
+    });
+  });
+
+  it('should stop execution and fail when a command fails', async () => {
+    const f = fileSync().name;
+
+    try {
+      await runCommands(
+        {
+          commands: [`echo 1 >> ${f} && exit 1`, `echo 2 >> ${f}`],
+          parallel: false,
+          __unparsed__: [],
+        },
+        context
+      );
+      fail('should fail when a command fails');
+    } catch (e) {}
+    expect(readFile(f)).toEqual('1');
+  });
+
+  describe('interpolateArgsIntoCommand', () => {
+    it('should add all unparsed args when forwardAllArgs is true', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['one', '-a=b'] } as any,
+          true
+        )
+      ).toEqual('echo one -a=b');
+    });
+
+    it('should not forward all unparsed args when the options is a prop to run command', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            __unparsed__: ['--args', 'test', 'hello'],
+            parsedArgs: { args: 'test' },
+          } as any,
+          true
+        )
+      ).toEqual('echo hello'); // should not pass --args test to underlying command
+
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            __unparsed__: ['--args=test', 'hello'],
+          } as any,
+          true
+        )
+      ).toEqual('echo hello');
+
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['--parallel=true', 'hello'] } as any,
+          true
+        )
+      ).toEqual('echo hello');
+    });
+
+    it('should add all args when forwardAllArgs is true', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { args: '--additional-arg', __unparsed__: [] } as any,
+          true
+        )
+      ).toEqual('echo --additional-arg');
+    });
+
+    it('should add forward unknown options when forwardAllArgs is true', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { unknownOptions: { hello: 123 }, parsedArgs: { hello: 123 } } as any,
+          true
+        )
+      ).toEqual('echo --hello=123');
+    });
+
+    it('should add all args and unparsed args when forwardAllArgs is true', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            args: '--additional-arg',
+            __unparsed__: ['--additional-unparsed-arg'],
+          } as any,
+          true
+        )
+      ).toEqual('echo --additional-arg --additional-unparsed-arg');
+    });
+
+    it("shouldn't add literal `undefined` if arg is not provided", () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo {args.someValue}',
+          {
+            parsedArgs: {},
+            __unparsed__: [],
+          },
+          false
+        )
+      ).not.toContain('undefined');
+    });
+
+    it('should not read inherited properties as arguments', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo {args.toString ?? default}',
+          { parsedArgs: {}, __unparsed__: [] },
+          false
+        )
+      ).toEqual('echo default');
+    });
+
+    it('should interpolate provided values', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo {args.someValue}',
+          {
+            parsedArgs: {
+              someValue: '"hello world"',
+            },
+            __unparsed__: [],
+          },
+          false
+        )
+      ).toEqual('echo "hello world"');
+    });
+
+    it('should interpolate provided values with spaces', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            unknownOptions: { hello: 'test 123' },
+            parsedArgs: { hello: 'test 123' },
+          } as any,
+          true
+        )
+      ).toEqual('echo --hello="test 123"'); // should wrap in quotes
+
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            unknownOptions: { hello: '"test 123"' },
+            parsedArgs: { hello: '"test 123"' },
+          } as any,
+          true
+        )
+      ).toEqual('echo --hello="test 123"'); // should leave double quotes
+
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            unknownOptions: { hello: "'test 123'" },
+            parsedArgs: { hello: "'test 123'" },
+          } as any,
+          true
+        )
+      ).toEqual("echo --hello='test 123'"); // should leave single quote
+
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            __unparsed__: [
+              '--hello=test 123',
+              'hello world',
+              '"random config"',
+              '456',
+            ],
+          } as any,
+          true
+        )
+      ).toEqual(`echo --hello="test 123" "hello world" "random config" 456`); // should wrap aroound __unparsed__ args with key value
+    });
+
+    it.each([
+      ['pipe (|)', '--grep=@tag1|@tag2', 'echo --grep="@tag1|@tag2"'],
+      ['ampersand (&)', '--flag=a&b', 'echo --flag="a&b"'],
+      ['dollar sign ($)', '--path=$HOME/dir', 'echo --path="$HOME/dir"'],
+      ['semicolon (;)', '--cmd=echo;ls', 'echo --cmd="echo;ls"'],
+      ['parentheses', '--expr=(a+b)', 'echo --expr="(a+b)"'],
+      ['asterisk (*)', '--pattern=*.txt', 'echo --pattern="*.txt"'],
+      ['backtick (`)', '--cmd=`pwd`', 'echo --cmd="`pwd`"'],
+      ['angle brackets (>)', '--compare=a>b', 'echo --compare="a>b"'],
+      [
+        'question mark (?)',
+        '--pattern=file?.txt',
+        'echo --pattern="file?.txt"',
+      ],
+      [
+        'square brackets ([])',
+        '--pattern=[abc].txt',
+        'echo --pattern="[abc].txt"',
+      ],
+      ['hash (#)', '--tag=#important', 'echo --tag="#important"'],
+      ['tilde (~)', '--path=~/documents', 'echo --path="~/documents"'],
+      ['newline', '--msg=hello\nworld', 'echo --msg="hello\nworld"'],
+      ['tab', '--msg=hello\tworld', 'echo --msg="hello\tworld"'],
+    ])('should wrap shell metacharacter %s in quotes', (_, input, expected) => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: [input] } as any,
+          true
+        )
+      ).toEqual(expected);
+    });
+
+    it('should handle positional args with shell metacharacters', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['tag1|tag2', 'a&b', '$HOME'] } as any,
+          true
+        )
+      ).toEqual('echo "tag1|tag2" "a&b" "$HOME"');
+    });
+
+    it('should not double-wrap already quoted values with shell metacharacters', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['"@tag1|@tag2"', "'a&b'"] } as any,
+          true
+        )
+      ).toEqual('echo "@tag1|@tag2" \'a&b\'');
+    });
+
+    it('should escape existing double quotes when wrapping', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['--msg=hello "world"'] } as any,
+          true
+        )
+      ).toEqual('echo --msg="hello \\"world\\""');
+    });
+
+    it('should handle values containing equals signs', () => {
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          { __unparsed__: ['--define=FOO=bar|baz'] } as any,
+          true
+        )
+      ).toEqual('echo --define="FOO=bar|baz"');
+    });
+
+    it('should not re-quote word-split fragments of a single-quoted JSON value', () => {
+      // Simulates what happens when the shell word-splits:
+      //   --config \'{"env":{"cliArg":"i am from the cli args"}}\'
+      // The shell produces these separate argv entries because \" makes "
+      // literal but doesn't prevent word splitting:
+      expect(
+        interpolateArgsIntoCommand(
+          'echo',
+          {
+            __unparsed__: [
+              '--config',
+              '\'{"env":{"cliArg":"i',
+              'am',
+              'from',
+              'the',
+              'cli',
+              'args"}}\'',
+            ],
+          } as any,
+          true
+        )
+      ).toEqual(`echo --config '{"env":{"cliArg":"i am from the cli args"}}'`);
+    });
+  });
+
+  describe('--color', () => {
+    it('should not set FORCE_COLOR=true', async () => {
+      const spawnSpy = vi.mocked(require('child_process').spawn);
+      await runCommands(
+        {
+          commands: [`echo 'Hello World'`, `echo 'Hello Universe'`],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(spawnSpy).toHaveBeenCalledTimes(2);
+      expect(spawnSpy).toHaveBeenNthCalledWith(1, `echo 'Hello World'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: {
+          ...process.env,
+          ...env(),
+        },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+      expect(spawnSpy).toHaveBeenNthCalledWith(2, `echo 'Hello Universe'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: {
+          ...process.env,
+          ...env(),
+        },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+    });
+
+    it('should not set FORCE_COLOR=true when --no-color is passed', async () => {
+      const spawnSpy = vi.mocked(require('child_process').spawn);
+      await runCommands(
+        {
+          commands: [`echo 'Hello World'`, `echo 'Hello Universe'`],
+          parallel: true,
+          __unparsed__: [],
+          color: false,
+        },
+        context
+      );
+
+      expect(spawnSpy).toHaveBeenCalledTimes(2);
+      expect(spawnSpy).toHaveBeenNthCalledWith(1, `echo 'Hello World'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: {
+          ...process.env,
+          ...env(),
+        },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+      expect(spawnSpy).toHaveBeenNthCalledWith(2, `echo 'Hello Universe'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: {
+          ...process.env,
+          ...env(),
+        },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+    });
+
+    it('should set FORCE_COLOR=true when running with --color', async () => {
+      const spawnSpy = vi.mocked(require('child_process').spawn);
+      await runCommands(
+        {
+          commands: [`echo 'Hello World'`, `echo 'Hello Universe'`],
+          parallel: true,
+          color: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(spawnSpy).toHaveBeenCalledTimes(2);
+      expect(spawnSpy).toHaveBeenNthCalledWith(1, `echo 'Hello World'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: { ...process.env, FORCE_COLOR: `true`, ...env() },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+      expect(spawnSpy).toHaveBeenNthCalledWith(2, `echo 'Hello Universe'`, [], {
+        shell: true,
+        detached: process.platform !== 'win32',
+        env: { ...process.env, FORCE_COLOR: `true`, ...env() },
+        windowsHide: true,
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+    });
+  });
+
+  describe('cwd', () => {
+    it('should use workspace root package when cwd is not specified', async () => {
+      const root = dirSync().name;
+      const f = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `nx --version >> ${f}`,
+            },
+          ],
+          parallel: true,
+          cwd: process.cwd(),
+          __unparsed__: [],
+        },
+        { root } as any
+      );
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(normalize(readFile(f))).not.toBe('12.0.0');
+    });
+
+    it('should run the task in the workspace root when no cwd is specified', async () => {
+      const root = dirSync().name;
+      const f = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `pwd >> ${f}`,
+            },
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+
+        { root } as any
+      );
+
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(normalize(readFile(f))).toBe(normalize(root));
+    });
+
+    it('should run the task in the specified cwd relative to the workspace root when cwd is not an absolute path', async () => {
+      const root = dirSync().name;
+      const childFolder = dirSync({ dir: root }).name;
+      const cwd = relative(root, childFolder);
+      const f = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `pwd >> ${f}`,
+            },
+          ],
+          cwd,
+          parallel: true,
+          __unparsed__: [],
+        },
+        { root } as any
+      );
+
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(normalize(readFile(f))).toBe(normalize(childFolder));
+    });
+
+    it('should terminate properly with an error if the cwd is not valid', async () => {
+      const root = dirSync().name;
+      const cwd = 'bla';
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "command does not run"`,
+            },
+          ],
+          cwd,
+          parallel: true,
+          __unparsed__: [],
+        },
+        { root } as any
+      );
+
+      expect(result).toEqual(expect.objectContaining({ success: false }));
+    }, 1000);
+
+    it('should run the task in the specified absolute cwd', async () => {
+      const root = dirSync().name;
+      const childFolder = dirSync({ dir: root }).name;
+      const f = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `pwd >> ${f}`,
+            },
+          ],
+          cwd: childFolder,
+          parallel: true,
+          __unparsed__: [],
+        },
+        { root } as any
+      );
+
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(normalize(readFile(f))).toBe(normalize(childFolder));
+    });
+
+    it('should add node_modules/.bins to the env for the cwd', async () => {
+      const root = dirSync().name;
+      const childFolder = dirSync({ dir: root }).name;
+      const f = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo $PATH >> ${f}`,
+            },
+          ],
+          cwd: childFolder,
+          parallel: true,
+          __unparsed__: [],
+        },
+        { root } as any
+      );
+
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+      expect(normalize(readFile(f))).toContain(
+        normalize(`${childFolder}/node_modules/.bin`)
+      );
+      expect(normalize(readFile(f))).toContain(
+        normalize(`${root}/node_modules/.bin`)
+      );
+    });
+  });
+
+  describe('env', () => {
+    afterAll(() => {
+      delete process.env.MY_ENV_VAR;
+    });
+
+    it('should use value from process.env', async () => {
+      const f = fileSync().name;
+      process.env.MY_ENV_VAR = 'from-env';
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "$MY_ENV_VAR" >> ${f}`,
+            },
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toEqual(true);
+      expect(readFile(f)).toContain('from-env');
+    });
+
+    it('should add the env to the command', async () => {
+      process.env.MY_ENV_VAR = 'from-env';
+      const f = fileSync().name;
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "$MY_ENV_VAR" >> ${f}`,
+            },
+          ],
+          env: {
+            MY_ENV_VAR: 'my-value',
+          },
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toEqual(true);
+      expect(readFile(f)).toContain('my-value');
+    });
+
+    it('should prioritize env setting over local process.env', async () => {
+      process.env.MY_ENV_VAR = 'from-env';
+      const f = fileSync().name;
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "$MY_ENV_VAR" >> ${f}`,
+            },
+          ],
+          env: {
+            MY_ENV_VAR: 'from-options',
+          },
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toEqual(true);
+      expect(readFile(f)).toContain('from-options');
+    });
+
+    it('should prioritize process.env over envFile option', async () => {
+      process.env.MY_ENV_VAR = 'from-env';
+      const devEnv = fileSync().name;
+      writeFileSync(devEnv, 'MY_ENV_VAR=from-dotenv');
+      const f = fileSync().name;
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "$MY_ENV_VAR" >> ${f}`,
+            },
+          ],
+          envFile: devEnv,
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toEqual(true);
+      expect(readFile(f)).toContain('from-env');
+    });
+
+    it('should prioritize env setting over dotenv file from envFile option', async () => {
+      process.env.MY_ENV_VAR = 'from-env';
+      const devEnv = fileSync().name;
+      writeFileSync(devEnv, 'MY_ENV_VAR=from-dotenv');
+      const f = fileSync().name;
+      const result = await runCommands(
+        {
+          commands: [
+            {
+              command: `echo "$MY_ENV_VAR" >> ${f}`,
+            },
+          ],
+          env: {
+            MY_ENV_VAR: 'from-options',
+          },
+          envFile: devEnv,
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toEqual(true);
+      expect(readFile(f)).toContain('from-options');
+    });
+
+    // A direct run passes the task env as the base; a forked one runs with it
+    // as process.env
+    async function runOnBase(
+      shape: 'direct' | 'forked',
+      base: Record<string, string>,
+      options: Partial<RunCommandsOptions>
+    ) {
+      const f = fileSync().name;
+      if (shape === 'forked') {
+        Object.assign(process.env, base);
+      }
+      try {
+        const task = await startRunCommands(
+          {
+            commands: [
+              {
+                command: `echo "[$RUN_COMMANDS_VAR][$RUN_COMMANDS_PORT][$RUN_COMMANDS_URL]" >> ${f}`,
+              },
+            ],
+            parallel: true,
+            __unparsed__: [],
+            ...options,
+          },
+          context,
+          undefined,
+          shape === 'direct' ? { PATH: process.env.PATH, ...base } : undefined
+        );
+        await task.getResults();
+      } finally {
+        for (const key of Object.keys(base)) {
+          delete process.env[key];
+        }
+      }
+      return readFile(f);
+    }
+
+    describe.each(['direct', 'forked'] as const)('on a %s base', (shape) => {
+      it.each([
+        [
+          'an explicit empty env value over the envFile',
+          {},
+          { RUN_COMMANDS_VAR: '' },
+          'RUN_COMMANDS_VAR=from-file',
+          '[][][]',
+        ],
+        [
+          'the envFile over an empty base value',
+          { RUN_COMMANDS_VAR: '' },
+          undefined,
+          'RUN_COMMANDS_VAR=from-file',
+          '[from-file][][]',
+        ],
+        [
+          'envFile references against the base',
+          { RUN_COMMANDS_PORT: '5000' },
+          undefined,
+          'RUN_COMMANDS_URL=http://localhost:${RUN_COMMANDS_PORT}',
+          '[][5000][http://localhost:5000]',
+        ],
+        [
+          'envFile references against the base, not the env option',
+          { RUN_COMMANDS_PORT: '5000' },
+          { RUN_COMMANDS_PORT: '6000' },
+          'RUN_COMMANDS_URL=http://localhost:${RUN_COMMANDS_PORT}',
+          '[][6000][http://localhost:5000]',
+        ],
+      ])('should resolve %s', async (_, base, env, envFileContents, output) => {
+        const envFile = fileSync().name;
+        writeFileSync(envFile, envFileContents);
+        expect(await runOnBase(shape, base, { env, envFile })).toEqual(output);
+      });
+
+      it('should skip the envFile when the base disables .env files', async () => {
+        const envFile = fileSync().name;
+        writeFileSync(envFile, 'RUN_COMMANDS_VAR=from-file');
+        const previous = process.env.NX_LOAD_DOT_ENV_FILES;
+        process.env.NX_LOAD_DOT_ENV_FILES = 'true';
+        try {
+          expect(
+            await runOnBase(
+              shape,
+              { NX_LOAD_DOT_ENV_FILES: 'false' },
+              { envFile }
+            )
+          ).toEqual('[][][]');
+        } finally {
+          if (previous === undefined) {
+            delete process.env.NX_LOAD_DOT_ENV_FILES;
+          } else {
+            process.env.NX_LOAD_DOT_ENV_FILES = previous;
+          }
+        }
+      });
+    });
+
+    it('should not read process.env when given a base', async () => {
+      process.env.RUN_COMMANDS_VAR = 'from-process';
+      try {
+        expect(await runOnBase('direct', {}, {})).toEqual('[][][]');
+      } finally {
+        delete process.env.RUN_COMMANDS_VAR;
+      }
+    });
+
+    it('should error if the specified .env file does not exist', async () => {
+      try {
+        await runCommands(
+          {
+            commands: [
+              {
+                command: `echo $MY_ENV_VAR`,
+              },
+            ],
+            envFile: '/somePath/.fakeEnv',
+            __unparsed__: [],
+          },
+
+          context
+        );
+        fail('should not reach');
+      } catch (e) {
+        expect(e.message).toContain(
+          `no such file or directory, open '/somePath/.fakeEnv'`
+        );
+      }
+    });
+
+    it.each([
+      { streamOutput: true, streamed: 1 },
+      // The default export rethrows the error for its caller to print
+      { streamOutput: undefined, streamed: 0 },
+    ])(
+      'should report a non-zero exit code and the error if the specified .env file does not exist, with streamOutput $streamOutput',
+      async ({ streamOutput, streamed }) => {
+        const error = `no such file or directory, open '/somePath/.fakeEnv'`;
+        const stderrWrite = vi
+          .spyOn(process.stderr, 'write')
+          .mockImplementation(() => true);
+        try {
+          const task = await startRunCommands(
+            {
+              command: 'echo hi',
+              envFile: '/somePath/.fakeEnv',
+              streamOutput,
+              __unparsed__: [],
+            },
+            context
+          );
+          const output: string[] = [];
+          task.onOutput((chunk) => output.push(chunk));
+          const { code, terminalOutput } = await new Promise<{
+            code: number;
+            terminalOutput: string;
+          }>((res) =>
+            task.onExit((code, terminalOutput) => res({ code, terminalOutput }))
+          );
+          expect(code).toBe(1);
+          expect(terminalOutput).toContain(error);
+          expect(output).toEqual([expect.stringContaining(error)]);
+          expect(
+            stderrWrite.mock.calls.filter(([chunk]) =>
+              String(chunk).includes(error)
+            )
+          ).toHaveLength(streamed);
+        } finally {
+          stderrWrite.mockRestore();
+        }
+      }
+    );
+  });
+
+  describe('fail-fast behavior in parallel execution', () => {
+    it('should exit immediately when one parallel command fails', async () => {
+      const startTime = Date.now();
+
+      const result = await runCommands(
+        {
+          commands: [
+            `echo "command1" && exit 1`, // Fails immediately
+            `echo "command2" && sleep 2`, // Would take 2 seconds if not terminated
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toBe(false);
+      const duration = Date.now() - startTime;
+      // Should complete quickly (fail-fast), not wait for 2 seconds. The
+      // margin leaves room for CPU contention in a full parallel suite run.
+      expect(duration).toBeLessThan(1500);
+    });
+
+    it('should handle multiple simultaneous failures in parallel commands', async () => {
+      const result = await runCommands(
+        {
+          commands: [
+            `echo "fail1" && exit 1`,
+            `echo "fail2" && exit 2`,
+            `echo "fail3" && exit 3`,
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should succeed when all parallel commands succeed', async () => {
+      const result = await runCommands(
+        {
+          commands: [`echo "success1"`, `echo "success2"`, `echo "success3"`],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should terminate remaining processes when one fails in parallel', async () => {
+      const f = fileSync().name;
+      const flagFile = fileSync().name;
+
+      const result = await runCommands(
+        {
+          commands: [
+            `echo "quick" >> ${f} && exit 1`, // Fails immediately
+            `sleep 5 && echo "should_not_appear" >> ${flagFile}`, // Should be terminated
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toBe(false);
+      expect(readFile(flagFile)).toBe(''); // didn't write should_not_appear
+    });
+
+    it('should handle process cleanup correctly on failure', async () => {
+      const startTime = Date.now();
+
+      const result = await runCommands(
+        {
+          commands: [
+            'exit 1', // Fail immediately
+            'sleep 2', // Long-running process
+            'sleep 2', // Another long-running process
+            'sleep 2', // Yet another long-running process
+          ],
+          parallel: true,
+          __unparsed__: [],
+        },
+        context
+      );
+
+      expect(result.success).toBe(false);
+      const duration = Date.now() - startTime;
+      // Should complete quickly after failure and cleanup. The margin leaves
+      // room for CPU contention in a full parallel suite run.
+      expect(duration).toBeLessThan(1500);
+    });
+  });
+
+  describe('process listeners', () => {
+    const events = ['exit', 'SIGINT', 'SIGTERM', 'SIGHUP'];
+    const listenersOf = (event: string) =>
+      (process as NodeJS.EventEmitter).listeners(event);
+    let startCommands: typeof startRunCommands;
+    let initialListeners: Function[][];
+    const addedListeners = () =>
+      events.map((event, i) =>
+        listenersOf(event).filter(
+          (listener) => !initialListeners[i].includes(listener)
+        )
+      );
+    const addedListenerCounts = () =>
+      addedListeners().map((listeners) => listeners.length);
+
+    beforeEach(async () => {
+      // A readyWhen run resolves while its commands still run, so earlier
+      // tests' commands would share the listeners these tests count
+      vi.resetModules();
+      ({ runCommands: startCommands } = await import('./run-commands.impl.js'));
+      initialListeners = events.map(listenersOf);
+    });
+
+    it.each([
+      ['in the nx process', false, [1, 0, 0, 0]],
+      ['in a forked executor', true, [1, 1, 1, 1]],
+    ])(
+      'adds one listener per event %s for all running commands',
+      async (_, forked, added) => {
+        if (forked) {
+          process.env.NX_FORKED_TASK_EXECUTOR = 'true';
+        }
+        try {
+          const parallel = await startCommands(
+            {
+              commands: Array(4).fill('sleep 0.2'),
+              parallel: true,
+              __unparsed__: [],
+            },
+            context
+          );
+          const serial = await startCommands(
+            {
+              commands: ['sleep 0.5', 'sleep 0.5'],
+              parallel: false,
+              usePty: false,
+              __unparsed__: [],
+            },
+            context
+          );
+          expect(addedListenerCounts()).toEqual(added);
+
+          await parallel.getResults();
+          // The serial commands are still running
+          expect(addedListenerCounts()).toEqual(added);
+
+          await serial.getResults();
+          expect(addedListenerCounts()).toEqual([0, 0, 0, 0]);
+        } finally {
+          delete process.env.NX_FORKED_TASK_EXECUTOR;
+        }
+      }
+    );
+
+    it('stops every running command on a signal in a forked executor', async () => {
+      process.env.NX_FORKED_TASK_EXECUTOR = 'true';
+      try {
+        // Longer than the test timeout, so only the signal ends them
+        const parallel = await startCommands(
+          {
+            commands: ['sleep 60', 'sleep 60'],
+            parallel: true,
+            __unparsed__: [],
+          },
+          context
+        );
+        const serial = await startCommands(
+          {
+            commands: ['sleep 60', 'sleep 60'],
+            parallel: false,
+            usePty: false,
+            __unparsed__: [],
+          },
+          context
+        );
+
+        // Only the handlers run-commands added, not the test runner's
+        for (const listener of addedListeners()[events.indexOf('SIGTERM')]) {
+          listener('SIGTERM');
+        }
+
+        const results = await Promise.all([
+          parallel.getResults(),
+          serial.getResults(),
+        ]);
+        expect(results.map(({ code }) => code)).not.toContain(0);
+        expect(addedListenerCounts()).toEqual([0, 0, 0, 0]);
+      } finally {
+        delete process.env.NX_FORKED_TASK_EXECUTOR;
+      }
+    });
+  });
+});

@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSImportEqualsDeclaration > _error_ > missing-reference > TSESTree - Error`]
+TSError
+> 1 | import F;
+    |         ^ '=' expected.
+  2 |

@@ -1,0 +1,65 @@
+import { Tree } from '@nx/devkit';
+import {
+  determineProjectNameAndRootOptions,
+  ensureRootProjectName,
+} from '@nx/devkit/internal';
+import { Schema } from '../schema';
+import { normalizeLinterOption, isUsingTsSolutionSetup } from '@nx/js/internal';
+import type { LinterType } from '@nx/js';
+
+export interface NormalizedSchema extends Omit<Schema, 'name'> {
+  // `normalizeOptions` always resolves this, so it is no longer optional.
+  linter: LinterType;
+  fileName: string;
+  projectName: string;
+  projectRoot: string;
+  importPath: string;
+  routePath: string;
+  parsedTags: string[];
+  isUsingTsSolutionConfig: boolean;
+}
+
+export async function normalizeOptions(
+  host: Tree,
+  options: Schema
+): Promise<NormalizedSchema> {
+  await ensureRootProjectName(options, 'library');
+  const {
+    projectName,
+    names: projectNames,
+    projectRoot,
+    importPath,
+  } = await determineProjectNameAndRootOptions(host, {
+    name: options.name,
+    projectType: 'library',
+    directory: options.directory,
+    importPath: options.importPath,
+  });
+
+  const parsedTags = options.tags
+    ? options.tags.split(',').map((s) => s.trim())
+    : [];
+
+  const isUsingTsSolutionConfig = isUsingTsSolutionSetup(host);
+  const useProjectJson = options.useProjectJson ?? !isUsingTsSolutionConfig;
+
+  const normalized: NormalizedSchema = {
+    ...options,
+    // Resolved in the literal so the type guarantees it: `undefined` is falsy,
+    // so the ESLint arm would still run while the `=== 'eslint'` tsconfig
+    // excludes below are skipped.
+    linter: await normalizeLinterOption(host, options.linter),
+    fileName: projectName,
+    routePath: `/${projectNames.projectSimpleName}`,
+    projectName:
+      isUsingTsSolutionConfig && !options.name ? importPath : projectName,
+    projectRoot,
+    parsedTags,
+    importPath,
+    isUsingTsSolutionConfig,
+    useProjectJson,
+    unitTestRunner: options.unitTestRunner ?? 'none',
+  };
+
+  return normalized;
+}

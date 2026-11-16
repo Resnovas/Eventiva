@@ -1,0 +1,41 @@
+import {
+  name,
+  rule,
+} from '#packages/eslint-plugin-formatjs/rules/no-multiple-plurals.js'
+import {ruleTester} from '#packages/eslint-plugin-formatjs/tests/util'
+import {
+  dynamicMessage,
+  noMatch,
+  spreadJsx,
+  emptyFnCall,
+  defineMessage,
+} from '#packages/eslint-plugin-formatjs/tests/fixtures'
+ruleTester.run(name, rule, {
+  valid: [defineMessage, dynamicMessage, noMatch, spreadJsx, emptyFnCall],
+  invalid: [
+    {
+      code: `
+              import {defineMessage} from 'react-intl'
+              defineMessage({
+                  defaultMessage: '{p1, plural, one{one} other{other}} {p2, plural, one{two} other{other}}'
+              })`,
+      errors: [
+        {
+          messageId: 'noMultiplePlurals',
+        },
+      ],
+    },
+    {
+      code: `
+              import {defineMessage} from 'react-intl'
+              defineMessage({
+                  defaultMessage: '{p1, plural, one{{p2, plural, one{two} other{other}}} other{other}}'
+              })`,
+      errors: [
+        {
+          messageId: 'noMultiplePlurals',
+        },
+      ],
+    },
+  ],
+})

@@ -1,0 +1,104 @@
+{
+  "name": "@typescript-eslint/ast-spec",
+  "version": "8.72.1",
+  "description": "Complete specification for the TypeScript-ESTree AST",
+  "private": true,
+  "keywords": [
+    "eslint",
+    "typescript",
+    "estree"
+  ],
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "files": [
+    "dist",
+    "!**/*.js.map",
+    "!**/*.tsbuildinfo"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/ast-spec"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "pnpm exec nx build",
+    "clean": "rimraf dist/ coverage/",
+    "clean-fixtures": "rimraf -g \"./src/**/fixtures/**/snapshots\"",
+    "format": "pnpm -w run format",
+    "lint": "pnpm -w exec nx lint",
+    "test": "pnpm -w exec nx test",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typescript-eslint"
+  },
+  "devDependencies": {
+    "@babel/code-frame": "^8.0.0",
+    "@babel/core": "^8.0.1",
+    "@babel/eslint-parser": "^8.0.1",
+    "@babel/parser": "^8.0.4",
+    "@microsoft/api-extractor": "^7.59.0",
+    "@typescript-eslint/typescript-estree": "workspace:*",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/pretty-format": "catalog:",
+    "@vitest/utils": "catalog:",
+    "eslint": "catalog:",
+    "glob": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "name": "ast-spec",
+    "implicitDependencies": [
+      "!typescript-estree"
+    ],
+    "includedScripts": [
+      "clean",
+      "clean-fixtures"
+    ],
+    "targets": {
+      "build": {
+        "command": "tsc -b tsconfig.build.json && api-extractor run --local --config=api-extractor.json",
+        "outputs": [
+          "{projectRoot}/dist/**/*.ts"
+        ],
+        "cache": true,
+        "options": {
+          "cwd": "{projectRoot}"
+        }
+      },
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck": {
+        "dependsOn": [
+          "build",
+          "typescript-estree:build"
+        ]
+      },
+      "typecheck:tsc6": {
+        "dependsOn": [
+          "build",
+          "typescript-estree:typecheck:tsc6"
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "typecheck"
+        ]
+      }
+    }
+  }
+}

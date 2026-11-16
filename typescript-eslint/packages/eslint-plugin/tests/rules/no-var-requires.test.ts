@@ -1,0 +1,272 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
+import rule from '../../src/rules/no-var-requires';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('no-var-requires', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    "import foo = require('foo');",
+    "require('foo');",
+    "require?.('foo');",
+    `
+import { createRequire } from 'module';
+const require = createRequire('foo');
+const json = require('./some.json');
+    `,
+    {
+      code: "const pkg = require('./package.json');",
+      options: [{ allow: ['/package\\.json$'] }],
+    },
+    {
+      code: "const pkg = require('../package.json');",
+      options: [{ allow: ['/package\\.json$'] }],
+    },
+    {
+      code: "const pkg = require('../packages/package.json');",
+      options: [{ allow: ['/package\\.json$'] }],
+    },
+    {
+      code: "const pkg = require('data.json');",
+      options: [{ allow: ['\\.json$'] }],
+    },
+    {
+      code: "const pkg = require('some-package');",
+      options: [{ allow: ['^some-package$'] }],
+    },
+    {
+      code: 'const pkg = require(`some-package`);',
+      options: [{ allow: ['^some-package$'] }],
+    },
+  ],
+  invalid: [
+    {
+      code: "var foo = require('foo');",
+      errors: [
+        {
+          column: 11,
+          endColumn: 25,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const foo = require('foo');",
+      errors: [
+        {
+          column: 13,
+          endColumn: 27,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "let foo = require('foo');",
+      errors: [
+        {
+          column: 11,
+          endColumn: 25,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "let foo = trick(require('foo'));",
+      errors: [
+        {
+          column: 17,
+          endColumn: 31,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "var foo = require?.('foo');",
+      errors: [
+        {
+          column: 11,
+          endColumn: 27,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const foo = require?.('foo');",
+      errors: [
+        {
+          column: 13,
+          endColumn: 29,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "let foo = require?.('foo');",
+      errors: [
+        {
+          column: 11,
+          endColumn: 27,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "let foo = trick(require?.('foo'));",
+      errors: [
+        {
+          column: 17,
+          endColumn: 33,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "let foo = trick?.(require('foo'));",
+      errors: [
+        {
+          column: 19,
+          endColumn: 33,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const foo = require('./foo.json') as Foo;",
+      errors: [
+        {
+          column: 13,
+          endColumn: 34,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const foo = <Foo>require('./foo.json');",
+      errors: [
+        {
+          column: 18,
+          endColumn: 39,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const foo: Foo = require('./foo.json').default;",
+      errors: [
+        {
+          column: 18,
+          endColumn: 39,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/3883
+    {
+      code: `
+const configValidator = new Validator(require('./a.json'));
+      `,
+      errors: [
+        {
+          column: 39,
+          endColumn: 58,
+          endLine: 2,
+          line: 2,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: `
+const configValidator = new Validator();
+configValidator.addSchema(require('./a.json'));
+      `,
+      errors: [
+        {
+          column: 27,
+          endColumn: 46,
+          endLine: 3,
+          line: 3,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const pkg = require('./package.json');",
+      errors: [
+        {
+          column: 13,
+          endColumn: 38,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+    },
+    {
+      code: "const pkg = require('./package.jsonc');",
+      errors: [
+        {
+          column: 13,
+          endColumn: 39,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+      options: [{ allow: ['/package\\.json$'] }],
+    },
+    {
+      code: "const pkg = require('./package.json');",
+      errors: [
+        {
+          column: 13,
+          endColumn: 38,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+      options: [{ allow: ['^some-package$'] }],
+    },
+    {
+      code: 'const pkg = require(`./package.json`);',
+      errors: [
+        {
+          column: 13,
+          endColumn: 38,
+          endLine: 1,
+          line: 1,
+          messageId: 'noVarReqs',
+        },
+      ],
+      options: [{ allow: ['^some-package$'] }],
+    },
+  ],
+});

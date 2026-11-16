@@ -1,0 +1,1566 @@
+import rule from '../../src/rules/no-unsafe-enum-comparison';
+import { createRuleTesterWithTypes } from '../RuleTester';
+
+const ruleTester = createRuleTesterWithTypes();
+
+ruleTester.run('no-unsafe-enum-comparison', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    "'a' > 'b';",
+    "'a' < 'b';",
+    "'a' == 'b';",
+    "'a' === 'b';",
+    '1 > 2;',
+    '1 < 2;',
+    '1 == 2;',
+    '1 === 2;',
+    `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple === ({} as any);
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple === undefined;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple === null;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+declare const fruit: Fruit | -1;
+fruit === -1;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+declare const fruit: Fruit | number;
+fruit === -1;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+declare const fruit: Fruit | 'apple';
+fruit === 'apple';
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+declare const fruit: Fruit | string;
+fruit === 'apple';
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | 'apple';
+fruit === 'apple';
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | string;
+fruit === 'apple';
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | 0;
+fruit === 0;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | number;
+fruit === 0;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+declare const fruit: Fruit | 'apple';
+fruit === Math.random() > 0.5 ? 'apple' : Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | 'apple';
+fruit === Math.random() > 0.5 ? 'apple' : Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | string;
+fruit === Math.random() > 0.5 ? 'apple' : Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | 0;
+fruit === Math.random() > 0.5 ? 0 : Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+}
+declare const fruit: Fruit | number;
+fruit === Math.random() > 0.5 ? 0 : Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple,
+  Banana,
+}
+Fruit.Apple === Fruit.Banana;
+    `,
+    `
+enum Fruit {
+  Apple = 0,
+  Banana = 1,
+}
+Fruit.Apple === Fruit.Banana;
+    `,
+    `
+enum Fruit {
+  Apple = 'apple',
+  Banana = 'banana',
+}
+Fruit.Apple === Fruit.Banana;
+    `,
+    `
+enum Fruit {
+  Apple,
+  Banana,
+}
+const fruit = Fruit.Apple;
+fruit === Fruit.Banana;
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+const vegetable = Vegetable.Asparagus;
+vegetable === Vegetable.Beet;
+    `,
+    `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+const fruit1 = Fruit.Apple;
+const fruit2 = Fruit.Banana;
+fruit1 === fruit2;
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+const vegetable1 = Vegetable.Asparagus;
+const vegetable2 = Vegetable.Beet;
+vegetable1 === vegetable2;
+    `,
+    `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+enum Fruit2 {
+  Apple2,
+  Banana2,
+  Cherry2,
+}
+declare const left: number | Fruit;
+declare const right: number | Fruit2;
+left === right;
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+enum Vegetable2 {
+  Asparagus2 = 'asparagus2',
+  Beet2 = 'beet2',
+  Celery2 = 'celery2',
+}
+declare const left: string | Vegetable;
+declare const right: string | Vegetable2;
+left === right;
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+const foo = {};
+const vegetable = Vegetable.Asparagus;
+vegetable in foo;
+    `,
+    `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+declare const fruitOrBoolean: Fruit | boolean;
+fruitOrBoolean === true;
+    `,
+    `
+enum Str {
+  A = 'a',
+}
+enum Num {
+  B = 1,
+}
+enum Mixed {
+  A = 'a',
+  B = 1,
+}
+
+declare const str: Str;
+declare const strOrString: Str | string;
+
+declare const num: Num;
+declare const numOrNumber: Num | number;
+
+declare const mixed: Mixed;
+declare const mixedOrStringOrNumber: Mixed | string | number;
+
+function someFunction() {}
+
+// following are all ignored due to the presence of "| string" or "| number"
+strOrString === 'a';
+numOrNumber === 1;
+mixedOrStringOrNumber === 'a';
+mixedOrStringOrNumber === 1;
+
+// following are all ignored because the value can never be an enum value
+str === 1;
+num === 'a';
+str === {};
+num === {};
+mixed === {};
+str === true;
+num === true;
+mixed === true;
+str === someFunction;
+num === someFunction;
+mixed === someFunction;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+
+const bitShift = 1 << Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+
+const bitShift = 1 >> Fruit.Apple;
+    `,
+    `
+enum Fruit {
+  Apple,
+}
+
+declare const fruit: Fruit;
+
+switch (fruit) {
+  case Fruit.Apple: {
+    break;
+  }
+}
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+}
+
+declare const vegetable: Vegetable;
+
+switch (vegetable) {
+  case Vegetable.Asparagus: {
+    break;
+  }
+}
+    `,
+    `
+enum Vegetable {
+  Asparagus = 'asparagus',
+}
+
+declare const vegetable: Vegetable;
+
+switch (vegetable) {
+  default: {
+    break;
+  }
+}
+    `,
+  ],
+  invalid: [
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple < 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple > 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple == 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 18,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple != 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+Fruit.Apple !== 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 18,
+          endLine: 5,
+          line: 5,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple = 0,
+  Banana = 'banana',
+}
+Fruit.Apple === 0;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 18,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Fruit {
+  Apple = 0,
+  Banana = 'banana',
+}
+Fruit.Apple === Fruit.Apple;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple = 0,
+  Banana = 'banana',
+}
+Fruit.Banana === '';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 20,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+Vegetable.Asparagus === 'beet';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 31,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+1 === Fruit.Apple;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 18,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+'beet' === Vegetable.Asparagus;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 31,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+const fruit = Fruit.Apple;
+fruit === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+const vegetable = Vegetable.Asparagus;
+vegetable === 'beet';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 21,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+const fruit = Fruit.Apple;
+1 === fruit;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+const vegetable = Vegetable.Asparagus;
+'beet' === vegetable;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 21,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+enum Fruit2 {
+  Apple2,
+  Banana2,
+  Cherry2,
+}
+Fruit.Apple === Fruit2.Apple2;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 30,
+          endLine: 12,
+          line: 12,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+enum Vegetable2 {
+  Asparagus2 = 'asparagus2',
+  Beet2 = 'beet2',
+  Celery2 = 'celery2',
+}
+Vegetable.Asparagus === Vegetable2.Asparagus2;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 46,
+          endLine: 12,
+          line: 12,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+}
+enum Fruit2 {
+  Apple2,
+  Banana2,
+  Cherry2,
+}
+const fruit = Fruit.Apple;
+fruit === Fruit2.Apple2;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 24,
+          endLine: 13,
+          line: 13,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+  Celery = 'celery',
+}
+enum Vegetable2 {
+  Asparagus2 = 'asparagus2',
+  Beet2 = 'beet2',
+  Celery2 = 'celery2',
+}
+const vegetable = Vegetable.Asparagus;
+vegetable === Vegetable2.Asparagus2;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 36,
+          endLine: 13,
+          line: 13,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Str {
+  A = 'a',
+}
+
+declare const str: Str;
+
+str === 'a';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Str {
+  A = 'a',
+}
+
+declare const str: Str;
+
+str === Str.A;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Num {
+  B = 1,
+}
+
+declare const num: Num;
+
+num === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 10,
+          endLine: 8,
+          line: 8,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Num {
+  B = 1,
+}
+
+declare const num: Num;
+
+num === Num.B;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Mixed {
+  A = 'a',
+  B = 1,
+}
+
+declare const mixed: Mixed;
+
+mixed === 'a';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 14,
+          endLine: 9,
+          line: 9,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Mixed {
+  A = 'a',
+  B = 1,
+}
+
+declare const mixed: Mixed;
+
+mixed === Mixed.A;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Mixed {
+  A = 'a',
+  B = 1,
+}
+
+declare const mixed: Mixed;
+
+mixed === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 9,
+          line: 9,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Mixed {
+  A = 'a',
+  B = 1,
+}
+
+declare const mixed: Mixed;
+
+mixed === Mixed.B;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple = 'apple',
+}
+type __String =
+  | (string & { __escapedIdentifier: void })
+  | (void & { __escapedIdentifier: void })
+  | Fruit;
+declare const weirdString: __String;
+weirdString === 'someArbitraryValue';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 37,
+          endLine: 10,
+          line: 10,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+
+declare const fruit: Fruit;
+
+switch (fruit) {
+  case 0: {
+    break;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 4,
+          endLine: 11,
+          line: 9,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+  Banana,
+}
+
+declare const fruit: Fruit;
+
+switch (fruit) {
+  case Fruit.Apple: {
+    break;
+  }
+  case 1: {
+    break;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 4,
+          endLine: 15,
+          line: 13,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+}
+
+declare const vegetable: Vegetable;
+
+switch (vegetable) {
+  case 'asparagus': {
+    break;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 4,
+          endLine: 11,
+          line: 9,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+}
+
+declare const vegetable: Vegetable;
+
+switch (vegetable) {
+  case Vegetable.Asparagus: {
+    break;
+  }
+  case 'beet': {
+    break;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 4,
+          endLine: 15,
+          line: 13,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+  Beet = 'beet',
+}
+
+declare const vegetable: Vegetable;
+
+switch (vegetable) {
+  case Vegetable.Asparagus: {
+    break;
+  }
+  case 'beet': {
+    break;
+  }
+  default: {
+    break;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 4,
+          endLine: 15,
+          line: 13,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum Str {
+  A = 'a',
+  B = 'b',
+}
+declare const str: Str;
+str === 'b';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Str {
+  A = 'a',
+  B = 'b',
+}
+declare const str: Str;
+str === Str.B;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Str {
+  A = 'a',
+  AB = 'ab',
+}
+declare const str: Str;
+str === 'a' + 'b';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 18,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Str {
+  A = 'a',
+  AB = 'ab',
+}
+declare const str: Str;
+str === Str.AB;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+1 === num;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 10,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+Num.A === num;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+1 /* with */ === /* comment */ num;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 35,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+Num.A /* with */ === /* comment */ num;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+1 + 1 === num;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 14,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Num {
+  A = 1,
+  B = 2,
+}
+declare const num: Num;
+Num.B === num;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Mixed {
+  A = 1,
+  B = 'b',
+}
+declare const mixed: Mixed;
+mixed === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 12,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Mixed {
+  A = 1,
+  B = 'b',
+}
+declare const mixed: Mixed;
+mixed === Mixed.A;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Mixed {
+  A = 1,
+  B = 'b',
+}
+declare const mixed: Mixed;
+mixed === 'b';
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 14,
+          endLine: 7,
+          line: 7,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum Mixed {
+  A = 1,
+  B = 'b',
+}
+declare const mixed: Mixed;
+mixed === Mixed.B;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum StringKey {
+  'test-key' /* with comment */ = 1,
+}
+declare const stringKey: StringKey;
+stringKey === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum StringKey {
+  'test-key' /* with comment */ = 1,
+}
+declare const stringKey: StringKey;
+stringKey === StringKey['test-key'];
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum StringKey {
+  "key-'with-single'-quotes" = 1,
+}
+declare const stringKey: StringKey;
+stringKey === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum StringKey {
+  "key-'with-single'-quotes" = 1,
+}
+declare const stringKey: StringKey;
+stringKey === StringKey['key-\\'with-single\\'-quotes'];
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum StringKey {
+  'key-"with-double"-quotes' = 1,
+}
+declare const stringKey: StringKey;
+stringKey === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum StringKey {
+  'key-"with-double"-quotes' = 1,
+}
+declare const stringKey: StringKey;
+stringKey === StringKey['key-"with-double"-quotes'];
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum StringKey {
+  'key-\`with-backticks\`-quotes' = 1,
+}
+declare const stringKey: StringKey;
+stringKey === 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 16,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+          suggestions: [
+            {
+              messageId: 'replaceValueWithEnum',
+              output: `
+enum StringKey {
+  'key-\`with-backticks\`-quotes' = 1,
+}
+declare const stringKey: StringKey;
+stringKey === StringKey['key-\`with-backticks\`-quotes'];
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+declare const foo: number & {};
+if (foo === Fruit.Apple) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 24,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Fruit {
+  Apple,
+}
+declare const foo: number & { __someBrand: void };
+if (foo === Fruit.Apple) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 24,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+}
+declare const foo: string & {};
+if (foo === Vegetable.Asparagus) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 32,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum Vegetable {
+  Asparagus = 'asparagus',
+}
+declare const foo: string & { __someBrand: void };
+if (foo === Vegetable.Asparagus) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 32,
+          endLine: 6,
+          line: 6,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+    {
+      code: `
+enum NUMBER_ENUM {
+  First = 0,
+  Second = 1,
+}
+
+type NumberUnion = 0 | 1;
+
+declare const numberUnion: NumberUnion;
+
+switch (numberUnion) {
+  case NUMBER_ENUM.First:
+  case 1:
+    break;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 26,
+          endLine: 12,
+          line: 12,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum NUMBER_ENUM {
+  First = 0,
+  Second = 1,
+}
+
+type NumberUnion = 0 | 1;
+
+declare const numberUnion: NumberUnion;
+
+switch (numberUnion) {
+  case 0:
+  case NUMBER_ENUM.Second:
+    break;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 11,
+          endLine: 14,
+          line: 13,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum STRING_ENUM {
+  First = 'one',
+  Second = 'two',
+}
+
+type StringUnion = 'one' | 'two';
+
+declare const stringUnion: StringUnion;
+
+switch (stringUnion) {
+  case STRING_ENUM.First:
+  case 'two':
+    break;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 26,
+          endLine: 12,
+          line: 12,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+enum STRING_ENUM {
+  First = 'one',
+  Second = 'two',
+}
+
+type StringUnion = 'one' | 'two';
+
+declare const stringUnion: StringUnion;
+
+switch (stringUnion) {
+  case 'one':
+  case STRING_ENUM.Second:
+    break;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 11,
+          endLine: 14,
+          line: 13,
+          messageId: 'mismatchedCase',
+        },
+      ],
+    },
+    {
+      code: `
+declare const stringUnion: 'foo' | 'bar';
+
+enum StringEnum {
+  FOO = 'foo',
+  BAR = 'bar',
+}
+
+declare const stringEnum: StringEnum;
+
+stringUnion === stringEnum;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 27,
+          endLine: 11,
+          line: 11,
+          messageId: 'mismatchedCondition',
+        },
+      ],
+    },
+  ],
+});

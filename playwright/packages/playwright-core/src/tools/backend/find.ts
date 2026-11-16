@@ -1,0 +1,163 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import * as z from 'zod';
+
+import { defineTabTool } from './tool';
+
+// Number of context lines to show around each match, like `grep -C`.
+const contextLines = 3;
+
+const find = defineTabTool({
+  capability: 'core',
+  schema: {
+    name: 'browser_find',
+    title: 'Find in page snapshot',
+    description: 'Search the accessibility snapshot of the current page for text or a regular expression. Returns matching snapshot nodes with a few lines of surrounding context (like search snippets), each shown under its path from the root of the tree, which is cheaper than capturing the whole snapshot when you only need to locate an element and its ref.',
+    inputSchema: z.object({
+      text: z.string().optional().describe('Plain text to search for in the page snapshot (case-insensitive substring match). Provide either text or regex, not both.'),
+      regex: z.string().optional().refine(v => !v || isValidRegex(v), { message: 'Invalid regular expression' }).describe('Regular expression to search for in the page snapshot. Matching is case-sensitive by default; wrap the pattern in slashes to add flags, e.g. "/error/i" for case-insensitive. Provide either text or regex, not both.'),
+      maxResults: z.number().optional().describe('Maximum number of matching items to return. Defaults to returning all matches.'),
+      filename: z.string().optional().describe('Save results to a file instead of returning them in the response. Relative file names are resolved against the workspace root.'),
+    }),
+    type: 'readOnly',
+  },
+
+  handle: async (tab, params, response) => {
+    if (!params.text && !params.regex) {
+      response.addError('Provide either "text" or "regex" to search for.');
+      return;
+    }
+    if (params.text && params.regex) {
+      response.addError('Provide only one of "text" or "regex", not both.');
+      return;
+    }
+    if (params.maxResults !== undefined && (!Number.isInteger(params.maxResults) || params.maxResults <= 0)) {
+      response.addError('"maxResults" must be a positive integer.');
+      return;
+    }
+
+    let query: string;
+    let matches: (line: string) => boolean;
+    if (params.regex) {
+      const re = compileRegex(params.regex);
+      query = String(re);
+      matches = line => {
+        re.lastIndex = 0;
+        return re.test(line);
+      };
+    } else {
+      query = `"${params.text}"`;
+      const needle = params.text!.toLowerCase();
+      matches = line => line.toLowerCase().includes(needle);
+    }
+
+    const snapshot = await tab.page.ariaSnapshot({ mode: 'ai' });
+    const lines = snapshot.split('\n');
+    const indents = lines.map(indentOf);
+    const matchedLines: number[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (matches(lines[i]))
+        matchedLines.push(i);
+    }
+
+    if (!matchedLines.length) {
+      await response.addResult('Find results', `No matches found for ${query}.`, { prefix: 'find', ext: 'md', suggestedFilename: params.filename });
+      return;
+    }
+
+    const totalMatches = matchedLines.length;
+    const matchesToRender = params.maxResults !== undefined && params.maxResults < totalMatches
+      ? matchedLines.slice(0, params.maxResults)
+      : matchedLines;
+
+    // Merge matched lines into windows of context, coalescing overlapping ones.
+    const windows: { start: number, end: number }[] = [];
+    for (const line of matchesToRender) {
+      const start = Math.max(0, line - contextLines);
+      const end = Math.min(lines.length - 1, line + contextLines);
+      const last = windows[windows.length - 1];
+      if (last && start <= last.end + 1)
+        last.end = Math.max(last.end, end);
+      else
+        windows.push({ start, end });
+    }
+
+    const path = new Set<number>();
+    for (const match of matchesToRender) {
+      path.add(match);
+      for (const ancestor of ancestorIndices(lines, indents, match))
+        path.add(ancestor);
+    }
+
+    const snippets = windows.map(window => {
+      const indices = ancestorIndices(lines, indents, window.start);
+      for (let i = window.start; i <= window.end; i++)
+        indices.push(i);
+      const out: string[] = [];
+      for (let i = 0; i < indices.length; i++) {
+        const index = indices[i];
+        if (i > 0 && index > indices[i - 1] + 1 && !path.has(index) && !path.has(indices[i - 1]))
+          out.push(' '.repeat(indents[index]) + '...');
+        out.push(lines[index]);
+      }
+      return out.join('\n');
+    });
+    const matchWord = totalMatches === 1 ? 'match' : 'matches';
+    const header = matchesToRender.length < totalMatches
+      ? `Found ${totalMatches} ${matchWord} for ${query} (showing first ${matchesToRender.length}):`
+      : `Found ${totalMatches} ${matchWord} for ${query}:`;
+    await response.addResult('Find results', `${header}\n\n${snippets.join('\n\n----\n\n')}`, { prefix: 'find', ext: 'md', suggestedFilename: params.filename });
+  },
+});
+
+function compileRegex(source: string): RegExp {
+  const literal = /^\/(.*)\/([a-z]*)$/.exec(source);
+  const pattern = literal ? literal[1] : source;
+  const flags = literal ? literal[2].replace(/g/g, '') : '';
+  return new RegExp(pattern, flags);
+}
+
+function isValidRegex(source: string): boolean {
+  try {
+    compileRegex(source);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function indentOf(line: string): number {
+  return line.length - line.trimStart().length;
+}
+
+function ancestorIndices(lines: string[], indents: number[], index: number): number[] {
+  const result: number[] = [];
+  let indent = indents[index];
+  for (let i = index - 1; i >= 0 && indent > 0; i--) {
+    if (!lines[i].trim())
+      continue;
+    if (indents[i] < indent) {
+      result.push(i);
+      indent = indents[i];
+    }
+  }
+  return result.reverse();
+}
+
+export default [
+  find,
+];

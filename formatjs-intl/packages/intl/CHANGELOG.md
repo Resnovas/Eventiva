@@ -1,0 +1,1688 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [6.1.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.1.3...@formatjs/intl@6.1.4) (2026-10-19)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.22
+    * intl-messageformat bumped to 12.1.4
+
+## [6.1.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.1.2...@formatjs/intl@6.1.3) (2026-10-05)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.21
+    * intl-messageformat bumped to 12.1.3
+
+## [6.1.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.1.1...@formatjs/intl@6.1.2) (2026-09-19)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.20
+    * intl-messageformat bumped to 12.1.2
+
+## [6.1.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.1.0...@formatjs/intl@6.1.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **eslint-plugin-formatjs:** generate lint-compatible empty message contracts ([#7442](https://github.com/formatjs/formatjs/issues/7442)) ([799efaf](https://github.com/formatjs/formatjs/commit/799efafaebbd242cca5bf8f421e40c416dc89276))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * intl-messageformat bumped to 12.1.1
+
+## [6.1.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.0.1...@formatjs/intl@6.1.0) (2026-09-16)
+
+
+### Features
+
+* **@formatjs/intl:** support opt-in branded message text ([#7436](https://github.com/formatjs/formatjs/issues/7436)) ([152ee1c](https://github.com/formatjs/formatjs/commit/152ee1cd52b49fb7d7ba98cb5464ab28b1b8ccfa))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * intl-messageformat bumped to 12.1.0
+
+## [6.0.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@6.0.0...@formatjs/intl@6.0.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* default message helpers to empty ICU contracts ([#7428](https://github.com/formatjs/formatjs/issues/7428)) ([7bd3c8b](https://github.com/formatjs/formatjs/commit/7bd3c8bb3c4fc0cf298c3f05c6d331910caa9da7))
+
+## [6.0.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@5.0.0...@formatjs/intl@6.0.0) (2026-09-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** simplify typed helper calls and generated contracts ([#7420](https://github.com/formatjs/formatjs/issues/7420))
+
+### Features
+
+* **@formatjs/intl:** export shared text message formatter type ([#7418](https://github.com/formatjs/formatjs/issues/7418)) ([e4d9e50](https://github.com/formatjs/formatjs/commit/e4d9e507764c2b58b8e8da0a14896f69e4755f87))
+* **@formatjs/intl:** simplify typed helper calls and generated contracts ([#7420](https://github.com/formatjs/formatjs/issues/7420)) ([0710507](https://github.com/formatjs/formatjs/commit/07105075b60929603b220c82aa8b435174a941af))
+
+## [5.0.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@5.0.0-rc.1...@formatjs/intl@5.0.0) (2026-09-15)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.19
+    * intl-messageformat bumped to 12.0.0
+
+## [5.0.0-rc.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@5.0.0-rc.0...@formatjs/intl@5.0.0-rc.1) (2026-09-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** @formatjs/intl and react-intl reserve the two-generic typed catalog form for contracts and descriptor metadata. Legacy defineMessages instantiation expressions must supply their third generic.
+* **@formatjs/intl:** @formatjs/intl and react-intl helper results are readonly. Copy descriptors or catalogs before changing them.
+
+### Features
+
+* **@formatjs/intl:** check registered message arguments by ID ([#7384](https://github.com/formatjs/formatjs/issues/7384)) ([95d719b](https://github.com/formatjs/formatjs/commit/95d719bd7cf4462131371a04fdce9631cca25628))
+* **@formatjs/intl:** retain typed descriptor metadata ([#7382](https://github.com/formatjs/formatjs/issues/7382)) ([c00e27f](https://github.com/formatjs/formatjs/commit/c00e27f677f3913139269c41181950d80d85c6d8))
+* **@formatjs/intl:** return readonly message descriptors ([#7381](https://github.com/formatjs/formatjs/issues/7381)) ([b59e7ec](https://github.com/formatjs/formatjs/commit/b59e7ec10d29de32b99cc73e2e0d9dff99ebf51f))
+
+## [5.0.0-rc.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.2.1...@formatjs/intl@5.0.0-rc.0) (2026-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** @formatjs/intl and react-intl formatter generics now use <Values, RichOutput>. Migrate explicit rich-output calls to formatMessage<Values, RichOutput> or $t<Values, RichOutput>.
+* **intl-messageformat:** intl-messageformat, @formatjs/intl, and react-intl now require TypeScript 5.4 or newer, including projects that do not enable typed messages.
+
+### Features
+
+* **@formatjs/intl:** put ICU contracts before rich output types ([#7372](https://github.com/formatjs/formatjs/issues/7372)) ([c388333](https://github.com/formatjs/formatjs/commit/c388333bba034466e043c74f358500d3763df84a))
+* **intl-messageformat:** require TS 5.4 and add typed ICU contracts ([#7370](https://github.com/formatjs/formatjs/issues/7370)) ([e8620f8](https://github.com/formatjs/formatjs/commit/e8620f8e0465e817ba1a50a7ba856a1d37ca7a47))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * intl-messageformat bumped to 12.0.0-rc.0
+
+## [4.2.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.2.0...@formatjs/intl@4.2.1) (2026-09-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.18
+    * intl-messageformat bumped to 11.2.15
+
+## 4.2.0 (2026-09-10)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* build(deps): align Renovate Bazel lock command by @longlho in https://github.com/formatjs/formatjs/pull/7122
+* build: cross-compile Python release wheels by @longlho in https://github.com/formatjs/formatjs/pull/7121
+* fix: rename Python intl distribution by @longlho in https://github.com/formatjs/formatjs/pull/7123
+* fix: validate released Python versions by @longlho in https://github.com/formatjs/formatjs/pull/7125
+* feat(formatjs_cli): extract Python format_message calls by @longlho in https://github.com/formatjs/formatjs/pull/7129
+* feat(formatjs_intl): align Python runtime fallback by @longlho in https://github.com/formatjs/formatjs/pull/7130
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7133
+* build(deps): update Bazel lockfiles for Renovate PRs by @longlho in https://github.com/formatjs/formatjs/pull/7135
+* build(deps): publish dispatched Renovate check results by @longlho in https://github.com/formatjs/formatjs/pull/7136
+* build(deps): publish Renovate required statuses by @longlho in https://github.com/formatjs/formatjs/pull/7137
+* fix(eslint-plugin-formatjs): align message recognition across tools by @longlho in https://github.com/formatjs/formatjs/pull/7151
+* fix(babel-plugin-formatjs): support transparent expression wrappers by @longlho in https://github.com/formatjs/formatjs/pull/7156
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7138
+* fix(formatjs_cli): extract messages from tagged template literals by @vpontis in https://github.com/formatjs/formatjs/pull/7182
+* docs: track ECMA-402 draft polyfill audit by @longlho in https://github.com/formatjs/formatjs/pull/7185
+* docs: link ECMA-402 audit fixes and validation by @longlho in https://github.com/formatjs/formatjs/pull/7200
+* codex/ecma402 coercion by @longlho in https://github.com/formatjs/formatjs/pull/7186
+* fix(@formatjs/intl-supportedvaluesof): coerce keys before lookup by @longlho in https://github.com/formatjs/formatjs/pull/7187
+* fix(@formatjs/intl-listformat): follow the string iterator protocol by @longlho in https://github.com/formatjs/formatjs/pull/7189
+* fix(deps): negotiate well-formed numbering system options by @longlho in https://github.com/formatjs/formatjs/pull/7190
+* fix(@formatjs/intl-collator): validate collation and comparison inputs by @longlho in https://github.com/formatjs/formatjs/pull/7191
+* fix(@formatjs/intl-datetimeformat): reject offsets containing seconds by @longlho in https://github.com/formatjs/formatjs/pull/7192
+* fix(@formatjs/intl-displaynames): validate and canonicalize display codes by @longlho in https://github.com/formatjs/formatjs/pull/7193
+* fix(@formatjs/intl-durationformat): validate duration records exactly by @longlho in https://github.com/formatjs/formatjs/pull/7194
+* fix(@formatjs/intl-locale): canonicalize weekday and numeric options by @longlho in https://github.com/formatjs/formatjs/pull/7195
+* fix(@formatjs/intl-locale): align week info with ECMA-402 by @longlho in https://github.com/formatjs/formatjs/pull/7196
+* fix(@formatjs/intl-pluralrules): align draft options and ranges by @longlho in https://github.com/formatjs/formatjs/pull/7197
+* fix(@formatjs/intl-segmenter): preserve iterator progress and locale by @longlho in https://github.com/formatjs/formatjs/pull/7198
+* fix(@formatjs/intl-getcanonicallocales): follow locale-list coercion by @longlho in https://github.com/formatjs/formatjs/pull/7199
+* fix(@formatjs/intl-numberformat): accept callable option objects by @longlho in https://github.com/formatjs/formatjs/pull/7201
+* fix(@formatjs/intl-segmenter): reject coerced BigInt indices by @longlho in https://github.com/formatjs/formatjs/pull/7202
+* test(@formatjs/intl-numberformat): enforce Test262 result accounting by @longlho in https://github.com/formatjs/formatjs/pull/7209
+* test(@formatjs/intl-numberformat): cover complete current Test262 suites by @longlho in https://github.com/formatjs/formatjs/pull/7210
+* fix(@formatjs/intl-numberformat): omit NaN sign with exceptZero by @longlho in https://github.com/formatjs/formatjs/pull/7212
+* test: use generated Test262 harness rules by @longlho in https://github.com/formatjs/formatjs/pull/7216
+* fix(@formatjs/intl-numberformat): reject undefined range endpoints by @longlho in https://github.com/formatjs/formatjs/pull/7226
+* fix(@formatjs/intl-numberformat): preserve Symbol coercion errors by @longlho in https://github.com/formatjs/formatjs/pull/7227
+* codex/test262 numberformat option validation by @longlho in https://github.com/formatjs/formatjs/pull/7228
+* fix(@formatjs/intl-listformat): preserve language data when loading root locale by @longlho in https://github.com/formatjs/formatjs/pull/7229
+* fix(@formatjs/intl-locale): enforce internal receiver branding by @longlho in https://github.com/formatjs/formatjs/pull/7231
+* fix(@formatjs/intl-collator): match built-in function descriptors by @longlho in https://github.com/formatjs/formatjs/pull/7232
+* fix(@formatjs/intl-numberformat): make built-in methods non-constructible by @longlho in https://github.com/formatjs/formatjs/pull/7233
+* fix(@formatjs/intl-numberformat): account for significant precision in rounding magnitude by @longlho in https://github.com/formatjs/formatjs/pull/7234
+* fix(@formatjs/intl-numberformat): validate internal receiver branding by @longlho in https://github.com/formatjs/formatjs/pull/7235
+* fix(@formatjs/intl-datetimeformat): truncate fractional timestamps toward zero by @longlho in https://github.com/formatjs/formatjs/pull/7236
+* fix(@formatjs/intl-datetimeformat): match built-in method metadata by @longlho in https://github.com/formatjs/formatjs/pull/7238
+* test(deps): run Test262 with stable Temporal support by @longlho in https://github.com/formatjs/formatjs/pull/7240
+* fix(@formatjs/intl-durationformat): match built-in metadata and option order by @longlho in https://github.com/formatjs/formatjs/pull/7241
+* fix(@formatjs/intl-durationformat): display the duration sign once by @longlho in https://github.com/formatjs/formatjs/pull/7242
+* fix(@formatjs/intl-durationformat): preserve exact numeric duration formatting by @longlho in https://github.com/formatjs/formatjs/pull/7243
+* fix(@formatjs/intl-durationformat): propagate numeric unit styles by @longlho in https://github.com/formatjs/formatjs/pull/7244
+* fix(@formatjs/intl-durationformat): retain zero minutes between numeric fields by @longlho in https://github.com/formatjs/formatjs/pull/7245
+* fix(@formatjs/intl-localematcher): preserve supported requested locale tags by @longlho in https://github.com/formatjs/formatjs/pull/7247
+* fix(@formatjs/intl-supportedvaluesof): make the built-in non-constructible by @longlho in https://github.com/formatjs/formatjs/pull/7248
+* fix(@formatjs/intl-numberformat): preserve resolved option property order by @longlho in https://github.com/formatjs/formatjs/pull/7249
+* fix(@formatjs/intl-relativetimeformat): isolate internal formatter options by @longlho in https://github.com/formatjs/formatjs/pull/7250
+* fix(@formatjs/intl-localematcher): isolate locale resolution records by @longlho in https://github.com/formatjs/formatjs/pull/7251
+* fix(@formatjs/intl-locale): use standard locale tag coercion by @longlho in https://github.com/formatjs/formatjs/pull/7252
+* fix(@formatjs/intl-locale): support the variants constructor option by @longlho in https://github.com/formatjs/formatjs/pull/7253
+* fix(@formatjs/intl-locale): canonicalize before applying locale overrides by @longlho in https://github.com/formatjs/formatjs/pull/7254
+* fix(@formatjs/intl-locale): minimize maximized locale components by @longlho in https://github.com/formatjs/formatjs/pull/7255
+* feat(@formatjs/editor): add headless React 19 editor with StyleX UI by @longlho in https://github.com/formatjs/formatjs/pull/7223
+* fix(@formatjs/intl-locale): honor region preference priority by @longlho in https://github.com/formatjs/formatjs/pull/7257
+* fix(@formatjs/intl-locale): expose canonical option values by @longlho in https://github.com/formatjs/formatjs/pull/7258
+* fix(@formatjs/intl-locale): follow likely-subtag lookup order by @longlho in https://github.com/formatjs/formatjs/pull/7259
+* fix(@formatjs/intl-durationformat): resolve supported numbering systems by @longlho in https://github.com/formatjs/formatjs/pull/7260
+* fix(@formatjs/intl-durationformat): accept Temporal duration inputs by @longlho in https://github.com/formatjs/formatjs/pull/7261
+* fix(@formatjs/intl-displaynames): accept extended language subtags by @longlho in https://github.com/formatjs/formatjs/pull/7262
+* fix(@formatjs/intl-supportedvaluesof): include fixed-offset time zones by @longlho in https://github.com/formatjs/formatjs/pull/7263
+* fix(@formatjs/intl-collator): preserve locale punctuation defaults by @longlho in https://github.com/formatjs/formatjs/pull/7264
+* fix(@formatjs/intl-collator): exclude root from locale negotiation by @longlho in https://github.com/formatjs/formatjs/pull/7265
+* fix(@formatjs/intl-localematcher): respect Unicode extension boundaries by @longlho in https://github.com/formatjs/formatjs/pull/7266
+* fix(@formatjs/intl-collator): resolve canonical collation types by @longlho in https://github.com/formatjs/formatjs/pull/7267
+* fix(@formatjs/intl-collator): select search collation tailoring by @longlho in https://github.com/formatjs/formatjs/pull/7268
+* feat(@formatjs/editor): add headless translation workflow by @pgonsolin in https://github.com/formatjs/formatjs/pull/7157
+* fix(@formatjs/intl-supportedvaluesof): probe locale-specific collations by @longlho in https://github.com/formatjs/formatjs/pull/7269
+* fix(@formatjs/intl-datetimeformat): handle exact date range boundaries by @longlho in https://github.com/formatjs/formatjs/pull/7270
+* fix(@formatjs/intl-datetimeformat): validate receiver internal slots by @longlho in https://github.com/formatjs/formatjs/pull/7271
+* fix(@formatjs/intl-datetimeformat): align option property metadata by @longlho in https://github.com/formatjs/formatjs/pull/7272
+* fix(@formatjs/intl-datetimeformat): format year zero in the BC era by @longlho in https://github.com/formatjs/formatjs/pull/7273
+* fix(@formatjs/intl-datetimeformat): normalize timezone inputs by @longlho in https://github.com/formatjs/formatjs/pull/7274
+* fix(@formatjs/intl-datetimeformat): isolate option records by @longlho in https://github.com/formatjs/formatjs/pull/7275
+* fix(@formatjs/intl-datetimeformat): support all hour-cycle options by @longlho in https://github.com/formatjs/formatjs/pull/7276
+* fix(@formatjs/intl-datetimeformat): select independent hour12 preferences by @longlho in https://github.com/formatjs/formatjs/pull/7277
+* fix(@formatjs/intl-getcanonicallocales): canonicalize locale extensions by @longlho in https://github.com/formatjs/formatjs/pull/7278
+* fix(@formatjs/intl-getcanonicallocales): resolve subdivision aliases by @longlho in https://github.com/formatjs/formatjs/pull/7279
+* fix(@formatjs/intl-getcanonicallocales): apply compound language aliases by @longlho in https://github.com/formatjs/formatjs/pull/7280
+* fix(@formatjs/intl-getcanonicallocales): append list elements directly by @longlho in https://github.com/formatjs/formatjs/pull/7281
+* codex/editor es2016 compatibility by @longlho in https://github.com/formatjs/formatjs/pull/7286
+* test(deps): cover combined polyfill installation by @longlho in https://github.com/formatjs/formatjs/pull/7282
+* test(deps): load required Test262 locale fixtures by @longlho in https://github.com/formatjs/formatjs/pull/7284
+* fix(@formatjs/intl-getcanonicallocales): preserve RegExp statics by @longlho in https://github.com/formatjs/formatjs/pull/7287
+* fix(@formatjs/intl-displaynames): use canonical calendar data keys by @longlho in https://github.com/formatjs/formatjs/pull/7288
+* fix(@formatjs/intl-numberformat): isolate internal plural options by @longlho in https://github.com/formatjs/formatjs/pull/7290
+* fix(@formatjs/intl-numberformat): honor locale grouping minimums by @longlho in https://github.com/formatjs/formatjs/pull/7291
+* fix(@formatjs/intl-datetimeformat): reuse parsed pattern fields by @longlho in https://github.com/formatjs/formatjs/pull/7292
+* fix(@formatjs/intl-datetimeformat): match hourless time requests by @longlho in https://github.com/formatjs/formatjs/pull/7293
+* fix(@formatjs/intl-datetimeformat): support ISO calendar negotiation by @longlho in https://github.com/formatjs/formatjs/pull/7294
+* fix(@formatjs/intl-pluralrules): generate compact exponent data by @longlho in https://github.com/formatjs/formatjs/pull/7295
+* fix(formatjs_cli): preserve IDs for empty descriptions by @longlho in https://github.com/formatjs/formatjs/pull/7296
+* fix(@formatjs/intl-datetimeformat): compare ranges at displayed precision by @longlho in https://github.com/formatjs/formatjs/pull/7297
+* fix(@formatjs/intl-datetimeformat): format flexible day periods by @longlho in https://github.com/formatjs/formatjs/pull/7298
+* fix(deps): preserve polyfill locale data during registration by @longlho in https://github.com/formatjs/formatjs/pull/7299
+* fix(@formatjs/intl-segmenter): register CLDR locale coverage by @longlho in https://github.com/formatjs/formatjs/pull/7300
+* fix(@formatjs/intl-numberformat): preserve range separators and affixes by @longlho in https://github.com/formatjs/formatjs/pull/7301
+* fix(@formatjs/intl-numberformat): place approximate signs in locale patterns by @longlho in https://github.com/formatjs/formatjs/pull/7302
+* fix(@formatjs/intl-numberformat): share signs with range unit suffixes by @longlho in https://github.com/formatjs/formatjs/pull/7303
+* fix(@formatjs/intl-numberformat): repair benchmark entrypoints by @longlho in https://github.com/formatjs/formatjs/pull/7304
+* fix(@formatjs/intl-numberformat): preserve supplementary digits when grouping by @longlho in https://github.com/formatjs/formatjs/pull/7305
+* fix(@formatjs/intl-numberformat): generate complete CLDR digit mappings by @longlho in https://github.com/formatjs/formatjs/pull/7306
+* feat(@formatjs/editor): publish headless editor package by @longlho in https://github.com/formatjs/formatjs/pull/7285
+* fix(deps): consolidate polyfill conformance and performance fixes by @longlho in https://github.com/formatjs/formatjs/pull/7320
+* fix(@formatjs/editor): bootstrap the headless editor release by @longlho in https://github.com/formatjs/formatjs/pull/7321
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7181
+* feat(@formatjs/editor): support shared locale drafts and typed save results by @longlho in https://github.com/formatjs/formatjs/pull/7325
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7327
+* feat(@formatjs/editor): add browser tests and shared visual modules by @longlho in https://github.com/formatjs/formatjs/pull/7323
+* feat(@formatjs/editor): add editor UI with design-system context by @longlho in https://github.com/formatjs/formatjs/pull/7329
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7331
+* feat(@formatjs/intl): add duration formatting APIs by @longlho in https://github.com/formatjs/formatjs/pull/7332
+* feat(react-intl): add duration components and bindings by @longlho in https://github.com/formatjs/formatjs/pull/7333
+* feat(@formatjs/editor): extend composed views with typed content slots by @longlho in https://github.com/formatjs/formatjs/pull/7336
+* feat(@formatjs/editor): add reusable translation tools by @longlho in https://github.com/formatjs/formatjs/pull/7340
+* feat(formatjs_intl): add checked FormattedMessage output by @longlho in https://github.com/formatjs/formatjs/pull/7343
+
+## New Contributors
+* @pgonsolin made their first contribution in https://github.com/formatjs/formatjs/pull/7157
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.20...@formatjs/intl@4.2.0
+
+## 4.1.20 (2026-08-30)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+* feat(formatjs_intl): accept inline named values by @longlho in https://github.com/formatjs/formatjs/pull/7031
+* chore(deps): exclude Renovate from release notes by @longlho in https://github.com/formatjs/formatjs/pull/7030
+* feat(eslint-plugin-formatjs): detect glued placeholders by @longlho in https://github.com/formatjs/formatjs/pull/7036
+* docs: cover units and calendar names in i18n skill by @longlho in https://github.com/formatjs/formatjs/pull/7042
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7037
+* fix(@formatjs/cli-lib): use native extraction by @longlho in https://github.com/formatjs/formatjs/pull/7046
+* fix: recover partial npm releases by @longlho in https://github.com/formatjs/formatjs/pull/7053
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7047
+* docs: sync i18n best practices skill and guide by @longlho in https://github.com/formatjs/formatjs/pull/7062
+* feat: add localization review and translation skills by @longlho in https://github.com/formatjs/formatjs/pull/7065
+* docs: add top-level skills section by @longlho in https://github.com/formatjs/formatjs/pull/7066
+* refactor: replace Vike with static Vite docs by @longlho in https://github.com/formatjs/formatjs/pull/7068
+* docs: add agent skills overview by @longlho in https://github.com/formatjs/formatjs/pull/7069
+* docs: document native date range formatting by @longlho in https://github.com/formatjs/formatjs/pull/7070
+* test: add local Codex skill evals by @longlho in https://github.com/formatjs/formatjs/pull/7071
+* feat(eslint-plugin-formatjs): allow conditional ICU element blocklists by @longlho in https://github.com/formatjs/formatjs/pull/7073
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7064
+* test: use neutral brands in skill evals by @longlho in https://github.com/formatjs/formatjs/pull/7090
+* feat(formatjs_cli): extract messages from Python by @longlho in https://github.com/formatjs/formatjs/pull/7097
+* fix: tighten formatted value placeholder guidance by @longlho in https://github.com/formatjs/formatjs/pull/7099
+* fix: retain binary-only Cargo release candidates by @longlho in https://github.com/formatjs/formatjs/pull/7102
+* chore: release main by @formatjsproject in https://github.com/formatjs/formatjs/pull/7079
+* fix: enable Git long paths for Windows release by @longlho in https://github.com/formatjs/formatjs/pull/7105
+* build: cross-compile release artifacts on Linux by @longlho in https://github.com/formatjs/formatjs/pull/7106
+* build: add Python native wheel scaffolding by @longlho in https://github.com/formatjs/formatjs/pull/7108
+* build: migrate to bazel_lib by @longlho in https://github.com/formatjs/formatjs/pull/7109
+* feat: add Python bindings for Rust intl packages by @longlho in https://github.com/formatjs/formatjs/pull/7111
+* fix: configure Python Release Please strategy by @longlho in https://github.com/formatjs/formatjs/pull/7114
+* fix: bootstrap Python package versions by @longlho in https://github.com/formatjs/formatjs/pull/7117
+* build(deps): regenerate Bazel lockfile in Renovate updates by @longlho in https://github.com/formatjs/formatjs/pull/7119
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.19...@formatjs/intl@4.1.20
+
+## 4.1.19 (2026-08-07)
+
+## What's Changed
+* chore(deps): update dependency svelte to v5.56.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6940
+* chore(deps): update dependency ts-jest to v29.4.12 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6941
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6942
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6947
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6948
+* chore(deps): update tailwindcss monorepo to v4.3.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6949
+* chore(deps): update vue monorepo to v3.5.40 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6950
+* chore(deps): update dependency svelte to v5.56.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6951
+* chore(deps): update radix-ui-primitives monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6952
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.19 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6953
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6954
+* chore(deps): update dependency fs-extra to v11.4.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6959
+* chore(deps): update dependency happy-dom to v20.11.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6960
+* chore(deps): update dependency lucide-react to v1.27.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6963
+* chore(deps): update dependency oxlint to v1.75.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6964
+* fix(formatjs_cli): extract id-only messages by @longlho in https://github.com/formatjs/formatjs/pull/6962
+* chore(deps): update dependency tinybench to v6.1.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6966
+* chore(deps): update dependency webpack to v5.109.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6967
+* chore(deps): update dependency rollup to v4.62.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6970
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6955
+* docs: add internationalization best practices by @longlho in https://github.com/formatjs/formatjs/pull/6972
+* docs: add i18n best practices skill by @longlho in https://github.com/formatjs/formatjs/pull/6973
+* feat(formatjs_icu_messageformat): add Rust message formatter by @longlho in https://github.com/formatjs/formatjs/pull/6974
+* feat(formatjs_intl): add Rust intl runtime by @longlho in https://github.com/formatjs/formatjs/pull/6975
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6977
+* Documented how to use ember-intl by @ijlee2 in https://github.com/formatjs/formatjs/pull/6946
+* fix: support Rust 1.92 in new intl crates by @longlho in https://github.com/formatjs/formatjs/pull/6978
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6979
+* fix: queue crate release workflows by @longlho in https://github.com/formatjs/formatjs/pull/6980
+* docs: document Rust support by @longlho in https://github.com/formatjs/formatjs/pull/6981
+* feat(formatjs_intl): add message fallbacks by @longlho in https://github.com/formatjs/formatjs/pull/6982
+* chore(deps): update dependency @vitejs/plugin-react to v6.0.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6983
+* chore(deps): update dependency @rspack/core to v2.1.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6986
+* feat(formatjs_intl): support precompiled catalogs by @longlho in https://github.com/formatjs/formatjs/pull/6985
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6984
+* chore(deps): update dependency webpack to v5.109.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6987
+* build: remove root npmrc by @longlho in https://github.com/formatjs/formatjs/pull/6988
+* fix: skip unpublished Rust crates by @longlho in https://github.com/formatjs/formatjs/pull/6992
+* chore(deps): update rust crate serde_json to v1.0.151 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6945
+* chore(deps): update rust crate serde to v1.0.229 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6944
+* chore(deps): update rust crate anyhow to v1.0.104 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6943
+* fix(deps): update rust crate base64 to 0.23 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6971
+* chore(deps): update rust crate fast-glob to v1.1.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6969
+* chore(deps): update rust crate proc-macro2 to v1.0.107 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6990
+* fix: handle Cargo publish and merge options by @longlho in https://github.com/formatjs/formatjs/pull/6993
+* chore(deps): update pnpm to v11.18.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6968
+* chore(deps): update rust crate quote to v1.0.47 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6995
+* chore(deps): update rust crate syn to v2.0.119 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6996
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6999
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.20 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6998
+* chore(deps): update dependency rolldown to v1.2.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6965
+* chore(deps): update dependency eslint to v10.8.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6957
+* fix(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6956
+* chore(deps): update dependency lucide-react to v1.28.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7001
+* chore(deps): update dependency codescythe to ^0.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7000
+* chore(deps): update dependency oxlint to v1.76.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7003
+* chore(deps): update dependency vite to v8.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7007
+* fix(formatjs_cli): fail on input resolution errors by @longlho in https://github.com/formatjs/formatjs/pull/7005
+* feat(formatjs_intl): add extractable format_message macro by @longlho in https://github.com/formatjs/formatjs/pull/7018
+* fix(deps): update rust crate syn to v3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7017
+* fix(deps): update dependency babel-plugin-formatjs to v13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7014
+* chore(deps): update actions/stale action to v11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/7011
+
+## New Contributors
+* @ijlee2 made their first contribution in https://github.com/formatjs/formatjs/pull/6946
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.18...@formatjs/intl@4.1.19
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.17
+    * intl-messageformat bumped to 11.2.14
+
+## 4.1.18 (2026-07-30)
+
+## What's Changed
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.17 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6885
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6886
+* chore(deps): update dependency vite to v8.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6887
+* chore(deps): update dependency @babel/types to v8.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6888
+* chore(deps): update dependency lucide-react to v1.24.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6889
+* fix(@formatjs/intl-datetimeformat): apply Date method defaults by @longlho in https://github.com/formatjs/formatjs/pull/6893
+* chore(deps): update rust crate regex to v1.13.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6890
+* chore(deps): update pnpm to v11.11.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6892
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6894
+* fix(@formatjs/unplugin): parse module ids with queries by @longlho in https://github.com/formatjs/formatjs/pull/6896
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.18 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6900
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6899
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6898
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6901
+* chore(deps): update dependency fast-xml-parser to v5.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6902
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6904
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6905
+* chore(deps): update dependency oxlint to v1.74.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6911
+* chore(deps): update dependency svelte to v5.56.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6914
+* chore(deps): update dependency @rspack/core to v2.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6913
+* chore(deps): update dependency fast-xml-parser to v5.10.1 [security] by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6920
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6922
+* chore(deps): update dependency svelte to v5.56.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6923
+* chore(deps): update dependency vite to v8.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6924
+* fix: repair corrupted `patches/typescript@7.0.2.patch` by @andersk in https://github.com/formatjs/formatjs/pull/6929
+* fix(babel-plugin-formatjs): stop enabling JSX syntax implicitly by @andersk in https://github.com/formatjs/formatjs/pull/6930
+* test(@formatjs/intl-datetimeformat): cover ar-EG locale data by @longlho in https://github.com/formatjs/formatjs/pull/6933
+* feat: upgrade CLDR to 48.2.0 by @longlho in https://github.com/formatjs/formatjs/pull/6934
+* fix(@formatjs/intl): include context in missing id errors by @longlho in https://github.com/formatjs/formatjs/pull/6935
+* fix(deps): make native release deps host-independent by @longlho in https://github.com/formatjs/formatjs/pull/6936
+* fix(icu-messageformat-parser): preserve plural context in tags by @eoinest in https://github.com/formatjs/formatjs/pull/6908
+* chore(deps): update rust crate regex to v1.13.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6926
+* chore(deps): update rust crate clap to v4.6.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6925
+* chore(deps): update dependency oxfmt to ^0.60.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6910
+* chore(deps): update dependency bazel to v9.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6906
+* chore(deps): update napi-rs by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6903
+* fix(deps): update dependency typescript to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6882
+* chore(deps): update actions/setup-node action to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6909
+* chore(deps): update dependency eslint to v10.7.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6897
+* chore(deps): update dependency @rspack/core to v2.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6937
+* fix(deps): update oxc to 0.141 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6915
+* chore(deps): update dependency rolldown-plugin-dts to v0.27.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6939
+* chore(deps): update dependency @vitejs/plugin-react to v6.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6938
+
+## New Contributors
+* @eoinest made their first contribution in https://github.com/formatjs/formatjs/pull/6908
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.17...@formatjs/intl@4.1.18
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.16
+    * intl-messageformat bumped to 11.2.13
+
+## 4.1.17 (2026-07-16)
+
+## What's Changed
+* docs: add Korean (ko-KR) to homepage live demo by @moduvoice in https://github.com/formatjs/formatjs/pull/6858
+* chore(deps): update OXC packages to 0.138 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6826
+* chore(deps): update dependency oxfmt to ^0.57.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6824
+* chore(deps): update dependency eslint to v10.6.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6821
+* chore(deps): update rust crate anyhow to v1.0.103 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6861
+* fix(deps): align NAPI runtime and derive by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6862
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6863
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6864
+* fix(deps): update formatjs monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6865
+* chore(deps): update actions/checkout action to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6867
+* chore(deps): update jest monorepo to v30 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6868
+* fix(deps): restore Jest 29 compatibility by @longlho in https://github.com/formatjs/formatjs/pull/6872
+* chore(deps): update dependency rolldown to v1.1.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6860
+* fix(deps): update oxc to 0.139 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6870
+* feat(babel-plugin-formatjs): require Babel 8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6869
+* chore(deps): adopt TypeScript 7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6819
+* chore(deps): update dependency oxfmt to ^0.58.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6875
+* chore(deps): update dependency rolldown-plugin-dts to ^0.27.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6825
+* chore(deps): update pnpm to v11.10.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6866
+* chore(deps): update dependency rolldown to v1.1.5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6878
+* fix(deps): update example TypeScript to v7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6881
+* fix(icu_messageformat_parser): dedupe structural variables by @longlho in https://github.com/formatjs/formatjs/pull/6883
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.15 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6884
+
+## New Contributors
+* @moduvoice made their first contribution in https://github.com/formatjs/formatjs/pull/6858
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.16...@formatjs/intl@4.1.17
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.15
+    * intl-messageformat bumped to 11.2.12
+
+## 4.1.16 (2026-07-11)
+
+## What's Changed
+* fix(@formatjs/icu-skeleton-parser): map e/c weekday counts 4/5/6 to long/narrow/short by @spokodev in https://github.com/formatjs/formatjs/pull/6852
+* fix(deps): materialize published package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6844
+* feat(@formatjs/intl-datetimeformat): update IANA timezone database to 2026c by @longlho in https://github.com/formatjs/formatjs/pull/6854
+* build(@formatjs/intl-datetimeformat): make tzdata generation hermetic by @longlho in https://github.com/formatjs/formatjs/pull/6855
+* fix(deps): update package manifests in release PRs by @longlho in https://github.com/formatjs/formatjs/pull/6856
+* docs: update upgrade guide to reflect relaxed React 18 support by @yslpn in https://github.com/formatjs/formatjs/pull/6818
+
+## New Contributors
+* @yslpn made their first contribution in https://github.com/formatjs/formatjs/pull/6818
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.15...@formatjs/intl@4.1.16
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/fast-memoize bumped to 3.1.7
+    * @formatjs/icu-messageformat-parser bumped to 3.5.14
+    * intl-messageformat bumped to 11.2.11
+
+## 4.1.15 (2026-07-09)
+
+## What's Changed
+* chore(deps): update rust crate regex to v1.12.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6813
+* chore(deps): update rust crate napi to v3.9.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6812
+* fix(deps): update dependency babel-plugin-formatjs to v11.3.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6815
+* fix(deps): update dependency eslint-plugin-formatjs to v6.4.15 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6816
+* fix(deps): update dependency react-intl to v10.1.13 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6820
+* fix(deps): update rust crate oxc_data_structures to 0.137 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6830
+* chore(deps): fix pnpm install warnings by @longlho in https://github.com/formatjs/formatjs/pull/6833
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6831
+* feat(@formatjs/unplugin): add rsbuild adapter by @longlho in https://github.com/formatjs/formatjs/pull/6838
+* fix(@formatjs/intl-relativetimeformat): honor numberingSystem option by @greymoth-jp in https://github.com/formatjs/formatjs/pull/6835
+* fix(@formatjs/icu-messageformat-parser): coalesce adjacent syntax chars when escaping by @spokodev in https://github.com/formatjs/formatjs/pull/6837
+* chore: apply pre-commit cleanup by @longlho in https://github.com/formatjs/formatjs/pull/6841
+* fix(@formatjs/cli-lib): handle fast-glob esm import by @longlho in https://github.com/formatjs/formatjs/pull/6845
+* fix(@formatjs/intl-datetimeformat): honor hour12 with timeStyle by @longlho in https://github.com/formatjs/formatjs/pull/6846
+* fix(formatjs_cli): parse JSX in JavaScript extract inputs by @longlho in https://github.com/formatjs/formatjs/pull/6850
+
+## New Contributors
+* @greymoth-jp made their first contribution in https://github.com/formatjs/formatjs/pull/6835
+* @spokodev made their first contribution in https://github.com/formatjs/formatjs/pull/6837
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.14...@formatjs/intl@4.1.15
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.13
+    * intl-messageformat bumped to 11.2.10
+
+## 4.1.14 (2026-06-25)
+
+## What's Changed
+* build: fix release-please multiline outputs by @longlho in https://github.com/formatjs/formatjs/pull/6726
+* chore(deps): update pnpm to v11.4.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6727
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260527.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6729
+* build: remove checked-in package intradeps by @longlho in https://github.com/formatjs/formatjs/pull/6728
+* fix(formatjs_cli): support loader-utils id templates by @longlho in https://github.com/formatjs/formatjs/pull/6731
+* fix(@formatjs/cli-lib): extract Svelte FormattedMessage components by @longlho in https://github.com/formatjs/formatjs/pull/6732
+* fix(deps): publish generated workspace packages by @longlho in https://github.com/formatjs/formatjs/pull/6734
+* chore(deps): isolate React Intl example workspaces by @longlho in https://github.com/formatjs/formatjs/pull/6737
+* fix: normalize Unicode whitespace for generated ids by @longlho in https://github.com/formatjs/formatjs/pull/6736
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6733
+* ci: pass repository to release workflow dispatch by @longlho in https://github.com/formatjs/formatjs/pull/6740
+* fix(formatjs_cli): build native packages in opt mode by @longlho in https://github.com/formatjs/formatjs/pull/6744
+* fix(@formatjs/cli-lib): support Alpine native bindings by @longlho in https://github.com/formatjs/formatjs/pull/6743
+* fix(deps): use Bazel graph for native release propagation by @longlho in https://github.com/formatjs/formatjs/pull/6747
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6745
+* chore(deps): update dependency svelte to v5.56.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6741
+* chore(deps): update commitlint monorepo to v21.0.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6748
+* chore(deps): update dependency lefthook to v2.1.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6749
+* fix(formatjs_cli_napi): build musl packages with bazel by @longlho in https://github.com/formatjs/formatjs/pull/6754
+* fix(formatjs_cli_napi): package musl runtime library by @longlho in https://github.com/formatjs/formatjs/pull/6756
+* ci(formatjs_cli): build release artifacts in opt mode by @longlho in https://github.com/formatjs/formatjs/pull/6757
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6755
+* chore(deps): update dependency rolldown-plugin-dts to v0.25.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6750
+* chore(deps): update eslint monorepo to v10.4.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6751
+* chore(deps): update vue monorepo to v3.5.35 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6753
+* chore(deps): update rspack monorepo to v2.0.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6752
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260603.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6765
+* chore(deps): update dependency svelte to v5.56.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6766
+* chore(deps): update dependency vue-eslint-parser to v10.4.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6769
+* chore(deps): update dependency vite to v8.0.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6768
+* chore(deps): update oxc dependencies to 0.134 by @longlho in https://github.com/formatjs/formatjs/pull/6764
+* chore(deps): update dependency bazel to v9.1.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6773
+* fix(@formatjs/intl-datetimeformat): honor numberingSystem option by @longlho in https://github.com/formatjs/formatjs/pull/6775
+* fix(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6774
+* chore(deps): update dependency oxfmt to ^0.53.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6777
+* chore(deps): update vitest monorepo to v4.1.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6772
+* chore(deps): update typescript-eslint monorepo to v8.61.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6771
+* chore(deps): update dependency oxc-parser to ^0.134.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6776
+* chore(deps): update dependency rolldown to v1.1.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6779
+* chore(deps): update react monorepo to v19.2.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6778
+* chore(deps): remove unused root dependencies by @longlho in https://github.com/formatjs/formatjs/pull/6782
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6770
+* fix(@formatjs/intl-durationformat): respect numberingSystem option by @longlho in https://github.com/formatjs/formatjs/pull/6795
+* fix(babel-plugin-formatjs): respect throws false for extraction errors by @longlho in https://github.com/formatjs/formatjs/pull/6798
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6797
+* fix(react-intl): support react 18 peer range by @longlho in https://github.com/formatjs/formatjs/pull/6800
+* test(react-intl): add React 17 typecheck fixture by @longlho in https://github.com/formatjs/formatjs/pull/6805
+* test(react-intl): add React 16.8 typecheck fixture by @longlho in https://github.com/formatjs/formatjs/pull/6806
+* fix(react-intl): support React 18+ consumers by @longlho in https://github.com/formatjs/formatjs/pull/6807
+* fix(@formatjs/icu-messageformat-parser): print plural/select branches in canonical order by @Amund211 in https://github.com/formatjs/formatjs/pull/6802
+* chore(deps): update dependency esbuild to v0.28.1 [security] by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6793
+* chore(deps): update dependency oxlint to v1.70.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6786
+* chore(deps): update dependency happy-dom to v20.10.6 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6784
+* chore(deps): update pnpm to v11.8.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6790
+* chore(deps): update dependency semver to v7.8.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6788
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260618.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6783
+* chore(deps): update dependency lucide-react to v1.21.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6785
+* chore(deps): update dependency @vue/test-utils to v2.4.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6787
+* chore(deps): update dependency ts-loader to v9.6.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6781
+* chore(deps): update dependency svelte to v5.56.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6789
+* chore(deps): update dependency @rspack/core to v2.0.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6808
+* build(deps): bump vite from 8.0.0 to 8.1.0 by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6803
+* build(deps): bump esbuild from 0.28.0 to 0.28.1 by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6792
+* chore(deps): update react monorepo by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6811
+* chore(deps): update dependency rolldown to v1.1.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6810
+
+## New Contributors
+* @Amund211 made their first contribution in https://github.com/formatjs/formatjs/pull/6802
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.13...@formatjs/intl@4.1.14
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/icu-messageformat-parser bumped to 3.5.12
+    * intl-messageformat bumped to 11.2.9
+
+## 4.1.13 (2026-06-03)
+
+## What's Changed
+* fix(deps): update dependency eslint to v10.4.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6612
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260515.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6610
+* perf(formatjs_cli): parallelize file processing by @longlho in https://github.com/formatjs/formatjs/pull/6611
+* docs(formatjs_cli): document rayon thread cap by @longlho in https://github.com/formatjs/formatjs/pull/6616
+* perf(formatjs_cli): reduce parser and extract allocations by @longlho in https://github.com/formatjs/formatjs/pull/6617
+* chore(deps): update dependency vike-react to v0.6.23 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6619
+* chore(deps): update dependency rolldown-plugin-dts to v0.25.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6618
+* bench(formatjs_cli): add OSS React Intl corpora by @longlho in https://github.com/formatjs/formatjs/pull/6621
+* fix(@formatjs/unplugin): expose transform hook filters by @longlho in https://github.com/formatjs/formatjs/pull/6622
+* chore(deps): update dependency oxc-transform to ^0.131.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6624
+* chore(deps): update dependency oxfmt to ^0.50.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6625
+* docs(formatjs_cli): document prerelease before tag by @longlho in https://github.com/formatjs/formatjs/pull/6626
+* fix(deps): update oxc rust crates to 0.131 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6613
+* chore(deps): update dependency oxlint to v1.65.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6627
+* fix(deps): update dependency oxc-parser to ^0.131.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6628
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260516.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6629
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260517.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6630
+* chore(deps): update dependency syncpack to v15.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6631
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260518.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6632
+* chore(deps): update dependency oxc-transform to ^0.132.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6633
+* chore(deps): update dependency svelte to v5.55.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6634
+* chore(deps): update pnpm to v11.1.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6635
+* chore(deps): update typescript-eslint monorepo to v8.59.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6636
+* chore(deps): update dependency syncpack to v15.3.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6637
+* fix(deps): update dependency oxc-parser to ^0.132.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6638
+* perf(formatjs_cli): parallelize catalog parsing by @longlho in https://github.com/formatjs/formatjs/pull/6642
+* ci: add crates trusted publishing workflow by @longlho in https://github.com/formatjs/formatjs/pull/6645
+* build: add release-please pilot by @longlho in https://github.com/formatjs/formatjs/pull/6582
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260519.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6647
+* chore(deps): update dependency syncpack to v15.3.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6648
+* chore(deps): update dependency ts-jest to v29.4.10 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6649
+* chore(deps): update dependency oxfmt to ^0.51.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6650
+* chore(deps): update googleapis/release-please-action action to v5 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6646
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6654
+* chore(deps): update dependency lefthook to v2.1.8 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6651
+* chore(deps): update dependency oxlint to v1.66.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6652
+* ci(formatjs_cli): cross-compile release binaries on linux by @longlho in https://github.com/formatjs/formatjs/pull/6656
+* ci: fix crates release dependency polling by @longlho in https://github.com/formatjs/formatjs/pull/6655
+* fix(deps): update rust crate oxc to 0.132 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6639
+* ci: use node24 crates auth action by @longlho in https://github.com/formatjs/formatjs/pull/6658
+* build(deps): bump qs and express in /packages/react-intl/example-sandboxes/rescripts by @dependabot[bot] in https://github.com/formatjs/formatjs/pull/6623
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6657
+* fix(@formatjs/unplugin): decode JSX bull entity by @longlho in https://github.com/formatjs/formatjs/pull/6662
+* fix(@formatjs/cli-lib): expose native extract binding by @longlho in https://github.com/formatjs/formatjs/pull/6663
+* build: publish npm from release please by @longlho in https://github.com/formatjs/formatjs/pull/6664
+* fix: align release-please package components by @longlho in https://github.com/formatjs/formatjs/pull/6665
+* fix: preserve release-please workspace candidates by @longlho in https://github.com/formatjs/formatjs/pull/6667
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6666
+* chore(deps): update dependency rolldown to v1.0.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6669
+* chore(deps): update dependency svelte to v5.55.9 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6670
+* chore(deps): update dependency @rspack/core to v2.0.4 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6671
+* chore(deps): update dependency vitest to v4.1.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6672
+* chore(deps): update pnpm to v11.2.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6674
+* chore(deps): update dependency webpack to v5.107.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6673
+* chore: add codescythe hook by @longlho in https://github.com/formatjs/formatjs/pull/6668
+* chore(deps): update pnpm to v11.2.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6675
+* chore: release main by @longlho in https://github.com/formatjs/formatjs/pull/6676
+* build: dispatch release workflow for npm publishing by @longlho in https://github.com/formatjs/formatjs/pull/6677
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260521.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6679
+* chore(deps): update dependency vite to v8.0.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6680
+* chore(deps): update dependency ts-jest to v29.4.11 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6682
+* chore(deps): update dependency webpack to v5.107.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6683
+* chore(deps): update pnpm to v11.2.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6685
+* chore(deps): update rust crate serde_json to v1.0.150 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6686
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260522.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6687
+* chore: keep gazelle idempotent by @longlho in https://github.com/formatjs/formatjs/pull/6689
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260523.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6690
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260524.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6691
+* chore(deps): update pnpm to v11.3.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6692
+* chore(deps): update codescythe to 0.6.1 by @longlho in https://github.com/formatjs/formatjs/pull/6693
+* fix(formatjs_cli): support id interpolation hash algorithms by @longlho in https://github.com/formatjs/formatjs/pull/6695
+* chore(deps): update babel monorepo to v7.29.7 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6696
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260526.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6697
+* chore(deps): update dependency oxc-transform to ^0.133.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6699
+* chore(deps): update dependency webpack to v5.107.2 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6698
+* chore(deps): update dependency oxfmt to ^0.52.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6702
+* chore(deps): update dependency oxlint to v1.67.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6703
+* chore(deps): update typescript-eslint monorepo to v8.60.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6704
+* fix(deps): update dependency oxc-parser to ^0.133.0 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6705
+* fix(formatjs_cli): speed up skipped message diagnostics by @longlho in https://github.com/formatjs/formatjs/pull/6709
+* fix(deps): update rust crate oxc_data_structures to 0.133 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6713
+* fix(deps): update rust OXC crates to 0.133 by @longlho in https://github.com/formatjs/formatjs/pull/6714
+* build: verify generated package manifests from bazel deps by @longlho in https://github.com/formatjs/formatjs/pull/6701
+* build: generate package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6718
+* chore(deps): update dependency @rescripts/cli to v0.0.16 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6716
+* chore(deps): update dependency react-scripts to v5.0.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6719
+* build: align release-please with generated package manifests by @longlho in https://github.com/formatjs/formatjs/pull/6720
+* chore(deps): update dependency @rescripts/rescript-env to v0.0.14 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6717
+* chore(deps): update dependency @typescript/native-preview to v7.0.0-dev.20260527.1 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6724
+* build: add bazel release-please workspace plugin by @longlho in https://github.com/formatjs/formatjs/pull/6723
+* chore(deps): update dependency rolldown to v1.0.3 by @renovate[bot] in https://github.com/formatjs/formatjs/pull/6725
+
+
+**Full Changelog**: https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.12...@formatjs/intl@4.1.13
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @formatjs/fast-memoize bumped to 3.1.6
+    * @formatjs/icu-messageformat-parser bumped to 3.5.11
+    * intl-messageformat bumped to 11.2.8
+
+## [4.1.12](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.11...@formatjs/intl@4.1.12) (2026-05-22)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.11](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.10...@formatjs/intl@4.1.11) (2026-05-15)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.10](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.9...@formatjs/intl@4.1.10) (2026-05-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.9](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.8...@formatjs/intl@4.1.9) (2026-05-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.8](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.7...@formatjs/intl@4.1.8) (2026-04-29)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.7](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.6...@formatjs/intl@4.1.7) (2026-04-24)
+
+### Bug Fixes
+
+* **@formatjs/intl:** preserve process.env.NODE_ENV check in bundled output ([#6429](/github.com/formatjs/formatjs/issues/6429)) ([f8d5e22](github.com/formatjs/formatjs/commits/f8d5e22ad1468a383bd0cfc4b85205d0b2b2f696)), closes [#6414](github.com/formatjs/formatjs/issues/6414) - by @longlho
+
+## [4.1.6](github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.5...@formatjs/intl@4.1.6) (2026-04-13)
+
+### Bug Fixes
+
+* **deps:** fix broken GitHub URLs in changelogs ([#6252](/github.com/formatjs/formatjs/issues/6252)) ([f6f693f](github.com/formatjs/formatjs/commits/f6f693f2f4f1f415973346b1cb8b07f5a640e182)), closes [#6248](github.com/formatjs/formatjs/issues/6248) - by @longlho
+
+### Reverts
+
+* **deps:** revert gazelle migration phases 1-3 ([#6205](/github.com/formatjs/formatjs/issues/6205)) ([4c04aa2](github.com/formatjs/formatjs/commits/4c04aa2726107ab1d0b9dab8a54a82fa62a73680)), closes [#6197](github.com/formatjs/formatjs/issues/6197) [#6198](github.com/formatjs/formatjs/issues/6198) [#6199](github.com/formatjs/formatjs/issues/6199) [#6195](github.com/formatjs/formatjs/issues/6195) [#6196](github.com/formatjs/formatjs/issues/6196) - by @longlho
+
+## [4.1.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.4...@formatjs/intl@4.1.5) (2026-03-27)
+
+### Bug Fixes
+
+* **deps:** remove typescript peer dependencies ([#6180](https://github.com/formatjs/formatjs/issues/6180)) ([b4dba3d](https://github.com/formatjs/formatjs/commits/b4dba3dfde138c2ea872a6372c01d8ad89216ee4)), closes [#6179](https://github.com/formatjs/formatjs/issues/6179) - by @camsteffen
+
+## [4.1.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.3...@formatjs/intl@4.1.4) (2026-03-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.2...@formatjs/intl@4.1.3) (2026-03-16)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.1...@formatjs/intl@4.1.2) (2026-02-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.1.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.1.0...@formatjs/intl@4.1.1) (2026-01-19)
+
+### Bug Fixes
+
+* **@formatjs/intl:** remove hot path optimization to fix escaped character handling, fix [#4973](https://github.com/formatjs/formatjs/issues/4973) ([309f579](https://github.com/formatjs/formatjs/commits/309f5792a1871488a4287fafdc0467f65bc9530c)) - by @longlho
+
+# [4.1.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.9...@formatjs/intl@4.1.0) (2026-01-15)
+
+### Features
+
+* **@formatjs/intl-segmenter:** improve Unicode 17.0 Format/Extend transparency and upgrade deps ([#5862](https://github.com/formatjs/formatjs/issues/5862)) ([effeb9c](https://github.com/formatjs/formatjs/commits/effeb9cd9d26f8c43c1e3df64a84c42dc7b12043)), closes [#29](https://github.com/formatjs/formatjs/issues/29) - by @longlho
+
+## [4.0.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.8...@formatjs/intl@4.0.9) (2026-01-06)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.7...@formatjs/intl@4.0.8) (2026-01-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.6...@formatjs/intl@4.0.7) (2025-12-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.5...@formatjs/intl@4.0.6) (2025-12-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.4...@formatjs/intl@4.0.5) (2025-12-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.3...@formatjs/intl@4.0.4) (2025-12-19)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.2...@formatjs/intl@4.0.3) (2025-12-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.1...@formatjs/intl@4.0.2) (2025-12-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@4.0.0...@formatjs/intl@4.0.1) (2025-12-15)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [4.0.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.8...@formatjs/intl@4.0.0) (2025-12-15)
+
+### ⚠ BREAKING CHANGES
+
+* **@formatjs/intl:** convert to ESM (#5434)
+
+### Features
+
+* **@formatjs/intl:** convert to ESM ([#5434](https://github.com/formatjs/formatjs/issues/5434)) ([47e75d7](https://github.com/formatjs/formatjs/commit/47e75d7f5ca6fcf1fcb64088b8a5dd8a00fddadc)) - by @longlho
+
+### Bug Fixes
+
+* use global 'time' Formats override with formatTime/FormattedTimeParts 'format' config instead of 'date' Formats, add strict 'format' overrides typing to FormattedDate and FormattedTime ([#5151](https://github.com/formatjs/formatjs/issues/5151)) ([3fe4b50](https://github.com/formatjs/formatjs/commit/3fe4b50d4b14e04717072217adf8514c580b55b7)) - by @seanmadi
+
+## [3.1.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.7...@formatjs/intl@3.1.8) (2025-10-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.1.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.6...@formatjs/intl@3.1.7) (2025-10-03)
+
+### Bug Fixes
+
+* formatList null value replaced to placeholder value ([f629131](https://github.com/formatjs/formatjs/commits/f629131bad27b5ef8fbc1d7fd60ef4d2aa33f9e5)) - by @septs
+* string list from iterable ([#5046](https://github.com/formatjs/formatjs/issues/5046)) ([19a4c05](https://github.com/formatjs/formatjs/commits/19a4c051238aa48c6cab5eadf3a46ca7783a987c)) - by @septs
+
+## [3.1.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.5...@formatjs/intl@3.1.6) (2025-03-26)
+
+### Bug Fixes
+
+* drop TS reqs, fix [#4917](https://github.com/formatjs/formatjs/issues/4917) ([f28e20d](https://github.com/formatjs/formatjs/commit/f28e20db2759a4345cb58054a324de6a9ffb5e63)) - by @longlho
+
+## [3.1.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.4...@formatjs/intl@3.1.5) (2025-03-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.1.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.3...@formatjs/intl@3.1.4) (2025-02-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.1.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.2...@formatjs/intl@3.1.3) (2025-01-20)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.1.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.1...@formatjs/intl@3.1.2) (2025-01-20)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.1.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.1.0...@formatjs/intl@3.1.1) (2025-01-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [3.1.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.0.4...@formatjs/intl@3.1.0) (2025-01-02)
+
+### Bug Fixes
+
+* **@formatjs/intl:** allow string in formatDateTimeRange ([#4784](https://github.com/formatjs/formatjs/issues/4784)) ([49a6015](https://github.com/formatjs/formatjs/commit/49a6015ddeb76fc913fa6c7ee5808c12b76ae8f6)), closes [/github.com/formatjs/formatjs/commit/aed8c6877cff6d32bf1801bb835a0dde81e65ae9#diff-41c7b3ac268a3a1ae5c7be92f1230f600013b7170e44a693570ccbdb183ea36bR95](https://github.com//github.com/formatjs/formatjs/commit/aed8c6877cff6d32bf1801bb835a0dde81e65ae9/issues/diff-41c7b3ac268a3a1ae5c7be92f1230f600013b7170e44a693570ccbdb183ea36bR95) - by @miguelcobain
+
+### Features
+
+* **@formatjs/intl:** add new format key for dateTimeRange ([91cc5f1](https://github.com/formatjs/formatjs/commit/91cc5f1e0d1295807e985906530abec671e1304e)), closes [#4792](https://github.com/formatjs/formatjs/issues/4792) - by @longlho
+
+## [3.0.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.0.3...@formatjs/intl@3.0.4) (2024-12-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.0.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.0.2...@formatjs/intl@3.0.3) (2024-12-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [3.0.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.0.1...@formatjs/intl@3.0.2) (2024-12-08)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix NumberFormat types, fix [#4717](https://github.com/formatjs/formatjs/issues/4717) ([6fad11a](https://github.com/formatjs/formatjs/commit/6fad11a7ecaf3de1464c16f0a4530d5e59dd6cfe)) - by @longlho
+
+## [3.0.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@3.0.0...@formatjs/intl@3.0.1) (2024-11-18)
+
+### Bug Fixes
+
+* **@formatjs/cli:** remove @formatjs/ecma402-abstract, use native TS Intl typdefs ([3fed5f4](https://github.com/formatjs/formatjs/commit/3fed5f4e8ba7302a0cefbcdf0bf602007fbff614)) - by @longlho
+
+# [3.0.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.15...@formatjs/intl@3.0.0) (2024-11-18)
+
+### Features
+
+* **@formatjs/intl:** drop typescript@4 support ([98d8910](https://github.com/formatjs/formatjs/commit/98d891091dc58c0695701fb1aca62fb8e51bf4ad)) - by @longlho
+* **@formatjs/intl:** remove polyfill packages in deps ([4713e1b](https://github.com/formatjs/formatjs/commit/4713e1b240a52f7e357dcc77912c33e8bef9bfa4)) - by @longlho
+
+### BREAKING CHANGES
+
+* **@formatjs/intl:** This removes @formatjs/intl-displaynames & @formatjs/intl-listformat as
+deps which will reduce package size. However, this also means you'll
+need typescript@5 at least since that has new type defs for those native
+Intl APIs.
+
+## [2.10.15](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.14...@formatjs/intl@2.10.15) (2024-11-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.14](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.13...@formatjs/intl@2.10.14) (2024-11-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.13](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.12...@formatjs/intl@2.10.13) (2024-11-04)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.12](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.11...@formatjs/intl@2.10.12) (2024-11-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.11](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.10...@formatjs/intl@2.10.11) (2024-10-25)
+
+### Bug Fixes
+
+* relax tslib req to 2 instead of 2.7 ([930c3e8](https://github.com/formatjs/formatjs/commit/930c3e8ddcc160fde7466449575455f135f78ca6)) - by @longlho
+
+## [2.10.10](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.9...@formatjs/intl@2.10.10) (2024-10-25)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.8...@formatjs/intl@2.10.9) (2024-10-21)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.6...@formatjs/intl@2.10.8) (2024-10-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.6...@formatjs/intl@2.10.7) (2024-10-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.5...@formatjs/intl@2.10.6) (2024-10-08)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.4...@formatjs/intl@2.10.5) (2024-09-23)
+
+### Bug Fixes
+
+* **@formatjs/intl:** add this: void to IntlShape method, fix [#4133](https://github.com/formatjs/formatjs/issues/4133) ([a9ba729](https://github.com/formatjs/formatjs/commit/a9ba729089943629a84220c9d9f7b12f6410ad2a)) - by @longlho
+* **@formatjs/intl:** improve type inference of formatMessage ([20fed58](https://github.com/formatjs/formatjs/commit/20fed58c28da697816aca5eabac32d14386cebf7)) - by @ianduvall
+
+## [2.10.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.3...@formatjs/intl@2.10.4) (2024-05-19)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.2...@formatjs/intl@2.10.3) (2024-05-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.1...@formatjs/intl@2.10.2) (2024-05-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.10.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.10.0...@formatjs/intl@2.10.1) (2024-03-24)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.10.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.11...@formatjs/intl@2.10.0) (2024-01-26)
+
+### Features
+
+* **@formatjs/intl:** allow ES2023 attributes in number component ([9adc475](https://github.com/formatjs/formatjs/commit/9adc475729dd2b30053b75ba52be33c9ca0f5cd7)), closes [#3458](https://github.com/formatjs/formatjs/issues/3458) - by @longlho
+
+## [2.9.11](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.10...@formatjs/intl@2.9.11) (2024-01-16)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.10](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.9...@formatjs/intl@2.9.10) (2024-01-16)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.8...@formatjs/intl@2.9.9) (2023-11-14)
+
+### Bug Fixes
+
+* **@formatjs/intl-durationformat:** add polyfill detector + docs ([d6d237a](https://github.com/formatjs/formatjs/commit/d6d237a2ffca73d5e3824df17bf5ebf7e7b135a8)) - by @
+
+## [2.9.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.7...@formatjs/intl@2.9.8) (2023-11-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.6...@formatjs/intl@2.9.7) (2023-11-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.5...@formatjs/intl@2.9.6) (2023-11-06)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.4...@formatjs/intl@2.9.5) (2023-10-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.3...@formatjs/intl@2.9.4) (2023-10-16)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.2...@formatjs/intl@2.9.3) (2023-09-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.1...@formatjs/intl@2.9.2) (2023-09-10)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.9.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.9.0...@formatjs/intl@2.9.1) (2023-09-07)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.9.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.8.0...@formatjs/intl@2.9.0) (2023-06-12)
+
+### Features
+
+* **@formatjs/intl,@formatjs/fast-memoize,@formatjs/icu-messageformat-parser,@formatjs/intl-displaynames,@formatjs/intl-listformat,intl-messageformat,@formatjs/ecma402-abstract,@formatjs/intl-numberformat,@formatjs/icu-skeleton-parser:** Revert esm conditional exports ([#4129](https://github.com/formatjs/formatjs/issues/4129)) ([78edf46](https://github.com/formatjs/formatjs/commit/78edf460a466a7021e3753be53fd9c6af00f2d96)), closes [#4128](https://github.com/formatjs/formatjs/issues/4128) [#4127](https://github.com/formatjs/formatjs/issues/4127) [#4126](https://github.com/formatjs/formatjs/issues/4126)
+
+# [2.8.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.7.2...@formatjs/intl@2.8.0) (2023-06-06)
+
+### Features
+
+* **@formatjs/intl,@formatjs/fast-memoize,@formatjs/icu-messageformat-parser,@formatjs/intl-displaynames,@formatjs/intl-listformat,intl-messageformat,@formatjs/ecma402-abstract,@formatjs/intl-numberformat,@formatjs/icu-skeleton-parser:** esm conditional exports ([#4109](https://github.com/formatjs/formatjs/issues/4109)) ([e0d593c](https://github.com/formatjs/formatjs/commit/e0d593cc3af3a317a6bd20c441191e5bbb136a93)), closes [#4013](https://github.com/formatjs/formatjs/issues/4013)
+
+## [2.7.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.7.1...@formatjs/intl@2.7.2) (2023-05-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.7.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.7.0...@formatjs/intl@2.7.1) (2023-04-19)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.7.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.9...@formatjs/intl@2.7.0) (2023-04-17)
+
+### Features
+
+* **@formatjs/intl:** store locale as error property ([3d03554](https://github.com/formatjs/formatjs/commit/3d035547db9d47adbbd51bff4330a58c0ca0668e))
+* upgrade TS support to v5 ([2c43dc1](https://github.com/formatjs/formatjs/commit/2c43dc1275d7ca940fae80419e3d6e4143bfbfef))
+
+## [2.6.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.8...@formatjs/intl@2.6.9) (2023-03-21)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.6...@formatjs/intl@2.6.7) (2023-02-20)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.5...@formatjs/intl@2.6.6) (2023-02-20)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.4...@formatjs/intl@2.6.5) (2023-01-30)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.3...@formatjs/intl@2.6.4) (2023-01-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.2...@formatjs/intl@2.6.3) (2022-12-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.6.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.0...@formatjs/intl@2.6.2) (2022-12-01)
+
+### Bug Fixes
+
+* **@formatjs/intl:** update monorepo to use TypeScript 4.9 and actually fix the type issue ([#3919](https://github.com/formatjs/formatjs/issues/3919)) ([051527b](https://github.com/formatjs/formatjs/commit/051527b6391c8f4548254ab20630173789d555cd))
+
+## [2.6.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.6.0...@formatjs/intl@2.6.1) (2022-12-01)
+
+### Bug Fixes
+
+* **@formatjs/intl:** update monorepo to use TypeScript 4.9 and actually fix the type issue ([#3919](https://github.com/formatjs/formatjs/issues/3919)) ([051527b](https://github.com/formatjs/formatjs/commit/051527b6391c8f4548254ab20630173789d555cd))
+
+# [2.6.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.5.1...@formatjs/intl@2.6.0) (2022-11-29)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix type checker errors with TypeScript 4.9 ([#3916](https://github.com/formatjs/formatjs/issues/3916)) ([36d0437](https://github.com/formatjs/formatjs/commit/36d04373cb6c3a768265792fe808bbe036bb0804)), closes [#3912](https://github.com/formatjs/formatjs/issues/3912) [#3905](https://github.com/formatjs/formatjs/issues/3905) [#3910](https://github.com/formatjs/formatjs/issues/3910)
+
+### Features
+
+* **@formatjs/intl-displaynames:** Intl DisplayNames API V2 (Stage 3) implementation ([#3890](https://github.com/formatjs/formatjs/issues/3890)) ([e39a89e](https://github.com/formatjs/formatjs/commit/e39a89ecee56a0c234e661e3860b61aa3a34f65e))
+
+## [2.5.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.5.0...@formatjs/intl@2.5.1) (2022-10-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.5.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.4.2...@formatjs/intl@2.5.0) (2022-10-13)
+
+### Features
+
+* **@formatjs/intl,react-intl:** move IntlFormatter type parameters to methods ([#3858](https://github.com/formatjs/formatjs/issues/3858)) ([0d03bb6](https://github.com/formatjs/formatjs/commit/0d03bb66123cb49fbd1c7d27908979bc4521b41f))
+
+## [2.4.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.4.1...@formatjs/intl@2.4.2) (2022-09-28)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.4.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.4.0...@formatjs/intl@2.4.1) (2022-09-06)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix empty array handling in formatList, fix [#3784](https://github.com/formatjs/formatjs/issues/3784) ([5585e0e](https://github.com/formatjs/formatjs/commit/5585e0e758da1ef18f8ebab5bfa7920ce27b2403))
+
+# [2.4.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.3.4...@formatjs/intl@2.4.0) (2022-08-27)
+
+### Features
+
+* **@formatjs/ts-transformer:** support TypeScript 4.7 syntax ([#3764](https://github.com/formatjs/formatjs/issues/3764)) ([1b3388e](https://github.com/formatjs/formatjs/commit/1b3388e9344de3a948068f5cf449341c1eb597a8))
+
+## [2.3.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.3.3...@formatjs/intl@2.3.4) (2022-08-21)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.3.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.3.2...@formatjs/intl@2.3.3) (2022-08-21)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.3.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.3.1...@formatjs/intl@2.3.2) (2022-08-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.3.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.3.0...@formatjs/intl@2.3.1) (2022-07-04)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.3.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.5...@formatjs/intl@2.3.0) (2022-06-06)
+
+### Features
+
+* **@formatjs/intl:** allow module augmentation for custom formatters ([#3634](https://github.com/formatjs/formatjs/issues/3634)) ([49b2588](https://github.com/formatjs/formatjs/commit/49b2588e1efe135debed9935cb217d2cb5937f07))
+
+## [2.2.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.4...@formatjs/intl@2.2.5) (2022-05-24)
+
+### Bug Fixes
+
+* **@formatjs/intl:** add fractionalSecondDigits to list of options, fix [#3594](https://github.com/formatjs/formatjs/issues/3594) ([a2b7bc6](https://github.com/formatjs/formatjs/commit/a2b7bc6ea8426ee1ea76066fd5da6df8ebe7c153))
+
+## [2.2.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.3...@formatjs/intl@2.2.4) (2022-05-23)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix Exclude usage, use Omit instead, fix [#3548](https://github.com/formatjs/formatjs/issues/3548) ([493b9eb](https://github.com/formatjs/formatjs/commit/493b9eb786d933145fbb66a1d9d62e1f35c14c72))
+
+## [2.2.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.2...@formatjs/intl@2.2.3) (2022-05-19)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [2.2.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.1...@formatjs/intl@2.2.2) (2022-05-19)
+
+### Bug Fixes
+
+* add actual default message to Missing translation ([#3574](https://github.com/formatjs/formatjs/issues/3574)) ([adb9844](https://github.com/formatjs/formatjs/commit/adb98449b66ccce4c4356f5abf23781be19955d9)), closes [#3573](https://github.com/formatjs/formatjs/issues/3573)
+* **react-intl:** fix type issue with react18, fix [#3550](https://github.com/formatjs/formatjs/issues/3550) ([2567b93](https://github.com/formatjs/formatjs/commit/2567b932c5d18b097a43842563046c20ce0c49f1))
+
+## [2.2.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.2.0...@formatjs/intl@2.2.1) (2022-04-27)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.2.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.1.1...@formatjs/intl@2.2.0) (2022-04-17)
+
+### Features
+
+* **react-intl:** add onWarn ([#3506](https://github.com/formatjs/formatjs/issues/3506)) ([09273e3](https://github.com/formatjs/formatjs/commit/09273e3b183252bee0dbcbcb3066bb77d79c4de1))
+
+## [2.1.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.1.0...@formatjs/intl@2.1.1) (2022-03-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [2.1.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@2.0.0...@formatjs/intl@2.1.0) (2022-03-13)
+
+### Features
+
+* **@formatjs/intl:** add $t as an shorter hand alias for formatMessagge ([a0ab2d4](https://github.com/formatjs/formatjs/commit/a0ab2d431b0bb714fd9173b7492190fa006c88be))
+
+# [2.0.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.5...@formatjs/intl@2.0.0) (2022-02-06)
+
+### Features
+
+* **eslint-plugin-formatjs:** rename `blacklist` to `blocklist`, fix [#3399](https://github.com/formatjs/formatjs/issues/3399) ([d363881](https://github.com/formatjs/formatjs/commit/d363881c87e6d792c4e933cd0167d1b3faa0897a))
+
+### BREAKING CHANGES
+
+* **eslint-plugin-formatjs:** This changes the rule name from `blacklist-elements` to `blocklist-elements`
+
+## [1.18.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.4...@formatjs/intl@1.18.5) (2022-02-06)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.18.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.3...@formatjs/intl@1.18.4) (2022-01-24)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.18.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.2...@formatjs/intl@1.18.3) (2022-01-14)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.18.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.1...@formatjs/intl@1.18.2) (2022-01-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.18.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.18.0...@formatjs/intl@1.18.1) (2022-01-03)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.18.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.17.0...@formatjs/intl@1.18.0) (2021-12-20)
+
+### Features
+
+* **react-intl:** Allow setting a stricter type for locale ([#3284](https://github.com/formatjs/formatjs/issues/3284)) ([c4693d4](https://github.com/formatjs/formatjs/commit/c4693d4c69d3e3036544524720b5a077f3b17786))
+
+# [1.17.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.16.0...@formatjs/intl@1.17.0) (2021-12-01)
+
+### Features
+
+* support TS 4.5, fix [#3276](https://github.com/formatjs/formatjs/issues/3276) ([31e0699](https://github.com/formatjs/formatjs/commit/31e069972aa16e14532531b9e597cff73a3f4897))
+
+# [1.16.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.15.2...@formatjs/intl@1.16.0) (2021-11-23)
+
+### Features
+
+* **react-intl:** allow setting a stricter type for message IDs ([#3242](https://github.com/formatjs/formatjs/issues/3242)) ([b7cac44](https://github.com/formatjs/formatjs/commit/b7cac443a2ecf791004138699959d46ddc3d4808))
+
+## [1.15.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.15.1...@formatjs/intl@1.15.2) (2021-11-14)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.15.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.15.0...@formatjs/intl@1.15.1) (2021-11-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.15.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.14.3...@formatjs/intl@1.15.0) (2021-10-22)
+
+### Features
+
+* **@formatjs/intl:** add fallbackOnEmptyString option ([#3201](https://github.com/formatjs/formatjs/issues/3201)) ([5c67c28](https://github.com/formatjs/formatjs/commit/5c67c28b60aa361e076bb098a6d081c3f8a1fbd2))
+* **@formatjs/intl:** upgrade to TS 4.4 ([8037bb2](https://github.com/formatjs/formatjs/commit/8037bb2e8c437d7033a3e0761606d54b916e9ff2))
+
+## [1.14.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.14.2...@formatjs/intl@1.14.3) (2021-10-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.14.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.14.1...@formatjs/intl@1.14.2) (2021-09-27)
+
+### Bug Fixes
+
+* **@formatjs/intl:** rm dep on @types/node ([245301f](https://github.com/formatjs/formatjs/commit/245301f72c77e487f1a3a9dcf6d88f459e4fa92f))
+
+## [1.14.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.14.0...@formatjs/intl@1.14.1) (2021-08-21)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix missing deps, fix [#3122](https://github.com/formatjs/formatjs/issues/3122) ([117fc7d](https://github.com/formatjs/formatjs/commit/117fc7d3e69ac0f1c77b47b530601607f80b66f8))
+
+# [1.14.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.5...@formatjs/intl@1.14.0) (2021-08-15)
+
+### Features
+
+* **@formatjs/fast-memoize:** remove unused Cache.has ([#3102](https://github.com/formatjs/formatjs/issues/3102)) ([5e9a425](https://github.com/formatjs/formatjs/commit/5e9a425519fd2b2473172687fccb58a6979ec81e))
+
+## [1.13.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.4...@formatjs/intl@1.13.5) (2021-08-06)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.13.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.3...@formatjs/intl@1.13.4) (2021-07-24)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.13.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.2...@formatjs/intl@1.13.3) (2021-07-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.13.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.1...@formatjs/intl@1.13.2) (2021-06-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.13.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.13.0...@formatjs/intl@1.13.1) (2021-06-21)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.13.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.12.1...@formatjs/intl@1.13.0) (2021-06-09)
+
+### Features
+
+* **@formatjs/intl:** add numberingSystem to NUMBER_FORMAT_OPTIONS ([#2953](https://github.com/formatjs/formatjs/issues/2953)) ([508c45d](https://github.com/formatjs/formatjs/commit/508c45d7631d701509c76ffb3da1cb901f77d808)), closes [#2952](https://github.com/formatjs/formatjs/issues/2952)
+
+## [1.12.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.12.0...@formatjs/intl@1.12.1) (2021-06-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.12.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.11.3...@formatjs/intl@1.12.0) (2021-06-05)
+
+### Features
+
+* **@formatjs/intl:** allow formatList & FormattedList to take in readonly array ([#2950](https://github.com/formatjs/formatjs/issues/2950)) ([1d7896c](https://github.com/formatjs/formatjs/commit/1d7896c6d2aff31e215fae07f16e7509484a8ba6))
+
+## [1.11.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.11.2...@formatjs/intl@1.11.3) (2021-06-04)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.11.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.11.1...@formatjs/intl@1.11.2) (2021-06-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.11.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.11.0...@formatjs/intl@1.11.1) (2021-05-23)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.11.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.8...@formatjs/intl@1.11.0) (2021-05-20)
+
+### Features
+
+* **@formatjs/intl:** add intl.formatListToParts, fix [#2901](https://github.com/formatjs/formatjs/issues/2901) ([eb40bd3](https://github.com/formatjs/formatjs/commit/eb40bd3e9c2e788c4e13e3ea94bcdd786b99c095))
+
+## [1.10.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.7...@formatjs/intl@1.10.8) (2021-05-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.6...@formatjs/intl@1.10.7) (2021-05-14)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.5...@formatjs/intl@1.10.6) (2021-05-10)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.4...@formatjs/intl@1.10.5) (2021-05-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.3...@formatjs/intl@1.10.4) (2021-05-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.2...@formatjs/intl@1.10.3) (2021-04-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.1...@formatjs/intl@1.10.2) (2021-04-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.10.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.10.0...@formatjs/intl@1.10.1) (2021-04-26)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix fast-memoize import ([2738741](https://github.com/formatjs/formatjs/commit/2738741fb9b0d442fe2f1ad0b335c2436d8bc579))
+* **@formatjs/intl:** use fast-memoize esm fork ([d1a4509](https://github.com/formatjs/formatjs/commit/d1a45094a130107e019ce12e5038baf2febf397f))
+
+# [1.10.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.8...@formatjs/intl@1.10.0) (2021-04-21)
+
+### Bug Fixes
+
+* **@formatjs/intl:** make IntlShape generic default to string, fix [#2821](https://github.com/formatjs/formatjs/issues/2821) ([08d48f2](https://github.com/formatjs/formatjs/commit/08d48f297529ef276f8991bc40c8e864dbd18c5b))
+
+### Features
+
+* **@formatjs/intl:** rename OptionalIntlConfig to IntlConfig and IntlConfig to ResolvedIntlConfig ([4a3dd6e](https://github.com/formatjs/formatjs/commit/4a3dd6ef7457b8de1ffea0b61624b91250c717d5))
+
+## [1.9.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.7...@formatjs/intl@1.9.8) (2021-04-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.6...@formatjs/intl@1.9.7) (2021-04-04)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.5...@formatjs/intl@1.9.6) (2021-04-03)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.4...@formatjs/intl@1.9.5) (2021-03-30)
+
+### Bug Fixes
+
+* **@formatjs/intl:** add more details to missing ID message ([506779b](https://github.com/formatjs/formatjs/commit/506779b951264d330aca7d20a470c14662b0887f)), closes [#1059](https://github.com/formatjs/formatjs/issues/1059)
+
+## [1.9.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.3...@formatjs/intl@1.9.4) (2021-03-30)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.2...@formatjs/intl@1.9.3) (2021-03-28)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.1...@formatjs/intl@1.9.2) (2021-03-28)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.9.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.9.0...@formatjs/intl@1.9.1) (2021-03-27)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix missing dep ([34a86ba](https://github.com/formatjs/formatjs/commit/34a86baa9913408fd0e549bbf720bb9161d637c6))
+
+# [1.9.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.5...@formatjs/intl@1.9.0) (2021-03-27)
+
+### Features
+
+* **@formatjs/intl:** switch parser to @formatjs/icu-messageformat-parser (6x faster) ([4362bc5](https://github.com/formatjs/formatjs/commit/4362bc5582876f37fdaffe97bc9d8fbb73d83c7a))
+
+## [1.8.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.4...@formatjs/intl@1.8.5) (2021-03-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.8.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.3...@formatjs/intl@1.8.4) (2021-03-17)
+
+### Bug Fixes
+
+* **@formatjs/intl:** trim down dependencies thanks to TS4.2 ([31b7809](https://github.com/formatjs/formatjs/commit/31b7809e5359a3fc7fb76e9655dadbc5c9c23384))
+
+## [1.8.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.2...@formatjs/intl@1.8.3) (2021-03-15)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.8.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.1...@formatjs/intl@1.8.2) (2021-03-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.8.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.8.0...@formatjs/intl@1.8.1) (2021-02-25)
+
+### Bug Fixes
+
+* bump tslib version dep ([37577d2](https://github.com/formatjs/formatjs/commit/37577d22bf28d23de1d8013ba0047cf221ad8840)), closes [#2645](https://github.com/formatjs/formatjs/issues/2645)
+
+# [1.8.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.7.1...@formatjs/intl@1.8.0) (2021-02-25)
+
+### Features
+
+* **@formatjs/intl:** support TS4.2 ([ba56b9a](https://github.com/formatjs/formatjs/commit/ba56b9a14de58ea17e19ab6033bcb5f8c9c03bae))
+
+## [1.7.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.7.0...@formatjs/intl@1.7.1) (2021-02-22)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.7.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.8...@formatjs/intl@1.7.0) (2021-02-21)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix warning logic for AST, fix [#2610](https://github.com/formatjs/formatjs/issues/2610) ([04086bf](https://github.com/formatjs/formatjs/commit/04086bf939de06b0feff15d9bb54b2ae9aa3bc36))
+
+### Features
+
+* **@formatjs/intl:** rm __addMessages private method ([4337cc5](https://github.com/formatjs/formatjs/commit/4337cc5c5169793dbc22c8a4d9f17bee1527490c))
+
+## [1.6.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.7...@formatjs/intl@1.6.8) (2021-02-13)
+
+### Bug Fixes
+
+* **@formatjs/intl:** support isolatedModules ([#2602](https://github.com/formatjs/formatjs/issues/2602)) ([b7284f4](https://github.com/formatjs/formatjs/commit/b7284f428db26e2345775f3dc652d1119ef91670))
+
+## [1.6.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.6...@formatjs/intl@1.6.7) (2021-02-09)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix __addMessages issues with references ([f9266f9](https://github.com/formatjs/formatjs/commit/f9266f9af9f092377f6be975d938ec0b55b851d7))
+
+## [1.6.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.4...@formatjs/intl@1.6.6) (2021-02-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.6.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.4...@formatjs/intl@1.6.5) (2021-01-29)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.6.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.3...@formatjs/intl@1.6.4) (2021-01-27)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.6.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.2...@formatjs/intl@1.6.3) (2021-01-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.6.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.1...@formatjs/intl@1.6.2) (2021-01-25)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.6.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.6.0...@formatjs/intl@1.6.1) (2021-01-13)
+
+### Bug Fixes
+
+* **@formatjs/intl:** pass opts to getMessageFormat as well ([7f4fa56](https://github.com/formatjs/formatjs/commit/7f4fa564c22ceae5b735e01a5d78b72106128850))
+
+# [1.6.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.5.1...@formatjs/intl@1.6.0) (2021-01-12)
+
+### Features
+
+* **@formatjs/intl:** add private method __addMessages to add extra messages ([82471d1](https://github.com/formatjs/formatjs/commit/82471d1aaeeecbb96cf6186c9ae66d25a884473d))
+
+## [1.5.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.5.0...@formatjs/intl@1.5.1) (2021-01-08)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.5.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.16...@formatjs/intl@1.5.0) (2021-01-06)
+
+### Features
+
+* **@formatjs/intl:** allow options to be pass into intl.formatMessage (e.g ignoreTag) ([a51bd76](https://github.com/formatjs/formatjs/commit/a51bd7636d53fb9d7165245765169ecc6b445af7))
+
+## [1.4.16](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.15...@formatjs/intl@1.4.16) (2021-01-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.15](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.14...@formatjs/intl@1.4.15) (2021-01-02)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.14](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.13...@formatjs/intl@1.4.14) (2021-01-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.13](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.12...@formatjs/intl@1.4.13) (2020-12-18)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.12](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.11...@formatjs/intl@1.4.12) (2020-12-17)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.11](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.10...@formatjs/intl@1.4.11) (2020-12-16)
+
+### Bug Fixes
+
+* **@formatjs/intl:** don't set default hour/minute when ([ccd7c90](https://github.com/formatjs/formatjs/commit/ccd7c90cf0456f884b2af1e6655163abdcb6dd77)), closes [#2410](https://github.com/formatjs/formatjs/issues/2410)
+
+## [1.4.10](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.9...@formatjs/intl@1.4.10) (2020-11-27)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.8...@formatjs/intl@1.4.9) (2020-11-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.7...@formatjs/intl@1.4.8) (2020-11-21)
+
+### Bug Fixes
+
+* **@formatjs/intl:** only warn about non-AST messages during initialization, fix [#2258](https://github.com/formatjs/formatjs/issues/2258) ([36e40f4](https://github.com/formatjs/formatjs/commit/36e40f47de0b34424adba686f76dab6e329b40bf))
+
+## [1.4.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.6...@formatjs/intl@1.4.7) (2020-11-20)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.5...@formatjs/intl@1.4.6) (2020-11-19)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix type decl for createIntl, fix [#2320](https://github.com/formatjs/formatjs/issues/2320) ([f129d60](https://github.com/formatjs/formatjs/commit/f129d60241d304ae34c12c3c335160c45d4deb5b))
+
+## [1.4.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.4...@formatjs/intl@1.4.5) (2020-11-12)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.3...@formatjs/intl@1.4.4) (2020-11-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.2...@formatjs/intl@1.4.3) (2020-11-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.4.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.1...@formatjs/intl@1.4.2) (2020-11-05)
+
+### Bug Fixes
+
+* **@formatjs/intl:** fix default config for formatDateTimeRange ([60087d8](https://github.com/formatjs/formatjs/commit/60087d8df70d70b3c11dd733bb1961d389b0e211))
+
+## [1.4.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.4.0...@formatjs/intl@1.4.1) (2020-11-05)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.4.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.9...@formatjs/intl@1.4.0) (2020-11-05)
+
+### Bug Fixes
+
+* **@formatjs/intl:** lock down monorepo dep version ([ecfc07e](https://github.com/formatjs/formatjs/commit/ecfc07e2aa05892ac2d8a4b8fd69c039802cecf0))
+
+### Features
+
+* **@formatjs/intl:** add formatDateTimeRange per stage-3 spec ([b08ee67](https://github.com/formatjs/formatjs/commit/b08ee671dbaa3917cd91a368972d03e3c34cb184))
+
+## [1.3.9](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.8...@formatjs/intl@1.3.9) (2020-11-04)
+
+### Bug Fixes
+
+* **react-intl:** make defaultRichTextElements warning less disruptive ([#2282](https://github.com/formatjs/formatjs/issues/2282)) ([d6cb50a](https://github.com/formatjs/formatjs/commit/d6cb50ac94c029c9386e7342ab877cd26c23c9f6))
+
+## [1.3.8](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.7...@formatjs/intl@1.3.8) (2020-10-26)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.7](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.6...@formatjs/intl@1.3.7) (2020-10-25)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.6](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.5...@formatjs/intl@1.3.6) (2020-10-10)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.5](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.4...@formatjs/intl@1.3.5) (2020-10-08)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.3...@formatjs/intl@1.3.4) (2020-10-01)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.2...@formatjs/intl@1.3.3) (2020-09-25)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.3.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.1...@formatjs/intl@1.3.2) (2020-09-18)
+
+### Bug Fixes
+
+* **@formatjs/intl-displaynames:** follow ES2021 spec and make type option required ([#2103](https://github.com/formatjs/formatjs/issues/2103)) ([3e00688](https://github.com/formatjs/formatjs/commit/3e00688f955587ac155c9d6c2fa519b07df17a70))
+
+## [1.3.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.3.0...@formatjs/intl@1.3.1) (2020-09-09)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.3.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.2.2...@formatjs/intl@1.3.0) (2020-08-30)
+
+### Features
+
+* **@formatjs/intl:** TS to 4.0 ([a334a8f](https://github.com/formatjs/formatjs/commit/a334a8fe1a2c6c93fe21aabbf204cd3c9c9eee4a))
+
+## [1.2.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.2.1...@formatjs/intl@1.2.2) (2020-08-28)
+
+**Note:** Version bump only for package @formatjs/intl
+
+## [1.2.1](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.2.0...@formatjs/intl@1.2.1) (2020-08-25)
+
+**Note:** Version bump only for package @formatjs/intl
+
+# [1.2.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl@1.1.0...@formatjs/intl@1.2.0) (2020-08-23)
+
+### Features
+
+* **@formatjs/intl:** expose createIntl, fix [#2015](https://github.com/formatjs/formatjs/issues/2015) ([a15cc1b](https://github.com/formatjs/formatjs/commit/a15cc1bb371cfe4990031f8af8be217493ff2b99))
+
+# 1.1.0 (2020-08-22)
+
+### Bug Fixes
+
+* **@formatjs/intl:** force version bump ([b213686](https://github.com/formatjs/formatjs/commit/b2136862805f7b8ffe06281fe68f8a2e45c5e12c))
+
+### Features
+
+* **@formatjs/intl:** split out imperative API to a new package ([9292b1f](https://github.com/formatjs/formatjs/commit/9292b1f3cec6ca96f2c0f6a1da0456e7668d3011))

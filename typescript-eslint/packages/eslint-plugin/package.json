@@ -1,0 +1,135 @@
+{
+  "name": "@typescript-eslint/eslint-plugin",
+  "version": "8.72.1",
+  "description": "TypeScript plugin for ESLint",
+  "files": [
+    "dist",
+    "!**/*.js.map",
+    "!**/*.tsbuildinfo",
+    "index.d.ts",
+    "raw-plugin.d.ts",
+    "rules.d.ts"
+  ],
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./use-at-your-own-risk/rules": {
+      "types": "./rules.d.ts",
+      "default": "./dist/rules/index.js"
+    },
+    "./use-at-your-own-risk/raw-plugin": {
+      "types": "./raw-plugin.d.ts",
+      "default": "./dist/raw-plugin.js"
+    }
+  },
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/eslint-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io/packages/eslint-plugin",
+  "license": "MIT",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "pnpm -w exec nx build",
+    "clean": "rimraf dist/ coverage/",
+    "format": "pnpm -w run format",
+    "generate-breaking-changes": "tsx tools/generate-breaking-changes.mts",
+    "generate-configs": "pnpm -w run generate-configs",
+    "lint": "pnpm -w exec nx lint",
+    "test": "pnpm -w exec nx test",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6",
+    "attw-check": "pnpm -w exec nx attw-check"
+  },
+  "dependencies": {
+    "@eslint-community/regexpp": "^4.12.2",
+    "@typescript-eslint/scope-manager": "workspace:*",
+    "@typescript-eslint/type-utils": "workspace:*",
+    "@typescript-eslint/utils": "workspace:*",
+    "@typescript-eslint/visitor-keys": "workspace:*",
+    "ignore": "^7.0.5",
+    "natural-compare": "^1.4.0",
+    "ts-api-utils": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "@types/mdast": "catalog:",
+    "@types/natural-compare": "catalog:",
+    "@types/react": "catalog:",
+    "@typescript-eslint/rule-schema-to-typescript-types": "workspace:*",
+    "@typescript-eslint/rule-tester": "workspace:*",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "ajv": "catalog:",
+    "eslint": "catalog:",
+    "json-schema": "catalog:",
+    "markdown-table": "^3.0.4",
+    "marked": "^15.0.12",
+    "mdast-util-from-markdown": "catalog:",
+    "mdast-util-mdx": "catalog:",
+    "micromark-extension-mdxjs": "^3.0.0",
+    "prettier": "catalog:",
+    "rimraf": "catalog:",
+    "title-case": "^4.3.2",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "unist-util-visit": "^5.0.0",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@typescript-eslint/parser": "workspace:^",
+    "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
+    "typescript": ">=4.8.4 <6.1.0"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typescript-eslint"
+  },
+  "nx": {
+    "name": "eslint-plugin",
+    "includedScripts": [
+      "clean"
+    ],
+    "targets": {
+      "generate-breaking-changes": {
+        "command": "tsx tools/generate-breaking-changes.mts",
+        "dependsOn": [
+          "type-utils:build"
+        ],
+        "options": {
+          "cwd": "{projectRoot}"
+        }
+      },
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck:tsc6": {},
+      "attw-check": {
+        "cache": false,
+        "dependsOn": [
+          "build"
+        ],
+        "command": "pnpm pack --out attw-check.tgz && attw attw-check.tgz --profile node16 --exclude-entrypoints use-at-your-own-risk/raw-plugin --exclude-entrypoints use-at-your-own-risk/rules --ignore-rules named-exports",
+        "options": {
+          "cwd": "{projectRoot}"
+        }
+      }
+    }
+  }
+}

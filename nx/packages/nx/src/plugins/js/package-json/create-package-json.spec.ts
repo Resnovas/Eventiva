@@ -1,0 +1,1521 @@
+vi.mock('fs', async () => ({
+  ...require('fs'),
+  existsSync: vi.fn(),
+}));
+vi.mock('../../../utils/fileutils');
+
+// Fixtures below reference `@nx/devkit` as a graph external node.
+// `recursivelyCollectPeerDependencies` then runs
+// `require('@nx/devkit/package.json')` to discover peer deps, which resolves
+// to the real `packages/devkit/package.json` via this monorepo's pnpm
+// symlinks and shows up as a sandbox-violating cross-project read. Stub it
+// with the only field this code path consumes — `peerDependencies` —
+// preserving the assertion that `nx` is collected as a transitive peer dep
+// of `@nx/devkit`.
+vi.mock('@nx/devkit/package.json', () => ({ peerDependencies: { nx: '*' } }), {
+  virtual: true,
+});
+
+import * as fs from 'fs';
+import * as configModule from '../../../config/configuration';
+import {
+  DependencyType,
+  FileData,
+  FileDataDependency,
+  ProjectFileMap,
+  ProjectGraph,
+} from '../../../config/project-graph';
+import * as hashModule from '../../../hasher/task-hasher';
+import { createPackageJson } from './create-package-json';
+import * as fileutilsModule from '../../../utils/fileutils';
+
+describe('createPackageJson', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetAllMocks();
+  });
+
+  it('should add additional dependencies', () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+    vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+      dependencies: {
+        typescript: '4.8.4',
+        tslib: '2.4.0',
+      },
+    });
+
+    expect(
+      createPackageJson(
+        'lib1',
+        {
+          nodes: {
+            lib1: {
+              type: 'lib',
+              name: 'lib1',
+              data: { targets: {}, root: '' },
+            },
+          },
+          externalNodes: {
+            'npm:tslib': {
+              type: 'npm',
+              name: 'npm:tslib',
+              data: { version: '2.4.0', hash: '', packageName: 'tslib' },
+            },
+          },
+          dependencies: {},
+        },
+        { helperDependencies: ['npm:tslib'], root: '' }
+      )
+    ).toEqual({
+      dependencies: {
+        tslib: '2.4.0',
+      },
+      name: 'lib1',
+      version: '0.0.1',
+    });
+  });
+
+  describe('when the helper dependency has no bare node', () => {
+    const tslibNodes = {
+      'npm:tslib@1.14.1': {
+        type: 'npm' as const,
+        name: 'npm:tslib@1.14.1' as const,
+        data: { version: '1.14.1', hash: '', packageName: 'tslib' },
+      },
+      'npm:tslib@2.4.0': {
+        type: 'npm' as const,
+        name: 'npm:tslib@2.4.0' as const,
+        data: { version: '2.4.0', hash: '', packageName: 'tslib' },
+      },
+    };
+
+    beforeEach(() => {
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({});
+    });
+
+    it('should add the version that the project depends on', () => {
+      expect(
+        createPackageJson(
+          'lib1',
+          {
+            nodes: {
+              lib1: {
+                type: 'lib',
+                name: 'lib1',
+                data: { targets: {}, root: '' },
+              },
+            },
+            externalNodes: tslibNodes,
+            dependencies: {
+              lib1: [
+                {
+                  source: 'lib1',
+                  target: 'npm:tslib@1.14.1',
+                  type: DependencyType.static,
+                },
+              ],
+            },
+          },
+          { helperDependencies: ['npm:tslib'], root: '' }
+        ).dependencies
+      ).toEqual({ tslib: '1.14.1' });
+    });
+
+    it('should add the highest version when the project does not depend on it', () => {
+      expect(
+        createPackageJson(
+          'lib1',
+          {
+            nodes: {
+              lib1: {
+                type: 'lib',
+                name: 'lib1',
+                data: { targets: {}, root: '' },
+              },
+            },
+            externalNodes: tslibNodes,
+            dependencies: {},
+          },
+          { helperDependencies: ['npm:tslib'], root: '' }
+        ).dependencies
+      ).toEqual({ tslib: '2.4.0' });
+    });
+
+    it('should skip a bare outside link when registry versions exist', () => {
+      const lib1 = {
+        type: 'lib' as const,
+        name: 'lib1',
+        data: { targets: {}, root: '' },
+      };
+      const externalNodes = {
+        ...tslibNodes,
+        'npm:tslib': {
+          type: 'npm' as const,
+          name: 'npm:tslib' as const,
+          data: {
+            version: 'link:../outside/tslib',
+            hash: '',
+            packageName: 'tslib',
+          },
+        },
+      };
+
+      expect(
+        createPackageJson(
+          'lib1',
+          {
+            nodes: { lib1 },
+            externalNodes,
+            dependencies: {
+              lib1: [
+                {
+                  source: 'lib1',
+                  target: 'npm:tslib@1.14.1',
+                  type: DependencyType.static,
+                },
+              ],
+            },
+          },
+          { helperDependencies: ['npm:tslib'], root: '' }
+        ).dependencies
+      ).toEqual({ tslib: '1.14.1' });
+      expect(
+        createPackageJson(
+          'lib1',
+          { nodes: { lib1 }, externalNodes, dependencies: {} },
+          { helperDependencies: ['npm:tslib'], root: '' }
+        ).dependencies
+      ).toEqual({ tslib: '2.4.0' });
+    });
+  });
+
+  it('should only add file dependencies if target is specified', () => {
+    vi.spyOn(configModule, 'readNxJson').mockReturnValueOnce({
+      namedInputs: {
+        default: ['{projectRoot}/**/*'],
+        production: ['!{projectRoot}/**/*.spec.ts'],
+      },
+      targetDefaults: {
+        build: {
+          inputs: ['default', 'production', '^production'],
+        },
+      },
+    });
+
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+    vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+      dependencies: {
+        axios: '1.0.0',
+        tslib: '2.4.0',
+        jest: '29.0.0',
+        typescript: '4.8.4',
+      },
+    });
+
+    expect(
+      createPackageJson(
+        'lib1',
+        {
+          nodes: {
+            lib1: {
+              type: 'lib',
+              name: 'lib1',
+              data: {
+                root: 'libs/lib1',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib2: {
+              type: 'lib',
+              name: 'lib2',
+              data: {
+                root: 'libs/lib2',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+          },
+          externalNodes: {
+            'npm:tslib': {
+              type: 'npm',
+              name: 'npm:tslib',
+              data: { version: '2.4.0', hash: '', packageName: 'tslib' },
+            },
+            'npm:typescript': {
+              type: 'npm',
+              name: 'npm:typescript',
+              data: { version: '4.8.4', hash: '', packageName: 'typescript' },
+            },
+            'npm:jest': {
+              type: 'npm',
+              name: 'npm:jest',
+              data: { version: '29.0.0', hash: '', packageName: 'jest' },
+            },
+            'npm:axios': {
+              type: 'npm',
+              name: 'npm:jest',
+              data: { version: '1.0.0', hash: '', packageName: 'axios' },
+            },
+          },
+          dependencies: {},
+        },
+        {
+          target: 'build',
+          isProduction: true,
+          helperDependencies: ['npm:tslib'],
+          root: '',
+        }
+      )
+    ).toEqual({
+      dependencies: {
+        tslib: '2.4.0',
+      },
+      name: 'lib1',
+      version: '0.0.1',
+    });
+  });
+
+  it('should only add all dependencies if target is not specified', () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+    vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+      dependencies: {
+        axios: '1.0.0',
+        tslib: '2.4.0',
+        jest: '29.0.0',
+        typescript: '4.8.4',
+      },
+    });
+
+    expect(
+      createPackageJson(
+        'lib1',
+        {
+          nodes: {
+            lib1: {
+              type: 'lib',
+              name: 'lib1',
+              data: {
+                root: 'libs/lib1',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib2: {
+              type: 'lib',
+              name: 'lib2',
+              data: {
+                root: 'libs/lib2',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+          },
+          externalNodes: {
+            'npm:tslib': {
+              type: 'npm',
+              name: 'npm:tslib',
+              data: { version: '2.4.0', hash: '', packageName: 'tslib' },
+            },
+            'npm:typescript': {
+              type: 'npm',
+              name: 'npm:typescript',
+              data: { version: '4.8.4', hash: '', packageName: 'typescript' },
+            },
+            'npm:jest': {
+              type: 'npm',
+              name: 'npm:jest',
+              data: { version: '29.0.0', hash: '', packageName: 'jest' },
+            },
+            'npm:axios': {
+              type: 'npm',
+              name: 'npm:axios',
+              data: { version: '1.0.0', hash: '', packageName: 'axios' },
+            },
+          },
+          dependencies: {},
+        },
+        { isProduction: true, helperDependencies: ['npm:tslib'], root: '' }
+      )
+    ).toEqual({
+      dependencies: {
+        tslib: '2.4.0',
+      },
+      name: 'lib1',
+      version: '0.0.1',
+    });
+  });
+
+  it('should cache filterUsingGlobPatterns', () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+    vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+      dependencies: {
+        axios: '1.0.0',
+        tslib: '2.4.0',
+        jest: '29.0.0',
+        typescript: '4.8.4',
+      },
+    });
+    const filterUsingGlobPatternsSpy = vi.spyOn(
+      hashModule,
+      'filterUsingGlobPatterns'
+    );
+
+    expect(
+      createPackageJson(
+        'lib1',
+        {
+          nodes: {
+            lib1: {
+              type: 'lib',
+              name: 'lib1',
+              data: {
+                root: 'libs/lib1',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib2: {
+              type: 'lib',
+              name: 'lib2',
+              data: {
+                root: 'libs/lib2',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib3: {
+              type: 'lib',
+              name: 'lib3',
+              data: {
+                root: 'libs/lib3',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib4: {
+              type: 'lib',
+              name: 'lib4',
+              data: {
+                root: 'libs/lib4',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+          },
+          externalNodes: {
+            'npm:axios': {
+              type: 'npm',
+              name: 'npm:axios',
+              data: { version: '1.0.0', hash: '', packageName: 'axios' },
+            },
+          },
+          dependencies: {},
+        },
+        { isProduction: true, root: '' }
+      )
+    ).toEqual({
+      name: 'lib1',
+      version: '0.0.1',
+    });
+
+    expect(filterUsingGlobPatternsSpy).toHaveBeenNthCalledWith(
+      1,
+      'libs/lib1',
+      expect.anything(),
+      expect.anything()
+    );
+
+    expect(filterUsingGlobPatternsSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should exclude devDependencies from production build when local package.json is imported', () => {
+    vi.spyOn(configModule, 'readNxJson').mockReturnValueOnce({
+      namedInputs: {
+        default: ['{projectRoot}/**/*'],
+        production: ['!{projectRoot}/**/*.spec.ts'],
+      },
+      targetDefaults: {
+        build: {
+          inputs: ['default', 'production', '^production'],
+        },
+      },
+    });
+
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+      name: 'project1',
+      version: '1.0.0',
+      dependencies: {
+        axios: '1.0.0',
+        tslib: '2.4.0',
+        jest: '29.0.0',
+        typescript: '4.8.4',
+      },
+      devDependencies: {
+        webpack: '1.0.0',
+      },
+    });
+
+    expect(
+      createPackageJson(
+        'lib1',
+        {
+          nodes: {
+            lib1: {
+              type: 'lib',
+              name: 'lib1',
+              data: {
+                root: 'libs/lib1',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+            lib2: {
+              type: 'lib',
+              name: 'lib2',
+              data: {
+                root: 'libs/lib2',
+                targets: {
+                  build: {},
+                },
+              },
+            },
+          },
+          externalNodes: {
+            'npm:tslib': {
+              type: 'npm',
+              name: 'npm:tslib',
+              data: { version: '2.4.0', hash: '', packageName: 'tslib' },
+            },
+            'npm:typescript': {
+              type: 'npm',
+              name: 'npm:typescript',
+              data: { version: '4.8.4', hash: '', packageName: 'typescript' },
+            },
+            'npm:jest': {
+              type: 'npm',
+              name: 'npm:jest',
+              data: { version: '29.0.0', hash: '', packageName: 'jest' },
+            },
+            'npm:axios': {
+              type: 'npm',
+              name: 'npm:jest',
+              data: { version: '1.0.0', hash: '', packageName: 'axios' },
+            },
+          },
+          dependencies: {},
+        },
+        {
+          target: 'build',
+          isProduction: true,
+          helperDependencies: ['npm:tslib'],
+          root: '',
+        }
+      )
+    ).toEqual({
+      dependencies: {
+        axios: '1.0.0',
+        jest: '29.0.0',
+        tslib: '2.4.0',
+        typescript: '4.8.4',
+      },
+      name: 'project1',
+      version: '1.0.0',
+    });
+  });
+
+  describe('parsing "package.json"', () => {
+    const appDependencies = [
+      { source: 'app1', target: 'npm:@nx/devkit', type: 'static' },
+      { source: 'app1', target: 'npm:typescript', type: 'static' },
+    ];
+
+    const libDependencies = [
+      { source: 'lib1', target: 'npm:@nx/devkit', type: 'static' },
+      { source: 'lib1', target: 'npm:tslib', type: 'static' },
+      { source: 'lib1', target: 'npm:typescript', type: 'static' },
+    ];
+
+    const graph: ProjectGraph = {
+      nodes: {
+        app1: {
+          type: 'app',
+          name: 'app1',
+          data: {
+            targets: {},
+            root: 'apps/app1',
+          },
+        },
+        lib1: {
+          type: 'lib',
+          name: 'lib1',
+          data: {
+            targets: {},
+            root: 'libs/lib1',
+          },
+        },
+      },
+      externalNodes: {
+        'npm:@nx/devkit': {
+          type: 'npm',
+          name: 'npm:@nx/devkit',
+          data: { version: '16.0.3', hash: '', packageName: '@nx/devkit' },
+        },
+        'npm:nx': {
+          type: 'npm',
+          name: 'npm:nx',
+          data: { version: '16.0.3', hash: '', packageName: 'nx' },
+        },
+        'npm:tslib': {
+          type: 'npm',
+          name: 'npm:tslib',
+          data: { version: '2.4.4', hash: '', packageName: 'tslib' },
+        },
+        'npm:typescript': {
+          type: 'npm',
+          name: 'npm:typescript',
+          data: { version: '4.9.5', hash: '', packageName: 'typescript' },
+        },
+      },
+      dependencies: {
+        app1: appDependencies,
+        lib1: libDependencies,
+      },
+    };
+
+    const fileMap: ProjectFileMap = {
+      app1: [
+        createFile(`apps/app1/src/main.ts`, [
+          'npm:@nx/devkit',
+          'npm:typecript',
+        ]),
+      ],
+      lib1: [
+        createFile(`libs/lib1/src/main.ts`, [
+          'npm:@nx/devkit',
+          'npm:typecript',
+          'npm:tslib',
+        ]),
+      ],
+    };
+
+    const rootPackageJson = () => ({
+      dependencies: {
+        '@nx/devkit': '~16.0.0',
+        nx: '> 14',
+        typescript: '^4.8.2',
+        tslib: '~2.4.0',
+      },
+    });
+
+    const projectPackageJson = () => ({
+      name: 'other-name',
+      version: '1.2.3',
+      dependencies: {
+        typescript: '^4.8.4',
+        random: '1.0.0',
+      },
+    });
+
+    const spies = [];
+
+    beforeAll(() => {
+      spies.push(
+        vi
+          .spyOn(hashModule, 'filterUsingGlobPatterns')
+          .mockImplementation((root) => {
+            if (root === 'libs/lib1') {
+              return fileMap['lib1'];
+            } else {
+              return fileMap['app1'];
+            }
+          })
+      );
+    });
+
+    afterEach(() => {
+      while (spies.length > 0) {
+        spies.pop().mockRestore();
+      }
+      vi.resetAllMocks();
+    });
+
+    it('should use fixed versions when creating package json for apps', () => {
+      spies.push(vi.spyOn(configModule, 'readNxJson').mockReturnValue({}));
+      spies.push(
+        vi.spyOn(fs, 'existsSync').mockImplementation((path) => {
+          if (path === 'apps/app1/package.json') {
+            return false;
+          }
+        })
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return rootPackageJson();
+          }
+        })
+      );
+
+      expect(createPackageJson('app1', graph, { root: '' }, fileMap)).toEqual({
+        name: 'app1',
+        version: '0.0.1',
+        dependencies: {
+          '@nx/devkit': '16.0.3',
+          nx: '16.0.3',
+        },
+      });
+    });
+
+    it('should override fixed versions with local ranges when creating package json for apps', () => {
+      spies.push(vi.spyOn(configModule, 'readNxJson').mockReturnValue({}));
+      spies.push(
+        vi.spyOn(fs, 'existsSync').mockImplementation((path) => {
+          if (path === 'apps/app1/package.json') {
+            return true;
+          }
+        })
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return rootPackageJson();
+          }
+          if (path === 'apps/app1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson(
+          'app1',
+          graph,
+          {
+            root: '',
+          },
+          fileMap
+        )
+      ).toEqual({
+        name: 'other-name',
+        version: '1.2.3',
+        dependencies: {
+          '@nx/devkit': '16.0.3',
+          nx: '16.0.3',
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+      });
+    });
+
+    it('should use range versions when creating package json for libs', () => {
+      spies.push(vi.spyOn(configModule, 'readNxJson').mockReturnValue({}));
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return rootPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson(
+          'lib1',
+          graph,
+          {
+            root: '',
+          },
+          fileMap
+        )
+      ).toEqual({
+        name: 'lib1',
+        version: '0.0.1',
+        dependencies: {
+          '@nx/devkit': '~16.0.0',
+          tslib: '~2.4.0',
+        },
+      });
+    });
+
+    it('should override range versions with local ranges when creating package json for libs', () => {
+      spies.push(
+        vi
+          .spyOn(configModule, 'readNxJson')
+          .mockReturnValue({ cli: { packageManager: 'pnpm' } })
+      );
+      spies.push(
+        vi.spyOn(fs, 'existsSync').mockImplementation((path) => {
+          if (path === 'libs/lib1/package.json') {
+            return true;
+          }
+        })
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return rootPackageJson();
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson(
+          'lib1',
+          graph,
+          {
+            root: '',
+          },
+          fileMap
+        )
+      ).toEqual({
+        name: 'other-name',
+        version: '1.2.3',
+        dependencies: {
+          '@nx/devkit': '~16.0.0',
+          tslib: '~2.4.0',
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+      });
+    });
+
+    it('should add packageManager if missing', () => {
+      spies.push(
+        vi.spyOn(fs, 'existsSync').mockImplementation((path) => {
+          if (path === 'libs/lib1/package.json') {
+            return true;
+          }
+          if (path === 'package.json') {
+            return true;
+          }
+        })
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              packageManager: 'yarn',
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        packageManager: 'yarn',
+        version: '1.2.3',
+      });
+    });
+
+    it('should support skipping packageManager entry', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' || path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              packageManager: 'yarn',
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+          skipPackageManager: true,
+        }).packageManager
+      ).toBeUndefined();
+    });
+
+    it('should replace packageManager if not in sync with root and show warning', () => {
+      spies.push(
+        vi.spyOn(fs, 'existsSync').mockImplementation((path) => {
+          if (path === 'libs/lib1/package.json') {
+            return true;
+          }
+          if (path === 'package.json') {
+            return true;
+          }
+        })
+      );
+      const consoleWarnSpy = vi.spyOn(process.stderr, 'write');
+      spies.push(consoleWarnSpy);
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              packageManager: 'yarn@1.2',
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return {
+              ...projectPackageJson(),
+              packageManager: 'yarn@4.3',
+            };
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        packageManager: 'yarn@1.2',
+        version: '1.2.3',
+      });
+      expect(JSON.stringify(consoleWarnSpy.mock.calls)).toMatch(
+        /Package Manager Mismatch/
+      );
+    });
+
+    it('should add overrides (pnpm)', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' ||
+              path === 'apps/app1/package.json' ||
+              path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              pnpm: {
+                overrides: {
+                  foo: '1.0.0',
+                },
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+          if (path === 'apps/app1/package.json') {
+            return {
+              ...projectPackageJson(),
+              pnpm: {
+                overrides: {
+                  foo: '2.0.0',
+                  bar: '1.0.0',
+                },
+              },
+            };
+          }
+        })
+      );
+
+      // Without a pruned lockfile a fresh install needs the overrides to resolve.
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        pnpm: {
+          overrides: {
+            foo: '1.0.0',
+          },
+        },
+      });
+      expect(
+        createPackageJson('app1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        pnpm: {
+          overrides: {
+            foo: '2.0.0',
+            bar: '1.0.0',
+          },
+        },
+      });
+    });
+
+    it('should copy pnpm install configuration from root', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' || path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              pnpm: {
+                onlyBuiltDependencies: ['sharp', 'bcrypt'],
+                neverBuiltDependencies: ['fsevents'],
+                allowBuilds: { esbuild: true, rollup: false },
+                supportedArchitectures: {
+                  os: ['linux'],
+                  cpu: ['x64'],
+                },
+                ignoredOptionalDependencies: ['fsevents'],
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        pnpm: {
+          onlyBuiltDependencies: ['sharp', 'bcrypt'],
+          neverBuiltDependencies: ['fsevents'],
+          allowBuilds: { esbuild: true, rollup: false },
+          supportedArchitectures: {
+            os: ['linux'],
+            cpu: ['x64'],
+          },
+          ignoredOptionalDependencies: ['fsevents'],
+        },
+      });
+    });
+
+    it('should add overrides (npm)', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' ||
+              path === 'apps/app1/package.json' ||
+              path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              overrides: {
+                foo: '1.0.0',
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+          if (path === 'apps/app1/package.json') {
+            return {
+              ...projectPackageJson(),
+              overrides: {
+                foo: '2.0.0',
+                bar: '1.0.0',
+              },
+            };
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        overrides: {
+          foo: '1.0.0',
+        },
+      });
+      expect(
+        createPackageJson('app1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        overrides: {
+          foo: '2.0.0',
+          bar: '1.0.0',
+        },
+      });
+    });
+
+    it('should drop npm overrides that target a direct dependency', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' || path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              overrides: {
+                // `typescript` is a direct dependency of the generated
+                // package.json - npm would reject this with EOVERRIDE.
+                typescript: '5.0.0',
+                // transitive-only override - must be carried through.
+                foo: '1.0.0',
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        overrides: {
+          foo: '1.0.0',
+        },
+      });
+    });
+
+    it('should omit npm overrides when every entry targets a direct dependency', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' || path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              overrides: {
+                typescript: '5.0.0',
+                random: '2.0.0',
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+        })
+      );
+
+      const result = createPackageJson('lib1', graph, {
+        root: '',
+      });
+      expect(result).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+      });
+      expect(result).not.toHaveProperty('overrides');
+    });
+
+    it('should add resolutions (yarn)', () => {
+      spies.push(
+        vi
+          .spyOn(fs, 'existsSync')
+          .mockImplementation(
+            (path) =>
+              path === 'libs/lib1/package.json' ||
+              path === 'apps/app1/package.json' ||
+              path === 'package.json'
+          )
+      );
+      spies.push(
+        vi.spyOn(fileutilsModule, 'readJsonFile').mockImplementation((path) => {
+          if (path === 'package.json') {
+            return {
+              ...rootPackageJson(),
+              resolutions: {
+                foo: '1.0.0',
+              },
+            };
+          }
+          if (path === 'libs/lib1/package.json') {
+            return projectPackageJson();
+          }
+          if (path === 'apps/app1/package.json') {
+            return {
+              ...projectPackageJson(),
+              resolutions: {
+                foo: '2.0.0',
+                bar: '1.0.0',
+              },
+            };
+          }
+        })
+      );
+
+      expect(
+        createPackageJson('lib1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        resolutions: {
+          foo: '1.0.0',
+        },
+      });
+      expect(
+        createPackageJson('app1', graph, {
+          root: '',
+        })
+      ).toEqual({
+        dependencies: {
+          random: '1.0.0',
+          typescript: '^4.8.4',
+        },
+        name: 'other-name',
+        version: '1.2.3',
+        resolutions: {
+          foo: '2.0.0',
+          bar: '1.0.0',
+        },
+      });
+    });
+  });
+
+  describe('nested library dependencies', () => {
+    it('should include dependencies from nested libraries (App -> lib1 -> lib2)', () => {
+      const mockFilterUsingGlobPatterns = vi.spyOn(
+        hashModule,
+        'filterUsingGlobPatterns'
+      );
+      const mockGetTargetInputs = vi.spyOn(hashModule, 'getTargetInputs');
+      const mockReadNxJson = vi.spyOn(configModule, 'readNxJson');
+
+      // Mock restrictive patterns that would miss nested dependencies
+      mockGetTargetInputs.mockReturnValue({
+        selfInputs: ['production'],
+        dependencyInputs: ['^production'],
+      });
+
+      mockReadNxJson.mockReturnValue({
+        namedInputs: {
+          production: [
+            'default',
+            '!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)',
+          ],
+        },
+      } as any);
+
+      mockFilterUsingGlobPatterns.mockImplementation(
+        (root, files, patterns) => {
+          if (root === 'apps/myapp') {
+            return files.filter((f) => f.file.includes('main.ts'));
+          }
+
+          if (root === 'libs/lib1' && patterns.includes('^production')) {
+            return files.filter((f) => f.file.includes('index.ts'));
+          }
+
+          if (root === 'libs/lib1' && patterns.includes('{projectRoot}/**/*')) {
+            return files;
+          }
+
+          if (root === 'libs/lib2' && patterns.includes('^production')) {
+            return [];
+          }
+          if (root === 'libs/lib2' && patterns.includes('{projectRoot}/**/*')) {
+            return files; // This is the fix - broad patterns find all files
+          }
+          return files;
+        }
+      );
+
+      const graph: ProjectGraph = {
+        nodes: {
+          myapp: {
+            type: 'app',
+            name: 'myapp',
+            data: {
+              targets: { build: {} },
+              root: 'apps/myapp',
+            },
+          },
+          lib1: {
+            type: 'lib',
+            name: 'lib1',
+            data: {
+              targets: { build: {} },
+              root: 'libs/lib1',
+            },
+          },
+          lib2: {
+            type: 'lib',
+            name: 'lib2',
+            data: {
+              targets: { build: {} },
+              root: 'libs/lib2',
+            },
+          },
+        },
+        externalNodes: {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: { version: '4.17.21', hash: '', packageName: 'lodash' },
+          },
+          'npm:axios': {
+            type: 'npm',
+            name: 'npm:axios',
+            data: { version: '1.0.0', hash: '', packageName: 'axios' },
+          },
+        },
+        dependencies: {
+          myapp: [
+            { source: 'myapp', target: 'lib1', type: DependencyType.static },
+          ],
+          lib1: [
+            { source: 'lib1', target: 'lib2', type: DependencyType.static },
+          ],
+          lib2: [],
+        },
+      };
+
+      const fileMap: ProjectFileMap = {
+        myapp: [
+          createFile('apps/myapp/src/main.ts', [
+            ['apps/myapp/src/main.ts', 'lib1', DependencyType.static],
+          ]),
+        ],
+        lib1: [
+          createFile('libs/lib1/src/index.ts', [
+            ['libs/lib1/src/index.ts', 'lib2', DependencyType.static],
+            ['libs/lib1/src/index.ts', 'npm:axios', DependencyType.static],
+          ]),
+        ],
+        lib2: [
+          createFile('libs/lib2/src/index.ts', [
+            ['libs/lib2/src/index.ts', 'npm:lodash', DependencyType.static],
+          ]),
+          createFile('libs/lib2/src/utils.ts', [
+            ['libs/lib2/src/utils.ts', 'npm:lodash', DependencyType.static],
+          ]),
+        ],
+      };
+
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+        name: 'root-package',
+        dependencies: {},
+      });
+
+      const result = createPackageJson(
+        'myapp',
+        graph,
+        {
+          target: 'build',
+          root: '',
+          isProduction: true,
+        },
+        fileMap
+      );
+
+      expect(result.dependencies).toEqual({
+        axios: '1.0.0',
+        lodash: '4.17.21',
+      });
+
+      mockFilterUsingGlobPatterns.mockRestore();
+      mockGetTargetInputs.mockRestore();
+      mockReadNxJson.mockRestore();
+    });
+  });
+
+  describe('package aliases', () => {
+    it('should preserve alias dependency keys when canonical packages also exist in the graph', () => {
+      const mockReadNxJson = vi
+        .spyOn(configModule, 'readNxJson')
+        .mockReturnValue({});
+      const mockGetTargetInputs = vi
+        .spyOn(hashModule, 'getTargetInputs')
+        .mockReturnValue({
+          selfInputs: ['{projectRoot}/**/*'],
+          dependencyInputs: [],
+        });
+      const mockFilterUsingGlobPatterns = vi
+        .spyOn(hashModule, 'filterUsingGlobPatterns')
+        .mockImplementation((_root, files) => files);
+
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      vi.spyOn(fileutilsModule, 'readJsonFile').mockReturnValue({
+        name: 'root-package',
+        dependencies: {
+          zod: '^3.0.0',
+          zod4: 'npm:zod@^4.1.13',
+        },
+      });
+
+      const graph: ProjectGraph = {
+        nodes: {
+          myapp: {
+            type: 'app',
+            name: 'myapp',
+            data: {
+              targets: { build: {} },
+              root: 'apps/myapp',
+            },
+          },
+        },
+        externalNodes: {
+          'npm:zod': {
+            type: 'npm',
+            name: 'npm:zod',
+            data: { version: '^3.0.0', hash: '', packageName: 'zod' },
+          },
+          'npm:zod@4.1.13': {
+            type: 'npm',
+            name: 'npm:zod@4.1.13',
+            data: { version: '4.1.13', hash: '', packageName: 'zod' },
+          },
+          'npm:zod4': {
+            type: 'npm',
+            name: 'npm:zod4',
+            data: {
+              version: 'npm:zod@4.1.13',
+              hash: '',
+              packageName: 'zod4',
+            },
+          },
+        },
+        dependencies: {
+          myapp: [
+            {
+              source: 'myapp',
+              target: 'npm:zod4',
+              type: DependencyType.static,
+            },
+          ],
+        },
+      };
+
+      const fileMap: ProjectFileMap = {
+        myapp: [
+          createFile('apps/myapp/src/main.ts', [
+            ['apps/myapp/src/main.ts', 'npm:zod4', DependencyType.static],
+          ]),
+        ],
+      };
+
+      const result = createPackageJson(
+        'myapp',
+        graph,
+        {
+          target: 'build',
+          root: '',
+          isProduction: true,
+        },
+        fileMap
+      );
+
+      expect(result.dependencies).toEqual({
+        zod4: 'npm:zod@4.1.13',
+      });
+
+      mockFilterUsingGlobPatterns.mockRestore();
+      mockGetTargetInputs.mockRestore();
+      mockReadNxJson.mockRestore();
+    });
+  });
+});
+
+function createFile(f: string, deps?: FileDataDependency[]): FileData {
+  return { file: f, hash: '', deps };
+}

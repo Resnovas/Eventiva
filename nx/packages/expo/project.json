@@ -1,0 +1,22 @@
+{
+  "name": "expo",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/expo/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "node ./scripts/copy-readme.js expo packages/expo/readme-template.md packages/expo/README.md",
+      "inputs": ["copyReadme"],
+      "outputs": ["{projectRoot}/README.md"]
+    },
+    "test": {
+      "inputs": [
+        "...",
+        "{workspaceRoot}/tools/vitest/**/*",
+        "{workspaceRoot}/scripts/jest-mocks/clack-prompts.js"
+      ]
+    }
+  },
+  "implicitDependencies": ["cypress", "jest", "playwright", "web"],
+  "tags": []
+}

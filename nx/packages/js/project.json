@@ -1,0 +1,32 @@
+{
+  "name": "js",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/js/src",
+  "projectType": "library",
+  "targets": {
+    "build-base": {
+      "dependsOn": [
+        {
+          "projects": ["nx", "devkit", "workspace"],
+          "target": "build-base"
+        },
+        "build-native",
+        "copy-assets"
+      ]
+    },
+    "build": {
+      "dependsOn": ["build-base"],
+      "outputs": ["{projectRoot}/README.md"],
+      "command": "node ./scripts/copy-readme.js js packages/js/readme-template.md packages/js/README.md",
+      "inputs": ["copyReadme"]
+    },
+    "test": {
+      "inputs": [
+        "...",
+        "{workspaceRoot}/tools/vitest/**/*",
+        "{workspaceRoot}/scripts/jest-mocks/clack-prompts.js"
+      ]
+    }
+  },
+  "tags": []
+}

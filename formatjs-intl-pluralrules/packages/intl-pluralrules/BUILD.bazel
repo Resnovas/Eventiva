@@ -1,0 +1,280 @@
+load("@bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("//tools:cldr_locales.bzl", "cldr_locale_list")
+load("//tools:compile.bzl", "formatjs_library")
+load("//tools:index.bzl", "ts_run_binary")
+load("//tools:rolldown.bzl", "rolldown_bundle")
+load("//tools:test.bzl", "formatjs_test")
+load("//tools:tsconfig.bzl", "ESNEXT_TSCONFIG", "packages_tsconfig")
+load("//tools/test262:defs.bzl", "test262_test")
+load(":locales.generated.bzl", "ALL_LOCALES")
+
+PACKAGE_NAME = "intl-pluralrules"
+
+TEST_LOCALES = [
+    "bs",
+    "ca",
+    "en",
+    "es",
+    "fr",
+    "it",
+    "lld",
+    "lv",
+    "pt",
+    "pt-PT",
+    "scn",
+    "vec",
+    "zh",
+]
+
+TEST_LOCALE_DATA = ["tests/locale-data/%s.ts" % locale for locale in TEST_LOCALES]
+
+ENTRY_POINTS = [
+    "index.ts",
+    "polyfill.ts",
+    "polyfill-force.ts",
+    "should-polyfill.ts",
+]
+
+formatjs_library(
+    name = "intl-pluralrules",
+    package_name = "@formatjs/intl-pluralrules",
+    srcs = [
+        "get_internal_slots.ts",
+        "index.ts",
+        "polyfill.ts",
+        "polyfill-force.ts",
+        "should-polyfill.ts",
+    ],
+    author = "Long Ho <holevietlong@gmail.com>",
+    bugs = "https://github.com/formatjs/formatjs/issues",
+    description = "Polyfill for Intl.PluralRules",
+    entry_points = ENTRY_POINTS,
+    extra_npm_srcs = [
+        ":locale-data",
+        "polyfill.iife.js",
+    ],
+    homepage = "https://github.com/formatjs/formatjs",
+    keywords = [
+        "i18n",
+        "intl",
+        "plural",
+        "PluralRules",
+        "polyfill",
+        "rules",
+    ],
+    license = "MIT",
+    package_types = "index.d.ts",
+    repository = "formatjs/formatjs.git",
+    type = "module",
+    types = True,
+    version = "7.0.2",  # x-release-please-version
+    visibility = ["//visibility:public"],
+    exports = {
+        ".": "./index.js",
+        "./polyfill.js": "./polyfill.js",
+        "./polyfill-force.js": "./polyfill-force.js",
+        "./should-polyfill.js": "./should-polyfill.js",
+        "./locale-data/*": "./locale-data/*",
+        "./locale-data": "./locale-data",
+    },
+    deps = [
+        "//:node_modules/@formatjs/bigdecimal",  # keep: runtime dependency of bundled abstract operations
+        "//:node_modules/@formatjs/intl-localematcher",
+        "//:node_modules/@formatjs_generated/cldr.supported-locales",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/PluralRules",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+formatjs_test(
+    name = "intl-pluralrules_test",
+    srcs = [
+        "tests/index.test.ts",
+        "tests/supported-locales-of.test.ts",
+        ":tests-locale-data-bs",  # keep: generated locale data imported by tests
+        ":tests-locale-data-ca",  # keep: generated locale data imported by tests
+        ":tests-locale-data-en",  # keep: generated locale data imported by tests
+        ":tests-locale-data-es",  # keep: generated locale data imported by tests
+        ":tests-locale-data-fr",  # keep: generated locale data imported by tests
+        ":tests-locale-data-it",  # keep: generated locale data imported by tests
+        ":tests-locale-data-lld",  # keep: generated locale data imported by tests
+        ":tests-locale-data-lv",  # keep: generated locale data imported by tests
+        ":tests-locale-data-pt",  # keep: generated locale data imported by tests
+        ":tests-locale-data-pt-PT",  # keep: generated locale data imported by tests
+        ":tests-locale-data-scn",  # keep: generated locale data imported by tests
+        ":tests-locale-data-vec",  # keep: generated locale data imported by tests
+        ":tests-locale-data-zh",  # keep: generated locale data imported by tests
+    ],
+    no_copy_to_bin = ["//:package.json"],
+    tsconfig = packages_tsconfig(ESNEXT_TSCONFIG),
+    deps = [
+        ":intl-pluralrules",
+        "//:node_modules/@formatjs/intl-getcanonicallocales",
+        "//:node_modules/@formatjs/intl-locale",
+        "//:node_modules/vitest",
+        "//packages/ecma402-abstract/PluralRules",
+    ],
+)
+
+# CLDR
+
+cldr_locale_list(
+    name = "locales",
+    base_dir = "",
+    cldr_package = "cldr-core",
+    data = [
+        "//:node_modules/cldr-core",
+    ],
+    file_glob = "supplemental/plurals.json",
+    json_path = "supplemental.plurals-type-cardinal",
+)
+
+CLDR_RAW_FILES = ["cldr-raw/%s.js" % locale for locale in ALL_LOCALES]
+
+ts_run_binary(
+    name = "cldr-raw",
+    srcs = [
+        "//:node_modules/@types/serialize-javascript",
+        "//:node_modules/@typescript/typescript6",
+        "//:node_modules/cldr-core",
+        "//:node_modules/cldr-numbers-full",
+        "//:node_modules/fs-extra",
+        "//:node_modules/json-stable-stringify",
+        "//:node_modules/minimist",
+        "//:node_modules/serialize-javascript",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/NumberFormat",
+        "//packages/ecma402-abstract/PluralRules",
+        "//packages/ecma402-abstract/types",
+    ],
+    outs = CLDR_RAW_FILES,
+    args = [
+        "--outDir",
+        "cldr-raw",
+    ],
+    chdir = package_name(),
+    tool = "//packages/intl-pluralrules/scripts:cldr-raw",
+    visibility = [
+        "//crates/intl_durationformat/tests:__pkg__",
+        "//crates/intl_numberformat/tests:__pkg__",
+        "//crates/intl_pluralrules/tests:__pkg__",
+        "//crates/intl_relativetimeformat/tests:__pkg__",
+        "//native/hermes/tests:__pkg__",
+        "//packages/intl-datetimeformat/benchmark:__pkg__",
+        "//packages/intl-numberformat/benchmark:__pkg__",
+    ],
+)
+
+ts_run_binary(
+    name = "locale-data",
+    srcs = CLDR_RAW_FILES + [
+        "//:node_modules/fs-extra",
+        "//:node_modules/minimist",
+    ],
+    outs = ["locale-data/%s.js" % locale for locale in ALL_LOCALES] + ["locale-data/%s.d.ts" % locale for locale in ALL_LOCALES],
+    args = [
+        "--cldrFile %s" % f
+        for f in CLDR_RAW_FILES
+    ] + [
+        "--outDir",
+        "locale-data",
+    ],
+    chdir = package_name(),
+    tool = "//packages/intl-pluralrules/scripts:cldr",
+    visibility = ["//visibility:public"],
+)
+
+[genrule(
+    name = "tests-locale-data-%s" % locale,
+    srcs = ["cldr-raw/%s.js" % locale],
+    outs = ["tests/locale-data/%s.ts" % locale],
+    cmd = """
+    printf \"%s %s\nexport default data\" \"\
+/* @generated */\n\
+// prettier-ignore\n\
+// @ts-nocheck\n\
+type LocaleData = {data: {categories: {cardinal: string[]; ordinal: string[];}; fn: (n: number | string, ord?: boolean | undefined, exponent?: number) => \"zero\" | \"one\" | \"two\" | \"few\" | \"many\" | \"other\";}; locale: string;};\n\
+const data:LocaleData = \" \"$$(cat $<)\" > $@
+    """,
+) for locale in TEST_LOCALES]
+
+ts_run_binary(
+    name = "test262-main-gen",
+    srcs = [
+        ":cldr-raw",
+        "//:node_modules/fs-extra",
+        "//:node_modules/minimist",
+    ],
+    outs = ["test262-main.ts"],
+    args = [
+        "--cldrFile %s/%s" % (
+            package_name(),
+            f,
+        )
+        for f in CLDR_RAW_FILES
+    ] + [
+        "--out",
+        "$(rootpath test262-main.ts)",
+    ],
+    tool = "//packages/intl-pluralrules/scripts:test262-main-gen",
+)
+
+# Test262
+rolldown_bundle(
+    name = "test262-polyfill",
+    srcs = [
+        ":srcs",
+        ":test262-main-gen",
+    ],
+    entry_point = "test262-main.ts",
+    format = "iife",
+    target = "es2020",
+    visibility = ["//tools/test262:__pkg__"],
+    deps = [
+        "//:node_modules/@formatjs/bigdecimal",
+        "//:node_modules/@formatjs/intl-localematcher",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/NumberFormat",
+        "//packages/ecma402-abstract/PluralRules",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+test262_test(
+    name = "test262",
+    data = [
+        "@com_github_tc39_test262//:test262-harness-copy",
+        "@com_github_tc39_test262//:test262-pluralrules-copy",
+    ],
+    prelude = "test262-polyfill.js",
+    suite = "intl402/PluralRules",
+)
+
+rolldown_bundle(
+    name = "polyfill.iife",
+    srcs = [":srcs"],
+    entry_point = "polyfill.ts",
+    target = "es2020",
+    # TODO: fix this and set it back to es5
+    deps = [
+        "//:node_modules/@formatjs/bigdecimal",
+        "//:node_modules/@formatjs/intl-localematcher",
+        "//packages/ecma402-abstract",
+        "//packages/ecma402-abstract/NumberFormat",
+        "//packages/ecma402-abstract/PluralRules",
+        "//packages/ecma402-abstract/types",
+    ],
+)
+
+copy_to_bin(
+    name = "hermes_package_tests",
+    srcs = glob(["tests/**/*.ts"]) + TEST_LOCALE_DATA + [":srcs"],
+    visibility = ["//native/hermes/tests:__pkg__"],
+)
+
+filegroup(
+    name = "polyfill_benchmark_locale_data",
+    srcs = ["cldr-raw/en.js"],
+    visibility = ["//benchmarks/polyfills:__pkg__"],
+)

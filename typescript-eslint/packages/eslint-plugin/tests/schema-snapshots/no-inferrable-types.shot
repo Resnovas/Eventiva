@@ -1,0 +1,31 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "ignoreParameters": {
+        "description": "Whether to ignore function parameters.",
+        "type": "boolean"
+      },
+      "ignoreProperties": {
+        "description": "Whether to ignore class properties.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to ignore function parameters. */
+    ignoreParameters?: boolean;
+    /** Whether to ignore class properties. */
+    ignoreProperties?: boolean;
+  },
+];

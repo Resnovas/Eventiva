@@ -1,0 +1,20 @@
+
+# SCHEMA:
+
+[
+  {
+    "description": "Which constructor call syntax to prefer.",
+    "enum": ["constructor", "type-annotation"],
+    "type": "string"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  /** Which constructor call syntax to prefer. */
+  | 'type-annotation'
+  /** Which constructor call syntax to prefer. */
+  | 'constructor',
+];

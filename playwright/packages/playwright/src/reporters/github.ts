@@ -1,0 +1,173 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import path from 'path';
+
+import { noColors } from '@isomorphic/colors';
+import { msToString } from '@isomorphic/formatUtils';
+import { getAsBooleanFromENV } from '@utils/env';
+
+import { TerminalReporter, formatResultFailure, formatRetry } from './base';
+import { stripAnsiEscapes } from '../util';
+
+import type { TerminalReporterOptions } from './base';
+import type { FullResult, TestCase, TestError, TestResult } from '../../types/testReporter';
+
+type GitHubLogType = 'debug' | 'notice' | 'warning' | 'error';
+
+type GitHubLogOptions = Partial<{
+  title: string;
+  file: string;
+  col: number;
+  endColumn: number;
+  line: number;
+  endLine: number;
+}>;
+
+class GitHubLogger {
+  newLine() {
+    // eslint-disable-next-line no-restricted-properties
+    process.stdout.write('\n');
+  }
+
+  private _log(message: string, type: GitHubLogType = 'notice', options: GitHubLogOptions = {}) {
+    const configs = Object.entries(options)
+        .map(([key, option]) => `${key}=${escapeProperty(String(option))}`)
+        .join(',');
+    // eslint-disable-next-line no-restricted-properties
+    process.stdout.write(stripAnsiEscapes(`::${type} ${configs}::${escapeData(message)}\n`));
+  }
+
+  debug(message: string, options?: GitHubLogOptions) {
+    this._log(message, 'debug', options);
+  }
+
+  error(message: string, options?: GitHubLogOptions) {
+    this._log(message, 'error', options);
+  }
+
+  notice(message: string, options?: GitHubLogOptions) {
+    this._log(message, 'notice', options);
+  }
+
+  warning(message: string, options?: GitHubLogOptions) {
+    this._log(message, 'warning', options);
+  }
+}
+
+// Same escaping as @actions/core, see https://github.com/actions/toolkit/blob/main/packages/core/src/command.ts.
+function escapeData(s: string): string {
+  return s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function escapeProperty(s: string): string {
+  return escapeData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+}
+
+export class GitHubReporter extends TerminalReporter {
+  githubLogger = new GitHubLogger();
+  private _failedTestCount = 0;
+
+  constructor(options: TerminalReporterOptions = {}) {
+    super({ ...options, omitTags: getAsBooleanFromENV('PLAYWRIGHT_GITHUB_OMIT_TAGS', options.omitTags) });
+    this.screen = { ...this.screen, colors: noColors };
+  }
+
+  printsToStdio() {
+    return false;
+  }
+
+  override onTestEnd(test: TestCase, result: TestResult) {
+    super.onTestEnd(test, result);
+    if (this.willRetry(test))
+      return;
+    if (!this._shouldPrintFailureAnnotations(test))
+      return;
+    this._failedTestCount++;
+    this.githubLogger.newLine();
+    for (const r of test.results)
+      this._printFailureAnnotation(test, r, this._failedTestCount);
+  }
+
+  private _shouldPrintFailureAnnotations(test: TestCase): boolean {
+    switch (test.outcome()) {
+      case 'unexpected':
+      case 'flaky':
+        return true;
+      case 'skipped':
+        return test.results.some(r => r.status === 'interrupted') && test.results.some(r => !!r.error);
+      default:
+        return false;
+    }
+  }
+
+  override async onEnd(result: FullResult) {
+    await super.onEnd(result);
+    this._printAnnotations();
+  }
+
+  override onError(error: TestError) {
+    const errorMessage = this.formatError(error).message;
+    this.githubLogger.error(errorMessage);
+  }
+
+  private _printAnnotations() {
+    const summary = this.generateSummary();
+    const summaryMessage = this.generateSummaryMessage(summary);
+    this._printSlowTestAnnotations();
+    this._printSummaryAnnotation(summaryMessage);
+  }
+
+  private _printSlowTestAnnotations() {
+    this.getSlowTests().forEach(([file, duration]) => {
+      const filePath = workspaceRelativePath(path.join(process.cwd(), file));
+      this.githubLogger.warning(`${filePath} took ${msToString(duration)}`, {
+        title: 'Slow Test',
+        file: filePath,
+      });
+    });
+  }
+
+  private _printSummaryAnnotation(summary: string){
+    this.githubLogger.notice(summary, {
+      title: '🎭 Playwright Run Summary'
+    });
+  }
+
+  private _printFailureAnnotation(test: TestCase, result: TestResult, index: number) {
+    const title = this.formatTestTitle(test);
+    const header = this.formatTestHeader(test, { indent: '  ', index, mode: 'error' });
+    const errors = formatResultFailure(this.screen, test, result, '    ');
+    for (const error of errors) {
+      const options: GitHubLogOptions = {
+        file: workspaceRelativePath(error.location?.file || test.location.file),
+        title,
+      };
+      if (error.location) {
+        options.line = error.location.line;
+        options.col = error.location.column;
+      }
+      const message = [header, ...formatRetry(this.screen, result), error.message].join('\n');
+      this.githubLogger.error(message, options);
+    }
+  }
+}
+
+function workspaceRelativePath(filePath: string): string {
+  return path.relative(process.env['GITHUB_WORKSPACE'] ?? '', filePath);
+}
+
+export default GitHubReporter;

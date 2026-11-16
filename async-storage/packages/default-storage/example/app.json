@@ -1,0 +1,16 @@
+{
+  "name": "AsyncStorageExample",
+  "displayName": "AsyncStorageExample",
+  "components": [
+    {
+      "appKey": "AsyncStorageExample",
+      "displayName": "AsyncStorageExample"
+    }
+  ],
+  "resources": {
+    "android": ["main.android.bundle"],
+    "ios": ["main.ios.bundle"],
+    "macos": ["main.macos.bundle"],
+    "windows": ["main.windows.bundle"]
+  }
+}

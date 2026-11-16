@@ -1,0 +1,479 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import fs from 'fs';
+import path from 'path';
+
+import debug from 'debug';
+import { actionInContext, codeframeForLanguage, renderCode, substituteSecrets } from './codegen';
+import { renderModalStates } from './tab';
+import { renderWebMCPToolsYaml, webmcpToolsJSON } from './webmcp';
+
+import { outputDir as resolveOutputDir } from './context';
+
+import type * as playwright from '../../..';
+import type * as actions from '@isomorphic/codegen/actions';
+import type { CodeItem } from './codegen';
+import type { TabHeader } from './tab';
+import type { CallToolResult, ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js';
+import type { Context, FilenameTemplate } from './context';
+
+export const requestDebug = debug('pw:mcp:request');
+
+type ResolvedFile = {
+  fileName: string;
+  relativeName: string;
+  printableLink: string;
+};
+
+type SectionContent = string[] | { json: unknown };
+
+type Section = {
+  title: string;
+  key?: string; // Property name in the json output, defaults to the lower-cased title.
+  content: SectionContent;
+  isError?: boolean;
+  codeframe?: 'yaml' | 'js' | 'json' | 'python' | 'java' | 'csharp';
+};
+
+export class Response {
+  private _results: string[] = [];
+  private _errors: string[] = [];
+  private _code: CodeItem[] = [];
+  private _context: Context;
+  private _includeSnapshot: 'none' | 'full' | 'explicit' = 'none';
+  private _includeSnapshotFileName: string | undefined;
+  private _includeSnapshotRoot: playwright.Locator | undefined;
+  private _includeSnapshotDepth: number | undefined;
+  private _includeSnapshotBoxes: boolean | undefined;
+  private _isClose: boolean = false;
+
+  readonly toolName: string;
+  readonly toolArgs: Record<string, any>;
+  private _clientWorkspace: string;
+  private _imageResults: { data: Buffer, imageType: 'png' | 'jpeg' | 'webp' }[] = [];
+  private _raw: boolean;
+  private _json: boolean;
+  private _writtenFiles = new Set<string>();
+
+  constructor(context: Context, toolName: string, toolArgs: Record<string, any>, options?: { relativeTo?: string, raw?: boolean, json?: boolean }) {
+    this._context = context;
+    this.toolName = toolName;
+    this.toolArgs = toolArgs;
+    this._clientWorkspace = options?.relativeTo ?? context.options.cwd;
+    this._json = options?.json ?? false;
+    this._raw = this._json || (options?.raw ?? false);
+  }
+
+  private _printablePath(fileName: string): string {
+    if (this._context.config.filePaths === 'absolute')
+      return path.resolve(fileName);
+    const rel = path.relative(this._clientWorkspace, fileName);
+    // Prefix bare filenames with `./` so they're not mistaken for living in
+    // the auto-named `.playwright-cli/` artifact directory.
+    if (path.dirname(rel) === '.' && !rel.startsWith('.'))
+      return './' + rel;
+    return rel;
+  }
+
+  async resolveClientOutputFile(template: FilenameTemplate, title: string): Promise<ResolvedFile> {
+    let fileName: string;
+    if (template.suggestedFilename)
+      fileName = await this.resolveClientFilename(template.suggestedFilename);
+    else
+      fileName = await this._context.outputFile(template, { origin: 'llm' });
+    await fs.promises.mkdir(path.dirname(fileName), { recursive: true });
+    const relativeName = this._printablePath(fileName);
+    const printableLink = `- [${title}](${relativeName})`;
+    return { fileName, relativeName, printableLink };
+  }
+
+  async resolveClientFilename(filename: string): Promise<string> {
+    return await this._context.workspaceFile(filename, this._clientWorkspace);
+  }
+
+  addTextResult(text: string) {
+    this._results.push(text);
+  }
+
+  async addResult(title: string, data: Buffer | string, file: FilenameTemplate) {
+    if (file.suggestedFilename || typeof data !== 'string') {
+      const resolvedFile = await this.resolveClientOutputFile(file, title);
+      await this.addFileResult(resolvedFile, data);
+    } else {
+      this.addTextResult(data);
+    }
+  }
+
+  private async _writeFile(resolvedFile: ResolvedFile, data: Buffer | string | null) {
+    if (typeof data === 'string')
+      await fs.promises.writeFile(resolvedFile.fileName, this._context.redactSecrets(data), 'utf-8');
+    else if (data)
+      await fs.promises.writeFile(resolvedFile.fileName, data);
+    this._writtenFiles.add(path.resolve(resolvedFile.fileName));
+  }
+
+  async addFileResult(resolvedFile: ResolvedFile, data: Buffer | string | null) {
+    await this._writeFile(resolvedFile, data);
+    this.addTextResult(resolvedFile.printableLink);
+  }
+
+  addFileLink(title: string, fileName: string) {
+    const relativeName = this._printablePath(fileName);
+    this.addTextResult(`- [${title}](${relativeName})`);
+  }
+
+  async registerImageResult(data: Buffer, imageType: 'png' | 'jpeg' | 'webp') {
+    this._imageResults.push({ data, imageType });
+  }
+
+  setClose() {
+    this._isClose = true;
+  }
+
+  addError(error: string) {
+    this._errors.push(error);
+  }
+
+  addCode(code: string) {
+    this._code.push(code);
+  }
+
+  addAction(action: actions.Action) {
+    this._code.push(actionInContext(action));
+  }
+
+  setIncludeSnapshot() {
+    this._includeSnapshot = this._context.config.snapshot?.mode ?? 'full';
+    this._includeSnapshotBoxes = this._context.config.snapshot?.boxes;
+  }
+
+  setIncludeFullSnapshot(includeSnapshotFileName?: string, root?: playwright.Locator, depth?: number, boxes?: boolean) {
+    this._includeSnapshot = 'explicit';
+    this._includeSnapshotFileName = includeSnapshotFileName;
+    this._includeSnapshotDepth = depth;
+    this._includeSnapshotBoxes = boxes ?? this._context.config.snapshot?.boxes;
+    this._includeSnapshotRoot = root;
+  }
+
+  async serialize(): Promise<CallToolResult> {
+    const allSections = await this._build();
+    await this._enforceOutputBudget();
+    const rawSections = ['Error', 'Result', 'WebMCP tools', 'Snapshot'] as const;
+    const sections = this._raw ? allSections.filter(section => rawSections.includes(section.title as typeof rawSections[number])) : allSections;
+
+    const isError = sections.some(section => section.isError);
+    let serializedText: string;
+    if (this._json) {
+      const payload: Record<string, unknown> = {};
+      if (isError)
+        payload.isError = true;
+      for (const section of sections) {
+        const key = section.key ?? section.title.toLowerCase();
+        if (!Array.isArray(section.content)) {
+          if (section.content.json !== undefined)
+            payload[key] = section.content.json;
+          continue;
+        }
+        if (!section.content.length)
+          continue;
+        if (key === 'snapshot') {
+          const match = section.content[0]?.match(/^- \[Snapshot\]\(([^)]+)\)$/);
+          payload.snapshot = match ? { file: match[1] } : section.content.join('\n');
+        } else {
+          payload[key] = section.content.join('\n');
+        }
+      }
+      serializedText = JSON.stringify(payload, null, 2);
+    } else {
+      const text: string[] = [];
+      for (const section of sections) {
+        const lines = Array.isArray(section.content) ? section.content : (section.content.json === undefined ? [] : [JSON.stringify(section.content.json, null, 2)]);
+        if (!lines.length)
+          continue;
+        if (!this._raw) {
+          text.push(`### ${section.title}`);
+          if (section.codeframe)
+            text.push(`\`\`\`${section.codeframe}`);
+          text.push(...lines);
+          if (section.codeframe)
+            text.push('```');
+        } else {
+          text.push(...lines);
+        }
+      }
+      serializedText = text.join('\n');
+    }
+
+    const imageResponses = this._context.config.imageResponses ?? 'allow';
+    const images: ImageContent[] = imageResponses === 'omit' ? [] : this._imageResults.map(imageResult => ({ type: 'image', data: imageResult.data.toString('base64'), mimeType: `image/${imageResult.imageType}` }));
+    const imagesOnly = imageResponses === 'only' && images.length > 0 && !isError;
+    const content: (TextContent | ImageContent)[] = imagesOnly ? images : [
+      { type: 'text', text: sanitizeUnicode(this._context.redactSecrets(serializedText)) },
+      ...images,
+    ];
+
+    return {
+      content,
+      ...(this._isClose ? { isClose: true } : {}),
+      ...(isError ? { isError: true } : {}),
+    };
+  }
+
+  private async _enforceOutputBudget(): Promise<void> {
+    const maxSize = this._context.config.outputMaxSize;
+    if (!maxSize)
+      return;
+    const dir = resolveOutputDir(this._context.options);
+    let entries: { path: string, size: number, mtimeMs: number }[];
+    try {
+      entries = await listFilesRecursive(dir);
+    } catch {
+      return;
+    }
+    let total = 0;
+    for (const e of entries)
+      total += e.size;
+    if (total <= maxSize)
+      return;
+    entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
+    for (const entry of entries) {
+      if (total <= maxSize)
+        break;
+      if (this._writtenFiles.has(entry.path))
+        continue;
+      try {
+        await fs.promises.unlink(entry.path);
+        total -= entry.size;
+      } catch (error) {
+        requestDebug('output-budget unlink failed %s: %s', entry.path, error);
+      }
+    }
+  }
+
+  private async _build(): Promise<Section[]> {
+    const sections: Section[] = [];
+    const addSection = (title: string, content: SectionContent, codeframe?: Section['codeframe'], key?: string) => {
+      const section = { title, key, content, isError: title === 'Error', codeframe };
+      sections.push(section);
+      return content;
+    };
+
+    if (this._errors.length)
+      addSection('Error', this._errors);
+
+    if (this._results.length)
+      addSection('Result', this._results);
+
+    // Code
+    const codegen = this._context.config.codegen ?? 'typescript';
+    if (codegen !== 'none' && this._code.length) {
+      const code = substituteSecrets(renderCode(this._code, codegen), codegen, Object.keys(this._context.config.secrets ?? {}));
+      addSection('Ran Playwright code', code, codeframeForLanguage(codegen));
+    }
+
+    // Render tab titles upon changes or when more than one tab.
+    const snapshotToFile = this._includeSnapshot !== 'explicit' || !!this._includeSnapshotFileName;
+    const ariaFormat = this._includeSnapshot === 'none' ? 'none' : (this._json && !snapshotToFile ? 'json' : 'text');
+    const updateWebMCP = this._includeSnapshot !== 'none'; // Collect the page's WebMCP tools whenever a snapshot is taken anyway.
+    const logRelativeTo = this._context.config.filePaths === 'absolute' ? undefined : this._clientWorkspace;
+    const tabSnapshot = this._context.currentTab() ? await this._context.currentTabOrDie().captureSnapshot(this._includeSnapshotRoot, this._includeSnapshotDepth, this._includeSnapshotBoxes, logRelativeTo, ariaFormat, updateWebMCP) : undefined;
+    const tabHeaders = await Promise.all(this._context.tabs().map(tab => tab.headerSnapshot()));
+    if (this._includeSnapshot !== 'none' || tabHeaders.some(header => header.changed)) {
+      if (tabHeaders.length !== 1)
+        addSection('Open tabs', renderTabsMarkdown(tabHeaders));
+      const currentTab = tabHeaders.find(h => h.current) ?? tabHeaders[0];
+      if (currentTab) {
+        addSection('Page', renderTabMarkdown(currentTab));
+      } else if (this._includeSnapshot !== 'none' && !this._errors.length) {
+        const error = ['No open tabs. The page was closed before a snapshot could be captured.'];
+        if (this._context.config.extension)
+          error.push(`Chrome may have detached the debugger because the page contains a frame that extensions are not allowed to debug, for example a frame added by another extension. If so, set that extension's site access to "On click" and navigate again.`);
+        addSection('Error', error);
+      }
+    }
+
+    // Handle modal states.
+    if (tabSnapshot?.modalStates.length)
+      addSection('Modal state', renderModalStates(this._context.config, tabSnapshot.modalStates));
+
+    // Handle tab snapshot and WebMCP tools.
+    if (tabSnapshot && this._includeSnapshot !== 'none') {
+      const webmcpListing = this._context.currentTab()?.webmcpTools();
+      if (!snapshotToFile && tabSnapshot.ariaSnapshotJSON !== undefined) {
+        if (webmcpListing?.tools.length)
+          addSection('WebMCP tools', { json: webmcpToolsJSON(webmcpListing) }, 'json', 'webmcpTools');
+        addSection('Snapshot', { json: tabSnapshot.ariaSnapshotJSON }, 'json');
+      } else {
+        let ariaSnapshot = tabSnapshot.ariaSnapshot;
+        if (webmcpListing?.tools.length)
+          ariaSnapshot = renderWebMCPToolsYaml(webmcpListing).join('\n') + '\n\n' + ariaSnapshot;
+        if (snapshotToFile) {
+          const suggestedFilename = this._includeSnapshotFileName === '<auto>' ? undefined : this._includeSnapshotFileName;
+          const resolvedFile = await this.resolveClientOutputFile({ prefix: 'page', ext: 'yml', suggestedFilename }, 'Snapshot');
+          await this._writeFile(resolvedFile, ariaSnapshot);
+          addSection('Snapshot', [resolvedFile.printableLink]);
+        } else {
+          addSection('Snapshot', [ariaSnapshot], 'yaml');
+        }
+      }
+    }
+
+    // Handle tab log
+    const text: string[] = [];
+    if (tabSnapshot?.consoleLink)
+      text.push(`- New console entries: ${tabSnapshot.consoleLink}`);
+    if (tabSnapshot?.events.filter(event => event.type !== 'request').length) {
+      for (const event of tabSnapshot.events) {
+        if (event.type === 'download-start')
+          text.push(`- Downloading file ${event.download.download.suggestedFilename()} ...`);
+        else if (event.type === 'download-finish')
+          text.push(`- Downloaded file ${event.download.download.suggestedFilename()} to "${this._printablePath(event.download.outputFile)}"`);
+      }
+    }
+    if (text.length)
+      addSection('Events', text);
+
+    const pausedDetails = this._context.debugger().pausedDetails();
+    if (pausedDetails) {
+      addSection('Paused', [
+        `- ${pausedDetails.title} at ${this._printablePath(pausedDetails.location.file)}${pausedDetails.location.line ? ':' + pausedDetails.location.line : ''}`,
+        '- Use any tools to explore and interact, resume by calling resume/step-over/pause-at',
+      ]);
+    }
+    return sections;
+  }
+}
+
+export function renderTabMarkdown(tab: TabHeader): string[] {
+  const lines = [`- Page URL: ${tab.url}`];
+  if (tab.title)
+    lines.push(`- Page Title: ${tab.title}`);
+  if (tab.isolatedContext)
+    lines.push(`- Isolated context: ${tab.isolatedContext}`);
+  if (tab.crashed)
+    lines.push(`- Page status: crashed`);
+  const status = tab.mainDocumentStatus;
+  if (status && (status.status < 200 || status.status >= 300))
+    lines.push(`- HTTP status: ${status.status}${status.statusText ? ' ' + status.statusText : ''}`);
+  if (tab.webmcpToolCount)
+    lines.push(`- ${tab.webmcpToolCount} webmcp tool${tab.webmcpToolCount === 1 ? '' : 's'} available on the page`);
+  if (tab.console.errors || tab.console.warnings)
+    lines.push(`- Console: ${tab.console.errors} errors, ${tab.console.warnings} warnings`);
+  return lines;
+}
+
+export function renderTabsMarkdown(tabs: TabHeader[]): string[] {
+  if (!tabs.length)
+    return ['No open tabs. Navigate to a URL to create one.'];
+
+  const lines: string[] = [];
+  for (let i = 0; i < tabs.length; i++) {
+    const tab = tabs[i];
+    const current = tab.current ? ' (current)' : '';
+    const crashed = tab.crashed ? ' [crashed]' : '';
+    const isolatedContext = tab.isolatedContext ? ` [isolatedContext: ${tab.isolatedContext}]` : '';
+    lines.push(`- ${i}:${current} [${tab.title}](${tab.url})${crashed}${isolatedContext}`);
+  }
+  return lines;
+}
+
+/**
+ * Sanitizes a string to ensure it only contains well-formed Unicode.
+ * Replaces lone surrogates with U+FFFD using String.prototype.toWellFormed().
+ */
+function sanitizeUnicode(text: string): string {
+  return text.toWellFormed?.() ?? text;
+}
+
+async function listFilesRecursive(dir: string): Promise<{ path: string, size: number, mtimeMs: number }[]> {
+  const entries = await fs.promises.readdir(dir, { recursive: true, withFileTypes: true });
+  const files = entries.filter(e => e.isFile());
+  return Promise.all(files.map(async e => {
+    const full = path.join(e.parentPath, e.name);
+    const { size, mtimeMs } = await fs.promises.stat(full);
+    return { path: full, size, mtimeMs };
+  }));
+}
+
+function parseSections(text: string): Map<string, string> {
+  const sections = new Map<string, string>();
+  const sectionHeaders = text.split(/^### /m).slice(1); // Remove empty first element
+
+  for (const section of sectionHeaders) {
+    const firstNewlineIndex = section.indexOf('\n');
+    if (firstNewlineIndex === -1)
+      continue;
+
+    const sectionName = section.substring(0, firstNewlineIndex);
+    const sectionContent = section.substring(firstNewlineIndex + 1).trim();
+    sections.set(sectionName, sectionContent);
+  }
+
+  return sections;
+}
+
+export function parseResponse(response: CallToolResult, cwd?: string) {
+  if (response.content?.[0].type !== 'text')
+    return undefined;
+  const text = response.content[0].text;
+
+  const sections = parseSections(text);
+  const error = sections.get('Error');
+  const result = sections.get('Result');
+  const code = sections.get('Ran Playwright code');
+  const tabs = sections.get('Open tabs');
+  const page = sections.get('Page');
+  const snapshotSection = sections.get('Snapshot');
+  const events = sections.get('Events');
+  const modalState = sections.get('Modal state');
+  const paused = sections.get('Paused');
+  const codeNoFrame = code?.replace(/^```(?:js|python|java|csharp)\n/, '').replace(/\n```$/, '');
+  const isError = response.isError;
+  const attachments = response.content.length > 1 ? response.content.slice(1) : undefined;
+
+  let snapshot: string | undefined;
+  let inlineSnapshot: string | undefined;
+  if (snapshotSection) {
+    const match = snapshotSection.match(/\[Snapshot\]\(([^)]+)\)/);
+    if (match) {
+      if (cwd) {
+        try {
+          snapshot = fs.readFileSync(path.resolve(cwd, match[1]), 'utf-8');
+        } catch {
+        }
+      }
+    } else {
+      inlineSnapshot = snapshotSection.replace(/^```yaml\n?/, '').replace(/\n?```$/, '');
+    }
+  }
+
+  return {
+    result,
+    error,
+    code: codeNoFrame,
+    tabs,
+    page,
+    snapshot,
+    inlineSnapshot,
+    events,
+    modalState,
+    paused,
+    isError,
+    attachments,
+    text,
+  };
+}

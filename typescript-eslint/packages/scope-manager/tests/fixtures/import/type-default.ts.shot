@@ -1,0 +1,105 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        ImportBindingDefinition$1 {
+          name: Identifier<"T">,
+          node: ImportDefaultSpecifier$1,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+        Reference$3 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TypeDefinition$2 {
+          name: Identifier<"Ref">,
+          node: TSTypeAliasDeclaration$2,
+        },
+      ],
+      name: "Ref",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        VariableDefinition$3 {
+          name: Identifier<"unresolved">,
+          node: VariableDeclarator$3,
+        },
+      ],
+      name: "unresolved",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"unresolved">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$4,
+          writeExpr: Identifier<"T">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$4,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+      ],
+    },
+    ModuleScope$2 {
+      block: Program$4,
+      isStrict: true,
+      references: [
+        Reference$1,
+        Reference$2,
+        Reference$3,
+      ],
+      set: Map {
+        "T" => Variable$2,
+        "Ref" => Variable$3,
+        "unresolved" => Variable$4,
+      },
+      type: "module",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$2,
+        Variable$3,
+        Variable$4,
+      ],
+    },
+  ],
+}

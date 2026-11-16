@@ -1,0 +1,92 @@
+[
+  Identifier {
+    type: "Identifier",
+    value: "using",
+
+    range: [0, 5],
+    loc: {
+      start: { column: 0, line: 1 },
+      end: { column: 5, line: 1 },
+    },
+  },
+  Identifier {
+    type: "Identifier",
+    value: "x",
+
+    range: [6, 7],
+    loc: {
+      start: { column: 6, line: 1 },
+      end: { column: 7, line: 1 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: "=",
+
+    range: [8, 9],
+    loc: {
+      start: { column: 8, line: 1 },
+      end: { column: 9, line: 1 },
+    },
+  },
+  Numeric {
+    type: "Numeric",
+    value: "1",
+
+    range: [10, 11],
+    loc: {
+      start: { column: 10, line: 1 },
+      end: { column: 11, line: 1 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: ",",
+
+    range: [11, 12],
+    loc: {
+      start: { column: 11, line: 1 },
+      end: { column: 12, line: 1 },
+    },
+  },
+  Identifier {
+    type: "Identifier",
+    value: "y",
+
+    range: [15, 16],
+    loc: {
+      start: { column: 2, line: 2 },
+      end: { column: 3, line: 2 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: "=",
+
+    range: [17, 18],
+    loc: {
+      start: { column: 4, line: 2 },
+      end: { column: 5, line: 2 },
+    },
+  },
+  Numeric {
+    type: "Numeric",
+    value: "2",
+
+    range: [19, 20],
+    loc: {
+      start: { column: 6, line: 2 },
+      end: { column: 7, line: 2 },
+    },
+  },
+  Punctuator {
+    type: "Punctuator",
+    value: ";",
+
+    range: [20, 21],
+    loc: {
+      start: { column: 7, line: 2 },
+      end: { column: 8, line: 2 },
+    },
+  },
+]

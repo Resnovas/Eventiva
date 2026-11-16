@@ -1,0 +1,92 @@
+import { promises as fs } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { transformGlobImport } from '../../../plugins/importMetaGlob'
+import { transformWithOxc } from '../../../plugins/oxc'
+
+describe('fixture', async () => {
+  const resolveId = (id: string) => id
+  const root = import.meta.dirname
+
+  it('transform', async () => {
+    const id = resolve(import.meta.dirname, './fixture-a/index.ts')
+    const code = (await transformWithOxc(await fs.readFile(id, 'utf-8'), id))
+      .code
+
+    expect(
+      (await transformGlobImport(code, id, root, resolveId))?.s.toString(),
+    ).toMatchSnapshot()
+  })
+
+  it('preserve line count', async () => {
+    const getTransformedLineCount = async (code: string) =>
+      (await transformGlobImport(code, 'virtual:module', root, resolveId))?.s
+        .toString()
+        .split('\n').length
+
+    expect(await getTransformedLineCount("import.meta.glob('/*.js')")).toBe(1)
+    expect(
+      await getTransformedLineCount(
+        `
+          import.meta.glob(
+            '/*.js'
+          )
+        `.trim(),
+      ),
+    ).toBe(3)
+  })
+
+  it('virtual modules', async () => {
+    const root = resolve(import.meta.dirname, './fixture-a')
+    const code = [
+      "import.meta.glob('/modules/*.ts')",
+      "import.meta.glob(['/../fixture-b/*.ts'])",
+      "import.meta.glob(['./*.ts'], { base: '/modules' })",
+    ].join('\n')
+    expect(
+      (
+        await transformGlobImport(code, 'virtual:module', root, resolveId)
+      )?.s.toString(),
+    ).toMatchSnapshot()
+
+    try {
+      await transformGlobImport(
+        "import.meta.glob('./modules/*.ts')",
+        'virtual:module',
+        root,
+        resolveId,
+      )
+      expect('no error').toBe('should throw an error')
+    } catch (err) {
+      expect(err).toMatchInlineSnapshot(
+        "[Error: In virtual modules, all globs must start with '/']",
+      )
+    }
+
+    // Regression test for vitejs/vite#22345: even when the relative glob
+    // matches zero files, virtual modules must still surface the error
+    // instead of silently returning `{}`.
+    await expect(async () => {
+      await transformGlobImport(
+        "import.meta.glob('./no-such-dir/*.ts')",
+        'virtual:module',
+        root,
+        resolveId,
+      )
+    }).rejects.toMatchInlineSnapshot(
+      `[Error: In virtual modules, all globs must start with '/']`,
+    )
+  })
+
+  it('transform with restoreQueryExtension', async () => {
+    const id = resolve(import.meta.dirname, './fixture-a/index.ts')
+    const code = (await transformWithOxc(await fs.readFile(id, 'utf-8'), id))
+      .code
+
+    expect(
+      (
+        await transformGlobImport(code, id, root, resolveId, true)
+      )?.s.toString(),
+    ).toMatchSnapshot()
+  })
+})

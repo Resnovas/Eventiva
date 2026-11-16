@@ -1,0 +1,80 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+import { DefinitionType } from '@typescript-eslint/scope-manager';
+import { AST_NODE_TYPES, AST_TOKEN_TYPES } from '@typescript-eslint/utils';
+
+import rule from '../../src/rules/prefer-ast-types-enum.js';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('prefer-ast-types-enum', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    "node.type === 'constructor';",
+    'node.type === AST_NODE_TYPES.Literal;',
+    'node.type === AST_TOKEN_TYPES.Keyword;',
+    'node.type === DefinitionType.Parameter;',
+    'node.type === 1;',
+    `
+enum MY_ENUM {
+  Literal = 1,
+}
+    `,
+    `
+enum AST_NODE_TYPES {
+  Literal = 'Literal',
+}
+    `,
+  ],
+  invalid: [
+    {
+      code: "node.type === 'Literal';",
+      errors: [
+        {
+          column: 15,
+          data: { enumName: 'AST_NODE_TYPES', literal: AST_NODE_TYPES.Literal },
+          endColumn: 24,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferEnum',
+        },
+      ],
+      output: 'node.type === AST_NODE_TYPES.Literal;',
+    },
+    {
+      code: "node.type === 'Keyword';",
+      errors: [
+        {
+          column: 15,
+          data: {
+            enumName: 'AST_TOKEN_TYPES',
+            literal: AST_TOKEN_TYPES.Keyword,
+          },
+          endColumn: 24,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferEnum',
+        },
+      ],
+      output: 'node.type === AST_TOKEN_TYPES.Keyword;',
+    },
+    {
+      code: "node.type === 'Parameter';",
+      errors: [
+        {
+          column: 15,
+          data: {
+            enumName: 'DefinitionType',
+            literal: DefinitionType.Parameter,
+          },
+          endColumn: 26,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferEnum',
+        },
+      ],
+      output: 'node.type === DefinitionType.Parameter;',
+    },
+  ],
+});

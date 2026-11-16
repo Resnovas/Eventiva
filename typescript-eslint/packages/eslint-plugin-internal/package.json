@@ -1,0 +1,53 @@
+{
+  "name": "@typescript-eslint/eslint-plugin-internal",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/eslint-plugin-internal"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io",
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm exec nx build",
+    "clean": "rimraf dist/ coverage/",
+    "format": "pnpm -w run format",
+    "lint": "pnpm -w exec nx lint",
+    "test": "pnpm -w exec nx test",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6"
+  },
+  "dependencies": {
+    "@prettier/sync": "^0.6.1",
+    "@typescript-eslint/rule-tester": "workspace:*",
+    "@typescript-eslint/scope-manager": "workspace:*",
+    "@typescript-eslint/type-utils": "workspace:*",
+    "@typescript-eslint/utils": "workspace:*",
+    "prettier": "catalog:"
+  },
+  "devDependencies": {
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "name": "eslint-plugin-internal",
+    "includedScripts": [
+      "clean"
+    ],
+    "targets": {
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck:tsc6": {}
+    }
+  }
+}
