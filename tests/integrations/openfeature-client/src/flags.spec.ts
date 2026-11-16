@@ -19,15 +19,54 @@ import { layer, staticValues } from '@eventiva/integrations.openfeature.client/f
 import { PostHogClientProvider } from '@eventiva/integrations.posthog.client/flags';
 import { describe, expect, it } from '@effect/vitest';
 import { ErrorCode, OpenFeature, type Provider } from '@openfeature/web-sdk';
-import { Effect } from 'effect';
+import { Effect, Layer, Logger } from 'effect';
+import { vi } from 'vitest';
 
 const flag = (key: string, safeDefault: boolean) => ({ key, description: 'Test.', owner: 'test', safeDefault });
 
 // What PostHog has cached on the device.
 const cached: Record<string, boolean | string> = { 'a.baseline': true, 'a.remote': 'variant-b' };
-const postHog = new PostHogClientProvider({ getFeatureFlag: (key) => cached[key], onFeatureFlags: () => () => undefined });
+const postHog = new PostHogClientProvider({
+    getFeatureFlag: (key) => cached[key],
+    onFeatureFlags: () => () => undefined,
+});
 
 describe('OpenFeature client flags', () => {
+    it.effect('keeps vendor secrets out of public startup diagnostics and preserves defaults', () => {
+        const secret = 'flag-client-secret-canary';
+        const messages: string[] = [];
+        const bind = vi
+            .spyOn(OpenFeature, 'setProviderAndWait')
+            .mockRejectedValueOnce(Object.assign(new Error(secret), { secret }));
+        return Effect.gen(function* () {
+            expect(yield* (yield* Flags).evaluate(flag('a.secret', true))).toMatchObject({
+                value: true,
+                fallback: true,
+            });
+        }).pipe(
+            Effect.provide(
+                layer([], { domain: 'client-secret' }).pipe(
+                    Layer.provideMerge(
+                        Logger.replace(
+                            Logger.defaultLogger,
+                            Logger.make(({ message }) => messages.push(JSON.stringify(message)))
+                        )
+                    )
+                )
+            ),
+            Effect.tap(() =>
+                Effect.sync(() => {
+                    const diagnostics = messages.join('\n');
+                    expect(diagnostics).toContain('FlagProviderError');
+                    expect(diagnostics).toContain('initialize');
+                    expect(diagnostics).not.toContain(secret);
+                    expect(diagnostics).not.toContain('cause');
+                })
+            ),
+            Effect.ensuring(Effect.sync(() => bind.mockRestore()))
+        );
+    });
+
     it.effect('combines the Git baseline and PostHog in precedence order', () =>
         Effect.gen(function* () {
             const flags = yield* Flags;
@@ -57,7 +96,11 @@ describe('OpenFeature client flags', () => {
             metadata: { name: 'failing' },
             runsOn: 'client',
             initialize: () => Promise.reject(new Error('no network')),
-            resolveBooleanEvaluation: (_key, value) => ({ value: !value, reason: 'ERROR', errorCode: ErrorCode.FLAG_NOT_FOUND }),
+            resolveBooleanEvaluation: (_key, value) => ({
+                value: !value,
+                reason: 'ERROR',
+                errorCode: ErrorCode.FLAG_NOT_FOUND,
+            }),
             resolveStringEvaluation: (_key, value) => ({ value }),
             resolveNumberEvaluation: (_key, value) => ({ value }),
             resolveObjectEvaluation: (_key, value) => ({ value }),
@@ -78,7 +121,10 @@ describe('OpenFeature client flags', () => {
             resolveObjectEvaluation: (_key, value) => ({ value }),
         };
         return Effect.gen(function* () {
-            expect(yield* (yield* Flags).evaluate(flag('a.flag', false))).toMatchObject({ value: true, reason: 'UNKNOWN' });
+            expect(yield* (yield* Flags).evaluate(flag('a.flag', false))).toMatchObject({
+                value: true,
+                reason: 'UNKNOWN',
+            });
         }).pipe(Effect.provide(layer([{ source: 'remote', provider: terse }], { domain: 'client-terse' })));
     });
 
@@ -87,7 +133,13 @@ describe('OpenFeature client flags', () => {
             yield* Effect.scoped(
                 Effect.gen(function* () {
                     expect((yield* (yield* Flags).evaluate(flag('a.on', false))).value).toBe(true);
-                }).pipe(Effect.provide(layer([{ source: 'git-baseline', provider: staticValues({ 'a.on': true }) }], { domain: 'client-close' })))
+                }).pipe(
+                    Effect.provide(
+                        layer([{ source: 'git-baseline', provider: staticValues({ 'a.on': true }) }], {
+                            domain: 'client-close',
+                        })
+                    )
+                )
             );
             expect(OpenFeature.getClient('client-close').getBooleanValue('a.on', false)).toBe(false);
         })

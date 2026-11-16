@@ -176,6 +176,30 @@ Register it with `host.register(demoModule)` inside a scope. EVE-40 adds mandato
 
 Every flag declares a safe default, which applies whenever no source answers.
 
+Provider initialization and teardown diagnostics contain bounded operation/reason fields, never raw vendor errors. OpenFeature reports `initialize` or `close` with `provider-failed`; the server provider shutdown reports `shutdown` with `shutdown-failed`. Existing safe defaults, source precedence, startup recovery and scoped teardown remain unchanged. If a provider fails, inspect its trusted configuration rather than expecting its exception payload in application logs.
+
+## Coordinated module validation
+
+The kernel, resource, hook, declarative UI and telemetry substrates expose real package subpaths. Their test projects and `ai-docs` examples use workspace dependencies and Nx tags rather than production aliases. The reusable UI registry/interpreter lives in `@eventiva/ui-modules`, a frontend extension library. Tests consume its subpaths after its build; libraries never import the client application.
+
+Run `pnpm install --frozen-lockfile`, `pnpm nx sync:check`, and `node --run verify` after composing the workspace. `verify` and CI first build declared outputs, then run `tools/resources/boundaries.mjs` and its Node test fixtures before the complete Nx gate, and finally audit public declarations. The process conformance harness intentionally imports the actual built server; a clean checkout must build it before resolving that graph. Nx execution is serial to bound compiler/export memory use; no target or coverage threshold is skipped. The source audit follows source/type-only imports and workspace package manifests, rejects cycles and unchecked type escapes, and includes disconnected active projects. It does not establish production release authorization or approve opaque vendor boundaries. The dependency-free house `check` remains separate.
+
+### Approved private reflection ingress (EVE-263)
+
+Owner message1982 in thread `T-01a189ae-399d-7162-9765-4488b9600016` approves only a private TypeScript `PropertyDescriptor` reflection value typed `unknown`, immediately recursively validated and never exposed as a public value or type. The source gate implements that approval only for `const child: unknown = descriptor.value; const encoded = visit(child);` in the private recursive visitor inside `canonicalJson` in `packages/runtime/src/invocation.ts`.
+
+The predicate requires source mode, that exact path, a parseable file, the exact local binding and initializer, and a SHA-256 fingerprint of the entire reviewed `canonicalJson` declaration's AST (syntax tree node kinds, flags and leaf text). This pins the descriptor's `Object.getOwnPropertyDescriptor(item, key)` origin, data-descriptor guard, immediate recursive validation, rejection propagation and absence of other child uses. Comments and whitespace do not grant approval. Changed structure, moved or escaped values, another initializer, a missing or changed validator, and new public or private `unknown` sites fail closed. Every `any`, unchecked assertion, erased schema and diagnostic suppression remains rejected. Declaration mode has no exception, including at the approved source path. This is not approval for all borrowed Effect opacity or other vendor boundaries.
+
+Run the focused checks with `node --test tools/resources/boundaries.test.mjs` and `node tools/resources/boundaries.mjs`. For example, replacing `visit(child)` with `validate(child)` must restore an `Erased any/unknown type` finding; do not update the fingerprint to silence it. Review structural changes against the owner's constraints before changing the pinned fingerprint. TypeScript upgrades can also change the fingerprint and require review.
+
+The fingerprint proves the reviewed syntax is unchanged, not general semantic validation or ambient binding integrity. Compiler checks supply lexical/type correctness and emitted declarations supply the separate public API audit. The public regression in `tests/runtime/src/execution.spec.ts` checks that object/array getters and a Proxy `get` trap are not executed, rejects cycles, sparse arrays and non-JSON values, and accepts ordered arrays and canonical objects. It does not prove arbitrary Proxy reflection traps or mutated global built-ins are harmless. Keep these checks in addition to the source gate; this approval does not replace them.
+
+The resource suite composes real PostgreSQL and Node SQLite resources through a schema-validated callable kernel provider, checks readiness against persisted data, and rejects another tenant's retained access. This is local integration evidence only. Production hook release/sink policy, native UI component adapters, cryptographic provenance and external telemetry ingestion remain separate acceptance gates. No default production module activation is added.
+
+Every test project has an executable `tsc -p ... --noEmit` target after dependency builds. Nx's inferred disabled-target message is not typecheck evidence. The shared Vitest helper anchors each suite to its config URL while keeping the workspace inside Vite's root, so uncovered TypeScript is transformed instead of silently omitted from coverage. Coverage thresholds remain 90% for statements, branches, functions and lines.
+
+Package-wide coverage includes existing cross-package contract scenarios: runtime also runs resource and telemetry specifications, storage runs resource specifications, and contracts runs resource, telemetry, UI and kernel specifications. These suites exercise the public contracts together rather than excluding newly composed modules from coverage. Nx test dependencies track the reused suites. The paired hook Storage regression checks inventory settlement and rollback, including the distinction between handling a failure inside a transaction and allowing it to escape, plus exact payment replay.
+
 ## Common problems
 
 - **`nx` reports the workspace is out of sync**: run `pnpm nx sync`, then commit the updated `tsconfig.json` references.

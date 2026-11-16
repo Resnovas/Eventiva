@@ -27,7 +27,7 @@ import { contribute } from '@eventiva/schema/compose';
 import * as Field from '@eventiva/schema/field';
 import * as Resource from '@eventiva/schema/resource';
 import { describe, expect, it } from '@effect/vitest';
-import { Context, Effect, Exit, Layer, Option, Ref, Schema } from 'effect';
+import { Cause, Context, Effect, Exit, Layer, Option, Ref, Schema } from 'effect';
 
 class LimitReached extends Schema.TaggedError<LimitReached>()('LimitReached', { limit: Schema.Int }) {}
 
@@ -167,6 +167,45 @@ describe('ActionHost.invoke', () => {
             const error = yield* Effect.flip(actions.invoke('test.gated', 'not an object'));
             expect(error).toMatchObject({ _tag: 'Unavailable', reason: 'flag-off' });
             expect(yield* Ref.get(calls)).toBe(0);
+        }).pipe(Effect.provide(host))
+    );
+
+    it.scoped('keeps invalid input, handler defects and non-JSON output out of returned diagnostics', () =>
+        Effect.gen(function* () {
+            const actions = yield* ActionHost;
+            const calls = yield* Ref.make(0);
+            yield* actions.register(counted(calls));
+            const base = {
+                version: 1,
+                description: 'Exercise the validated wire boundary.',
+                input: Schema.Struct({}),
+                permission: 'test.redaction',
+                sideEffect: 'read' as const,
+                offline: 'local' as const,
+            };
+            const Defect = define('test.defect', { ...base, output: Schema.String });
+            const NonJson = define('test.non-json', { ...base, output: Schema.DateFromSelf });
+            yield* actions.register({
+                manifest: manifest('redaction', [Defect.name, NonJson.name]),
+                actions: [
+                    implement(Defect, () => Effect.die({ secret: 'handler-secret-canary' })),
+                    implement(NonJson, () => Effect.succeed(new Date(0))),
+                ],
+            });
+            const invalid = yield* actions.execute(Double.name, { value: 'input-secret-canary' });
+            expect(invalid.receipt.outcome).toBe('denied');
+            // The fixture's TEST-ONLY digest deliberately contains canonical input, not a production hash.
+            expect(JSON.stringify(invalid.result)).not.toContain('input-secret-canary');
+            for (const name of [Defect.name, NonJson.name]) {
+                const result = yield* actions.execute(name, {});
+                expect(result.receipt.outcome).toBe('defect');
+                expect(Exit.isFailure(result.result)).toBe(true);
+                if (Exit.isFailure(result.result)) {
+                    const diagnostic = Cause.pretty(result.result.cause);
+                    expect(diagnostic).not.toContain('handler-secret-canary');
+                    expect(diagnostic).not.toContain('1970');
+                }
+            }
         }).pipe(Effect.provide(host))
     );
 
@@ -469,10 +508,10 @@ const Label = define('store.label', {
     offline: 'local',
 });
 
-const storeModule = (
-    layer: Layer.Layer<Store, unknown>,
+const storeModule = <E>(
+    layer: Layer.Layer<Store, E>,
     actions: ReadonlyArray<string> = [Label.name]
-): ServerModule<Store> => ({
+): ServerModule<Store, E> => ({
     manifest: manifest('store', actions),
     actions: [implement(Label, () => Effect.map(Store, ({ label }) => ({ label })))],
     layer,
@@ -515,10 +554,13 @@ describe('module lifecycle', () => {
                 Effect.acquireRelease(
                     Ref.update(log, (l) => [...l, 'acquire']),
                     () => Ref.update(log, (l) => [...l, 'release'])
-                ).pipe(Effect.zipRight(Effect.fail('no connection')))
+                ).pipe(Effect.zipRight(Effect.fail({ secret: 'activation-secret-canary' })))
             );
             const error = yield* Effect.flip(Effect.scoped(actions.register(storeModule(layer))));
-            expect(error).toMatchObject({ _tag: 'ActivationFailed', module: 'store', cause: 'no connection' });
+            expect(error).toMatchObject({ _tag: 'ActivationFailed', module: 'store', reason: 'layer-failed' });
+            expect(error).not.toHaveProperty('cause');
+            expect(JSON.stringify(error)).not.toContain('activation-secret-canary');
+            expect(String(error)).not.toContain('activation-secret-canary');
             expect(yield* Ref.get(log)).toEqual(['acquire', 'release']);
             expect(yield* actions.actions).toEqual([]);
         }).pipe(Effect.provide(host))

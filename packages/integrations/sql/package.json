@@ -6,6 +6,16 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./hook": {
+            "@eventiva/source": "./src/hook.ts",
+            "types": "./dist/hook.d.ts",
+            "default": "./dist/hook.js"
+        },
+        "./resource": {
+            "@eventiva/source": "./src/resource.ts",
+            "types": "./dist/resource.d.ts",
+            "default": "./dist/resource.js"
+        },
         "./identity": {
             "@eventiva/source": "./src/identity.ts",
             "types": "./dist/identity.d.ts",

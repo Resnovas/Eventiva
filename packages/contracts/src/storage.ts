@@ -14,7 +14,7 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Context, Data, type Effect, Schema } from 'effect';
+import { type Cause, Context, Data, type Effect, Schema } from 'effect';
 import type { TenantId } from './ids.ts';
 
 /** Provider-neutral values. Integer quantities never pass through floating point arithmetic. */
@@ -38,17 +38,51 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.suspend(() =>
         Schema.Record({ key: Schema.String, value: JsonValue })
     )
 );
-export const Json = Schema.parseJson(JsonValue);
+export const Json: Schema.Schema<JsonValue, string> = Schema.parseJson(JsonValue);
 
-export class StorageFailure extends Data.TaggedError('StorageFailure')<{
+interface StorageFailureFields {
     readonly operation: string;
-    readonly cause?: unknown;
-}> {}
-export class Conflict extends Data.TaggedError('StorageConflict')<{
+    readonly reason?:
+        | 'invalid-data'
+        | 'database'
+        | 'filesystem'
+        | 'randomness'
+        | 'identity-guard-missing'
+        | 'identity-key-mismatch'
+        | 'identity-version-conflict'
+        | 'identity-principal-required'
+        | 'identity-link-collision'
+        | 'identity-audit-tenant-mismatch';
+}
+interface ConflictFields {
     readonly id: string;
     readonly reason: 'stale' | 'illegal-transition' | 'expired' | 'unavailable' | 'duplicate' | 'input-changed';
-}> {}
-export class RoutingDenied extends Data.TaggedError('RoutingDenied')<{ readonly reason: string }> {}
+}
+interface RoutingDeniedFields {
+    readonly reason: string;
+}
+
+// Exact constructors keep the vendor's open generic out of emitted public declarations.
+const storageFailureBase: new (
+    fields: StorageFailureFields
+) => Cause.YieldableError & StorageFailureFields & { readonly _tag: 'StorageFailure' } = Data.TaggedError(
+    'StorageFailure'
+)<StorageFailureFields>;
+const conflictBase: new (
+    fields: ConflictFields
+) => Cause.YieldableError & ConflictFields & { readonly _tag: 'StorageConflict' } = Data.TaggedError(
+    'StorageConflict'
+)<ConflictFields>;
+const routingDeniedBase: new (
+    fields: RoutingDeniedFields
+) => Cause.YieldableError & RoutingDeniedFields & { readonly _tag: 'RoutingDenied' } = Data.TaggedError(
+    'RoutingDenied'
+)<RoutingDeniedFields>;
+
+/** Diagnostics contain module-owned identifiers only, never database errors or rejected input. */
+export class StorageFailure extends storageFailureBase {}
+export class Conflict extends conflictBase {}
+export class RoutingDenied extends routingDeniedBase {}
 
 /** A queued command is an intent, never evidence of a confirmed allocation. */
 export const GuardedCommand = Schema.Struct({

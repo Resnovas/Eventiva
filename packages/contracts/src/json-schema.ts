@@ -14,28 +14,44 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Data, Effect, Option, Schema, SchemaAST } from 'effect';
+import { type Cause, Data, Effect, Either, Option, Schema, SchemaAST } from 'effect';
+import type { ActionSchema } from './action.ts';
 
 /** Conservative tool-schema profiles, not provider request envelopes or strict-mode guarantees. */
 export const Provider = Schema.Literal('anthropic', 'openai', 'google');
 export type Provider = typeof Provider.Type;
 
 export interface ProviderSchema {
-    readonly type: string;
+    readonly type: 'string' | 'number' | 'integer' | 'boolean' | 'null' | 'object' | 'array';
     readonly properties?: Readonly<Record<string, ProviderSchema>>;
     readonly required?: ReadonlyArray<string>;
     readonly additionalProperties?: false;
     readonly items?: ProviderSchema;
     readonly enum?: ReadonlyArray<string | number | boolean | null>;
     readonly description?: string;
-    readonly [keyword: string]: unknown;
+    readonly minLength?: number;
+    readonly maxLength?: number;
+    readonly pattern?: string;
+    readonly format?: 'date-time';
+    readonly minimum?: number;
+    readonly maximum?: number;
+    readonly exclusiveMinimum?: number;
+    readonly exclusiveMaximum?: number;
+    readonly multipleOf?: number;
+    readonly minItems?: number;
+    readonly maxItems?: number;
 }
 
-export class UnsupportedSchema extends Data.TaggedError('UnsupportedSchema')<{
+interface UnsupportedSchemaFields {
     readonly provider: Provider;
     readonly path: string;
     readonly reason: string;
-}> {}
+}
+const UnsupportedSchemaBase: new (args: UnsupportedSchemaFields) => Cause.YieldableError &
+    UnsupportedSchemaFields & {
+        readonly _tag: 'UnsupportedSchema';
+    } = Data.TaggedError('UnsupportedSchema');
+export class UnsupportedSchema extends UnsupportedSchemaBase {}
 
 const constraints: Readonly<Record<string, ReadonlyArray<string>>> = {
     string: ['minLength', 'maxLength', 'pattern', 'format'],
@@ -43,6 +59,24 @@ const constraints: Readonly<Record<string, ReadonlyArray<string>>> = {
     integer: ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'],
     array: ['minItems', 'maxItems'],
 };
+
+const Refinement = Schema.Struct({
+    minLength: Schema.optionalWith(Schema.Number, { exact: true }),
+    maxLength: Schema.optionalWith(Schema.Number, { exact: true }),
+    pattern: Schema.optionalWith(Schema.String, { exact: true }),
+    format: Schema.optionalWith(Schema.Literal('date-time'), { exact: true }),
+    minimum: Schema.optionalWith(Schema.Number, { exact: true }),
+    maximum: Schema.optionalWith(Schema.Number, { exact: true }),
+    exclusiveMinimum: Schema.optionalWith(Schema.Number, { exact: true }),
+    exclusiveMaximum: Schema.optionalWith(Schema.Number, { exact: true }),
+    multipleOf: Schema.optionalWith(Schema.Number, { exact: true }),
+    minItems: Schema.optionalWith(Schema.Number, { exact: true }),
+    maxItems: Schema.optionalWith(Schema.Number, { exact: true }),
+});
+const isConstraint = Schema.is(Schema.keyof(Refinement));
+
+const primitiveType = (value: string | number | boolean | null) =>
+    value === null ? 'null' : typeof value === 'string' ? 'string' : typeof value === 'number' ? 'number' : 'boolean';
 
 /**
  * Compile the structural, JSON-valued part of Effect Schema without executing user code.
@@ -55,7 +89,7 @@ const constraints: Readonly<Record<string, ReadonlyArray<string>>> = {
  * Optional keys stay optional; callers must not enable OpenAI strict mode implicitly.
  */
 export const make = (
-    schema: Schema.Schema.All,
+    schema: Pick<ActionSchema, 'ast'>,
     provider: Provider
 ): Effect.Effect<ProviderSchema, UnsupportedSchema> => {
     const fail = (path: string, reason: string) => Effect.fail(new UnsupportedSchema({ provider, path, reason }));
@@ -84,7 +118,7 @@ export const make = (
                     ) {
                         return yield* fail(path, 'Non-JSON literals are unsupported');
                     }
-                    result = { type: ast.literal === null ? 'null' : typeof ast.literal, enum: [ast.literal] };
+                    result = { type: primitiveType(ast.literal), enum: [ast.literal] };
                     break;
                 case 'Union': {
                     if (path === '$' || !ast.types.every((member) => member._tag === 'Literal')) {
@@ -92,8 +126,8 @@ export const make = (
                     }
                     const values: Array<string | number | boolean | null> = [];
                     for (const member of ast.types) {
-                        const literal = member as SchemaAST.Literal;
-                        const value = literal.literal;
+                        if (member._tag !== 'Literal') return yield* fail(path, 'Only literal enums are supported');
+                        const value = member.literal;
                         if (
                             typeof value === 'bigint' ||
                             value === null ||
@@ -104,7 +138,9 @@ export const make = (
                         }
                         values.push(value);
                     }
-                    result = { type: typeof values[0], enum: values };
+                    const first = values[0];
+                    if (first === undefined) return yield* fail(path, 'Empty literal enums are unsupported');
+                    result = { type: primitiveType(first), enum: values };
                     break;
                 }
                 case 'TypeLiteral': {
@@ -140,7 +176,14 @@ export const make = (
                     if (Option.isNone(annotation))
                         return yield* fail(path, 'Refinement needs a JSON Schema annotation');
                     const base = yield* visit(ast.from, path);
-                    const additions = annotation.value as Readonly<Record<string, unknown>>;
+                    const parsed = Schema.decodeUnknownEither(
+                        Schema.Record({
+                            key: Schema.String,
+                            value: Schema.Union(Schema.String, Schema.Number, Schema.Boolean, Schema.Null),
+                        })
+                    )(annotation.value);
+                    if (Either.isLeft(parsed)) return yield* fail(path, 'Invalid refinement annotation');
+                    const additions = parsed.right;
                     if (Object.keys(additions).length === 0) return yield* fail(path, 'Empty refinement annotation');
                     const pattern = ast.annotations[Schema.PatternSchemaId];
                     if (
@@ -177,11 +220,13 @@ export const make = (
                         ) {
                             return yield* fail(path, `Invalid constraint: ${key}`);
                         }
-                        if (base[key] !== undefined && base[key] !== value) {
+                        if (isConstraint(key) && base[key] !== undefined && base[key] !== value) {
                             return yield* fail(path, `Conflicting composed constraint: ${key}`);
                         }
                     }
-                    result = { ...base, ...additions, type };
+                    const refined = Schema.decodeUnknownEither(Refinement)(additions);
+                    if (Either.isLeft(refined)) return yield* fail(path, 'Invalid refinement annotation');
+                    result = { ...base, ...refined.right, type };
                     if (Option.getOrUndefined(SchemaAST.getSchemaIdAnnotation(ast)) === Schema.IntSchemaId) {
                         result = {
                             ...result,

@@ -1,0 +1,12 @@
+{
+    "name": "@eventiva/ai-examples",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/schema": "workspace:*",
+        "@eventiva/integrations.sql": "workspace:*"
+    }
+}

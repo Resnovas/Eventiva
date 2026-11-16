@@ -29,11 +29,10 @@ Success ends with `agent-setup: ok`. Start the pinned disposable PostgreSQL fixt
 ```sh
 export NX_NO_CLOUD=true NX_DAEMON=false
 pnpm nx sync:check
-pnpm nx run-many -t lint typecheck test build parity --outputStyle=static
-pnpm nx run-many -t smoke --outputStyle=static
+node --run verify
 ```
 
-`node --run verify` runs `check` and both Nx lines. CI: `house check` runs `node --run check`; `.github/workflows/ci.yml` runs `verify` and `smoke` jobs aggregated by the required `application check` job.
+`node --run verify` runs `check`, builds declared outputs before source-graph resolution, runs source/type/package/manifest boundary checks and negative fixtures, runs every Nx lint/typecheck/test/build/parity target serially, audits public declarations, then runs smoke serially. Do not substitute only the Nx lines: they omit the boundary gates. CI: `house check` runs `node --run check`; `.github/workflows/ci.yml` runs `verify` and `smoke` jobs aggregated by the required `application check` job. Always remove the disposable fixture after validation, including on failure, using the teardown in `docs/storage.md`.
 
 Amp orbs run `.agents/setup` (Node, corepack pnpm, `scripts/agent-setup`, Chromium). `.agents/resume` checks versions, `node_modules` and `node --run check` without installing. Re-run `.agents/setup` after changing manifests or the lockfile. The installer targets disposable Debian orbs with passwordless sudo, not a personal machine.
 

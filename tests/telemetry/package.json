@@ -1,0 +1,13 @@
+{
+    "name": "@eventiva/telemetry-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/integrations.telemetry.server": "workspace:*",
+        "@effect/platform": "0.97.3",
+        "@effect/platform-node": "0.108.4"
+    }
+}

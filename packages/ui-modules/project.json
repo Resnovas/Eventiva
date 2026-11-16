@@ -1,0 +1,7 @@
+{
+    "name": "@eventiva/ui-modules",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "packages/ui-modules/src",
+    "tags": ["type:extension", "layer:frontend", "capability:ui"]
+}

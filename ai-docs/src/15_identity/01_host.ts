@@ -15,12 +15,12 @@
  */
 
 /** @title Register a host INSIDE one already authorized tenant route */
-import { Caller, type CallerIdentity } from '../../../packages/contracts/src/caller.ts';
-import { CurrentTenant } from '../../../packages/contracts/src/storage.ts';
-import { ActionHost, ActionHostLive } from '../../../packages/runtime/src/host.ts';
-import { identityModule, identitySecurity } from '../../../packages/runtime/src/identity.ts';
-import { InvocationDenied } from '../../../packages/runtime/src/invocation.ts';
-import { durable } from '../../../packages/runtime/src/storage.ts';
+import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { CurrentTenant } from '@eventiva/contracts/storage';
+import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
+import { identityModule, identitySecurity } from '@eventiva/runtime/identity';
+import { InvocationDenied } from '@eventiva/runtime/invocation';
+import { durable } from '@eventiva/runtime/storage';
 import { Effect, Layer } from 'effect';
 
 /** The composition root supplies IdentityStore and Storage around the SAME authorized tenant SQL client. */

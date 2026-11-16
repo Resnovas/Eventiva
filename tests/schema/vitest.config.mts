@@ -16,4 +16,4 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
-export default testProject('schema-tests', ['packages/schema/src/**']);
+export default testProject('schema-tests', ['packages/schema/src/**'], import.meta.url);

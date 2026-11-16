@@ -205,6 +205,18 @@ Boundary tests (`tests/boundaries`): ESLint rule cases against fixtures and real
 
 Feature flags: this foundation adds the flag plumbing and one client flag, `client.shell.offline-banner` (safe default `false`). It adds no product behaviour to gate.
 
+Provider diagnostic remediation retains existing recovery/default/teardown behavior while replacing raw vendor causes with bounded operation/reason literals. OpenFeature errors retain initialize|close and provider-failed; server-provider shutdown retains shutdown and shutdown-failed. Never log vendor exception payloads to diagnose provider configuration.
+
+Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. Run frozen install, nx sync:check and verify. verify and CI build declared outputs before tools/resources/boundaries.mjs plus its fixtures, run the complete Nx gate serially, then audit public declarations; the dependency-free house check stays separate. Process conformance intentionally imports the built server, so graph resolution requires those outputs even on a clean checkout. Serial execution bounds memory without skipping targets or weakening coverage. The checker covers disconnected source, type-only/alias edges, manifest cycles and syntax escapes, not vendor-opacity approval or production acceptance. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
+
+EVE-263 reflection approval: owner message1982 in `T-01a189ae-399d-7162-9765-4488b9600016` permits only private `PropertyDescriptor` reflection `unknown`, immediately recursively validated and never publicly exposed. `checkTypeEscapes` recognizes only the local `const child: unknown = descriptor.value; const encoded = visit(child);` inside `canonicalJson`'s private visitor at `packages/runtime/src/invocation.ts`. It requires source mode, no parse diagnostics, the exact binding/initializer and the reviewed entire declaration's SHA-256 AST fingerprint (node kinds, flags, leaf text). That pins descriptor origin, accessor rejection, immediate recursion, error propagation and no additional child uses. Comments are not suppressions. Every other `unknown`, every `any`, assertions, erased schemas and diagnostic suppressions stay rejected. Declaration mode never applies the exception, even for the approved implementation. No blanket borrowed Effect opacity approval follows.
+
+Run `node --test tools/resources/boundaries.test.mjs` and `node tools/resources/boundaries.mjs` for focused proof. A changed/missing validator, another path/initializer, moved value or extra use must fail closed; do not automatically regenerate the fingerprint. Review structural changes or a TypeScript upgrade before repinning. This syntax predicate does not prove semantics or ambient binding integrity. Keep compiler checks for lexical/type correctness, emitted declaration audits for public API erasure, and `tests/runtime/src/execution.spec.ts` for getter/Proxy `get` non-execution, cycles, sparse/non-JSON rejection and valid ordered arrays/canonical objects. Arbitrary reflection traps and mutated built-ins are not proven safe by those checks. See `docs/foundation.md`, "Approved private reflection ingress (EVE-263)", for the approval scope and example failure.
+
+Test projects run explicit `tsc -p ... --noEmit` targets after dependency builds, not Nx's inferred disabled-target placeholder. The shared Vitest helper takes the suite config URL to anchor discovery/reports and keeps the workspace inside Vite's root for uncovered TypeScript transformation. All four coverage thresholds stay at 90%; a silently excluded source file is not coverage evidence.
+
+Package-wide coverage reuses public cross-package specifications: runtime includes resources/telemetry, storage includes resources, and contracts includes resources/telemetry/UI/kernel. Nx implicit test dependencies track these inputs. Keep both package-wide coverage globs and thresholds; do not restore silent external-source exclusions. The paired hook Storage scenario tests handled versus escaping transaction failures, inventory settlement and exact payment replay through its public Storage methods.
+
 ---
 
 ## Action inventory and runtime host (EVE-40)
@@ -226,6 +238,10 @@ Execution: refresh trusted identity/delegation; resolve current registration and
 
 Untrusted `InvokeOptions` defaults: mode `online`; all other fields absent. Writes/external actions require nonempty idempotencyKey, maximum 512 characters; approvalId is an opaque trusted-store lookup reference with the same length bound. `notBefore` and exclusive `deadline` are finite nonnegative epoch milliseconds. Scheduled work requires both. Live-production work requires deadline. Financial and live-production risks reject offline intents even with weaker specification metadata. Guarded nonroutine offline intents require expectedVersion, expectedState and deadline. Expected values are checked against trusted live state, including on replays. Offline-intent is online processing of a queued intent, not an offline queue or authoritative offline success. Domain features/storage retain immutable baseline versus live forecast; the runtime does not create a scheduler or database.
 
+`expectedActionVersion?: number` defaults to absent. When supplied, the host compares it with the exact captured registered entry before preparation, not with an earlier inventory lookup. Only the registered positive integer version can match; mismatch fails with `Forbidden` reason `action-version-conflict` before decoding or business effects, including when the idempotency key already succeeded. This is not the string-valued `expectedVersion` resource-state guard. The host consumes the action pin at lookup; ExecutionPolicy still owns resource state/version and approval decisions. Do not substitute the latest discovered action version for a queued pin. The strict compiling SQL example is the trusted `HookSink` fixture in `tests/storage/src/hook.spec.ts`: `host.execute(action, mappedInput, { idempotencyKey: key, expectedActionVersion: declaration.capability.version })` after additive capability, service/tenant and exact trusted pin checks.
+
+That fixture uses paired SQL Storage/HookOutbox and runtime durable Integrity/Audit on both SQLite and disposable loopback PostgreSQL. It injects settlement acknowledgement loss only after the canonical SQL mutation succeeds, closes the worker connection/scope, reclaims with a fresh lease and verifies durable deduplication, fresh release/identity/permission/input/policy checks and receipts. Negative controls cover changed mapped input under one key, service/tenant/pin/producer substitutions, identity and grant revocation, input policy, capacity and missing required human approval with no additional business effect. Fixture principal/pin/provenance binding and input mapping are explicit test assumptions, not a production principal registry, readiness attestation, generic mapper or renderer. Production trust architecture remains separate. Security invariants are not feature-flagged.
+
 A2: direct human routine reversible writes need no second confirmation. Agents need confirm unless trusted policy preauthorizes the bounded routine operation. Specification policy, nonroutine risk (`always`) and tenant policy combine by maximum strength. Only human approvals are accepted; no agent self-approval. Bind principal, tenant, action/version, canonical input/exact batch items, live numeric limits, issued/expiry time and required step-up. ExecutionPolicy derives bounds from decoded input, not transport assertions. Tenants, flags and offline mode never weaken safeguards.
 
 `@eventiva/runtime/invocation` owns the service/error/result contracts and `FailClosed`. A1 `Integrity.commit` must serialize duplicate keys and atomically commit domain mutation, dedup result, transition/append-only history, outbox and successful receipt; handlers' storage services must join the same transaction. Roll back on failure, defect or interruption. External handlers stage outbox commands instead of executing an untracked irreversible provider effect. Preserve high-integrity deduplication evidence for the business-record lifetime, not a short universal TTL.
@@ -235,6 +251,18 @@ A4: `Audit.ready` checks protected availability; `Audit.record` persists or, onl
 `@eventiva/runtime/testing` exports explicitly volatile `makeTestOnlyHarness`, `TestOnlyLedger` and `testOnlyDigest`. It models staged transactions, dedup races, audit outage/spool/recovery and live revocation for tests only. Never supply its TestOnly layer in production. Test behavior through public host operations, not private helper order.
 
 Run `node --run parity` or Nx target `@eventiva/runtime-tests:parity`. It checks the current server module's canonical metadata and actual authorized dispatch, live discovery and typed incompatibility controls. Every new registered surface must use validateParity with explicit required surface names, exact canonical ids, versions and permissions; omitted surfaces/actions, extras and duplicates fail. Protocol transports are not implemented by EVE-40. `verify` and CI's required `application check` include parity; root dependency-free `check` remains application-dependency-free. Security invariants are not feature flags; new optional capabilities still use the existing safe-default manifest flag mechanism.
+
+### EVE-263 action typing boundary
+
+Keep `define` results inferred. Its schema parameters retain exact Effect schema types without `Schema.AnyNoContext`. The default `ActionSpec`/`ActionSchema` view contains discovery metadata and service-free ASTs only; do not decode through that metadata view. `implement` captures concrete decoded/encoded input, output and error types, prevents handler inference from widening the specification, and retains its environment. `Implementation<S, R>.handler` stays exact. `ActionBinding<R>.prepare` captures decoded input with typed authorization/policy callbacks and a JSON-valued execution effect; heterogeneous host storage needs no handler assertion or erased input/output/error channels.
+
+Use `ServerModule<R = never, E = never>` with a closed service layer, or its no-layer union member with service-free actions. Missing or incompatible providers fail compile-negative tests. Manifests are JSON values decoded by `ModuleManifest`. Registration builds the selected layer without an asserted environment and binds prepared execution inside that context. Coarse permission still precedes decode; resource checks still receive decoded input, including during lock-wait and replay revalidation. Dynamic invocation results, committed outputs, staged test ledger data and `ActionFailed.error` use the existing `contracts/storage` JsonValue contract, not a duplicate JSON model. Generic Integrity ingress permits hostile adapter tests but requires validation before a committed result is returned.
+
+Canonicalize encoded output/error before parsing JSON; the recursive record schema alone must not coerce non-JSON objects such as Date into empty records. Invalid input and manifest diagnostics and action defects use bounded messages. ActivationFailed now has only module and reason `layer-failed`; the raw layer cause is deliberately removed. Declared encoded errors remain distinct from defects and interruptions. Concrete Data.TaggedError base constructor annotations prevent the pinned vendor generic constructor from emitting public `any` in owned declarations.
+
+The suppressions-free compiler fixture is `tests/runtime/src/action-types.spec.ts`; the existing transforming handler/lifecycle/security tests are in `host.spec.ts` and `execution.spec.ts`. Run the tests from `tests/runtime` with `pnpm exec vitest run --config vitest.config.mts`. The fixture uses the strict pinned patched compiler, checks exact input/output/failure and missing/wrong environments, and includes unchanged-handler provider swapping. It does not certify full EVE-263 clearance. Existing storage/schema/identity dependency escapes and combined export/source-graph checks remain coordinator-owned blockers.
+
+Vendor review remains required for one private canonicalJson ingress: TypeScript's PropertyDescriptor.value is vendor `any`, captured as `unknown` and immediately visited through scalar, prototype, cycle and descriptor checks. The visitor is generic and arrays use descriptors too, removing the former unknown visitor parameter and unknown array-element collection without executing getters. JsonValue prevalidation is not equivalent: recursive decoding can execute getters, recurse cycles and coerce Date into an empty record. Effect AST annotations are vendor-opaque and validated/narrowed privately before provider compilation. Effect Exit/Cause retain vendor-defined opaque defects internally; the host classifies interruption/failure and returns bounded action defects without serializing original handler causes. These are specific review requests, not approved exceptions; EVE-263 cannot claim full clearance until the owner decides them.
 
 ---
 
@@ -250,6 +278,10 @@ Migration locks are transaction-scoped `pg_advisory_xact_lock`; runtime locking 
 
 Integrity serializes scoped keys and atomically stores domain/history/outbox/dedup/success receipt. Audit persists or fails closed; no spool is implemented. External actions enqueue commands, never call providers inside a SQL transaction. Runtime revalidates live gates after waiting and before replay. Conflicts are visible typed failures, not authorization for force writes. Exact money/decimal values are strings, quantities/versions safe integers, times epoch milliseconds, UUIDs application-generated v7. Typed raw canonical/device records remain distinct from JSON projections; device migrations and PowerSync are deferred.
 
+Construct `StorageFailure` with a constant module-owned `operation` and optional bounded `reason`; omission has no default. Use `invalid-data`, `database`, `filesystem` or `randomness` for boundary failures. Preserve the identity conditions with `identity-guard-missing`, `identity-key-mismatch`, `identity-version-conflict`, `identity-principal-required`, `identity-link-collision` or `identity-audit-tenant-mismatch`. There is no supported `cause` constructor field. Never attach rejected values, parser/driver errors, SQL parameters, connection details or paths, and never interpolate them into diagnostic identifiers. Applied-prefix mismatch is `operation: 'applied-migration-changed'`, without the stored migration name. Map storage failures to safe domain errors at public action boundaries; results and receipts must not reveal invalid stored data. See the reason table and handling example in `docs/storage.md`.
+
+Keep `StorageFailure`, `Conflict` and `RoutingDenied` on exact annotated constructor bases, matching the telemetry contract pattern. This preserves their tags and yieldable error behavior without emitting the vendor's open generic constructor. Retain required `operation`, required conflict `id`/`reason`, and required routing `reason`; do not add raw-cause compatibility fields. Keep `Json` explicitly typed as `Schema.Schema<JsonValue, string>` so its declaration exposes precise JSON ingress rather than an intermediate parser representation. Validate emitted `packages/contracts/dist/storage.d.ts`, not only source annotations, and retain the PostgreSQL/SQLite sentinel non-disclosure tests in `tests/storage/src`.
+
 Use forward-only exact-byte SHA-256 migrations and the protected database applied ledger. Git-based root policy is dependency-free and guards review history; deployment must additionally export the trusted applied ledger for `tools/storage/guard.mjs`. Runtime roles must not own/DDL/truncate/disable triggers or modify the migration ledger. Expand, retain old-client compatibility, then approve contraction after isolated restore rehearsal. Never weaken the guard or pnpm build policy.
 
 Production direction is one Neon PG17 project per tenant in AWS London, not branches. Use verified TLS, direct migration credentials and separately tested pooled ordinary SQL. The only authorized remote test target is the synthetic London development project described in `docs/neon-storage.md`; secure credentials and quota measurement gate execution. Historical Frankfurt is protected. Replication is disabled and separately gated because enablement is irreversible and connected subscribers prevent scale-to-zero. No paid infrastructure, provider service, ingestion or feature activation is introduced, so this library increment has no new runtime rollout toggle.
@@ -264,9 +296,9 @@ Provide the same tenant-scoped Storage service to Integrity and handlers.
 The runtime supplies the validated successful receipt and rechecks live gates.
 
 ```ts
-import type { Receipt } from '../../../packages/contracts/src/receipt.ts';
-import { Storage } from '../../../packages/contracts/src/storage.ts';
-import { Integrity } from '../../../packages/runtime/src/invocation.ts';
+import type { Receipt } from '@eventiva/contracts/receipt';
+import { Storage } from '@eventiva/contracts/storage';
+import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
 export const stage = (receipt: Receipt & { readonly version: number }) =>
@@ -307,6 +339,8 @@ Compute membership uses the shared coordination database independently of tenant
 
 ClusterActions refreshes trusted identity before sending and on receipt. Compute entity identity is the JSON tuple [tenant-or-null, entityKey], never a database selector or proof of resource ownership. The receiver rejects address/tenant mismatch and delegates to the SAME authorized ActionHost.execute path. Preserve per-entity concurrency 1 and explicitly persisted RPC annotation. Never derive RPC primaryKey from business idempotency: cached replies bypass new authorization/input-conflict checks. Fresh business-key retries receive fresh transport ids and enter A1 again. Never expose cached transport/workflow results directly as an unauthenticated public lookup.
 
+ClusterInvocation.input and persisted successful output use contracts/storage JsonValue, not an erased schema. The cluster.spec.ts wire regression accepts nested JSON and rejects functions, bigint, symbols and undefined. Callable kernel providers remain decoded schema-validated services, not JSON values.
+
 clusterRunner supplies ClusterWorkflowEngine using the same Sharding and MessageStorage. registerWorkflows defaults to Effect.void; it runs once per process before a deferred gate admits RunnerStorage.register/getRunners. Register workflows with ClusterSchema.ShardGroup => eventiva-actions. All hosted action/workflow registrations must finish before membership. A ping is not module readiness. Activities mutate through ClusterActions and existing Storage integrity, not privileged handlers.
 
 SQL lease-row ownership is mandatory here (shardLockDisableAdvisory=true). The pinned upstream layer still reserves a PG connection; managed transaction-pooler compatibility is NOT proven by local PG or EVE-42's storage conformance. Upstream startup SQL performs DDL/legacy cleanup; bootstrap/runtime least privilege remains a deployment gate. Default session-advisory ownership requires a separately validated route, and table prefixes do not isolate its lock numbers. Use an isolated compute database per deployment. No SQLite-only Cluster or production-readiness claim.
@@ -333,6 +367,8 @@ Register `identityModule` on a routed ActionHost. Module flag `identity.foundati
 
 `StandardsTokenVerifier` takes Redacted token input and returns normalized claims only after a real maintained standards verifier checks signatures, algorithm, provenance, token type and protocol. No production implementation exists. `authenticateToken` checks exact trusted nonempty issuer/audience and nonempty scope requirements, time bounds in milliseconds with no skew, mapping and live session. It grants no route or permissions. Tests inject synthetic normalized claims, not working JWT verification.
 
+The verifier's success channel is `typeof VerifiedTokenClaims.Encoded`, not an arbitrary provider payload: required issuer/subject/session strings, audiences/scopes string arrays and expiresAt/notBefore millisecond numbers. Fail normalization or signature verification with `InvocationDenied`. Runtime `Schema.decode(VerifiedTokenClaims)` remains mandatory after verification, including the session brand and string/time refinements. Do not replace it with a cast or assume the service signature proves those refinements. Existing malformed-session tests and additional empty-string/nonfinite/out-of-range-time cases in `tests/runtime/src/identity.spec.ts` exercise this boundary. The shared epoch schema permits dates before 1970; a negative notBefore within its year-1-through-9999 range remains valid when the policy time checks pass.
+
 Read-only Keycloak 26.8.2 vetting is complete but the exact image batch is ON HOLD: 7 high/44 medium/17 low occurrences per architecture, missing complete digest-bound SBOM and verified container signature, unresolved licence/vendor-triage gaps. See the vetting artifact linked in `docs/identity.md`. Do not pull, run or adopt it. `oauth4webapi@3.8.8` is also unapproved. Before provider execution obtain explicit exact-component/digest acceptance. Prove OIDC/OAuth and SAML in both directions, SCIM capability/direction, enterprise federation/directories, explicit linking, logout/rotation/revocation, passkeys/MFA/step-up, human consent, outage/degraded behavior and independent Community topology. All Keycloak claims remain unexecuted. WS-Federation, CAS, SAML 1.x and proprietary variants remain unsupported unless separately bridged and approved. Keep all vendor code/types in backend integrations; replace a provider through explicit authorized links to unchanged canonical subjects, never an email-based migration.
 
 Run contracts/runtime/storage tests and `node --run verify`. Use only `docs/storage.md`'s approved disposable PostgreSQL fixture. Tests must retain cross-DB denial, link collisions, viewer-agent intersection, resource denial, live revocation/replays, bound approvals, CAS concurrency, receipt count/privacy and audit rollback. The composition example below compiles in the storage test typecheck. No cloud, paid service, CI change or new dependency is needed.
@@ -342,12 +378,12 @@ Run contracts/runtime/storage tests and `node --run verify`. Use only `docs/stor
 @title Register a host INSIDE one already authorized tenant route
 
 ```ts
-import { Caller, type CallerIdentity } from '../../../packages/contracts/src/caller.ts';
-import { CurrentTenant } from '../../../packages/contracts/src/storage.ts';
-import { ActionHost, ActionHostLive } from '../../../packages/runtime/src/host.ts';
-import { identityModule, identitySecurity } from '../../../packages/runtime/src/identity.ts';
-import { InvocationDenied } from '../../../packages/runtime/src/invocation.ts';
-import { durable } from '../../../packages/runtime/src/storage.ts';
+import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { CurrentTenant } from '@eventiva/contracts/storage';
+import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
+import { identityModule, identitySecurity } from '@eventiva/runtime/identity';
+import { InvocationDenied } from '@eventiva/runtime/invocation';
+import { durable } from '@eventiva/runtime/storage';
 import { Effect, Layer } from 'effect';
 
 /** The composition root supplies IdentityStore and Storage around the SAME authorized tenant SQL client. */
@@ -366,4 +402,538 @@ export const readOrganization = (caller: CallerIdentity) => {
         }).pipe(Effect.provide(host))
     );
 };
+```
+
+---
+
+# Isolated central telemetry substrate
+
+EVE-44 adds local logging/span support and diagnostic server composition. Read `docs/telemetry.md` for the full configuration, scope, retention and failure contract. This is not EVE-44's full OTLP/PostHog delivery, mandatory audit, durable hook propagation, verified ready or word-art implementation. Shared exports, package manifests, workspace/root/Nx wiring, test configs, LLMS generation and Graphify refresh belong to the coordinator, not this lane.
+
+## Ownership and types
+
+- `packages/contracts/src/observability.ts`: `TelemetryRecord` Schema/type with wire version 1, `TelemetrySink` Context.Tag keyed `/v1`, `TelemetrySinkFailure` Data.TaggedError with a closed safe reason union. The record carries log/span, bounded timestamp/level/code/static text, four profiles, trace/span/parent IDs, finite attributes, duration and outcome. No Cause/config/payload field exists.
+- `packages/runtime/src/telemetry.ts`: `TelemetryPolicy` Schema/type, `telemetryConfig`, `telemetryLayer`, `bootstrapTelemetryLayer`, `TelemetryControl`, `TelemetryHealth`. Both layer factories return exactly `Layer<TelemetryControl, TelemetrySinkFailure, TelemetrySink>`. Feature code uses Effect Logger/Tracer APIs, not TelemetrySink.
+- `packages/integrations/telemetry.server/src/logger.ts`: `consoleLoggerLayer`, `formatConsoleRecord`, `serverLoggerConfig`, `ServerLoggerOptions`, `serverLoggerLayer`. Console layer needs no application Config/services; server layer returns exactly `Layer<TelemetrySink, TelemetrySinkFailure, FileSystem>`. Integrations never import runtime, even for types.
+
+Dependency graph is runtime -> contracts <- integration. The custom async sink is necessary because Effect Logger callbacks are synchronous while file/exporter writes, bounded queue drain and shutdown have typed asynchronous lifetimes. It is not another logger/tracer or a public feature service. Preserve existing contracts/telemetry.ts unchanged during the shared hold. Do not introduce barrels/reexports/reverse imports to make an isolated build pass.
+
+Unavoidable vendor opacity is private: Effect 3.22.4 Logger.Options message/annotations/Cause and Tracer attribute/Exit callback types use vendor unknown; Tracer.context's fiber signature also uses vendor any internally. This source declares no explicit any/unknown, casts, assertions or suppressions. Logger narrows one bounded catalog code and finite allowed string values, checks only Cause emptiness, and discards payloads. Tracer narrows finite attributes and checks Exit success; underlying span ends with a payload-free Exit. Public service/error/environment/exporter boundaries are concrete. Escalate this private vendor boundary for explicit EVE-263 owner review; do not claim the dependency itself has exact application payload types or export vendor callback options as a feature API.
+
+`TelemetrySinkFailure` retains Data.TaggedError behavior behind an exact constructor annotation. This prevents the vendor factory's open generic from appearing in emitted declarations without a cast or suppression. The focused test emits all three production declarations in memory and rejects any/unknown/assertion nodes in them and all five authored TypeScript files. File fixtures decode JSON text directly through Schema.parseJson(TelemetryRecord), not the untyped JSON.parse return. This is local evidence, not approval of opaque vendor internals or a shared CI gate.
+
+## Composition evidence
+
+The complete bootstrap/main composition example in docs/telemetry.md is reproduced as strict type evidence in `tests/telemetry/src/telemetry.spec.ts`. That file also rejects an incompatible string-input exporter and wrong wire version using type-level assignability checks without suppressions. During the export hold, Vitest and TypeScript use isolated aliases to the real reserved source and the already installed server Platform dependency; these are not production package resolution.
+
+Install bootstrap OUTSIDE main Config/file-provider/module acquisition and map the outer application's failed Cause into a safe typed error before runMain. Bootstrap codes are `bootstrap.failure`, `bootstrap.config-rejected`, `bootstrap.service-failed`, `bootstrap.activation-failed`. Never emit ready/banner on failure. Console bootstrap needs no filesystem or main configuration. Main telemetry can replace it within a nested scope without duplicate logger/tracer export. Run main in a supervised child and use Fiber.await then Effect.flatten, not Fiber.join: Layer FiberRef propagation otherwise imports the child's closed logger into the fallback. Scope release alone is not a consumer FiberRef reset.
+
+`apps/server/src/main.ts` owns a private static diagnostic catalog and the concrete `Effect<void,TelemetrySinkFailure,never>` executable. Main telemetry wraps FlagsLive/MainLive acquisition and deployment-profile validation; the parent bootstrap wraps all of that. Existing optional telemetryFile.directory selects files; absence selects console, with no provisioning. Default environment names are case-sensitive and underscore-separated (telemetryFile_directory, telemetry_enabled). Parent fallback emits only bootstrap.failure, maps to a safe typed failure and preserves interruption. runMain disables raw error reporting/pretty logging. Diagnostic registration/parity and FailClosed are retained, without action execution, ready publication or banner. Process tests in tests/telemetry/src/server.spec.ts prove successful console/file startup, file drain/lock release, Config and file acquisition failures, protected canary removal, opt-out-independent bootstrap fallback, and the real production fail-closed Audit service. A scratch TELEMETRY_TEST_SOURCE_LOADER may be supplied only for isolated recovery checks; combined verification must omit it and use real exports.
+
+The private vendor-facing tracer now receives an empty Context and a new external parent containing only validated trace/span identifiers, never rich parent objects or caller-provided Context values. No links/events/Exit payloads go to it. See docs/telemetry.md's exact pinned vendor signatures/review request; opaque Effect Logger/Tracer inputs still need explicit owner review. Application declarations do not export those callbacks or erase their types.
+
+Only reviewed static catalog text may retain multiline LF/Unicode layout. Do not log untrusted text, translated payloads or secrets under a trusted code by modifying the catalog dynamically. Invalid catalog controls fail acquisition. Missing/invalid messages are `[redacted]`. Attributes require a finite composition-owned allowlist; no arbitrary identifiers, tenant PII, payloads, stacks, events or links. Set `eventiva.profile` on both log annotations and span attributes. Restricted/Vault discard application metadata. Invalid explicit profile is Vault. Profile minimization does not grant protected access.
+
+## Operational invariants
+
+- Default Config: telemetry.enabled=true, capacity=256 (1..4096), timeoutMs=1000 (1..10000). Bootstrap uses fixed true/32/1000 before main Config. Sampling is none. Dropping FIFO plus one in-flight record bounds queued encoded data conservatively by (capacity+1) times 64 KiB. Producer callbacks never wait for sinks.
+- Server Config: telemetryFile.directory required via Config.redacted; maxFileBytes=1048576 (1024..67108864); maxFiles=7 (1..1024 total); retentionDays=7 (1..365 including today). Use a dedicated canonical POSIX 0700 directory, one owner/lock, 0600 files. No shared writer, symlink ancestry, linked/insecure surviving file or unapproved target claim.
+- Rotate by injected Clock UTC ingestion date, YYYY-MM-DD.NNNNNN.jsonl; new segment on restart/size rollover. Prune on acquisition/write, not idle timer. Delete oldest managed segments before creating another. Refuse oversized surviving segments rather than truncate. Unrelated files are untouched and outside the managed byte bound. Partial append is never retried/appended to; partial tails may survive retention.
+- Single scoped worker attempts records once, counts drops/failures, contains exporter defects and uses a per-write deadline. Explicit flush waits its accepted watermark then sink flush; prior failure yields a safe failure code. Shutdown stops admission, attempts bounded drain, records failed shutdown, interrupts worker and closes resources. Require cooperative exporter cancellation; do not promise interruption of a hung uninterruptible OS/vendor call.
+- File writes fsync and close per record; flush is a serialized barrier. Disk outage still permits validated console output. Console failure cannot roll back a completed file write. Telemetry is lossy and not a security evidence channel.
+- Optional disable/no-op/outage never provides, replaces or disables mandatory audit. Keep A1 transactional evidence/fail-closed sensitive operations separate. No cryptographic algorithm, provider or production exporter is selected here.
+
+## Remaining shared gates
+
+Run the isolated commands in docs/telemetry.md and keep their actual outputs in the EVE-261 review packet. The focused compiler resolver includes direct, transitive, import-type, type-only, alias and reexport paths with a real cyclic virtual-source positive control; the lane AST check rejects explicit any/unknown/casts/suppressions. It is not a repository-wide package SCC or build graph gate. Coordinator must wire source/export/package resolution, package-level cycle/type CI, docs/docgen and graph refresh only in its authorized shared-file window. No active checks import/execute historical archive architecture.
+
+Production OTel wire ingestion, PostHog adapter, metrics export, real durable outbox correlation, protected audit/release, platform readiness, physical exactly-once output, mobile/native filesystem alternatives and combined package builds remain unproved. The word-art reference remains gated. Do not close EVE-44 or full platform acceptance on an isolated local fixture.
+
+---
+
+# Hook integration contract
+
+Read `docs/hooks.md` before composing the hook services. The isolated checkpoint
+reserves contracts/runtime/SQL `./hook` subpaths but does not add shared exports.
+`composition.ts` is a compiling fail-closed wiring example, not a production host.
+
+Shared schemas live only in `packages/contracts/src/hook.ts`. Runtime imports them
+one way; publishers do not import runtime hook implementations. The SQL adapter
+implements the same contract and imports no dispatcher. Do not add inverse imports,
+type-only cycles, root barrels, unknown placeholders or unchecked envelope casts.
+
+Pair `Storage` and `HookOutbox` from one `hookStorage(dialect)` layer and captured
+authenticated tenant/client. Stage facts inside that Storage transaction/commit;
+claim/settle outside all SQL transactions. Multi-pin staging uses a savepoint.
+Every returned Storage operation checks provenance before entering its base method;
+foreign nested transaction/commit entry cannot relabel an ambient connection.
+Only same-pair nesting is supported.
+For resources and hook staging together, resourceHookProvider from integrations.sql/resource
+constructs the shared trusted root and returns ResourceProvider plus outbox. Supply its exact
+storage to durable Integrity, its outbox to HookOutbox, and the provider to resourceRuntime.
+Do not build a second hookStorage layer or relax provenance guards. CurrentTenant must match
+the requested tenant. Neither transaction ownership nor a staged fact grants release/sink,
+principal, approval or kernel-generation authority; the hook flag remains default-off.
+Exact event/pin deduplication, per-resource-name sequence ordering, admission
+capacity, fenced leases, database-clock expiry and idempotent settlement are durable
+SQL state. Registration, drain, semaphores and flag evaluation are process-local.
+No operation callback is retained or reexecuted during delivery.
+
+Keep the four sealed profiles unchanged. Keep release default-deny and reject
+executable protected observers, every decrypting/emergency delivery and financial
+additive delivery. Production composition must supply trusted live release policy,
+a durable deduplicating sink and ActionHost authorization. No hook grants decryption,
+human approval, transaction authority or lifecycle publication authority. Identity
+must come from an actual trusted receipt/lease or future lifecycle envelope, not a
+nonexistent kernel snapshot generation property or a positive integer alone.
+
+Migration 0003 is forward-only and additive in both dialects. Preserve 0001/0002
+checksums. Do not supply destructive rollback, retention, redrive, provider selection
+or remote database writes as part of integration.
+
+### composition
+
+```ts
+import { HookOutbox, HookReleaseDeny, type HookDeclaration, type HookEvent } from '@eventiva/contracts/hook';
+import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
+import { Storage } from '@eventiva/contracts/storage';
+import { hookStorage } from '@eventiva/integrations.sql/hook';
+import { HookDispatcherLive, HookSinkUnavailable } from '@eventiva/runtime/hook';
+import { Effect, Layer } from 'effect';
+
+export const hooks = hookStorage('sqlite');
+export const dispatch = HookDispatcherLive.pipe(
+    Layer.provide(hooks),
+    Layer.provide(HookReleaseDeny),
+    Layer.provide(HookSinkUnavailable),
+    Layer.provide(FlagsSafeDefaults)
+);
+
+export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDeclaration>) =>
+    Effect.gen(function* () {
+        const store = yield* Storage;
+        const outbox = yield* HookOutbox;
+        // Include the real domain write in this transaction before staging.
+        yield* store.transaction(outbox.stage(event, observers));
+    });
+```
+
+---
+
+# Central Resources
+
+EVE-258 is an isolated typed resource library increment, not server activation or completion of EVE-42/device storage. Read `docs/resources.md` for limits, values, options, tenant routing, migrations, conformance and failure handling. Existing schema/resource adaptation, export maps, root CI wiring, docgen and graph refresh remain coordinator-owned.
+
+Use contracts/resource for Resources, strict Field/Fields/ResourceDefinition schemas, Resource/ResourceValue/ResourceQuery, ResourceFailure, declareResource, contributeFields, validateDefinition, validateEvolution, canonicalDefinition and decodeResource. Features may not import privileged ResourceDriver/ResourceProvider, integrations, SQL, drivers or backend connections. Field algebra is closed; optional contributions preserve prior ownership and exact numeric module pins. Required fields remain required in types and decoding. Module/provider pins are independent of integer schema epochs.
+
+SQL imports contracts only and exports resourceProvider, planResourceMigrations and migrateResources. Runtime imports contracts only and exports resourceRuntime(provider,authorize). App composition captures one SqlClient into a named `{key:{module,instance},version}` provider, then supplies the neutral Layer. No integration-to-runtime Nx exception and no schema export. The compiling `01_resource.ts` is a privileged composition example, not a feature module.
+
+Use resourceHookProvider(dialect,tenant,identity,definitions) for atomic resources plus hook staging. The same four required arguments have no new defaults; authenticated CurrentTenant must match tenant. The result retains ResourceProvider and adds outbox. Its single private transaction owner is shared by resource driver guards, provider.storage and outbox.stage. Pass that exact Storage to durable Integrity, and that outbox to HookOutbox; do not construct an independent hookStorage root. Both root binding and actual TransactionConnection identity are checked before entry, including nested transaction/commit on the same client. Migrations/provider acquisition reject all ambient transactions; claim/settle remain post-commit only. The compiling example includes writeAndStage. This is trusted composition, not producer/provenance/release authorization, a new feature toggle, or an enabled dispatcher; the existing hook flag remains default-off.
+
+Authenticate before TenantRouter.run. Resolve provider.storage and retain it for durable Integrity and resource mutations. Live Caller/CurrentTenant/policy checks are required per operation, including queries/history/transactions; authorization is resource-scoped, not an implemented field-policy/redaction engine. Privileged migrations require trusted admission and a separate role; ordinary features cannot request them. ResourceFailure causes are Redacted and must remain redacted in serialization.
+
+Never substitute another Storage/client inside a transaction. Pinned Effect SQL 0.52.2 shares its ambient TransactionConnection across clients. The adapter guards every Storage method and resource driver entry; owned same-provider nesting is supported, foreign or unowned nesting fails closed. Raw SQL/independently built Storage must not open the outer transaction. Durable commit/replay atomically includes records, immutable revisions, outbox and receipts on the captured client.
+
+Migration policy is explicit `{kind,restartRequired,retainedGenerations}`. Pure preflight returns restart-required before SQL service acquisition for retained generations, restart declarations, staged or incompatible evolution. Kernel must reject active workflow leases first; the count is not distributed fencing. Kernel MigrationDeclaration stays `{id,kind,online}`. Do not expand it or treat it as checksum/history evidence. The privileged resource gate owns SHA-256 immutable declarations/history, contiguous schema versions, previous-version dependencies and compatibility window 1..current. Complete applied history cannot disappear or change. Add optional fields only; do not backfill/drop/down-migrate implicitly. Stale schema writers fail; retained historical payloads keep their original schema version. Unregister/deactivate never deletes data.
+
+PostgreSQL and Node SQLite implement the same limited CRUD/equality/cursor/transaction surface. Decimal strings preserve scale; payload filtering is a scan, not indexed numeric equality. These extension JSON tables do not replace raw canonical/device tables. MySQL, device storage, field-policy engines, staged execution, durable lease fencing and cryptographic audit are not implemented by this substrate.
+
+Use concrete ResourceDefinition admission and ResourceInput JSON-object record ingress; transport boundaries must Schema-decode their envelopes before calling them. Private decoder input follows Schema.Encoded, not erased ingress. Declarations and contributions copy field templates before validating/publication, retaining literal types without assertions. Full/partial codecs Schema-refine copied scalar records against the complete strict dynamic field schema. ResourceFailure uses a checked concrete Data.TaggedError constructor annotation, not a cast, keeping the vendor open generic out of emitted declarations. Tests remove the live Context through FiberRef.currentContext with requirements still supplied outside; never assert an empty Context has required services.
+
+Run resource tests/typecheck using the coordinated three exports and test-project metadata, without test aliases. Run tools/resources/boundaries.mjs and node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs; root verify and CI invoke these without weakening existing Nx boundaries, and audit built public declarations. The dependency-free house check stays separate. The checker handles type-only/transitive/re-export/relative/alias paths and disallows feature access to structural privileged ports. Resource-rooted graph fixtures reject direct/indirect cycles and reverse edges while accepting a diamond; they are not whole-workspace Nx/TS graph proof. Compiler fixtures reject missing fields, wrong primitives/query correlation, SQL escape, erased scalar ingress and partial-as-full records without suppressions. Authored TS/emitted contract checks reject erasure, unsafe assertions, non-null and suppressions; type proofs retain exact results, error/environment and yieldability. Passing isolated checks does not clear vendor-opacity review or the full coordinated gate. PostgreSQL conformance uses only the approved disposable local SCRAM/non-superuser bounded fixture from docs/storage.md, never a remote service. Generate LLMS once in the coordinated docgen window; index.md is the generator input.
+
+### resource
+
+```ts
+import { Effect } from 'effect';
+import type { HookDeclaration, HookEvent } from '@eventiva/contracts/hook';
+import type { TenantId } from '@eventiva/contracts/ids';
+import {
+    contributeFields,
+    declareResource,
+    Resources,
+    type ResourceMigrationPolicy,
+} from '@eventiva/contracts/resource';
+import { migrateResources, resourceHookProvider } from '@eventiva/integrations.sql/resource';
+import type { Dialect } from '@eventiva/integrations.sql/migrations';
+import { resourceRuntime } from '@eventiva/runtime/resource';
+
+/** Privileged app composition only. The existing Storage migrations and authenticated SQL scope must be ready. */
+export const composeExample = (
+    dialect: Dialect,
+    tenant: TenantId,
+    policy: ResourceMigrationPolicy,
+    authorize: Parameters<typeof resourceRuntime>[1]
+) =>
+    Effect.gen(function* () {
+        const initial = yield* declareResource({
+            id: 'example.receipt',
+            owner: 'example',
+            moduleVersion: '1.0.0',
+            fields: {
+                message: { type: 'text', optional: false },
+            },
+        });
+        const annotated = yield* contributeFields(initial, {
+            owner: 'annotation',
+            moduleVersion: '1.2.3',
+            fields: {
+                annotation: { type: 'text', optional: true },
+            },
+        });
+        // The kernel must fence real workflow leases before this privileged execution call.
+        const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
+        if (migration.status === 'restart-required') return migration;
+        const provider = yield* resourceHookProvider(
+            dialect,
+            tenant,
+            { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
+            [annotated]
+        );
+        const feature = (id: string, message: string) =>
+            Effect.gen(function* () {
+                const resources = yield* Resources;
+                return yield* resources.create(annotated, id, {
+                    message,
+                    annotation: 'Contributed without changing the original resource fields',
+                });
+            });
+        // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
+        const writeAndStage = (
+            id: string,
+            message: string,
+            event: HookEvent,
+            observers: ReadonlyArray<HookDeclaration>
+        ) =>
+            provider.storage.transaction(
+                Effect.gen(function* () {
+                    const record = yield* feature(id, message);
+                    yield* provider.outbox.stage(event, observers);
+                    return record;
+                })
+            );
+        return {
+            status: 'prepared',
+            provider,
+            layer: resourceRuntime(provider, authorize),
+            feature,
+            writeAndStage,
+        } as const;
+    });
+```
+
+---
+
+# Declarative UI module substrate
+
+Status: EVE-259 format-1 contracts/interpreter with real public export maps,
+Nx project ownership and shared verification. Client entrypoint adoption, actual
+Rambo/native rendering and live security adapters remain separate gates. The owner
+deferred Rambo until an approved releasable Resnovas/Rambo-UI React Native package/API
+exists; do not block unrelated modular delivery or substitute another library.
+Use [the people guide](../../../docs/declarative-modules.md) for the complete JSON
+example, required fields, limits and diagnosis. Never import archived application
+code or infer production activation from the coordinated kernel/resource/hook sources.
+
+## Dependency direction and public names
+
+`packages/contracts/src/ui-module.ts` owns Effect Schemas and inferred types
+`UiModuleDefinition`, `UiNode`, `UiActionBinding`, `UiProjection`, `UiConfig`,
+`UiValue`, the `UiModuleFailure` tagged-error Schema and the `UiPlatform` and
+`UiScreenContext` Context tags.
+It imports only Effect and existing same-level action/caller/flag/i18n contracts.
+The versioned format is data-only; services are trusted host ports, not manifest
+callbacks. No `unknown`, `any`, erased schema placeholder, cast or suppression is
+introduced by this lane.
+
+`packages/ui-modules/src/declarative-registry.ts` owns `DeclarativeRegistry`,
+`UiRegistration`, `declarativeRegistry` and `declarativeUiFlag`. The library points
+to contracts, never runtime/features. The sole local type-only edge is registry
+to the renderer interface; there is no reverse edge. Both consumers depend on
+the lower-level Schema contract (A -> C <- B), not each other's features.
+
+`DeclarativeModule.tsx` owns the stateless interpreter plus `UiRenderer` and
+`UiRendererProps`. Only trusted preinstalled adapters may contain executable
+React. There is no Eventiva component library, DOM prop spreading, dynamic
+import, eval, UI business handler or direct data/storage access.
+
+## Typed use
+
+This shape is exercised in `tests/ui-modules/src/declarative-module.spec.tsx` through
+real library exports. Provide the real approved services at
+the composition root; never add a permissive default implementation.
+
+```ts
+import { Caller } from '@eventiva/contracts/caller';
+import { UiModuleFailure, type UiProjection } from '@eventiva/contracts/ui-module';
+import { Effect } from 'effect';
+import { DeclarativeRegistry } from '@eventiva/ui-modules/declarative-registry';
+
+export const projectModule = (json: string) =>
+    Effect.scoped(
+        Effect.gen(function* () {
+            const registry = yield* DeclarativeRegistry;
+            const registration = yield* registry.register(json);
+            const projection: UiProjection = yield* registration.project;
+            return projection;
+        })
+    ) satisfies Effect.Effect<UiProjection, UiModuleFailure, Caller | DeclarativeRegistry>;
+```
+
+The returned snapshot above is for immediate inspection only: the example Scope
+closes at return. For an active screen, retain the Scope and refresh the projection
+under the current Caller; never reuse a released registration for interaction.
+No background work, lease service or route engine is created by this example.
+
+Layer signature:
+`Layer<DeclarativeRegistry, never, UiPlatform | Flags | I18n | ActionInventory>`.
+`register(json, replace = false)` requires `Caller | Scope`; `project` and
+`invoke(nodeId)` require `Caller` and fail only with `UiModuleFailure`. Invocation
+returns `void`, never handler output or a feature-specific result placeholder.
+Both foundation/module flags default false; neither authorizes anything.
+
+`modules` requires `Caller` and returns `Effect<ReadonlyArray<string>, never,
+Caller>`, filtering by tenant and fresh admission. Registry identity is the pair
+of tenant and module id, not module id alone. Cross-tenant handles fail `denied`;
+same-name registrations and replacements in another tenant cannot change a
+handle's projection or be removed by its finalizer.
+
+`UiRegistration.mount` is `Effect<void, UiModuleFailure, Caller | Scope.Scope |
+UiScreenContext>`. The screen port accepts only lazy `read:
+Effect<UiProjection, UiModuleFailure, Caller>` and `invoke(node): Effect<void,
+UiModuleFailure, Caller>` capabilities. Its own Effect requires `Caller |
+Scope.Scope`. Implement it in the trusted EVE-50 composition, never in a
+declarative manifest; use fresh current-caller reads and identity-checked scoped
+disposal. No screen-context implementation or app navigation is included here.
+
+## Security and validation
+
+Decode JSON text with Effect Schema and excess-property rejection before admission
+or publication. Restrict format-1 config/action input to flat JSON scalar records.
+Resolve exact component/action versions; validate action input centrally; reject
+unbound interactions, duplicate/cyclic/orphan nodes and missing en-GB defaults.
+Fields are read-only, scalar and viewer-masked. UI and agent screen state share one
+projection, excluding hidden node references and all action input/permission data.
+Recheck admission after asynchronous masking reads before publishing. Decode the
+completed available snapshot against `UiProjection`; malformed adapter output
+fails `invalid-projection`. Positive action versions are checked on output too.
+
+`UiPlatform` requires per-viewer admission, canonical input validation, authorized
+host invocation, visibility and minimized field-value services. No production
+implementation is included. The same approval, audit, tenant isolation and sealed
+baseline/sensitive/restricted/vault release floors still apply. Self-declared
+`protected` is not trust. Protected-containing modules conservatively refuse all
+replacement and conditional hiding; protected labels ignore terminology overlays.
+
+Publication and invocation use a local semaphore. Finalizers compare registration
+identity before removal, so old scopes cannot overwrite/remove replacements. Failed
+candidates leave the current registration intact. Disposal waits for admitted
+invocation; it is not a kernel workflow lease, distributed drain or recovery proof.
+No observer/listener is registered, so there is none to leak. App-wide route/menu
+and the real screen-context adapter remain held. Effect spans for
+`ui.module.project`, `ui.module.invoke`, `ui.module.mount`, `ui.module.unmount`
+reuse the selected tracer. Failure logging uses only `ui.module.failed` and bounded
+`ui.failure.reason`, with no payload annotation. Exporters, central navigation and
+render-error handling remain composition-root obligations, not a second telemetry
+implementation in this lane.
+
+## Evidence and shared obligations
+
+Focused tests include malformed/executable/unknown/unbound/denied/offline/config
+negatives, exact metadata versions, masking, replacement, closed Scope and in-flight
+serialization. Compile-time fixtures independently constrain input, output, error,
+Layer and environment types and reject function/nested config, wrong format/version,
+wrong output and erased failure/service requirements without suppression comments.
+The 40-case refinement adds tenant isolation, NaN output rejection, admission
+revocation during reads, scoped lazy screen reads and parent-trace correlation.
+Projection JSON roundtrip and negative output versions are exercised. Coverage was
+explicitly enabled with the existing v8 provider and a 90% floor for every
+category; no threshold was reduced. See the people guide for per-source figures.
+The source dependency audit uses TypeScript resolution, including type-only edges,
+aliases and reexports. Complete source/package/manifest cycle detection and negative
+controls run in `node --run verify` and CI; isolated UI results alone do not replace them.
+
+The coordinated action/schema/storage remediation replaces the prototype's broad
+lower-level contracts; isolated UI results do not clear the combined EVE-263 gate.
+No vendor-unknown adapter is introduced here.
+
+The registry and interpreter moved unchanged from the client application into
+the internal frontend library packages/ui-modules. Nx forbids imports of apps,
+even for private test subpaths; do not disable that rule. Use the real exports
+`@eventiva/ui-modules/DeclarativeModule` and
+`@eventiva/ui-modules/declarative-registry` after the library build. Its tags are
+type:extension/layer:frontend/capability:ui. Tests retain separate project ownership
+and aliases are not required. Verify shared package/manifest/source graphs and
+declarations together, then regenerate LLMS and Graphify centrally.
+
+Browser captures show the real interpreter with injected DOM adapters and stubbed
+policy/action ports. They prove neither Rambo approval, React Native execution,
+production authorization nor full platform/UI readiness. No banner implementation
+belongs here; EVE-260 remains gated on verified ready/central telemetry.
+
+The owner-selected identity is `Resnovas/Rambo-UI` (EVE-13 D8). Main inspected at
+[b47a58c](https://github.com/Resnovas/Rambo-UI/commit/b47a58cc45c7c982deaaa4f002eee686e775ab98)
+has historical Mitosis templates, not an
+approved RN package/version/catalogue. The sample package
+`@builder.io/basic-example@0.0.1` is not production dependency approval. The client
+has no installed Rambo package. Request exact release/digest, exports, supported
+components/targets, accessibility and source evidence; never substitute another
+vendor, adopt a historical template or create a private component library.
+
+---
+
+# Concrete schema fields and rows
+
+Read `docs/schema-typing.md` for the complete example and migration guidance. `@eventiva/schema/field` exports the metadata-only `Field<S>` view and the concrete `ValueField<S>` schema facade. Its constructors return `ValueField<S>`, preserving the exact original `schema: S`; the facade uses the same schema AST and decoded/encoded types, without claiming schema-class constructors. The self-bound schema constraint requires no decode/encode services. It does not replace non-JSON decoded values with JSON values.
+
+`Resource.row` receives concrete fields and calls `Schema.Struct(resource.fields)` directly. There is no Object.fromEntries assertion or untyped heterogeneous decoder. Keep the inferred resource type until after building its row. Plain `Field` and `Resource` are intentionally metadata views; a plain Resource no longer supplies fabricated per-key schema evidence. `Resource.Row<R>` remains the decoded per-key row type, with every field required. Nullable fields permit null values, not missing keys. Date fields decode to Date and encode to string. Field.json preserves schema-specific members such as a Struct's fields.
+
+Modifiers copy their input. Classification, conflict and label replace only their named metadata property; nullable rebuilds the schema facade and preserves the old security/conflict/label/reference target. Defaults remain baseline, field-lww, nonnullable and no label/target. Pipeable.Prototype supplies pipe without an arguments suppression. Composition sorts typed name/field entries rather than asserting an indexed field exists. Do not widen callable services or introduce casts, suppressions or a second registry to consume these types.
+
+Composition error bases use the concrete annotated Data.TaggedError constructor pattern from contracts/storage. Each has one required fields argument: DuplicateResource(resource, modules); DuplicateField(resource, field, modules); UnknownTarget(resource, module, target); WeakerClassification(resource, field, module, profile, floor); InvalidName(module, name). These lists name object properties, not positional arguments. Fields are readonly strings except modules (ReadonlyArray<string>) and profile/floor (SecurityProfile). Emitted bases are nongeneric `new (fields: ConcreteFields) => Cause.YieldableError & ConcreteFields & { readonly _tag: LiteralTag }`, with no any/unknown constructor erasure. The checked annotation changes declaration inference only: retain the same runtime Data.TaggedError value, literal tags, Error instances, stored fields and yieldability. It adds neither runtime decoding nor exact-object enforcement beyond ordinary TypeScript structural rules. ConstructorParameters type assertions and yielding every class in the schema suite protect this contract.
+
+This pure schema library change has no runtime product rollout and therefore no feature flag. It does not adapt or activate the separate resource-provider model. No new dependency or storage implementation is authorized.
+
+The compiling examples and type assertions live in `tests/schema/src/compose.spec.ts`: exact per-key decoded/encoded rows, exact nested schema members, source-schema identity, annotations, Date round trips and preserved nullable metadata. Run strict schema package/test typechecks and the entire schema Vitest project with its existing 90% coverage gate. The main integration lane owns LLMS regeneration and the shared graph refresh.
+
+---
+
+# Exact modular kernel
+
+Read `docs/kernel.md` before changing EVE-257/EVE-263 kernel contracts. The kernel
+owns lifecycle/admission/composition only, never business action execution or SQL.
+Keep contracts below runtime and all provider implementations outside the kernel.
+
+`ModuleDefinition.manifest: KernelManifest` and
+`Kernel.compose(composition: PlatformComposition, definitions)` are concrete
+Schema-backed wire types, still strictly decoded at runtime. The private decoder
+accepts `NoInfer<I>` for `Schema<A, I>`. Decode untrusted transport inputs before
+calling these APIs; do not reintroduce erased inputs, assertions or suppressions.
+
+`kernelProvider<A, I>(schema, value: NoInfer<A>)` returns
+`Effect<KernelProvider, KernelError>`. It validates the Type-side service before
+creating the handle. `KernelModule.providers` holds
+`ReadonlyMap<string, KernelProvider>`, not raw heterogeneous values.
+`KernelEnvironment.resolve<A, I>(requirement, schema)` validates the retained
+service's Type and returns `Effect<A, KernelError>`. Callable service methods keep
+their own exact inputs/outputs/errors/requirements; never encode or serialize
+them, replace them with Json or validate a transformed value twice as wire input.
+
+`KernelError` is still Data.TaggedError, with an exact constructor annotation to
+avoid the vendor factory's open generic leaking into emitted declarations. The
+reason union is unchanged. `readonly cycle?: ReadonlyArray<ModuleId>` is populated
+only for cycle failures, e.g. `[alpha, beta, gamma, alpha]`; `module` remains
+`alpha`. Never emit Config, raw causes, protected payloads or service values.
+
+Provider instance/requirement names are nonempty local strings, not ModuleIds.
+Module/capability IDs and exact versions retain their original grammar. Both
+manifest and provider cycles reject before acquisition; diamonds remain valid.
+Preserve authorization, state transitions, generation invalidation, leases,
+candidate cleanup/recovery and additive migration preflight while changing types.
+
+`01_kernel.ts` is a complete typed composition example. Its authority and caller
+are supplied by trusted composition, not a permissive policy default. The same
+feature is used with two explicit provider choices. Tests also keep two named
+instances per provider live simultaneously and verify each finalizer once.
+
+No new dependency, export map, Nx setting, generated file or main push belongs to
+this lane. Shared exports, whole-repository source/package graphs, LLMS generation
+and Graphify refresh are held by the coordinator. Isolated aliases and emitted
+declarations do not clear EVE-261 or repository-wide EVE-263. Ready/lease evidence
+is process-local, not durable delivery or distributed fencing.
+
+### kernel
+
+```ts
+import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { type KernelManifest } from '@eventiva/contracts/module-manifest';
+import { type KernelAuthority } from '@eventiva/contracts/module-policy';
+import {
+    Kernel,
+    KernelEnvironment,
+    KernelLive,
+    KernelModule,
+    kernelProvider,
+    type KernelProvider,
+    type ModuleDefinition,
+} from '@eventiva/runtime/kernel-runtime';
+import { Effect, Layer, Schema } from 'effect';
+
+// A neutral, trusted callable service contract, shared by providers and consumer.
+class Messages {
+    readonly read: (key: string) => Effect.Effect<string>;
+    constructor(prefix: string) {
+        this.read = (key) => Effect.succeed(`${prefix}:${key}`);
+    }
+}
+const MessagesSchema = Schema.instanceOf(Messages);
+const manifest = (id: string): KernelManifest => ({
+    id,
+    version: '1.0.0',
+    trust: 'first-party',
+    isolation: 'in-process',
+    dependencies: [],
+    provides: [],
+    requires: [],
+    migrations: [],
+    restartRequired: false,
+});
+
+const provider = (id: string): ModuleDefinition => ({
+    manifest: { ...manifest(id), provides: [{ name: 'Tenant A', capability: 'messages', version: '1.0.0' }] },
+    validate: Effect.void,
+    layer: Layer.effect(
+        KernelModule,
+        Effect.gen(function* () {
+            const service = yield* kernelProvider(MessagesSchema, new Messages(id));
+            return KernelModule.of({
+                providers: new Map([['Tenant A', service]]),
+                install: Effect.void,
+                activate: Effect.void,
+                ready: Effect.void,
+                deactivate: Effect.void,
+            });
+        })
+    ),
+});
+const feature: ModuleDefinition = {
+    manifest: { ...manifest('feature'), requires: [{ name: 'startup', capability: 'messages', version: '1.0.0' }] },
+    validate: Effect.void,
+    layer: Layer.effect(
+        KernelModule,
+        Effect.gen(function* () {
+            const environment = yield* KernelEnvironment;
+            const messages = yield* environment.resolve('startup', MessagesSchema);
+            return KernelModule.of({
+                providers: new Map<string, KernelProvider>(),
+                install: Effect.void,
+                activate: messages.read('hello').pipe(Effect.asVoid),
+                ready: Effect.void,
+                deactivate: Effect.void,
+            });
+        })
+    ),
+};
+
+/** Supply authenticated identity and real admission/authorization policy at the app boundary. */
+export const runKernelExample = (
+    caller: CallerIdentity,
+    authority: Layer.Layer<KernelAuthority>,
+    selected: 'local' | 'regional'
+) =>
+    Effect.gen(function* () {
+        const kernel = yield* Kernel;
+        const selectedProvider = provider(selected);
+        return yield* kernel.compose(
+            {
+                modules: [feature.manifest, selectedProvider.manifest].map(({ id, version }) => ({ id, version })),
+                bindings: [{ consumer: 'feature', requirement: 'startup', provider: selected, instance: 'Tenant A' }],
+            },
+            [feature, selectedProvider]
+        );
+    }).pipe(
+        Effect.provideService(Caller, caller),
+        Effect.provide(KernelLive('example-runtime').pipe(Layer.provide(authority))),
+        Effect.scoped
+    );
 ```

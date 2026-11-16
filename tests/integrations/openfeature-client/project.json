@@ -3,9 +3,15 @@
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "sourceRoot": "tests/integrations/openfeature-client/src",
-    "tags": [
-        "type:test",
-        "layer:frontend",
-        "capability:test"
-    ]
+    "tags": ["type:test", "layer:frontend", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "tsc -p tests/integrations/openfeature-client/tsconfig.json --noEmit",
+                "cwd": "{workspaceRoot}"
+            },
+            "dependsOn": ["^build"]
+        }
+    }
 }

@@ -14,27 +14,42 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Context, Data, Effect, Option, Schema } from 'effect';
+import { type Cause, Context, Data, Effect, Either, Option, ParseResult, Schema } from 'effect';
 import { ActionName, type ActionSpec, Permission } from './action.ts';
 import type { CallerIdentity } from './caller.ts';
 import type { Forbidden } from './errors.ts';
 import { make, Provider, type ProviderSchema, UnsupportedSchema } from './json-schema.ts';
 
-export class InvalidActionDefinition extends Data.TaggedError('InvalidActionDefinition')<{
+interface InvalidActionDefinitionFields {
     readonly action: string;
     readonly field: string;
     readonly reason: string;
-}> {}
+}
+const InvalidActionDefinitionBase: new (args: InvalidActionDefinitionFields) => Cause.YieldableError &
+    InvalidActionDefinitionFields & {
+        readonly _tag: 'InvalidActionDefinition';
+    } = Data.TaggedError('InvalidActionDefinition');
+export class InvalidActionDefinition extends InvalidActionDefinitionBase {}
 
-export class DuplicateAction extends Data.TaggedError('DuplicateAction')<{
+interface DuplicateActionFields {
     readonly action: string;
-}> {}
+}
+const DuplicateActionBase: new (args: DuplicateActionFields) => Cause.YieldableError &
+    DuplicateActionFields & {
+        readonly _tag: 'DuplicateAction';
+    } = Data.TaggedError('DuplicateAction');
+export class DuplicateAction extends DuplicateActionBase {}
 
-export class InventoryParityError extends Data.TaggedError('InventoryParityError')<{
+interface InventoryParityErrorFields {
     readonly surface: string;
     readonly action: string;
     readonly reason: string;
-}> {}
+}
+const InventoryParityErrorBase: new (args: InventoryParityErrorFields) => Cause.YieldableError &
+    InventoryParityErrorFields & {
+        readonly _tag: 'InventoryParityError';
+    } = Data.TaggedError('InventoryParityError');
+export class InventoryParityError extends InventoryParityErrorBase {}
 
 export type DefinitionError = InvalidActionDefinition | DuplicateAction;
 export type InventoryError = DefinitionError | UnsupportedSchema;
@@ -99,11 +114,11 @@ export const validateDefinitions = (specs: ReadonlyArray<ActionSpec>): Effect.Ef
     Effect.gen(function* () {
         const names = new Set<string>();
         for (const spec of specs) {
-            for (const field of Object.keys(Definition.fields) as Array<keyof typeof Definition.fields>) {
-                const schema: Schema.Schema.AnyNoContext = Definition.fields[field];
-                if (!Schema.is(schema)(spec[field])) {
-                    return yield* new InvalidActionDefinition({ action: spec.name, field, reason: `Invalid ${field}` });
-                }
+            const definition = Schema.decodeUnknownEither(Definition)(spec);
+            if (Either.isLeft(definition)) {
+                const key = ParseResult.ArrayFormatter.formatErrorSync(definition.left)[0]?.path[0];
+                const field = typeof key === 'string' ? key : 'definition';
+                return yield* new InvalidActionDefinition({ action: spec.name, field, reason: `Invalid ${field}` });
             }
             for (const field of ['input', 'output'] as const) {
                 if (!Schema.isSchema(spec[field])) {
@@ -127,7 +142,7 @@ export const validateInventory = (
         yield* validateDefinitions(specs);
         return yield* Effect.forEach(specs, (spec) =>
             Effect.gen(function* () {
-                const entries = yield* Effect.forEach(Provider.literals, (provider) =>
+                const profile = (provider: Provider) =>
                     Effect.gen(function* () {
                         const input = yield* make(spec.input, provider);
                         if (input.type !== 'object') {
@@ -138,9 +153,13 @@ export const validateInventory = (
                             });
                         }
                         const output = yield* make(spec.output, provider);
-                        return [provider, { input, output }] as const;
-                    })
-                );
+                        return { input, output };
+                    });
+                const providerSchemas = yield* Effect.all({
+                    anthropic: profile('anthropic'),
+                    openai: profile('openai'),
+                    google: profile('google'),
+                });
                 return {
                     id: spec.name,
                     version: spec.version,
@@ -151,7 +170,7 @@ export const validateInventory = (
                     sensitive: spec.sensitive,
                     sideEffect: spec.sideEffect,
                     offline: spec.offline,
-                    providerSchemas: Object.fromEntries(entries) as ActionMetadata['providerSchemas'],
+                    providerSchemas,
                 };
             })
         );

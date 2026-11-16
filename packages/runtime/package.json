@@ -7,6 +7,26 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./kernel-runtime": {
+            "@eventiva/source": "./src/kernel-runtime.ts",
+            "types": "./dist/kernel-runtime.d.ts",
+            "default": "./dist/kernel-runtime.js"
+        },
+        "./resource": {
+            "@eventiva/source": "./src/resource.ts",
+            "types": "./dist/resource.d.ts",
+            "default": "./dist/resource.js"
+        },
+        "./hook": {
+            "@eventiva/source": "./src/hook.ts",
+            "types": "./dist/hook.d.ts",
+            "default": "./dist/hook.js"
+        },
+        "./telemetry": {
+            "@eventiva/source": "./src/telemetry.ts",
+            "types": "./dist/telemetry.d.ts",
+            "default": "./dist/telemetry.js"
+        },
         "./identity": {
             "@eventiva/source": "./src/identity.ts",
             "types": "./dist/identity.d.ts",

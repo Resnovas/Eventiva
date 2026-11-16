@@ -44,7 +44,7 @@ export const load = (directory: string) =>
                         checksum: createHash('sha256').update(bytes).digest('hex'),
                     };
                 }),
-        catch: (cause) => new StorageFailure({ operation: 'load-migrations', cause }),
+        catch: () => new StorageFailure({ operation: 'load-migrations', reason: 'filesystem' }),
     });
 
 /** Serializes migrations and verifies the entire applied prefix. No down, reset or schema-push API. */
@@ -62,13 +62,16 @@ export const migrate = (dialect: Dialect, migrations: ReadonlyArray<Migration>) 
                 for (const [index, entry] of applied.entries()) {
                     const candidate = migrations[index];
                     if (candidate?.name !== entry.name || candidate.checksum !== entry.checksum) {
-                        return yield* new StorageFailure({ operation: `applied-migration-changed:${entry.name}` });
+                        return yield* new StorageFailure({ operation: 'applied-migration-changed' });
                     }
                 }
                 const names = migrations.map((m) => m.name);
                 if (
                     new Set(names).size !== names.length ||
-                    names.some((name, i) => !/^\d{4}\.sql$/.test(name) || (i > 0 && name <= names[i - 1]!))
+                    names.some((name, i) => {
+                        const previous = names[i - 1];
+                        return !/^\d{4}\.sql$/.test(name) || (previous !== undefined && name <= previous);
+                    })
                 ) {
                     return yield* new StorageFailure({ operation: 'migration-order' });
                 }
@@ -83,4 +86,6 @@ export const migrate = (dialect: Dialect, migrations: ReadonlyArray<Migration>) 
                 }
             })
         );
-    }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(new StorageFailure({ operation: 'migrate', cause }))));
+    }).pipe(
+        Effect.catchTag('SqlError', () => Effect.fail(new StorageFailure({ operation: 'migrate', reason: 'database' })))
+    );

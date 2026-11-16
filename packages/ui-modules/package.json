@@ -1,0 +1,34 @@
+{
+    "name": "@eventiva/ui-modules",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Scoped data-only UI module registry and stateless interpreter.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./declarative-registry": {
+            "@eventiva/source": "./src/declarative-registry.ts",
+            "types": "./dist/declarative-registry.d.ts",
+            "default": "./dist/declarative-registry.js"
+        },
+        "./DeclarativeModule": {
+            "@eventiva/source": "./src/DeclarativeModule.tsx",
+            "types": "./dist/DeclarativeModule.d.ts",
+            "default": "./dist/DeclarativeModule.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*"
+    },
+    "peerDependencies": {
+        "effect": "catalog:",
+        "react": "19.2.3"
+    },
+    "devDependencies": {
+        "effect": "catalog:",
+        "react": "19.2.3",
+        "@types/react": "19.2.18"
+    }
+}

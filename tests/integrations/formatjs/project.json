@@ -3,9 +3,15 @@
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "sourceRoot": "tests/integrations/formatjs/src",
-    "tags": [
-        "type:test",
-        "layer:shared",
-        "capability:test"
-    ]
+    "tags": ["type:test", "layer:shared", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "tsc -p tests/integrations/formatjs/tsconfig.json --noEmit",
+                "cwd": "{workspaceRoot}"
+            },
+            "dependsOn": ["^build"]
+        }
+    }
 }

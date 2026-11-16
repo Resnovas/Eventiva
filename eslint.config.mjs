@@ -82,6 +82,10 @@ const layerConstraints = [
         bannedExternalImports: serverOnly,
     },
     { sourceTag: 'layer:backend', onlyDependOnLibsWithTags: ['layer:backend', 'layer:shared'] },
+    {
+        sourceTag: 'layer:test',
+        onlyDependOnLibsWithTags: ['layer:frontend', 'layer:backend', 'layer:shared', 'layer:test'],
+    },
 ];
 
 // Contracts and schema depend on effect alone, and so does the action runtime:
@@ -214,7 +218,7 @@ export default [
         },
     },
     {
-        files: ['apps/client/**/*.tsx', 'apps/client/**/*.ts'],
+        files: ['apps/client/**/*.tsx', 'apps/client/**/*.ts', 'packages/ui-modules/src/**/*.{ts,tsx}'],
         plugins: { formatjs, 'react-hooks': reactHooks },
         rules: {
             ...reactHooks.configs.recommended.rules,

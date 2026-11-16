@@ -16,4 +16,4 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
-export default testProject('boundaries-tests', []);
+export default testProject('boundaries-tests', [], import.meta.url);

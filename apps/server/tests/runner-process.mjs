@@ -15,7 +15,7 @@
  */
 
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { NodeRuntime } from '@effect/platform-node';
 import { Sharding } from '@effect/cluster/Sharding';
 import { Cause, Effect, FiberSet, Layer, Schema } from 'effect';
@@ -27,7 +27,9 @@ import { deploymentProfile } from '../dist/cluster-profile.js';
 // dependencies. This file never creates a memory storage or integrity substitute.
 const bootstrap = process.argv[2];
 if (!bootstrap) throw new Error('Phase B SQL/action bootstrap module is required.');
-const { makeBackend, commands: extraCommands } = await import(pathToFileURL(resolve(bootstrap)).href);
+if (resolve(bootstrap) !== fileURLToPath(new URL('./sql-fixture.mjs', import.meta.url)))
+    throw new Error('Only the reviewed Phase B SQL/action fixture is supported.');
+const { makeBackend, commands: extraCommands } = await import('./sql-fixture.mjs');
 
 const program = Effect.gen(function* () {
     const profile = yield* deploymentProfile;

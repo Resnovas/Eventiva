@@ -14,6 +14,20 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
+import { defineConfig } from 'vitest/config';
 import { testProject } from '../../vitest.shared.ts';
 
-export default testProject('contracts-tests', ['packages/contracts/src/**']);
+const config = testProject('contracts-tests', ['packages/contracts/src/**'], import.meta.url);
+export default defineConfig({
+    ...config,
+    test: {
+        ...config.test,
+        include: [
+            'src/**/*.spec.ts',
+            '../resources/src/**/*.spec.ts',
+            '../telemetry/src/**/*.spec.ts',
+            '../ui-modules/src/**/*.spec.tsx',
+            '../runtime/src/kernel-runtime.spec.ts',
+        ],
+    },
+});

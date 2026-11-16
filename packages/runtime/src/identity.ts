@@ -54,7 +54,7 @@ const permits = (grants: ReadonlyArray<typeof Grant.Type>, permission: string, r
     );
 
 /** Only this module's resource grammar is known here. Other modules need their own explicit target policy. */
-const target = (spec: ActionSpec, input: unknown): string | undefined => {
+const target = <Input>(spec: ActionSpec, input: Input): string | undefined => {
     if (spec.name === organizationGet.name || spec.name === organizationSet.name) return 'organization';
     if (spec.name === auditList.name) return 'audit';
     if (spec.name === profileGet.name && Schema.is(profileGet.input)(input)) return input.subject;
@@ -176,7 +176,11 @@ export const identitySecurity = Layer.unwrapEffect(
  */
 export class StandardsTokenVerifier extends Context.Tag('@eventiva/runtime/StandardsTokenVerifier')<
     StandardsTokenVerifier,
-    { readonly verify: (token: Redacted.Redacted<string>) => Effect.Effect<unknown, InvocationDenied> }
+    {
+        readonly verify: (
+            token: Redacted.Redacted<string>
+        ) => Effect.Effect<typeof VerifiedTokenClaims.Encoded, InvocationDenied>;
+    }
 >() {}
 export const VerifiedTokenClaims = Schema.Struct({
     issuer: Schema.NonEmptyString,
@@ -205,7 +209,7 @@ export const authenticateToken = (
         if (store.tenant !== tenant.id) return yield* denied();
         const claims = yield* verifier
             .verify(token)
-            .pipe(Effect.flatMap(Schema.decodeUnknown(VerifiedTokenClaims)), Effect.mapError(denied));
+            .pipe(Effect.flatMap(Schema.decode(VerifiedTokenClaims)), Effect.mapError(denied));
         const now = yield* Clock.currentTimeMillis;
         if (
             !expected.issuer ||

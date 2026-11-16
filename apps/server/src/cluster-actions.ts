@@ -19,6 +19,7 @@ import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
 import * as Rpc from '@effect/rpc/Rpc';
 import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
 import { Receipt } from '@eventiva/contracts/receipt';
+import { JsonValue } from '@eventiva/contracts/storage';
 import type { ActionHost } from '@eventiva/runtime/host';
 import { IdentityResolver } from '@eventiva/runtime/invocation';
 import { Context, Data, Effect, Layer, Schema } from 'effect';
@@ -37,7 +38,7 @@ export const ClusterInvocation = Schema.Struct({
     caller: CallerIdentity,
     entityKey: Schema.NonEmptyString,
     action: Schema.NonEmptyString,
-    input: Schema.Unknown,
+    input: JsonValue,
     intent: Intent,
 });
 export type ClusterInvocation = typeof ClusterInvocation.Type;
@@ -60,7 +61,7 @@ const ActionEntity = Entity.make('EventivaAction', [
     Rpc.make('Execute', {
         payload: ClusterInvocation,
         success: Schema.Struct({
-            output: Schema.Unknown,
+            output: JsonValue,
             receipt: Receipt,
             replayed: Schema.Boolean,
             audit: Schema.Literal('durable', 'spooled'),

@@ -16,7 +16,7 @@
 
 import type { SecurityProfile } from '@eventiva/contracts/security';
 import { Schema } from 'effect';
-import type { Field } from './field.ts';
+import type { Field, ValueField } from './field.ts';
 import type { ModuleId } from './manifest.ts';
 
 /**
@@ -76,16 +76,16 @@ export const make = <const Name extends string, const F extends Fields>(
 });
 
 /** The decoded record of a resource's own fields. */
-export type Row<R extends Resource> = Schema.Struct.Type<{
-    readonly [K in keyof R['fields']]: R['fields'][K]['schema'];
-}>;
+export type Row<R extends Resource> = {
+    readonly [K in keyof R['fields']]: Schema.Schema.Type<R['fields'][K]['schema']>;
+};
+
+type SchemaFields<F extends Fields> = {
+    readonly [K in keyof F]: ValueField<
+        Schema.Schema<Schema.Schema.Type<F[K]['schema']>, Schema.Schema.Encoded<F[K]['schema']>>
+    >;
+};
 
 /** The schema of one record: every field, required, with its own value schema. */
-export const row = <R extends Resource>(
-    resource: R
-): Schema.Struct<{ readonly [K in keyof R['fields']]: R['fields'][K]['schema'] }> =>
-    Schema.Struct(
-        Object.fromEntries(Object.entries(resource.fields).map(([name, field]) => [name, field.schema])) as {
-            readonly [K in keyof R['fields']]: R['fields'][K]['schema'];
-        }
-    );
+export const row = <F extends Fields & SchemaFields<F>>(resource: Resource<string, F>): Schema.Struct<F> =>
+    Schema.Struct(resource.fields);

@@ -16,8 +16,10 @@
 
 import type { ActionSpec, ApprovalPolicy } from '@eventiva/contracts/action';
 import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
-import { ActionFailed, InvalidInput, type PlatformError } from '@eventiva/contracts/errors';
-import { Cause, Clock, Effect, Either, Exit, Option, ParseResult, Random, Schema } from 'effect';
+import { type PlatformError } from '@eventiva/contracts/errors';
+import { Json } from '@eventiva/contracts/storage';
+import { Cause, Clock, Effect, Either, Exit, Option, Random, Schema } from 'effect';
+import type { ActionBinding } from './action.ts';
 import {
     Approvals,
     Audit,
@@ -36,9 +38,7 @@ import {
 
 export type InvocationError = PlatformError | InvocationDenied | AuditUnavailable;
 
-export interface Executable {
-    readonly spec: ActionSpec;
-    readonly run: (input: unknown) => Effect.Effect<unknown, unknown>;
+export interface Executable extends ActionBinding {
     readonly available: Effect.Effect<void, PlatformError>;
 }
 
@@ -130,7 +130,7 @@ const checkExecution = (
         }
     });
 
-const outcome = (exit: Exit.Exit<unknown, InvocationError>): Receipt['outcome'] => {
+const outcome = <A>(exit: Exit.Exit<A, InvocationError>): Receipt['outcome'] => {
     if (Exit.isSuccess(exit)) return 'succeeded';
     if (Cause.isInterruptedOnly(exit.cause)) return 'interrupted';
     const error = Cause.failureOption(exit.cause);
@@ -148,9 +148,9 @@ export const makeExecutor = Effect.gen(function* () {
     const integrity = yield* Integrity;
     const digest = yield* InputDigest;
 
-    return (
+    return <Wire>(
         action: string,
-        input: unknown,
+        input: Wire,
         lookup: Effect.Effect<Executable, PlatformError>,
         options: InvokeOptions = {}
     ) =>
@@ -163,7 +163,7 @@ export const makeExecutor = Effect.gen(function* () {
                 let spec: ActionSpec | undefined;
                 let inputHash = yield* digest.digest(Either.getOrElse(canonicalJson(input), () => '<non-json>'));
                 let committed: { readonly receipt: Receipt; readonly replayed: boolean } | undefined;
-                const receipt = (exit: Exit.Exit<unknown, InvocationError>, ended: number): Receipt => ({
+                const receipt = <A>(exit: Exit.Exit<A, InvocationError>, ended: number): Receipt => ({
                     id,
                     caller,
                     action,
@@ -184,26 +184,11 @@ export const makeExecutor = Effect.gen(function* () {
                             const intent = yield* Schema.decodeUnknown(Intent)(options).pipe(
                                 Effect.mapError(() => new InvocationDenied({ action, reason: 'invalid-intent' }))
                             );
-                            const decoded = yield* Schema.decodeUnknown(spec.input)(input, {
-                                onExcessProperty: 'error',
-                            }).pipe(
-                                Effect.mapError(
-                                    (error) =>
-                                        new InvalidInput({
-                                            action,
-                                            message: ParseResult.TreeFormatter.formatErrorSync(error),
-                                        })
-                                )
-                            );
-                            yield* authorizer.check(caller, spec, decoded);
-                            const encoded = yield* Schema.encode(spec.input)(decoded).pipe(Effect.orDie);
-                            const canonical = yield* canonicalJson(encoded).pipe(
-                                Either.mapLeft(
-                                    () => new InvalidInput({ action, message: 'Input must encode as JSON.' })
-                                )
-                            );
+                            const prepared = yield* entry.prepare(input);
+                            yield* prepared.authorize(authorizer, caller);
+                            const canonical = yield* prepared.canonicalInput;
                             inputHash = yield* digest.digest(canonical);
-                            const live = yield* policy.inspect(caller, spec, decoded, intent);
+                            const live = yield* prepared.inspect(policy, caller, intent);
                             yield* checkExecution(
                                 caller,
                                 spec,
@@ -230,8 +215,8 @@ export const makeExecutor = Effect.gen(function* () {
                                     return yield* new InvocationDenied({ action, reason: 'identity-changed' });
                                 yield* entry.available;
                                 yield* authorizer.canInvoke(currentCaller, entry.spec);
-                                yield* authorizer.check(currentCaller, entry.spec, decoded);
-                                const current = yield* policy.inspect(currentCaller, entry.spec, decoded, intent);
+                                yield* prepared.authorize(authorizer, currentCaller);
+                                const current = yield* prepared.inspect(policy, currentCaller, intent);
                                 yield* checkExecution(
                                     currentCaller,
                                     entry.spec,
@@ -243,21 +228,7 @@ export const makeExecutor = Effect.gen(function* () {
                                 );
                                 yield* audit.ready(action);
                             });
-                            const run = entry.run(decoded).pipe(
-                                Effect.catchAll((error) =>
-                                    Option.match(entry.spec.error, {
-                                        onNone: () => Effect.die(error),
-                                        onSome: (schema) =>
-                                            Schema.encode(schema)(error).pipe(
-                                                Effect.orDie,
-                                                Effect.flatMap((encodedError) =>
-                                                    Effect.fail(new ActionFailed({ action, error: encodedError }))
-                                                )
-                                            ),
-                                    })
-                                ),
-                                Effect.flatMap((output) => Schema.encode(entry.spec.output)(output).pipe(Effect.orDie))
-                            );
+                            const run = prepared.run;
                             if (spec.sideEffect === 'read') return yield* run;
                             const saved = yield* integrity.commit(
                                 {
@@ -284,8 +255,11 @@ export const makeExecutor = Effect.gen(function* () {
                             );
                             if (saved.replayed) yield* revalidate;
                             committed = saved;
-                            return saved.output;
-                        })
+                            return yield* canonicalJson(saved.output).pipe(
+                                Effect.flatMap(Schema.decode(Json)),
+                                Effect.orDie
+                            );
+                        }).pipe(Effect.catchAllDefect(() => Effect.dieMessage('Action execution defect.')))
                     )
                 );
                 const current =

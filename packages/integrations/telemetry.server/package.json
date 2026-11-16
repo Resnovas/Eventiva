@@ -1,0 +1,26 @@
+{
+    "name": "@eventiva/integrations.telemetry.server",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "license": "SEE LICENSE IN LICENSE",
+    "sideEffects": false,
+    "exports": {
+        "./logger": {
+            "@eventiva/source": "./src/logger.ts",
+            "types": "./dist/logger.d.ts",
+            "default": "./dist/logger.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@effect/platform": "0.97.3"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

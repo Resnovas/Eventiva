@@ -7,6 +7,36 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./module-manifest": {
+            "@eventiva/source": "./src/module-manifest.ts",
+            "types": "./dist/module-manifest.d.ts",
+            "default": "./dist/module-manifest.js"
+        },
+        "./module-policy": {
+            "@eventiva/source": "./src/module-policy.ts",
+            "types": "./dist/module-policy.d.ts",
+            "default": "./dist/module-policy.js"
+        },
+        "./resource": {
+            "@eventiva/source": "./src/resource.ts",
+            "types": "./dist/resource.d.ts",
+            "default": "./dist/resource.js"
+        },
+        "./hook": {
+            "@eventiva/source": "./src/hook.ts",
+            "types": "./dist/hook.d.ts",
+            "default": "./dist/hook.js"
+        },
+        "./observability": {
+            "@eventiva/source": "./src/observability.ts",
+            "types": "./dist/observability.d.ts",
+            "default": "./dist/observability.js"
+        },
+        "./ui-module": {
+            "@eventiva/source": "./src/ui-module.ts",
+            "types": "./dist/ui-module.d.ts",
+            "default": "./dist/ui-module.js"
+        },
         "./identity": {
             "@eventiva/source": "./src/identity.ts",
             "types": "./dist/identity.d.ts",

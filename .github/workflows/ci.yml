@@ -65,6 +65,15 @@ jobs:
       - name: Project references are in sync
         run: pnpm nx sync:check
 
+      # Process conformance imports the actual emitted server, not source aliases.
+      - name: Build declared outputs before resolving the complete graph
+        run: pnpm nx run-many -t build --parallel=1 --outputStyle=static
+
+      - name: Source, type-only and declared package boundaries
+        run: |
+          node tools/resources/boundaries.mjs
+          node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs
+
       # The owner accepted this exact image's residual findings only for
       # reviewed synthetic fixtures, until 2026-11-22 or an earlier trigger.
       # Fail closed for PR code and expiry; never suppress or skip a suite.
@@ -103,7 +112,10 @@ jobs:
           echo "STORAGE_TEST_POSTGRES_URL=postgres://eventiva_fixture:$STORAGE_FIXTURE_PASSWORD@127.0.0.1:5432/eventiva_test" >> "$GITHUB_ENV"
 
       - name: Lint, typecheck, test, build and action parity
-        run: pnpm nx run-many -t lint typecheck test build parity --outputStyle=static
+        run: pnpm nx run-many -t lint typecheck test build parity --parallel=1 --outputStyle=static
+
+      - name: Public declaration type boundaries
+        run: node tools/resources/boundaries.mjs --declarations
 
       - name: Remove disposable PostgreSQL fixture
         if: always()
@@ -135,7 +147,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Smoke
-        run: pnpm nx run-many -t smoke --outputStyle=static --skip-nx-cache
+        run: pnpm nx run-many -t smoke --parallel=1 --outputStyle=static --skip-nx-cache
 
   # The required context. It runs even when a job above fails or is cancelled,
   # and passes only when every job succeeded.

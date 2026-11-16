@@ -4,6 +4,12 @@
     "projectType": "library",
     "sourceRoot": "tests/contracts/src",
     "tags": ["type:test", "layer:shared", "capability:test"],
+    "implicitDependencies": [
+        "@eventiva/resource-tests",
+        "@eventiva/telemetry-tests",
+        "@eventiva/ui-module-tests",
+        "@eventiva/runtime-tests"
+    ],
     "targets": {
         "typecheck": {
             "executor": "nx:run-commands",

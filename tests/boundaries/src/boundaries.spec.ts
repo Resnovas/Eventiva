@@ -138,8 +138,10 @@ describe('package hygiene', () => {
             'packages/integrations/posthog-client',
             'packages/integrations/posthog-server',
             'packages/integrations/sql',
+            'packages/integrations/telemetry.server',
             'packages/runtime',
             'packages/schema',
+            'packages/ui-modules',
         ]);
     });
 
@@ -153,13 +155,13 @@ describe('package hygiene', () => {
             expect(Object.keys(manifest.exports)).not.toContain('.');
             for (const [subpath, target] of Object.entries(manifest.exports)) {
                 if (subpath === './package.json') continue;
-                expect(target).toMatchObject({ '@eventiva/source': expect.stringMatching(/^\.\/src\/.+\.ts$/) });
+                expect(target).toMatchObject({ '@eventiva/source': expect.stringMatching(/^\.\/src\/.+\.tsx?$/) });
             }
             // One shared copy of effect: a peer wherever the sources use it, never a direct dependency.
             const usesEffect = filesUnder(join(dirname(file), 'src')).some((source) =>
                 /from 'effect'/.test(readFileSync(source, 'utf8'))
             );
-            expect(manifest.peerDependencies).toEqual(usesEffect ? { effect: 'catalog:' } : undefined);
+            expect(manifest.peerDependencies?.effect).toEqual(usesEffect ? 'catalog:' : undefined);
             expect(manifest.dependencies?.effect).toBeUndefined();
         }
     );

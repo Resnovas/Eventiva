@@ -15,7 +15,7 @@
  */
 
 import { Context, type Effect, Schema } from 'effect';
-import type { ActionSpec } from './action.ts';
+import type { ActionSpec, Input } from './action.ts';
 import type { Forbidden } from './errors.ts';
 import { SessionId, SubjectId, TenantId } from './ids.ts';
 
@@ -56,6 +56,10 @@ export class Authorizer extends Context.Tag('@eventiva/contracts/Authorizer')<
     Authorizer,
     {
         readonly canInvoke: (caller: CallerIdentity, action: ActionSpec) => Effect.Effect<void, Forbidden>;
-        readonly check: (caller: CallerIdentity, action: ActionSpec, input: unknown) => Effect.Effect<void, Forbidden>;
+        readonly check: <S extends ActionSpec>(
+            caller: CallerIdentity,
+            action: S,
+            input: Input<NoInfer<S>>
+        ) => Effect.Effect<void, Forbidden>;
     }
 >() {}

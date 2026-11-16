@@ -17,7 +17,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { SqlClient } from '@effect/sql';
-import { Conflict, Storage, type GuardedCommand } from '@eventiva/contracts/storage';
+import { Conflict, Storage, StorageFailure, type GuardedCommand } from '@eventiva/contracts/storage';
 import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { CurrentTenant, RoutingDenied, TenantRouter } from '@eventiva/contracts/storage';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
@@ -30,7 +30,7 @@ import { uuidV7 } from '@eventiva/integrations.sql/values';
 import { durable } from '@eventiva/runtime/storage';
 import { Audit, Integrity } from '@eventiva/runtime/invocation';
 import type { Receipt } from '@eventiva/contracts/receipt';
-import { describe, expect, it } from '@effect/vitest';
+import { describe, expect, expectTypeOf, it } from '@effect/vitest';
 import { ConfigProvider, Context, Deferred, Effect, Either, Exit, Fiber, Layer, Schema, TestClock } from 'effect';
 
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
@@ -459,7 +459,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                         concurrency: 'unbounded',
                     });
                     expect(yield* Effect.either(migrate(dialect, []))).toMatchObject({
-                        left: { operation: 'applied-migration-changed:0001.sql' },
+                        left: { operation: 'applied-migration-changed' },
                     });
                     expect(
                         yield* Effect.either(
@@ -468,10 +468,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 entries.map((e) => ({ ...e, checksum: 'changed' }))
                             )
                         )
-                    ).toMatchObject({ left: { operation: 'applied-migration-changed:0001.sql' } });
+                    ).toMatchObject({ left: { operation: 'applied-migration-changed' } });
                     const sql = yield* SqlClient.SqlClient;
                     const bad = 'CREATE TABLE bad_expansion (value text);\n-- statement-breakpoint\nINVALID SQL';
-                    const nextName = `${(Number(entries.at(-1)!.name.slice(0, 4)) + 1).toString().padStart(4, '0')}.sql`;
+                    const last = entries.at(-1);
+                    expect(last).toBeDefined();
+                    if (!last) return yield* Effect.dieMessage('Expected checked-in migrations');
+                    const nextName = `${(Number(last.name.slice(0, 4)) + 1).toString().padStart(4, '0')}.sql`;
                     expect(
                         yield* Effect.either(
                             migrate(dialect, [
@@ -510,6 +513,27 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                             migrate(dialect, [...entries, { name: '0000.sql', sql: '', checksum: '' }])
                         )
                     ).toMatchObject({ _tag: 'Left' });
+                })
+            )
+        );
+        it.effect('storage diagnostics never carry rejected input, SQL parameters or filesystem paths', () =>
+            withStore(
+                dialect,
+                Effect.gen(function* () {
+                    const s = yield* Storage;
+                    const secret = 'synthetic-private-storage-sentinel';
+                    const invalid = yield* Effect.flip(s.create({ ...record(66), id: secret }));
+                    expect(invalid).toMatchObject({ operation: 'codec', reason: 'invalid-data' });
+                    yield* s.enqueue(secret, secret);
+                    const duplicate = yield* Effect.flip(s.enqueue(secret, secret));
+                    expect(duplicate).toMatchObject({ operation: 'sql', reason: 'database' });
+                    const missing = yield* Effect.flip(load(`/missing/${secret}`));
+                    expect(missing).toMatchObject({ operation: 'load-migrations', reason: 'filesystem' });
+                    for (const failure of [invalid, duplicate, missing]) {
+                        expect(failure).not.toHaveProperty('cause');
+                        expect(JSON.stringify(failure)).not.toContain(secret);
+                        expect(String(failure)).not.toContain(secret);
+                    }
                 })
             )
         );
@@ -613,6 +637,30 @@ for (const dialect of ['postgres', 'sqlite'] as const)
             )
         );
     });
+
+it('keeps storage error constructor fields exact and preserves tagged error behavior', () => {
+    expectTypeOf<ConstructorParameters<typeof StorageFailure>[0]>().toEqualTypeOf<
+        Pick<StorageFailure, 'operation' | 'reason'>
+    >();
+    expectTypeOf<ConstructorParameters<typeof Conflict>[0]>().toEqualTypeOf<Pick<Conflict, 'id' | 'reason'>>();
+    expectTypeOf<ConstructorParameters<typeof RoutingDenied>[0]>().toEqualTypeOf<Pick<RoutingDenied, 'reason'>>();
+    expectTypeOf<{ reason: 'database' }>().not.toExtend<ConstructorParameters<typeof StorageFailure>[0]>();
+    expectTypeOf<{ id: string }>().not.toExtend<ConstructorParameters<typeof Conflict>[0]>();
+    expectTypeOf<{ operation: string }>().not.toExtend<ConstructorParameters<typeof RoutingDenied>[0]>();
+    expectTypeOf<{ operation: string; reason: 'raw-driver-error' }>().not.toExtend<
+        ConstructorParameters<typeof StorageFailure>[0]
+    >();
+    for (const [error, tag] of [
+        [new StorageFailure({ operation: 'codec', reason: 'invalid-data' }), 'StorageFailure'],
+        [new Conflict({ id: id(1), reason: 'stale' }), 'StorageConflict'],
+        [new RoutingDenied({ reason: 'authenticated tenant scope required' }), 'RoutingDenied'],
+    ] as const) {
+        expect(error).toBeInstanceOf(Error);
+        expect(error._tag).toBe(tag);
+        expect(error).not.toHaveProperty('cause');
+    }
+    expect(new StorageFailure({ operation: 'missing-stock' })).not.toHaveProperty('reason');
+});
 
 it.effect('UUIDv7 generation is unique and ordered across milliseconds without database extensions', () =>
     Effect.gen(function* () {

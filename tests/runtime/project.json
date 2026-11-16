@@ -4,6 +4,7 @@
     "projectType": "library",
     "sourceRoot": "tests/runtime/src",
     "tags": ["type:test", "layer:backend", "capability:test"],
+    "implicitDependencies": ["@eventiva/resource-tests", "@eventiva/telemetry-tests"],
     "targets": {
         "typecheck": {
             "executor": "nx:run-commands",

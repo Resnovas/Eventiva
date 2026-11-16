@@ -16,14 +16,22 @@
 
 import { createHash } from 'node:crypto';
 import { NodeRuntime } from '@effect/platform-node';
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { canonicalLocale } from '@eventiva/contracts/i18n';
 import { ActionInventory, validateInventory, validateParity } from '@eventiva/contracts/inventory';
+import { TelemetrySinkFailure } from '@eventiva/contracts/observability';
 import { layer as i18n } from '@eventiva/integrations.formatjs/i18n';
-import { layer as flags, staticValues } from '@eventiva/integrations.openfeature.server/flags';
+import { layer as flags, staticValues, type SourcedProvider } from '@eventiva/integrations.openfeature.server/flags';
 import { fromConfig as postHog } from '@eventiva/integrations.posthog.server/flags';
+import {
+    consoleLoggerLayer,
+    serverLoggerConfig,
+    serverLoggerLayer,
+} from '@eventiva/integrations.telemetry.server/logger';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { FailClosed, InputDigest } from '@eventiva/runtime/invocation';
-import { Effect, Layer, Option } from 'effect';
+import { bootstrapTelemetryLayer, telemetryLayer, type TelemetryPolicy } from '@eventiva/runtime/telemetry';
+import { Cause, Config, Effect, Fiber, Layer, Option } from 'effect';
 import { ShellCaller, ShellIdentity, shellCaller, staticGrants } from './access.ts';
 import { deploymentProfile } from './cluster-profile.ts';
 import { platformModule, Status } from './status.ts';
@@ -38,20 +46,46 @@ import { platformModule, Status } from './status.ts';
  * ActionHost invocation fallback in this shell.
  */
 
+const diagnosticPolicy: TelemetryPolicy = {
+    messages: {
+        'diagnostic.startup': 'Diagnostic registration scope completed; this is not platform readiness.',
+        'diagnostic.unavailable':
+            'Diagnostic only: compose backend with trusted identity, tenant routing and SQL services to execute actions.',
+        'diagnostic.registered': 'Eventiva modules registered',
+    },
+    attributes: {},
+};
+
+// Bootstrap has no dependency on main configuration, flags, filesystem or services.
+const Bootstrap = bootstrapTelemetryLayer().pipe(Layer.provide(consoleLoggerLayer()));
+const SinkLive = Layer.unwrapScoped(
+    Config.option(serverLoggerConfig).pipe(
+        Effect.mapError(() => new TelemetrySinkFailure({ reason: 'configuration' })),
+        Effect.map(
+            Option.match({
+                onNone: () => consoleLoggerLayer(),
+                onSome: (options) =>
+                    serverLoggerLayer(Config.succeed(options)).pipe(Layer.provide(NodeFileSystem.layer)),
+            })
+        )
+    )
+);
+const MainTelemetry = telemetryLayer(diagnosticPolicy).pipe(Layer.provide(SinkLive));
+
 const FlagsLive = Layer.unwrapScoped(
     Effect.map(postHog, (remote) =>
         flags([
             { source: 'git-baseline', provider: staticValues({}) },
             ...Option.match(remote, {
                 onNone: () => [],
-                onSome: (provider) => [{ source: 'remote' as const, provider }],
+                onSome: (provider): ReadonlyArray<SourcedProvider> => [{ source: 'remote', provider }],
             }),
         ])
     )
 );
 
 const program = Effect.gen(function* () {
-    const profile = yield* deploymentProfile;
+    yield* deploymentProfile;
     const host = yield* ActionHost;
     const inventory = yield* ActionInventory;
     const module = platformModule(host.actions);
@@ -62,18 +96,8 @@ const program = Effect.gen(function* () {
         { server: listed.map(({ id, version, permission }) => ({ id, version, permission })) },
         ['server']
     );
-    yield* Effect.logWarning(
-        'Diagnostic only: compose backend with trusted identity, tenant routing and SQL services to execute actions.',
-        {
-            edition: profile.edition,
-            expectedRunners: profile.expectedRunners,
-            healthyRunners: 0,
-            status: 'unavailable',
-        }
-    );
-    yield* Effect.logInfo('Eventiva modules registered', {
-        actions: listed.map((action) => action.id),
-    });
+    yield* Effect.logWarning('diagnostic.unavailable');
+    yield* Effect.logInfo('diagnostic.registered');
 }).pipe(Effect.scoped);
 
 const MainLive = ActionHostLive.pipe(
@@ -90,4 +114,23 @@ const MainLive = ActionHostLive.pipe(
     Layer.merge(i18n({ locale: canonicalLocale, catalogue: {} }))
 );
 
-NodeRuntime.runMain(program.pipe(Effect.provide(MainLive)));
+const diagnostic: Effect.Effect<void, TelemetrySinkFailure> = program.pipe(
+    Effect.provide(MainLive),
+    Effect.withSpan('diagnostic.startup'),
+    Effect.provide(MainTelemetry),
+    // Await, not join: do not inherit the child's closed logger/tracer FiberRefs.
+    Effect.fork,
+    Effect.flatMap(Fiber.await),
+    Effect.flatten,
+    Effect.catchAllCause((cause) =>
+        Cause.isInterruptedOnly(cause)
+            ? Effect.interrupt
+            : Effect.logError('bootstrap.failure').pipe(
+                  Effect.zipRight(Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })))
+              )
+    ),
+    Effect.provide(Bootstrap)
+);
+
+// The default reporter runs after logger scopes close and would print a raw Cause.
+NodeRuntime.runMain(diagnostic, { disableErrorReporting: true, disablePrettyLogger: true });

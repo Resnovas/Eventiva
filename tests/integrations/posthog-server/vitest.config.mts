@@ -16,4 +16,8 @@
 
 import { testProject } from '../../../vitest.shared.ts';
 
-export default testProject('integrations.posthog.server-tests', ['packages/integrations/posthog-server/src/**']);
+export default testProject(
+    'integrations.posthog.server-tests',
+    ['packages/integrations/posthog-server/src/**'],
+    import.meta.url
+);

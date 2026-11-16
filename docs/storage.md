@@ -36,6 +36,42 @@ Use `Integrity.commit` through the runtime for mutations. It scopes keys by tena
 
 The durable Audit adapter does not implement a spool: even when spooling is permitted, it either persists to SQL or fails closed. `ready` checks availability before protected execution; a later write failure still fails the commit atomically. Runtime handlers must not capture a different tenant Storage/client or launch detached fibers.
 
+### Handle bounded storage diagnostics
+
+Handle `StorageFailure` as an unavailable or invalid persistence operation, not as a successful empty result. Its constructor requires `operation`, a module-owned diagnostic identifier, and accepts an optional `reason`. There is no default reason and no supported `cause` field. Keep `operation` constant for each failure path; never interpolate SQL, connection details, paths, migration names or rejected values into it.
+
+| Reason                           | Meaning                                                                                         |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `invalid-data`                   | A value failed schema decoding or encoding. Rejected input and parser details are not attached. |
+| `database`                       | A database operation failed. Driver errors, statements and bound parameters are not attached.   |
+| `filesystem`                     | Reading migration files failed. File paths and operating-system errors are not attached.        |
+| `randomness`                     | Secure UUID randomness could not be obtained. The original error is not attached.               |
+| `identity-guard-missing`         | The identity serialization guard is missing.                                                    |
+| `identity-key-mismatch`          | A stored identity's key differs from its lookup key.                                            |
+| `identity-version-conflict`      | An identity insert or versioned update did not change exactly one row.                          |
+| `identity-principal-required`    | A federation link lacks an active canonical principal.                                          |
+| `identity-link-collision`        | An issuer/subject pair already links to a different principal.                                  |
+| `identity-audit-tenant-mismatch` | A stored receipt belongs to a different tenant.                                                 |
+
+For example, read a record in an already authenticated Storage scope and log only safe diagnostic codes before preserving the typed failure:
+
+```ts
+import { Storage } from '@eventiva/contracts/storage';
+import { Effect } from 'effect';
+
+const read = (id: string) =>
+    Storage.pipe(
+        Effect.flatMap((store) => store.get(id)),
+        Effect.catchTag('StorageFailure', (failure) =>
+            Effect.logError({ operation: failure.operation, reason: failure.reason }).pipe(
+                Effect.andThen(Effect.fail(failure))
+            )
+        )
+    );
+```
+
+Use domain errors at public action boundaries; do not expose driver or parser errors through action results, receipts or logs. `Conflict` still requires `id` and its existing bounded transition reason; `RoutingDenied` still requires `reason`. Their identifiers are not redacted automatically, so use only values appropriate for that boundary. All three errors retain their existing tags and yieldable Effect error behavior, and their emitted constructors expose only their declared fields. Applied-prefix mismatches use the fixed operation `applied-migration-changed`, without an appended migration name. Stop and investigate migration history rather than retrying with modified checksums.
+
 ### Persistence seam v1
 
 The v1 consumer contract is the existing `Storage`, `CurrentTenant` and `TenantRouter` services from `@eventiva/contracts/storage`, together with the machine contracts from `@eventiva/contracts/machine`. There is no separate runner/workflow persistence service. `Storage.commit({ key, inputHash }, execute)` accepts an Effect returning `{ output: JsonValue, receipt: JsonValue }` and returns those values plus `replayed: boolean`. A repeated key with the same hash returns the stored result; a different hash fails with `Conflict`. The runtime `durable` layer adds caller/action/version key scoping and Receipt validation, so action hosts use `Integrity.commit` rather than inventing their own key scheme.

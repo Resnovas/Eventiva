@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "composite": false,
+        "noEmit": true,
+        "emitDeclarationOnly": false,
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "lib": ["es2023", "dom"],
+        "types": ["node"]
+    },
+    "include": ["src/**/*.tsx", "vitest.config.mts"],
+    "references": [
+        {
+            "path": "../../packages/ui-modules"
+        },
+        {
+            "path": "../../packages/contracts"
+        }
+    ]
+}

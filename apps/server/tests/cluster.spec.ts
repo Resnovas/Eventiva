@@ -187,6 +187,16 @@ describe('one authorized dispatch boundary', () => {
         expect(Either.isLeft(Schema.decodeUnknownEither(ClusterInvocation)({ ...request, intent: {} }))).toBe(true);
     });
 
+    it('accepts JSON wire input and rejects values that persistence cannot represent', () => {
+        const decode = Schema.decodeUnknownEither(ClusterInvocation);
+        expect(decode({ ...request, input: { nested: [null, false, 3, 'kept'] } })).toMatchObject({
+            _tag: 'Right',
+            right: { input: { nested: [null, false, 3, 'kept'] } },
+        });
+        for (const input of [undefined, () => 3, 3n, { value: undefined }, [Symbol('non-json')]])
+            expect(Either.isLeft(decode({ ...request, input }))).toBe(true);
+    });
+
     it.scoped('preserves host receipts and A1 business dedup while rechecking every new invocation', () =>
         Effect.gen(function* () {
             const { h, invoke } = yield* fixture;

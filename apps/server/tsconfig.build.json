@@ -16,6 +16,9 @@
             "path": "../../packages/runtime/tsconfig.build.json"
         },
         {
+            "path": "../../packages/integrations/telemetry.server/tsconfig.build.json"
+        },
+        {
             "path": "../../packages/integrations/sql/tsconfig.build.json"
         },
         {

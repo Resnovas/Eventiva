@@ -1,0 +1,6 @@
+{
+    "name": "@eventiva/integrations.telemetry.server",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/telemetry.server/src",
+    "tags": ["type:integration", "layer:backend", "capability:telemetry"]
+}

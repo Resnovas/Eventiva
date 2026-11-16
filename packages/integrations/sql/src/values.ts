@@ -24,13 +24,13 @@ export const uuidV7 = Effect.gen(function* () {
     const bytes = yield* Effect.try({
         // effect-boundary: cryptographically secure randomness is a Node capability
         try: () => randomBytes(16),
-        catch: (cause) => new StorageFailure({ operation: 'uuid-randomness', cause }),
+        catch: () => new StorageFailure({ operation: 'uuid-randomness', reason: 'randomness' }),
     });
     bytes.writeUIntBE(now, 0, 6);
-    bytes[6] = (bytes[6]! & 15) | 112;
-    bytes[8] = (bytes[8]! & 63) | 128;
+    bytes[6] = (bytes.readUInt8(6) & 15) | 112;
+    bytes[8] = (bytes.readUInt8(8) & 63) | 128;
     const hex = bytes.toString('hex');
-    return yield* Schema.decodeUnknown(UuidV7)(
+    return yield* Schema.decode(UuidV7)(
         `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-    ).pipe(Effect.mapError((cause) => new StorageFailure({ operation: 'uuid-v7', cause })));
+    ).pipe(Effect.mapError(() => new StorageFailure({ operation: 'uuid-v7', reason: 'invalid-data' })));
 });

@@ -21,7 +21,7 @@ import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
 import { Flags } from '@eventiva/contracts/flags';
 import { IdentityStore, RoleId, TeamId } from '@eventiva/contracts/identity';
 import { SubjectId, TenantId } from '@eventiva/contracts/ids';
-import { CurrentTenant, RoutingDenied, Storage, TenantRouter } from '@eventiva/contracts/storage';
+import { CurrentTenant, RoutingDenied, Storage, TenantRouter, type JsonValue } from '@eventiva/contracts/storage';
 import { identityStore } from '@eventiva/integrations.sql/identity';
 import { load, migrate, type Dialect } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
@@ -148,7 +148,7 @@ const fixture = (dialect: Dialect) =>
             );
         }
         const approvals = yield* Ref.make<ReadonlyMap<string, Approval>>(new Map());
-        const approve = (action: string, input: unknown) =>
+        const approve = (action: string, input: JsonValue) =>
             Ref.update(approvals, (current) =>
                 new Map(current).set('proof', {
                     principal: caller.subject,
@@ -264,7 +264,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                         const host = yield* ActionHost;
                         yield* host.register(yield* identityModule.pipe(Effect.provide(f.context)));
                         let count = 0;
-                        const execute = (name: string, input: unknown, c = caller, options = {}) =>
+                        const execute = (name: string, input: JsonValue, c = caller, options = {}) =>
                             host.execute(name, input, options).pipe(
                                 Effect.tap(() =>
                                     Effect.sync(() => {
@@ -365,6 +365,41 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                         expect((yield* execute('identity.audit.list', { limit: 100 })).receipt.outcome).toBe('denied');
                     }).pipe(Effect.provide(f.host));
                 })
+        );
+
+        it.scoped('identity diagnostics and public action failures never disclose stored invalid data', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const secret = 'synthetic-private-identity-sentinel';
+                yield* f.store.put('organization', { id: 'organization', name: 'Valid' }, null);
+                yield* f.sql`UPDATE identity_organization SET body = ${JSON.stringify({ id: 'organization', name: { secret } })}`;
+                const invalid = yield* Effect.flip(f.store.get('organization', 'organization'));
+                expect(invalid).toMatchObject({ operation: 'identity', reason: 'invalid-data' });
+                expect(invalid).not.toHaveProperty('cause');
+                expect(JSON.stringify(invalid)).not.toContain(secret);
+                yield* Effect.gen(function* () {
+                    const host = yield* ActionHost;
+                    yield* host.register(yield* identityModule.pipe(Effect.provide(f.context)));
+                    const result = yield* host
+                        .execute('identity.organization.get', {})
+                        .pipe(Effect.provideService(Caller, caller));
+                    expect(Exit.isFailure(result.result)).toBe(true);
+                    expect(JSON.stringify(result)).not.toContain(secret);
+                    const receipts = yield* f.sql<{ receipt: string }>`SELECT receipt FROM action_receipt`;
+                    expect(receipts).toHaveLength(1);
+                    expect(JSON.stringify(receipts)).not.toContain(secret);
+                }).pipe(Effect.provide(f.host));
+                yield* f.sql`DROP TABLE identity_organization`;
+                const unavailable = yield* Effect.flip(f.store.get('organization', secret));
+                expect(unavailable).toMatchObject({ operation: 'identity', reason: 'database' });
+                expect(unavailable).not.toHaveProperty('cause');
+                expect(JSON.stringify(unavailable)).not.toContain(secret);
+                yield* f.sql`DELETE FROM identity_guard`;
+                expect(yield* Effect.flip(f.store.lock)).toMatchObject({
+                    operation: 'identity',
+                    reason: 'identity-guard-missing',
+                });
+            })
         );
 
         it.scoped('CAS conflicts and audit failures roll back identity changes; missing guard fails closed', () =>

@@ -30,7 +30,7 @@ import {
     OpenFeature,
     type Provider,
 } from '@openfeature/server-sdk';
-import { Data, Effect, Layer } from 'effect';
+import { type Cause, Data, Effect, Layer } from 'effect';
 
 /**
  * The `Flags` service on the OpenFeature server SDK. Providers are ordered by
@@ -39,8 +39,20 @@ import { Data, Effect, Layer } from 'effect';
  * (a remote rollout). A flag no provider knows resolves to its safe default.
  */
 
-/** An OpenFeature call failed; flags fall back to safe defaults. */
-export class FlagProviderError extends Data.TaggedError('FlagProviderError')<{ readonly cause: unknown }> {}
+interface FlagProviderErrorFields {
+    readonly operation: 'initialize' | 'close';
+    readonly reason: 'provider-failed';
+}
+
+// The exact constructor keeps the vendor's open generic out of public declarations.
+const flagProviderErrorBase: new (
+    fields: FlagProviderErrorFields
+) => Cause.YieldableError & FlagProviderErrorFields & { readonly _tag: 'FlagProviderError' } = Data.TaggedError(
+    'FlagProviderError'
+)<FlagProviderErrorFields>;
+
+/** Bounded lifecycle diagnostics only; vendor failures are never retained. */
+export class FlagProviderError extends flagProviderErrorBase {}
 
 /** An OpenFeature provider tagged with the precedence source it speaks for. */
 export interface SourcedProvider {
@@ -89,7 +101,7 @@ export const layer = (
                 Effect.tryPromise({
                     // effect-boundary: OpenFeature binds providers through a promise.
                     try: () => OpenFeature.setProviderAndWait(domain, multi),
-                    catch: (cause) => new FlagProviderError({ cause }),
+                    catch: () => new FlagProviderError({ operation: 'initialize', reason: 'provider-failed' }),
                 }).pipe(
                     Effect.catchAll((error) =>
                         Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
@@ -99,14 +111,16 @@ export const layer = (
                     Effect.tryPromise({
                         // effect-boundary: replacing the provider closes the old one.
                         try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
-                        catch: (cause) => new FlagProviderError({ cause }),
+                        catch: () => new FlagProviderError({ operation: 'close', reason: 'provider-failed' }),
                     }).pipe(Effect.ignoreLogged)
             );
             const client = OpenFeature.getClient(domain);
             return Flags.of({
                 evaluate: (flag: Flag, context?: FlagContext) =>
                     // OpenFeature catches provider failures and resolves with the default and an error code.
-                    Effect.promise(() => client.getBooleanDetails(flag.key, flag.safeDefault, toOpenFeature(context))).pipe(
+                    Effect.promise(() =>
+                        client.getBooleanDetails(flag.key, flag.safeDefault, toOpenFeature(context))
+                    ).pipe(
                         Effect.map((details) =>
                             details.errorCode === undefined
                                 ? {

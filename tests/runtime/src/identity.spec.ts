@@ -281,7 +281,9 @@ it.scoped('identity is off by default and rejects unrecognized resource policies
             )
         );
         const auth = yield* Authorizer.pipe(Effect.provide(f.security));
-        expect(yield* Effect.either(auth.check(admin, { ...profileGet, name: 'foreign.read' }, {}))).toMatchObject({
+        expect(
+            yield* Effect.either(auth.check(admin, { ...profileGet, name: 'foreign.read' }, { subject: admin.subject }))
+        ).toMatchObject({
             left: { reason: 'resource-policy-required' },
         });
     })
@@ -406,11 +408,15 @@ it.scoped(
                 notBefore: 500,
             };
             const policy = { issuer: claims.issuer, audience: 'eventiva-api', scopes: ['eventiva.invoke'] };
-            const authenticate = (value: unknown, expected = policy) =>
+            const authenticate = <Claims extends typeof VerifiedTokenClaims.Encoded>(
+                value: Claims,
+                expected = policy
+            ) =>
                 f
                     .run(authenticateToken(Redacted.make('TEST-NOT-A-TOKEN'), expected))
                     .pipe(Effect.provideService(StandardsTokenVerifier, { verify: () => Effect.succeed(value) }));
             expect(yield* authenticate(claims)).toEqual(viewer);
+            expect(yield* authenticate({ ...claims, notBefore: -1 })).toEqual(viewer);
             expect(
                 yield* Effect.either(
                     authenticateToken(Redacted.make('TEST-NOT-A-TOKEN'), policy).pipe(
@@ -422,14 +428,20 @@ it.scoped(
                 )
             ).toMatchObject({ left: { _tag: 'InvocationDenied' } });
             for (const invalid of [
+                { ...claims, issuer: '' },
                 { ...claims, issuer: 'https://attacker.test' },
                 { ...claims, issuer: `${claims.issuer}/` },
                 { ...claims, audiences: ['other-api'] },
+                { ...claims, audiences: ['', 'eventiva-api'] },
                 { ...claims, scopes: [] },
+                { ...claims, scopes: ['', 'eventiva.invoke'] },
+                { ...claims, expiresAt: Number.NaN },
+                { ...claims, notBefore: -62135596800001 },
                 { ...claims, expiresAt: 1000 },
                 { ...claims, expiresAt: 9999 },
                 { ...claims, notBefore: 1001 },
                 { ...claims, notBefore: 10000, expiresAt: 10000 },
+                { ...claims, subject: '' },
                 { ...claims, subject: 'unlinked' },
                 { ...claims, session: admin.session },
                 { ...claims, session: id(888) },

@@ -1,0 +1,14 @@
+{
+    "name": "@eventiva/resource-tests",
+    "projectType": "library",
+    "sourceRoot": "tests/resources/src",
+    "tags": ["type:test", "layer:backend", "capability:test"],
+    "targets": {
+        "test": { "cache": false },
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/resources/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        }
+    }
+}

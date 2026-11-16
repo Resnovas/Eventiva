@@ -1,0 +1,370 @@
+# Eventiva modular platform specification
+
+Status: implementation contract and review brief, 2026-11-15. This is not an implementation-completion claim.
+
+## 1. Authority, baseline and delivery boundary
+
+This Markdown is the single architecture/specification source. The [review artifact](https://ampcode.com/artifacts/eventiva-modular-platform-b115f8c7-0edb-4b1b-9219-abf845e2f85c) renders the same document; implementation issues link it rather than define competing contracts. Changes to an agreed API require updating this document and notifying affected lanes before integration.
+
+Authority, highest first:
+
+1. Jonathan's modular-platform request, 2026-11-15 21:26 UTC, and approval gate, 21:34 UTC, in the [coordination thread](https://ampcode.com/threads/T-01a189ae-399d-7162-9765-4488b9600016).
+2. Approved decisions and comments on [EVE-13](https://linear.app/resnovas/issue/EVE-13), [EVE-23](https://linear.app/resnovas/issue/EVE-23), [EVE-40](https://linear.app/resnovas/issue/EVE-40), [EVE-42](https://linear.app/resnovas/issue/EVE-42), [EVE-251](https://linear.app/resnovas/issue/EVE-251), [EVE-244](https://linear.app/resnovas/issue/EVE-244), [EVE-16](https://linear.app/resnovas/issue/EVE-16), and the scoped issues below. [EVE-263](https://linear.app/resnovas/issue/EVE-263) is the binding source of truth for strict acyclic and escape-free typing across all increments. A stale proposal heading does not override a later approved owner comment.
+3. Current repository contracts and [foundation](../foundation.md), [actions](../actions.md), [storage](../storage.md), [identity](../identity.md), [cluster](../cluster.md) and [platform/marketplace index](eventiva-platform-and-marketplace.md). Incompatible changes require explicit migration, not silent reinterpretation.
+
+Inspected baseline: `Resnovas/Eventiva` local `main` and `origin/main` both pointed to `58f05d5d8eee26f1987cb733ecb27abf84482fb1`. The fresh contracts/schema/runtime packages, authorized ActionHost, tenant-routed SQL Storage, identity primitives and cluster integration are the baseline, not the archived application. Source review establishes their presence, not that every acceptance gate below passes. Current server-only inventory proof is not UI/agent/native parity.
+
+`Examples/eventiva-before-amp` and `Examples/packages-old` are historical evidence only. Do not import them, restore their architecture, run active checks against them or initialize private archive tests. EVE-23/40/244 remain Done; this work adds increments rather than reopening their completed foundation.
+
+This specification lane changes docs and Linear planning only. It does not write production code, add dependencies, choose cryptographic algorithms/providers, change settings, provision services or push. Existing isolated implementation may continue where already authorized. **No push/merge to main before owner approval of the detailed implementation brief and review gates.** Approval to plan does not approve new package versions, images, external components, paid services, production migrations or ingestion.
+
+## 2. Minimal composable kernel and package boundaries
+
+The kernel owns module identity/registry, manifest validation, dependency graph, named capability bindings, lifecycle state/generation, admission policy and scoped acquisition/disposal. It does not own domain handlers, SQL, identity providers, renderers, broker transports, a second workflow engine or feature-specific branches.
+
+Preserve one authorized action implementation for humans, UI/MDT, first-party/external agents and every supported transport. Lifecycle administrative operations are also authorized, discoverable operations, not a privileged UI side channel. KernelAuthority checks module admission/lifecycle policy using existing Caller; it does not replace action/resource authorization or approval. Metadata discovery is permission-filtered.
+
+Dependency direction:
+
+- `contracts`: portable schemas, errors, service tags/structural ports and pure validation/planning; no workspace runtime, driver, Node or vendor imports.
+- `schema`: existing portable domain/resource helpers over contracts; no drivers, handlers or parallel service authority.
+- `runtime`: Effect orchestration over portable contracts/schema; no SQL, Node, React or vendor SDK.
+- `integrations`: implementations of contracts using approved external APIs; no runtime import. SQL captures SqlClient and constructs Storage on that exact client.
+- `extensions`: declare domain resources/actions and provide Effect handlers against neutral ports; no direct or transitive SQL/integration dependency.
+- `apps`: select providers, Config/Layers, targets and topology. The composition root is the only place that wires runtime services to integration implementations.
+
+Use existing subpath exports, `sideEffects: false`, explicit Nx tags and acyclic imports. No root barrel, `export *`, hidden global locator or weakening lint to make an import work. Portable declarations must not pull backend code into client bundles, including via type-only re-exports.
+
+### 2.1 Binding acyclic and exact-type gate (EVE-263)
+
+No direct or indirect cycles are permitted in module or package graphs, including value/type-only imports, relative paths, aliases, re-exports, generated entrypoints, dynamic import edges and runtime manifest/provider dependencies. Type erasure at emit time does not excuse a source cycle. Shared domain-neutral contracts use `A -> C <- B`: extract one versioned public Effect Schema contract into existing lower-level contracts/schema; C never imports A or B. Do not duplicate types, structurally widen away invariants or proliferate packages to hide a cycle. Hooks remain one-way through the typed registry; observing a publisher does not create a publisher-to-observer import.
+
+Static CI must combine Nx package-boundary/cycle analysis with TypeScript-resolved source import/re-export graph analysis, including same-package cycles and real export/alias resolution. Runtime admission checks the complete selected manifest and provider graph before publishing registrations/activation; report an actionable closed cycle path using KernelError reason `cycle`. A partial registration that bypasses missing-node checks must not hide a cycle when the rest of its topology is submitted. No partial activation after graph rejection.
+
+Strict type checks retain `strict`, `noImplicitAny`, `strictNullChecks`, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`, plus typed lint. Public schemas, actions, resource/provider/hook contracts, Context/Layer services and external bindings preserve exact input/output/error/environment types. CI rejects `any`, unauthorized explicit `unknown`, erased none-like placeholders, unsafe casts, blind JSON casts, untyped module declarations, `@ts-ignore`, `@ts-nocheck` and lint/rule suppressions used to escape the contract. Domain Option/unions and typed unavailable states remain valid; an erased placeholder standing in for an implementation does not. Compile-negative fixtures must fail for the intended type reason without production suppression comments; schema/runtime and inferred types must agree, including when swapping providers unchanged.
+
+Untrusted input is decoded at the boundary before entering the typed domain; a type assertion is not validation. Prefer generic typed Schema decode signatures. If an unavoidable vendor API forces an unknown value, isolate it privately inside one narrow decoder adapter, expose only the parsed precise type and escalate exact file/line/API/reason to the owner. This is a proposed exception requiring explicit review, not blanket permission for unknown in module APIs. An unresolved vendor declaration is blocked, not repaired with `any`, suppression or widening.
+
+Required evidence: static and runtime `A -> B -> A` and `A -> B -> C -> A` negatives; same cases through type-only/alias/re-export paths; valid shared-contract `A -> C <- B` and diamond `A -> B,C -> D`; one-way hook observation; strict compile/decode/schema-divergence negatives and provider-swap positive. Record exact revision, files/lines, command/exit/diagnostic, cycle path or escape, owner and remediation/approval. Existing violations are reported separately, never silently grandfathered or hidden by a green isolated alias build. EVE-263 clearance and owner review are prerequisites for EVE-261 shared integration/main delivery. This specification does not install or weaken verification gates.
+
+Current audit status is **blocked, not cleared**. The kernel lane reports a reachable 10-file graph without cycles/reverse contracts edges and 36 focused tests at its signed audit checkpoint, but identifies public explicit unknown at `packages/runtime/src/kernel-runtime.ts:48` (provider values), `:58` (manifest), `:98` (compose input), plus private decode/compose `:121/:594`. A typed API/boundary redesign remains open; these are not assumed vendor exceptions. This lane directly inspected baseline `packages/runtime/src/host.ts`: `:80/:85` expose unknown cause/manifest, `:100-103` Layer/error/environment shapes use unknown, `:130-146` invocation/handler inputs/outputs/errors are unknown, and `:326` asserts `Layer.Layer<R, unknown>`. These preexisting surfaces need classification/remediation under EVE-263 before integration; no suppression or automatic exemption is authorized. The [review packet](https://ampcode.com/artifacts/eve-261-integration-review-packet-79ccdbb8-374a-4c4f-bd42-6e43e14b975c) holds exact checkpoint hashes, evolving evidence and remaining audits; this is not an exhaustive repository audit or a claim that an actual cycle was found.
+
+## 3. Kernel API freeze
+
+### 3.1 Identity, manifests and exact versions
+
+`packages/contracts/src/module-manifest.ts` owns ModuleId, ModuleVersion, ModuleDependency, CapabilityDeclaration, CapabilityRequirement, MigrationDeclaration, KernelManifest, ProviderKey, ProviderBinding, PlatformComposition, LifecycleOperation, ModuleState, ReadyReceipt and UpdateResult. `module-policy.ts` owns KernelError and KernelAuthority.
+
+ModuleVersion is an exact numeric `x.y.z` pin. Dependencies name an exact module id/version. Capability versions are independently pinned exact contracts, not inferred from a provider module's version. This increment does not support caret, tilde, wildcard, comparator, prerelease, build metadata, ranges or automatic upgrades. Do not infer broader semver grammar from the word compatibility. Existing format-1 `schema/manifest.ts` accepts a different historical parser; keep it unchanged until an explicit compatibility adapter validates the intersection and rejects unsupported kernel versions visibly.
+
+Frozen wire shapes:
+
+| Contract                                      | Fields                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| KernelManifest                                | `id`, `version`, `trust`, `isolation`, `dependencies`, `provides`, `requires`, `migrations`, `restartRequired`            |
+| CapabilityDeclaration / CapabilityRequirement | `{ name, capability, version }`                                                                                           |
+| MigrationDeclaration                          | `{ id, kind: 'additive' \| 'staged', online: boolean }`                                                                   |
+| ProviderBinding                               | `{ consumer, requirement, provider, instance }`                                                                           |
+| PlatformComposition                           | `{ modules: [{ id, version }], bindings: [ProviderBinding] }`                                                             |
+| ReadyReceipt                                  | `{ runtimeId, generation, emitted }`                                                                                      |
+| UpdateResult                                  | `{ status: 'updated', version }` or `{ status: 'restart-required', reason: 'incompatible' \| 'migration' \| 'declared' }` |
+
+Do not add checksum/from/to/window fields to MigrationDeclaration by prose implication. The privileged resource/storage migration plan owns execution details. Additional licence/source/provenance, target/runtime compatibility, action/resource/UI/i18n/terminology/flag/offline/telemetry declarations belong a versioned module-package envelope validated alongside KernelManifest and the existing format-1 manifest. KernelManifest alone is not the complete distribution envelope. Defining that envelope is an integration gate; an unchecked spread of unknown fields is not an adapter.
+
+### 3.2 Named providers and resolution
+
+Provider identity is the structured pair `{ module: ModuleId, instance: string }`. Instance names are nonempty and unique within the providing module; the same local name in two modules does not collide. A declaration's `name` identifies its local instance/requirement; `capability` identifies the neutral contract. Separate named instances may use the same implementation/version with different Config, tenant binding and Scope.
+
+A binding selects `(consumer module, requirement name) -> (provider module, instance name)`. Resolve only explicitly selected modules, declared dependencies and exact capability versions. Validate target support, trust/isolation, security and achieved assurance through policy at admission/use. Reject missing/duplicate bindings or keys, unknown provider instances, capability mismatch, cycles, undeclared dependencies and ambiguous candidates. No first-registered/default/most-recent provider selection. A policy denial remains a denial when another instance happens to offer the same capability.
+
+`resolve` returns metadata only. `KernelEnvironment` supplies only the consumer's declared services through Context/Layer, not a raw global Context, credentials or driver. Required provider loss invalidates readiness/admission; optional behavior must declare a safe unavailable state, never silently substitute a less trusted provider.
+
+### 3.3 Lifecycle states and transitions
+
+All ten public operations remain: `register`, `validate`, `install`, `activate`, `ready`, `deactivate`, `unregister`, `retire`, `update`, `recover`. Additional Kernel methods are `compose`, metadata-only `resolve`, `snapshot` and scoped `workflow`. Runtime symbols are KernelModule, KernelEnvironment, ModuleDefinition, Kernel and KernelLive in `runtime/kernel-runtime.ts`.
+
+Stable ModuleState vocabulary is `registered`, `validated`, `installed`, `active`, `ready`, `inactive`, `failed`, `retired`. Absence after unregister is not another installed state. An in-progress operation/phase may appear in a snapshot but must not become a competing state machine.
+
+| Operation  | Allowed source                                     | Successful destination / mandatory effect                                                                                                                    |
+| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| register   | absent                                             | registered; decode/stage identity/declarations, acquire no service Layer                                                                                     |
+| validate   | registered, validated                              | validated; config/dependency/provider/trust checks, no feature data mutation                                                                                 |
+| install    | validated                                          | installed; verify prerequisites and privileged installation/migration evidence; kernel executes no SQL                                                       |
+| activate   | installed, inactive                                | active; build candidate Scope, stage registrations, verify Layer readiness, publish generation atomically                                                    |
+| ready      | selected modules active or ready                   | ready; verify selected required topology, return receipt once per runtime generation; repeated ready is idempotent                                           |
+| deactivate | active, ready                                      | inactive; stop new admission, refuse while leased or perform separately requested safe drain, unpublish, release Scope exactly once                          |
+| unregister | registered, validated, installed, inactive, failed | absent; reject live dependents/leases, remove registry entries, preserve persisted data and installation history                                             |
+| retire     | installed, inactive, failed                        | retired; audited non-serving tombstone, no delete or uninstall                                                                                               |
+| update     | installed, inactive, active, ready                 | non-serving stays installed/inactive; serving becomes active pending ready revalidation; publish exact candidate or return restart-required without mutation |
+| recover    | failed or interrupted persisted operation          | last verified installed/inactive state, or explicitly revalidated/reactivated last-good generation; never infer ready from mere presence                     |
+
+Invalid/rejected requests leave stable state unchanged. Initial acquisition failure records failed and disposes candidate resources; replacement failure retains the old serving generation. Required selected dependents prevent provider removal/deactivation. Retired tombstones never reactivate implicitly; any new registration/version decision preserves historical evidence. Deactivation/unregister/retire never delete domain data.
+
+ModuleDefinition.validate is mandatory `Effect<void, KernelError>` config/resource-policy preflight: redacted error output, no feature data mutation. `compatibleWith` is optional but required for hot update and names an exact predecessor version, not a range. Active leases reject mutation before preflight; migration-required preflight maps to UpdateResult restart-required/migration before candidate acquisition. These are written kernel-lane contracts; full export/build integration remains held.
+
+### 3.4 Leases, updates, migrations and recovery
+
+`workflow` acquires a scoped lease returning `{ module, version, generation }`. The generation denotes an immutable selected composition/provider/schema snapshot. Never resolve its work against a newer mutable composition. The first kernel increment conservatively rejects active-runtime mutation while relevant leases exist; it does not cancel, restart, migrate or silently repin an active workflow. A caller can wait or use its workflow engine to checkpoint/suspend safely, release, then retry. Scope shutdown waits for drain instead of force-releasing active resources.
+
+Hot replacement is preferred only after explicit compatibleWith, same major, preserved dependency/provided/required/security contracts, additive compatible schema and candidate readiness. Same-major alone is insufficient. Stage in a separate Scope, keep the old generation alive, publish atomically, invalidate prior ready and dispose superseded resources exactly once after safe release. Snapshot/test evidence must distinguish accepted update, busy refusal, candidate failure and restart-required.
+
+Staged/breaking migration, offline migration, declared restart, incompatible native/runtime contracts or incompatible retained schema returns restart-required before mutation; resource preflight must do so before SQL acquisition. The kernel plans but executes no migration. The central privileged adapter owns immutable migration identity/checksum, schema versions, dependency ordering, compatibility windows, backfill and history. First resource increment accepts additive evolution only; staged/breaking execution is not delivered merely by its declaration.
+
+Apply approved forward-only expand/backfill/contract migrations. Preserve old code/data compatibility for the declared window. Never down-migrate, reset/drop data or claim rollback by returning old code to an incompatible schema. Roll back code only when compatibility is proven; otherwise repair forward. Persist operation checkpoints, old/candidate identity, migration evidence and audit so interrupted installation/update can be diagnosed and explicitly recovered.
+
+Process-local lease counters and ready receipts are not distributed fencing or recovery evidence. EVE-252/EVE-54 own persisted workflow/checkpoint/lease/owner fencing across runner loss. A resumed workflow rechecks Caller, revocation, approval, deadline and state while retaining its approved immutable version identity and idempotency. No second local-only execution engine.
+
+### 3.5 Public typed failures
+
+KernelError is a Data.TaggedError with bounded safe module/reason fields. Its exact written closed reason union is:
+
+```text
+invalid-contract | duplicate | missing | incompatible | cycle | invalid-state
+denied | untrusted | isolation-unavailable | dependency-active | workflow-active
+module-failed | provider-unavailable | dependency-missing | dependency-version
+provider-ambiguous | capability-version | undeclared-dependency | assurance-unmet
+invalid-config | not-ready | migration-required | recovery-required
+```
+
+Map prose aliases to those literals: invalid-manifest -> invalid-contract; duplicate-module -> duplicate; unknown-module -> missing; invalid-transition -> invalid-state; dependency-cycle -> cycle; provider-missing -> provider-unavailable; trust-denied -> denied/untrusted according to the actual gate; active-leases -> workflow-active; active-dependents -> dependency-active; activation-failed -> module-failed. Do not export alternative spellings from an integration wrapper.
+
+UpdateResult restart reasons remain separate from KernelError. ResourceFailure and hook errors keep their owning contracts. Existing ActionHost invocation, authorization, approval, Storage and Integrity errors are not renamed into one catch-all KernelError. Public serialization excludes arbitrary Cause trees, Config values, raw inputs, driver errors and protected payloads; retain typed internal causes only within approved redacted diagnostics.
+
+## 4. Declarative platform composition and readiness
+
+Composition selects exact modules and explicit named bindings as data. Config/secret references and target/deployment metadata are validated in the app/package envelope, not arbitrary extra KernelManifest fields. Validate the entire selected graph before publishing any routes, handlers or listeners. Activation follows dependency order; release follows reverse acquisition order. No module imports a composition root or hard-codes its provider.
+
+Illustrative composition data, not a claim that these modules/providers are shipped:
+
+```json
+{
+    "modules": [
+        { "id": "word-art", "version": "1.0.0" },
+        { "id": "platform-logging", "version": "1.0.0" }
+    ],
+    "bindings": [
+        {
+            "consumer": "word-art",
+            "requirement": "startup-log",
+            "provider": "platform-logging",
+            "instance": "console-and-file"
+        }
+    ]
+}
+```
+
+A second fixture changes provider module/instance bindings and instance configuration, not word-art source. A coexistence fixture exposes two named instances simultaneously and proves no cross-instance Config/tenant/Scope contamination. A feature flag is not a replacement for composition, installation, authorization or schema compatibility.
+
+Install the bootstrap logger first, then validate Config/declarations, construct authorized audit/storage services, prepare durable event consumers, activate required topology and check actual service readiness. `ready` must verify required modules/providers, migration/schema evidence, audit capability and achieved deployment health. Only then publish `platform.ready` for runtimeId/generation. A diagnostic shell with zero healthy runners cannot emit production-ready success.
+
+Activation/update/topology changes monotonically advance generation and invalidate earlier readiness. Repeated ready returns emitted:false. Durable publication uses a unique runtime/generation/event identity and recoverable outbox; observer delivery is at least once with consumer idempotency. The isolated kernel receipt is explicitly nondurable. Optional degraded modules remain visible; missing required services cannot be disguised as ready.
+
+Generation is monotonic, not necessarily consecutive or an activation count. The current kernel starts at 0 and advances on registration/topology changes too; first activation is not necessarily generation 1. Observation HookModuleIdentity accepts a nonnegative actual trusted kernel generation, not a synthetic 0 for every preactivation event. KernelSnapshot currently exposes only module/version/state, not generation: ReadyReceipt and WorkflowLease carry generation. A trusted lifecycle observation envelope for register/validate/install still needs an explicit integration contract; do not read a nonexistent snapshot.generation or synthesize identity. Serving/workflow pins require the verified active/ready generation (positive in this lifecycle); positivity alone proves neither readiness nor durability. Hooks never allocate their own kernel generation.
+
+The banner observer is registered/active before ready, but prints only in response to verified ready. Successful banner delivery is downstream evidence, not a circular prerequisite for producing ready. Runtime identity and intended process/runner multiplicity must be declared: one intended runtime/generation, not one banner per accidental retry, connection or listener registration.
+
+## 5. Central database-neutral resources
+
+Features declare typed resources/fields and operate through Resources. They do not issue SQL, choose clients, run migrations or access provider credentials. Existing `schema/resource`, `schema/field` and composition helpers must adapt to one canonical resource model; no independently mutable parallel registry. Preserve original resource/field ownership and namespaced cross-module contributions.
+
+Final dependency/API freeze:
+
+| Path                                        | Ownership                                                                                                                                                                                                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts/src/resource.ts`        | ResourceDefinition/Field schemas; Resource/ResourceValue/ResourceQuery; Resources and ResourceFailure; declareResource, contributeFields, validateEvolution, decodeResource; pure migration plans and structural ResourceDriver/ResourceProvider     |
+| `packages/runtime/src/resource.ts`          | imports contracts only; `resourceRuntime(provider, authorize)` builds Resources Layer, enforces current tenant/caller/authorization                                                                                                                  |
+| `packages/integrations/sql/src/resource.ts` | workspace imports point to contracts, never runtime; existing local SQL storage/migrations seams retained; `resourceProvider`, `planResourceMigrations`, `migrateResources`; captures SqlClient and constructs existing Storage on that exact client |
+
+Every operation checks CurrentTenant, Caller and injected authorization, including transaction, query and migration surfaces. Bind each instance to exactly one authenticated tenant/client; reusing it under another tenant fails before SQL or data disclosure. Field policies and current revocation apply before returning values, query results, schemas, projections or agent context. Public query schemas allow bounded declared fields/operators, not raw SQL expressions.
+
+Resource transactions delegate existing Storage.transaction, preserving the same SqlClient/Integrity fiber and atomic domain mutation, idempotency, immutable revisions, transition history, outbox and audit evidence. A nested independently opened client or swallowed failure breaks A1 and is forbidden. One operational database per tenant remains authoritative; shared control-plane metadata does not authorize tenant reads.
+
+Reject foreign or unowned ambient transactions before any captured resource or operational Storage operation, including Integrity's internal transaction. The resource lane's two-provider regression found pinned Effect SQL's shared TransactionConnection could otherwise route provider-B reads through provider-A's active client; its local adapter guard reportedly fixes both PostgreSQL and SQLite cases without changing EVE-42 source. Same-provider owned nesting remains supported. This is an explicit tenant/client-safety contract, not cross-provider distributed atomicity; inspect the checkpoint's before/after evidence before integration.
+
+Records and immutable record/schema revisions live in dedicated tenant tables. Privileged migrate validates additive declaration versions, immutable history and field ownership before applying changes; incompatible evolution returns typed failure/restart plan. No ordinary feature or hook can call privileged migration. No down/delete/reset. Cross-module optional fields preserve previous values/history and cannot lower security floors or change existing types/meaning.
+
+The SQL adapter is not proof of every database implementation. PostgreSQL, SQLite, Drizzle, device migration and sync capabilities require their own approved implementations/conformance evidence. JSON storage for extension values must not replace owner-required raw typed device tables or typed canonical money/time/identity contracts. EVE-133 retains tenant field designer/augmented inventory/CRDT scope; this substrate does not prematurely close it.
+
+CI SQL reachability uses TypeScript module resolution through direct, type-only, re-export and transitive paths, relative imports and aliases. Adapter imports are positive controls; extension/runtime bridge packages reaching SQL are negative controls. String matching only the direct import spelling is insufficient.
+
+## 6. Durable observation-only hooks
+
+EVE-45 owns durable event production/outbox/change feed; EVE-262 is its governed subscription/dispatcher/protected gateway increment, created by the coordinating lane. These share one event engine, not competing registries. Hooks observe committed facts and may perform separately authorized additive work. They never veto, block a critical operation, modify input/result, replace authorization/approval, control the transaction or inject callbacks into protected execution. Source operation success/failure does not depend on observer success, and observer retry never reruns the source operation.
+
+Written hook contract, locally implemented but not yet verified durable integration:
+
+- `contracts/hook`: HookPin, HookObservation, HookEvent, HookDeclaration, HookClaim, HookSettlement schemas/types; HookModuleIdentity, HookCapability, HookDeliveryState schemas; HookDenied, HookOutboxFailure, HookObserverFailure errors.
+- HookReleasePolicy.authorize(declaration,event,requirements); HookOutbox.stage(event,observers), claim(declaration,now), settle(claim,settlement). HookReleaseDeny and HookOutboxUnavailable fail closed. Pure hookReleaseRequirements and hookFlag (`hooks.foundation-enabled`, default false).
+- `runtime/hook`: HookSink.deliver(declaration,event,idempotencyKey), HookSinkUnavailable; HookDispatcher.register(declaration,optionalCallback) is scoped and returns dispatch/drain; HookDispatcherLive.
+- HookPin is `{ tenant, owner: { module, version, generation }, hook, revision }` with exact numeric module version. Pending work retains this pin; no auto-upgrade to the newest callback.
+
+Hook lifecycle validates declaration/policy before registration, activates in its owning Scope, refuses new delivery while draining, waits for in-flight safe settlement on deactivate, then unregisters/disposes once. Module update must reconcile or preserve pinned old revisions; it cannot strand pending rows or reroute them silently. Recheck current tenant/resource/purpose/profile permission and revocation on every delivery attempt.
+
+Observation and additive capability are distinct. Additive work is declarative-only and targets an exact action version; sink invokes canonical ActionHost policy, authorization and any required human approval. It is not an automatic approval grant or a private business handler. Financial additive dispatch is denied in the initial hook contract.
+
+Stage safe observations in the originating transaction's outbox. Dispatch only leased committed events after commit, using stable event/subscription/revision idempotency keys, ordering per resource/causal key, bounded concurrency/capacity, lease expiry and fenced reclaim/CAS, retry policy, quarantine/dead-letter and audited replay. Do not claim global ordering. Pending rows must survive registry/runner removal and process restart.
+
+Current dispatcher registry/concurrency/drain are process-local. Volatile model tests prove protocol behavior only. SQL durable outbox binding, ordered claim/fencing, reclaim, capacity, dedup, CAS and dead-letter persistence are production adapter obligations. HookOutboxUnavailable/HookReleaseDeny remain fail-closed until real wiring is supplied. Default-off is rollout safety, not completion evidence.
+
+Decode adapter claims before use. An invalid claim cannot be passed to settlement as though its lease identity/fence were validated; use a separately validated lease envelope or return a precise typed failure. Hook audit reports a blocked current path at `runtime/hook.ts:136-140` that forwards a malformed claim to settle (null probe reached settle(null), not policy/sink). Its tests also contain explicit unknown/unsafe casts/JSON.parse-inferred any, and pinned Effect TaggedError declaration output contains generated private `Record<string, any>` bases. The packet inventories exact locations and vendor-boundary review requests. Acyclic hook imports and passing tests do not exempt these findings or prove quarantine/fencing.
+
+At-least-once delivery plus durable idempotent effects is the contract, not magical exactly-once transport. A crash after external side effect and before acknowledgement requires that sink's idempotency protocol or reconciliation. Console printing itself is not transactional with the database; the banner acceptance must explicitly bound/prove its observable crash behavior rather than claim physical exactly-once output from an in-memory counter.
+
+## 7. Protected events, trust and authorization floors
+
+Reuse the closed existing security profiles `baseline`, `sensitive`, `restricted`, `vault` and assurance A1-A5 from EVE-13/EVE-251. Do not invent a parallel hook trust taxonomy or confuse assurance levels with action decision cards A1-A4 for atomicity/approval/offline/audit. Field/resource profile can be raised, not weakened by an extension, flag or composition.
+
+Core immutable profiles define mandatory handling; tenant policy can tighten but not lower floors. Sensitive access requires the approved assurance floor (at least A2); Restricted server decryption requires at least A4 under the approved policy. Vault/zero-knowledge does not acquire server decryption by installing a plugin. Achieved assurance is measured policy evidence, not self-declared trust in a manifest.
+
+Four independent private-release gates must agree: authorized user/service policy, verified service/workload attestation, broker/key-release authorization and client-authorized cryptographic release. Root/KEK/DEK hierarchy is not a universal decrypt key. Hook registration, module installation, catalogue review or administrator trust is never a substitute for any release gate. Exact algorithms, providers, attestation technology and key custody remain approval-gated; this spec selects none.
+
+Hooks receive only explicitly authorized minimized observations. No secrets or plaintext protected payloads in outbox, hook event, retry/dead-letter, logs, errors, UI/agent projection or tracing. Resource references themselves are sensitive and cannot enable unauthorized lookup. Executable third-party observers are denied for Restricted/Vault and protected operations. All hooks are denied for decrypting and emergency events in the initial contract. Metadata-only release still checks exact tenant/resource id/purpose/profile on each attempt; it grants no decrypt capability.
+
+Incident/alarm/safety observations cannot automatically actuate dispatch, audio, lighting, PA, emergency equipment or live-production state. EVE-253 requires deliberate authorized human action; a hook may notify/propose only on allowed non-emergency channels. Independent certified safety systems are not replaced or controlled by this extension model. Payment/accounting/permission-changing actions retain their mandatory policy and human-approval floors; financial additive hook dispatch is initially denied.
+
+Declarative third-party data is constrained by the interpreter, not executable sandboxing. Executable module trust/isolation assertions are insufficient: reject unsupported executable isolation rather than claiming a Context/Scope is a sandbox. Initial third-party UI is data-only. Private/community declarative modules do not require Eventiva marketplace approval, but tenant consent, permissions, integrity/provenance and capability restrictions still apply.
+
+## 8. Effect Schema, Config, Context, Layer and Scope contracts
+
+Schema is the portable boundary for external manifests, composition, config payloads, action/resource/event/UI definitions, exact IDs/versions and typed failure serialization. Decode before registering/acquiring capabilities; invalid required data leaves no partially published registration. Pure declaration/evolution helpers stay plain TypeScript; IO, failure and concurrency use typed Effect v3 services.
+
+Config loads deployment/provider configuration through scoped ConfigProvider composition. Use Config.redacted/Redacted or opaque credential handles for secrets. Do not read environment variables from domain/feature handlers, put credentials in manifests, serialize Config values in errors or use config/env switches instead of feature flags. Validate namespaced instance config independently. Tests must probe JSON/string/inspect/Cause/log/span/projection serialization with a secret canary, not merely assert the field's TypeScript type is Redacted.
+
+Context.Tag declares neutral required services; provide implementations with Layer at composition. Missing required services fail explicitly. ModuleEnvironment/KernelEnvironment exposes only declared dependencies, not the whole host context. Resources/Hook ports and implementation-neutral plans belong contracts so integrations never import runtime. Foreign Promise APIs belong approved integration boundaries wrapped by Effect.tryPromise/Effect.try with typed errors and the required boundary annotation.
+
+Scope owns module acquisition, registrations, listeners, fibers, connections and finalizers. Use structured concurrency and interruption; no unmanaged background callbacks or fire-and-forget promises. Candidate update Scope is separate from the last-good serving Scope. Finalizers run once in reverse acquisition order after safe drain, including failed validation/acquisition branches. Scope cleanup is not permission to drop pending durable work or interrupt protected business transactions.
+
+Feature behavior uses existing vendor-neutral flag service/PostHog default behind integration, safe in-code defaults and explicit offline fallback. Flag truth never overrides security, native capabilities, migration compatibility, mandatory audit or approvals. No new ingestion or exporter is authorized by declaring a flag.
+
+## 9. Observability and separate mandatory audit
+
+EVE-44 owns central Effect/OpenTelemetry spans, structured logging and metrics; EVE-43/42 own durable audit/integrity and protected access policy. Contracts remain vendor-neutral. Features use Effect instrumentation/central services, never their own exporter, file IO or ad hoc console logger. Bootstrap logger is installed before Config/layer acquisition so invalid config and activation failure remain diagnosable.
+
+Required local/server outputs: readable multiline console logs, structured date-rotated bounded files and a test exporter. Rotation uses an explicitly documented clock/date policy (UTC default), retention/size bounds, output path/access controls, sanitation, backpressure, flush/shutdown and sink failure behavior. Mobile/web get supported target-specific sinks, not invented filesystem access. Exporter selection is composition-only and must not change feature source.
+
+Correlate bootstrap, module/version/generation, provider resolution, action/execution/step, resource transaction, workflow/runner handoff, hook delivery and recovery with safe trace/span/causation identifiers. Propagate context across asynchronous/outbox boundaries; do not put raw payloads, personal identities, credentials or high-cardinality resource IDs into metric labels. Record bounded semantic outcome/failure codes. File and console multiline formatting must preserve banner layout while preventing untrusted newline/control-sequence log injection.
+
+Product telemetry/exporters may be disabled, sampled, buffered to a bound or no-op without failing ordinary business work. Exporter outages never become synchronous hooks that block emergency/payment transactions. **Mandatory security audit is separate:** tamper-evident append-only evidence, protected access, retention and integrity verification; optional telemetry toggles cannot disable it. Writes and privileged/sensitive reads fail closed if required durable receipt/audit cannot persist. Approved low-risk reads may use only the bounded durable degraded spool allowed by policy, with visible health and fail-closed exhaustion.
+
+No assertion that all PostHog/OTel capabilities work on every target or that an in-memory exporter proves production ingestion. No new OTel exporter dependency, project, account, endpoint, paid retention or cryptographic audit algorithm is approved here. Existing EVE-44 vendor lint restriction remains until an explicit owner reconciliation permits an optional adapter.
+
+Written isolated APIs: `contracts/observability.ts` owns version-1 TelemetryRecord, TelemetrySink and TelemetrySinkFailure; runtime owns TelemetryPolicy, TelemetryHealth, TelemetryControl, telemetryConfig, telemetryLayer and bootstrapTelemetryLayer; the server adapter owns ServerLoggerOptions, consoleLoggerLayer(write?), serverLoggerConfig, serverLoggerLayer and formatConsoleRecord. consoleLoggerLayer is a Config-free TelemetrySink Layer so bootstrapTelemetryLayer can wrap acquisition of the main Config/file sink itself. The sink supports typed asynchronous bounded drain/file/export failures; Effect Logger/Tracer remain feature instrumentation, not a second feature logger. Exports and composition remain held. Runtime and integration depend only on the versioned neutral contracts, never each other. Composition owns a static message/span catalog and finite attribute allowlists; arbitrary messages/values/errors/Cause do not serialize. Trusted banner catalog entries preserve historical multiline layout in the reported console/file fixture, not an implemented ready/banner extension.
+
+Bounded local contract: drop-new FIFO capacity 256 (1..4096), one in flight, one scoped worker, no retries; per-write/flush/drain timeout 1000ms (1..10000), health/drop/failure counters, watermark flush and admission-close/drain/interrupt shutdown. Cooperative interruption is required; no hard deadline is claimed for uninterruptible foreign/OS work. Bootstrap is Config-free with enabled=true, capacity=32 and timeoutMs=1000. Server segments use UTC ingestion date, private directory/file modes 0700/0600 and exclusive ownership; maxFileBytes=1048576, maxFiles=7 total, retentionDays=7 UTC dates including today. Date/size/restart opens a new segment; acquisition/write triggers pruning, not an idle timer. Partial writes abandon the segment without retry; stale crash locks require verified operator recovery, never automatic stealing. No directory-fsync/tamper-evidence/physical-exactly-once guarantee follows. Detailed schema bounds, Config defaults, commands and sink limitations are in the checkpoint and lane docs.
+
+EVE-263 vendor-boundary review remains required at `runtime/telemetry.ts:217-249` (pinned Effect Logger opaque message/annotations/Cause) and `:94/:254-302` (Tracer fiber/attribute/Exit payloads). Callback-inferred values are privately narrowed or discarded, not exported as domain types. No raw error/Cause traversal or serialization is permitted; safe emptiness/success classification does not release payloads. The lane reports 20 passing tests, precise authored/emitted types, no inferred any across 319 bindings and a three-file/two-edge acyclic runtime-to-contracts-from-integration closure. An exact TaggedError constructor annotation avoids emitted generic any without a cast; this is a review lead for other lanes, not automatic approval of their representations. Initial nested duplicate output and uninterruptible drain regressions now have passing focused evidence, but root check still fails on held LLMS. No combined build, vendor exception, production ingestion/metrics, durable context propagation, native sink or EVE-263 clearance is established.
+
+## 10. Initial declarative UI extension model
+
+EVE-259 adds only the initial versioned JSON-compatible module/view/field/layout/menu/slot schema and central registry/interpreter. It renders installed approved React Native/Expo components supplied by external Rambo-UI. Eventiva owns bindings and orchestration, not a duplicate component library. EVE-50 retains general app state/navigation/agent screen awareness; EVE-168 views/patch designer and EVE-204 site blocks reuse this substrate without duplicating its registry.
+
+Written isolated contracts in `contracts/ui-module.ts`: versioned format-1 UiModuleDefinition, UiNode, UiActionBinding, UiProjection, UiValue and UiConfig schemas/types; Schema-tagged UiModuleFailure and UiPlatform Context service. UiPlatform ports are admit/checkInput/invoke/visible/value/online, with Caller on caller-sensitive operations. Ingress is bounded JSON text, not an erased object. DeclarativeRegistry/declarativeRegistry(renderers) provide scoped `register(json: string, replace?: boolean)`, a UiRegistration handle with caller-requiring project/invoke, and module discovery; DeclarativeModule/UiRenderer/UiRendererProps define the stateless interpreter adapter. Exact types/limits are recorded in the lane checkpoint; exports and production host wiring remain held. Validate stable named nodes/slots, component/version references, data/field bindings, localization/default bundles, canonical terminology concepts, permissions/visibility, action input schemas, masked screen projection, offline fallback and flags. Reject unknown components/actions, functions, eval, raw executable strings, arbitrary React/RN/HTML imports, executable expressions and invalid/missing defaults before publication.
+
+Every interaction, including navigation, binds the canonical authorized inventory; no UI-only business action or direct DB/model call. Agent projection is explicit and permission-filtered, not DOM scraping. Agents receive visible labels plus canonical identifiers, never secret/hidden field state. Tenant terminology changes labels, not action/resource/permission IDs. No unbound button, menu item or form submit.
+
+Activate routes/menu/slots/projections/listeners atomically under Scope. Safe unavailable/offline/cached placeholders preserve navigability without running untrusted fallback code. Protected controls cannot be hidden, moved out of reach, relabelled or rebound by a patch. Accessibility/i18n are renderer validation and rendered-test requirements, not author suggestions.
+
+Initial scope expressly excludes arbitrary executable third-party RN, a marketplace review requirement for private declarative packages, an editable word-art product and a new generic visual designer. EVE-16 separately owns trusted executable federation/OTA/shared-runtime/native compatibility. Web switching or Android bundle creation does not establish real native execution. No production Expo/Re.Pack/Rambo dependency changes follow automatically from a spike. Native capabilities, entitlements or incompatible shared-runtime changes require the reviewed application release path.
+
+The lane confirmed no Rambo-UI dependency or installed source in this baseline. Its bounded implementation uses an injected approved-renderer seam plus caller-filtered ActionInventory, authorized invocation, masked-data and admission ports, not a private component library. Protected-containing modules conservatively reject replacement entirely in this increment. Reported final isolated evidence is 35 tests, strict type fixtures and source/declaration AST checks; actual Chromium interpreter captures use injected DOM/policy/action ports only. This establishes neither Rambo/native rendering nor live host/security parity. Missing test-project tags/legal aliases, held LLMS generation and lower-level EVE-263 broad types/assertions remain blocked; no full verify clearance. See the packet for exact commands, failures and inspected media.
+
+Recovery integration places the unchanged registry/interpreter responsibility in `packages/ui-modules`, exported as `@eventiva/ui-modules/declarative-registry` and `@eventiva/ui-modules/DeclarativeModule`. This is a frontend extension library, not an application import or a new component library. Real workspace exports, Nx test ownership and declaration builds replace disposable aliases. The lane's final checkpoint reports 40 tests; central validation is recorded separately in the recovery ledger. Rambo/native adoption, production host policy and EVE-263 vendor-opacity review remain gates, not implied exceptions.
+
+## 11. First reference extension: historical startup banner
+
+The first extension is a clean, small, comprehensively commented human/AI-readable template, not a word-art editor. Inspect historical `Examples/eventiva-before-amp/packages/extensions/copyright-notice/src/copyright-notice-layer.ts`, `wordart.ts` and `packages/core/src/runtime/run-core-startup.ts`. Preserve the Eventiva/by-Resnovas word-art and copyright bytes/layout where permitted. Do not import archive files or restore old HookRegistry/onLoad startup behavior.
+
+Template acceptance:
+
+1. Declare exact identity/version, manifest/envelope, capabilities/providers, safe-default flag, localized messages, Schema/Config, Context/Layer/Scope and typed errors. Useful comments explain invariants and extension points without repeating every statement.
+2. Register/activate the ready subscription before platform ready; print nothing at construction, onLoad, registration, validation, install, activation or failed bootstrap. Only the verified runtime/generation platform.ready observation triggers the banner sequence.
+3. Central Effect logger emits Eventiva word-art, by-Resnovas word-art and copyright in order, preserving multiline console layout and safe structured annotations/correlation in file/test sinks. No direct console/file/exporter. Tests derive expected fixture bytes independently from the inspected historical evidence.
+4. Repeated ready, duplicate delivery and listener re-registration produce one intended logical banner sequence per runtime/generation. Persist event/job identity and consumer dedup; document/prove physical sink crash window rather than call a process-local flag durable exactly-once output.
+5. Demonstrate a minimal central resource/field contribution without creating an editor/CRUD product: delivery/config receipt plus an optional namespaced annotation contributed by a second test module, additive privileged migration and immutable history. Hook/sink protocol owns delivery dedup, not an ad hoc feature counter.
+6. A minimal declarative status view/menu/slot uses approved preinstalled components, namespaced messages, authorized status/navigation action bindings and a masked agent projection. The exact status action is declared once (proposed `word-art.status`); no separate agent handler. Extension UI work waits for EVE-259, not arbitrary executable federation.
+7. Two distinct declarative platform compositions change only providers/config, not extension source. Prove independently coexisting instances, lifecycle disposal, safe busy update/retry, candidate recovery, allowed execution/step/resource observations and protected non-disclosure.
+8. Runnable integration tests capture ready/banner, startup failure, config/secrets, resource migration, correlation and audit. Inspect real rendered states/interaction evidence for claimed UI targets. Unsupported native/Rambo/exporter/adapter capabilities remain open, never replaced by placeholder passing checks.
+
+No circular startup contract: module preparation is allowed before ready; banner side effects are not. First-party reference callback admission does not enable executable third-party UI or protected hooks.
+
+## 12. Exact path ownership and export integration
+
+Active exclusive lane paths are confirmed; future paths below are reservations that the coordinator must acknowledge before coding. They are not authorization to modify another checkout or shared file.
+
+| Owner / issue                             | Exclusive paths and API responsibility                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kernel / EVE-257                          | `packages/contracts/src/module-manifest.ts`, `module-policy.ts`; `packages/runtime/src/kernel-runtime.ts`; `tests/contracts/src/module-manifest.spec.ts`; `tests/runtime/src/kernel-runtime.spec.ts`; optional `tests/runtime/kernel-vitest.config.mts`                                                                                                                     |
+| Resources / EVE-258                       | three `packages/{contracts,runtime,integrations/sql}/src/resource.ts`; `tests/resources/{vitest.config.mts,tsconfig.json,src/resource.spec.ts,src/types.ts}`; `tools/resources/{boundaries.mjs,boundaries.test.mjs,types.test.mjs}`; `docs/resources.md`; `ai-docs/src/18_resources/{index.md,01_resource.ts}`                                                              |
+| Hooks / EVE-262 with EVE-45 durable store | `packages/contracts/src/hook.ts`; `packages/runtime/src/hook.ts`; `tests/contracts/src/hook.spec.ts`; `tests/runtime/src/hook.spec.ts`                                                                                                                                                                                                                                      |
+| Config / EVE-41                           | proposed `packages/contracts/src/configuration.ts`, `packages/runtime/src/configuration.ts`, `tests/configuration/src/configuration.spec.ts`, `docs/configuration.md`, `ai-docs/src/16_configuration/index.md`; secret adapters separately reserved under integrations                                                                                                      |
+| Telemetry / EVE-44                        | `packages/contracts/src/observability.ts`, `packages/runtime/src/telemetry.ts`, `packages/integrations/telemetry.server/src/logger.ts`, `tests/telemetry/{vitest.config.mts,tsconfig.json,src/telemetry.spec.ts}`, `docs/telemetry.md`, `ai-docs/src/17_telemetry/index.md`; existing contracts/telemetry.ts held; new package metadata/dependencies need separate approval |
+| Declarative UI / EVE-259                  | `packages/contracts/src/ui-module.ts`; `apps/client/src/modules/declarative-registry.ts`, `DeclarativeModule.tsx`; `tests/ui-modules/{vitest.config.mts,tsconfig.json,src/declarative-module.spec.tsx}`; `docs/declarative-modules.md`; `ai-docs/src/19_declarative-modules/index.md`                                                                                       |
+| Reference / EVE-260                       | proposed `packages/extensions/word-art/src/{manifest.ts,actions.ts,resources.ts,module.ts,wordart.ts,ui.json,messages/en.json}`; `tests/word-art/src/word-art.spec.ts`; `docs/word-art.md`; `ai-docs/src/20_word-art/index.md`                                                                                                                                              |
+| Specification                             | this document and its artifact, Linear packets/links only; no implementation ownership                                                                                                                                                                                                                                                                                      |
+| Coordinator / EVE-261                     | shared package/export manifests, package/workspace/lock/Nx/tsconfigs/eslint/root check wiring, `packages/runtime/src/host.ts`, existing schema manifest/resource adapters, app entrypoints/bootstrap/compositions, existing shared tests, `LLMS.md`, `graphify-out/`                                                                                                        |
+
+Only the coordinator adds export maps after all active lanes checkpoint, focused tests/typechecks and EVE-263 audit pass, and the owner authorizes the shared integration window. Use each package's existing source/types/default convention, explicit same-named files and no root barrel:
+
+- `@eventiva/contracts/module-manifest` -> `packages/contracts/src/module-manifest.ts`
+- `@eventiva/contracts/module-policy` -> `packages/contracts/src/module-policy.ts`
+- `@eventiva/runtime/kernel-runtime` -> `packages/runtime/src/kernel-runtime.ts`
+- `@eventiva/contracts/resource` -> `packages/contracts/src/resource.ts`
+- `@eventiva/runtime/resource` -> `packages/runtime/src/resource.ts`
+- `@eventiva/integrations.sql/resource` -> `packages/integrations/sql/src/resource.ts`
+- `@eventiva/contracts/hook` -> `packages/contracts/src/hook.ts`
+- `@eventiva/runtime/hook` -> `packages/runtime/src/hook.ts`
+
+There is no new schema resource subpath. Test-local resolver aliases may support isolated verification during the hold; they are not production exports. App composition passes resourceProvider into resourceRuntime(provider,authorize); no integration->runtime exception. Pure resource preflight returns restart-required before SQL acquisition for retained generations, declared restarts, staged changes or incompatible history.
+
+The doc generator reads `ai-docs/src/<section>/index.md`; a README alone is not ingested. The resource checkpoint supplies index.md and compiling 01_resource.ts rather than the earlier README reservation. Coordinator must regenerate LLMS once in the authorized window; the isolated resource root check currently fails on that held drift. Graphify refresh is a coordinated code-integration obligation, not a reason for the docs lane to overwrite shared graph files.
+
+## 13. Linear implementation breakdown and dependency order
+
+New nonduplicating increments:
+
+| Issue                                                | Scope / predecessor                                                                                                                      |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [EVE-257](https://linear.app/resnovas/issue/EVE-257) | kernel under EVE-13; builds on completed EVE-23/40; focused isolated checkpoint can precede full config/hooks delivery                   |
+| [EVE-258](https://linear.app/resnovas/issue/EVE-258) | Resources increment under EVE-42; captures existing SQL/tenant/Integrity foundation, never replaces it                                   |
+| [EVE-259](https://linear.app/resnovas/issue/EVE-259) | initial data-only UI schema/registry/renderer; depends kernel/action/config contracts, not unverified executable federation              |
+| [EVE-260](https://linear.app/resnovas/issue/EVE-260) | first clean startup-banner template; depends kernel/resources/hooks/telemetry/declarative registry/screen awareness                      |
+| [EVE-261](https://linear.app/resnovas/issue/EVE-261) | coordinated export/host/root-gate integration and complete acceptance evidence; stays open while any required gate is unrun/failed       |
+| [EVE-262](https://linear.app/resnovas/issue/EVE-262) | coordinator-created governed hook subscription/dispatcher/protected gateway increment; EVE-45 remains durable producer/outbox/feed owner |
+| [EVE-263](https://linear.app/resnovas/issue/EVE-263) | binding cross-cutting static/runtime acyclicity and exact-type gate; no competing implementation lane or duplicate issue                 |
+
+Existing issues updated rather than duplicated: EVE-41 config/secrets, EVE-44 observability, EVE-45 durable observation-only hooks/change feed, EVE-50 screen awareness and EVE-16 federation support matrix. EVE-43 retains identity/authorization/audit; EVE-251 protected release/attestation/key-policy decisions; EVE-252 cluster; EVE-54 durable workflows; EVE-253 governed SOP/emergency human gates. EVE-133/168/204 retain their broader product scopes. Existing completed issue state and unrelated labels/intent are preserved.
+
+Safe integration order:
+
+1. Confirm owner review gate, exact API/path contracts, errors and manifest/resource compatibility plan. Obtain no new dependencies implicitly.
+2. Kernel/resource/hook lanes finish isolated files and focused tests/typechecks. Config/telemetry may be developed on separately reserved paths; bootstrap/config/audit contracts precede serving readiness.
+3. Complete EVE-263 per-lane audits and review violations/blocked code first. After owner authorization, coordinator opens one shared-file window: exact exports, Nx/project references, format-1 adapters, static Nx+TypeScript graph/type gates, root SQL-reachability gate, ActionHost/Storage integration. Run portable/client/server boundaries and cycle/type-negative fixtures immediately on the real combined exports; isolated aliases alone cannot clear this gate.
+4. Wire privileged migration, authorization/audit, bootstrap console/file telemetry and real durable outbox/lease/fencing. Verify restart/crash recovery before calling durable readiness complete. Do not block an isolated checkpoint on unfinished broad product issues or close full acceptance early.
+5. Wire initial declarative registry and EVE-50 projection/action parity; then the clean banner template and two composition/provider fixtures. Banner output follows verified ready only.
+6. Reconcile people/agent docs and docgen entrypoints, regenerate LLMS, run Nx sync if requested, full checks and graph refresh without build output. Attach evidence to the relevant issues/EVE-13. Owner approval precedes any main push; code delivery is not performed by this lane.
+
+EVE-261 has conjunctive dependencies on kernel/resources/UI, EVE-41/43/44/45/251/252/54/263, and the reference evidence. A lower-level isolated checkpoint is not blocked on completion of every broad upstream product issue; full platform acceptance is. EVE-16's retained target support relation does not forbid starting a portable data-only schema. EVE-263 is a blocking audit of every increment, not permission to merge first and fix types later.
+
+## 14. Hard readiness gates and acceptance evidence ledger
+
+All rows below are required. **Status at specification publication: unverified by this lane.** Isolated lane tests and pending implementation do not convert a row to pass. Each evidence entry records exact revision, command, target/runtime/provider, decisive output, negative control and limitation; tests must distinguish plausible wrong implementations, not just avoid a crash.
+
+| Gate                               | Required observable evidence                                                                                                                                                                                                                                                                                                                                                                          | Owner                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| G01 composition                    | two distinct declarative platform compositions, unchanged feature source, deterministic missing/duplicate/cycle/undeclared/ambiguous rejection                                                                                                                                                                                                                                                        | 257/261                    |
+| G02 provider portability           | composition-only provider swap plus simultaneous independently named instances; no Config/tenant/Scope contamination; concrete adapter capability gaps explicit                                                                                                                                                                                                                                       | 257/258/261                |
+| G03 SQL boundary                   | direct, type-only, re-export, transitive, relative and alias reachability negatives fail; legal adapter positive passes; root CI hook active                                                                                                                                                                                                                                                          | 258/261                    |
+| G04 resource evolution             | second module contributes optional field; approved forward migration preserves records, immutable revisions/schema history; collision/type/security downgrade/checksum/retry/crash negatives                                                                                                                                                                                                          | 258/42                     |
+| G05 lifecycle                      | every module operation including retire/recover and hook register/activate/update/unregister; invalid transitions unchanged; no leaked listeners/fibers/finalizers/registrations                                                                                                                                                                                                                      | 257/45                     |
+| G06 active workflow update         | long-lived pinned run survives busy refusal unchanged, safe release/checkpoint permits retry, candidate failure retains old generation; persisted restart/fencing/idempotency evidence for distributed claim                                                                                                                                                                                          | 257/252/54                 |
+| G07 protected event                | no plaintext/secrets/reference escape into hook/outbox/dead-letter/log/span/error/projection; decrypting/emergency hooks denied, financial additive denied, four gates/profile/assurance enforced                                                                                                                                                                                                     | 43/45/251/253              |
+| G08 configuration                  | valid/invalid Config+Schema matrix before publication; independent instances; secret canary absent from JSON/string/inspect/Cause/output/log/span/event/projection                                                                                                                                                                                                                                    | 41/257                     |
+| G09 observability                  | correlated bootstrap/lifecycle/action/execution/step/resource/hook spans and structured logs in multiline console/date-rotated bounded file/test exporter; rotation/outage/flush/redaction/duplicate tests                                                                                                                                                                                            | 44                         |
+| G10 bootstrap failure              | invalid config, failed required provider and activation failure produce safe diagnosable local logs, no ready or banner                                                                                                                                                                                                                                                                               | 41/44/257                  |
+| G11 ready/banner                   | actual required topology ready, one produced ready event and one intended logical exact historical banner sequence per runtime/generation; repeated ready/replay tested; physical sink crash boundary explicit                                                                                                                                                                                        | 45/260/261                 |
+| G12 recovery/audit                 | crash points before commit/after commit/after side effect-before ack, fenced replay and atomic state/history/outbox/audit; telemetry opt-out never disables mandatory tamper-evident audit                                                                                                                                                                                                            | 42/43/45/252/54            |
+| G13 declarative UI/parity          | data-only schema, installed approved components, exact action/projection parity, protected nodes, unknown/unbound/denied/offline negatives; inspected rendered/a11y/interaction evidence for every claimed target                                                                                                                                                                                     | 259/50/260                 |
+| G14 deterministic repository gates | `node --run check`, `node --run verify`, Nx lint/typecheck/test/build and smoke, portable boundaries, people/agent docs/docgen/graph current; no weakened/skipped tests                                                                                                                                                                                                                               | 261                        |
+| G15 acyclic exact typing           | EVE-263 static Nx+TypeScript resolved source/package graph CI; runtime manifest/provider cycle rejection before publication; direct/indirect/type-only/alias/re-export negatives, shared-contract and diamond positives; strict input/output/error/environment compile/decode tests; CI rejects type escapes/suppression; exact existing violations and unresolved vendor exceptions block acceptance | 263/257/258/259/262/44/261 |
+
+Unrun native/device/exporter/SQLite/cryptographic-provider checks remain named gaps, not implicit success. A typecheck is not runtime isolation; a volatile outbox model is not durability; a bundle is not a device run; a happy-path trace is not a redaction/audit proof. Full owner readiness remains blocked until every applicable row passes or the owner explicitly changes its requirement.

@@ -18,6 +18,7 @@ import { type ActionSpec, define, type Risk, type SideEffect } from '@eventiva/c
 import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
+import type { JsonValue } from '@eventiva/contracts/storage';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { type Approval, canonicalJson, type InvocationResult, type InvokeOptions } from '@eventiva/runtime/invocation';
@@ -38,6 +39,28 @@ import {
     Schema,
     TestClock,
 } from 'effect';
+
+it('canonicalizes JSON without executing object or array getters or Proxy get traps', () => {
+    let reads = 0;
+    const getter = () => {
+        reads += 1;
+        return 'getter-secret';
+    };
+    const object = Object.defineProperty({}, 'secret', { enumerable: true, get: getter });
+    const array = Object.defineProperty([0], '0', { enumerable: true, get: getter });
+    const proxied = new Proxy({ value: 7 }, { get: getter });
+    expect(canonicalJson(object)).toEqual(Either.left('non-json-input'));
+    expect(canonicalJson(array)).toEqual(Either.left('non-json-input'));
+    expect(canonicalJson(proxied)).toEqual(Either.right('{"value":7}'));
+    expect(reads).toBe(0);
+    const cyclic: Array<JsonValue> = [];
+    cyclic.push(cyclic);
+    for (const value of [undefined, new Date(0), Number.NaN, { nested: undefined }, cyclic, new Array<number>(1)])
+        expect(canonicalJson(value)).toEqual(Either.left('non-json-input'));
+    expect(canonicalJson({ z: [3, null, true], a: { b: 'x' } })).toEqual(
+        Either.right('{"a":{"b":"x"},"z":[3,null,true]}')
+    );
+});
 
 const person = (id: string): CallerIdentity => ({
     subject: SubjectId.make(`0193a4f0-0000-7000-8000-${id.padStart(12, '0')}`),

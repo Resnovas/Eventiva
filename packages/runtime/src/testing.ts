@@ -16,7 +16,8 @@
 
 import { Authorizer, type CallerIdentity } from '@eventiva/contracts/caller';
 import { Forbidden } from '@eventiva/contracts/errors';
-import { Context, Effect, FiberRef, Layer, Ref } from 'effect';
+import { Json, JsonValue } from '@eventiva/contracts/storage';
+import { Context, Effect, FiberRef, Layer, Ref, Schema } from 'effect';
 import {
     type Approval,
     Approvals,
@@ -30,13 +31,14 @@ import {
     Integrity,
     InvocationDenied,
     type Receipt,
+    canonicalJson,
 } from './invocation.ts';
 
 /** TEST ONLY. This ledger is volatile and MUST NOT be used as a storage adapter. */
 export interface TestOnlyLedgerState {
-    readonly domain: ReadonlyArray<unknown>;
-    readonly history: ReadonlyArray<unknown>;
-    readonly outbox: ReadonlyArray<unknown>;
+    readonly domain: ReadonlyArray<JsonValue>;
+    readonly history: ReadonlyArray<JsonValue>;
+    readonly outbox: ReadonlyArray<JsonValue>;
     readonly receipts: ReadonlyArray<Receipt>;
     readonly dedup: ReadonlyMap<string, Committed & { readonly inputHash: string }>;
     readonly spool: ReadonlyArray<Receipt>;
@@ -47,7 +49,7 @@ type Staged = Pick<TestOnlyLedgerState, 'domain' | 'history' | 'outbox'>;
 /** Handler writes participate in the test transaction through a fiber-local staging area. */
 export class TestOnlyLedger extends Context.Tag('@eventiva/runtime/TestOnlyLedger')<
     TestOnlyLedger,
-    { readonly stage: (part: keyof Staged, value: unknown) => Effect.Effect<void> }
+    { readonly stage: <Value>(part: keyof Staged, value: Value) => Effect.Effect<void> }
 >() {}
 
 /** Not a cryptographic digest. Injective canonical text is useful ONLY in deterministic tests. */
@@ -124,7 +126,8 @@ export const makeTestOnlyHarness = (initialIdentity: CallerIdentity) =>
                     const staged = yield* FiberRef.get(transaction);
                     if (staged === undefined)
                         return yield* Effect.dieMessage('TestOnlyLedger write outside Integrity transaction');
-                    yield* Ref.update(staged, (current) => ({ ...current, [part]: [...current[part], value] }));
+                    const decoded = yield* canonicalJson(value).pipe(Effect.flatMap(Schema.decode(Json)), Effect.orDie);
+                    yield* Ref.update(staged, (current) => ({ ...current, [part]: [...current[part], decoded] }));
                 }),
         });
         const integrity = Integrity.of({
@@ -143,9 +146,13 @@ export const makeTestOnlyHarness = (initialIdentity: CallerIdentity) =>
                         }
                         const staged = yield* Ref.make<Staged>({ domain: [], history: [], outbox: [] });
                         const completed = yield* execute.pipe(Effect.locally(transaction, staged));
+                        const output = yield* canonicalJson(completed.output).pipe(
+                            Effect.flatMap(Schema.decode(Json)),
+                            Effect.mapError(() => new AuditUnavailable({ action: request.action }))
+                        );
                         yield* ready(request.action);
                         const writes = yield* Ref.get(staged);
-                        const saved = { ...completed, inputHash: request.inputHash, replayed: false };
+                        const saved = { ...completed, output, inputHash: request.inputHash, replayed: false };
                         // One Ref update is the test commit point: nothing staged becomes visible before it.
                         yield* Ref.update(state, (current) => ({
                             ...current,

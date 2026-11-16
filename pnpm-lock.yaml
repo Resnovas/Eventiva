@@ -248,6 +248,21 @@ importers:
         specifier: 4.1.12
         version: 4.1.12(@types/node@24.19.2)(@vitest/coverage-v8@4.1.12)(vite@8.3.6(@types/node@24.19.2)(terser@5.51.2)(yaml@2.9.1))
 
+  ai-docs:
+    devDependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
+      '@eventiva/integrations.sql':
+        specifier: workspace:*
+        version: link:../packages/integrations/sql
+      '@eventiva/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
+      '@eventiva/schema':
+        specifier: workspace:*
+        version: link:../packages/schema
+
   apps/client:
     dependencies:
       '@babel/runtime':
@@ -383,6 +398,9 @@ importers:
       '@eventiva/integrations.sql':
         specifier: workspace:*
         version: link:../../packages/integrations/sql
+      '@eventiva/integrations.telemetry.server':
+        specifier: workspace:*
+        version: link:../../packages/integrations/telemetry.server
       '@eventiva/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -497,6 +515,19 @@ importers:
         specifier: 'catalog:'
         version: 3.22.4
 
+  packages/integrations/telemetry.server:
+    dependencies:
+      '@effect/platform':
+        specifier: 0.97.3
+        version: 0.97.3(effect@3.22.4)
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.4
+
   packages/runtime:
     dependencies:
       '@eventiva/contracts':
@@ -519,6 +550,22 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 3.22.4
+
+  packages/ui-modules:
+    dependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.4
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
 
   tests/boundaries:
     devDependencies:
@@ -604,6 +651,21 @@ importers:
         specifier: 0.1.3
         version: 0.1.3(@openfeature/core@1.12.0)(@openfeature/server-sdk@1.23.0(@openfeature/core@1.12.0))(posthog-node@5.63.1)
 
+  tests/resources:
+    devDependencies:
+      '@effect/sql':
+        specifier: 0.52.2
+        version: 0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4)
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@eventiva/integrations.sql':
+        specifier: workspace:*
+        version: link:../../packages/integrations/sql
+      '@eventiva/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+
   tests/runtime:
     devDependencies:
       '@eventiva/contracts':
@@ -630,6 +692,9 @@ importers:
       '@effect/sql':
         specifier: 0.52.2
         version: 0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4)
+      '@effect/sql-sqlite-node':
+        specifier: 0.54.1
+        version: 0.54.1(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(@effect/sql@0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(effect@3.22.4)
       '@eventiva/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -639,6 +704,39 @@ importers:
       '@eventiva/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+
+  tests/telemetry:
+    devDependencies:
+      '@effect/platform':
+        specifier: 0.97.3
+        version: 0.97.3(effect@3.22.4)
+      '@effect/platform-node':
+        specifier: 0.108.4
+        version: 0.108.4(@effect/cluster@0.60.5(@effect/platform@0.97.3(effect@3.22.4))(@effect/rpc@0.76.4(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/sql@0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/workflow@0.19.1(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(@effect/rpc@0.76.4(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(@effect/rpc@0.76.4(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/sql@0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(effect@3.22.4)
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@eventiva/integrations.telemetry.server':
+        specifier: workspace:*
+        version: link:../../packages/integrations/telemetry.server
+      '@eventiva/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+
+  tests/ui-modules:
+    devDependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@eventiva/ui-modules':
+        specifier: workspace:*
+        version: link:../../packages/ui-modules
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
 
 packages:
 

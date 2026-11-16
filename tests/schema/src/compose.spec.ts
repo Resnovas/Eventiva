@@ -14,12 +14,21 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { compose, contribute } from '@eventiva/schema/compose';
+import type { SecurityProfile } from '@eventiva/contracts/security';
+import {
+    compose,
+    contribute,
+    DuplicateResource,
+    DuplicateField,
+    UnknownTarget,
+    WeakerClassification,
+    InvalidName,
+} from '@eventiva/schema/compose';
 import * as Field from '@eventiva/schema/field';
 import { ModuleManifest } from '@eventiva/schema/manifest';
 import * as Resource from '@eventiva/schema/resource';
-import { describe, expect, it } from '@effect/vitest';
-import { Either, Option, Schema } from 'effect';
+import { describe, expect, expectTypeOf, it } from '@effect/vitest';
+import { Effect, Either, Option, Schema } from 'effect';
 
 const Event = Resource.make('events.event', {
     module: 'events',
@@ -60,6 +69,50 @@ const names = (composed: Either.Either<{ readonly resources: ReadonlyArray<Resou
 
 describe('fields', () => {
     const row = Resource.row(Event);
+
+    it('retains each decoded and encoded field type without a mapped assertion', () => {
+        expectTypeOf<Schema.Schema.Type<typeof row>>().toEqualTypeOf<Resource.Row<typeof Event>>();
+        expectTypeOf<Schema.Schema.Type<typeof row>['startsAt']>().toEqualTypeOf<Date>();
+        expectTypeOf<Schema.Schema.Encoded<typeof row>['startsAt']>().toEqualTypeOf<string>();
+        expectTypeOf<Schema.Schema.Type<typeof row>['notes']>().toEqualTypeOf<string | null>();
+        expectTypeOf<Schema.Schema.Type<typeof row>['seats']>().toEqualTypeOf<number>();
+        expectTypeOf<Schema.Schema.Type<typeof row>['meta']>().toEqualTypeOf<{ readonly tags: readonly string[] }>();
+        expectTypeOf(Event.fields.meta.schema.fields.tags).toEqualTypeOf<Schema.Array$<typeof Schema.String>>();
+    });
+
+    it('uses concrete field schemas directly without mutating their source schema', () => {
+        const source = Schema.Struct({ at: Schema.Date });
+        const value = Field.json(source).pipe(Field.classify('vault'), Field.label('events.event.meta'));
+        const at = new Date('2026-11-15T02:40:00.125Z');
+        expect(value.schema).toBe(source);
+        expect('_tag' in source).toBe(false);
+        expect(Schema.decodeUnknownSync(value)({ at: at.toISOString() })).toEqual({ at });
+        expect(Schema.encodeSync(value)({ at })).toEqual({ at: at.toISOString() });
+        expect(Schema.is(value.annotations({ title: 'Metadata' }))({ at })).toBe(true);
+        expect(value.pipe()).toBe(value);
+    });
+
+    it('keeps nullable metadata and transformations without changing the original field', () => {
+        const original = Field.reference('venues.venue').pipe(
+            Field.classify('restricted'),
+            Field.conflict('server-authoritative'),
+            Field.label('events.event.venue')
+        );
+        const nullable = original.pipe(Field.nullable);
+        expect(nullable).toMatchObject({
+            security: 'restricted',
+            conflict: 'server-authoritative',
+            label: Option.some('events.event.venue'),
+            target: Option.some('venues.venue'),
+            nullable: true,
+        });
+        expect(Schema.decodeUnknownSync(nullable)(null)).toBeNull();
+        expect(Schema.decodeUnknownEither(nullable)('not-a-uuid')._tag).toBe('Left');
+        expect(original.nullable).toBe(false);
+        const optionalTime = Field.timestamp().pipe(Field.nullable);
+        expect(Schema.decodeUnknownSync(optionalTime)('2026-11-15T02:40:00.125Z')).toBeInstanceOf(Date);
+        expect(Schema.encodeSync(optionalTime)(null)).toBeNull();
+    });
 
     it('round-trip a record whose wire form differs from its decoded form', () => {
         const wire = {
@@ -102,6 +155,80 @@ describe('fields', () => {
 describe('compose', () => {
     const tickets = contribute(Event, 'tickets', { ticketLimit: Field.integer() });
     const venueLink = contribute('events.event', 'venues', { venue: Field.reference('venues.venue') });
+
+    it('exposes concrete required constructor fields for every composition error', () => {
+        expectTypeOf<ConstructorParameters<typeof DuplicateResource>>().toEqualTypeOf<
+            [fields: { readonly resource: string; readonly modules: ReadonlyArray<string> }]
+        >();
+        expectTypeOf<ConstructorParameters<typeof DuplicateField>>().toEqualTypeOf<
+            [fields: { readonly resource: string; readonly field: string; readonly modules: ReadonlyArray<string> }]
+        >();
+        expectTypeOf<ConstructorParameters<typeof UnknownTarget>>().toEqualTypeOf<
+            [fields: { readonly resource: string; readonly module: string; readonly target: string }]
+        >();
+        expectTypeOf<ConstructorParameters<typeof WeakerClassification>>().toEqualTypeOf<
+            [
+                fields: {
+                    readonly resource: string;
+                    readonly field: string;
+                    readonly module: string;
+                    readonly profile: SecurityProfile;
+                    readonly floor: SecurityProfile;
+                },
+            ]
+        >();
+        expectTypeOf<ConstructorParameters<typeof InvalidName>>().toEqualTypeOf<
+            [fields: { readonly module: string; readonly name: string }]
+        >();
+    });
+
+    it.effect('keeps composition errors tagged, field-bearing and yieldable', () =>
+        Effect.gen(function* () {
+            const errors = [
+                new DuplicateResource({ resource: 'events.event', modules: ['events', 'other'] }),
+                new DuplicateField({ resource: 'events.event', field: 'title', modules: ['events', 'other'] }),
+                new UnknownTarget({ resource: 'events.event', module: 'events', target: 'venues.venue' }),
+                new WeakerClassification({
+                    resource: 'events.event',
+                    field: 'title',
+                    module: 'events',
+                    profile: 'baseline',
+                    floor: 'restricted',
+                }),
+                new InvalidName({ module: 'events', name: 'Event' }),
+            ];
+            expect(errors.map((error) => error._tag)).toEqual([
+                'DuplicateResource',
+                'DuplicateField',
+                'UnknownTarget',
+                'WeakerClassification',
+                'InvalidName',
+            ]);
+            for (const error of errors) {
+                expect(error).toBeInstanceOf(Error);
+                expect(
+                    yield* Effect.either(
+                        Effect.gen(function* () {
+                            return yield* error;
+                        })
+                    )
+                ).toEqual(Either.left(error));
+            }
+            expect(errors.map((error) => ({ ...error }))).toMatchObject([
+                { resource: 'events.event', modules: ['events', 'other'] },
+                { resource: 'events.event', field: 'title', modules: ['events', 'other'] },
+                { resource: 'events.event', module: 'events', target: 'venues.venue' },
+                {
+                    resource: 'events.event',
+                    field: 'title',
+                    module: 'events',
+                    profile: 'baseline',
+                    floor: 'restricted',
+                },
+                { module: 'events', name: 'Event' },
+            ]);
+        })
+    );
 
     it('gives the same result whatever order modules arrive in', () => {
         const a = compose([Event, Venue], [tickets, venueLink]);

@@ -29,23 +29,29 @@ const workspaceRoot = dirname(fileURLToPath(import.meta.url));
  *
  * @param name - The test project's name.
  * @param covers - Source globs of the package under test, relative to the workspace root.
+ * @param configUrl - The suite config's import.meta.url, anchoring discovery and reports.
  */
-export const testProject = (name: string, covers: ReadonlyArray<string>) =>
-    defineConfig({
+export const testProject = (name: string, covers: ReadonlyArray<string>, configUrl: string) => {
+    const projectRoot = dirname(fileURLToPath(configUrl));
+    return defineConfig({
+        // Vitest only transforms uncovered TypeScript inside the Vite root.
+        root: workspaceRoot,
         resolve: { conditions: ['@eventiva/source'] },
         ssr: { resolve: { conditions: ['@eventiva/source'] } },
         test: {
             name,
+            dir: projectRoot,
             watch: false,
             environment: 'node',
             include: ['src/**/*.spec.ts'],
             coverage: {
                 enabled: covers.length > 0,
                 provider: 'v8',
-                reportsDirectory: './test-output/coverage',
+                reportsDirectory: join(projectRoot, 'test-output/coverage'),
                 allowExternal: true,
                 include: covers.map((glob) => join(workspaceRoot, glob)),
                 thresholds: { lines: 90, functions: 90, statements: 90, branches: 90 },
             },
         },
     });
+};

@@ -14,7 +14,7 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Option, Schema } from 'effect';
+import { Option, Schema, type SchemaAST } from 'effect';
 import type { FlagKey } from './flags.ts';
 
 /**
@@ -47,15 +47,21 @@ export type ApprovalPolicy = 'none' | 'confirm' | 'always';
 /** The operational risk of an action, independent of its side effect. */
 export type Risk = 'routine' | 'irreversible' | 'financial' | 'permission' | 'capacity' | 'stock' | 'live-production';
 
-/** A schema that needs no services to decode or encode. */
-type AnySchema = Schema.Schema.AnyNoContext;
+/** Discovery needs the AST, not a widened decoder or encoder. */
+export interface ActionSchema {
+    readonly ast: SchemaAST.AST;
+    readonly Context: never;
+}
+
+/** Retain the exact schema while requiring a real, service-free Effect schema. */
+type Portable<S extends ActionSchema> = S & Schema.Schema<Schema.Schema.Type<S>, Schema.Schema.Encoded<S>>;
 
 /** A portable action specification. */
 export interface ActionSpec<
     Name extends string = string,
-    In extends AnySchema = AnySchema,
-    Out extends AnySchema = AnySchema,
-    Err extends AnySchema = AnySchema,
+    In extends ActionSchema = ActionSchema,
+    Out extends ActionSchema = ActionSchema,
+    Err extends ActionSchema = ActionSchema,
 > {
     readonly _tag: 'ActionSpec';
     readonly name: Name;
@@ -84,22 +90,22 @@ export type Input<S extends ActionSpec> = Schema.Schema.Type<S['input']>;
 export type Output<S extends ActionSpec> = Schema.Schema.Type<S['output']>;
 /** The decoded error of a specification; `never` when it declares none. */
 export type Failure<S extends ActionSpec> =
-    S['error'] extends Option.Option<infer E extends AnySchema> ? Schema.Schema.Type<E> : never;
+    S['error'] extends Option.Option<infer E extends ActionSchema> ? Schema.Schema.Type<E> : never;
 
 /** Declares a portable action specification. Pure: validation happens when a handler is registered. */
 export const define = <
     const Name extends string,
-    In extends AnySchema,
-    Out extends AnySchema,
-    Err extends AnySchema = never,
+    In extends ActionSchema,
+    Out extends ActionSchema,
+    Err extends ActionSchema = never,
 >(
     name: Name,
     options: {
         readonly version: number;
         readonly description: string;
-        readonly input: In;
-        readonly output: Out;
-        readonly error?: Err;
+        readonly input: Portable<In>;
+        readonly output: Portable<Out>;
+        readonly error?: Portable<Err>;
         readonly permission: Permission;
         readonly sideEffect: SideEffect;
         readonly offline: Offline;

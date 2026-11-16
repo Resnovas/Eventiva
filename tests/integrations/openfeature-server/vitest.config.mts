@@ -16,4 +16,8 @@
 
 import { testProject } from '../../../vitest.shared.ts';
 
-export default testProject('integrations.openfeature.server-tests', ['packages/integrations/openfeature-server/src/**']);
+export default testProject(
+    'integrations.openfeature.server-tests',
+    ['packages/integrations/openfeature-server/src/**'],
+    import.meta.url
+);

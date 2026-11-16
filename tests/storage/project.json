@@ -3,6 +3,7 @@
     "projectType": "library",
     "sourceRoot": "tests/storage/src",
     "tags": ["type:test", "layer:backend", "capability:test"],
+    "implicitDependencies": ["@eventiva/resource-tests"],
     "targets": {
         "test": { "cache": false },
         "typecheck": {

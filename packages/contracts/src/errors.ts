@@ -15,6 +15,7 @@
  */
 
 import { Schema } from 'effect';
+import { JsonValue } from './storage.ts';
 
 /**
  * Platform errors every action surface can return. They cross HTTP, RPC, MCP
@@ -51,7 +52,7 @@ export class Forbidden extends Schema.TaggedError<Forbidden>()('Forbidden', {
 /** The handler failed with one of the action's declared errors, carried encoded. */
 export class ActionFailed extends Schema.TaggedError<ActionFailed>()('ActionFailed', {
     action: Schema.String,
-    error: Schema.Unknown,
+    error: JsonValue,
 }) {}
 
 /** Every platform error an invocation can fail with. */

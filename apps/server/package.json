@@ -18,6 +18,7 @@
         "@eventiva/integrations.openfeature.server": "workspace:*",
         "@eventiva/integrations.posthog.server": "workspace:*",
         "@eventiva/integrations.sql": "workspace:*",
+        "@eventiva/integrations.telemetry.server": "workspace:*",
         "@eventiva/runtime": "workspace:*",
         "@eventiva/schema": "workspace:*",
         "effect": "catalog:"

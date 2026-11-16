@@ -3,28 +3,23 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "projectType": "application",
     "sourceRoot": "apps/client-e2e/src",
-    "implicitDependencies": [
-        "@eventiva/client"
-    ],
-    "tags": [
-        "type:test",
-        "layer:frontend",
-        "capability:app"
-    ],
+    "implicitDependencies": ["@eventiva/client"],
+    "tags": ["type:test", "layer:frontend", "capability:app"],
     "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p apps/client-e2e/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        },
         "smoke": {
             "executor": "nx:run-commands",
             "dependsOn": [
                 {
-                    "projects": [
-                        "@eventiva/client"
-                    ],
+                    "projects": ["@eventiva/client"],
                     "target": "export-web"
                 }
             ],
-            "outputs": [
-                "{projectRoot}/test-output"
-            ],
+            "outputs": ["{projectRoot}/test-output"],
             "options": {
                 "command": "playwright test --config apps/client-e2e/playwright.config.mts"
             }

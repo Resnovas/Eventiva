@@ -35,6 +35,12 @@
         },
         {
             "path": "./packages/integrations/sql"
+        },
+        {
+            "path": "./packages/integrations/telemetry.server"
+        },
+        {
+            "path": "./packages/ui-modules"
         }
     ]
 }

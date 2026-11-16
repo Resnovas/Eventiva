@@ -16,4 +16,4 @@
 
 import { testProject } from '../../../vitest.shared.ts';
 
-export default testProject('integrations.formatjs-tests', ['packages/integrations/formatjs/src/**']);
+export default testProject('integrations.formatjs-tests', ['packages/integrations/formatjs/src/**'], import.meta.url);

@@ -19,6 +19,7 @@ import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/cal
 import { Forbidden, UnknownAction, Unavailable } from '@eventiva/contracts/errors';
 import { type Flag, Flags } from '@eventiva/contracts/flags';
 import { ActionInventory, validateDefinitions, validateInventory } from '@eventiva/contracts/inventory';
+import type { JsonValue } from '@eventiva/contracts/storage';
 import { Attributes, type Outcome, actionSpan } from '@eventiva/contracts/telemetry';
 import { type ComposeError, type Composed, type Contribution, compose } from '@eventiva/schema/compose';
 import { ModuleManifest } from '@eventiva/schema/manifest';
@@ -34,12 +35,11 @@ import {
     HashMap,
     Layer,
     Option,
-    ParseResult,
     Ref,
     Schema,
     Scope,
 } from 'effect';
-import type { Implementation } from './action.ts';
+import type { ActionBinding } from './action.ts';
 import { type InvocationError, makeExecutor } from './execution.ts';
 import {
     Approvals,
@@ -61,29 +61,44 @@ import {
  * scope first removes its actions and resources, then releases its layer.
  */
 
-/** Two registrations claim the same canonical action name. */
-export class DuplicateAction extends Data.TaggedError('DuplicateAction')<{
+interface DuplicateActionFields {
     readonly action: string;
     readonly module: string;
     readonly registeredBy: string;
-}> {}
+}
+const DuplicateActionBase: new (args: DuplicateActionFields) => Cause.YieldableError &
+    DuplicateActionFields & {
+        readonly _tag: 'DuplicateAction';
+    } = Data.TaggedError('DuplicateAction');
+/** Two registrations claim the same canonical action name. */
+export class DuplicateAction extends DuplicateActionBase {}
 
-/** A module's manifest, implementations or resources are not consistent. Nothing was registered. */
-export class InvalidModule extends Data.TaggedError('InvalidModule')<{
+interface InvalidModuleFields {
     readonly module: string;
     readonly reason: string;
-}> {}
+}
+const InvalidModuleBase: new (args: InvalidModuleFields) => Cause.YieldableError &
+    InvalidModuleFields & {
+        readonly _tag: 'InvalidModule';
+    } = Data.TaggedError('InvalidModule');
+/** A module's manifest, implementations or resources are not consistent. Nothing was registered. */
+export class InvalidModule extends InvalidModuleBase {}
 
-/** A module's layer failed to build. Whatever it had acquired was released and nothing was registered. */
-export class ActivationFailed extends Data.TaggedError('ActivationFailed')<{
+interface ActivationFailedFields {
     readonly module: string;
-    readonly cause: unknown;
-}> {}
+    readonly reason: 'layer-failed';
+}
+const ActivationFailedBase: new (args: ActivationFailedFields) => Cause.YieldableError &
+    ActivationFailedFields & {
+        readonly _tag: 'ActivationFailed';
+    } = Data.TaggedError('ActivationFailed');
+/** A module's layer failed to build. Whatever it had acquired was released and nothing was registered. */
+export class ActivationFailed extends ActivationFailedBase {}
 
 interface ModuleParts<R> {
     /** The manifest as data; it is decoded and checked on registration. */
-    readonly manifest: unknown;
-    readonly actions: ReadonlyArray<Implementation<ActionSpec, R>>;
+    readonly manifest: JsonValue;
+    readonly actions: ReadonlyArray<ActionBinding<R>>;
     /** Resources the module owns, each listed in the manifest. */
     readonly resources?: ReadonlyArray<Resource>;
     /** Fields the module adds to resources other modules own. */
@@ -94,13 +109,8 @@ interface ModuleParts<R> {
  * A backend module. When its handlers need services, `layer` provides them;
  * the layer is built once per registration and released once on removal.
  */
-export type ServerModule<R = never> = ModuleParts<R> &
-    // `never`, or `unknown` inferred from a module without actions, means no services are needed.
-    ([R] extends [never]
-        ? { readonly layer?: Layer.Layer<never, unknown> }
-        : unknown extends R
-          ? { readonly layer?: Layer.Layer<never, unknown> }
-          : { readonly layer: Layer.Layer<R, unknown> });
+export type ServerModule<R = never, E = never> =
+    (ModuleParts<R> & { readonly layer: Layer.Layer<R, E> }) | (ModuleParts<never> & { readonly layer?: undefined });
 
 /** Every error registering a module can fail with. */
 export type RegistrationError = DuplicateAction | InvalidModule | ActivationFailed | ComposeError;
@@ -113,8 +123,8 @@ export class ActionHost extends Context.Tag('@eventiva/runtime/ActionHost')<
     ActionHost,
     {
         /** Registers a module until the surrounding scope closes. */
-        readonly register: <R = never>(
-            module: ServerModule<R>
+        readonly register: <R = never, E = never>(
+            module: ServerModule<R, E>
         ) => Effect.Effect<ModuleManifest, RegistrationError, Scope.Scope>;
         /** Canonical names of every registered action, sorted. */
         readonly actions: Effect.Effect<ReadonlyArray<string>>;
@@ -125,25 +135,23 @@ export class ActionHost extends Context.Tag('@eventiva/runtime/ActionHost')<
          * gates, permission, decode, policy check, handler, encode, all inside
          * the span `action.<name>`. The output and any declared error are encoded.
          */
-        readonly invoke: (
+        readonly invoke: <Wire>(
             action: string,
-            input: unknown,
+            input: Wire,
             options?: InvokeOptions
-        ) => Effect.Effect<unknown, InvocationError, Caller>;
+        ) => Effect.Effect<JsonValue, InvocationError, Caller>;
         /** Every outcome carries a durable receipt; persistence failure is never disguised as success. */
-        readonly execute: (
+        readonly execute: <Wire>(
             action: string,
-            input: unknown,
+            input: Wire,
             options?: InvokeOptions
         ) => Effect.Effect<InvocationResult<InvocationError>, AuditUnavailable, Caller>;
     }
 >() {}
 
-interface Entry {
+interface Entry extends ActionBinding {
     readonly module: string;
     readonly spec: ActionSpec;
-    /** The handler with its module's services provided. */
-    readonly run: (input: unknown) => Effect.Effect<unknown, unknown>;
     /** The module flag and the action flag, each of which must be on. */
     readonly gates: ReadonlyArray<Flag>;
 }
@@ -161,11 +169,11 @@ interface State {
 
 type Parts<R> = Required<Omit<ModuleParts<R>, 'manifest'>>;
 
-type Planned<R> = ReadonlyArray<readonly [string, Omit<Entry, 'run'>, Implementation<ActionSpec, R>]>;
+type Planned<R> = ReadonlyArray<readonly [string, Omit<Entry, 'prepare'>, ActionBinding<R>]>;
 
 const emptyState: State = { modules: HashMap.empty(), actions: HashMap.empty() };
 
-const idOf = (manifest: unknown): string =>
+const idOf = <Manifest>(manifest: Manifest): string =>
     typeof manifest === 'object' && manifest !== null && 'id' in manifest && typeof manifest.id === 'string'
         ? manifest.id
         : '<unknown>';
@@ -271,7 +279,7 @@ const outcomes: Readonly<Record<string, Outcome>> = {
     Forbidden: 'forbidden',
 };
 
-const outcomeOf = (exit: Exit.Exit<unknown, { readonly _tag: string }>): Outcome =>
+const outcomeOf = <A>(exit: Exit.Exit<A, { readonly _tag: string }>): Outcome =>
     Exit.match(exit, {
         onSuccess: () => 'succeeded',
         onFailure: (cause) =>
@@ -294,16 +302,16 @@ export const ActionHostLive: Layer.Layer<
         const executor = yield* makeExecutor;
         const state = yield* Ref.make(emptyState);
 
-        const register = <R = never>(
-            module: ServerModule<R>
+        const register = <R = never, E = never>(
+            module: ServerModule<R, E>
         ): Effect.Effect<ModuleManifest, RegistrationError, Scope.Scope> =>
             Effect.gen(function* () {
                 const manifest = yield* Schema.decodeUnknown(ModuleManifest)(module.manifest).pipe(
                     Effect.mapError(
-                        (error) =>
+                        () =>
                             new InvalidModule({
                                 module: idOf(module.manifest),
-                                reason: ParseResult.TreeFormatter.formatErrorSync(error),
+                                reason: 'Manifest does not match its schema.',
                             })
                     )
                 );
@@ -322,15 +330,33 @@ export const ActionHostLive: Layer.Layer<
                 // before the registration's, so removal runs first and release second.
                 const moduleScope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential);
                 const release = <E>(cause: Cause.Cause<E>) => Scope.close(moduleScope, Exit.failCause(cause));
-                // A module without a layer needs no services (ServerModule<never>).
-                const layer = (module.layer ?? Layer.empty) as Layer.Layer<R, unknown>;
-                const context = yield* Layer.buildWithScope(layer, moduleScope).pipe(
-                    Effect.mapError((cause) => new ActivationFailed({ module: manifest.id, cause })),
-                    Effect.onError(release)
-                );
+                // The no-layer union member can contain only service-free actions.
+                const bindings: ReadonlyArray<ActionBinding> =
+                    module.layer === undefined
+                        ? module.actions
+                        : yield* Layer.buildWithScope(module.layer, moduleScope).pipe(
+                              Effect.catchAllDefect(() => Effect.dieMessage('Module activation defect.')),
+                              Effect.mapError(
+                                  () => new ActivationFailed({ module: manifest.id, reason: 'layer-failed' })
+                              ),
+                              Effect.onError(release),
+                              Effect.map((context) =>
+                                  module.actions.map((implementation): ActionBinding => ({
+                                      spec: implementation.spec,
+                                      prepare: (input) =>
+                                          implementation.prepare(input).pipe(
+                                              Effect.map((prepared) => ({
+                                                  ...prepared,
+                                                  run: Effect.provide(prepared.run, context),
+                                              }))
+                                          ),
+                                  }))
+                              )
+                          );
+                const boundParts: Parts<never> = { ...parts, actions: bindings };
 
-                const commit = (current: State): readonly [Either.Either<Planned<R>, RegistrationError>, State] => {
-                    const result = plan(current, manifest, parts);
+                const commit = (current: State): readonly [Either.Either<Planned<never>, RegistrationError>, State] => {
+                    const result = plan(current, manifest, boundParts);
                     if (Either.isLeft(result)) return [result, current];
                     const next: State = {
                         modules: HashMap.set(current.modules, manifest.id, {
@@ -342,7 +368,7 @@ export const ActionHostLive: Layer.Layer<
                             (actions, [name, entry, implementation]) =>
                                 HashMap.set(actions, name, {
                                     ...entry,
-                                    run: (input: unknown) => Effect.provide(implementation.handler(input), context),
+                                    prepare: implementation.prepare,
                                 }),
                             current.actions
                         ),
@@ -351,26 +377,31 @@ export const ActionHostLive: Layer.Layer<
                 };
                 yield* Effect.acquireRelease(
                     Ref.modify(state, commit).pipe(
-                        Effect.flatMap((result): Effect.Effect<Planned<R>, RegistrationError> => result)
+                        Effect.flatMap((result): Effect.Effect<Planned<never>, RegistrationError> => result)
                     ),
                     () => Ref.update(state, (current) => remove(current, manifest.id))
                 ).pipe(Effect.onError(release));
                 return manifest;
             });
 
-        const execute = (action: string, input: unknown, options?: InvokeOptions) =>
+        const execute = <Wire>(action: string, input: Wire, options?: InvokeOptions) =>
             executor(
                 action,
                 input,
                 Effect.gen(function* () {
                     const entry = HashMap.get((yield* Ref.get(state)).actions, action);
                     if (Option.isNone(entry)) return yield* new UnknownAction({ action });
-                    const { spec, run, gates, module } = entry.value;
+                    const { spec, prepare, gates, module } = entry.value;
+                    // Compare the intent with this captured entry, never a separate inventory lookup.
+                    // Resource-state expectedVersion is an unrelated policy gate.
+                    const expectedActionVersion = options?.expectedActionVersion;
+                    if (expectedActionVersion !== undefined && expectedActionVersion !== spec.version)
+                        return yield* new Forbidden({ action, reason: 'action-version-conflict' });
                     yield* Effect.annotateCurrentSpan(Attributes.moduleId, module);
                     yield* Effect.annotateCurrentSpan(Attributes.actionVersion, spec.version);
                     return {
                         spec,
-                        run,
+                        prepare,
                         available: Effect.gen(function* () {
                             const current = HashMap.get((yield* Ref.get(state)).actions, action);
                             if (Option.isNone(current) || current.value !== entry.value)
@@ -387,13 +418,13 @@ export const ActionHostLive: Layer.Layer<
                 Effect.onExit((exit) =>
                     Effect.annotateCurrentSpan(
                         Attributes.actionOutcome,
-                        outcomeOf(Exit.isFailure(exit) ? exit : exit.value.result)
+                        Exit.isFailure(exit) ? outcomeOf(exit) : outcomeOf(exit.value.result)
                     )
                 ),
                 Effect.withSpan(actionSpan(action), { attributes: { [Attributes.actionName]: action } })
             );
 
-        const invoke = (action: string, input: unknown, options?: InvokeOptions) =>
+        const invoke = <Wire>(action: string, input: Wire, options?: InvokeOptions) =>
             execute(action, input, options).pipe(Effect.flatMap(({ result }) => result));
 
         const list = (presented: CallerIdentity) =>

@@ -24,7 +24,7 @@
         "build": "nx run-many -t build",
         "smoke": "nx run-many -t smoke",
         "parity": "nx run-many -t parity",
-        "verify": "node --run check && nx run-many -t lint typecheck test build parity && nx run-many -t smoke",
+        "verify": "node --run check && nx run-many -t build --parallel=1 && node tools/resources/boundaries.mjs && node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs && nx run-many -t lint typecheck test build parity --parallel=1 && node tools/resources/boundaries.mjs --declarations && nx run-many -t smoke --parallel=1",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "graph:open": "node tools/dev/open.mjs graphify-out/graph.html",

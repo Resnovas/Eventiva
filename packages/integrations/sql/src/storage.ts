@@ -47,12 +47,14 @@ interface Row {
     payload: string;
     lease_until: Date | number | null;
 }
-const decode = <A, I>(schema: Schema.Schema<A, I>, value: unknown) =>
-    Schema.decodeUnknown(schema)(value).pipe(
-        Effect.mapError((cause) => new StorageFailure({ operation: 'codec', cause }))
+const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
+    Schema.decode(schema)(value).pipe(
+        Effect.mapError(() => new StorageFailure({ operation: 'codec', reason: 'invalid-data' }))
     );
 const encode = (value: JsonValue) =>
-    Schema.encode(Json)(value).pipe(Effect.mapError((cause) => new StorageFailure({ operation: 'encode', cause })));
+    Schema.encode(Json)(value).pipe(
+        Effect.mapError(() => new StorageFailure({ operation: 'encode', reason: 'invalid-data' }))
+    );
 
 /** SQL methods close over one client; Effect SQL propagates its connection through the current fiber transaction. */
 export const storage = (dialect: Dialect) =>
@@ -61,13 +63,13 @@ export const storage = (dialect: Dialect) =>
         Effect.gen(function* () {
             const sql = yield* SqlClient.SqlClient;
             const time = (millis: number) => (dialect === 'postgres' ? new Date(millis).toISOString() : millis);
-            const failure = (cause: unknown) => new StorageFailure({ operation: 'sql', cause });
+            const failure = () => new StorageFailure({ operation: 'sql', reason: 'database' });
             const transaction = <A, E, R>(
                 effect: Effect.Effect<A, E | SqlError, R>
             ): Effect.Effect<A, E | StorageFailure, R> =>
                 sql
                     .withTransaction(effect)
-                    .pipe(Effect.mapError((cause) => (cause instanceof SqlError ? failure(cause) : cause)));
+                    .pipe(Effect.mapError((cause) => (cause instanceof SqlError ? failure() : cause)));
             const record = (row: Row) =>
                 Effect.gen(function* () {
                     const payload = yield* decode(Json, row.payload);
@@ -83,7 +85,7 @@ export const storage = (dialect: Dialect) =>
                 Effect.gen(function* () {
                     const rows = yield* sql<Row>`SELECT * FROM operational_record WHERE id = ${id}`;
                     return rows[0] ? yield* record(rows[0]) : undefined;
-                }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause))));
+                }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure())));
             const audit: Storage['Type']['audit'] = (id, receipt) =>
                 Effect.gen(function* () {
                     const body = yield* encode(receipt);
@@ -92,7 +94,7 @@ export const storage = (dialect: Dialect) =>
                         receipt: string;
                     }>`SELECT receipt FROM action_receipt WHERE id = ${id}`;
                     if (stored?.receipt !== body) return yield* new StorageFailure({ operation: 'receipt-id-reused' });
-                }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause))));
+                }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure())));
             const expire = transaction(
                 Effect.gen(function* () {
                     const now = yield* Clock.currentTimeMillis;
@@ -106,7 +108,7 @@ export const storage = (dialect: Dialect) =>
                         yield* sql`INSERT INTO quantity_ledger (id, resource, delta, occurred_at) VALUES (${entry.id + ':expired'}, ${entry.resource}, ${Number(entry.quantity)}, ${time(now)})`;
                     }
                 })
-            ).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause))));
+            ).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure())));
             return Storage.of({
                 capabilities: { transactions: true, compareAndSet: true, appendOnlyLedger: true, device: false },
                 ready: sql`SELECT id FROM action_receipt LIMIT 0`.pipe(Effect.asVoid, Effect.mapError(failure)),
@@ -204,7 +206,7 @@ export const storage = (dialect: Dialect) =>
                         }>`SELECT available FROM stock WHERE id = ${id}`;
                         if (!entry) return yield* new StorageFailure({ operation: 'missing-stock' });
                         return Number(entry.available);
-                    }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                    }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure()))),
                 reserve: (id, resource, quantity, expiresAt) =>
                     transaction(
                         Effect.gen(function* () {
@@ -276,7 +278,7 @@ export const storage = (dialect: Dialect) =>
                     Effect.gen(function* () {
                         const body = yield* encode(command);
                         yield* sql`INSERT INTO command_outbox (id, command) VALUES (${id}, ${body})`;
-                    }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                    }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure()))),
             });
         })
     );

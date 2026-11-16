@@ -1,6 +1,7 @@
 # Eventiva workspace (EVE-244). Only the fresh projects below are discovered;
 # the historical snapshots under Examples/ are never workspace packages.
 packages:
+    - 'ai-docs'
     - 'apps/*'
     - 'packages/*'
     - 'packages/integrations/*'

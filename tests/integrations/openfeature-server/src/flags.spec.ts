@@ -18,7 +18,8 @@ import { Flags } from '@eventiva/contracts/flags';
 import { layer, staticValues } from '@eventiva/integrations.openfeature.server/flags';
 import { describe, expect, it } from '@effect/vitest';
 import { OpenFeature, type Provider } from '@openfeature/server-sdk';
-import { Effect } from 'effect';
+import { Effect, Layer, Logger } from 'effect';
+import { vi } from 'vitest';
 
 const flag = (key: string, safeDefault: boolean) => ({ key, description: 'Test.', owner: 'test', safeDefault });
 
@@ -33,6 +34,41 @@ const broken: Provider = {
 };
 
 describe('OpenFeature server flags', () => {
+    it.effect('keeps vendor secrets out of public startup diagnostics and preserves defaults', () => {
+        const secret = 'flag-server-secret-canary';
+        const messages: string[] = [];
+        const bind = vi
+            .spyOn(OpenFeature, 'setProviderAndWait')
+            .mockRejectedValueOnce(Object.assign(new Error(secret), { secret }));
+        return Effect.gen(function* () {
+            expect(yield* (yield* Flags).evaluate(flag('a.secret', true))).toMatchObject({
+                value: true,
+                fallback: true,
+            });
+        }).pipe(
+            Effect.provide(
+                layer([], { domain: 'test-secret' }).pipe(
+                    Layer.provideMerge(
+                        Logger.replace(
+                            Logger.defaultLogger,
+                            Logger.make(({ message }) => messages.push(JSON.stringify(message)))
+                        )
+                    )
+                )
+            ),
+            Effect.tap(() =>
+                Effect.sync(() => {
+                    const diagnostics = messages.join('\n');
+                    expect(diagnostics).toContain('FlagProviderError');
+                    expect(diagnostics).toContain('initialize');
+                    expect(diagnostics).not.toContain(secret);
+                    expect(diagnostics).not.toContain('cause');
+                })
+            ),
+            Effect.ensuring(Effect.sync(() => bind.mockRestore()))
+        );
+    });
+
     it.effect('lets a higher source win whatever order providers are given in', () =>
         Effect.gen(function* () {
             const flags = yield* Flags;
@@ -59,16 +95,24 @@ describe('OpenFeature server flags', () => {
             const result = yield* flags.evaluate(flag('a.unknown', true));
             expect(result).toMatchObject({ flag: 'a.unknown', value: true, fallback: true });
             expect(result.reason).not.toBe('STATIC');
-        }).pipe(Effect.provide(layer([{ source: 'git-baseline', provider: staticValues({}) }], { domain: 'test-unknown' })))
+        }).pipe(
+            Effect.provide(layer([{ source: 'git-baseline', provider: staticValues({}) }], { domain: 'test-unknown' }))
+        )
     );
 
     it.effect('passes the targeting key and attributes to providers', () =>
         Effect.gen(function* () {
             const flags = yield* Flags;
             const gold = flag('a.gold', false);
-            expect((yield* flags.evaluate(gold, { targetingKey: 'u1', attributes: { tier: 'gold' } })).value).toBe(true);
-            expect((yield* flags.evaluate(gold, { targetingKey: 'u2', attributes: { tier: 'gold' } })).value).toBe(false);
-            expect((yield* flags.evaluate(gold, { targetingKey: 'u1', attributes: { tier: 'free' } })).value).toBe(false);
+            expect((yield* flags.evaluate(gold, { targetingKey: 'u1', attributes: { tier: 'gold' } })).value).toBe(
+                true
+            );
+            expect((yield* flags.evaluate(gold, { targetingKey: 'u2', attributes: { tier: 'gold' } })).value).toBe(
+                false
+            );
+            expect((yield* flags.evaluate(gold, { targetingKey: 'u1', attributes: { tier: 'free' } })).value).toBe(
+                false
+            );
             expect((yield* flags.evaluate(gold)).value).toBe(false);
         }).pipe(
             Effect.provide(
@@ -98,9 +142,17 @@ describe('OpenFeature server flags', () => {
             expect(yield* flags.evaluate(flag('a.flag', false))).toMatchObject({ value: true, reason: 'UNKNOWN' });
         }).pipe(
             Effect.provide(
-                layer([{ source: 'remote', provider: { ...broken, resolveBooleanEvaluation: () => Promise.resolve({ value: true }) } }], {
-                    domain: 'test-terse',
-                })
+                layer(
+                    [
+                        {
+                            source: 'remote',
+                            provider: { ...broken, resolveBooleanEvaluation: () => Promise.resolve({ value: true }) },
+                        },
+                    ],
+                    {
+                        domain: 'test-terse',
+                    }
+                )
             )
         )
     );
@@ -119,9 +171,17 @@ describe('OpenFeature server flags', () => {
             expect(yield* flags.evaluate(flag('a.flag', true))).toMatchObject({ value: true, fallback: true });
         }).pipe(
             Effect.provide(
-                layer([{ source: 'remote', provider: { ...broken, initialize: () => Promise.reject(new Error('no network')) } }], {
-                    domain: 'test-start',
-                })
+                layer(
+                    [
+                        {
+                            source: 'remote',
+                            provider: { ...broken, initialize: () => Promise.reject(new Error('no network')) },
+                        },
+                    ],
+                    {
+                        domain: 'test-start',
+                    }
+                )
             )
         )
     );
@@ -133,7 +193,11 @@ describe('OpenFeature server flags', () => {
                     const flags = yield* Flags;
                     expect((yield* flags.evaluate(flag('a.flag', false))).value).toBe(true);
                 }).pipe(
-                    Effect.provide(layer([{ source: 'git-baseline', provider: staticValues({ 'a.flag': true }) }], { domain: 'test-close' }))
+                    Effect.provide(
+                        layer([{ source: 'git-baseline', provider: staticValues({ 'a.flag': true }) }], {
+                            domain: 'test-close',
+                        })
+                    )
                 )
             );
             const after = OpenFeature.getClient('test-close');

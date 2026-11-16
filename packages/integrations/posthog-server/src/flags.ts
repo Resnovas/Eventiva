@@ -16,7 +16,7 @@
 
 import { PostHogServerProvider } from '@posthog/openfeature-node-provider';
 import type { Provider } from '@openfeature/server-sdk';
-import { Config, type ConfigError, Data, Effect, Option, Redacted, type Scope } from 'effect';
+import { type Cause, Config, type ConfigError, Data, Effect, Option, Redacted, type Scope } from 'effect';
 import { PostHog } from 'posthog-node';
 
 /**
@@ -26,8 +26,20 @@ import { PostHog } from 'posthog-node';
  * by default, so evaluating a flag captures nothing.
  */
 
-/** The PostHog client failed to flush on shutdown. */
-export class PostHogShutdownError extends Data.TaggedError('PostHogShutdownError')<{ readonly cause: unknown }> {}
+interface PostHogShutdownErrorFields {
+    readonly operation: 'shutdown';
+    readonly reason: 'shutdown-failed';
+}
+
+// The exact constructor keeps the vendor's open generic out of public declarations.
+const postHogShutdownErrorBase: new (
+    fields: PostHogShutdownErrorFields
+) => Cause.YieldableError & PostHogShutdownErrorFields & { readonly _tag: 'PostHogShutdownError' } = Data.TaggedError(
+    'PostHogShutdownError'
+)<PostHogShutdownErrorFields>;
+
+/** Bounded shutdown diagnostics only; client failures and credentials are never retained. */
+export class PostHogShutdownError extends postHogShutdownErrorBase {}
 
 /** Where the provider connects. The key is a secret; the host defaults to PostHog's EU region. */
 export interface PostHogOptions {
@@ -56,7 +68,7 @@ export const provider = (settings: PostHogOptions): Effect.Effect<Provider, neve
             Effect.tryPromise({
                 // effect-boundary: posthog-node flushes and stops through a promise.
                 try: () => client.shutdown(),
-                catch: (cause) => new PostHogShutdownError({ cause }),
+                catch: () => new PostHogShutdownError({ operation: 'shutdown', reason: 'shutdown-failed' }),
             }).pipe(Effect.ignoreLogged)
     ).pipe(Effect.map((client) => new PostHogServerProvider(client, { sendFeatureFlagEvents: false })));
 

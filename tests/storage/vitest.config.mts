@@ -14,5 +14,10 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
+import { defineConfig } from 'vitest/config';
 import { testProject } from '../../vitest.shared.ts';
-export default testProject('storage-tests', ['packages/integrations/sql/src/**']);
+const config = testProject('storage-tests', ['packages/integrations/sql/src/**'], import.meta.url);
+export default defineConfig({
+    ...config,
+    test: { ...config.test, include: ['src/**/*.spec.ts', '../resources/src/**/*.spec.ts'] },
+});

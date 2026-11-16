@@ -1,0 +1,12 @@
+{
+    "name": "@eventiva/ui-module-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/ui-modules": "workspace:*",
+        "react": "19.2.3",
+        "@types/react": "19.2.18"
+    }
+}

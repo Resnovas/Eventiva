@@ -16,7 +16,7 @@
 
 import type { MessageKey } from '@eventiva/contracts/i18n';
 import type { SecurityProfile } from '@eventiva/contracts/security';
-import { Option, Pipeable, Schema } from 'effect';
+import { Option, Pipeable, Schema, type SchemaAST } from 'effect';
 
 /**
  * Database-neutral fields. A field names a logical kind, the Effect Schema of
@@ -31,8 +31,9 @@ export type Logical = 'id' | 'text' | 'integer' | 'decimal' | 'boolean' | 'times
 /** How concurrent offline edits to one field resolve (2026-11-11 offline-first decision). */
 export type Conflict = 'field-lww' | 'server-authoritative' | 'append-only';
 
-/** One field of a resource, typed by the schema of its value. */
-export interface Field<S extends Schema.Schema.AnyNoContext = Schema.Schema.AnyNoContext> extends Pipeable.Pipeable {
+/** The schema-independent view needed by composition and storage adapters. */
+export interface Field<S extends { readonly ast: SchemaAST.AST } = { readonly ast: SchemaAST.AST }>
+    extends Pipeable.Pipeable {
     readonly _tag: 'Field';
     readonly logical: Logical;
     readonly schema: S;
@@ -45,7 +46,19 @@ export interface Field<S extends Schema.Schema.AnyNoContext = Schema.Schema.AnyN
     readonly target: Option.Option<string>;
 }
 
-const field = <S extends Schema.Schema.AnyNoContext>(logical: Logical, schema: S, target?: string): Field<S> => ({
+/** A concrete field is also its value schema, without copying schema-class constructors. */
+export type ValueField<S extends Schema.Schema<S['Type'], S['Encoded']>> = Field<S> &
+    Schema.Schema<S['Type'], S['Encoded']>;
+
+const field = <S extends Schema.Schema<S['Type'], S['Encoded']>>(
+    logical: Logical,
+    schema: S,
+    target?: string
+): ValueField<S> => ({
+    ...Schema.make<S['Type'], S['Encoded']>(schema.ast),
+    ast: schema.ast,
+    annotations: (annotations) => schema.annotations(annotations),
+    pipe: Pipeable.Prototype.pipe,
     _tag: 'Field',
     logical,
     schema,
@@ -54,25 +67,20 @@ const field = <S extends Schema.Schema.AnyNoContext>(logical: Logical, schema: S
     conflict: 'field-lww',
     label: Option.none(),
     target: Option.fromNullable(target),
-    pipe() {
-        // Effect's Pipeable helper takes the call's arguments object.
-        // eslint-disable-next-line prefer-rest-params
-        return Pipeable.pipeArguments(this, arguments);
-    },
 });
 
 /** A UUID key. */
-export const id = (): Field<typeof Schema.UUID> => field('id', Schema.UUID);
+export const id = (): ValueField<typeof Schema.UUID> => field('id', Schema.UUID);
 
 /** Text, optionally bounded. */
-export const text = (options: { readonly maxLength?: number } = {}): Field<Schema.Schema<string>> =>
+export const text = (options: { readonly maxLength?: number } = {}): ValueField<Schema.Schema<string>> =>
     field(
         'text',
         options.maxLength === undefined ? Schema.String : Schema.String.pipe(Schema.maxLength(options.maxLength))
     );
 
 /** A safe integer. */
-export const integer = (): Field<typeof Schema.Int> => field('integer', Schema.Int);
+export const integer = (): ValueField<typeof Schema.Int> => field('integer', Schema.Int);
 
 /**
  * An exact decimal, carried as a string at every portable boundary so no
@@ -81,43 +89,50 @@ export const integer = (): Field<typeof Schema.Int> => field('integer', Schema.I
 export const decimal = (options: {
     readonly precision: number;
     readonly scale: number;
-}): Field<Schema.Schema<string>> => {
+}): ValueField<Schema.Schema<string>> => {
     const whole = options.precision - options.scale;
     const fraction = options.scale > 0 ? `(\\.\\d{1,${options.scale}})?` : '';
     return field('decimal', Schema.String.pipe(Schema.pattern(new RegExp(`^-?\\d{1,${whole}}${fraction}$`))));
 };
 
-export const boolean = (): Field<typeof Schema.Boolean> => field('boolean', Schema.Boolean);
+export const boolean = (): ValueField<typeof Schema.Boolean> => field('boolean', Schema.Boolean);
 
 /** An instant, encoded as an ISO 8601 string. */
-export const timestamp = (): Field<typeof Schema.Date> => field('timestamp', Schema.Date);
+export const timestamp = (): ValueField<typeof Schema.Date> => field('timestamp', Schema.Date);
 
 /** A JSON document validated by its own schema. */
-export const json = <S extends Schema.Schema.AnyNoContext>(schema: S): Field<S> => field('json', schema);
+export const json = <S extends Schema.Schema<S['Type'], S['Encoded']>>(schema: S): ValueField<S> =>
+    field('json', schema);
 
 /** The id of a record in another resource, named by its resource name. */
-export const reference = (resource: string): Field<typeof Schema.UUID> => field('reference', Schema.UUID, resource);
+export const reference = (resource: string): ValueField<typeof Schema.UUID> =>
+    field('reference', Schema.UUID, resource);
 
 /** Allows the field to be empty. */
-export const nullable = <S extends Schema.Schema.AnyNoContext>(
-    self: Field<S>
-): Field<Schema.Schema<Schema.Schema.Type<S> | null, Schema.Schema.Encoded<S> | null>> => ({
+export const nullable = <A, I>(self: Field<Schema.Schema<A, I>>): ValueField<Schema.Schema<A | null, I | null>> => ({
     ...self,
-    schema: Schema.NullOr<Schema.Schema<Schema.Schema.Type<S>, Schema.Schema.Encoded<S>>>(self.schema),
+    ...field(self.logical, Schema.NullOr(self.schema)),
+    security: self.security,
+    conflict: self.conflict,
+    label: self.label,
+    target: self.target,
     nullable: true,
 });
 
 /** Sets the field's security profile. */
 export const classify =
     (security: SecurityProfile) =>
-    <S extends Schema.Schema.AnyNoContext>(self: Field<S>): Field<S> => ({ ...self, security });
+    <F extends Field>(self: F): Omit<F, 'security'> & { readonly security: SecurityProfile } => ({ ...self, security });
 
 /** Sets the field's offline conflict rule. */
 export const conflict =
     (rule: Conflict) =>
-    <S extends Schema.Schema.AnyNoContext>(self: Field<S>): Field<S> => ({ ...self, conflict: rule });
+    <F extends Field>(self: F): Omit<F, 'conflict'> & { readonly conflict: Conflict } => ({ ...self, conflict: rule });
 
 /** Sets the field's label. */
 export const label =
     (key: MessageKey) =>
-    <S extends Schema.Schema.AnyNoContext>(self: Field<S>): Field<S> => ({ ...self, label: Option.some(key) });
+    <F extends Field>(self: F): Omit<F, 'label'> & { readonly label: Option.Option<MessageKey> } => ({
+        ...self,
+        label: Option.some(key),
+    });

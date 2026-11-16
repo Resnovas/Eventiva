@@ -1,0 +1,13 @@
+{
+    "name": "@eventiva/telemetry-tests",
+    "projectType": "library",
+    "sourceRoot": "tests/telemetry/src",
+    "tags": ["type:test", "layer:backend", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/telemetry/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        }
+    }
+}

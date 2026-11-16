@@ -19,9 +19,9 @@
  * Provide the same tenant-scoped Storage service to Integrity and handlers.
  * The runtime supplies the validated successful receipt and rechecks live gates.
  */
-import type { Receipt } from '../../../packages/contracts/src/receipt.ts';
-import { Storage } from '../../../packages/contracts/src/storage.ts';
-import { Integrity } from '../../../packages/runtime/src/invocation.ts';
+import type { Receipt } from '@eventiva/contracts/receipt';
+import { Storage } from '@eventiva/contracts/storage';
+import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
 export const stage = (receipt: Receipt & { readonly version: number }) =>

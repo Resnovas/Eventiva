@@ -14,22 +14,34 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import type { ActionSpec, ApprovalPolicy } from '@eventiva/contracts/action';
+import type { ActionSpec, ApprovalPolicy, Input } from '@eventiva/contracts/action';
 import type { CallerIdentity } from '@eventiva/contracts/caller';
+import type { PlatformError } from '@eventiva/contracts/errors';
 import type { Receipt } from '@eventiva/contracts/receipt';
-import { Context, Data, Effect, Either, type Exit, Layer } from 'effect';
+import type { JsonValue } from '@eventiva/contracts/storage';
+import { type Cause, Context, Data, Effect, Either, type Exit, Layer } from 'effect';
 
 export type { Receipt } from '@eventiva/contracts/receipt';
 
-/** A platform gate failed. Reasons are safe identifiers, never input or credentials. */
-export class InvocationDenied extends Data.TaggedError('InvocationDenied')<{
+interface InvocationDeniedFields {
     readonly action: string;
     readonly reason: string;
-}> {}
+}
+const InvocationDeniedBase: new (args: InvocationDeniedFields) => Cause.YieldableError &
+    InvocationDeniedFields & {
+        readonly _tag: 'InvocationDenied';
+    } = Data.TaggedError('InvocationDenied');
+/** A platform gate failed. Reasons are safe identifiers, never input or credentials. */
+export class InvocationDenied extends InvocationDeniedBase {}
 
-export class AuditUnavailable extends Data.TaggedError('AuditUnavailable')<{
+interface AuditUnavailableFields {
     readonly action: string;
-}> {}
+}
+const AuditUnavailableBase: new (args: AuditUnavailableFields) => Cause.YieldableError &
+    AuditUnavailableFields & {
+        readonly _tag: 'AuditUnavailable';
+    } = Data.TaggedError('AuditUnavailable');
+export class AuditUnavailable extends AuditUnavailableBase {}
 
 /** Caller-supplied execution intent, not proof of authorization or approval. */
 export interface InvokeOptions {
@@ -38,12 +50,14 @@ export interface InvokeOptions {
     readonly mode?: 'online' | 'offline-intent' | 'scheduled' | undefined;
     readonly notBefore?: number | undefined;
     readonly deadline?: number | undefined;
+    /** Exact registered action version, not a resource-state version. Checked before preparation. */
+    readonly expectedActionVersion?: number | undefined;
     readonly expectedVersion?: string | undefined;
     readonly expectedState?: string | undefined;
 }
 
-export interface InvocationResult<E = unknown> {
-    readonly result: Exit.Exit<unknown, E>;
+export interface InvocationResult<E = PlatformError | InvocationDenied | AuditUnavailable, A = JsonValue> {
+    readonly result: Exit.Exit<A, E>;
     readonly receipt: Receipt;
     readonly replayed: boolean;
     readonly audit: 'durable' | 'spooled';
@@ -98,10 +112,10 @@ export interface ExecutionRequirements {
 export class ExecutionPolicy extends Context.Tag('@eventiva/runtime/ExecutionPolicy')<
     ExecutionPolicy,
     {
-        readonly inspect: (
+        readonly inspect: <S extends ActionSpec>(
             caller: CallerIdentity,
-            spec: ActionSpec,
-            input: unknown,
+            spec: S,
+            input: Input<NoInfer<S>>,
             intent: InvokeOptions
         ) => Effect.Effect<ExecutionRequirements, InvocationDenied>;
     }
@@ -133,7 +147,7 @@ export interface IntegrityRequest {
 }
 
 export interface Committed {
-    readonly output: unknown;
+    readonly output: JsonValue;
     readonly receipt: Receipt;
     readonly replayed: boolean;
 }
@@ -151,17 +165,17 @@ export interface Committed {
 export class Integrity extends Context.Tag('@eventiva/runtime/Integrity')<
     Integrity,
     {
-        readonly commit: <E>(
+        readonly commit: <E, Value>(
             request: IntegrityRequest,
-            execute: Effect.Effect<{ readonly output: unknown; readonly receipt: Receipt }, E>
+            execute: Effect.Effect<{ readonly output: Value; readonly receipt: Receipt }, E>
         ) => Effect.Effect<Committed, E | InvocationDenied | AuditUnavailable>;
     }
 >() {}
 
 /** JSON canonicalization rejects non-JSON values rather than hashing ambiguous coercions. */
-export const canonicalJson = (value: unknown): Either.Either<string, string> => {
+export const canonicalJson = <Value>(value: Value): Either.Either<string, string> => {
     const ancestors = new Set<object>();
-    const visit = (item: unknown): Either.Either<string, string> => {
+    const visit = <Item>(item: Item): Either.Either<string, string> => {
         if (item === null) return Either.right('null');
         if (typeof item === 'string' || typeof item === 'boolean') return Either.right(JSON.stringify(item));
         if (typeof item === 'number')
@@ -171,18 +185,18 @@ export const canonicalJson = (value: unknown): Either.Either<string, string> => 
             return Either.left('non-json-input');
         ancestors.add(item);
         const parts: Array<string> = [];
-        if (Array.isArray(item)) {
-            for (const child of item) {
-                const encoded = visit(child);
-                if (Either.isLeft(encoded)) return encoded;
-                parts.push(encoded.right);
-            }
-        } else {
-            for (const key of Object.keys(item).sort()) {
-                const encoded = visit((item as Record<string, unknown>)[key]);
-                if (Either.isLeft(encoded)) return encoded;
-                parts.push(`${JSON.stringify(key)}:${encoded.right}`);
-            }
+        const keys = Array.isArray(item)
+            ? Array.from({ length: item.length }, (_, index) => String(index))
+            : Object.keys(item).sort();
+        for (const key of keys) {
+            const descriptor = Object.getOwnPropertyDescriptor(item, key);
+            if (descriptor === undefined || !('value' in descriptor)) return Either.left('non-json-input');
+            // Owner-approved private ingress: recursively validate lib.es5's descriptor value immediately.
+            // Do not read item[key]: that would execute getters or Proxy get traps.
+            const child: unknown = descriptor.value;
+            const encoded = visit(child);
+            if (Either.isLeft(encoded)) return encoded;
+            parts.push(Array.isArray(item) ? encoded.right : `${JSON.stringify(key)}:${encoded.right}`);
         }
         ancestors.delete(item);
         return Either.right(Array.isArray(item) ? `[${parts.join(',')}]` : `{${parts.join(',')}}`);

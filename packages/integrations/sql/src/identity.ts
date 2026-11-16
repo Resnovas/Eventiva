@@ -33,14 +33,17 @@ export const identityStore = Layer.effect(
     Effect.gen(function* () {
         const tenant = yield* CurrentTenant;
         const sql = yield* SqlClient.SqlClient;
-        const failure = (cause: unknown) => new StorageFailure({ operation: 'identity', cause });
-        const decode = <A, I>(schema: Schema.Schema<A, I>, value: unknown) =>
-            Schema.decodeUnknown(schema)(value, { onExcessProperty: 'error' }).pipe(Effect.mapError(failure));
+        const failure = (reason: NonNullable<StorageFailure['reason']>) =>
+            new StorageFailure({ operation: 'identity', reason });
+        const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
+            Schema.decode(schema)(value, { onExcessProperty: 'error' }).pipe(
+                Effect.mapError(() => failure('invalid-data'))
+            );
         const lock = sql`UPDATE identity_guard SET version = version WHERE id = 1 RETURNING id`.pipe(
             Effect.flatMap((rows) =>
                 rows.length === 1 ? Effect.void : Effect.fail(failure('identity-guard-missing'))
             ),
-            Effect.mapError(failure)
+            Effect.catchTag('SqlError', () => Effect.fail(failure('database')))
         );
         const codecs: { readonly [K in IdentityKind]: Schema.Schema<IdentityRecords[K]> } = {
             principal: Schema.typeSchema(records.principal),
@@ -63,7 +66,7 @@ export const identityStore = Layer.effect(
                 const value = yield* decode(Schema.parseJson(codec(kind)), row.body);
                 if (value.id !== id) return yield* failure('identity-key-mismatch');
                 return { value, version: yield* decode(Version, Number(row.version)) };
-            }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause))));
+            }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database'))));
         return IdentityStore.of({
             tenant: tenant.id,
             lock,
@@ -76,7 +79,7 @@ export const identityStore = Layer.effect(
                             const checked = yield* decode(codec(kind), value);
                             yield* decode(Schema.NullOr(Version), expectedVersion);
                             const body = yield* Schema.encode(Schema.parseJson(codec(kind)))(checked).pipe(
-                                Effect.mapError(failure)
+                                Effect.mapError(() => failure('invalid-data'))
                             );
                             const rows =
                                 expectedVersion === null
@@ -85,7 +88,7 @@ export const identityStore = Layer.effect(
                             if (rows.length !== 1) return yield* failure('identity-version-conflict');
                         })
                     )
-                    .pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                    .pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database')))),
             teams: (subject) =>
                 Effect.gen(function* () {
                     const rows = yield* sql<{ body: string }>`SELECT body FROM identity_team ORDER BY id`;
@@ -93,7 +96,7 @@ export const identityStore = Layer.effect(
                         decode(Schema.parseJson(records.team), row.body)
                     );
                     return teams.filter((team) => team.members.includes(subject));
-                }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database')))),
             link: (external, subject) =>
                 sql
                     .withTransaction(
@@ -110,7 +113,7 @@ export const identityStore = Layer.effect(
                             if (row?.subject !== canonical) return yield* failure('identity-link-collision');
                         })
                     )
-                    .pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                    .pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database')))),
             lookup: (external) =>
                 Effect.gen(function* () {
                     const key = yield* decode(FederatedSubject, external);
@@ -118,7 +121,7 @@ export const identityStore = Layer.effect(
                         subject: string;
                     }>`SELECT subject FROM identity_federation WHERE issuer = ${key.issuer} AND external_subject = ${key.subject}`;
                     return row ? yield* decode(SubjectId, row.subject) : undefined;
-                }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database')))),
             audit: (limit) =>
                 Effect.gen(function* () {
                     const bounded = yield* decode(Schema.Int.pipe(Schema.between(1, 100)), limit);
@@ -131,7 +134,7 @@ export const identityStore = Layer.effect(
                     if (receipts.some((receipt) => receipt.caller.tenant !== tenant.id))
                         return yield* failure('identity-audit-tenant-mismatch');
                     return receipts;
-                }).pipe(Effect.catchTag('SqlError', (cause) => Effect.fail(failure(cause)))),
+                }).pipe(Effect.catchTag('SqlError', () => Effect.fail(failure('database')))),
         });
     })
 );

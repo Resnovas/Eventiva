@@ -15,7 +15,7 @@
  */
 
 import { isWeaker, type SecurityProfile } from '@eventiva/contracts/security';
-import { Data, Either, Schema } from 'effect';
+import { type Cause, Data, Either, Schema } from 'effect';
 import type { Field } from './field.ts';
 import { type ModuleId, ResourceName } from './manifest.ts';
 import { FieldName, type Fields, type Resource } from './resource.ts';
@@ -62,40 +62,77 @@ export interface Composed {
     readonly resources: ReadonlyArray<ComposedResource>;
 }
 
-/** Two resources share a name. */
-export class DuplicateResource extends Data.TaggedError('DuplicateResource')<{
+interface DuplicateResourceFields {
     readonly resource: string;
     readonly modules: ReadonlyArray<string>;
-}> {}
+}
 
-/** Two declarations give a resource the same field. */
-export class DuplicateField extends Data.TaggedError('DuplicateField')<{
+interface DuplicateFieldFields {
     readonly resource: string;
     readonly field: string;
     readonly modules: ReadonlyArray<string>;
-}> {}
+}
 
-/** A contribution or reference names a resource nobody declares. */
-export class UnknownTarget extends Data.TaggedError('UnknownTarget')<{
+interface UnknownTargetFields {
     readonly resource: string;
     readonly module: string;
     readonly target: string;
-}> {}
+}
 
-/** A field would be stored with less protection than its resource requires. */
-export class WeakerClassification extends Data.TaggedError('WeakerClassification')<{
+interface WeakerClassificationFields {
     readonly resource: string;
     readonly field: string;
     readonly module: string;
     readonly profile: SecurityProfile;
     readonly floor: SecurityProfile;
-}> {}
+}
 
-/** A resource or field name is not canonical. */
-export class InvalidName extends Data.TaggedError('InvalidName')<{
+interface InvalidNameFields {
     readonly module: string;
     readonly name: string;
-}> {}
+}
+
+// Concrete constructor annotations keep the vendor's open generic out of declarations.
+const duplicateResourceBase: new (
+    fields: DuplicateResourceFields
+) => Cause.YieldableError & DuplicateResourceFields & { readonly _tag: 'DuplicateResource' } = Data.TaggedError(
+    'DuplicateResource'
+)<DuplicateResourceFields>;
+const duplicateFieldBase: new (
+    fields: DuplicateFieldFields
+) => Cause.YieldableError & DuplicateFieldFields & { readonly _tag: 'DuplicateField' } = Data.TaggedError(
+    'DuplicateField'
+)<DuplicateFieldFields>;
+const unknownTargetBase: new (
+    fields: UnknownTargetFields
+) => Cause.YieldableError & UnknownTargetFields & { readonly _tag: 'UnknownTarget' } = Data.TaggedError(
+    'UnknownTarget'
+)<UnknownTargetFields>;
+const weakerClassificationBase: new (
+    fields: WeakerClassificationFields
+) => Cause.YieldableError & WeakerClassificationFields & { readonly _tag: 'WeakerClassification' } = Data.TaggedError(
+    'WeakerClassification'
+)<WeakerClassificationFields>;
+const invalidNameBase: new (
+    fields: InvalidNameFields
+) => Cause.YieldableError & InvalidNameFields & { readonly _tag: 'InvalidName' } = Data.TaggedError(
+    'InvalidName'
+)<InvalidNameFields>;
+
+/** Two resources share a name. */
+export class DuplicateResource extends duplicateResourceBase {}
+
+/** Two declarations give a resource the same field. */
+export class DuplicateField extends duplicateFieldBase {}
+
+/** A contribution or reference names a resource nobody declares. */
+export class UnknownTarget extends unknownTargetBase {}
+
+/** A field would be stored with less protection than its resource requires. */
+export class WeakerClassification extends weakerClassificationBase {}
+
+/** A resource or field name is not canonical. */
+export class InvalidName extends invalidNameBase {}
 
 export type ComposeError = DuplicateResource | DuplicateField | UnknownTarget | WeakerClassification | InvalidName;
 
@@ -144,8 +181,7 @@ export const compose = (
         }
         const composed = fields.get(source.target) ?? new Map<string, ComposedField>();
         fields.set(source.target, composed);
-        for (const name of Object.keys(source.fields).sort()) {
-            const field = source.fields[name] as Field;
+        for (const [name, field] of Object.entries(source.fields).sort(byName(([name]: [string, Field]) => name))) {
             if (!Schema.is(FieldName)(name)) return Either.left(new InvalidName({ module: source.module, name }));
             const existing = composed.get(name);
             if (existing !== undefined) {

@@ -1,0 +1,13 @@
+{
+    "name": "@eventiva/ui-module-tests",
+    "projectType": "library",
+    "sourceRoot": "tests/ui-modules/src",
+    "tags": ["type:test", "layer:test", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": { "command": "tsc -p tests/ui-modules/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },
+            "dependsOn": ["^build"]
+        }
+    }
+}
