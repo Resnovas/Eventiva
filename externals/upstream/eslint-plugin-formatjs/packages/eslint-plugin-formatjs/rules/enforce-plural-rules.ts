@@ -1,0 +1,149 @@
+import {
+  type MessageFormatElement,
+  isPluralElement,
+  parse,
+} from '@formatjs/icu-messageformat-parser'
+import type {Node} from 'estree-jsx'
+import type {Rule} from 'eslint'
+import {
+  extractMessages,
+  getSettings,
+} from '#packages/eslint-plugin-formatjs/util.js'
+import {
+  CORE_MESSAGES,
+  type CoreMessageIds,
+} from '#packages/eslint-plugin-formatjs/messages.js'
+
+enum LDML {
+  zero = 'zero',
+  one = 'one',
+  two = 'two',
+  few = 'few',
+  many = 'many',
+  other = 'other',
+}
+
+type PluralConfig = {[key in LDML]?: boolean}
+
+type MessageIds = 'missingPlural' | 'forbidden' | CoreMessageIds
+
+function verifyAst(plConfig: PluralConfig, ast: MessageFormatElement[]) {
+  const errors: {messageId: MessageIds; data: Record<string, string>}[] = []
+  for (const el of ast) {
+    if (isPluralElement(el)) {
+      const rules = Object.keys(plConfig) as Array<LDML>
+      for (const rule of rules) {
+        if (plConfig[rule] && !el.options[rule]) {
+          errors.push({messageId: 'missingPlural', data: {rule}})
+        }
+        if (!plConfig[rule] && el.options[rule]) {
+          errors.push({messageId: 'forbidden', data: {rule}})
+        }
+      }
+      const {options} = el
+      for (const selector of Object.keys(options)) {
+        errors.push(...verifyAst(plConfig, options[selector].value))
+      }
+    }
+  }
+
+  return errors
+}
+
+function checkNode(context: Rule.RuleContext, node: Node) {
+  const settings = getSettings(context)
+  const msgs = extractMessages(node, settings)
+  if (!msgs.length) {
+    return
+  }
+
+  const plConfig = context.options[0]
+  if (!plConfig) {
+    return
+  }
+  for (const [
+    {
+      message: {defaultMessage},
+      messageNode,
+    },
+  ] of msgs) {
+    if (!defaultMessage || !messageNode) {
+      continue
+    }
+    let ast: MessageFormatElement[]
+    try {
+      ast = parse(defaultMessage, {
+        ignoreTag: settings.ignoreTag,
+      })
+    } catch (e) {
+      context.report({
+        node: messageNode,
+        messageId: 'parseError',
+        data: {
+          error: (e as Error).message,
+        },
+      })
+      continue
+    }
+    const errors = verifyAst(plConfig, ast)
+    for (const error of errors) {
+      context.report({
+        node: messageNode,
+        ...error,
+      })
+    }
+  }
+}
+
+export const name = 'enforce-plural-rules'
+
+export const rule: Rule.RuleModule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Enforce plural rules to always specify certain categories like `one`/`other`',
+      url: 'https://formatjs.github.io/docs/tooling/linter#enforce-plural-rules',
+    },
+    fixable: 'code',
+    schema: [
+      {
+        type: 'object',
+        properties: Object.keys(LDML).reduce(
+          (schema: Record<string, {type: 'boolean'}>, k) => {
+            schema[k] = {
+              type: 'boolean',
+            }
+            return schema
+          },
+          {}
+        ),
+        additionalProperties: false,
+      },
+    ],
+    messages: {
+      ...CORE_MESSAGES,
+      missingPlural: `Missing plural rule "{{rule}}"`,
+      forbidden: `Plural rule "{{rule}}" is forbidden`,
+    },
+  },
+  create(context) {
+    const callExpressionVisitor = (node: Node) => checkNode(context, node)
+
+    const parserServices = context.sourceCode.parserServices
+    if (parserServices?.defineTemplateBodyVisitor) {
+      return parserServices.defineTemplateBodyVisitor(
+        {
+          CallExpression: callExpressionVisitor,
+        },
+        {
+          CallExpression: callExpressionVisitor,
+        }
+      )
+    }
+    return {
+      JSXOpeningElement: (node: Node) => checkNode(context, node),
+      CallExpression: callExpressionVisitor,
+    }
+  },
+}

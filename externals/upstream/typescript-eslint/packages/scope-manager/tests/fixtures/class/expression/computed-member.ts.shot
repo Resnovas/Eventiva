@@ -1,0 +1,156 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"outer1">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "outer1",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"outer1">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: Literal$2,
+        },
+        Reference$4 {
+          identifier: Identifier<"outer1">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        VariableDefinition$2 {
+          name: Identifier<"outer2">,
+          node: VariableDeclarator$3,
+        },
+      ],
+      name: "outer2",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"outer2">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$3,
+          writeExpr: Literal$4,
+        },
+        Reference$5 {
+          identifier: Identifier<"outer2">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [
+        VariableDefinition$3 {
+          name: Identifier<"A">,
+          node: VariableDeclarator$5,
+        },
+      ],
+      name: "A",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"A">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$4,
+          writeExpr: ClassExpression$6,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$7,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+        Reference$3,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "outer1" => Variable$2,
+        "outer2" => Variable$3,
+        "A" => Variable$4,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+        Variable$4,
+      ],
+    },
+    ClassScope$2 {
+      block: ClassExpression$6,
+      isStrict: true,
+      references: [
+        Reference$4,
+        Reference$5,
+      ],
+      set: Map {},
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [],
+    },
+    ClassFieldInitializerScope$3 {
+      block: Literal$8,
+      isStrict: true,
+      references: [],
+      set: Map {},
+      type: "class-field-initializer",
+      upper: ClassScope$2,
+      variables: [],
+    },
+    FunctionScope$4 {
+      block: FunctionExpression$9,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "arguments" => Variable$5,
+      },
+      type: "function",
+      upper: ClassScope$2,
+      variables: [
+        Variable$5,
+      ],
+    },
+  ],
+}

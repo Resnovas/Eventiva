@@ -1,0 +1,45 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"X">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "X",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$2,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+      ],
+    },
+    ModuleScope$2 {
+      block: Program$2,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "X" => Variable$2,
+      },
+      type: "module",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$2,
+      ],
+    },
+  ],
+}

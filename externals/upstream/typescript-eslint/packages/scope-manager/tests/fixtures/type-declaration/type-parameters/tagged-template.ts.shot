@@ -1,0 +1,143 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"StyledPaymentProps">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "StyledPaymentProps",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"StyledPaymentProps">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        FunctionNameDefinition$2 {
+          name: Identifier<"div">,
+          node: FunctionDeclaration$2,
+        },
+      ],
+      name: "div",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"div">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"arg">,
+          node: FunctionDeclaration$2,
+        },
+      ],
+      name: "arg",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$6 {
+      defs: [
+        TypeDefinition$4 {
+          name: Identifier<"T">,
+          node: TSTypeParameter$3,
+        },
+      ],
+      name: "T",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$7 {
+      defs: [
+        VariableDefinition$5 {
+          name: Identifier<"StyledPayment">,
+          node: VariableDeclarator$4,
+        },
+      ],
+      name: "StyledPayment",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"StyledPayment">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$7,
+          writeExpr: TaggedTemplateExpression$5,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$6,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+        Reference$3,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "StyledPaymentProps" => Variable$2,
+        "div" => Variable$3,
+        "StyledPayment" => Variable$7,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+        Variable$7,
+      ],
+    },
+    FunctionScope$2 {
+      block: FunctionDeclaration$2,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "arguments" => Variable$4,
+        "arg" => Variable$5,
+        "T" => Variable$6,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+        Variable$5,
+        Variable$6,
+      ],
+    },
+  ],
+}

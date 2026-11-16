@@ -1,0 +1,83 @@
+{
+  "name": "@typescript-eslint/rule-schema-to-typescript-types",
+  "version": "8.72.1",
+  "description": "Converts ESLint rule schemas to equivalent TypeScript type strings.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!**/*.js.map",
+    "!**/*.tsbuildinfo"
+  ],
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/rule-schema-to-typescript-types"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io",
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm exec nx build",
+    "clean": "rimraf dist/ coverage/",
+    "format": "pnpm -w run format",
+    "lint": "pnpm -w exec nx lint",
+    "test": "pnpm -w exec nx test",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6",
+    "attw-check": "pnpm -w exec nx attw-check"
+  },
+  "dependencies": {
+    "@typescript-eslint/type-utils": "workspace:*",
+    "@typescript-eslint/utils": "workspace:*",
+    "natural-compare": "^1.4.0"
+  },
+  "devDependencies": {
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typescript-eslint"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "nx": {
+    "name": "rule-schema-to-typescript-types",
+    "includedScripts": [
+      "clean"
+    ],
+    "targets": {
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck:tsc6": {},
+      "attw-check": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false,
+        "command": "pnpm pack --out attw-check.tgz && attw attw-check.tgz --profile esm-only",
+        "options": {
+          "cwd": "{projectRoot}"
+        }
+      }
+    }
+  }
+}

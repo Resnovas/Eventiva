@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportAllDeclaration > _error_ > non-string-source > TSESTree - Error`]
+TSError
+> 1 | export * from module;
+    |               ^^^^^^ Module specifier must be a string literal.
+  2 |

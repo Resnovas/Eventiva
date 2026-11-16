@@ -1,0 +1,211 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"shorthand">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "shorthand",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"shorthand">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        VariableDefinition$2 {
+          name: Identifier<"value">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "value",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"value">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$3,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [
+        VariableDefinition$3 {
+          name: Identifier<"world">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "world",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"world">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$4,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [
+        VariableDefinition$4 {
+          name: Identifier<"a">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "a",
+      references: [
+        Reference$4 {
+          identifier: Identifier<"a">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$5,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$6 {
+      defs: [
+        VariableDefinition$5 {
+          name: Identifier<"b">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "b",
+      references: [
+        Reference$5 {
+          identifier: Identifier<"b">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$6,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$7 {
+      defs: [
+        VariableDefinition$6 {
+          name: Identifier<"c">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "c",
+      references: [
+        Reference$6 {
+          identifier: Identifier<"c">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$7,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$8 {
+      defs: [
+        VariableDefinition$7 {
+          name: Identifier<"d">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "d",
+      references: [
+        Reference$7 {
+          identifier: Identifier<"d">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$8,
+          writeExpr: Identifier<"object">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$2,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+        Reference$3,
+        Reference$4,
+        Reference$5,
+        Reference$6,
+        Reference$7,
+        Reference$8 {
+          identifier: Identifier<"object">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "shorthand" => Variable$2,
+        "value" => Variable$3,
+        "world" => Variable$4,
+        "a" => Variable$5,
+        "b" => Variable$6,
+        "c" => Variable$7,
+        "d" => Variable$8,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+        Variable$4,
+        Variable$5,
+        Variable$6,
+        Variable$7,
+        Variable$8,
+      ],
+    },
+  ],
+}

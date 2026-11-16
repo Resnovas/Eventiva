@@ -1,0 +1,795 @@
+import { ProjectGraph } from '../../config/project-graph';
+import { NxJsonConfiguration } from '../../config/nx-json';
+import {
+  getCannotFindProjectError,
+  getRunOneTargetError,
+  parseRunOneOptions,
+} from './run-one';
+
+describe('parseRunOneOptions', () => {
+  let projectGraph: ProjectGraph;
+  let nxJson: NxJsonConfiguration;
+  const testCwd = '/test/workspace';
+
+  beforeEach(() => {
+    projectGraph = {
+      nodes: {
+        'my-app': {
+          name: 'my-app',
+          type: 'app',
+          data: {
+            root: 'apps/my-app',
+            targets: {
+              build: { executor: '@nx/webpack:webpack' },
+              serve: { executor: '@nx/webpack:dev-server' },
+              run: { executor: '@nx/js:node' },
+            },
+          },
+        },
+        'my-lib': {
+          name: 'my-lib',
+          type: 'lib',
+          data: {
+            root: 'libs/my-lib',
+            targets: {
+              build: { executor: '@nx/js:tsc' },
+              test: { executor: '@nx/jest:jest' },
+            },
+          },
+        },
+        'default-project': {
+          name: 'default-project',
+          type: 'app',
+          data: {
+            root: '.',
+            targets: {
+              build: { executor: '@nx/js:tsc' },
+              serve: { executor: '@nx/webpack:dev-server' },
+            },
+          },
+        },
+        'colon-proj': {
+          name: 'colon-proj',
+          type: 'lib',
+          data: {
+            root: 'libs/colon-proj',
+            targets: {
+              'zzcustom:variant': { executor: 'nx:run-commands' },
+            },
+          },
+        },
+      },
+      dependencies: {},
+    };
+
+    nxJson = {
+      defaultProject: 'default-project',
+    };
+  });
+
+  describe('when project:target:configuration contains colon', () => {
+    it('should parse project:target:configuration format', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-app:build:production',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-app');
+      expect(result.target).toBe('build');
+      expect(result.configuration).toBe('production');
+    });
+
+    it('should parse project:target format without configuration', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-app:build',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-app');
+      expect(result.target).toBe('build');
+      expect(result.configuration).toBeUndefined();
+    });
+  });
+
+  describe('when parsedArgs.target is provided', () => {
+    it('should use the provided target', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('build');
+      expect(result.project).toBe('my-app');
+    });
+  });
+
+  describe('when project has run target', () => {
+    it('should set target to "run" when project exists with run target', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('run');
+      expect(result.project).toBe('my-app');
+    });
+
+    it('should use argument as target when project does not have run target', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-lib',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('my-lib');
+      expect(result.project).toBe('default-project');
+    });
+  });
+
+  describe('when no special conditions are met', () => {
+    it('should use project:target:configuration as target', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'build',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('build');
+      expect(result.project).toBe('my-app');
+    });
+  });
+
+  describe('project resolution', () => {
+    it('should use parsedArgs.project when provided', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'build',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-app');
+    });
+
+    it('should use default project when no project specified and cwd is workspace root', () => {
+      const parsedArgs = {
+        target: 'build',
+      };
+
+      // Test with cwd at workspace root to trigger default project logic
+      const result = parseRunOneOptions(
+        '/test/workspace',
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('default-project');
+    });
+  });
+
+  describe('when project:target:configuration is not a string', () => {
+    // yargs may coerce the positional to `true` when the user passes only
+    // flag-based options like `nx run -p my-project -t test:unit`.
+    it('should not crash when the positional is a boolean', () => {
+      const parsedArgs = {
+        'project:target:configuration': true,
+        project: 'my-app',
+        target: 'test:unit',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-app');
+      expect(result.target).toBe('test:unit');
+    });
+  });
+
+  describe('error handling', () => {
+    it('should throw error when target is missing', () => {
+      const parsedArgs = {
+        project: 'my-app',
+        // No target and no 'project:target:configuration'
+      };
+
+      expect(() => {
+        parseRunOneOptions(
+          '/some/other/path',
+          parsedArgs,
+          projectGraph,
+          nxJson
+        );
+      }).toThrow('Both project and target have to be specified');
+    });
+
+    it('should parse successfully when "nx run app" is used even if app does not have run target', () => {
+      const parsedArgs = {
+        target: 'run',
+        project: 'my-lib', // my-lib doesn't have a run target in our test setup
+      };
+
+      // The function should parse successfully - target validation happens later in the pipeline
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-lib');
+      expect(result.target).toBe('run');
+    });
+  });
+
+  describe('target aliases', () => {
+    it('should resolve target alias "b" to "build"', () => {
+      const parsedArgs = {
+        target: 'b',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('build');
+    });
+
+    it('should resolve target alias "e" to "e2e"', () => {
+      const parsedArgs = {
+        target: 'e',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('e2e');
+    });
+
+    it('should resolve target alias "l" to "lint"', () => {
+      const parsedArgs = {
+        target: 'l',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('lint');
+    });
+
+    it('should resolve target alias "s" to "serve"', () => {
+      const parsedArgs = {
+        target: 's',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('serve');
+    });
+
+    it('should resolve target alias "t" to "test"', () => {
+      const parsedArgs = {
+        target: 't',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('test');
+    });
+
+    it('should not resolve non-alias targets', () => {
+      const parsedArgs = {
+        target: 'custom-target',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('custom-target');
+    });
+  });
+
+  describe('configuration handling', () => {
+    it('should use parsedArgs.configuration when provided', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+        configuration: 'staging',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.configuration).toBe('staging');
+    });
+
+    it('should set configuration to "production" when prod flag is true', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+        prod: true,
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.configuration).toBe('production');
+    });
+
+    it('should prefer explicit configuration over prod flag', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+        configuration: 'staging',
+        prod: true,
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.configuration).toBe('staging');
+    });
+
+    it('should leave configuration undefined when neither flag is set', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.configuration).toBeUndefined();
+    });
+  });
+
+  describe('parsedArgs cleanup', () => {
+    it('should remove specific properties from parsedArgs', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-app:build',
+        target: 'build',
+        project: 'my-app',
+        configuration: 'production',
+        prod: true,
+        c: 'some-value',
+        otherProperty: 'should-remain',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.parsedArgs).toEqual({
+        otherProperty: 'should-remain',
+        target: 'build',
+      });
+      expect(result.parsedArgs['project:target:configuration']).toBeUndefined();
+      expect(result.parsedArgs.project).toBeUndefined();
+      expect(result.parsedArgs.configuration).toBeUndefined();
+      expect(result.parsedArgs.prod).toBeUndefined();
+      expect(result.parsedArgs.c).toBeUndefined();
+    });
+
+    it('should preserve other properties in parsedArgs', () => {
+      const parsedArgs = {
+        target: 'build',
+        project: 'my-app',
+        verbose: true,
+        output: 'dist',
+        customFlag: 'value',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.parsedArgs).toEqual({
+        verbose: true,
+        output: 'dist',
+        customFlag: 'value',
+        target: 'build',
+      });
+    });
+  });
+
+  describe('getRunOneTargetError', () => {
+    it('should return null when the target exists on the project', () => {
+      expect(
+        getRunOneTargetError(projectGraph.nodes['my-app'], 'build')
+      ).toBeNull();
+    });
+
+    it('should list available targets and suggest the closest one for a typo', () => {
+      const error = getRunOneTargetError(
+        projectGraph.nodes['my-app'],
+        'biuld'
+      )!;
+
+      expect(error.title).toBe(
+        'Cannot find target "biuld" for project "my-app"'
+      );
+      expect(error.bodyLines).toContain('Did you mean "build"?');
+      // The closest match is already surfaced as the suggestion, so it is not
+      // repeated in the available targets list.
+      expect(error.bodyLines).not.toContain('  - build');
+      expect(error.bodyLines).toContain('  - serve');
+      expect(error.bodyLines).toContain('  - run');
+    });
+
+    it('should omit the suggestion when no target is close enough', () => {
+      const error = getRunOneTargetError(
+        projectGraph.nodes['my-app'],
+        'nonsense'
+      )!;
+
+      expect(
+        error.bodyLines.some((line: string) => line.startsWith('Did you mean'))
+      ).toBe(false);
+      expect(error.bodyLines).toContain('  - build');
+    });
+
+    it('should report when the project has no targets', () => {
+      const error = getRunOneTargetError(
+        {
+          name: 'empty',
+          type: 'lib',
+          data: { root: 'libs/empty', targets: {} },
+        },
+        'build'
+      )!;
+
+      expect(error.title).toBe(
+        'Cannot find target "build" for project "empty"'
+      );
+      expect(error.bodyLines).toContain(
+        'The project "empty" does not have any targets configured.'
+      );
+    });
+
+    it('should suggest a colon-containing target even though its tail is parsed as a configuration', () => {
+      // `nx run colon-proj:zzcustom:variantt` splits to target "zzcustom",
+      // configuration "variantt"; the real target name contains the colon.
+      const error = getRunOneTargetError(
+        projectGraph.nodes['colon-proj'],
+        'zzcustom',
+        'variantt'
+      )!;
+
+      expect(error.title).toBe(
+        'Cannot find target "zzcustom" for project "colon-proj"'
+      );
+      // The only target is the suggestion, so there is nothing left to list --
+      // the "Available targets:" header must not be printed on its own.
+      expect(error.bodyLines).toEqual(['Did you mean "zzcustom:variant"?']);
+    });
+
+    it('should omit the available targets block when the suggestion was the only target', () => {
+      const error = getRunOneTargetError(
+        {
+          name: 'solo',
+          type: 'lib',
+          data: { root: 'libs/solo', targets: { build: {} } },
+        },
+        'buld'
+      )!;
+
+      expect(error.bodyLines).toEqual(['Did you mean "build"?']);
+    });
+
+    it('should prefer a closer bare-target match over a further rejoined one', () => {
+      // `nx run app:buld:storybook` splits to target "buld" + configuration
+      // "storybook". The rejoined form matches "build-storybook" at distance 2,
+      // but the bare target matches "build" at distance 1 -- the closer of the
+      // two must win rather than whichever form is tried first.
+      const error = getRunOneTargetError(
+        {
+          name: 'app',
+          type: 'app',
+          data: {
+            root: 'apps/app',
+            targets: { build: {}, 'build-storybook': {} },
+          },
+        },
+        'buld',
+        'storybook'
+      )!;
+
+      expect(error.bodyLines).toEqual([
+        'Did you mean "build"?',
+        '',
+        'Available targets:',
+        '  - build-storybook',
+      ]);
+    });
+
+    it('should still suggest the target for a genuine target + configuration typo', () => {
+      // Here "production" is a real configuration name, not part of the target,
+      // so the bare target form must still win.
+      const error = getRunOneTargetError(
+        projectGraph.nodes['my-app'],
+        'biuld',
+        'production'
+      )!;
+
+      expect(error.bodyLines).toContain('Did you mean "build"?');
+    });
+
+    it('should cap the listed targets to five and report the remainder', () => {
+      const error = getRunOneTargetError(
+        {
+          name: 'many',
+          type: 'lib',
+          data: {
+            root: 'libs/many',
+            targets: {
+              build: {},
+              test: {},
+              lint: {},
+              serve: {},
+              e2e: {},
+              docs: {},
+              deploy: {},
+            },
+          },
+        },
+        'nope'
+      )!;
+
+      const targetLines = error.bodyLines.filter((line: string) =>
+        line.startsWith('  - ')
+      );
+      expect(targetLines).toHaveLength(5);
+      expect(error.bodyLines).toContain('  ...and 2 more');
+    });
+  });
+
+  describe('getCannotFindProjectError', () => {
+    it('should suggest the closest task id when the project name has a typo', () => {
+      const error = getCannotFindProjectError(projectGraph, 'my-ap', 'serve');
+
+      expect(error.title).toBe("Cannot find project 'my-ap'");
+      expect(error.bodyLines).toContain('Did you mean one of these?');
+      expect(error.bodyLines).toContain('  - my-app:serve');
+    });
+
+    it('should omit suggestions when nothing is close enough', () => {
+      const error = getCannotFindProjectError(
+        projectGraph,
+        'completely-unrelated',
+        'whatever'
+      );
+
+      expect(error.title).toBe("Cannot find project 'completely-unrelated'");
+      expect(error.bodyLines).toEqual([]);
+    });
+
+    it('should suggest the full task id for a project typo on a colon target', () => {
+      // `nx run colon-pro:zzcustom:variant` -> project "colon-pro" (typo),
+      // target "zzcustom", configuration "variant".
+      const error = getCannotFindProjectError(
+        projectGraph,
+        'colon-pro',
+        'zzcustom',
+        'variant'
+      );
+
+      expect(error.title).toBe("Cannot find project 'colon-pro'");
+      expect(error.bodyLines).toContain('  - colon-proj:zzcustom:variant');
+    });
+
+    it('should prefer a closer shorter-form specifier over a further rejoined one', () => {
+      // `nx run shp:build:production` -> project "shp" (typo), target "build",
+      // configuration "production". The rejoined specifier matches
+      // "shop:build-production" at distance 2, but dropping the configuration
+      // matches "shop:build" at distance 1.
+      const graph: ProjectGraph = {
+        nodes: {
+          shop: {
+            name: 'shop',
+            type: 'app',
+            data: {
+              root: 'apps/shop',
+              targets: { build: {}, 'build-production': {} },
+            },
+          },
+          'shop-e2e': {
+            name: 'shop-e2e',
+            type: 'e2e',
+            data: { root: 'apps/shop-e2e', targets: { e2e: {} } },
+          },
+        },
+        dependencies: {},
+      };
+
+      const error = getCannotFindProjectError(
+        graph,
+        'shp',
+        'build',
+        'production'
+      );
+
+      expect(error.bodyLines).toEqual([
+        'Did you mean one of these?',
+        '  - shop:build',
+      ]);
+    });
+
+    it('should not suggest task ids that only match on the target the user typed correctly', () => {
+      // "zzz" shares no character with any project, but the correctly typed
+      // ":build" suffix must not buy the project segment a bigger typo budget.
+      const graph: ProjectGraph = {
+        nodes: Object.fromEntries(
+          ['web', 'api', 'docs', 'admin', 'mobile'].map((name) => [
+            name,
+            {
+              name,
+              type: 'app' as const,
+              data: {
+                root: `apps/${name}`,
+                targets: { build: {}, test: {}, lint: {} },
+              },
+            },
+          ])
+        ),
+        dependencies: {},
+      };
+
+      const error = getCannotFindProjectError(graph, 'zzz', 'build');
+
+      expect(error.bodyLines).toEqual([]);
+    });
+  });
+
+  describe('complex scenarios', () => {
+    it('should handle project:target format without configuration', () => {
+      const parsedArgs = {
+        'project:target:configuration': 'my-app:build',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('my-app');
+      expect(result.target).toBe('build');
+      expect(result.configuration).toBeUndefined();
+    });
+
+    it('should handle target alias with configuration', () => {
+      const parsedArgs = {
+        target: 's',
+        project: 'my-app',
+        configuration: 'development',
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.target).toBe('serve');
+      expect(result.configuration).toBe('development');
+    });
+
+    it('should use default project with target alias and prod flag', () => {
+      const parsedArgs = {
+        target: 'b',
+        prod: true,
+      };
+
+      const result = parseRunOneOptions(
+        testCwd,
+        parsedArgs,
+        projectGraph,
+        nxJson
+      );
+
+      expect(result.project).toBe('default-project');
+      expect(result.target).toBe('build');
+      expect(result.configuration).toBe('production');
+    });
+  });
+});

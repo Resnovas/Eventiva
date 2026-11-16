@@ -1,0 +1,1066 @@
+import * as path from 'node:path';
+
+import rule from '../../src/rules/no-useless-default-assignment';
+import { createRuleTesterWithTypes, getFixturesRootDir } from '../RuleTester';
+
+const rootDir = getFixturesRootDir();
+const ruleTester = createRuleTesterWithTypes();
+
+ruleTester.run('no-useless-default-assignment', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    `
+function Bar({ foo = '' }: { foo?: string }) {
+  return foo;
+}
+    `,
+    `
+const { foo } = { foo: 'bar' };
+    `,
+    `
+[1, 2, 3, undefined].map((a = 42) => a + 1);
+    `,
+    `
+function test(a?: number) {
+  return a;
+}
+    `,
+    `
+const obj: { a?: string } = {};
+const { a = 'default' } = obj;
+    `,
+    `
+function test(a: string | undefined = 'default') {
+  return a;
+}
+    `,
+    `
+(a: string = 'default') => a;
+    `,
+    `
+function test(a: string = 'default') {
+  return a;
+}
+    `,
+    `
+class C {
+  public test(a: string = 'default') {
+    return a;
+  }
+}
+    `,
+    `
+const obj: { a: string | undefined } = { a: undefined };
+const { a = 'default' } = obj;
+    `,
+    `
+function test(arr: number[] | undefined = []) {
+  return arr;
+}
+    `,
+    `
+function Bar({ nested: { foo = '' } = {} }: { nested?: { foo?: string } }) {
+  return foo;
+}
+    `,
+    `
+function test(a: any = 'default') {
+  return a;
+}
+    `,
+    `
+function test(a: unknown = 'default') {
+  return a;
+}
+    `,
+    `
+function test(a = 5) {
+  return a;
+}
+    `,
+    `
+function createValidator(): () => void {
+  return (param = 5) => {};
+}
+    `,
+    `
+function Bar({ foo = '' }: { foo: any }) {
+  return foo;
+}
+    `,
+    `
+function Bar({ foo = '' }: { foo: unknown }) {
+  return foo;
+}
+    `,
+    `
+function getValue(): undefined;
+function getValue(box: { value: string }): string;
+function getValue({ value = '' }: { value?: string } = {}): string | undefined {
+  return value;
+}
+    `,
+    `
+function getValueObject({ value = '' }: Partial<{ value: string }>) {
+  return value;
+}
+    `,
+    `
+const { value = 'default' } = someUnknownFunction();
+    `,
+    `
+const [value = 'default'] = someUnknownFunction();
+    `,
+    `
+for (const { value = 'default' } of []) {
+}
+    `,
+    `
+for (const [value = 'default'] of []) {
+}
+    `,
+    `
+declare const x: [[number | undefined]];
+const [[a = 1]] = x;
+    `,
+    `
+function foo(x: string = '') {}
+    `,
+    `
+class C {
+  method(x: string = '') {}
+}
+    `,
+    `
+const foo = (x: string = '') => {};
+    `,
+    `
+const obj = { ab: { x: 1 } };
+const {
+  ['a' + 'b']: { x = 1 },
+} = obj;
+    `,
+    `
+const obj = { ab: 1 };
+const { ['a' + 'b']: x = 1 } = obj;
+    `,
+    `
+for ([[a = 1]] of []) {
+}
+    `,
+    {
+      code: `
+declare const g: Array<string>;
+const [foo = ''] = g;
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: rootDir,
+        },
+      },
+    },
+    {
+      code: `
+declare const g: Record<string, string>;
+const { foo = '' } = g;
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: rootDir,
+        },
+      },
+    },
+    {
+      code: `
+declare const h: { [key: string]: string };
+const { bar = '' } = h;
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: rootDir,
+        },
+      },
+    },
+    `
+declare const g: Array<string>;
+const [foo = ''] = g;
+    `,
+    `
+declare const g: Record<string, string>;
+const { foo = '' } = g;
+    `,
+    `
+declare const h: { [key: string]: string };
+const { bar = '' } = h;
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11849
+    `
+type Merge = boolean | ((incoming: string[]) => void);
+
+const policy: { merge: Merge } = {
+  merge: (incoming: string[] = []) => {
+    incoming;
+  },
+};
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11846
+    `
+const [a, b = ''] = 'somestr'.split('.');
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11846
+    `
+declare const params: string[];
+const [c = '123'] = params;
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11846
+    `
+declare function useCallback<T>(callback: T);
+useCallback((value: number[] = []) => {});
+    `,
+    `
+declare const tuple: [string];
+const [a, b = 'default'] = tuple;
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/12767
+    `
+declare const commands: [string, ...string[]];
+const [cmd, arg = 'run'] = commands;
+    `,
+    `
+declare const commands: readonly [string, ...string[]];
+const [cmd, arg = 'run'] = commands;
+    `,
+    `
+function run([cmd, arg = 'run']: [string, ...string[]]) {}
+    `,
+    `
+declare const mixed: [boolean, ...number[], string];
+const [a, b, c = 0] = mixed;
+    `,
+    `
+declare const items: [...string[], string | undefined];
+const [first = 'fallback'] = items;
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11911
+    `
+const run = (cb: (...args: unknown[]) => void) => cb();
+const cb = (p: boolean = true) => null;
+run(cb);
+run((p: boolean = true) => null);
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11850
+    `
+const { a = 'default' } = Math.random() > 0.5 ? { a: 'Hello' } : {};
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11850
+    `
+const { a = 'default' } =
+  Math.random() > 0.5 ? (Math.random() > 0.5 ? { a: 'Hello' } : {}) : {};
+    `,
+    // Optional parameter with meaningful default value
+    `
+function findPosts({
+  category,
+  maxResults = 100,
+}: {
+  category: string;
+  maxResults?: number;
+}): Promise<string[]> {
+  return Promise.resolve([category, String(maxResults)]);
+}
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11980
+    `
+const { a = 'baz' } = cond ? {} : { a: 'bar' };
+    `,
+    `
+const { a = 'baz' } = cond ? foo : { a: 'bar' };
+    `,
+    `
+const { a = 'baz' } = foo && { a: 'bar' };
+    `,
+    `
+const { a = 'baz' } = cond ? { a: 'foo', ...extra } : { a: 'bar' };
+    `,
+    `
+const { a = 'baz' } = cond ? { ...foo } : { a: 'bar' };
+    `,
+    `
+const key = Math.random() > 0.5 ? 'a' : 'b';
+const { a = 'baz' } = cond ? { [key]: 'foo' } : { [key]: 'bar' };
+    `,
+    `
+const { a = 'baz' } = cond ? foo && { a: 'bar' } : { a: 'baz' };
+    `,
+    `
+const obj: unknown = { a: 'bar' };
+const { a = 'baz' } = cond ? obj : { a: 'bar' };
+    `,
+    `
+const sym = Symbol('a');
+const { a = 'baz' } = cond ? { [sym]: 'foo' } : { [sym]: 'bar' };
+    `,
+    `
+const { a = 'baz' } = cond ? { [\`a\${1}\`]: 'foo' } : { a: 'bar' };
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11948
+    `
+class AbstractEntity {
+  public a: string | undefined;
+  public static fromJson<T extends { a: string }>(
+    this: new () => T,
+    { inner = { a: 'test' } }: { inner?: { a: string } },
+  ): T {
+    const entity = new this();
+    entity.a = inner?.a;
+    return entity;
+  }
+}
+    `,
+    `
+type FetchFn<TParams> =
+  Partial<TParams> extends TParams
+    ? (params?: TParams) => void
+    : (params: TParams) => void;
+
+function createFetcher<TParams>() {
+  type Params = TParams;
+
+  const fn: FetchFn<TParams> = (
+    params: Partial<Params> = {} as Partial<Params>,
+  ) => {
+    console.log(params);
+  };
+
+  return fn;
+}
+    `,
+    `
+interface Foos {
+  bar?: number;
+}
+const foos: Foos[] = [];
+foos.flatMap(({ bar = 42 }) => bar);
+    `,
+    `
+function f(this: void, { bar = 42 }: { bar?: number }) {
+  return bar;
+}
+    `,
+    `
+interface Fn {
+  (value: string): void;
+  (): void;
+}
+const fn: Fn = (value = 'default') => {
+  return value;
+};
+    `,
+    `
+interface Fn {
+  (value: string): void;
+  (value?: string): void;
+}
+const fn: Fn = (value = 'default') => {
+  return value;
+};
+    `,
+  ],
+  invalid: [
+    {
+      code: `
+declare const mixed: [boolean, ...number[], string];
+const [a, b = 0] = mixed;
+      `,
+      errors: [
+        {
+          column: 15,
+          data: { type: 'property' },
+          endColumn: 16,
+          endLine: 3,
+          line: 3,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+declare const mixed: [boolean, ...number[], string];
+const [a, b] = mixed;
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+function Bar({ foo = '' }: { foo: string }) {
+  return foo;
+}
+      `,
+      errors: [
+        {
+          column: 22,
+          data: { type: 'property' },
+          endColumn: 24,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function Bar({ foo }: { foo: string }) {
+  return foo;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+class C {
+  public method({ foo = '' }: { foo: string }) {
+    return foo;
+  }
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          data: { type: 'property' },
+          endColumn: 27,
+          endLine: 3,
+          line: 3,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+class C {
+  public method({ foo }: { foo: string }) {
+    return foo;
+  }
+}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { 'literal-key': literalKey = 'default' } = { 'literal-key': 'value' };
+      `,
+      errors: [
+        {
+          column: 37,
+          data: { type: 'property' },
+          endColumn: 46,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { 'literal-key': literalKey } = { 'literal-key': 'value' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+[1, 2, 3].map((a = 42) => a + 1);
+      `,
+      errors: [
+        {
+          column: 20,
+          data: { type: 'parameter' },
+          endColumn: 22,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+[1, 2, 3].map((a) => a + 1);
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+function getValue(): undefined;
+function getValue(box: { value: string }): string;
+function getValue({ value = '' }: { value: string } = {}): string | undefined {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 29,
+          data: { type: 'property' },
+          endColumn: 31,
+          endLine: 4,
+          line: 4,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function getValue(): undefined;
+function getValue(box: { value: string }): string;
+function getValue({ value }: { value: string } = {}): string | undefined {
+  return value;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+function getValue([value = '']: [string]) {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 28,
+          data: { type: 'property' },
+          endColumn: 30,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function getValue([value]: [string]) {
+  return value;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const x: { hello: { world: string } };
+
+const {
+  hello: { world = '' },
+} = x;
+      `,
+      errors: [
+        {
+          column: 20,
+          data: { type: 'property' },
+          endColumn: 22,
+          endLine: 5,
+          line: 5,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+declare const x: { hello: { world: string } };
+
+const {
+  hello: { world },
+} = x;
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const x: { hello: Array<{ world: string }> };
+
+const {
+  hello: [{ world = '' }],
+} = x;
+      `,
+      errors: [
+        {
+          column: 21,
+          data: { type: 'property' },
+          endColumn: 23,
+          endLine: 5,
+          line: 5,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+declare const x: { hello: Array<{ world: string }> };
+
+const {
+  hello: [{ world }],
+} = x;
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+interface B {
+  foo: (b: boolean | string) => void;
+}
+
+const h: B = {
+  foo: (b = false) => {},
+};
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'parameter' },
+          endColumn: 18,
+          endLine: 7,
+          line: 7,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+interface B {
+  foo: (b: boolean | string) => void;
+}
+
+const h: B = {
+  foo: (b) => {},
+};
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+function foo(a = undefined) {}
+      `,
+      errors: [
+        {
+          column: 18,
+          data: { type: 'parameter' },
+          endColumn: 27,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessUndefined',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function foo(a) {}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { a = undefined } = {};
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 22,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessUndefined',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } = {};
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const [a = undefined] = [];
+      `,
+      errors: [
+        {
+          column: 12,
+          data: { type: 'property' },
+          endColumn: 21,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessUndefined',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const [a] = [];
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+function foo({ a = undefined }) {}
+      `,
+      errors: [
+        {
+          column: 20,
+          data: { type: 'property' },
+          endColumn: 29,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessUndefined',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function foo({ a }) {}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11847
+    {
+      code: `
+function myFunction(p1: string, p2: number | undefined = undefined) {
+  console.log(p1, p2);
+}
+      `,
+      errors: [
+        {
+          column: 58,
+          endColumn: 67,
+          endLine: 2,
+          line: 2,
+          messageId: 'preferOptionalSyntax',
+          suggestions: [
+            {
+              messageId: 'useOptionalSyntax',
+              output: `
+function myFunction(p1: string, p2?: number | undefined) {
+  console.log(p1, p2);
+}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+type SomeType = number | undefined;
+function f(
+  /* comment */ x /* comment 2 */ : /* comment 3 */ SomeType /* comment 4 */ = /* comment 5 */ undefined,
+) {}
+      `,
+      errors: [
+        {
+          column: 96,
+          endColumn: 105,
+          endLine: 4,
+          line: 4,
+          messageId: 'preferOptionalSyntax',
+          suggestions: [
+            {
+              messageId: 'useOptionalSyntax',
+              output: `
+type SomeType = number | undefined;
+function f(
+  /* comment */ x? /* comment 2 */ : /* comment 3 */ SomeType,
+) {}
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    // noStrictNullCheck tests
+    /* eslint-disable @typescript-eslint/internal/no-multiple-lines-of-errors */
+    {
+      code: `
+function Bar({ foo = '' }: { foo: string }) {
+  return foo;
+}
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 1,
+          endLine: 0,
+          line: 0,
+          messageId: 'noStrictNullCheck',
+        },
+        {
+          column: 22,
+          data: { type: 'property' },
+          endColumn: 24,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function Bar({ foo }: { foo: string }) {
+  return foo;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      languageOptions: {
+        parserOptions: { tsconfigRootDir: path.join(rootDir, 'unstrict') },
+      },
+      output: null,
+    },
+    {
+      code: `
+function foo(a = undefined) {}
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 1,
+          endLine: 0,
+          line: 0,
+          messageId: 'noStrictNullCheck',
+        },
+        {
+          column: 18,
+          data: { type: 'parameter' },
+          endColumn: 27,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessUndefined',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function foo(a) {}
+      `,
+            },
+          ],
+        },
+      ],
+      languageOptions: {
+        parserOptions: { tsconfigRootDir: path.join(rootDir, 'unstrict') },
+      },
+      output: null,
+    },
+    /* eslint-enable @typescript-eslint/internal/no-multiple-lines-of-errors */
+    {
+      code: `
+function Bar({ foo = '' }: { foo: string }) {
+  return foo;
+}
+      `,
+      errors: [
+        {
+          column: 22,
+          data: { type: 'property' },
+          endColumn: 24,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+function Bar({ foo }: { foo: string }) {
+  return foo;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      languageOptions: {
+        parserOptions: { tsconfigRootDir: path.join(rootDir, 'unstrict') },
+      },
+      options: [
+        { allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: true },
+      ],
+      output: null,
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/11980
+    {
+      code: `
+const { a = 'baz' } = Math.random() < 0.5 ? { a: 'foo' } : { a: 'bar' };
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 18,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } = Math.random() < 0.5 ? { a: 'foo' } : { a: 'bar' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { a = 'baz' } =
+  Math.random() < 0.5
+    ? { a: 'foo' }
+    : Math.random() > 0.2
+      ? { a: 'bar' }
+      : { a: 'qux' };
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 18,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } =
+  Math.random() < 0.5
+    ? { a: 'foo' }
+    : Math.random() > 0.2
+      ? { a: 'bar' }
+      : { a: 'qux' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { a = 'baz' } = cond ? { ['a']: 'foo' } : { ['a']: 'bar' };
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 18,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } = cond ? { ['a']: 'foo' } : { ['a']: 'bar' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { a = 'baz' } = cond ? { a() {} } : { a: 'bar' };
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 18,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } = cond ? { a() {} } : { a: 'bar' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+const { a = 'b' } = Math.random() < 0.5 ? { [\`a\`]: 'a' } : { a: 'b' };
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { type: 'property' },
+          endColumn: 16,
+          endLine: 2,
+          line: 2,
+          messageId: 'uselessDefaultAssignment',
+          suggestions: [
+            {
+              messageId: 'removeDefaultAssignment',
+              output: `
+const { a } = Math.random() < 0.5 ? { [\`a\`]: 'a' } : { a: 'b' };
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
+    },
+  ],
+});

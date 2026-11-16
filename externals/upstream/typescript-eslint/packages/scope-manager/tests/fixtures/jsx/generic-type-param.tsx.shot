@@ -1,0 +1,53 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"T">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$2,
+      isStrict: false,
+      references: [
+        Reference$1 {
+          identifier: JSXIdentifier$3,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+        Reference$2,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "T" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+  ],
+}

@@ -1,0 +1,96 @@
+{
+  "name": "@posthog/core",
+  "version": "1.61.2",
+  "bugs": {
+    "url": "https://github.com/PostHog/posthog-js/issues"
+  },
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "error-tracking": [
+        "dist/error-tracking/index.d.ts"
+      ],
+      "surveys": [
+        "dist/surveys/index.d.ts"
+      ],
+      "testing": [
+        "dist/testing/index.d.ts"
+      ],
+      "utils": [
+        "dist/utils/index.d.ts"
+      ],
+      "vendor/*": [
+        "dist/vendor/*.d.ts"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PostHog/posthog-js.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist",
+    "surveys",
+    "src",
+    "!src/__tests__",
+    "!src/**/*.spec.md"
+  ],
+  "scripts": {
+    "check-types": "tsc --noEmit --project tsconfig.build.json",
+    "clean": "rimraf dist",
+    "lint": "oxlint --report-unused-disable-directives-severity error src",
+    "lint:fix": "oxlint --report-unused-disable-directives-severity error src --fix",
+    "build": "rslib build",
+    "dev": "rslib build -w",
+    "test:unit": "NODE_OPTIONS=--expose-gc vitest run",
+    "test:built": "node --test scripts/check-declaration-sourcemap.mjs",
+    "prepack": "node -e \"require('node:fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "package": "pnpm pack --out $PACKAGE_DEST/%s.tgz"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    },
+    "./error-tracking": {
+      "types": "./dist/error-tracking/index.d.ts",
+      "require": "./dist/error-tracking/index.js",
+      "import": "./dist/error-tracking/index.mjs"
+    },
+    "./vendor/*": {
+      "types": "./dist/vendor/*.d.ts",
+      "require": "./dist/vendor/*.js",
+      "import": "./dist/vendor/*.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "require": "./dist/testing/index.js",
+      "import": "./dist/testing/index.mjs"
+    },
+    "./surveys": {
+      "types": "./dist/surveys/index.d.ts",
+      "require": "./dist/surveys/index.js",
+      "import": "./dist/surveys/index.mjs"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "require": "./dist/utils/index.js",
+      "import": "./dist/utils/index.mjs"
+    }
+  },
+  "dependencies": {
+    "@posthog/types": "workspace:^"
+  },
+  "devDependencies": {
+    "@posthog-tooling/tsconfig-base": "workspace:*",
+    "@rslib/core": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "typescript": "catalog:native"
+  }
+}

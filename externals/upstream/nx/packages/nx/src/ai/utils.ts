@@ -1,0 +1,330 @@
+import { existsSync, readFileSync } from 'fs';
+import { resolve } from 'path';
+import { readNxJson } from '../config/configuration';
+import { flushChanges, FsTree } from '../generators/tree';
+import {
+  canInstallNxConsoleForEditor,
+  isAiAgent,
+  isEditorInstalled,
+  SupportedEditor,
+} from '../native';
+import { readJsonFile } from '../utils/fileutils';
+import { isSandbox } from '../utils/is-sandbox';
+import { isNxCloudUsed } from '../utils/nx-cloud-utils';
+import { output } from '../utils/output';
+import {
+  agentsMdPath,
+  claudeMdPath,
+  codexConfigTomlPath,
+  geminiMdPath,
+  geminiSettingsPath,
+  nxMcpTomlHeader,
+  opencodeMcpPath,
+  parseGeminiSettings,
+} from './constants';
+import setupAiAgentsGenerator from './set-up-ai-agents/set-up-ai-agents';
+
+// when adding new agents, be sure to also update the list in
+// packages/create-nx-workspace/src/create-workspace-options.ts
+export const supportedAgents = [
+  'claude',
+  'codex',
+  'copilot',
+  'cursor',
+  'gemini',
+  'opencode',
+] as const;
+export type Agent = (typeof supportedAgents)[number];
+export const agentDisplayMap: Record<Agent, string> = {
+  claude: 'Claude Code',
+  gemini: 'Gemini',
+  codex: 'OpenAI Codex',
+  copilot: 'GitHub Copilot for VSCode',
+  cursor: 'Cursor',
+  opencode: 'OpenCode',
+};
+
+export type AgentConfiguration = {
+  name: Agent;
+  displayName: string;
+  rules: boolean;
+  mcp: boolean;
+  rulesPath: string;
+  mcpPath: string | null;
+  outdated: boolean;
+  disabled?: boolean;
+};
+
+export async function getAgentConfigurations(
+  agentsToConsider: Agent[],
+  workspaceRoot: string
+): Promise<{
+  nonConfiguredAgents: AgentConfiguration[];
+  partiallyConfiguredAgents: AgentConfiguration[];
+  fullyConfiguredAgents: AgentConfiguration[];
+  disabledAgents: AgentConfiguration[];
+}> {
+  const nonConfiguredAgents: AgentConfiguration[] = [];
+  const partiallyConfiguredAgents: AgentConfiguration[] = [];
+  const fullyConfiguredAgents: AgentConfiguration[] = [];
+  const disabledAgents: AgentConfiguration[] = [];
+
+  for (const agent of agentsToConsider) {
+    const configuration = await getAgentConfiguration(agent, workspaceRoot);
+    if (configuration.disabled) {
+      disabledAgents.push(configuration);
+      continue;
+    }
+    if (configuration.mcp && configuration.rules) {
+      fullyConfiguredAgents.push(configuration);
+    } else if (!configuration.mcp && !configuration.rules) {
+      nonConfiguredAgents.push(configuration);
+    } else {
+      partiallyConfiguredAgents.push(configuration);
+    }
+  }
+
+  return {
+    nonConfiguredAgents,
+    partiallyConfiguredAgents,
+    fullyConfiguredAgents,
+    disabledAgents,
+  };
+}
+
+async function getAgentConfiguration(
+  agent: Agent,
+  workspaceRoot: string
+): Promise<AgentConfiguration> {
+  let agentConfiguration: Omit<
+    AgentConfiguration,
+    'outdated' | 'name' | 'displayName'
+  >;
+  switch (agent) {
+    case 'claude': {
+      // Claude uses a plugin from marketplace which includes the MCP server
+      const claudeSettingsPath = resolve(
+        workspaceRoot,
+        '.claude',
+        'settings.json'
+      );
+      let pluginConfigured: boolean;
+      try {
+        const settingsContents = readJsonFile(claudeSettingsPath);
+        pluginConfigured =
+          !!settingsContents?.['enabledPlugins']?.['nx@nx-claude-plugins'];
+      } catch {
+        pluginConfigured = false;
+      }
+      const rulesPath = claudeMdPath(workspaceRoot);
+      const rulesExists = existsSync(rulesPath);
+      agentConfiguration = {
+        rules: rulesExists,
+        mcp: pluginConfigured,
+        rulesPath: rulesPath,
+        mcpPath: claudeSettingsPath,
+      };
+      break;
+    }
+    case 'gemini': {
+      const geminiRulePath = geminiMdPath(workspaceRoot);
+      const geminiMdExists = existsSync(geminiRulePath);
+      const settingsPath = geminiSettingsPath(workspaceRoot);
+
+      let mcpConfigured: boolean;
+
+      const geminiSettings = parseGeminiSettings(workspaceRoot);
+      const customContextFilePath: string | undefined =
+        typeof geminiSettings?.contextFileName === 'string'
+          ? geminiSettings.contextFileName
+          : undefined;
+
+      const customContextFilePathExists = customContextFilePath
+        ? existsSync(resolve(workspaceRoot, customContextFilePath))
+        : false;
+      mcpConfigured = geminiSettings?.['mcpServers']?.['nx-mcp'];
+
+      agentConfiguration = {
+        rules:
+          (!customContextFilePath && geminiMdExists) ||
+          (customContextFilePath && customContextFilePathExists),
+        mcp: mcpConfigured,
+        rulesPath: customContextFilePath ?? geminiRulePath,
+        mcpPath: settingsPath,
+      };
+      break;
+    }
+    case 'copilot': {
+      const rulesPath = agentsMdPath(workspaceRoot);
+      const hasInstalledVSCode = await isEditorInstalled(
+        SupportedEditor.VSCode
+      );
+      const hasInstalledVSCodeInsiders = await isEditorInstalled(
+        SupportedEditor.VSCodeInsiders
+      );
+      const hasInstalledNxConsoleForVSCode =
+        hasInstalledVSCode &&
+        !(await canInstallNxConsoleForEditor(SupportedEditor.VSCode));
+      const hasInstalledNxConsoleForVSCodeInsiders =
+        hasInstalledVSCodeInsiders &&
+        !(await canInstallNxConsoleForEditor(SupportedEditor.VSCodeInsiders));
+
+      const agentsMdExists = existsSync(rulesPath);
+
+      agentConfiguration = {
+        mcp:
+          hasInstalledNxConsoleForVSCode ||
+          hasInstalledNxConsoleForVSCodeInsiders,
+        rules: agentsMdExists,
+        rulesPath,
+        mcpPath: null,
+        disabled: !hasInstalledVSCode && !hasInstalledVSCodeInsiders,
+      };
+      break;
+    }
+    case 'cursor': {
+      const rulesPath = agentsMdPath(workspaceRoot);
+      const hasInstalledCursor = await isEditorInstalled(
+        SupportedEditor.Cursor
+      );
+      const hasInstalledNxConsole = !(await canInstallNxConsoleForEditor(
+        SupportedEditor.Cursor
+      ));
+      const agentsMdExists = existsSync(rulesPath);
+
+      agentConfiguration = {
+        mcp: hasInstalledCursor ? hasInstalledNxConsole : false,
+        rules: agentsMdExists,
+        rulesPath,
+        mcpPath: null,
+        disabled: !hasInstalledCursor,
+      };
+      break;
+    }
+    case 'codex': {
+      const rulesPath = agentsMdPath(workspaceRoot);
+      const agentsMdExists = existsSync(rulesPath);
+      const mcpPath = codexConfigTomlPath(workspaceRoot);
+      let mcpConfigured: boolean;
+      if (existsSync(mcpPath)) {
+        const tomlContents = readFileSync(mcpPath, 'utf-8');
+        mcpConfigured = tomlContents.includes(nxMcpTomlHeader);
+      } else {
+        mcpConfigured = false;
+      }
+
+      agentConfiguration = {
+        mcp: mcpConfigured,
+        rules: agentsMdExists,
+        rulesPath,
+        mcpPath,
+      };
+      break;
+    }
+    case 'opencode': {
+      const rulesPath = agentsMdPath(workspaceRoot);
+      const agentsMdExists = existsSync(rulesPath);
+      const mcpPath = opencodeMcpPath(workspaceRoot);
+      let mcpConfigured: boolean;
+      try {
+        const mcpContents = readJsonFile(mcpPath);
+        // OpenCode uses 'mcp' property, not 'mcpServers'
+        mcpConfigured = !!mcpContents?.['mcp']?.['nx-mcp'];
+      } catch {
+        mcpConfigured = false;
+      }
+
+      agentConfiguration = {
+        mcp: mcpConfigured,
+        rules: agentsMdExists,
+        rulesPath,
+        mcpPath,
+      };
+      break;
+    }
+  }
+
+  return {
+    ...agentConfiguration,
+    outdated:
+      agentConfiguration.mcp &&
+      agentConfiguration.rules &&
+      (await agentWouldChangeWithGenerator(agent, workspaceRoot)),
+    name: agent,
+    displayName: agentDisplayMap[agent],
+  };
+}
+
+async function agentWouldChangeWithGenerator(
+  agent: Agent,
+  workspaceRoot: string
+): Promise<boolean> {
+  const tree = new FsTree(workspaceRoot, false);
+  const callback = await setupAiAgentsGenerator(
+    tree,
+    {
+      directory: '.',
+      agents: [agent],
+      writeNxCloudRules: isNxCloudUsed(readNxJson()),
+    },
+    true
+  );
+  const modificationResults = await callback(true);
+  return (
+    tree.listChanges().length > 0 || modificationResults.messages.length > 0
+  );
+}
+
+export async function configureAgents(
+  agents: Agent[],
+  workspaceRoot: string,
+  useLatest?: boolean
+): Promise<void> {
+  const writeNxCloudRules = isNxCloudUsed(readNxJson());
+  const tree = new FsTree(workspaceRoot, false);
+  const callback = await setupAiAgentsGenerator(
+    tree,
+    {
+      directory: '.',
+      agents,
+      writeNxCloudRules,
+    },
+    !useLatest
+  );
+
+  // changes that are out of scope for the generator itself because they do more than modify the tree
+  flushChanges(workspaceRoot, tree.listChanges());
+
+  const modificationResults = await callback();
+
+  modificationResults.messages.forEach((message) => output.log(message));
+  modificationResults.errors.forEach((error) => output.error(error));
+}
+
+/**
+ * Explains a permission error thrown while writing agent configuration files.
+ *
+ * The errno alone does not identify the cause. Agent harnesses (e.g. Claude
+ * Code) deny writes to their own settings files from sandboxed shell commands,
+ * so `nx configure-ai-agents` run through an agent's bash tool fails with EPERM
+ * where the same command succeeds in a terminal — but a root-owned
+ * `.claude/settings.json` left by an earlier `sudo nx`, or a read-only
+ * checkout, produces the same errno with an unrelated remedy. The sandbox
+ * explanation is therefore only offered where a sandbox or an agent is
+ * actually detected, and the underlying message is kept either way.
+ */
+export function agentConfigWriteBlockedLines(error: unknown): string[] {
+  const err = error as NodeJS.ErrnoException | undefined;
+  const target = err?.path ?? 'an agent configuration file';
+  return [
+    `Writing ${target} failed: ${err?.message ?? 'permission denied'}`,
+    ...(isSandbox() || isAiAgent()
+      ? [
+          "Agent sandboxes protect their own settings files from writes made by sandboxed shell commands, so this command cannot finish when run through an agent's bash tool.",
+          'To complete the AI agent setup, run `nx configure-ai-agents` from a regular terminal and relaunch the agent harness.',
+        ]
+      : [
+          'Check the ownership and mode of that path: an earlier `sudo nx` run or a read-only checkout produces this.',
+        ]),
+  ];
+}

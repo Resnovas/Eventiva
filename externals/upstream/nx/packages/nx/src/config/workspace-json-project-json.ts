@@ -1,0 +1,434 @@
+import type { JsonInput, TaskUltracacheSettings } from '../native';
+import type { PackageJson } from '../utils/package-json';
+import type {
+  NxJsonConfiguration,
+  NxReleaseDockerConfiguration,
+  NxReleaseVersionConfiguration,
+} from './nx-json';
+
+/**
+ * @deprecated use ProjectsConfigurations or NxJsonConfiguration
+ */
+export interface Workspace extends ProjectsConfigurations, NxJsonConfiguration {
+  projects: Record<string, ProjectConfiguration>;
+}
+
+/**
+ * @deprecated use ProjectsConfigurations
+ */
+export type WorkspaceJsonConfiguration = ProjectsConfigurations;
+
+/**
+ * Projects Configurations
+ * @note: when adding properties here add them to `allowedWorkspaceExtensions` in adapter/compat.ts
+ */
+export interface ProjectsConfigurations {
+  /**
+   * Version of the configuration format
+   */
+  version: number;
+  /**
+   * Projects' projects
+   */
+  projects: {
+    [projectName: string]: ProjectConfiguration;
+  };
+}
+
+/**
+ * Type of project supported
+ */
+export type ProjectType = 'library' | 'application';
+
+/**
+ * Project configuration
+ *
+ * @note: when adding properties here add them to `allowedProjectExtensions` in adapter/compat.ts
+ */
+export interface ProjectConfiguration {
+  /**
+   * Project's name. Optional if specified in workspace.json
+   */
+  name?: string;
+
+  /**
+   * Project's targets
+   */
+  targets?: { [targetName: string]: TargetConfiguration };
+
+  /**
+   * Project's location relative to the root of the workspace
+   */
+  root: string;
+
+  /**
+   * The location of project's sources relative to the root of the workspace
+   */
+  sourceRoot?: string;
+
+  /**
+   * Project type
+   */
+  projectType?: ProjectType;
+
+  /**
+   * List of default values used by generators.
+   *
+   * These defaults are project specific.
+   *
+   * Example:
+   *
+   * ```
+   * {
+   *   "@nx/react": {
+   *     "library": {
+   *       "style": "scss"
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  generators?: { [collectionName: string]: { [generatorName: string]: any } };
+
+  /**
+   * List of projects which are added as a dependency
+   */
+  implicitDependencies?: string[];
+
+  /**
+   * Named inputs targets can refer to reduce duplication
+   */
+  namedInputs?: { [inputName: string]: (string | InputDefinition)[] };
+
+  /**
+   * List of tags used by enforce-module-boundaries / project graph
+   */
+  tags?: string[];
+
+  /**
+   * Project specific configuration for `nx release`
+   */
+  release?: {
+    version?: Pick<
+      // Expose a subset of version config options at the project level
+      NxReleaseVersionConfiguration,
+      | 'versionActions'
+      | 'versionActionsOptions'
+      | 'manifestRootsToUpdate'
+      | 'currentVersionResolver'
+      | 'currentVersionResolverMetadata'
+      | 'fallbackCurrentVersionResolver'
+      | 'versionPrefix'
+      | 'preserveLocalDependencyProtocols'
+    >;
+    docker?: NxReleaseDockerConfiguration | true;
+  };
+
+  /**
+   * Metadata about the project
+   */
+  metadata?: ProjectMetadata;
+}
+
+export interface ProjectMetadata {
+  [k: string]: any;
+
+  description?: string;
+  technologies?: string[];
+  targetGroups?: Record<string, string[]>;
+  owners?: {
+    [ownerId: string]: {
+      ownedFiles: {
+        files: ['*'] | string[];
+        fromConfig?: {
+          filePath: string;
+          location: {
+            startLine: number;
+            endLine: number;
+          };
+        };
+      }[];
+    };
+  };
+  js?: {
+    packageName: string;
+    packageVersion?: string;
+    packageExports?: PackageJson['exports'];
+    packageMain?: string;
+    isInPackageManagerWorkspaces?: boolean;
+  };
+}
+
+export interface TargetMetadata {
+  [k: string]: any;
+
+  description?: string;
+  technologies?: string[];
+  nonAtomizedTarget?: string;
+  help?: {
+    command: string;
+    example: {
+      options?: Record<string, unknown>;
+      args?: string[];
+    };
+  };
+}
+
+/**
+ * Authoring form of a property merged key-by-key: permits the `'...'` spread
+ * token alongside the resolved keys. Merging resolves the token, so it never
+ * appears on the resolved shape.
+ */
+export type Spreadable<T> = T & { '...'?: true };
+
+/**
+ * Ultracache settings for a target's tasks.
+ *
+ * The resolved shape rides on each Task instance (`Task['ultracache']`), which
+ * is why it is shared with the native task definition. Authoring additionally
+ * permits `'...'`, which target merging resolves away.
+ */
+export type TargetUltracacheSettings = Spreadable<TaskUltracacheSettings>;
+
+export interface ReadyWhenOptions {
+  /**
+   * Milliseconds to wait for readiness before failing dependents that wait
+   * for it. Default is 600000 (10 minutes).
+   */
+  timeout?: number;
+
+  /**
+   * Milliseconds between probe attempts. Default is 250. Unused by
+   * `logMatches` and `signal`.
+   */
+  interval?: number;
+}
+
+/**
+ * Readiness probe of a continuous target. Exactly one of `url`, `port`,
+ * `command`, `logMatches` or `signal` must be set. Strings may use the `{workspaceRoot}`,
+ * `{projectRoot}`, `{projectName}`, `{options.*}` and `{env.*}` placeholders,
+ * resolved against the options and environment the task runs with. A
+ * placeholder can list fallbacks, as in `{options.port ?? env.PORT ?? 4200}`.
+ */
+export type ReadyWhen =
+  | ({
+      /**
+       * Ready when an HTTP or HTTPS GET gets a status from 200 to 403. A
+       * redirect counts as ready and is not followed.
+       */
+      url: string;
+    } & ReadyWhenOptions)
+  | ({
+      /**
+       * Ready when a TCP connection to the port succeeds. A string can be a
+       * port number, `"auto"`, or a placeholder such as `{options.port}`.
+       * With `0` or `"auto"` the server picks its port, so Nx runs no check
+       * and the target counts as ready once it starts.
+       */
+      port: number | string;
+
+      /**
+       * Host to connect to. By default 127.0.0.1 and ::1 are both tried.
+       */
+      host?: string;
+    } & ReadyWhenOptions)
+  | ({
+      /**
+       * Ready when the command, run through the shell at the workspace root,
+       * exits with code 0. It runs with the env the task runs with, and the
+       * task's options as JSON in `NX_TASK_OPTIONS`.
+       */
+      command: string;
+    } & ReadyWhenOptions)
+  | ({
+      /**
+       * Ready when every one of these substrings has appeared in the task's
+       * output.
+       */
+      logMatches: string | string[];
+    } & ReadyWhenOptions)
+  | {
+      /**
+       * Ready when the task reports it with `emitReadySignal` from
+       * `@nx/devkit`.
+       */
+      signal: true;
+
+      timeout?: number;
+    };
+
+export interface TargetDependencyConfig {
+  /**
+   * A list of projects that have `target`.
+   * Should not be specified together with `dependencies`.
+   */
+  projects?: string[] | string;
+
+  /**
+   * If true, the target will be executed for each project that this project depends on.
+   * Should not be specified together with `projects`.
+   */
+  dependencies?: boolean;
+
+  /**
+   * The name of the target to run. If `projects` and `dependencies` are not specified,
+   * the target will be executed for the same project the the current target is running on`.
+   */
+  target: string;
+
+  /**
+   * Whether to forward CLI params to the dependency target.
+   */
+  params?: 'ignore' | 'forward';
+
+  /**
+   * Whether to forward task options to the dependency target.
+   */
+  options?: 'ignore' | 'forward';
+
+  /**
+   * Set to `false` to keep a continuous dependency's inputs out of this
+   * target's hash. It still runs first. Has no effect on other dependencies.
+   */
+  inputs?: boolean;
+
+  /**
+   * When the dependency is a continuous task, whether this target waits for
+   * it to have started (default) or to be ready per its `readyWhen`.
+   * Ignored when the dependency is not continuous or declares no `readyWhen`.
+   */
+  waitFor?: 'started' | 'ready';
+}
+
+// TODO: import the remaining variants from '../native' so the TS types stay
+// in sync with the Rust/napi-generated shapes. Some variants (fileset/input
+// discrimination, workingDirectory literal union) carry richer TS semantics
+// than their native counterparts and will need a layered type to preserve.
+/**
+ * `always`: the files the input resolves to stay in the hash even when the task
+ * is hashed from its ultracache recording.
+ * `dependencies` with `projects`: the selected projects' dependencies (as `^input`
+ * resolves for each), not the projects themselves.
+ */
+export type InputDefinition =
+  | {
+      input: string;
+      projects: string | string[];
+      dependencies?: boolean;
+      always?: boolean;
+    }
+  | { input: string; dependencies: true; always?: boolean }
+  | { input: string; always?: boolean }
+  | { fileset: string; includeIgnored?: boolean; always?: boolean }
+  | {
+      fileset: string;
+      dependencies: true;
+      includeIgnored?: boolean;
+      always?: boolean;
+    }
+  | { runtime: string }
+  | { externalDependencies: string[] }
+  | { dependentTasksOutputFiles: string; transitive?: boolean }
+  | { env: string }
+  | { workingDirectory: 'relative' | 'absolute' }
+  | JsonInput;
+
+/**
+ * Target's configuration
+ */
+export interface TargetConfiguration<T = any> {
+  /**
+   * The executor/builder used to implement the target.
+   *
+   * Example: '@nx/rollup:rollup'
+   */
+  executor?: string;
+
+  /**
+   * Used as a shorthand for nx:run-commands, a command to run.
+   */
+  command?: string;
+
+  /**
+   * List of the target's outputs. The outputs will be cached by the Nx computation
+   * caching engine.
+   */
+  outputs?: string[];
+
+  /**
+   * This describes other targets that a target depends on.
+   */
+  dependsOn?: (TargetDependencyConfig | string)[];
+
+  /**
+   * This describes filesets, runtime dependencies and other inputs that a target depends on.
+   */
+  inputs?: (InputDefinition | string)[];
+
+  /**
+   * Target's options. They are passed in to the executor.
+   */
+  options?: T;
+
+  /**
+   * Sets of options
+   */
+  configurations?: { [config: string]: any };
+
+  /**
+   * A default named configuration to use when a target configuration is not provided.
+   */
+  defaultConfiguration?: string;
+
+  /**
+   * Determines if Nx is able to cache a given target.
+   */
+  cache?: boolean;
+
+  /**
+   * Configures ultracache for tasks of this target. Nx Cloud only.
+   */
+  ultracache?: TargetUltracacheSettings;
+
+  /**
+   * Metadata about the target
+   */
+  metadata?: TargetMetadata;
+
+  /**
+   * Whether this target can be run in parallel with other tasks
+   * Default is true
+   */
+  parallelism?: boolean;
+
+  /**
+   * Whether this target runs continuously
+   */
+  continuous?: boolean;
+
+  /**
+   * How Nx detects that this continuous target is ready. Only honored when
+   * `continuous` is true; dependents opt in with `waitFor: 'ready'` on their
+   * `dependsOn` entry. `null` turns off a check inherited from a plugin or
+   * `targetDefaults`.
+   */
+  readyWhen?: ReadyWhen | null;
+
+  /**
+   * List of generators to run before the target to ensure the workspace
+   * is up to date.
+   */
+  syncGenerators?: string[];
+
+  /**
+   * Spread token used when merging target configurations. When set to `true`,
+   * base (inferred) values take priority over this target's values for any
+   * shared keys — effectively "only add new keys without overwriting inferred
+   * values". Keys that do not exist in the base target are still added.
+   *
+   * The position of `'...'` in the object's key order follows standard
+   * last-write-wins semantics with {@link https://nx.dev/reference/project-configuration#spread-token}.
+   */
+  '...'?: true;
+}

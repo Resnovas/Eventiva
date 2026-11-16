@@ -1,0 +1,459 @@
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
+import * as ts from 'typescript';
+
+import {
+  createRule,
+  getParserServices,
+  isFunction,
+  isRestParameterDeclaration,
+  isTypeAnyType,
+  isTypeFlagSet,
+  isTypeUnknownType,
+  nullThrows,
+  NullThrowsReasons,
+} from '../util';
+
+type MessageId =
+  | 'noStrictNullCheck'
+  | 'preferOptionalSyntax'
+  | 'removeDefaultAssignment'
+  | 'uselessDefaultAssignment'
+  | 'uselessUndefined'
+  | 'useOptionalSyntax';
+
+type Options = [
+  {
+    allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing?: boolean;
+  },
+];
+
+export default createRule<Options, MessageId>({
+  name: 'no-useless-default-assignment',
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description: 'Disallow default values that will never be used',
+      recommended: 'strict',
+      requiresTypeChecking: true,
+    },
+    hasSuggestions: true,
+    messages: {
+      noStrictNullCheck:
+        'This rule requires the `strictNullChecks` compiler option to be turned on to function correctly.',
+      preferOptionalSyntax:
+        'Using `= undefined` to make a parameter optional adds unnecessary runtime logic.',
+      removeDefaultAssignment: 'Remove the default value.',
+      uselessDefaultAssignment:
+        'Default value is useless because the {{ type }} is not optional.',
+      uselessUndefined:
+        'Default value is useless because it is undefined. Optional {{ type }}s are already undefined by default.',
+      useOptionalSyntax: 'Use the `?` optional syntax instead.',
+    },
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: {
+            type: 'boolean',
+            description:
+              'Unless this is set to `true`, the rule will error on every file whose `tsconfig.json` does _not_ have the `strictNullChecks` compiler option (or `strict`) set to `true`.',
+          },
+        },
+      },
+    ],
+  },
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- For compatibility with ESLint 8, see #12842
+  defaultOptions: [
+    {
+      allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: false,
+    },
+  ],
+  create(
+    context,
+    [{ allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing }],
+  ) {
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
+
+    const compilerOptions = services.program.getCompilerOptions();
+    const isStrictNullChecks = tsutils.isStrictCompilerOptionEnabled(
+      compilerOptions,
+      'strictNullChecks',
+    );
+
+    if (
+      !isStrictNullChecks &&
+      allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing !== true
+    ) {
+      context.report({
+        loc: {
+          start: { column: 0, line: 0 },
+          end: { column: 0, line: 0 },
+        },
+        messageId: 'noStrictNullCheck',
+      });
+    }
+
+    function canBeUndefined(type: ts.Type): boolean {
+      if (isTypeAnyType(type) || isTypeUnknownType(type)) {
+        return true;
+      }
+      return tsutils
+        .unionConstituents(type)
+        .some(part => isTypeFlagSet(part, ts.TypeFlags.Undefined));
+    }
+
+    function getArrayElementType(
+      arrayType: ts.Type,
+      elementIndex: number,
+    ): ts.Type | null {
+      if (checker.isTupleType(arrayType)) {
+        const tupleArgs = checker.getTypeArguments(arrayType);
+        if (elementIndex < tupleArgs.length) {
+          return tupleArgs[elementIndex];
+        }
+      }
+
+      return arrayType.getNumberIndexType() ?? null;
+    }
+
+    function checkAssignmentPattern(node: TSESTree.AssignmentPattern): void {
+      if (
+        node.right.type === AST_NODE_TYPES.Identifier &&
+        node.right.name === 'undefined'
+      ) {
+        const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+        if (
+          ts.isParameter(tsNode) &&
+          tsNode.type &&
+          canBeUndefined(checker.getTypeFromTypeNode(tsNode.type))
+        ) {
+          reportPreferOptionalSyntax(node);
+          return;
+        }
+
+        const type =
+          node.parent.type === AST_NODE_TYPES.Property ||
+          node.parent.type === AST_NODE_TYPES.ArrayPattern
+            ? 'property'
+            : 'parameter';
+        reportUselessUndefined(node, type);
+        return;
+      }
+
+      const parent = node.parent;
+
+      if (
+        parent.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+        parent.type === AST_NODE_TYPES.FunctionExpression
+      ) {
+        const paramIndex = parent.params.indexOf(node);
+        if (paramIndex !== -1) {
+          const tsFunc = services.esTreeNodeToTSNodeMap.get(parent);
+          // tsFunc is already a FunctionLike subtype; defensive runtime check
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (ts.isFunctionLike(tsFunc)) {
+            const contextualType = checker.getContextualType(
+              tsFunc as ts.Expression,
+            );
+            if (!contextualType) {
+              return;
+            }
+
+            const signatures = contextualType.getCallSignatures();
+            if (
+              signatures.length === 0 ||
+              signatures[0].getDeclaration() === tsFunc
+            ) {
+              return;
+            }
+
+            const defaultCanBeUsed = signatures.some(signature => {
+              const params = signature.getParameters();
+              if (paramIndex >= params.length) {
+                return true;
+              }
+
+              const paramSymbol = params[paramIndex];
+              if (
+                paramSymbol.valueDeclaration &&
+                isRestParameterDeclaration(paramSymbol.valueDeclaration)
+              ) {
+                return true;
+              }
+
+              if (
+                tsutils.isSymbolFlagSet(paramSymbol, ts.SymbolFlags.Optional)
+              ) {
+                return true;
+              }
+
+              const paramType = checker.getTypeOfSymbol(paramSymbol);
+              return (
+                tsutils.isTypeParameter(paramType) || canBeUndefined(paramType)
+              );
+            });
+
+            if (!defaultCanBeUsed) {
+              reportUselessDefaultAssignment(node, 'parameter');
+            }
+          }
+        }
+        return;
+      }
+
+      if (parent.type === AST_NODE_TYPES.Property) {
+        const propertyType = getTypeOfProperty(parent);
+        if (!propertyType) {
+          return;
+        }
+
+        if (!canBeUndefined(propertyType)) {
+          reportUselessDefaultAssignment(node, 'property');
+        }
+      } else if (parent.type === AST_NODE_TYPES.ArrayPattern) {
+        const sourceType = getSourceTypeForPattern(parent);
+        if (!sourceType) {
+          return;
+        }
+
+        if (!checker.isTupleType(sourceType)) {
+          return;
+        }
+
+        const tupleArgs = checker.getTypeArguments(sourceType);
+        const elementIndex = parent.elements.indexOf(node);
+        if (elementIndex < 0 || elementIndex >= tupleArgs.length) {
+          return;
+        }
+        const { fixedLength, minLength } = sourceType.target;
+
+        if (elementIndex >= minLength) {
+          return;
+        }
+
+        const elementTypes =
+          elementIndex < fixedLength
+            ? [tupleArgs[elementIndex]]
+            : tupleArgs.slice(fixedLength);
+
+        if (!elementTypes.some(canBeUndefined)) {
+          reportUselessDefaultAssignment(node, 'property');
+        }
+      }
+    }
+
+    function getTypeOfProperty(node: TSESTree.Property): ts.Type | null {
+      const objectPattern = node.parent as TSESTree.ObjectPattern;
+      const sourceType = getSourceTypeForPattern(objectPattern);
+      if (!sourceType) {
+        return null;
+      }
+
+      const propertyName = getPropertyName(node.key);
+      if (!propertyName) {
+        return null;
+      }
+
+      const symbol = sourceType.getProperty(propertyName);
+      if (!symbol) {
+        return null;
+      }
+
+      if (tsutils.isSymbolFlagSet(symbol, ts.SymbolFlags.Optional)) {
+        const parent = objectPattern.parent;
+        if (
+          parent.type === AST_NODE_TYPES.VariableDeclarator &&
+          parent.init &&
+          hasConditionalInitializer(objectPattern)
+        ) {
+          const propertyName = getPropertyName(node.key);
+
+          if (
+            !propertyName ||
+            !hasPropertyInAllBranches(parent.init, propertyName)
+          ) {
+            return null;
+          }
+        }
+      }
+
+      return checker.getTypeOfSymbol(symbol);
+    }
+
+    function hasConditionalInitializer(node: TSESTree.Node): boolean {
+      const parent = node.parent;
+      if (!parent) {
+        return false;
+      }
+      if (parent.type === AST_NODE_TYPES.VariableDeclarator && parent.init) {
+        return (
+          parent.init.type === AST_NODE_TYPES.ConditionalExpression ||
+          parent.init.type === AST_NODE_TYPES.LogicalExpression
+        );
+      }
+      return hasConditionalInitializer(parent);
+    }
+
+    function getSourceTypeForPattern(pattern: TSESTree.Node): ts.Type | null {
+      const parent = nullThrows(
+        pattern.parent,
+        NullThrowsReasons.MissingParent,
+      );
+
+      if (parent.type === AST_NODE_TYPES.VariableDeclarator && parent.init) {
+        const tsNode = services.esTreeNodeToTSNodeMap.get(parent.init);
+        return checker.getTypeAtLocation(tsNode);
+      }
+
+      if (isFunction(parent)) {
+        let paramIndex = parent.params.indexOf(pattern as TSESTree.Parameter);
+        const tsFunc = services.esTreeNodeToTSNodeMap.get(parent);
+        const signature = nullThrows(
+          checker.getSignatureFromDeclaration(tsFunc),
+          NullThrowsReasons.MissingToken('signature', 'function'),
+        );
+        const params = signature.getParameters();
+        if (signature.thisParameter) {
+          paramIndex--;
+        }
+        if (paramIndex < 0 || paramIndex >= params.length) {
+          return null;
+        }
+        return checker.getTypeOfSymbol(params[paramIndex]);
+      }
+
+      if (parent.type === AST_NODE_TYPES.AssignmentPattern) {
+        return getSourceTypeForPattern(parent);
+      }
+
+      if (parent.type === AST_NODE_TYPES.Property) {
+        return getTypeOfProperty(parent);
+      }
+
+      if (parent.type === AST_NODE_TYPES.ArrayPattern) {
+        const arrayType = getSourceTypeForPattern(parent);
+        if (!arrayType) {
+          return null;
+        }
+        const elementIndex = parent.elements.indexOf(
+          pattern as TSESTree.DestructuringPattern,
+        );
+        return getArrayElementType(arrayType, elementIndex);
+      }
+
+      return null;
+    }
+
+    function getPropertyName(
+      key: TSESTree.Expression | TSESTree.PrivateIdentifier,
+    ): string | null {
+      switch (key.type) {
+        case AST_NODE_TYPES.Identifier:
+          return key.name;
+        case AST_NODE_TYPES.Literal:
+          return String(key.value);
+        case AST_NODE_TYPES.TemplateLiteral:
+          return key.expressions.length ? null : key.quasis[0].value.cooked;
+        default:
+          return null;
+      }
+    }
+
+    function reportUselessDefaultAssignment(
+      node: TSESTree.AssignmentPattern,
+      type: 'parameter' | 'property',
+    ): void {
+      context.report({
+        node: node.right,
+        messageId: 'uselessDefaultAssignment',
+        data: { type },
+        suggest: [removeDefaultSuggestion(node)],
+      });
+    }
+
+    function reportUselessUndefined(
+      node: TSESTree.AssignmentPattern,
+      type: 'parameter' | 'property',
+    ): void {
+      context.report({
+        node: node.right,
+        messageId: 'uselessUndefined',
+        data: { type },
+        suggest: [removeDefaultSuggestion(node)],
+      });
+    }
+
+    function reportPreferOptionalSyntax(
+      node: TSESTree.AssignmentPattern,
+    ): void {
+      context.report({
+        node: node.right,
+        messageId: 'preferOptionalSyntax',
+        suggest: [useOptionalSyntaxSuggestion(node)],
+      });
+    }
+
+    function useOptionalSyntaxSuggestion(
+      node: TSESTree.AssignmentPattern,
+    ): TSESLint.SuggestionReportDescriptor<MessageId> {
+      return {
+        messageId: 'useOptionalSyntax',
+        *fix(fixer) {
+          yield removeDefault(fixer, node);
+
+          const { left } = node;
+          if (left.type === AST_NODE_TYPES.Identifier) {
+            yield fixer.insertTextAfterRange(
+              [left.range[0], left.range[0] + left.name.length],
+              '?',
+            );
+          }
+        },
+      };
+    }
+
+    function removeDefaultSuggestion(
+      node: TSESTree.AssignmentPattern,
+    ): TSESLint.SuggestionReportDescriptor<MessageId> {
+      return {
+        messageId: 'removeDefaultAssignment',
+        fix: fixer => removeDefault(fixer, node),
+      };
+    }
+
+    function removeDefault(
+      fixer: TSESLint.RuleFixer,
+      node: TSESTree.AssignmentPattern,
+    ): TSESLint.RuleFix {
+      const start = node.left.range[1];
+      const end = node.range[1];
+      return fixer.removeRange([start, end]);
+    }
+
+    function hasPropertyInAllBranches(
+      expression: TSESTree.Expression,
+      propertyName: string,
+    ): boolean {
+      return (
+        (expression.type === AST_NODE_TYPES.ObjectExpression &&
+          expression.properties.some(
+            prop =>
+              prop.type === AST_NODE_TYPES.Property &&
+              getPropertyName(prop.key) === propertyName,
+          )) ||
+        (expression.type === AST_NODE_TYPES.ConditionalExpression &&
+          hasPropertyInAllBranches(expression.consequent, propertyName) &&
+          hasPropertyInAllBranches(expression.alternate, propertyName))
+      );
+    }
+
+    return {
+      AssignmentPattern: checkAssignmentPattern,
+    };
+  },
+});

@@ -1,0 +1,38 @@
+import { isAlreadyQuoted, needsShellQuoting } from './shell-quoting';
+
+export function serializeOverridesIntoCommandLine(options: {
+  [k: string]: any;
+}): string[] {
+  const unparsed = options._ ? [...options._] : [];
+  for (const key of Object.keys(options)) {
+    const value = options[key];
+    if (key !== '_') {
+      serializeOption(key, value, unparsed);
+    }
+  }
+
+  return unparsed;
+}
+
+function serializeOption(key: string, value: any, unparsed: string[]) {
+  if (value === true) {
+    unparsed.push(`--${key}`);
+  } else if (value === false) {
+    unparsed.push(`--no-${key}`);
+  } else if (Array.isArray(value)) {
+    value.forEach((item) => serializeOption(key, item, unparsed));
+  } else if (Object.prototype.toString.call(value) === '[object Object]') {
+    for (const nestedKey of Object.keys(value)) {
+      serializeOption(`${key}.${nestedKey}`, value[nestedKey], unparsed);
+    }
+  } else if (
+    typeof value === 'string' &&
+    needsShellQuoting(value) &&
+    !isAlreadyQuoted(value)
+  ) {
+    const sanitized = value.replace(/"/g, String.raw`\"`);
+    unparsed.push(`--${key}="${sanitized}"`);
+  } else if (value != null) {
+    unparsed.push(`--${key}=${value}`);
+  }
+}

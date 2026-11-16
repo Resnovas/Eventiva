@@ -1,0 +1,17 @@
+bradzacher:
+  image_url: /img/team/bradzacher.jpg
+  name: Brad Zacher
+  title: typescript-eslint Maintainer
+  url: https://github.com/bradzacher
+
+joshuakgoldberg:
+  image_url: /img/team/joshuakgoldberg.jpg
+  name: Josh Goldberg
+  title: typescript-eslint Maintainer
+  url: https://github.com/JoshuaKGoldberg
+
+StyleShit:
+  image_url: /img/team/StyleShit.jpg
+  name: Evyatar Daud
+  title: typescript-eslint Committer
+  url: https://github.com/StyleShit

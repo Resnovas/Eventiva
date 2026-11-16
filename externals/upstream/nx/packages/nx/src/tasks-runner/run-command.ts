@@ -1,0 +1,1462 @@
+import { selectPrompt } from '../utils/prompt-helpers';
+import { stripVTControlCharacters } from 'node:util';
+
+import type { Observable } from 'rxjs';
+import {
+  NxJsonConfiguration,
+  readNxJson,
+  TargetDependencies,
+} from '../config/nx-json';
+import { ProjectGraph, ProjectGraphProjectNode } from '../config/project-graph';
+import { Task, TaskGraph } from '../config/task-graph';
+import { TargetDependencyConfig } from '../config/workspace-json-project-json';
+import { daemonClient } from '../daemon/client/client';
+import { globalSpinner } from '../utils/spinner';
+import { createTaskHasher } from '../hasher/create-task-hasher';
+import {
+  getTaskDetails,
+  hashTasksThatDoNotDependOnOutputsOfOtherTasks,
+} from '../hasher/hash-task';
+import { hashArray, logDebug, RunMode } from '../native';
+import {
+  runPostTasksExecution,
+  runPreTasksExecution,
+} from '../project-graph/plugins/tasks-execution-hooks';
+import { createProjectGraphAsync } from '../project-graph/project-graph';
+import { NxArgs } from '../utils/command-line-utils';
+import { handleErrors } from '../utils/handle-errors';
+import { isCI } from '../utils/is-ci';
+import { isNxCloudDisabled, isNxCloudUsed } from '../utils/nx-cloud-utils';
+import { getBundleInstallDefaultLocation } from '../nx-cloud/update-manager';
+import { logger } from '../utils/logger';
+import { buildUltracacheOverrides } from '../ultracache/overrides';
+import { formatUltracacheSummary } from '../ultracache/report';
+import {
+  loadUltracacheConfigurationsForRun,
+  configurationsOf,
+  type UltracacheConfigurationOutcome,
+} from '../ultracache/store';
+import {
+  createNxKeyLicenseeInformation,
+  getNxKeyInformation,
+} from '../utils/nx-key';
+import {
+  isLogGroupingEnabled,
+  isStaticOutputStyle,
+  output,
+} from '../utils/output';
+import { shouldPrintConfigureAiAgentsDisclaimer } from '../ai/configure-ai-agents-disclaimer';
+import {
+  collectEnabledTaskSyncGeneratorsFromTaskGraph,
+  flushSyncGeneratorChanges,
+  getFailedSyncGeneratorsFixMessageLines,
+  getFlushFailureMessageLines,
+  getSyncGeneratorChanges,
+  getSyncGeneratorSuccessResultsMessageLines,
+  processSyncGeneratorResultErrors,
+} from '../utils/sync-generators';
+import { workspaceRoot } from '../utils/workspace-root';
+import { createTaskGraph } from './create-task-graph';
+import type { TaskPlanningContext } from '../hasher/task-planning-context';
+
+/** What a command runs. */
+export interface TaskSelection {
+  taskGraph: TaskGraph;
+  /**
+   * The tasks the command asked for, as opposed to ones pulled in as
+   * dependencies. A graph rebuilt after a sync is built from their projects.
+   */
+  initiatingTaskIds: string[];
+  /**
+   * What a rebuilt graph is pruned to: the selected tasks and everything they
+   * depend on. Unset keeps the whole rebuilt graph.
+   */
+  taskIds?: string[];
+  /** The planner selection used. It remembers those plans, so hashing the run reuses them. */
+  planningContext?: TaskPlanningContext;
+  /** The Ultracache configurations selection planned with; the run hashes with the same ones. */
+  ultracacheConfigurationOutcome?: UltracacheConfigurationOutcome | null;
+  /** What `nx affected` dropped from tasks hashed from a configuration. Unset for commands that do not select. */
+  ultracacheSkippedTaskIds?: string[];
+}
+import { isTuiEnabled, ORIGINAL_TUI_ENV_VALUE } from './is-tui-enabled';
+import {
+  CompositeLifeCycle,
+  LifeCycle,
+  TaskResult,
+  TaskResults,
+} from './life-cycle';
+import { createRunManyDynamicOutputRenderer } from './life-cycles/dynamic-run-many-terminal-output-life-cycle';
+import { createRunOneDynamicOutputRenderer } from './life-cycles/dynamic-run-one-terminal-output-life-cycle';
+import { StaticRunManyTerminalOutputLifeCycle } from './life-cycles/static-run-many-terminal-output-life-cycle';
+import { StaticRunOneTerminalOutputLifeCycle } from './life-cycles/static-run-one-terminal-output-life-cycle';
+import { SummaryTerminalOutputLifeCycle } from './life-cycles/summary-terminal-output-life-cycle';
+import { StoreRunInformationLifeCycle } from './life-cycles/store-run-information-life-cycle';
+import { getTasksHistoryLifeCycle } from './life-cycles/task-history-life-cycle';
+import { TaskProfilingLifeCycle } from './life-cycles/task-profiling-life-cycle';
+import {
+  PerformanceLifeCycle,
+  flushPerformanceReport,
+} from './life-cycles/performance-life-cycle';
+import { prefetchRemoteCacheOnboardingUrl } from './life-cycles/performance-report';
+import { TaskResultsLifeCycle } from './life-cycles/task-results-life-cycle';
+import { TaskTelemetryLifeCycle } from './life-cycles/task-telemetry-life-cycle';
+import { TaskTimingsLifeCycle } from './life-cycles/task-timings-life-cycle';
+import { getTuiTerminalSummaryLifeCycle } from './life-cycles/tui-summary-life-cycle';
+import { getReadyDependencies } from './readiness/ready-when';
+import {
+  assertTaskGraphDoesNotContainInvalidTargets,
+  findCycle,
+  makeAcyclic,
+  validateNoAtomizedTasks,
+} from './task-graph-utils';
+import { TasksRunner, TaskStatus } from './tasks-runner';
+import { pruneToSelectedTasks, shouldStreamOutput } from './utils';
+import { didCommandComplete, getRunExitCode } from './run-outcome';
+import { handleImport } from '../utils/handle-import';
+import * as pc from 'picocolors';
+
+const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+const originalConsoleLog = console.log.bind(console);
+const originalConsoleError = console.error.bind(console);
+
+// Only used in the non-TTY error path. In non-TTY the function `process.exit(1)`s
+// before the `applyChanges` branch can auto-sync, so the auto-sync bullet keeps
+// the "interactive environments" qualifier to avoid suggesting a config change
+// that won't help in CI/agent contexts.
+const SYNC_FIX_MESSAGE_LINES = [
+  'To sync the workspace:',
+  '- Run `nx sync` (no flags) to sync now.',
+  '- Run `nx sync:check` to preview the changes without modifying any files.',
+  '- Set `sync.applyChanges` to `true` in your `nx.json` to sync automatically when running tasks in interactive environments.',
+  '',
+  'For more information, refer to the docs: https://nx.dev/concepts/sync-generators',
+];
+const APPLY_CHANGES_FALSE_FIX_MESSAGE_LINES = [
+  'Your workspace is set to not sync automatically (`sync.applyChanges` is `false` in your `nx.json`).',
+  'Run `nx sync` (no flags) to sync now, or set `sync.applyChanges` to `true` to sync automatically before each task run.',
+];
+const SYNC_SKIPPED_FIX_MESSAGE_LINES = [
+  'This could lead to unexpected results or errors when running tasks.',
+  '',
+  'Run `nx sync` (no flags) later to sync the workspace.',
+];
+
+async function getTerminalOutputLifeCycle(
+  initiatingProject: string,
+  initiatingTasks: Task[],
+  projectNames: string[],
+  tasks: Task[],
+  taskGraph: TaskGraph,
+  projectGraph: ProjectGraph,
+  nxArgs: NxArgs,
+  nxJson: NxJsonConfiguration,
+  overrides: Record<string, unknown>
+): Promise<{
+  lifeCycle: LifeCycle;
+  printSummary?: () => void;
+  restoreTerminal?: () => void;
+  renderIsDone: Promise<void>;
+}> {
+  const overridesWithoutHidden = { ...overrides };
+  delete overridesWithoutHidden['__overrides_unparsed__'];
+
+  const isRunOne = initiatingProject != null;
+
+  if (tasks.length === 1 && !ORIGINAL_TUI_ENV_VALUE) {
+    process.env.NX_TUI = 'false';
+  }
+
+  // Kick off in the background so the URL is ready by the exit report. A brief
+  // sync preamble (git remote lookup) runs here; the network call does not.
+  prefetchRemoteCacheOnboardingUrl(nxJson);
+
+  if (isTuiEnabled()) {
+    const interceptedNxCloudLogs: (string | Uint8Array<ArrayBufferLike>)[] = [];
+
+    // Resolve where the Nx Cloud client bundle actually loads from so the
+    // stack-trace check below matches its frames. It is essentially never
+    // `{workspaceRoot}/.nx/cache/cloud`: the cache normally lives in the shared
+    // per-user `~/.nx/<hash>/cache`, and it can also be relocated via
+    // NX_CACHE_DIRECTORY, a custom `cacheDirectory` in nx.json, or the lerna
+    // `node_modules/.cache` location. Using the client's own resolver keeps the
+    // interception working in all of those cases.
+    const nxCloudClientDir = getBundleInstallDefaultLocation();
+
+    const createPatchedConsoleMethod = (
+      originalMethod: typeof console.log | typeof console.error
+    ): typeof console.log | typeof console.error => {
+      return (...args: any[]) => {
+        // Check if the log came from the Nx Cloud client, otherwise invoke the original write method
+        const stackTrace = new Error().stack;
+        const isNxCloudLog = stackTrace.includes(nxCloudClientDir);
+        if (!isNxCloudLog) {
+          return originalMethod(...args);
+        }
+        // No-op the Nx Cloud client logs
+      };
+    };
+    // The cloud client calls console.log when NX_VERBOSE_LOGGING is set to true
+    console.log = createPatchedConsoleMethod(originalConsoleLog);
+    console.error = createPatchedConsoleMethod(originalConsoleError);
+
+    const patchedWrite = (_chunk, _encoding, callback) => {
+      // Preserve original behavior around callback and return value, just in case
+      if (callback) {
+        callback();
+      }
+      return true;
+    };
+
+    process.stdout.write = patchedWrite as any;
+    process.stderr.write = patchedWrite as any;
+
+    const { AppLifeCycle, restoreTerminal } = await handleImport(
+      '../native/index.js',
+      __dirname
+    );
+    let appLifeCycle;
+
+    const isRunOne = initiatingProject != null;
+
+    const pinnedTasks: string[] = [];
+    let titleText = '';
+
+    if (isRunOne) {
+      const mainTaskId = initiatingTasks[0].id;
+      pinnedTasks.push(mainTaskId);
+      const mainContinuousDependencies =
+        taskGraph.continuousDependencies[mainTaskId];
+      if (mainContinuousDependencies.length > 0) {
+        pinnedTasks.push(mainContinuousDependencies[0].id);
+      }
+      const [, target] = mainTaskId.split(':');
+      titleText = `1 ${target} task`;
+      if (tasks.length > 1) {
+        const dependentTasksCount = tasks.length - 1;
+        const dependentTaskText =
+          dependentTasksCount === 1 ? 'other' : 'others';
+        titleText += `, and ${dependentTasksCount} ${dependentTaskText} they depend on`;
+      }
+    } else {
+      const mainTasksCount = projectNames.length;
+      const targetText = nxArgs.targets.join(', ');
+      const mainTaskText = mainTasksCount === 1 ? 'task' : 'tasks';
+      titleText = `${mainTasksCount} ${targetText} ${mainTaskText}`;
+      if (tasks.length > projectNames.length) {
+        const dependentTasksCount = tasks.length - projectNames.length;
+        const dependentTaskText =
+          dependentTasksCount === 1 ? 'other' : 'others';
+        titleText += `, and ${dependentTasksCount} ${dependentTaskText} they depend on`;
+      }
+    }
+
+    let resolveRenderIsDonePromise: (value: void) => void;
+    // Default renderIsDone that will be overridden if the TUI is used
+    let renderIsDone = new Promise<void>(
+      (resolve) => (resolveRenderIsDonePromise = resolve)
+    );
+
+    const { lifeCycle: tsLifeCycle, printSummary } =
+      getTuiTerminalSummaryLifeCycle({
+        projectNames,
+        tasks,
+        taskGraph,
+        args: nxArgs,
+        overrides: overridesWithoutHidden,
+        initiatingProject,
+        initiatingTasks,
+        resolveRenderIsDonePromise,
+      });
+
+    if (tasks.length === 0) {
+      renderIsDone = renderIsDone.then(() => {
+        // Revert the patched methods
+        process.stdout.write = originalStdoutWrite;
+        process.stderr.write = originalStderrWrite;
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+      });
+    }
+
+    const lifeCycles: LifeCycle[] = [tsLifeCycle];
+    // Only run the TUI if there are tasks to run
+    if (tasks.length > 0) {
+      appLifeCycle = new AppLifeCycle(
+        tasks,
+        initiatingTasks.map((t) => t.id),
+        isRunOne ? RunMode.RunOne : RunMode.RunMany,
+        pinnedTasks,
+        nxArgs ?? {},
+        nxJson.tui ?? {},
+        titleText,
+        workspaceRoot,
+        taskGraph,
+        getReadyDependencies(taskGraph, projectGraph),
+        isNxCloudUsed(nxJson)
+      );
+      // The native endCommand renders the perf report in the exit popup; the runner
+      // sources the payload and CompositeLifeCycle forwards it here.
+      lifeCycles.unshift(appLifeCycle as unknown as LifeCycle);
+
+      /**
+       * Patch stdout.write and stderr.write methods to pass Nx Cloud client logs to the TUI via the lifecycle
+       */
+      const createPatchedLogWrite = (
+        originalWrite:
+          | typeof process.stdout.write
+          | typeof process.stderr.write,
+        isError: boolean
+      ): typeof process.stdout.write | typeof process.stderr.write => {
+        // @ts-ignore
+        return (chunk, encoding, callback) => {
+          if (isError) {
+            logDebug(
+              Buffer.isBuffer(chunk)
+                ? chunk.toString(encoding)
+                : chunk.toString()
+            );
+          } else {
+            logDebug(
+              Buffer.isBuffer(chunk)
+                ? chunk.toString(encoding)
+                : chunk.toString()
+            );
+          }
+
+          // Check if the log came from the Nx Cloud client, otherwise invoke the original write method
+          const stackTrace = new Error().stack;
+          const isNxCloudLog = stackTrace.includes(nxCloudClientDir);
+          if (isNxCloudLog) {
+            interceptedNxCloudLogs.push(chunk);
+            // Do not bother to store logs with only whitespace characters, they aren't relevant for the TUI
+            const trimmedChunk = chunk.toString().trim();
+            if (trimmedChunk.length) {
+              // Remove ANSI escape codes, the TUI will control the formatting
+              // NOTE: this shows any message from the Nx Cloud client, including errors
+              appLifeCycle?.__setCloudMessage(
+                stripVTControlCharacters(trimmedChunk)
+              );
+            }
+          }
+          // Preserve original behavior around callback and return value, just in case
+          if (callback) {
+            callback();
+          }
+          return true;
+        };
+      };
+
+      const createPatchedConsoleMethod = (
+        originalMethod: typeof console.log | typeof console.error
+      ): typeof console.log | typeof console.error => {
+        return (...args: any[]) => {
+          // Check if the log came from the Nx Cloud client, otherwise invoke the original write method
+          const stackTrace = new Error().stack;
+          const isNxCloudLog = stackTrace.includes(nxCloudClientDir);
+          if (!isNxCloudLog) {
+            return originalMethod(...args);
+          }
+          // No-op the Nx Cloud client logs
+        };
+      };
+
+      process.stdout.write = createPatchedLogWrite(originalStdoutWrite, false);
+      process.stderr.write = createPatchedLogWrite(originalStderrWrite, true);
+
+      // The cloud client calls console.log when NX_VERBOSE_LOGGING is set to true
+      console.log = createPatchedConsoleMethod(originalConsoleLog);
+      console.error = createPatchedConsoleMethod(originalConsoleError);
+
+      globalThis.tuiOnProcessExit = () => {
+        restoreTerminal();
+        // Revert the patched methods
+        process.stdout.write = originalStdoutWrite;
+        process.stderr.write = originalStderrWrite;
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+        process.stdout.write('\n');
+        // Print the intercepted Nx Cloud logs
+        for (const log of interceptedNxCloudLogs) {
+          const logString = log.toString().trimStart();
+
+          process.stdout.write(logString);
+          if (logString) {
+            process.stdout.write('\n');
+          }
+        }
+      };
+
+      renderIsDone = new Promise<void>((resolve) => {
+        appLifeCycle.__init(() => {
+          resolve();
+        });
+      });
+    }
+
+    return {
+      lifeCycle: new CompositeLifeCycle(lifeCycles),
+      restoreTerminal: () => {
+        process.stdout.write = originalStdoutWrite;
+        process.stderr.write = originalStderrWrite;
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+        restoreTerminal();
+      },
+      printSummary: () => printSummary(),
+      renderIsDone,
+    };
+  }
+
+  if (nxArgs.resolvedOutputStyle === 'summary') {
+    return {
+      lifeCycle: new SummaryTerminalOutputLifeCycle(tasks),
+      renderIsDone: Promise.resolve(),
+    };
+  }
+
+  const { runnerOptions } = getRunner(nxArgs, nxJson);
+  const useDynamicOutput = shouldUseDynamicLifeCycle(
+    tasks,
+    runnerOptions,
+    nxArgs.specifiedOutputStyle
+  );
+
+  if (isRunOne) {
+    if (useDynamicOutput) {
+      return await createRunOneDynamicOutputRenderer({
+        initiatingProject,
+        tasks,
+        args: nxArgs,
+        overrides: overridesWithoutHidden,
+      });
+    }
+    return {
+      lifeCycle: new StaticRunOneTerminalOutputLifeCycle(
+        initiatingProject,
+        projectNames,
+        tasks,
+        nxArgs
+      ),
+      renderIsDone: Promise.resolve(),
+    };
+  } else {
+    if (useDynamicOutput) {
+      return await createRunManyDynamicOutputRenderer({
+        projectNames,
+        tasks,
+        args: nxArgs,
+        overrides: overridesWithoutHidden,
+      });
+    } else {
+      return {
+        lifeCycle: new StaticRunManyTerminalOutputLifeCycle(
+          projectNames,
+          tasks,
+          nxArgs,
+          overridesWithoutHidden
+        ),
+        renderIsDone: Promise.resolve(),
+      };
+    }
+  }
+}
+
+/**
+ * `targets` on whole projects, as `run-many` runs them: every task of the
+ * projects' targets and what they depend on, with those tasks initiating.
+ */
+export function selectTasksForProjects(
+  projectGraph: ProjectGraph,
+  projectNames: string[],
+  nxArgs: NxArgs,
+  overrides: any,
+  extraTargetDependencies: TargetDependencies,
+  excludeTaskDependencies: boolean
+): TaskSelection {
+  const taskGraph = createTaskGraph(
+    projectGraph,
+    extraTargetDependencies,
+    projectNames,
+    nxArgs.targets,
+    nxArgs.configuration,
+    overrides,
+    excludeTaskDependencies
+  );
+  const projects = new Set(projectNames);
+  return {
+    taskGraph,
+    initiatingTaskIds: Object.values(taskGraph.tasks)
+      .filter(
+        (t) =>
+          projects.has(t.target.project) &&
+          nxArgs.targets.includes(t.target.target)
+      )
+      .map((t) => t.id),
+  };
+}
+
+function runValidations(
+  projectGraph: ProjectGraph,
+  taskGraph: TaskGraph,
+  nxArgs: NxArgs
+): TaskGraph {
+  assertTaskGraphDoesNotContainInvalidTargets(taskGraph);
+
+  const cycle = findCycle(taskGraph);
+  if (cycle) {
+    if (process.env.NX_IGNORE_CYCLES === 'true' || nxArgs.nxIgnoreCycles) {
+      output.warn({
+        title: `The task graph has a circular dependency`,
+        bodyLines: [`${cycle.join(' --> ')}`],
+      });
+      makeAcyclic(taskGraph);
+    } else {
+      output.error({
+        title: `Could not execute command because the task graph has a circular dependency`,
+        bodyLines: [`${cycle.join(' --> ')}`],
+      });
+      process.exit(1);
+    }
+  }
+
+  // validate that no atomized tasks like e2e-ci are used without Nx Cloud
+  if (
+    !isNxCloudUsed(readNxJson()) &&
+    !process.env['NX_SKIP_ATOMIZER_VALIDATION']
+  ) {
+    validateNoAtomizedTasks(taskGraph, projectGraph);
+  }
+
+  return taskGraph;
+}
+
+export async function runCommand(
+  taskSelection: TaskSelection,
+  currentProjectGraph: ProjectGraph,
+  { nxJson }: { nxJson: NxJsonConfiguration },
+  nxArgs: NxArgs,
+  overrides: any,
+  initiatingProject: string | null,
+  extraTargetDependencies: Record<string, (TargetDependencyConfig | string)[]>,
+  extraOptions: { excludeTaskDependencies: boolean; loadDotEnvFiles: boolean }
+): Promise<NodeJS.Process['exitCode']> {
+  const status = await handleErrors(
+    process.env.NX_VERBOSE_LOGGING === 'true',
+    async () => {
+      const id = hashArray([...process.argv, Date.now().toString()]);
+      await runPreTasksExecution({
+        id,
+        workspaceRoot,
+        nxJsonConfiguration: nxJson,
+        argv: process.argv,
+      });
+
+      const startTime = Date.now();
+      const { taskResults, taskStatuses, completed } = await runTasksForCommand(
+        taskSelection,
+        currentProjectGraph,
+        { nxJson },
+        {
+          ...nxArgs,
+          skipNxCache:
+            nxArgs.skipNxCache ||
+            process.env.NX_SKIP_NX_CACHE === 'true' ||
+            process.env.NX_DISABLE_NX_CACHE === 'true',
+        },
+        overrides,
+        initiatingProject,
+        extraTargetDependencies,
+        extraOptions
+      );
+      const endTime = Date.now();
+
+      const exitCode = getRunExitCode(completed, taskResults, taskStatuses);
+
+      await runPostTasksExecution({
+        id,
+        taskResults,
+        workspaceRoot,
+        nxJsonConfiguration: nxJson,
+        argv: process.argv,
+        startTime,
+        endTime,
+      });
+
+      return exitCode;
+    }
+  );
+
+  return status;
+}
+
+export async function runTasksForCommand(
+  taskSelection: TaskSelection,
+  currentProjectGraph: ProjectGraph,
+  { nxJson }: { nxJson: NxJsonConfiguration },
+  nxArgs: NxArgs,
+  overrides: any,
+  initiatingProject: string | null,
+  extraTargetDependencies: Record<string, (TargetDependencyConfig | string)[]>,
+  extraOptions: { excludeTaskDependencies: boolean; loadDotEnvFiles: boolean }
+): Promise<{
+  taskResults: TaskResults;
+  taskStatuses?: Record<string, TaskStatus>;
+  completed: boolean;
+}> {
+  // Kick off the license lookup in the background so it overlaps with task
+  // execution. The log itself is deferred to the print site below so it
+  // never lands in the middle of task output.
+  const nxKeyPromise = getNxKeyInformation().catch(() => null);
+
+  const { projectGraph, taskGraph } = await ensureWorkspaceIsInSyncAndGetGraphs(
+    currentProjectGraph,
+    nxJson,
+    nxArgs,
+    overrides,
+    extraTargetDependencies,
+    extraOptions,
+    taskSelection
+  );
+
+  const tasks = Object.values(taskGraph.tasks);
+
+  // A sync generator can remove a selected task, so absent ids are skipped.
+  const initiatingTasks = taskSelection.initiatingTaskIds
+    .map((id) => taskGraph.tasks[id])
+    .filter(Boolean);
+  const projectNames = [
+    ...new Set(initiatingTasks.map((t) => t.target.project)),
+  ];
+
+  const { lifeCycle, renderIsDone, printSummary, restoreTerminal } =
+    await getTerminalOutputLifeCycle(
+      initiatingProject,
+      initiatingTasks,
+      projectNames,
+      tasks,
+      taskGraph,
+      projectGraph,
+      nxArgs,
+      nxJson,
+      overrides
+    );
+
+  try {
+    const { taskResults, taskStatuses } = await invokeTasksRunner({
+      tasks,
+      projectGraph,
+      taskGraph,
+      lifeCycle,
+      nxJson,
+      nxArgs,
+      loadDotEnvFiles: extraOptions.loadDotEnvFiles,
+      initiatingProject,
+      initiatingTasks,
+      planningContext: taskSelection.planningContext,
+      ultracacheConfigurationOutcome:
+        taskSelection.ultracacheConfigurationOutcome,
+      ultracacheSkippedTaskIds: taskSelection.ultracacheSkippedTaskIds,
+    });
+
+    await renderIsDone.finally(() => restoreTerminal?.());
+
+    if (printSummary) {
+      printSummary();
+    }
+
+    await printConfigureAiAgentsDisclaimer();
+
+    const nxKey = await nxKeyPromise;
+    if (nxKey) logger.log(createNxKeyLicenseeInformation(nxKey));
+
+    return {
+      taskResults,
+      taskStatuses,
+      completed: didCommandComplete(tasks, taskResults, taskStatuses),
+    };
+  } catch (e) {
+    restoreTerminal?.();
+    throw e;
+  } finally {
+    // Print the report once, on success or failure (restoreTerminal has run in both
+    // paths). No-ops if a multi-task TUI run already delivered it via the popup; its own
+    // try/catch means it never masks `e`.
+    flushPerformanceReport();
+  }
+}
+
+async function printConfigureAiAgentsDisclaimer(): Promise<void> {
+  try {
+    if (isCI()) {
+      return;
+    }
+    if (!daemonClient.enabled() || !(await daemonClient.isServerAvailable())) {
+      return;
+    }
+    const { outdatedAgents } = await daemonClient.getConfigureAiAgentsStatus();
+    if (
+      !shouldPrintConfigureAiAgentsDisclaimer(outdatedAgents, workspaceRoot)
+    ) {
+      return;
+    }
+    output.logRawLine(
+      output.dim(
+        'Your AI agent configuration is outdated. Run "nx configure-ai-agents" to update.'
+      )
+    );
+  } catch {
+    // Silently ignore errors
+  }
+}
+
+async function ensureWorkspaceIsInSyncAndGetGraphs(
+  projectGraph: ProjectGraph,
+  nxJson: NxJsonConfiguration,
+  nxArgs: NxArgs,
+  overrides: any,
+  extraTargetDependencies: Record<string, (TargetDependencyConfig | string)[]>,
+  extraOptions: { excludeTaskDependencies: boolean; loadDotEnvFiles: boolean },
+  taskSelection: TaskSelection
+): Promise<{
+  projectGraph: ProjectGraph;
+  taskGraph: TaskGraph;
+}> {
+  let taskGraph = runValidations(projectGraph, taskSelection.taskGraph, nxArgs);
+
+  if (nxArgs.skipSync || isCI()) {
+    return { projectGraph, taskGraph };
+  }
+
+  // collect unique syncGenerators from the tasks
+  const uniqueSyncGenerators = collectEnabledTaskSyncGeneratorsFromTaskGraph(
+    taskGraph,
+    projectGraph,
+    nxJson
+  );
+
+  if (!uniqueSyncGenerators.size) {
+    // There are no sync generators registered in the tasks to run
+    return { projectGraph, taskGraph };
+  }
+
+  const syncGenerators = Array.from(uniqueSyncGenerators);
+  const results = await getSyncGeneratorChanges(syncGenerators);
+  if (!results.length) {
+    // There are no changes to sync, workspace is up to date
+    return { projectGraph, taskGraph };
+  }
+
+  const {
+    failedGeneratorsCount,
+    areAllResultsFailures,
+    anySyncGeneratorsFailed,
+  } = processSyncGeneratorResultErrors(results);
+  const failedSyncGeneratorsFixMessageLines =
+    getFailedSyncGeneratorsFixMessageLines(results, nxArgs.verbose);
+  const outOfSyncTitle = 'The workspace is out of sync';
+  const resultBodyLines = getSyncGeneratorSuccessResultsMessageLines(results);
+
+  if (!process.stdout.isTTY) {
+    // If the user is running a non-TTY environment we
+    // throw an error to stop the execution of the tasks.
+    if (areAllResultsFailures) {
+      output.error({
+        title: `The workspace is probably out of sync because ${
+          failedGeneratorsCount === 1
+            ? 'a sync generator'
+            : 'some sync generators'
+        } failed to run`,
+        bodyLines: failedSyncGeneratorsFixMessageLines,
+      });
+    } else {
+      output.error({
+        title: outOfSyncTitle,
+        bodyLines: [...resultBodyLines, '', ...SYNC_FIX_MESSAGE_LINES],
+      });
+
+      if (anySyncGeneratorsFailed) {
+        output.error({
+          title:
+            failedGeneratorsCount === 1
+              ? 'A sync generator failed to run'
+              : 'Some sync generators failed to run',
+          bodyLines: failedSyncGeneratorsFixMessageLines,
+        });
+      }
+    }
+
+    process.exit(1);
+  }
+
+  if (areAllResultsFailures) {
+    output.warn({
+      title: `The workspace is probably out of sync because ${
+        failedGeneratorsCount === 1
+          ? 'a sync generator'
+          : 'some sync generators'
+      } failed to run`,
+      bodyLines: failedSyncGeneratorsFixMessageLines,
+    });
+
+    await confirmRunningTasksWithSyncFailures();
+
+    // if all sync generators failed to run there's nothing to sync, we just let the tasks run
+    return { projectGraph, taskGraph };
+  }
+
+  if (nxJson.sync?.applyChanges === false) {
+    // If the user has set `sync.applyChanges` to `false` in their `nx.json`
+    // we don't prompt the them and just log a warning informing them that
+    // the workspace is out of sync and they have it set to not apply changes
+    // automatically.
+    output.warn({
+      title: outOfSyncTitle,
+      bodyLines: [
+        ...resultBodyLines,
+        '',
+        ...APPLY_CHANGES_FALSE_FIX_MESSAGE_LINES,
+      ],
+    });
+
+    if (anySyncGeneratorsFailed) {
+      output.warn({
+        title:
+          failedGeneratorsCount === 1
+            ? 'A sync generator failed to run'
+            : 'Some sync generators failed to run',
+        bodyLines: failedSyncGeneratorsFixMessageLines,
+      });
+
+      await confirmRunningTasksWithSyncFailures();
+    }
+
+    return { projectGraph, taskGraph };
+  }
+
+  output.warn({
+    title: outOfSyncTitle,
+    bodyLines: [
+      ...resultBodyLines,
+      ...(nxJson.sync?.applyChanges === true
+        ? [
+            '',
+            'Proceeding to sync the identified changes automatically (`sync.applyChanges` is set to `true` in your `nx.json`).',
+          ]
+        : []),
+    ],
+  });
+
+  const applyChanges =
+    nxJson.sync?.applyChanges === true ||
+    (await promptForApplyingSyncGeneratorChanges());
+
+  if (applyChanges) {
+    const spinner = globalSpinner.start('Syncing the workspace...');
+
+    // Flush sync generator changes to disk
+    const flushResult = await flushSyncGeneratorChanges(results);
+
+    if ('generatorFailures' in flushResult) {
+      spinner.fail();
+      output.error({
+        title: 'Failed to sync the workspace',
+        bodyLines: [
+          ...getFlushFailureMessageLines(flushResult, nxArgs.verbose),
+          ...(flushResult.generalFailure
+            ? [
+                'If needed, you can run the tasks with the `--skip-sync` flag to disable syncing.',
+              ]
+            : []),
+        ],
+      });
+
+      await confirmRunningTasksWithSyncFailures();
+    }
+
+    // Rebuild rather than carry: a sync generator may remove tasks or move inferred
+    // outputs, so the old graph and planning context are stale.
+    taskSelection.planningContext = undefined;
+    const projectNames = [
+      ...new Set(
+        taskSelection.initiatingTaskIds
+          .filter((id) => taskGraph.tasks[id])
+          .map((id) => taskGraph.tasks[id].target.project)
+      ),
+    ];
+    projectGraph = await createProjectGraphAsync();
+    const rebuilt = selectTasksForProjects(
+      projectGraph,
+      projectNames,
+      nxArgs,
+      overrides,
+      extraTargetDependencies ?? {},
+      extraOptions.excludeTaskDependencies
+    ).taskGraph;
+    taskGraph = runValidations(
+      projectGraph,
+      // Before validation, so a cycle or atomizer error names what will actually run.
+      taskSelection.taskIds
+        ? pruneToSelectedTasks(rebuilt, taskSelection.taskIds)
+        : rebuilt,
+      nxArgs
+    );
+
+    const successTitle = anySyncGeneratorsFailed
+      ? // the identified changes were synced successfully, but the workspace
+        // is still not up to date, which we'll mention next
+        'The identified changes were synced successfully!'
+      : // the workspace is fully up to date
+        'The workspace was synced successfully!';
+    const successSubtitle =
+      nxJson.sync?.applyChanges === true
+        ? 'Please make sure to commit the changes to your repository or this will error in CI.'
+        : // The user was prompted and we already logged a message about erroring in CI
+          // so here we just tell them to commit the changes.
+          'Please make sure to commit the changes to your repository.';
+    spinner.succeed(`${successTitle}\n\n${successSubtitle}`);
+
+    if (anySyncGeneratorsFailed) {
+      output.warn({
+        title: `The workspace is probably still out of sync because ${
+          failedGeneratorsCount === 1
+            ? 'a sync generator'
+            : 'some sync generators'
+        } failed to run`,
+        bodyLines: failedSyncGeneratorsFixMessageLines,
+      });
+
+      await confirmRunningTasksWithSyncFailures();
+    }
+  } else {
+    if (anySyncGeneratorsFailed) {
+      output.warn({
+        title:
+          failedGeneratorsCount === 1
+            ? 'A sync generator failed to report the sync status'
+            : 'Some sync generators failed to report the sync status',
+        bodyLines: failedSyncGeneratorsFixMessageLines,
+      });
+
+      await confirmRunningTasksWithSyncFailures();
+    } else {
+      output.warn({
+        title: 'Syncing the workspace was skipped',
+        bodyLines: SYNC_SKIPPED_FIX_MESSAGE_LINES,
+      });
+    }
+  }
+
+  return { projectGraph, taskGraph };
+}
+
+async function promptForApplyingSyncGeneratorChanges(): Promise<boolean> {
+  try {
+    // No footer slot, so the opt-out note is part of the message.
+    const applyChanges = await selectPrompt({
+      message: `Would you like to sync the identified changes to get your workspace up to date?${pc.dim(
+        '\nYou can skip this prompt by setting the `sync.applyChanges` option to `true` in your `nx.json`.\nFor more information, refer to the docs: https://nx.dev/concepts/sync-generators.'
+      )}`,
+      choices: [
+        { value: 'yes', label: 'Yes, sync the changes and run the tasks' },
+        {
+          value: 'no',
+          label: 'No, run the tasks without syncing the changes',
+        },
+      ],
+      onCancel: () => process.exit(1),
+    });
+    return applyChanges === 'yes';
+  } catch {
+    process.exit(1);
+  }
+}
+
+async function confirmRunningTasksWithSyncFailures(): Promise<void> {
+  try {
+    const runTasks = await selectPrompt({
+      message: `Would you like to ignore the sync failures and continue running the tasks?${pc.dim(
+        `\nWhen running in CI and there are sync failures, the tasks won't run. Addressing the errors above is highly recommended to prevent failures in CI.`
+      )}`,
+      choices: [
+        { value: 'yes', label: 'Yes, ignore the failures and run the tasks' },
+        { value: 'no', label: `No, don't run the tasks` },
+      ],
+      onCancel: () => process.exit(1),
+    });
+
+    if (runTasks !== 'yes') {
+      process.exit(1);
+    }
+  } catch {
+    process.exit(1);
+  }
+}
+
+export function setEnvVarsBasedOnArgs(
+  nxArgs: NxArgs,
+  loadDotEnvFiles: boolean
+) {
+  // Batch mode turns on streaming implicitly, but streamed output interleaves
+  // between tasks and so cannot be wrapped in collapsible log groups. Where
+  // grouping applies, let it win over the implicit request; an output style the
+  // user asked for explicitly still wins over grouping.
+  const batchMode = process.env.NX_BATCH_MODE === 'true' || nxArgs.batch;
+  if (
+    nxArgs.specifiedOutputStyle == 'stream' ||
+    (batchMode && !isLogGroupingEnabled())
+  ) {
+    process.env.NX_STREAM_OUTPUT = 'true';
+    process.env.NX_PREFIX_OUTPUT = 'true';
+  }
+  if (nxArgs.specifiedOutputStyle == 'stream-without-prefixes') {
+    process.env.NX_STREAM_OUTPUT = 'true';
+    process.env.NX_PREFIX_OUTPUT = 'false';
+  }
+  // Force streaming only when the TUI is active, so it can capture and
+  // render task output. Other output styles manage their own streaming.
+  if (isTuiEnabled()) {
+    process.env.NX_STREAM_OUTPUT = 'true';
+  }
+  if (loadDotEnvFiles) {
+    process.env.NX_LOAD_DOT_ENV_FILES = 'true';
+  }
+}
+
+export async function invokeTasksRunner({
+  tasks,
+  projectGraph,
+  taskGraph,
+  lifeCycle,
+  nxJson,
+  nxArgs,
+  loadDotEnvFiles,
+  initiatingProject,
+  initiatingTasks,
+  planningContext,
+  ultracacheConfigurationOutcome: loadedUltracacheConfigurationOutcome,
+  ultracacheSkippedTaskIds,
+}: {
+  tasks: Task[];
+  projectGraph: ProjectGraph;
+  taskGraph: TaskGraph;
+  lifeCycle: LifeCycle;
+  nxJson: NxJsonConfiguration;
+  nxArgs: NxArgs;
+  loadDotEnvFiles: boolean;
+  initiatingProject: string | null;
+  initiatingTasks: Task[];
+  planningContext?: TaskPlanningContext;
+  /** Already loaded for this command; `undefined` loads it here. */
+  ultracacheConfigurationOutcome?: UltracacheConfigurationOutcome | null;
+  ultracacheSkippedTaskIds?: string[];
+}): Promise<{
+  taskResults: { [id: string]: TaskResult };
+  taskStatuses?: Record<string, TaskStatus>;
+}> {
+  setEnvVarsBasedOnArgs(nxArgs, loadDotEnvFiles);
+
+  // this needs to be done before we start to run the tasks
+  const taskDetails = getTaskDetails();
+
+  const { tasksRunner, runnerOptions } = getRunner(nxArgs, nxJson);
+
+  // Must precede hashing: the Ultracache configurations are a source for task hashes.
+  const ultracacheConfigurationOutcome =
+    loadedUltracacheConfigurationOutcome !== undefined
+      ? loadedUltracacheConfigurationOutcome
+      : await loadUltracacheConfigurationsForRun(nxJson, runnerOptions);
+  const ultracacheConfigurations = configurationsOf(
+    ultracacheConfigurationOutcome
+  );
+
+  let hasher = createTaskHasher(
+    projectGraph,
+    nxJson,
+    runnerOptions,
+    ultracacheConfigurations,
+    planningContext
+  );
+
+  // this is used for two reasons: to fetch all remote cache hits AND
+  // to submit everything that is known in advance to Nx Cloud to run in
+  // a distributed fashion
+
+  const hashingDeferredTaskIds =
+    await hashTasksThatDoNotDependOnOutputsOfOtherTasks(
+      hasher,
+      projectGraph,
+      taskGraph,
+      nxJson,
+      taskDetails,
+      ultracacheConfigurations
+    );
+  reportUltracacheConfigurations(
+    ultracacheConfigurationOutcome,
+    projectGraph,
+    taskGraph,
+    nxArgs,
+    ultracacheSkippedTaskIds
+  );
+  const taskResultsLifecycle = new TaskResultsLifeCycle();
+  const compositedLifeCycle: LifeCycle = new CompositeLifeCycle([
+    ...constructLifeCycles(lifeCycle, taskGraph, nxJson, nxArgs.skipNxCache),
+    taskResultsLifecycle,
+  ]);
+
+  let promiseOrObservable:
+    | Observable<{ task: Task; success: boolean }>
+    | Promise<{ [id: string]: TaskStatus }> = tasksRunner(
+    tasks,
+    {
+      ...runnerOptions,
+      lifeCycle: compositedLifeCycle,
+    },
+    {
+      initiatingProject,
+      initiatingTasks,
+      projectGraph,
+      nxJson,
+      nxArgs,
+      taskGraph,
+      hasher: {
+        hashTask(task: Task, taskGraph_?: TaskGraph, env?: NodeJS.ProcessEnv) {
+          if (!taskGraph_) {
+            output.warn({
+              title: `TaskGraph is now required as an argument to hashTask`,
+              bodyLines: [
+                `The TaskGraph object can be retrieved from the context`,
+                'This will result in an error in Nx 20',
+              ],
+            });
+            taskGraph_ = taskGraph;
+          }
+          if (!env) {
+            output.warn({
+              title: `The environment variables are now required as an argument to hashTask`,
+              bodyLines: [
+                `Please pass the environment variables used when running the task`,
+                'This will result in an error in Nx 20',
+              ],
+            });
+            env = process.env;
+          }
+          return hasher.hashTask(task, taskGraph_, env);
+        },
+        hashTasks(
+          tasks: Task[],
+          taskGraph_?: TaskGraph,
+          envOrPerTaskEnvs?:
+            | NodeJS.ProcessEnv
+            | Record<string, NodeJS.ProcessEnv>
+        ) {
+          if (!taskGraph_) {
+            output.warn({
+              title: `TaskGraph is now required as an argument to hashTasks`,
+              bodyLines: [
+                `The TaskGraph object can be retrieved from the context`,
+                'This will result in an error in Nx 20',
+              ],
+            });
+            taskGraph_ = taskGraph;
+          }
+          if (!envOrPerTaskEnvs) {
+            output.warn({
+              title: `The environment variables are now required as an argument to hashTasks`,
+              bodyLines: [
+                `Please pass the environment variables used when running the tasks`,
+                'This will result in an error in Nx 20',
+              ],
+            });
+            envOrPerTaskEnvs = process.env;
+          }
+          // hasher.hashTasks accepts either legacy single-env or the new
+          // per-task-env shape and normalizes internally.
+          return hasher.hashTasks(
+            tasks,
+            taskGraph_,
+            envOrPerTaskEnvs as NodeJS.ProcessEnv
+          );
+        },
+        hashTasksUpfront(
+          tasks: Task[],
+          taskGraph_: TaskGraph,
+          perTaskEnvs: Record<string, NodeJS.ProcessEnv>
+        ) {
+          return hasher.hashTasksUpfront(tasks, taskGraph_, perTaskEnvs);
+        },
+      },
+      daemon: daemonClient,
+      hashingDeferredTaskIds,
+      ultracacheSkippedTaskIds:
+        ultracacheSkippedTaskIds && new Set(ultracacheSkippedTaskIds),
+    }
+  );
+  if ((promiseOrObservable as any).subscribe) {
+    promiseOrObservable = convertObservableToPromise(
+      promiseOrObservable as Observable<{ task: Task; success: boolean }>
+    );
+  }
+
+  const taskStatuses = await (promiseOrObservable as Promise<{
+    [id: string]: TaskStatus;
+  }>);
+  return {
+    taskResults: taskResultsLifecycle.getTaskResults(),
+    // Custom runners are not guaranteed to resolve to a status map.
+    taskStatuses:
+      taskStatuses && typeof taskStatuses === 'object'
+        ? taskStatuses
+        : undefined,
+  };
+}
+
+export function constructLifeCycles(
+  lifeCycle: LifeCycle,
+  taskGraph: TaskGraph,
+  nxJson?: NxJsonConfiguration,
+  skipNxCache?: boolean
+): LifeCycle[] {
+  const lifeCycles = [] as LifeCycle[];
+  lifeCycles.push(new StoreRunInformationLifeCycle());
+  lifeCycles.push(lifeCycle);
+  if (process.env.NX_PERF_LOGGING === 'true') {
+    lifeCycles.push(new TaskTimingsLifeCycle());
+  }
+  if (process.env.NX_PROFILE) {
+    lifeCycles.push(new TaskProfilingLifeCycle(process.env.NX_PROFILE));
+  }
+  lifeCycles.push(new PerformanceLifeCycle(taskGraph, { skipNxCache, nxJson }));
+  lifeCycles.push(new TaskTelemetryLifeCycle());
+  const historyLifeCycle = getTasksHistoryLifeCycle();
+  lifeCycles.push(historyLifeCycle);
+  return lifeCycles;
+}
+
+async function convertObservableToPromise(
+  obs: Observable<{ task: Task; success: boolean }>
+): Promise<{ [id: string]: TaskStatus }> {
+  return await new Promise((res) => {
+    let tasksResults: { [id: string]: TaskStatus } = {};
+    obs.subscribe({
+      next: (t) => {
+        tasksResults[t.task.id] = t.success ? 'success' : 'failure';
+      },
+      error: (error) => {
+        output.error({
+          title: 'Unhandled error in task executor',
+        });
+        console.error(error);
+        res(tasksResults);
+      },
+      complete: () => {
+        res(tasksResults);
+      },
+    });
+  });
+}
+
+function shouldUseDynamicLifeCycle(
+  tasks: Task[],
+  options: any,
+  outputStyle: string
+) {
+  if (
+    process.env.NX_BATCH_MODE === 'true' ||
+    process.env.NX_VERBOSE_LOGGING === 'true' ||
+    process.env.NX_TASKS_RUNNER_DYNAMIC_OUTPUT === 'false'
+  ) {
+    return false;
+  }
+  if (!process.stdout.isTTY) return false;
+  if (isCI()) return false;
+  if (
+    isStaticOutputStyle(outputStyle) ||
+    outputStyle === 'summary' ||
+    outputStyle === 'stream' ||
+    outputStyle === 'stream-without-prefixes'
+  )
+    return false;
+
+  return !tasks.find((t) => shouldStreamOutput(t, null));
+}
+
+function loadTasksRunner(modulePath: string): TasksRunner {
+  try {
+    const maybeTasksRunner = require(modulePath) as
+      | TasksRunner
+      | { default: TasksRunner };
+    // to support both babel and ts formats
+    return 'default' in maybeTasksRunner
+      ? maybeTasksRunner.default
+      : maybeTasksRunner;
+  } catch (e) {
+    if (
+      e.code === 'MODULE_NOT_FOUND' &&
+      (modulePath === 'nx-cloud' || modulePath === '@nrwl/nx-cloud')
+    ) {
+      return require('../nx-cloud/nx-cloud-tasks-runner-shell')
+        .nxCloudTasksRunnerShell;
+    }
+    throw e;
+  }
+}
+
+function reportUltracacheConfigurations(
+  outcome: UltracacheConfigurationOutcome | null,
+  projectGraph: ProjectGraph,
+  taskGraph: TaskGraph,
+  nxArgs: NxArgs,
+  ultracacheSkippedTaskIds: string[] | undefined
+): void {
+  if (!outcome || outcome.status === 'skipped') return;
+  if (!nxArgs.verbose && process.env.NX_VERBOSE_LOGGING !== 'true') return;
+  const summary = formatUltracacheSummary(
+    buildUltracacheOverrides(projectGraph, taskGraph, outcome.configurations),
+    outcome.status,
+    ultracacheSkippedTaskIds?.length
+  );
+  output.note({ title: summary.line, bodyLines: summary.bodyLines });
+}
+
+/**
+ * What affected task selection reads from the runner options, so it plans as
+ * the run hashes. The Ultracache configurations are loaded once, for selection and the run.
+ */
+export async function runnerInputsForSelection(
+  nxArgs: NxArgs,
+  nxJson: NxJsonConfiguration
+): Promise<{
+  ultracacheConfigurationOutcome: UltracacheConfigurationOutcome | null;
+  selectivelyHashTsConfig: boolean;
+}> {
+  const { runnerOptions } = getRunner(nxArgs, nxJson);
+  return {
+    ultracacheConfigurationOutcome: await loadUltracacheConfigurationsForRun(
+      nxJson,
+      runnerOptions
+    ),
+    selectivelyHashTsConfig: runnerOptions?.selectivelyHashTsConfig ?? false,
+  };
+}
+
+export function getRunner(
+  nxArgs: NxArgs,
+  nxJson: NxJsonConfiguration
+): {
+  tasksRunner: TasksRunner;
+  runnerOptions: any;
+} {
+  let runner = nxArgs.runner;
+  runner = runner ?? 'default';
+
+  if (runner !== 'default' && !nxJson.tasksRunnerOptions?.[runner]) {
+    throw new Error(`Could not find runner configuration for ${runner}`);
+  }
+
+  const modulePath: string = getTasksRunnerPath(runner, nxJson);
+
+  try {
+    const tasksRunner = loadTasksRunner(modulePath);
+
+    return {
+      tasksRunner,
+      runnerOptions: getRunnerOptions(
+        runner,
+        nxJson,
+        nxArgs,
+        modulePath === 'nx-cloud'
+      ),
+    };
+  } catch {
+    throw new Error(`Could not find runner configuration for ${runner}`);
+  }
+}
+
+const defaultTasksRunnerPath = require.resolve('./default-tasks-runner');
+
+function getTasksRunnerPath(
+  runner: string,
+  nxJson: NxJsonConfiguration<string[] | '*'>
+) {
+  // If running inside of Codex, there will be no internet access, so we cannot use the cloud runner, regardless of other config.
+  // We can infer this scenario by checking for certain environment variables defined in their base image: https://github.com/openai/codex-universal
+  if (process.env.CODEX_ENV_NODE_VERSION) {
+    output.warn({
+      title: 'Codex environment detected, using default tasks runner',
+      bodyLines: [
+        'Codex does not have internet access when it runs tasks, so Nx will use the default tasks runner and only leverage local caching.',
+      ],
+    });
+    return defaultTasksRunnerPath;
+  }
+
+  const isCloudRunner =
+    // No tasksRunnerOptions for given --runner
+    nxJson.nxCloudAccessToken ||
+    // No runner prop in tasks runner options, check if access token is set.
+    nxJson.tasksRunnerOptions?.[runner]?.options?.accessToken ||
+    ['nx-cloud', '@nrwl/nx-cloud'].includes(
+      nxJson.tasksRunnerOptions?.[runner]?.runner
+    ) ||
+    // Cloud access token specified in env var.
+    process.env.NX_CLOUD_AUTH_TOKEN ||
+    process.env.NX_CLOUD_ACCESS_TOKEN ||
+    // Nx Cloud ID specified in nxJson
+    nxJson.nxCloudId;
+
+  // NX_NO_CLOUD / neverConnectToCloud wins over any ambient token — otherwise
+  // a surrounding CI env variable would still route through the cloud shell,
+  // which resolves the default tasks runner via its own require bridge and
+  // can pull in a different Nx version than the workspace's own.
+  return isCloudRunner && !isNxCloudDisabled(nxJson)
+    ? 'nx-cloud'
+    : defaultTasksRunnerPath;
+}
+
+export function getRunnerOptions(
+  runner: string,
+  nxJson: NxJsonConfiguration<string[] | '*'>,
+  nxArgs: NxArgs,
+  isCloudDefault: boolean
+): any {
+  const result = {
+    ...nxJson.tasksRunnerOptions?.[runner]?.options,
+    ...nxArgs,
+  };
+
+  // NOTE: we don't pull from env here because the cloud package
+  // supports it within nx-cloud's implementation. We could
+  // normalize it here, and that may make more sense, but
+  // leaving it as is for now.
+  if (nxJson.nxCloudAccessToken && isCloudDefault) {
+    result.accessToken ??= nxJson.nxCloudAccessToken;
+  }
+
+  if (nxJson.nxCloudId && isCloudDefault) {
+    result.nxCloudId ??= nxJson.nxCloudId;
+  }
+
+  if (nxJson.nxCloudUrl && isCloudDefault) {
+    result.url ??= nxJson.nxCloudUrl;
+  }
+
+  if (nxJson.nxCloudEncryptionKey && isCloudDefault) {
+    result.encryptionKey ??= nxJson.nxCloudEncryptionKey;
+  }
+
+  if (nxJson.parallel) {
+    result.parallel ??= nxJson.parallel;
+  }
+
+  if (nxJson.cacheDirectory) {
+    result.cacheDirectory ??= nxJson.cacheDirectory;
+  }
+
+  if (nxJson.useDaemonProcess !== undefined) {
+    result.useDaemonProcess ??= nxJson.useDaemonProcess;
+  }
+
+  return result;
+}

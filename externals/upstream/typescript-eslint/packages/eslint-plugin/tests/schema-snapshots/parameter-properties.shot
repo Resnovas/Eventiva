@@ -1,0 +1,61 @@
+
+# SCHEMA:
+
+[
+  {
+    "$defs": {
+      "modifier": {
+        "enum": [
+          "private",
+          "private readonly",
+          "protected",
+          "protected readonly",
+          "public",
+          "public readonly",
+          "readonly"
+        ],
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "allow": {
+        "description": "Whether to allow certain kinds of properties to be ignored.",
+        "items": {
+          "$ref": "#/items/0/$defs/modifier"
+        },
+        "type": "array"
+      },
+      "prefer": {
+        "description": "Whether to prefer class properties or parameter properties.",
+        "enum": ["class-property", "parameter-property"],
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Modifier =
+  | 'private readonly'
+  | 'private'
+  | 'protected readonly'
+  | 'protected'
+  | 'public readonly'
+  | 'public'
+  | 'readonly';
+
+type Options = [
+  {
+    /** Whether to allow certain kinds of properties to be ignored. */
+    allow?: Modifier[];
+    /** Whether to prefer class properties or parameter properties. */
+    prefer?:
+      | 'parameter-property'
+      /** Whether to prefer class properties or parameter properties. */
+      | 'class-property';
+  },
+];

@@ -1,0 +1,50 @@
+
+# SCHEMA:
+
+{
+  "anyOf": [
+    {
+      "items": [
+        {
+          "enum": ["always"]
+        }
+      ],
+      "maxItems": 1,
+      "minItems": 0,
+      "type": "array"
+    },
+    {
+      "items": [
+        {
+          "enum": ["never"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "ignoreForLoopInit": {
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "maxItems": 2,
+      "minItems": 0,
+      "type": "array"
+    }
+  ]
+}
+
+
+# TYPES:
+
+type Options =
+  | []
+  | ['always']
+  | ['never']
+  | [
+      'never',
+      {
+        ignoreForLoopInit?: boolean;
+      },
+    ];

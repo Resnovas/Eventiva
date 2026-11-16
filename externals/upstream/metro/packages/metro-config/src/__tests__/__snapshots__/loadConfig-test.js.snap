@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`loadConfig validates config for projectRoot 1`] = `
+"● Validation Error:
+
+  Option \\"projectRoot\\" must be of type:
+    string
+  but instead received:
+    array
+
+  Example:
+  {
+    \\"projectRoot\\": \\"/path/to/project\\"
+  }
+"
+`;
+
+exports[`loadConfig validates config for server 1`] = `
+"● Validation Error:
+
+  Option \\"server.useGlobalHotkey\\" must be of type:
+    boolean
+  but instead received:
+    string
+
+  Example:
+  {
+    \\"useGlobalHotkey\\": true
+  }
+"
+`;

@@ -1,0 +1,57 @@
+Program {
+  type: "Program",
+  body: [
+    ImportDeclaration {
+      type: "ImportDeclaration",
+      attributes: [],
+      importKind: "value",
+      source: Literal {
+        type: "Literal",
+        raw: "'mod'",
+        value: "mod",
+
+        range: [37, 42],
+        loc: {
+          start: { column: 18, line: 2 },
+          end: { column: 23, line: 2 },
+        },
+      },
+      specifiers: [
+        ImportDefaultSpecifier {
+          type: "ImportDefaultSpecifier",
+          local: Identifier {
+            type: "Identifier",
+            decorators: [],
+            name: "a",
+            optional: false,
+
+            range: [26, 27],
+            loc: {
+              start: { column: 7, line: 2 },
+              end: { column: 8, line: 2 },
+            },
+          },
+
+          range: [26, 27],
+          loc: {
+            start: { column: 7, line: 2 },
+            end: { column: 8, line: 2 },
+          },
+        },
+      ],
+
+      range: [19, 43],
+      loc: {
+        start: { column: 0, line: 2 },
+        end: { column: 24, line: 2 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 44],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 3 },
+  },
+}

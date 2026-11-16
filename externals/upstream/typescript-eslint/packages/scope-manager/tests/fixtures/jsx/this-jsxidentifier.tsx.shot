@@ -1,0 +1,139 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"React">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "React",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"React">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        ClassNameDefinition$2 {
+          name: Identifier<"Foo">,
+          node: ClassDeclaration$2,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ClassNameDefinition$3 {
+          name: Identifier<"Foo">,
+          node: ClassDeclaration$2,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$5 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$3,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "React" => Variable$2,
+        "Foo" => Variable$3,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+      ],
+    },
+    ClassScope$2 {
+      block: ClassDeclaration$2,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "Foo" => Variable$4,
+      },
+      type: "class",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$4,
+      ],
+    },
+    ClassFieldInitializerScope$3 {
+      block: ObjectExpression$4,
+      isStrict: true,
+      references: [],
+      set: Map {},
+      type: "class-field-initializer",
+      upper: ClassScope$2,
+      variables: [],
+    },
+    FunctionScope$4 {
+      block: ArrowFunctionExpression$5,
+      isStrict: true,
+      references: [],
+      set: Map {},
+      type: "function",
+      upper: ClassFieldInitializerScope$3,
+      variables: [],
+    },
+    FunctionScope$5 {
+      block: FunctionExpression$6,
+      isStrict: true,
+      references: [
+        Reference$2 {
+          identifier: JSXIdentifier$7,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+        Reference$3 {
+          identifier: JSXIdentifier$8,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "arguments" => Variable$5,
+      },
+      type: "function",
+      upper: ClassScope$2,
+      variables: [
+        Variable$5,
+      ],
+    },
+  ],
+}

@@ -1,0 +1,216 @@
+load("@bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("//tools:compile.bzl", "formatjs_library")
+load("//tools:generated.bzl", "formatjs_generated_package", "generate_package_file")
+load("//tools:rolldown.bzl", "rolldown_bundle")
+load("//tools:test.bzl", "formatjs_test")
+load("//tools/test262:defs.bzl", "test262_test")
+
+PACKAGE_NAME = "intl-getcanonicallocales"
+
+ENTRY_POINTS = [
+    "index.ts",
+    "polyfill.ts",
+    "polyfill-force.ts",
+    "should-polyfill.ts",
+]
+
+formatjs_library(
+    name = "intl-getcanonicallocales",
+    package_name = "@formatjs/intl-getcanonicallocales",
+    srcs = [
+        "appendToList.ts",
+        "canonicalizer.ts",
+        "emitter.ts",
+        "index.ts",
+        "parser.ts",
+        "polyfill.ts",
+        "polyfill-force.ts",
+        "should-polyfill.ts",
+        "types.ts",
+    ],
+    author = "Long Ho <holevietlong@gmail.com>",
+    bugs = "https://github.com/formatjs/formatjs/issues",
+    description = "Intl.getCanonicalLocales polyfill",
+    entry_points = ENTRY_POINTS,
+    extra_npm_srcs = ["polyfill.iife.js"],
+    homepage = "https://github.com/formatjs/formatjs#readme",
+    keywords = [
+        "ecma402",
+        "formatjs",
+        "getCanonicalLocales",
+        "i18n",
+        "intl",
+        "locale",
+        "react-intl",
+        "tc39",
+    ],
+    license = "MIT",
+    package_types = "index.d.ts",
+    repository = "formatjs/formatjs.git",
+    type = "module",
+    version = "3.3.0",  # x-release-please-version
+    visibility = ["//visibility:public"],
+    exports = {
+        ".": "./index.js",
+        "./polyfill.js": "./polyfill.js",
+        "./polyfill-force.js": "./polyfill-force.js",
+        "./should-polyfill.js": "./should-polyfill.js",
+    },
+    deps = [
+        "//:node_modules/@formatjs_generated/cldr.core",
+        "//packages/ecma262-abstract",
+        "//packages/ecma402-abstract",
+    ],
+)
+
+formatjs_test(
+    name = "intl-getcanonicallocales_test",
+    srcs = [
+        "tests/index.test.ts",
+        "tests/parser.test.ts",
+    ],
+    deps = [
+        ":intl-getcanonicallocales",
+        "//:node_modules/vitest",
+    ],
+)
+
+# @formatjs_generated/cldr.core — CLDR supplemental data
+generate_package_file(
+    name = "cldr_core_aliases",
+    src = "aliases.ts",
+    data = [
+        "//:node_modules/cldr-bcp47",
+        "//:node_modules/cldr-core",
+        "//:node_modules/json-stable-stringify",
+    ],
+    tags = ["cldr"],
+    tool = "//packages/intl-getcanonicallocales/scripts:aliases",
+)
+
+generate_package_file(
+    name = "cldr_core_likely_subtags",
+    src = "likelySubtags.ts",
+    data = [
+        "//:node_modules/cldr-core",
+        "//:node_modules/json-stable-stringify",
+    ],
+    tags = ["cldr"],
+    tool = "//packages/intl-getcanonicallocales/scripts:likely-subtags",
+)
+
+generate_package_file(
+    name = "cldr_core_regions",
+    src = "regions.ts",
+    data = [
+        "//:node_modules/cldr-core",
+        "//:node_modules/json-stable-stringify",
+    ],
+    tool = "//packages/intl-localematcher/scripts:regions-gen",
+)
+
+generate_package_file(
+    name = "cldr_core_time_data",
+    src = "time-data.ts",
+    tags = ["cldr"],
+    tool = "//packages/icu-messageformat-parser/tools:time_data_gen",
+)
+
+generate_package_file(
+    name = "cldr_core_default_currency",
+    src = "defaultCurrencyData.ts",
+    data = [
+        "//:node_modules/cldr-core",
+    ],
+    entry_point = "//packages/utils/tools:extract-default-currency_ts",
+    tags = ["cldr"],
+)
+
+generate_package_file(
+    name = "cldr_core_default_locale",
+    src = "defaultLocaleData.ts",
+    data = [
+        "//:node_modules/cldr-core",
+    ],
+    entry_point = "//packages/utils/tools:extract-default-locale_ts",
+    tags = ["cldr"],
+)
+
+generate_package_file(
+    name = "cldr_core_currency_minor_units",
+    src = "currencyMinorUnits.ts",
+    args = [
+        "--input",
+        "$(rootpath //packages/utils:iso4217.xml)",
+    ],
+    data = [
+        "//:node_modules/fast-xml-parser",
+        "//packages/utils:iso4217.xml",
+    ],
+    entry_point = "//packages/utils/tools:extract-minor-currency-units_ts",
+)
+
+generate_package_file(
+    name = "cldr_core_matching",
+    src = "matching.ts",
+    data = ["//:node_modules/cldr-core"],
+    tags = ["cldr"],
+    tool = "//packages/intl-localematcher/scripts:distance-gen",
+)
+
+formatjs_generated_package(
+    name = "cldr_core_pkg",
+    package_name = "cldr.core",
+    srcs = [
+        ":cldr_core_aliases",
+        ":cldr_core_currency_minor_units",
+        ":cldr_core_default_currency",
+        ":cldr_core_default_locale",
+        ":cldr_core_likely_subtags",
+        ":cldr_core_matching",
+        ":cldr_core_regions",
+        ":cldr_core_time_data",
+    ],
+)
+
+rolldown_bundle(
+    name = "polyfill.iife",
+    srcs = [":srcs"],
+    entry_point = "polyfill.ts",
+    target = "es6",
+    deps = [
+        "//:node_modules/@formatjs_generated/cldr.core",
+        "//packages/ecma262-abstract",
+        "//packages/ecma402-abstract",
+    ],
+)
+
+rolldown_bundle(
+    name = "test262-polyfill",
+    srcs = [":srcs"],
+    entry_point = "polyfill-force.ts",
+    format = "iife",
+    target = "es2020",
+    visibility = ["//tools/test262:__pkg__"],
+    deps = [
+        "//:node_modules/@formatjs_generated/cldr.core",
+        "//packages/ecma262-abstract",
+        "//packages/ecma402-abstract",
+    ],
+)
+
+test262_test(
+    name = "test262",
+    data = [
+        "@com_github_tc39_test262//:test262-getcanonicallocales-copy",
+        "@com_github_tc39_test262//:test262-harness-copy",
+    ],
+    prelude = "test262-polyfill.js",
+    suite = "intl402/Intl/getCanonicalLocales",
+)
+
+copy_to_bin(
+    name = "hermes_package_tests",
+    srcs = glob(["tests/**/*.ts"]) + [":srcs"],
+    visibility = ["//native/hermes/tests:__pkg__"],
+)

@@ -1,0 +1,284 @@
+load("@bazel_lib//lib:copy_file.bzl", "copy_file")
+load("//tools:compile.bzl", "formatjs_library")
+load("//tools:rolldown.bzl", "rolldown_bundle")
+load("//tools:test.bzl", "formatjs_test")
+
+PACKAGE_NAME = "cli-lib"
+
+config_setting(
+    name = "native_test_darwin_arm64",
+    constraint_values = [
+        "@platforms//cpu:arm64",
+        "@platforms//os:macos",
+    ],
+)
+
+config_setting(
+    name = "native_test_darwin_x64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:macos",
+    ],
+)
+
+config_setting(
+    name = "native_test_windows_arm64",
+    constraint_values = [
+        "@platforms//cpu:arm64",
+        "@platforms//os:windows",
+    ],
+)
+
+config_setting(
+    name = "native_test_linux_arm64",
+    constraint_values = [
+        "@platforms//cpu:arm64",
+        "@platforms//os:linux",
+    ],
+)
+
+config_setting(
+    name = "native_test_linux_x64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+config_setting(
+    name = "native_test_windows_x64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+)
+
+copy_file(
+    name = "native_test_binary",
+    src = select({
+        ":native_test_darwin_arm64": "//crates/formatjs_cli_napi:release_node_darwin_arm64",
+        ":native_test_darwin_x64": "//crates/formatjs_cli_napi:release_node_darwin_x64",
+        ":native_test_windows_arm64": "//crates/formatjs_cli_napi:release_node_win32_arm64",
+        ":native_test_linux_arm64": "//crates/formatjs_cli_napi:release_node_linux_arm64",
+        ":native_test_linux_x64": "//crates/formatjs_cli_napi:release_node_linux_x64",
+        ":native_test_windows_x64": "//crates/formatjs_cli_napi:release_node_win32_x64",
+    }),
+    out = "formatjs_cli_napi.node",
+    visibility = ["//visibility:public"],
+)
+
+formatjs_library(
+    name = "cli-lib",
+    package_name = "@formatjs/cli-lib",
+    srcs = [
+        "cli.ts",
+        "compile.ts",
+        "compile_folder.ts",
+        "console_utils.ts",
+        "extract.ts",
+        "formatters/crowdin.ts",
+        "formatters/default.ts",
+        "formatters/index.ts",
+        "formatters/lokalise.ts",
+        "formatters/simple.ts",
+        "formatters/smartling.ts",
+        "formatters/transifex.ts",
+        "gts_extractor.ts",
+        "hbs_extractor.ts",
+        "index.ts",
+        "main.ts",
+        "native.ts",
+        "pseudo_locale.ts",
+        "static-evaluation.ts",
+        "svelte_extractor.ts",
+        "types.ts",
+        "verify/checkExtraKeys.ts",
+        "verify/checkJavaPrintfStructure.ts",
+        "verify/checkMissingKeys.ts",
+        "verify/checkStructuralEquality.ts",
+        "verify/index.ts",
+        "vue_extractor.ts",
+    ],
+    author = "Linjie Ding <linjie@airtable.com>",
+    bugs = "https://github.com/formatjs/formatjs/issues",
+    description = "Lib for CLI for formatjs.",
+    engines = {
+        "node": ">= 22.12.0",
+    },
+    entry_points = [
+        "index.ts",
+        "static-evaluation.ts",
+    ],
+    homepage = "https://github.com/formatjs/formatjs",
+    keywords = [
+        "cli",
+        "format",
+        "formatjs",
+        "formatting",
+        "globalization",
+        "i18n",
+        "internationalization",
+        "intl",
+        "locale",
+        "localization",
+        "react",
+        "react-intl",
+        "reactjs",
+        "translate",
+        "translation",
+    ],
+    license = "MIT",
+    main = "index.js",
+    package_dependency_version_overrides = {
+        "@glimmer/syntax": "^0.84.3 || ^0.95.0 || ^0.97.0",
+    },
+    package_optional_deps = [
+        "//:node_modules/@formatjs/cli-native-darwin-arm64",
+        "//:node_modules/@formatjs/cli-native-darwin-x64",
+        "//:node_modules/@formatjs/cli-native-linux-arm64",
+        "//:node_modules/@formatjs/cli-native-linux-arm64-musl",
+        "//:node_modules/@formatjs/cli-native-linux-x64",
+        "//:node_modules/@formatjs/cli-native-linux-x64-musl",
+        "//:node_modules/@formatjs/cli-native-win32-arm64",
+        "//:node_modules/@formatjs/cli-native-win32-x64",
+    ],
+    package_peer_deps = [
+        "//:node_modules/@glimmer/syntax",
+        "//:node_modules/@vue/compiler-core",
+        "//:node_modules/content-tag",
+        "//:node_modules/svelte",
+        "//:node_modules/vue",
+    ],
+    package_types = "index.d.ts",
+    peer_dependencies_meta = {
+        "vue": {
+            "optional": True,
+        },
+        "@vue/compiler-core": {
+            "optional": True,
+        },
+        "@glimmer/env": {
+            "optional": True,
+        },
+        "@glimmer/reference": {
+            "optional": True,
+        },
+        "@glimmer/syntax": {
+            "optional": True,
+        },
+        "@glimmer/validator": {
+            "optional": True,
+        },
+        "content-tag": {
+            "optional": True,
+        },
+        "svelte": {
+            "optional": True,
+        },
+    },
+    repository = "formatjs/formatjs.git",
+    tsconfig_types = ["node"],
+    type = "module",
+    version = "10.2.0",  # x-release-please-version
+    visibility = ["//visibility:public"],
+    exports = {
+        ".": "./index.js",
+        "./static-evaluation": "./static-evaluation.js",
+    },
+    deps = [
+        "//:node_modules/@babel/types",  # keep: transitive type dep required by @vue/compiler-sfc
+        "//:node_modules/@bazel/runfiles",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/@glimmer/syntax",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/node",
+        "//:node_modules/@vue/compiler-core",
+        "//:node_modules/commander",
+        "//:node_modules/content-tag",
+        "//:node_modules/fast-glob",
+        "//:node_modules/fs-extra",
+        "//:node_modules/json-stable-stringify",
+        "//:node_modules/loud-rejection",
+        "//:node_modules/svelte",
+        "//:node_modules/vue",
+    ],
+)
+
+formatjs_test(
+    name = "cli-lib_test",
+    srcs = [
+        "tests/unit/abort_signal.test.ts",
+        "tests/unit/apple_printf.test.ts",
+        "tests/unit/compile.test.ts",
+        "tests/unit/extract.test.ts",
+        "tests/unit/extract-concurrency.test.ts",
+        "tests/unit/gts_extractor.test.ts",
+        "tests/unit/hbs_extractor.test.ts",
+        "tests/unit/java_printf.test.ts",
+        "tests/unit/native.test.ts",
+        "tests/unit/pseudo_locale.test.ts",
+        "tests/unit/svelte_extractor.test.ts",
+        "tests/unit/vue_extractor.test.ts",
+    ],
+    data = [
+        ":native_test_binary",  # keep: native binding resolved through runfiles
+    ],
+    fixtures = glob(
+        ["tests/unit/fixtures/**/*"],
+    ),
+    tsconfig_types = ["node"],
+    deps = [
+        ":cli-lib",
+        "//:node_modules/@bazel/runfiles",
+        "//:node_modules/@types/node",
+        "//:node_modules/vitest",
+    ],
+)
+
+genrule(
+    name = "bin",
+    srcs = [":formatjs"],
+    outs = ["bin/formatjs"],
+    cmd = "cp $(location :formatjs)/formatjs $@",
+)
+
+rolldown_bundle(
+    name = "formatjs",
+    srcs = [":srcs"],
+    code_splitting = True,
+    entry_point = "main.ts",
+    external = [
+        "vue",
+        "content-tag",
+        "@glimmer/env",
+        "@glimmer/reference",
+        "@glimmer/syntax",
+        "@glimmer/validator",
+        "@vue/compiler-core",
+        "svelte",
+        "source-map-support",
+    ],
+    output = "formatjs/formatjs",
+    platform = "node",
+    target = "node20",
+    visibility = ["//packages/cli:__pkg__"],
+    deps = [
+        "//:node_modules/@babel/types",
+        "//:node_modules/@bazel/runfiles",
+        "//:node_modules/@formatjs/icu-messageformat-parser",
+        "//:node_modules/@formatjs/icu-skeleton-parser",
+        "//:node_modules/@glimmer/syntax",
+        "//:node_modules/@types/estree",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/node",
+        "//:node_modules/@vue/compiler-core",
+        "//:node_modules/commander",
+        "//:node_modules/content-tag",
+        "//:node_modules/fast-glob",
+        "//:node_modules/fs-extra",
+        "//:node_modules/json-stable-stringify",
+        "//:node_modules/loud-rejection",
+        "//:node_modules/svelte",
+        "//:node_modules/vue",
+    ],
+)

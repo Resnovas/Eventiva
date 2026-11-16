@@ -1,0 +1,58 @@
+Program {
+  type: "Program",
+  body: [
+    ClassDeclaration {
+      type: "ClassDeclaration",
+      abstract: false,
+      body: ClassBody {
+        type: "ClassBody",
+        body: [],
+
+        range: [26, 28],
+        loc: {
+          start: { column: 26, line: 1 },
+          end: { column: 28, line: 1 },
+        },
+      },
+      declare: false,
+      decorators: [],
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "Foo",
+        optional: false,
+
+        range: [6, 9],
+        loc: {
+          start: { column: 6, line: 1 },
+          end: { column: 9, line: 1 },
+        },
+      },
+      implements: [],
+      superClass: Literal {
+        type: "Literal",
+        raw: "'Thing'",
+        value: "Thing",
+
+        range: [18, 25],
+        loc: {
+          start: { column: 18, line: 1 },
+          end: { column: 25, line: 1 },
+        },
+      },
+
+      range: [0, 28],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 28, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 29],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

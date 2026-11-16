@@ -1,0 +1,72 @@
+import React from 'react'
+import { Linking, Text, TouchableOpacity, View } from 'react-native'
+
+import { createSafeStyleSheet } from '../safeStyleSheet'
+import { getMaxFontSizeMultiplier, SurveyAppearanceTheme } from '../surveys-utils'
+
+export function BottomSection({
+  text,
+  submitDisabled,
+  appearance,
+  onSubmit,
+  link,
+  skipSubmitButton,
+}: {
+  text: string
+  submitDisabled: boolean
+  appearance: SurveyAppearanceTheme
+  onSubmit: () => void
+  link?: string | null
+  skipSubmitButton?: boolean
+}): JSX.Element {
+  if (skipSubmitButton) {
+    return <></>
+  }
+
+  return (
+    <View style={styles.bottomSection}>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: appearance.submitButtonColor },
+          submitDisabled && styles.buttonDisabled,
+        ]}
+        disabled={submitDisabled}
+        onPress={() => {
+          onSubmit()
+          if (link) {
+            Linking.canOpenURL(link).then((supported) => {
+              if (supported) {
+                Linking.openURL(link)
+              }
+            })
+          }
+        }}
+      >
+        <Text
+          maxFontSizeMultiplier={getMaxFontSizeMultiplier(appearance, 'button')}
+          style={[styles.buttonText, { color: appearance.submitButtonTextColor }]}
+        >
+          {text}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const styles = createSafeStyleSheet({
+  bottomSection: {
+    padding: 10,
+  },
+  button: {
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+})

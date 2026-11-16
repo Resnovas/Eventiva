@@ -1,0 +1,21 @@
+{
+  "name": "vitest",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/vitest",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "node ./scripts/copy-readme.js vitest packages/vitest/readme-template.md packages/vitest/README.md",
+      "inputs": ["copyReadme"],
+      "outputs": ["{projectRoot}/README.md"],
+      "dependsOn": ["^build", "build-base"]
+    },
+    "test": {
+      "inputs": [
+        "...",
+        "{workspaceRoot}/tools/vitest/**/*",
+        "{workspaceRoot}/scripts/jest-mocks/clack-prompts.js"
+      ]
+    }
+  }
+}

@@ -1,0 +1,414 @@
+import path from 'node:path'
+import { describe, expect, test } from 'vitest'
+import { createServer, createServerModuleRunner } from '..'
+import {
+  commentRE,
+  devToScanEnvironment,
+  importsRE,
+  scanImports,
+  scriptRE,
+} from '../optimizer/scan'
+import {
+  multilineCommentsRE,
+  normalizePath,
+  singlelineCommentsRE,
+} from '../utils'
+
+describe('optimizer-scan:script-test', () => {
+  const scriptContent = `import { defineComponent } from 'vue'
+      import ScriptDevelopPane from './ScriptDevelopPane.vue';
+      export default defineComponent({
+        components: {
+          ScriptDevelopPane
+        }
+      })`
+
+  test('component return value test', () => {
+    scriptRE.lastIndex = 0
+    const [, tsOpenTag, tsContent] = scriptRE.exec(
+      `<script lang="ts">${scriptContent}</script>`,
+    )!
+    expect(tsOpenTag).toEqual('<script lang="ts">')
+    expect(tsContent).toEqual(scriptContent)
+
+    scriptRE.lastIndex = 0
+    const [, openTag, content] = scriptRE.exec(
+      `<script>${scriptContent}</script>`,
+    )!
+    expect(openTag).toEqual('<script>')
+    expect(content).toEqual(scriptContent)
+  })
+
+  test('include comments test', () => {
+    scriptRE.lastIndex = 0
+    const ret = scriptRE.exec(
+      `<template>
+        <!--  <script >var test1 = null</script> -->
+        <!--  <script >var test2 = null</script> -->
+      </template>`.replace(commentRE, ''),
+    )
+    expect(ret).toEqual(null)
+  })
+
+  test('components with script keyword test', () => {
+    scriptRE.lastIndex = 0
+    let ret = scriptRE.exec(`<template><script-develop-pane/></template>`)
+    expect(ret).toBe(null)
+
+    scriptRE.lastIndex = 0
+    ret = scriptRE.exec(
+      `<template><script-develop-pane></script-develop-pane></template>`,
+    )
+    expect(ret).toBe(null)
+
+    scriptRE.lastIndex = 0
+    ret = scriptRE.exec(
+      `<template><script-develop-pane  > content </script-develop-pane></template>`,
+    )
+    expect(ret).toBe(null)
+  })
+
+  test('ordinary script tag test', () => {
+    scriptRE.lastIndex = 0
+    const [, tag, content] = scriptRE.exec(
+      `<script  >var test = null</script>`,
+    )!
+    expect(tag).toEqual('<script  >')
+    expect(content).toEqual('var test = null')
+
+    scriptRE.lastIndex = 0
+    const [, tag1, content1] = scriptRE.exec(
+      `<script>var test = null</script>`,
+    )!
+    expect(tag1).toEqual('<script>')
+    expect(content1).toEqual('var test = null')
+  })
+
+  test('imports regex should work', () => {
+    const shouldMatchArray: [code: string, expected: string][] = [
+      [`import 'vue'`, `'vue'`],
+      [`import { foo } from 'vue'`, `'vue'`],
+      [`import foo from 'vue'`, `'vue'`],
+      [`;import foo from 'vue'`, `'vue'`],
+      [`   import foo from 'vue'`, `'vue'`],
+      [
+        `import { foo
+      } from 'vue'`,
+        `'vue'`,
+      ],
+      [`import bar, { foo } from 'vue'`, `'vue'`],
+      [`import foo from 'vue';`, `'vue'`],
+      [`*/ import foo from 'vue';`, `'vue'`],
+      [`import foo from 'vue';//comment`, `'vue'`],
+      [
+        `import foo from 'vue';/*comment
+      */`,
+        `'vue'`,
+      ],
+      // https://github.com/vitejs/vite/issues/23471
+      // bindings starting with "type" should not be treated as type-only imports
+      [`import typescript from 'typescript'`, `'typescript'`],
+      [`import typeorm from 'typeorm'`, `'typeorm'`],
+      [`import types from 'types'`, `'types'`],
+      // still a known false negative: a default binding literally named `type`
+      // (`import type, {foo} from 'vue'`, `import type from 'vue'`) is a valid
+      // value import, but the word boundary cannot tell it apart from the
+      // `import type` modifier. Missed deps are discovered again at runtime.
+    ]
+
+    shouldMatchArray.forEach(([str, expected]) => {
+      importsRE.lastIndex = 0
+      expect(importsRE.exec(str)![1]).toEqual(expected)
+    })
+
+    const shouldFailArray = [
+      `testMultiline("import", {
+        body: "ok" });`,
+      `//;import foo from 'vue'`,
+      `import type { Bar } from 'foo'`,
+      `import type{ Bar } from 'foo'`,
+      `import type Bar from 'foo'`,
+    ]
+    shouldFailArray.forEach((str) => {
+      importsRE.lastIndex = 0
+      expect(importsRE.test(str)).toBe(false)
+    })
+  })
+
+  test('script comments test', () => {
+    multilineCommentsRE.lastIndex = 0
+    let ret = `/*
+      export default { }
+      */`.replace(multilineCommentsRE, '')
+    expect(ret).not.toContain('export default')
+
+    singlelineCommentsRE.lastIndex = 0
+    ret = `//export default { }`.replace(singlelineCommentsRE, '')
+    expect(ret).not.toContain('export default')
+  })
+})
+
+test('scan jsx-runtime', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    root: path.join(import.meta.dirname, 'fixtures', 'scan-jsx-runtime'),
+    environments: {
+      client: {
+        // silence client optimizer
+        optimizeDeps: {
+          noDiscovery: true,
+        },
+      },
+      ssr: {
+        resolve: {
+          noExternal: true,
+        },
+        optimizeDeps: {
+          force: true,
+          noDiscovery: false,
+          entries: ['./entry-jsx.tsx', './entry-no-jsx.js'],
+        },
+      },
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  // start server to ensure optimizer run
+  await server.listen()
+
+  const runner = createServerModuleRunner(server.environments.ssr, {
+    hmr: { logger: false },
+  })
+
+  // The dependency scan should be able to finish before the first request.
+  await server.environments.ssr.depsOptimizer?.scanProcessing
+
+  // flush initial optimizer by importing any file
+  await runner.import('./entry-no-jsx.js')
+
+  // verify jsx won't trigger optimizer re-run
+  const mod1 = await runner.import('./entry-jsx.js')
+  const mod2 = await runner.import('./entry-jsx.js')
+  expect((globalThis as any).__test_scan_jsx_runtime).toBe(1)
+  expect(mod1).toBe(mod2)
+})
+
+test('scan import.meta.glob respects rolldown transform jsx options', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    root: path.join(import.meta.dirname, 'fixtures', 'scan-jsx-runtime'),
+    oxc: {
+      jsx: {
+        runtime: 'automatic',
+        importSource: 'react',
+      },
+    },
+    optimizeDeps: {
+      force: true,
+      noDiscovery: false,
+      entries: ['./entry-glob-custom-oxc.tsx'],
+      rolldownOptions: {
+        transform: {
+          jsx: {
+            runtime: 'automatic',
+            importSource: 'vue',
+          },
+        },
+      },
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  const scanResult = await result
+
+  expect(scanResult).toMatchObject({
+    deps: {
+      'vue/jsx-dev-runtime': expect.any(String),
+    },
+    missing: {},
+  })
+  expect(scanResult.deps).not.toHaveProperty('react/jsx-runtime')
+})
+
+test('scan respects oxc jsxInject', async (ctx) => {
+  const server = await createServer({
+    oxc: { jsxInject: `import 'vue'` },
+    configFile: false,
+    logLevel: 'error',
+    root: path.join(import.meta.dirname, 'fixtures', 'scan-jsx-runtime'),
+    optimizeDeps: {
+      entries: ['./entry-jsx.tsx'],
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  const scanResult = await result
+
+  expect(scanResult).toMatchObject({
+    deps: {
+      vue: expect.any(String),
+    },
+    missing: {},
+  })
+})
+
+test('top-level input is used as the entry for dep scanning', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    root: path.join(import.meta.dirname, 'fixtures', 'input-option'),
+    input: 'entry.js',
+    optimizeDeps: {
+      force: true,
+      noDiscovery: false,
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  const scanResult = await result
+  expect(scanResult.deps).toHaveProperty('vue')
+})
+
+test('top-level input can be resolved by a plugin for dep scanning', async (ctx) => {
+  const root = path.join(import.meta.dirname, 'fixtures', 'input-option')
+  const input = 'virtual:entry'
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    root,
+    input,
+    plugins: [
+      {
+        name: 'virtual-entry',
+        enforce: 'pre',
+        resolveId(id, _importer) {
+          if (id === input) {
+            return normalizePath(path.resolve(root, 'entry.js'))
+          }
+        },
+      },
+    ],
+    optimizeDeps: {
+      force: true,
+      noDiscovery: false,
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  const scanResult = await result
+  expect(scanResult.deps).toHaveProperty('vue')
+})
+
+// regression test for https://github.com/vitejs/vite/issues/22752
+// `resolveRolldownOptions` resolves `build.rolldownOptions.input` relative to the root,
+// so the scanner needs to resolve a relative bare entry from the root
+test('scan resolves build.rolldownOptions.input relative to the root', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    // root differs from process.cwd(); the entry lives at `<root>/entry-client.tsx`
+    root: path.join(import.meta.dirname, 'fixtures', 'scan-build-input', 'src'),
+    environments: {
+      client: {
+        build: {
+          rolldownOptions: {
+            input: 'entry-client.tsx',
+          },
+        },
+      },
+    },
+    optimizeDeps: {
+      force: true,
+      noDiscovery: false,
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  await expect(result).resolves.toMatchObject({
+    deps: {
+      vue: expect.any(String),
+    },
+    missing: {},
+  })
+})
+
+// regression test for `The server is being restarted or closed. Request is outdated`
+// error in the scanner. The dependency scanner runs in the background and
+// may still be crawling when the server is closed. The scan fails because resolutions
+// reject with `ERR_CLOSED_SERVER`, but this failure must be ignored (the scan result is
+// discarded on close anyway) so it doesn't escape as an unhandled rejection.
+test('scan ignores the failure when the server is closed mid-scan', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'silent',
+    root: path.join(import.meta.dirname, 'fixtures', 'scan-build-input', 'src'),
+    optimizeDeps: {
+      entries: ['./entry-client.tsx'],
+      force: true,
+      noDiscovery: false,
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  // Simulate the server being torn down while the scanner is still running.
+  await server.environments.client.pluginContainer.close()
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  await expect(result).resolves.toEqual({ deps: {}, missing: {} })
+})
+
+test('scan import.meta.glob package imports patterns', async (ctx) => {
+  const server = await createServer({
+    configFile: false,
+    logLevel: 'error',
+    root: path.join(
+      import.meta.dirname,
+      'fixtures',
+      'scan-subpath-import-glob',
+    ),
+    optimizeDeps: {
+      entries: ['./entry.ts'],
+      force: true,
+      noDiscovery: false,
+    },
+  })
+  ctx.onTestFinished(() => server.close())
+
+  const { cancel, result } = scanImports(
+    devToScanEnvironment(server.environments.client),
+  )
+  ctx.onTestFinished(cancel)
+
+  await expect(result).resolves.toEqual({ deps: {}, missing: {} })
+})

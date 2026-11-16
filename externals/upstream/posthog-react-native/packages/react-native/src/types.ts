@@ -1,0 +1,310 @@
+export type PostHogAutocaptureNavigationTrackerOptions = {
+  routeToName?: (name: string, params: any) => string
+  routeToProperties?: (name: string, params: any) => Record<string, any>
+}
+
+/**
+ * @deprecated
+ */
+export type PostHogNavigationRef = {
+  getCurrentRoute(): any | undefined
+  isReady: () => boolean
+  current?: PostHogNavigationRef | any | undefined
+}
+
+export type PostHogRageClickConfig = {
+  /**
+   * Enable or disable rage click (rage tap) detection.
+   *
+   * When enabled the native SDK emits a `$rageclick` event whenever a user
+   * taps the same area repeatedly in quick succession.
+   *
+   * @default true
+   */
+  enabled?: boolean
+  /**
+   * Number of consecutive taps required to trigger a rage click.
+   *
+   * @default 3
+   */
+  minimumTapCount?: number
+  /**
+   * Maximum pixel distance between consecutive taps for them to still
+   * count toward a rage click.
+   *
+   * @default 30
+   */
+  thresholdPoints?: number
+  /**
+   * Maximum time in seconds allowed between consecutive taps.
+   *
+   * @default 1.0
+   */
+  timeoutInterval?: number
+}
+
+export type PostHogAutocaptureOptions = {
+  /**
+   * Enable autocapture of touch events.
+   *
+   * On React Native Web this also captures `click` events — mouse, trackpad, keyboard
+   * activation and programmatic clicks — emitted with `$event_type: 'click'`, since
+   * browsers fire `touchend` only for touch input.
+   *
+   * @default false
+   */
+  captureTouches?: boolean
+  /**
+   * Custom prop name used to label elements for autocapture
+   *
+   * @default 'ph-label'
+   */
+  customLabelProp?: string
+  /**
+   * Prop name used to prevent autocapture on an element and its children
+   *
+   * @default 'ph-no-capture'
+   */
+  noCaptureProp?: string
+  /**
+   * Maximum number of elements to capture in the component tree hierarchy
+   *
+   * @default 20
+   */
+  maxElementsCaptured?: number
+  /**
+   * List of element labels to ignore during autocapture
+   *
+   * @default []
+   */
+  ignoreLabels?: string[]
+  /**
+   * List of prop names to capture from elements
+   *
+   * @default ['style', 'testID', 'accessibilityLabel', 'ph-label', 'children']
+   */
+  propsToCapture?: string[]
+
+  /**
+   * Capture the screen name (or route name) and properties
+   *
+   * Only used for expo-router, @react-navigation/native and react-native-navigation
+   *
+   * For react-native-navigation, you need to call initReactNativeNavigation before using this option
+   *  See example: https://posthog.com/docs/libraries/react-native#with-react-native-navigation-and-autocapture
+   *
+   * For @react-navigation/native v6 and below, you need to wrap the PostHogProvider within the NavigationContainer
+   *  See example: https://posthog.com/docs/libraries/react-native#with-react-navigationnative-and-autocapture
+   *
+   * For @react-navigation/native v7 and above, because of a library change, you'll need to capture the screens manually and disable this option
+   *  You can use the onStateChange callback from the NavigationContainer to capture the screens automatically using the screen capture method
+   *  You can use the 'usePostHog()' hook or your own posthog instance to capture the screens
+   *  Since captureScreens is disabled, you don't need to pass the navigationRef, the navigation mutation object is also ignored
+   *  See example: https://reactnavigation.org/docs/screen-tracking/ and https://posthog.com/docs/libraries/react-native#manually-capturing-screen-capture-events
+   *
+   * For expo-router, expo-router uses @react-navigation/native, but does not expose the NavigationContainer, you'll need to capture the screens manually and disable this option
+   *  expo-router always has access to a URL, you can use the URL to capture the screens automatically using the screen capture method
+   *  You can use the 'usePostHog()' hook or your own posthog instance to capture the screens
+   *  Since captureScreens is disabled, you don't need to pass the navigationRef, the navigation mutation object is also ignored
+   *  See example: https://docs.expo.dev/router/reference/screen-tracking/ and https://posthog.com/docs/libraries/react-native#manually-capturing-screen-capture-events
+   *
+   * @default true
+   */
+  captureScreens?: boolean
+  /**
+   * Used for mutating the screen name and properties
+   * Only used if captureScreens is true
+   *
+   * @default Default to the route name and params
+   */
+  navigation?: PostHogAutocaptureNavigationTrackerOptions
+  /**
+   * If you create a navigation ref with createNavigationContainerRef, you need to pass the navigation ref
+   * Only used for expo-router and @react-navigation/native if captureScreens is true
+   *
+   * @deprecated this is deprecated since it didn't work as expected, check out the `captureScreens` comments for capturing screen views semi-automatically
+   */
+  navigationRef?: PostHogNavigationRef
+}
+
+export interface PostHogCustomAppProperties {
+  /** Build number like "1.2.2" or "122" */
+  $app_build?: string | null
+  /** Name of the app as displayed below the icon like "PostHog" */
+  $app_name?: string | null
+  /** Namespace of the app usually like "com.posthog.app" */
+  $app_namespace?: string | null
+  /** Human friendly app version like what a user would see in the app store like "1.2.2" */
+  $app_version?: string | null
+  /** Manufacturer like "Apple", "Samsung" or "Android" */
+  $device_manufacturer?: string | null
+  /** Readable model name like "iPhone 12" or "Samsung Galaxy S24" */
+  $device_name?: string | null
+  /** Model identifier like "iPhone13,2" or "SM-S921B" */
+  $device_model?: string | null
+  /** Device type ("Mobile" | "Desktop") */
+  $device_type?: string | null
+  /** Operating system name like iOS or Android */
+  $os_name?: string | null
+  /** Operating system version "14.0" */
+  $os_version?: string | null
+  /** Locale (language) of the device like "en-US" */
+  $locale?: string | null
+  /** Timezone of the device like "Europe/Berlin" */
+  $timezone?: string | null
+  /** Whether the app is running on an emulator/simulator */
+  $is_emulator?: boolean | null
+  /** React Native version like "0.79.6". Not set by default: the SDK sends it only on `Application Installed` and `Application Updated` */
+  $react_native_version?: string | null | undefined
+}
+
+export type PostHogSessionReplayConfig = {
+  /**
+   * Capture touch coordinates in session replay. Set to false to keep screenshots
+   * without recording taps that could reveal sensitive input on a known keypad layout.
+   * Does not change masking or `PostHogProvider` touch autocapture.
+   * Android and iOS only. Requires `@posthog/react-native-plugin` 2.9.0 or later;
+   * older plugins and `posthog-react-native-session-replay` ignore this option.
+   * Set before constructing PostHog. Changes after initialization do not update native state.
+   *
+   * @default true
+   */
+  captureTouches?: boolean
+  /**
+   * Enable masking of all text and text input fields
+   *
+   * @default true
+   */
+  maskAllTextInputs?: boolean
+  /**
+   * Enable masking of all images to a placeholder
+   *
+   * @default true
+   */
+  maskAllImages?: boolean
+  /**
+   * Enable masking of all sandboxed system views
+   * These may include UIImagePickerController, PHPickerViewController and CNContactPickerViewController
+   * iOS only
+   *
+   * @default true
+   */
+  maskAllSandboxedViews?: boolean
+  /**
+   * Enable capturing of logs as console events
+   *
+   * @default true
+   */
+  captureLog?: boolean
+  /**
+   * Deboucer delay used to reduce the number of snapshots captured and reduce performance impact
+   * This is used for capturing the view as a screenshot
+   * The lower the number more snapshots will be captured but higher the performance impact
+   *
+   * @default 1000
+   * @deprecated please use throttleDelayMs instead
+   */
+  iOSdebouncerDelayMs?: number
+  /**
+   * Deboucer delay used to reduce the number of snapshots captured and reduce performance impact
+   * This is used for capturing the view as a screenshot
+   * The lower the number more snapshots will be captured but higher the performance impact
+   * Ps: it was 500ms (0.5s) by default until version 3.3.7
+   *
+   * @default 1000
+   * @deprecated please use throttleDelayMs instead
+   */
+  androidDebouncerDelayMs?: number
+  /**
+   * Throttling delay used to reduce the number of snapshots captured and reduce performance impact
+   * This is used for capturing the view as a wireframe or screenshot
+   * The lower the number more snapshots will be captured but higher the performance impact
+   *
+   * This value has precedence over iOSdebouncerDelayMs and androidDebouncerDelayMs
+   * If this is not set, we will take the max number between iOSdebouncerDelayMs and androidDebouncerDelayMs for back compatibility
+   *
+   * @default 1000
+   */
+  throttleDelayMs?: number
+  /**
+   * Enable capturing network telemetry
+   * iOS only
+   *
+   * @default true
+   */
+  captureNetworkTelemetry?: boolean
+  /**
+   * Verify that masks remain aligned while capturing session replay screenshots.
+   * Android only. Requires `@posthog/react-native-plugin`.
+   *
+   * Enabling this can preserve screenshots during pixel-only redraws, including
+   * continuously animated content, but performs additional view hierarchy walks
+   * while a screenshot is captured.
+   *
+   * @default false
+   */
+  verifyScreenshotMaskAlignment?: boolean
+  /**
+   * Experimental. Multiplier for the physical width and height of screenshots, clamped to 0.1–1.0.
+   * For example, 0.5 captures half the width and height, or one quarter of the pixels.
+   * The logical replay viewport is unchanged. Non-finite values use the native default.
+   * Android only. Requires `@posthog/react-native-plugin` 2.8.0 or later.
+   * Does not enable session replay or change compression quality or color mode.
+   *
+   * @experimental
+   * @default undefined, which uses the native default: one pixel per dp with posthog-android 3.74.0 or later, native resolution with older versions.
+   */
+  screenshotScale?: number
+  /**
+   * Experimental. WebP compression quality, clamped to 0–100. Fractional values are truncated.
+   * Higher values generally retain more detail and produce larger payloads.
+   * Compression is lossy, except at quality 100 on Android 10, which uses lossless WebP.
+   * Non-finite values use the native default. Does not change screenshot resolution.
+   * Android only. Requires `@posthog/react-native-plugin` 2.8.0 or later.
+   *
+   * @experimental
+   * @default 30
+   */
+  screenshotCompressionQuality?: number
+  /**
+   * Experimental. Screenshot bitmap pixel format. ARGB_8888 preserves transparency and color precision.
+   * RGB_565 uses half the bitmap memory but reduces color precision and removes alpha,
+   * making transparent window regions appear black. Unsupported devices fall back to ARGB_8888.
+   * Android only. Requires `@posthog/react-native-plugin` 2.8.0 or later.
+   *
+   * @experimental
+   * @default 'ARGB_8888'
+   */
+  screenshotColorMode?: 'ARGB_8888' | 'RGB_565'
+  /**
+   * Schedule screenshot image capture on a background queue.
+   * iOS only
+   * Experimental support
+   *
+   * Warning: Enabling this option will trigger Main Thread Checker warnings and may
+   * briefly freeze the app the first time a screenshot is captured. Consider disabling
+   * Main Thread Checker in your scheme's run diagnostics when enabling this.
+   *
+   * @default false
+   */
+  screenshotModeBackgroundCapture?: boolean
+  /**
+   * Session replay sample rate between 0 and 1
+   * Local config has precedence over remote config when both are set.
+   * If undefined, sampling is controlled by remote config (when available).
+   */
+  sampleRate?: number
+}
+
+export interface PostHogCustomStorage {
+  getItem: (key: string) => string | null | Promise<string | null>
+  setItem: (key: string, value: string) => void | Promise<void>
+}
+
+/**
+ * Mints a signed identity-verification token for a push subscription request.
+ *
+ * Called by the native SDK with the current `distinctId` and `appId`. Return
+ * `null` to send the request without an identity token.
+ */
+export type PostHogPushIdentityProvider = (distinctId: string, appId: string) => Promise<string | null>

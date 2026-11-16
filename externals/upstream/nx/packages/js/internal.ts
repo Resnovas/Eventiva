@@ -1,0 +1,156 @@
+// Semi-private surface for first-party Nx packages.
+//
+// External plugins should NOT import from here — this entry is curated for
+// internal consumers and may change without semver protection. Consider it
+// the @nx/js equivalent of `@nx/devkit/internal`.
+
+// Re-exports of nx-source internals.
+export {
+  forceRegisterEsmLoader,
+  loadTsFile,
+  registerTsProject,
+  registerTsConfigPaths,
+  requireWithTsconfigFallback,
+} from '@nx/devkit/internal';
+export {
+  TargetProjectLocator,
+  isBuiltinModuleImport,
+} from '@nx/devkit/internal';
+export { findProjectsNpmDependencies } from '@nx/devkit/internal';
+
+// Raw tsconfig walkers (the other AST utils ship via the public @nx/js entry)
+export {
+  walkTsconfigExtendsChain,
+  type RawTsconfigJsonCache,
+} from './src/utils/typescript/raw-tsconfig';
+
+// Module-format detection for generators (project package.json `type` field +
+// TS solution awareness; mirrors Node's nearest-package.json semantics).
+export { isEsmProject } from './src/utils/module-format/is-esm-project';
+
+// Inputs for build targets that emit a pruned pnpm deploy output
+export {
+  PNPM_INSTALL_SETTINGS_INPUTS,
+  PNPM_MAJOR_RUNTIME_INPUT,
+  pnpmInstallSettingsInputsForInferredTarget,
+  shouldIncludePnpmMajorRuntimeInput,
+} from './src/utils/pnpm-install-settings-inputs';
+export { addPnpmDeployOutputCacheInputs } from './src/utils/pnpm-deploy-output-cache-inputs';
+export type { MatchedTargetRef } from './src/utils/target-defaults-matching';
+
+// TS solution setup detection
+export {
+  TS_SOLUTION_SETUP_TSCONFIG_INPUT,
+  addProjectToTsSolutionWorkspace,
+  assertNotUsingTsSolutionSetup,
+  findRuntimeTsConfigName,
+  getDefinedCustomConditionName,
+  getProjectSourceRoot,
+  getProjectType,
+  isUsingTsSolutionSetup,
+  shouldConfigureTsSolutionSetup,
+  updateTsconfigFiles,
+} from './src/utils/typescript/ts-solution-setup';
+export {
+  ensureTypescriptPlugin,
+  registerTypescriptPluginForTypecheck,
+} from './src/utils/typescript/add-typescript-plugin';
+
+// TypeScript helpers. resolvePathsBaseUrl, extractTsConfigBase,
+// tsConfigBaseOptions, addTsLibDependencies, and resolveModuleByImport ship via
+// the public @nx/js entry. getTsConfigBaseOptions is public too, but is
+// re-exported here so internal consumers can import it from @nx/js/internal.
+export { getTsConfigBaseOptions } from './src/utils/typescript/create-ts-config';
+export {
+  createTreeParseConfigHost,
+  type TreeParseConfigHost,
+} from './src/utils/typescript/ts-config';
+export { ensureTypescript } from './src/utils/typescript/ensure-typescript';
+export {
+  getRangeMinimum,
+  getTsConfigModuleResolution,
+  isTypescriptVersionAtLeast,
+} from './src/utils/is-typescript-version-at-least';
+export { getNeededCompilerOptionOverrides } from './src/utils/typescript/configuration';
+export {
+  compileTypeScript,
+  type TypeScriptCompilationOptions,
+} from './src/utils/typescript/compilation';
+
+// Build orchestration
+export {
+  calculateProjectBuildableDependencies,
+  calculateProjectDependencies,
+  computeCompilerOptionsPaths,
+  createTmpTsConfig,
+  type DependentBuildableProjectNode,
+} from './src/utils/buildable-libs-utils';
+
+// SWC helpers
+export { addSwcConfig, addSwcTestConfig } from './src/utils/swc/add-swc-config';
+export {
+  acknowledgeSwcBuildScripts,
+  addSwcDependencies,
+  addSwcRegisterDependencies,
+} from './src/utils/swc/add-swc-dependencies';
+
+// Asset helpers
+export { type AssetGlob } from './src/utils/assets/assets';
+export { CopyAssetsHandler } from './src/utils/assets/copy-assets-handler';
+
+// Package-manager / package.json helpers
+export { sortPackageJsonFields } from './src/utils/package-json/sort-fields';
+export { getNpmScope } from './src/utils/package-json/get-npm-scope';
+export {
+  getProjectPackageManagerWorkspaceState,
+  getProjectPackageManagerWorkspaceStateWarningTask,
+} from './src/utils/package-manager-workspaces';
+export { findNpmDependencies } from './src/utils/find-npm-dependencies';
+
+// Plugin helpers
+export {
+  addBuildAndWatchDepsTargets,
+  isValidPackageJsonBuildConfig,
+} from './src/plugins/typescript/util';
+export {
+  createTypecheckTarget,
+  selectTypecheckTsConfig,
+  type TypecheckTargetOptions,
+} from './src/plugins/typescript/typecheck-target';
+
+// Generator helpers
+export {
+  normalizeLinterOption,
+  normalizeUnitTestRunnerOption,
+} from './src/utils/generator-prompts';
+export { detectLinters } from './src/utils/linter';
+export {
+  addLintingToProject,
+  type AddLintingToProjectOptions,
+} from './src/utils/add-linting-to-project';
+export { createGlobPatternsForDependencies } from './src/utils/generate-globs';
+export { getImportPath } from './src/utils/get-import-path';
+export { stripGlobToBaseDir } from './src/utils/strip-glob-to-base-dir';
+export { addLocalRegistryScripts } from './src/utils/add-local-registry-scripts';
+
+// Library generator schema type (the generator itself + setupVerdaccio ship
+// via the public @nx/js entry)
+export type { LibraryGeneratorSchema } from './src/generators/library/schema';
+export {
+  addReleaseConfigForNonTsSolution,
+  addReleaseConfigForTsSolution,
+  releaseTasks,
+} from './src/generators/library/utils/add-release-config';
+
+// Version constants
+export {
+  nxVersion,
+  esbuildVersion,
+  prettierVersion,
+  swcCliVersion,
+  swcCoreVersion,
+  swcHelpersVersion,
+  swcNodeVersion,
+  tsLibVersion,
+  typesNodeVersion,
+} from './src/utils/versions';

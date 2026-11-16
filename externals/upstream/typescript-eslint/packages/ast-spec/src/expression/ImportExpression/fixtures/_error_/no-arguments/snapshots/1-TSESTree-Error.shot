@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > expression > ImportExpression > _error_ > no-arguments > TSESTree - Error`]
+TSError
+> 1 | import();
+    | ^^^^^^^^ Dynamic import requires exactly one or two arguments.
+  2 |

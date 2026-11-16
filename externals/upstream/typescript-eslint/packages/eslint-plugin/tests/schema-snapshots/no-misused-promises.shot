@@ -1,0 +1,124 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "checksConditionals": {
+        "description": "Whether to warn when a Promise is provided to conditional statements.",
+        "oneOf": [
+          {
+            "description": "Whether to check conditionals.",
+            "type": "boolean"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Detailed settings for conditional inspection.",
+            "properties": {
+              "flagUnions": {
+                "description": "Configures how union types containing Promise-like types are checked.",
+                "enum": ["all", "none", "strict"],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "checksSpreads": {
+        "description": "Whether to warn when `...` spreading a `Promise`.",
+        "type": "boolean"
+      },
+      "checksVoidReturn": {
+        "description": "Whether to warn when a Promise is returned from a function typed as returning `void`.",
+        "oneOf": [
+          {
+            "description": "Whether to disable checking all asynchronous functions.",
+            "type": "boolean"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Which forms of functions may have checking disabled.",
+            "properties": {
+              "arguments": {
+                "description": "Disables checking an asynchronous function passed as argument where the parameter type expects a function that returns `void`.",
+                "type": "boolean"
+              },
+              "attributes": {
+                "description": "Disables checking an asynchronous function passed as a JSX attribute expected to be a function that returns `void`.",
+                "type": "boolean"
+              },
+              "inheritedMethods": {
+                "description": "Disables checking an asynchronous method in a type that extends or implements another type expecting that method to return `void`.",
+                "type": "boolean"
+              },
+              "properties": {
+                "description": "Disables checking an asynchronous function passed as an object property expected to be a function that returns `void`.",
+                "type": "boolean"
+              },
+              "returns": {
+                "description": "Disables checking an asynchronous function returned in a function whose return type is a function that returns `void`.",
+                "type": "boolean"
+              },
+              "variables": {
+                "description": "Disables checking an asynchronous function used as a variable whose return type is a function that returns `void`.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to warn when a Promise is provided to conditional statements. */
+    checksConditionals?:
+      /**
+       * Whether to warn when a Promise is provided to conditional statements.
+       * Whether to check conditionals.
+       */
+      | boolean
+      /** Detailed settings for conditional inspection. */
+      | {
+          /** Configures how union types containing Promise-like types are checked. */
+          flagUnions?:
+            | 'none'
+            | 'strict'
+            /** Configures how union types containing Promise-like types are checked. */
+            | 'all';
+        };
+    /** Whether to warn when `...` spreading a `Promise`. */
+    checksSpreads?: boolean;
+    /** Whether to warn when a Promise is returned from a function typed as returning `void`. */
+    checksVoidReturn?:
+      /**
+       * Whether to warn when a Promise is returned from a function typed as returning `void`.
+       * Whether to disable checking all asynchronous functions.
+       */
+      | boolean
+      /** Which forms of functions may have checking disabled. */
+      | {
+          /** Disables checking an asynchronous function passed as argument where the parameter type expects a function that returns `void`. */
+          arguments?: boolean;
+          /** Disables checking an asynchronous function passed as a JSX attribute expected to be a function that returns `void`. */
+          attributes?: boolean;
+          /** Disables checking an asynchronous method in a type that extends or implements another type expecting that method to return `void`. */
+          inheritedMethods?: boolean;
+          /** Disables checking an asynchronous function passed as an object property expected to be a function that returns `void`. */
+          properties?: boolean;
+          /** Disables checking an asynchronous function returned in a function whose return type is a function that returns `void`. */
+          returns?: boolean;
+          /** Disables checking an asynchronous function used as a variable whose return type is a function that returns `void`. */
+          variables?: boolean;
+        };
+  },
+];

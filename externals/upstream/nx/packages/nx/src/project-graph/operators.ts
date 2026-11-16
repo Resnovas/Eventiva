@@ -1,0 +1,81 @@
+import {
+  ProjectGraph,
+  ProjectGraphExternalNode,
+  ProjectGraphProjectNode,
+} from '../config/project-graph';
+
+const reverseMemo = new Map<ProjectGraph, ProjectGraph>();
+
+/**
+ * Returns a new project graph where all the edges are reversed.
+ *
+ * For instance, if project A depends on B, in the reversed graph
+ * B will depend on A.
+ */
+export function reverse(graph: ProjectGraph): ProjectGraph {
+  const resultFromMemo = reverseMemo.get(graph);
+  if (resultFromMemo) {
+    return resultFromMemo;
+  }
+
+  const result = {
+    ...graph,
+    nodes: { ...graph.nodes },
+    externalNodes: { ...graph.externalNodes },
+    dependencies: {},
+  } as ProjectGraph;
+  Object.keys(graph.nodes).forEach((n) => (result.dependencies[n] = []));
+  // we need to keep external node's reverse dependencies to trace our route back
+  if (graph.externalNodes) {
+    Object.keys(graph.externalNodes).forEach(
+      (n) => (result.dependencies[n] = [])
+    );
+  }
+  Object.values(graph.dependencies).forEach((byProject) => {
+    byProject.forEach((dep) => {
+      const dependency = result.dependencies[dep.target];
+      if (dependency) {
+        dependency.push({
+          type: dep.type,
+          source: dep.target,
+          target: dep.source,
+        });
+      }
+    });
+  });
+  reverseMemo.set(graph, result);
+  reverseMemo.set(result, graph);
+  return result;
+}
+
+export function filterNodes(
+  predicate?: (n: ProjectGraphProjectNode) => boolean
+): (p: ProjectGraph) => ProjectGraph {
+  return (original) => {
+    const graph = { nodes: {}, dependencies: {} } as ProjectGraph;
+    const added = new Set<string>();
+    Object.values(original.nodes).forEach((n) => {
+      if (!predicate || predicate(n)) {
+        graph.nodes[n.name] = n;
+        graph.dependencies[n.name] = [];
+        added.add(n.name);
+      }
+    });
+    Object.values(original.dependencies).forEach((ds) => {
+      ds.forEach((d) => {
+        if (added.has(d.source) && added.has(d.target)) {
+          graph.dependencies[d.source].push(d);
+        }
+      });
+    });
+    return graph;
+  };
+}
+
+export function isNpmProject(
+  project: ProjectGraphProjectNode | ProjectGraphExternalNode
+): project is ProjectGraphExternalNode {
+  return project?.type === 'npm';
+}
+
+export const pruneExternalNodes = filterNodes();

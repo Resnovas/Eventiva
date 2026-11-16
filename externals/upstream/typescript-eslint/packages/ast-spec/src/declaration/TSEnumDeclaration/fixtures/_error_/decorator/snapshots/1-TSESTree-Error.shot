@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSEnumDeclaration > _error_ > decorator > TSESTree - Error`]
+TSError
+> 1 | @decl enum Test {}
+    | ^^^^^ Decorators are not valid here.
+  2 |

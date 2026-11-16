@@ -1,0 +1,299 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import url from 'url';
+
+import sourceMapSupport from 'source-map-support';
+import { MultiMap } from '@isomorphic/multimap';
+import { calculateSha1 } from '@utils/crypto';
+
+import { isWorkerProcess } from '../globals';
+import { packageRoot } from '../package';
+
+export type MemoryCache = {
+  codePath: string;
+  sourceMapPath: string;
+  moduleUrl?: string;
+};
+
+export type SerializedCompilationCache = {
+  sourceMaps: [string, string][],
+  memoryCache: [string, MemoryCache][],
+  fileDependencies: [string, string[]][],
+};
+
+// Assumptions for the compilation cache:
+// - Files in the temp directory we work with can disappear at any moment, either some of them or all together.
+// - Multiple workers can be trying to read from the compilation cache at the same time.
+// - There is a single invocation of the test runner at a time.
+//
+// Therefore, we implement the following logic:
+// - Never assume that file is present, always try to read it to determine whether it's actually present.
+// - Never write to the cache from worker processes to avoid "multiple writers" races.
+// - Since we perform all static imports in the runner beforehand, most of the time
+//   workers should be able to read from the cache.
+// - For workers-only dynamic imports or some cache problems, we will re-transpile files in
+//   each worker anew.
+
+export const cacheDir = process.env.PLAYWRIGHT_TRANSFORM_CACHE_DIR || process.env.PWTEST_CACHE_DIR || (() => {
+  if (process.platform === 'win32')
+    return path.join(os.tmpdir(), `playwright-transform-cache`);
+  // Use `geteuid()` instead of more natural `os.userInfo().username`
+  // since `os.userInfo()` is not always available.
+  // Note: `process.geteuid()` is not available on windows.
+  // See https://github.com/microsoft/playwright/issues/22721
+  return path.join(os.tmpdir(), `playwright-transform-cache-` + process.geteuid?.());
+})();
+
+const sourceMaps: Map<string, string> = new Map();
+const memoryCache = new Map<string, MemoryCache>();
+// Dependencies resolved by the loader.
+const fileDependencies = new Map<string, Set<string>>();
+
+export function installSourceMapSupport() {
+  Error.stackTraceLimit = 200;
+
+  sourceMapSupport.install({
+    environment: 'node',
+    handleUncaughtExceptions: false,
+    retrieveSourceMap(source) {
+      if (!sourceMaps.has(source))
+        return null;
+      const sourceMapPath = sourceMaps.get(source)!;
+      try {
+        return {
+          map: JSON.parse(fs.readFileSync(sourceMapPath, 'utf-8')),
+          url: source,
+        };
+      } catch {
+        return null;
+      }
+    }
+  });
+}
+
+function _innerAddToCompilationCacheAndSerialize(filename: string, entry: MemoryCache) {
+  sourceMaps.set(entry.moduleUrl || filename, entry.sourceMapPath);
+  memoryCache.set(filename, entry);
+  return {
+    sourceMaps: [[entry.moduleUrl || filename, entry.sourceMapPath]],
+    memoryCache: [[filename, entry]],
+    fileDependencies: [],
+    externalDependencies: [],
+  };
+}
+
+// Cached code files are prefixed with a `// <sha1>` line so that a partially
+// written cache entry is detected and ignored when reading.
+function writeCodeCache(codePath: string, code: string) {
+  fs.writeFileSync(codePath, `// ${calculateSha1(code)}\n${code}`, 'utf8');
+}
+
+function readCodeCache(codePath: string): string {
+  const content = fs.readFileSync(codePath, 'utf8');
+  const newLineIndex = content.indexOf('\n');
+  if (newLineIndex === -1)
+    throw new Error(`Cache file is missing the hash header`);
+  const firstLine = content.substring(0, newLineIndex);
+  const sha1Length = 40;
+  if (firstLine.length !== '// '.length + sha1Length || !firstLine.startsWith('// '))
+    throw new Error(`Cache file has a malformed hash header`);
+  const code = content.substring(newLineIndex + 1);
+  if (calculateSha1(code) !== firstLine.substring('// '.length))
+    throw new Error(`Cache file content does not match the hash header`);
+  return code;
+}
+
+type CompilationCacheLookupResult = {
+  serializedCache?: any;
+  cachedCode?: string;
+  addToCache?: (code: string, map: any | undefined | null) => { serializedCache?: any };
+};
+
+export function getFromCompilationCache(filename: string, contentHash: string, moduleUrl?: string): CompilationCacheLookupResult {
+  // First check the memory cache by filename, this cache will always work in the worker,
+  // because we just compiled this file in the loader.
+  const cache = memoryCache.get(filename);
+  if (cache?.codePath) {
+    try {
+      return { cachedCode: readCodeCache(cache.codePath) };
+    } catch {
+      // Not able to read the file - fall through.
+    }
+  }
+
+  // Then do the disk cache, this cache works between the Playwright Test runs.
+  const filePathHash = calculateFilePathHash(filename);
+  const hashPrefix = filePathHash + '_' + contentHash.substring(0, 7);
+  const cacheFolderName = filePathHash.substring(0, 2);
+  const cachePath = calculateCachePath(filename, cacheFolderName, hashPrefix);
+  const codePath = cachePath + '.js';
+  const sourceMapPath = cachePath + '.map';
+  try {
+    const cachedCode = readCodeCache(codePath);
+    const serializedCache = _innerAddToCompilationCacheAndSerialize(filename, { codePath, sourceMapPath, moduleUrl });
+    return { cachedCode, serializedCache };
+  } catch {
+  }
+
+  return {
+    addToCache: (code: string, map: any | undefined | null) => {
+      if (isWorkerProcess())
+        return {};
+      // Trim cache. This won't help with deleted files, but it will remove storing multiple copies of the same file
+      clearOldCacheEntries(cacheFolderName, filePathHash);
+      fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+      if (map)
+        fs.writeFileSync(sourceMapPath, JSON.stringify(map), 'utf8');
+      writeCodeCache(codePath, code);
+      const serializedCache = _innerAddToCompilationCacheAndSerialize(filename, { codePath, sourceMapPath, moduleUrl });
+      return { serializedCache };
+    }
+  };
+}
+
+export function serializeCompilationCache(): SerializedCompilationCache {
+  return {
+    sourceMaps: [...sourceMaps.entries()],
+    memoryCache: [...memoryCache.entries()],
+    fileDependencies: [...fileDependencies.entries()].map(([filename, deps]) => ([filename, [...deps]])),
+  };
+}
+
+export function addToCompilationCache(payload: SerializedCompilationCache) {
+  for (const entry of payload.sourceMaps)
+    sourceMaps.set(entry[0], entry[1]);
+  for (const entry of payload.memoryCache)
+    memoryCache.set(entry[0], entry[1]);
+  for (const entry of payload.fileDependencies) {
+    const existing = fileDependencies.get(entry[0]) || [];
+    fileDependencies.set(entry[0], new Set([...entry[1], ...existing]));
+  }
+}
+
+function calculateFilePathHash(filePath: string): string {
+  // Larger file path hash allows for fewer collisions compared to content, as we only check file path collision for deleting files
+  return calculateSha1(filePath).substring(0, 10);
+}
+
+function calculateCachePath(filePath: string, cacheFolderName: string, hashPrefix: string): string {
+  const fileName = hashPrefix + '_' + path.basename(filePath, path.extname(filePath)).replace(/\W/g, '');
+  return path.join(cacheDir, cacheFolderName, fileName);
+}
+
+function clearOldCacheEntries(cacheFolderName: string, filePathHash: string) {
+  const cachePath = path.join(cacheDir, cacheFolderName);
+  try {
+    const cachedRelevantFiles = fs.readdirSync(cachePath).filter(file => file.startsWith(filePathHash));
+    for (const file of cachedRelevantFiles)
+      fs.rmSync(path.join(cachePath, file), { force: true });
+  } catch {
+  }
+}
+
+// Since ESM and CJS collect dependencies differently,
+// we go via the global state to collect them.
+let depsCollector: Set<string> | undefined;
+// Retain import and require edges even outside collection, for later test files that reuse cached modules.
+const importGraph = new MultiMap<string, string>();
+
+export function recordResolvedFile(resolvedUrl: string | undefined, parentUrl: string | undefined) {
+  if (isWorkerProcess() || !resolvedUrl?.startsWith('file://'))
+    return;
+  const child = url.fileURLToPath(resolvedUrl);
+  depsCollector?.add(child);
+  if (!parentUrl?.startsWith('file://'))
+    return;
+  const parent = url.fileURLToPath(parentUrl);
+  if (!belongsToNodeModules(parent) && !importGraph.hasValue(parent, child))
+    importGraph.set(parent, child);
+}
+
+export function startCollectingFileDeps() {
+  depsCollector = new Set();
+}
+
+export function stopCollectingFileDeps(filename: string, additionalDeps: string[] = []) {
+  if (!depsCollector)
+    return;
+  for (const dep of additionalDeps)
+    depsCollector.add(dep);
+  // Sets visit entries added during iteration, so this collects the whole transitive closure.
+  for (const dep of depsCollector) {
+    for (const child of importGraph.get(dep))
+      depsCollector.add(child);
+  }
+  depsCollector.delete(filename);
+  for (const dep of depsCollector) {
+    if (belongsToNodeModules(dep))
+      depsCollector.delete(dep);
+  }
+  fileDependencies.set(filename, depsCollector);
+  depsCollector = undefined;
+}
+
+export function currentFileDepsCollector(): Set<string> | undefined {
+  return depsCollector;
+}
+
+export function fileDependenciesForTest() {
+  return Object.fromEntries([...fileDependencies.entries()].map(entry => (
+    [path.basename(entry[0]), [...entry[1]].map(f => path.basename(f)).sort()]
+  )));
+}
+
+export function collectAffectedTestFiles(changedFile: string, testFileCollector: Set<string>) {
+  const isTestFile = (file: string) => fileDependencies.has(file);
+
+  if (isTestFile(changedFile))
+    testFileCollector.add(changedFile);
+
+  for (const [testFile, deps] of fileDependencies) {
+    if (deps.has(changedFile))
+      testFileCollector.add(testFile);
+  }
+}
+
+export function affectedTestFiles(changes: string[]): string[] {
+  const result = new Set<string>();
+  for (const change of changes)
+    collectAffectedTestFiles(change, result);
+  return [...result];
+}
+
+export function internalDependenciesForTestFile(filename: string): Set<string> | undefined{
+  return fileDependencies.get(filename);
+}
+
+export function dependenciesForTestFile(filename: string): Set<string> {
+  return fileDependencies.get(filename) || new Set();
+}
+
+// This is only used in the dev mode, specifically excluding
+// files from packages/playwright*. In production mode, node_modules covers
+// that.
+const kPlaywrightInternalPrefix = packageRoot;
+
+export function belongsToNodeModules(file: string) {
+  if (file.includes(`${path.sep}node_modules${path.sep}`))
+    return true;
+  if (file.startsWith(kPlaywrightInternalPrefix) && (file.endsWith('.js') || file.endsWith('.mjs')))
+    return true;
+  return false;
+}

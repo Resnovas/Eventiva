@@ -1,0 +1,25 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "ignoreStringArrays": {
+        "description": "Whether to ignore arrays in which all elements are strings.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to ignore arrays in which all elements are strings. */
+    ignoreStringArrays?: boolean;
+  },
+];

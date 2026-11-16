@@ -1,0 +1,791 @@
+import { minimatch } from 'minimatch';
+import { relative } from 'node:path';
+import { join } from 'node:path/posix';
+import {
+  getExecutorInformation,
+  parseExecutor,
+} from '../command-line/run/executor-utils';
+import { CustomHasher, ExecutorConfig } from '../config/misc-interfaces';
+import { ProjectGraph, ProjectGraphProjectNode } from '../config/project-graph';
+import { Task, TaskGraph, TaskGraphEdge } from '../config/task-graph';
+import { hashObject } from '../hasher/file-hasher';
+import {
+  ProjectConfiguration,
+  TargetConfiguration,
+  TargetDependencyConfig,
+} from '../config/workspace-json-project-json';
+import {
+  getTransformableOutputs,
+  validateOutputs as nativeValidateOutputs,
+} from '../native';
+import { isRelativePath } from '../utils/fileutils';
+import { findMatchingProjects } from '../utils/find-matching-projects';
+import { isGlobPattern } from '../utils/globs';
+import { isLongRunningTargetName } from '../utils/long-running-target';
+import { output } from '../utils/output';
+import { joinPathFragments } from '../utils/path';
+import { serializeOverridesIntoCommandLine } from '../utils/serialize-overrides-into-command-line';
+import { splitTargetFromNodes } from '../utils/split-target';
+import { workspaceRoot } from '../utils/workspace-root';
+import { isTuiEnabled } from './is-tui-enabled';
+import {
+  parseTokens,
+  readPath,
+  resolveToken,
+  type TokenNode,
+  type TokenScope,
+} from './tokens';
+
+export type NormalizedTargetDependencyConfig = TargetDependencyConfig & {
+  projects: string[];
+};
+
+export function getDependencyConfigs(
+  { project, target }: { project: string; target: string },
+  extraTargetDependencies: Record<string, (TargetDependencyConfig | string)[]>,
+  projectGraph: ProjectGraph,
+  allTargetNames: string[]
+): NormalizedTargetDependencyConfig[] | undefined {
+  return (
+    projectGraph.nodes[project].data?.targets[target]?.dependsOn ??
+    // This is passed into `run-command` from programmatic invocations
+    extraTargetDependencies[target] ??
+    []
+  ).flatMap((config) =>
+    normalizeDependencyConfigDefinition(
+      config,
+      project,
+      projectGraph,
+      allTargetNames
+    )
+  );
+}
+
+export function normalizeDependencyConfigDefinition(
+  definition: string | TargetDependencyConfig,
+  currentProject: string,
+  graph: ProjectGraph,
+  allTargetNames: string[]
+): NormalizedTargetDependencyConfig[] {
+  return expandWildcardTargetConfiguration(
+    normalizeDependencyConfigProjects(
+      expandDependencyConfigSyntaxSugar(definition, graph, currentProject),
+      currentProject,
+      graph
+    ),
+    allTargetNames
+  );
+}
+
+export function normalizeDependencyConfigProjects(
+  dependencyConfig: TargetDependencyConfig,
+  currentProject: string,
+  graph: ProjectGraph
+): NormalizedTargetDependencyConfig {
+  assertNotLegacyProjectsString(dependencyConfig, currentProject, graph);
+  const noStringConfig =
+    normalizeTargetDependencyWithStringProjects(dependencyConfig);
+
+  if (noStringConfig.projects) {
+    dependencyConfig.projects = findMatchingProjects(
+      noStringConfig.projects,
+      graph.nodes
+    );
+  } else if (!noStringConfig.dependencies) {
+    dependencyConfig.projects = [currentProject];
+  }
+  return dependencyConfig as NormalizedTargetDependencyConfig;
+}
+
+function assertNotLegacyProjectsString(
+  dependencyConfig: TargetDependencyConfig,
+  currentProject: string,
+  graph: ProjectGraph
+) {
+  const projects = dependencyConfig.projects;
+  if (
+    (projects === 'self' || projects === 'dependencies') &&
+    !graph.nodes[projects]
+  ) {
+    throw new Error(
+      `${currentProject} has a dependsOn entry using projects: '${projects}', which is no longer supported: ${JSON.stringify(dependencyConfig)}\nPlease run "nx repair" to repair your configuration`
+    );
+  }
+}
+
+export function expandDependencyConfigSyntaxSugar(
+  dependencyConfigString: string | TargetDependencyConfig,
+  graph: ProjectGraph,
+  currentProject?: string
+): TargetDependencyConfig {
+  if (typeof dependencyConfigString !== 'string') {
+    return dependencyConfigString;
+  }
+
+  const [dependencies, targetString] = dependencyConfigString.startsWith('^')
+    ? [true, dependencyConfigString.substring(1)]
+    : [false, dependencyConfigString];
+
+  // Support for `project:target` syntax doesn't make sense for
+  // dependencies, so we only support `target` syntax for dependencies.
+  if (dependencies) {
+    return {
+      target: targetString,
+      dependencies: true,
+    };
+  }
+
+  const { projects, target } = readProjectAndTargetFromTargetString(
+    targetString,
+    graph.nodes,
+    currentProject
+  );
+
+  return projects ? { projects, target } : { target };
+}
+
+// Weakmap let's the cache get cleared by garbage collector if allTargetNames is no longer used
+const patternResultCache = new WeakMap<
+  string[],
+  // Map< Pattern, Dependency Configs >
+  Map<string, string[]>
+>();
+
+function findMatchingTargets(pattern: string, allTargetNames: string[]) {
+  let cache = patternResultCache.get(allTargetNames);
+  if (!cache) {
+    cache = new Map();
+    patternResultCache.set(allTargetNames, cache);
+  }
+
+  const cachedResult = cache.get(pattern);
+  if (cachedResult) {
+    return cachedResult;
+  }
+
+  const matcher = minimatch.filter(pattern);
+
+  const matchingTargets = allTargetNames.filter((t) => matcher(t));
+  cache.set(pattern, matchingTargets);
+  return matchingTargets;
+}
+
+export function expandWildcardTargetConfiguration(
+  dependencyConfig: NormalizedTargetDependencyConfig,
+  allTargetNames: string[]
+): NormalizedTargetDependencyConfig[] {
+  if (!isGlobPattern(dependencyConfig.target)) {
+    return [dependencyConfig];
+  }
+
+  const matchingTargets = findMatchingTargets(
+    dependencyConfig.target,
+    allTargetNames
+  );
+
+  return matchingTargets.map((t) => ({
+    ...dependencyConfig,
+    target: t,
+  }));
+}
+
+export function readProjectAndTargetFromTargetString(
+  targetString: string,
+  projects: Record<string, ProjectGraphProjectNode>,
+  currentProject?: string
+): { projects?: string[]; target: string } {
+  // Support for both `project:target` and `target:with:colons` syntax
+  const [maybeProject, ...segments] = splitTargetFromNodes(
+    targetString,
+    projects,
+    { silent: true, currentProject }
+  );
+
+  if (!segments.length) {
+    // if no additional segments are provided, then the string references
+    // a target of the same project
+    return { target: maybeProject };
+  } else if (maybeProject in projects) {
+    // Only the first segment could be a project. If it is, the rest is a target.
+    // If its not, then the whole targetString was a target with colons in its name.
+    return { projects: [maybeProject], target: segments.join(':') };
+  } else {
+    // If the first segment is a project, then we have a specific project. Otherwise, we don't.
+    return { target: targetString };
+  }
+}
+
+export function getOutputs(
+  p: Record<string, ProjectGraphProjectNode>,
+  target: Task['target'],
+  overrides: Task['overrides']
+) {
+  return getOutputsForTargetAndConfiguration(
+    target,
+    overrides,
+    p[target.project]
+  );
+}
+
+export function normalizeTargetDependencyWithStringProjects(
+  dependencyConfig: TargetDependencyConfig
+): Omit<TargetDependencyConfig, 'projects'> & { projects?: string[] } {
+  if (typeof dependencyConfig.projects === 'string') {
+    dependencyConfig.projects = [dependencyConfig.projects];
+  }
+  return dependencyConfig as Omit<TargetDependencyConfig, 'projects'> & {
+    projects?: string[];
+  };
+}
+
+class InvalidOutputsError extends Error {
+  constructor(
+    public outputs: string[],
+    public invalidOutputs: Set<string>
+  ) {
+    super(InvalidOutputsError.createMessage(invalidOutputs));
+  }
+
+  private static createMessage(invalidOutputs: Set<string>) {
+    const invalidOutputsList =
+      '\n - ' + Array.from(invalidOutputs).join('\n - ');
+    return `The following outputs are invalid:${invalidOutputsList}\nPlease run "nx repair" to repair your configuration`;
+  }
+}
+
+function assertOutputsAreValidType(outputs: unknown) {
+  if (!Array.isArray(outputs)) {
+    throw new Error("The 'outputs' field must be an array");
+  }
+
+  const typesArray = [];
+  let hasInvalidType = false;
+  for (const output of outputs) {
+    if (typeof output !== 'string') {
+      hasInvalidType = true;
+    }
+    typesArray.push(typeof output);
+  }
+
+  if (hasInvalidType) {
+    throw new Error(
+      `The 'outputs' field must contain only strings, but received types: [${typesArray.join(
+        ', '
+      )}]`
+    );
+  }
+}
+
+export function validateOutputs(outputs: string[]) {
+  assertOutputsAreValidType(outputs);
+
+  nativeValidateOutputs(outputs);
+}
+
+export function transformLegacyOutputs(projectRoot: string, outputs: string[]) {
+  const transformableOutputs = new Set(getTransformableOutputs(outputs));
+  if (transformableOutputs.size === 0) {
+    return outputs;
+  }
+  return outputs.map((output) => {
+    if (!transformableOutputs.has(output)) {
+      return output;
+    }
+
+    let [isNegated, outputPath] = output.startsWith('!')
+      ? [true, output.substring(1)]
+      : [false, output];
+
+    const relativePath = isRelativePath(outputPath)
+      ? output
+      : relative(projectRoot, outputPath);
+
+    const isWithinProject = !relativePath.startsWith('..');
+    return (
+      (isNegated ? '!' : '') +
+      joinPathFragments(
+        isWithinProject ? '{projectRoot}' : '{workspaceRoot}',
+        isWithinProject ? relativePath : outputPath
+      )
+    );
+  });
+}
+
+/**
+ * @deprecated Pass the target and overrides instead. This will be removed in v20.
+ */
+export function getOutputsForTargetAndConfiguration(
+  task: Task,
+  node: ProjectGraphProjectNode
+): string[];
+export function getOutputsForTargetAndConfiguration(
+  target: Task['target'] | Task,
+  overrides: Task['overrides'] | ProjectGraphProjectNode,
+  node: ProjectGraphProjectNode
+): string[];
+/**
+ * Returns the list of outputs that will be cached.
+ */
+export function getOutputsForTargetAndConfiguration(
+  taskTargetOrTask: Task['target'] | Task,
+  overridesOrNode: Task['overrides'] | ProjectGraphProjectNode,
+  node?: ProjectGraphProjectNode
+): string[] {
+  const taskTarget =
+    'id' in taskTargetOrTask ? taskTargetOrTask.target : taskTargetOrTask;
+  const overrides =
+    'id' in taskTargetOrTask ? taskTargetOrTask.overrides : overridesOrNode;
+  node = (
+    'id' in taskTargetOrTask ? overridesOrNode : node
+  ) as ProjectGraphProjectNode;
+
+  const { target, configuration } = taskTarget;
+
+  const targetConfiguration = node.data.targets[target];
+
+  const options = {
+    ...targetConfiguration?.options,
+    ...targetConfiguration?.configurations?.[configuration],
+    ...overrides,
+  };
+
+  if (targetConfiguration?.outputs) {
+    validateOutputs(targetConfiguration.outputs);
+
+    const result = new Set<string>();
+    for (const output of targetConfiguration.outputs) {
+      const interpolatedOutput = interpolateOutput(output, node, options);
+      if (
+        !!interpolatedOutput &&
+        !interpolatedOutput.match(/{(projectRoot|workspaceRoot|(options.*))}/)
+      ) {
+        result.add(
+          output.startsWith('!') ? `!${interpolatedOutput}` : interpolatedOutput
+        );
+      }
+    }
+    return Array.from(result);
+  }
+
+  // Keep backwards compatibility in case `outputs` doesn't exist
+  if (options.outputPath) {
+    return Array.isArray(options.outputPath)
+      ? options.outputPath
+      : [options.outputPath];
+  } else if (target === 'build' || target === 'prepare') {
+    return [
+      `dist/${node.data.root}`,
+      `${node.data.root}/dist`,
+      `${node.data.root}/build`,
+      `${node.data.root}/public`,
+    ];
+  } else {
+    return [];
+  }
+}
+
+/**
+ * Resolves the tokens in a configured output, without its leading `!`. A token
+ * with no value stays as written.
+ */
+export function interpolateOutput(
+  output: string,
+  node: ProjectGraphProjectNode,
+  options: Record<string, unknown>
+): string {
+  // A leading `!` is negation, not part of the path: strip it so
+  // `{workspaceRoot}` still sits where interpolate requires it.
+  return interpolate(output.startsWith('!') ? output.substring(1) : output, {
+    projectRoot: node.data.root,
+    projectName: node.name,
+    project: { ...node.data, name: node.name }, // this is legacy
+    options,
+  });
+}
+
+/**
+ * Resolves Nx tokens in a path, where each token names a key of `data`
+ * (`{projectRoot}/dist`, `{options.outputPath ?? dist/{projectRoot}}`).
+ * Paths starting with `/` are returned as written. A token with no value
+ * stays as written. `env.` is text, unless `envNotAllowed` is given: then it
+ * throws with that message.
+ */
+export function interpolate(
+  template: string,
+  data: any,
+  options?: { envNotAllowed?: (template: string) => string }
+): string {
+  if (!/{[\s\S]+?}/.test(template)) {
+    return template;
+  }
+
+  const scope: TokenScope = {
+    isToken: (name) => name === 'env' || Object.hasOwn(data, name),
+    read: (name, path) => readPath(data[name], path),
+    env: options?.envNotAllowed
+      ? { reject: () => new Error(options.envNotAllowed(template)) }
+      : undefined,
+    noValue: (token) => token,
+  };
+  if (template.startsWith('/')) {
+    if (options?.envNotAllowed) {
+      parseTokens(template, scope);
+    }
+    return template;
+  }
+  const nodes = parseTokens(template, scope);
+  if (!isWorkspaceRootOnlyAtStart(nodes, true)) {
+    throw new Error(
+      `Output '${template}' is invalid. {workspaceRoot} can only be used at the beginning of the expression.`
+    );
+  }
+
+  return joinSegments(nodes, data, scope).replace('{workspaceRoot}/', '');
+}
+
+// A fallback's literal only ever replaces its whole token, so a token at the
+// start can fall back to `{workspaceRoot}/...`
+function isWorkspaceRootOnlyAtStart(
+  nodes: TokenNode[],
+  atStart: boolean
+): boolean {
+  return nodes.every((node, i) => {
+    const nodeAtStart = atStart && i === 0;
+    if (node.kind === 'text') {
+      return !node.text.includes('{workspaceRoot}', nodeAtStart ? 1 : 0);
+    }
+    return node.parts.every((part) =>
+      part.kind === 'literal'
+        ? isWorkspaceRootOnlyAtStart(part.nodes, nodeAtStart)
+        : part.name !== 'workspaceRoot' || nodeAtStart
+    );
+  });
+}
+
+// Joining the `/`-separated segments normalizes a root project's
+// `{projectRoot}` away, wherever it sits
+function joinSegments(nodes: TokenNode[], data: any, scope: TokenScope) {
+  const segments = [''];
+  const append = (nodes: TokenNode[], isLiteral: boolean): string => {
+    for (const [i, node] of nodes.entries()) {
+      if (node.kind === 'text') {
+        // A literal keeps its leading `/` on the segment, as an option value
+        // does, so an absolute fallback stays absolute
+        const root =
+          isLiteral && i === 0 && node.text.startsWith('/') ? '/' : '';
+        const [first, ...rest] = node.text.substring(root.length).split('/');
+        segments[segments.length - 1] += root + first;
+        segments.push(...rest);
+      } else {
+        // Resolved before indexing `segments`: a fallback literal appends to it
+        const value =
+          data.projectRoot == '.' && node.raw === '{projectRoot}'
+            ? ''
+            : resolveToken(node, scope, (literal) => append(literal, true));
+        segments[segments.length - 1] += value;
+      }
+    }
+    return '';
+  };
+  append(nodes, false);
+  return join(...segments);
+}
+
+export function getTargetConfigurationForTask(
+  task: Task,
+  projectGraph: ProjectGraph
+): TargetConfiguration | undefined {
+  const node = projectGraph.nodes[task.target.project];
+  if (!node) {
+    throw new Error(
+      `Task "${task.id}" references project "${task.target.project}", which does not exist in the project graph. ` +
+        `This can happen when the project graph in this environment diverges from the one the task was created from.`
+    );
+  }
+  return node.data.targets[task.target.target];
+}
+
+export function getExecutorNameForTask(task: Task, projectGraph: ProjectGraph) {
+  return getTargetConfigurationForTask(task, projectGraph)?.executor;
+}
+
+/**
+ * Expand a set of initiating task IDs by walking through any `nx:noop` tasks
+ * and replacing them with their direct dependencies + continuous dependencies.
+ * Non-noop tasks are kept as-is; cycles are safe.
+ *
+ * An `nx:noop` executor returns immediately, so if it is the only thing
+ * anchoring a continuous child, the child gets killed by
+ * `cleanUpUnneededContinuousTasks` the moment the noop completes. Treating the
+ * noop's dependencies as the real anchors preserves the intended orchestration.
+ */
+export function expandInitiatingTasksThroughNoop(
+  initiatingTasks: Task[],
+  taskGraph: TaskGraph,
+  projectGraph: ProjectGraph
+): Set<string> {
+  const expanded = new Set<string>();
+  const visited = new Set<string>();
+  const queue: string[] = initiatingTasks.map((t) => t.id);
+
+  while (queue.length > 0) {
+    const taskId = queue.shift()!;
+    if (visited.has(taskId)) continue;
+    visited.add(taskId);
+
+    const task = taskGraph.tasks[taskId];
+    if (!task) continue;
+
+    if (getExecutorNameForTask(task, projectGraph) === 'nx:noop') {
+      for (const dep of taskGraph.dependencies[taskId] ?? []) {
+        queue.push(dep.id);
+      }
+      for (const dep of taskGraph.continuousDependencies[taskId] ?? []) {
+        queue.push(dep.id);
+      }
+    } else {
+      expanded.add(taskId);
+    }
+  }
+
+  return expanded;
+}
+
+export function getExecutorForTask(
+  task: Task,
+  projects: Record<string, ProjectConfiguration>
+): ExecutorConfig & { isNgCompat: boolean; isNxExecutor: boolean } {
+  const executor =
+    projects[task.target.project]?.targets?.[task.target.target]?.executor;
+  const [nodeModule, executorName] = parseExecutor(executor);
+
+  return getExecutorInformation(
+    nodeModule,
+    executorName,
+    workspaceRoot,
+    projects
+  );
+}
+
+// TODO(v25): remove custom hasher support.
+export function getCustomHasher(
+  task: Task,
+  projects: Record<string, ProjectConfiguration>
+): CustomHasher | null {
+  const factory = getExecutorForTask(task, projects).hasherFactory;
+  if (!factory) {
+    return null;
+  }
+  warnCustomHasherDeprecation(
+    projects[task.target.project].targets[task.target.target].executor
+  );
+  return factory();
+}
+
+const customHasherDeprecationWarned = new Set<string>();
+
+function warnCustomHasherDeprecation(executor: string): void {
+  if (customHasherDeprecationWarned.has(executor)) {
+    return;
+  }
+  customHasherDeprecationWarned.add(executor);
+  output.warn({
+    title: `The "${executor}" executor uses a custom hasher, which is deprecated and will be removed in Nx 25.`,
+    bodyLines: [
+      'Replace the custom hasher with target inputs, following the migration guide:',
+      'https://nx.dev/docs/kb/local-executors#replace-a-custom-hasher-with-inputs',
+      'If the executor comes from a third-party plugin, report this to its maintainers.',
+    ],
+  });
+}
+
+/** Test-only: forget which executors have been warned about. */
+export function resetCustomHasherDeprecationWarnings(): void {
+  customHasherDeprecationWarned.clear();
+}
+
+/**
+ * `taskGraph` pruned to `required`, which must already hold its dependencies.
+ * Unknown ids are ignored: a sync generator can remove a task after selection.
+ */
+export function pruneToSelectedTasks(
+  taskGraph: TaskGraph,
+  required: Iterable<string>
+): TaskGraph {
+  const keep = new Set(required);
+  return removeTasksFromTaskGraph(
+    taskGraph,
+    Object.keys(taskGraph.tasks).filter((id) => !keep.has(id))
+  );
+}
+
+export function removeTasksFromTaskGraph(
+  graph: TaskGraph,
+  ids: string[]
+): TaskGraph {
+  const newGraph = removeIdsFromTaskGraph<Task>(graph, ids, graph.tasks);
+  return {
+    dependencies: newGraph.dependencies,
+    continuousDependencies: newGraph.continuousDependencies,
+    roots: newGraph.roots,
+    tasks: newGraph.mapWithIds,
+  };
+}
+
+function removeIdsFromTaskGraph<T>(
+  graph: {
+    roots: string[];
+    dependencies: Record<string, TaskGraphEdge[]>;
+    continuousDependencies: Record<string, TaskGraphEdge[]>;
+  },
+  ids: string[],
+  mapWithIds: Record<string, T>
+): {
+  mapWithIds: Record<string, T>;
+  roots: string[];
+  dependencies: Record<string, TaskGraphEdge[]>;
+  continuousDependencies: Record<string, TaskGraphEdge[]>;
+} {
+  const filteredMapWithIds = {};
+  const dependencies = {};
+  const continuousDependencies = {};
+  const removedSet = new Set(ids);
+  for (let id of Object.keys(mapWithIds)) {
+    if (!removedSet.has(id)) {
+      filteredMapWithIds[id] = mapWithIds[id];
+      dependencies[id] = graph.dependencies[id].filter(
+        (dep) => !removedSet.has(dep.id)
+      );
+      continuousDependencies[id] = graph.continuousDependencies[id].filter(
+        (dep) => !removedSet.has(dep.id)
+      );
+    }
+  }
+  return {
+    mapWithIds: filteredMapWithIds,
+    dependencies: dependencies,
+    continuousDependencies,
+    roots: Object.keys(filteredMapWithIds).filter(
+      (k) =>
+        dependencies[k].length === 0 && continuousDependencies[k].length === 0
+    ),
+  };
+}
+
+export function calculateReverseDeps(
+  taskGraph: TaskGraph
+): Record<string, string[]> {
+  const reverseTaskDeps: Record<string, string[]> = {};
+  Object.keys(taskGraph.tasks).forEach((t) => {
+    reverseTaskDeps[t] = [];
+  });
+
+  Object.keys(taskGraph.dependencies).forEach((taskId) => {
+    taskGraph.dependencies[taskId].forEach((d) => {
+      reverseTaskDeps[d.id].push(taskId);
+    });
+  });
+
+  Object.keys(taskGraph.continuousDependencies).forEach((taskId) => {
+    taskGraph.continuousDependencies[taskId].forEach((d) => {
+      reverseTaskDeps[d.id].push(taskId);
+    });
+  });
+
+  return reverseTaskDeps;
+}
+
+export function getCliPath() {
+  return require.resolve(`../../bin/run-executor.js`);
+}
+
+export function getUnparsedOverrideArgs(task: Task): string[] {
+  return (task.overrides as { __overrides_unparsed__: string[] })
+    .__overrides_unparsed__;
+}
+
+export function getPrintableCommandArgsForTask(task: Task) {
+  const args = getUnparsedOverrideArgs(task);
+
+  const target = task.target.target.includes(':')
+    ? `"${task.target.target}"`
+    : task.target.target;
+
+  const config = task.target.configuration
+    ? `:${task.target.configuration}`
+    : '';
+
+  return ['run', `${task.target.project}:${target}${config}`, ...args];
+}
+
+export function getSerializedArgsForTask(task: Task, isVerbose: boolean) {
+  return [
+    JSON.stringify({
+      targetDescription: task.target,
+      overrides: task.overrides,
+      isVerbose: isVerbose,
+    }),
+  ];
+}
+
+export function shouldStreamOutput(
+  task: Task,
+  initiatingProject: string | null
+): boolean {
+  // For now, disable streaming output on the JS side when running the TUI
+  if (isTuiEnabled()) return false;
+  if (process.env.NX_STREAM_OUTPUT === 'true') return true;
+  if (process.env.NX_STREAM_OUTPUT === 'false') return false;
+  if (longRunningTask(task)) return true;
+  if (task.target.project === initiatingProject) return true;
+  return false;
+}
+
+export function isCacheableTask(task: Task): boolean {
+  return task.cache;
+}
+
+function longRunningTask(task: Task) {
+  return (
+    task.continuous ||
+    (!!task.overrides['watch'] && task.overrides['watch'] !== 'false') ||
+    isLongRunningTargetName(task.target.target)
+  );
+}
+
+// TODO: vsavkin remove when nx-cloud doesn't depend on it
+export function unparse(options: Object): string[] {
+  return serializeOverridesIntoCommandLine(options);
+}
+
+export function createTaskId(
+  project: string,
+  target: string,
+  configuration: string | undefined
+): string {
+  let id = `${project}:${target}`;
+  if (configuration) {
+    id += `:${configuration}`;
+  }
+  return id;
+}
+
+/**
+ * Distinguishes two invocations of the same task for the recursive invocation
+ * detector. The task id alone would report `nx run app:build --flag` invoked
+ * from within `app:build` as a loop, so the detector pairs the id with this
+ * hash and only treats an exact repeat as an immediate loop.
+ *
+ * The hash cannot decide recursion on its own. Arguments that accumulate
+ * through forwarding (`app:build` -> `app:build hello` -> `app:build hello
+ * hello`) hash differently on every hop, so the tracker also bounds how many
+ * ancestors may be running one task id.
+ *
+ * `__overrides_unparsed__` is dropped, matching how the task hasher treats it:
+ * it restates the other keys as raw argv, down to flag order and spelling.
+ */
+export function hashTaskOverrides(task: Task): string {
+  const overrides = { ...task.overrides };
+  delete overrides['__overrides_unparsed__'];
+  return hashObject(overrides);
+}

@@ -1,0 +1,1099 @@
+vi.mock('child_process');
+
+import { join } from 'path';
+import * as childProcess from 'child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
+import { tmpdir } from 'os';
+import { createTreeWithEmptyWorkspace } from '../generators/testing-utils/create-tree-with-empty-workspace';
+import type { Tree } from '../generators/tree';
+import { writeJson } from '../generators/utils/json';
+import { readJsonFile } from './fileutils';
+import {
+  buildTargetFromScript,
+  getDependencyVersionFromPackageJson,
+  installPackageToTmp,
+  PackageJson,
+  readModulePackageJson,
+  readNxMigrateConfig,
+  readTargetsFromPackageJson,
+} from './package-json';
+import * as pacakgeManager from './package-manager';
+import { getPackageManagerCommand } from './package-manager';
+import { workspaceRoot } from './workspace-root';
+
+describe('buildTargetFromScript', () => {
+  it('should use nx:run-script', () => {
+    const target = buildTargetFromScript(
+      'build',
+      {},
+      getPackageManagerCommand()
+    );
+    expect(target.executor).toEqual('nx:run-script');
+  });
+});
+
+describe('installPackageToTmp', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it('should always disable lifecycle scripts via environment variables', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'nx-install-test-'));
+    const cleanup = vi.fn(() =>
+      rmSync(tempDir, { recursive: true, force: true })
+    );
+    vi.spyOn(pacakgeManager, 'createTempNpmDirectory').mockReturnValue({
+      dir: tempDir,
+      cleanup,
+    });
+    vi.spyOn(pacakgeManager, 'getPackageManagerVersion').mockReturnValue(
+      '4.0.0'
+    );
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      preInstall: 'yarn set version 4.0.0',
+      addDev: 'yarn add -D',
+      ignoreScriptsFlag: undefined,
+    } as any);
+    const execSyncSpy = vi
+      .spyOn(childProcess, 'execSync')
+      .mockReturnValue('' as any);
+
+    installPackageToTmp('nx', 'latest', 'yarn');
+
+    expect(execSyncSpy).toHaveBeenCalledTimes(2);
+    for (const [, options] of execSyncSpy.mock.calls) {
+      expect(options).toEqual(
+        expect.objectContaining({
+          env: expect.objectContaining({
+            YARN_ENABLE_SCRIPTS: 'false',
+          }),
+        })
+      );
+    }
+
+    cleanup();
+  });
+
+  it('should use the workspace `addDev` verbatim for pnpm (preserves `-w` when pnpm-workspace.yaml is present)', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'nx-install-test-'));
+    const cleanup = vi.fn(() =>
+      rmSync(tempDir, { recursive: true, force: true })
+    );
+    vi.spyOn(pacakgeManager, 'createTempNpmDirectory').mockReturnValue({
+      dir: tempDir,
+      cleanup,
+    });
+    vi.spyOn(pacakgeManager, 'getPackageManagerVersion').mockReturnValue(
+      '9.0.0'
+    );
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      addDev: 'pnpm add -Dw --config.frozen-lockfile=false',
+      ignoreScriptsFlag: '--ignore-scripts',
+    } as any);
+    const execSyncSpy = vi
+      .spyOn(childProcess, 'execSync')
+      .mockReturnValue('' as any);
+
+    installPackageToTmp('nx', 'latest', 'pnpm');
+
+    expect(execSyncSpy).toHaveBeenCalledTimes(1);
+    expect(execSyncSpy.mock.calls[0][0]).toBe(
+      'pnpm add -Dw --config.frozen-lockfile=false nx@latest --config.auto-install-peers=false --ignore-scripts'
+    );
+
+    cleanup();
+  });
+
+  it('should omit peer dependencies so peers resolve from the workspace, not the temp dir', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'nx-install-test-'));
+    const cleanup = vi.fn(() =>
+      rmSync(tempDir, { recursive: true, force: true })
+    );
+    vi.spyOn(pacakgeManager, 'createTempNpmDirectory').mockReturnValue({
+      dir: tempDir,
+      cleanup,
+    });
+    vi.spyOn(pacakgeManager, 'getPackageManagerVersion').mockReturnValue(
+      '10.0.0'
+    );
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      addDev: 'npm install -D',
+      ignoreScriptsFlag: '--ignore-scripts',
+    } as any);
+    const execSyncSpy = vi
+      .spyOn(childProcess, 'execSync')
+      .mockReturnValue('' as any);
+
+    // npm: `--legacy-peer-deps`, not `--omit=peer`. npm marks a package as a peer
+    // if anything in the tree peer-depends on it, so `--omit=peer` also prunes
+    // packages that are real dependencies of the installed package.
+    installPackageToTmp('@nx/cypress', '1.0.0', 'npm');
+    expect(execSyncSpy.mock.calls[0][0]).toBe(
+      'npm install -D @nx/cypress@1.0.0 --legacy-peer-deps --ignore-scripts'
+    );
+
+    // bun: `--omit=peer` is safe here, bun does not over-prune the way npm does
+    execSyncSpy.mockClear();
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      addDev: 'bun add -D',
+      ignoreScriptsFlag: undefined,
+    } as any);
+    installPackageToTmp('@nx/cypress', '1.0.0', 'bun');
+    expect(execSyncSpy.mock.calls[0][0]).toBe(
+      'bun add -D @nx/cypress@1.0.0 --omit=peer'
+    );
+
+    // pnpm: peers are omitted by disabling auto-install
+    execSyncSpy.mockClear();
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      addDev: 'pnpm add -Dw --config.frozen-lockfile=false',
+      ignoreScriptsFlag: '--ignore-scripts',
+    } as any);
+    installPackageToTmp('@nx/cypress', '1.0.0', 'pnpm');
+    expect(execSyncSpy.mock.calls[0][0]).toBe(
+      'pnpm add -Dw --config.frozen-lockfile=false @nx/cypress@1.0.0 --config.auto-install-peers=false --ignore-scripts'
+    );
+    expect(execSyncSpy.mock.calls[0][1].env).toEqual(
+      expect.objectContaining({ PNPM_CONFIG_AUTO_INSTALL_PEERS: 'false' })
+    );
+
+    // yarn: Berry does not auto-install peers, so no flag is added
+    execSyncSpy.mockClear();
+    vi.spyOn(pacakgeManager, 'getPackageManagerCommand').mockReturnValue({
+      addDev: 'yarn add -D',
+      ignoreScriptsFlag: undefined,
+    } as any);
+    installPackageToTmp('@nx/cypress', '1.0.0', 'yarn');
+    expect(execSyncSpy.mock.calls[0][0]).toBe('yarn add -D @nx/cypress@1.0.0');
+
+    cleanup();
+  });
+});
+
+describe('readTargetsFromPackageJson', () => {
+  const packageManagerCommand = {
+    run: (script: string) => `npm run ${script}`,
+  } as any;
+
+  const packageJson: PackageJson = {
+    name: 'my-app',
+    version: '0.0.0',
+    scripts: {
+      build: 'echo 1',
+    },
+  };
+
+  const packageJsonBuildTarget = {
+    executor: 'nx:run-script',
+    options: {
+      script: 'build',
+    },
+    metadata: {
+      runCommand: 'npm run build',
+      scriptContent: 'echo 1',
+    },
+  };
+
+  it('should take targetDefaults for nx-release-publish into account when building the implicit target', () => {
+    const nxJson1 = {
+      targetDefaults: {
+        'nx-release-publish': {
+          dependsOn: ['build', 'lint'],
+        },
+      },
+    };
+    const result1 = readTargetsFromPackageJson(
+      packageJson,
+      nxJson1,
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result1['nx-release-publish']).toMatchInlineSnapshot(`
+      {
+        "dependsOn": [
+          "^nx-release-publish",
+          "build",
+          "lint",
+        ],
+        "executor": "@nx/js:release-publish",
+        "options": {},
+      }
+    `);
+
+    const nxJson2 = {
+      targetDefaults: {
+        'nx-release-publish': {
+          dependsOn: ['^something'],
+          executor: 'totally-different-executor',
+        },
+      },
+    };
+    const result2 = readTargetsFromPackageJson(
+      packageJson,
+      nxJson2,
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result2['nx-release-publish']).toMatchInlineSnapshot(`
+      {
+        "dependsOn": [
+          "^nx-release-publish",
+          "^something",
+        ],
+        "executor": "totally-different-executor",
+        "options": {},
+      }
+    `);
+
+    const nxJson3 = {
+      targetDefaults: {
+        'nx-release-publish': [
+          {
+            filter: { executor: '@nx/js:release-publish' },
+            dependsOn: ['build'],
+            options: {
+              dryRun: true,
+            },
+          },
+        ],
+      },
+    };
+    const result3 = readTargetsFromPackageJson(
+      packageJson,
+      nxJson3,
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result3['nx-release-publish']).toMatchInlineSnapshot(`
+      {
+        "dependsOn": [
+          "^nx-release-publish",
+          "build",
+        ],
+        "executor": "@nx/js:release-publish",
+        "options": {
+          "dryRun": true,
+        },
+      }
+    `);
+  });
+
+  it('should read targets from project.json and package.json', () => {
+    const result = readTargetsFromPackageJson(
+      packageJson,
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "build": {
+          "executor": "nx:run-script",
+          "metadata": {
+            "runCommand": "npm run build",
+            "scriptContent": "echo 1",
+          },
+          "options": {
+            "script": "build",
+          },
+        },
+        "nx-release-publish": {
+          "dependsOn": [
+            "^nx-release-publish",
+          ],
+          "executor": "@nx/js:release-publish",
+          "options": {},
+        },
+      }
+    `);
+  });
+
+  it('should contain extended options from nx property in package.json', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              outputs: ['custom'],
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result).toEqual({
+      build: { ...packageJsonBuildTarget, outputs: ['custom'] },
+      'nx-release-publish': {
+        dependsOn: ['^nx-release-publish'],
+        executor: '@nx/js:release-publish',
+        options: {},
+      },
+    });
+  });
+
+  it('should ignore scripts that are not in includedScripts', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'included-scripts-test',
+        version: '',
+        scripts: {
+          test: 'echo testing',
+          fail: 'exit 1',
+        },
+        nx: {
+          includedScripts: ['test'],
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "nx-release-publish": {
+          "dependsOn": [
+            "^nx-release-publish",
+          ],
+          "executor": "@nx/js:release-publish",
+          "options": {},
+        },
+        "test": {
+          "executor": "nx:run-script",
+          "metadata": {
+            "runCommand": "npm run test",
+            "scriptContent": "echo testing",
+          },
+          "options": {
+            "script": "test",
+          },
+        },
+      }
+    `);
+  });
+
+  it('should extend script based targets if matching config', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              outputs: ['custom'],
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build).toMatchInlineSnapshot(`
+      {
+        "executor": "nx:run-script",
+        "metadata": {
+          "runCommand": "npm run build",
+          "scriptContent": "echo 1",
+        },
+        "options": {
+          "script": "build",
+        },
+        "outputs": [
+          "custom",
+        ],
+      }
+    `);
+  });
+
+  it('should preserve unresolved spread tokens when extending script based targets', () => {
+    // https://github.com/nrwl/nx/issues/36235 — the script-derived target has
+    // no `inputs`, so the `'...'` cannot resolve here. It must survive into
+    // the plugin result so the graph pipeline can expand it against
+    // targetDefaults / specified plugin values.
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              inputs: ['...', '{projectRoot}/package.json'],
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build.inputs).toEqual(['...', '{projectRoot}/package.json']);
+  });
+
+  it('should override scripts if provided an executor', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              executor: 'nx:run-commands',
+              options: {
+                commands: ['echo 2'],
+              },
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build).toMatchInlineSnapshot(`
+      {
+        "executor": "nx:run-commands",
+        "options": {
+          "commands": [
+            "echo 2",
+          ],
+        },
+      }
+    `);
+  });
+
+  it('should override script target when nx target uses command shorthand', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              command: 'echo 2',
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build).toMatchInlineSnapshot(`
+      {
+        "command": "echo 2",
+      }
+    `);
+  });
+
+  it('should override script if provided in options', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        scripts: {
+          build: 'echo 1',
+        },
+        nx: {
+          targets: {
+            build: {
+              executor: 'nx:run-script',
+              options: {
+                script: 'echo 2',
+              },
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build).toMatchInlineSnapshot(`
+      {
+        "executor": "nx:run-script",
+        "options": {
+          "script": "echo 2",
+        },
+      }
+    `);
+  });
+
+  it('should support targets without scripts', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-other-app',
+        version: '',
+        nx: {
+          targets: {
+            build: {
+              executor: 'nx:run-commands',
+              options: {
+                commands: ['echo 2'],
+              },
+            },
+          },
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.build).toMatchInlineSnapshot(`
+      {
+        "executor": "nx:run-commands",
+        "options": {
+          "commands": [
+            "echo 2",
+          ],
+        },
+      }
+    `);
+  });
+
+  it('should support partial target info without including script', () => {
+    const result = readTargetsFromPackageJson(
+      {
+        name: 'my-remix-app-8cce',
+        version: '',
+        scripts: {
+          build: 'run-s build:*',
+          'build:icons': 'tsx ./other/build-icons.ts',
+          'build:remix': 'remix build --sourcemap',
+          'build:server': 'tsx ./other/build-server.ts',
+          predev: 'npm run build:icons --silent',
+          dev: 'remix dev -c "node ./server/dev-server.js" --manual',
+          'prisma:studio': 'prisma studio',
+          format: 'prettier --write .',
+          lint: 'eslint .',
+          setup:
+            'npm run build && prisma generate && prisma migrate deploy && prisma db seed && playwright install',
+          start: 'cross-env NODE_ENV=production node .',
+          'start:mocks': 'cross-env NODE_ENV=production MOCKS=true tsx .',
+          test: 'vitest',
+          coverage: 'nx test --coverage',
+          'test:e2e': 'npm run test:e2e:dev --silent',
+          'test:e2e:dev': 'playwright test --ui',
+          'pretest:e2e:run': 'npm run build',
+          'test:e2e:run': 'cross-env CI=true playwright test',
+          'test:e2e:install': 'npx playwright install --with-deps chromium',
+          typecheck: 'tsc',
+          validate: 'run-p "test -- --run" lint typecheck test:e2e:run',
+        },
+        nx: {
+          targets: {
+            'build:icons': {
+              outputs: ['{projectRoot}/app/components/ui/icons'],
+            },
+            'build:remix': {
+              outputs: ['{projectRoot}/build'],
+            },
+            'build:server': {
+              outputs: ['{projectRoot}/server-build'],
+            },
+            test: {
+              outputs: ['{projectRoot}/test-results'],
+            },
+            'test:e2e': {
+              outputs: ['{projectRoot}/playwright-report'],
+            },
+            'test:e2e:run': {
+              outputs: ['{projectRoot}/playwright-report'],
+            },
+          },
+          includedScripts: [],
+        },
+      },
+      {},
+      workspaceRoot,
+      '/root',
+      packageManagerCommand
+    );
+    expect(result.test).toMatchInlineSnapshot(`
+      {
+        "outputs": [
+          "{projectRoot}/test-results",
+        ],
+      }
+    `);
+  });
+});
+
+const rootPackageJson: PackageJson = readJsonFile(
+  join(workspaceRoot, 'package.json')
+);
+
+const dependencies = [
+  ...Object.keys(rootPackageJson.dependencies),
+  ...Object.keys(rootPackageJson.devDependencies),
+];
+
+// Skip packages this monorepo publishes — pnpm symlinks them into
+// `node_modules/<name>` from `packages/<name>`, so resolving them counts as
+// a cross-project read in CI's sandbox even though it would be a normal
+// install in any consumer workspace. The smoke-test still validates every
+// third-party dep's `package.json` exports.
+const isPublishedHere = (name: string) =>
+  name === 'nx' || name.startsWith('@nx/') || name.startsWith('create-nx-');
+
+describe('readModulePackageJson', () => {
+  it.each(dependencies.filter((x) => !isPublishedHere(x)))(
+    `should be able to find %s`,
+    (s) => {
+      expect(() => readModulePackageJson(s)).not.toThrow();
+    }
+  );
+
+  it('resolves a package named like the calling package from the given paths', () => {
+    // This spec runs inside the `nx` package, whose exports map lets Node
+    // self-reference `nx/...`. The explicit require paths must still win, as
+    // they do for the temp install `nx migrate` reads `nx@<target>` from.
+    const dir = realpathSync(
+      mkdtempSync(join(tmpdir(), 'nx-read-module-package-json-'))
+    );
+    try {
+      mkdirSync(join(dir, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(dir, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '0.0.0-fixture' })
+      );
+
+      const { path, packageJson } = readModulePackageJson('nx', [dir]);
+
+      expect(path).toBe(join(dir, 'node_modules', 'nx', 'package.json'));
+      expect(packageJson.version).toBe('0.0.0-fixture');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('walks up from the entry point when the package does not export package.json', () => {
+    const dir = realpathSync(
+      mkdtempSync(join(tmpdir(), 'nx-read-module-package-json-'))
+    );
+    try {
+      const pkgDir = join(dir, 'node_modules', 'nx');
+      mkdirSync(pkgDir, { recursive: true });
+      writeFileSync(
+        join(pkgDir, 'package.json'),
+        JSON.stringify({
+          name: 'nx',
+          version: '0.0.0-fixture',
+          exports: { '.': './index.js' },
+        })
+      );
+      writeFileSync(join(pkgDir, 'index.js'), 'module.exports = {};');
+
+      const { path, packageJson } = readModulePackageJson('nx', [dir]);
+
+      expect(path).toBe(join(pkgDir, 'package.json'));
+      expect(packageJson.version).toBe('0.0.0-fixture');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('getDependencyVersionFromPackageJson', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTreeWithEmptyWorkspace();
+  });
+
+  it('should get single package version from root package.json', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.2.0' },
+      devDependencies: { jest: '^29.0.0' },
+    });
+
+    const reactVersion = getDependencyVersionFromPackageJson(tree, 'react');
+    const jestVersion = getDependencyVersionFromPackageJson(tree, 'jest');
+
+    expect(reactVersion).toBe('^18.2.0');
+    expect(jestVersion).toBe('^29.0.0');
+  });
+
+  it('should return null for non-existent package', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.2.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(tree, 'non-existent');
+    expect(version).toBeNull();
+  });
+
+  it('should prioritize dependencies over devDependencies', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.0.0' },
+      devDependencies: { react: '^18.2.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(tree, 'react');
+    expect(version).toBe('^18.0.0');
+  });
+
+  it('should read from specific package.json path', () => {
+    writeJson(tree, 'packages/my-lib/package.json', {
+      dependencies: { '@my/util': '^1.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      '@my/util',
+      'packages/my-lib/package.json'
+    );
+    expect(version).toBe('^1.0.0');
+  });
+
+  it('should work with pre-loaded package.json object', () => {
+    const packageJson: PackageJson = {
+      name: 'test',
+      version: '1.0.0',
+      dependencies: { react: '^18.2.0' },
+      devDependencies: { jest: '^29.0.0' },
+    };
+    writeJson(tree, 'package.json', packageJson);
+
+    const reactVersion = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      packageJson
+    );
+    const jestVersion = getDependencyVersionFromPackageJson(
+      tree,
+      'jest',
+      packageJson
+    );
+
+    expect(reactVersion).toBe('^18.2.0');
+    expect(jestVersion).toBe('^29.0.0');
+  });
+
+  it('should check only dependencies section when specified', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.0.0' },
+      devDependencies: { react: '^17.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      'package.json',
+      ['dependencies']
+    );
+    expect(version).toBe('^18.0.0');
+  });
+
+  it('should check only devDependencies section when specified', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { jest: '^28.0.0' },
+      devDependencies: { jest: '^29.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'jest',
+      'package.json',
+      ['devDependencies']
+    );
+    expect(version).toBe('^29.0.0');
+  });
+
+  it('should return null when package not in specified section', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.0.0' },
+      devDependencies: { jest: '^29.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      'package.json',
+      ['devDependencies']
+    );
+    expect(version).toBeNull();
+  });
+
+  it('should respect custom lookup order', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { pkg: '^1.0.0' },
+      devDependencies: { pkg: '^2.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'pkg',
+      'package.json',
+      ['devDependencies', 'dependencies']
+    );
+    expect(version).toBe('^2.0.0');
+  });
+
+  it('should check peerDependencies when specified', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { react: '^18.0.0' },
+      peerDependencies: { react: '^17.0.0' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      'package.json',
+      ['peerDependencies']
+    );
+    expect(version).toBe('^17.0.0');
+  });
+
+  it('should check optionalDependencies when specified', () => {
+    writeJson(tree, 'package.json', {
+      dependencies: { fsevents: '^2.3.0' },
+      optionalDependencies: { fsevents: '^2.3.2' },
+    });
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'fsevents',
+      'package.json',
+      ['optionalDependencies']
+    );
+    expect(version).toBe('^2.3.2');
+  });
+
+  it('should check multiple sections in order', () => {
+    writeJson(tree, 'package.json', {
+      devDependencies: { jest: '^29.0.0' },
+      peerDependencies: { react: '^18.0.0' },
+    });
+
+    const jestVersion = getDependencyVersionFromPackageJson(
+      tree,
+      'jest',
+      'package.json',
+      ['dependencies', 'devDependencies', 'peerDependencies']
+    );
+    const reactVersion = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      'package.json',
+      ['dependencies', 'devDependencies', 'peerDependencies']
+    );
+
+    expect(jestVersion).toBe('^29.0.0');
+    expect(reactVersion).toBe('^18.0.0');
+  });
+
+  it('should work with pre-loaded package.json object', () => {
+    const packageJson: PackageJson = {
+      name: 'test',
+      version: '1.0.0',
+      dependencies: { react: '^18.0.0' },
+      devDependencies: { react: '^17.0.0' },
+    };
+    writeJson(tree, 'package.json', packageJson);
+
+    const version = getDependencyVersionFromPackageJson(
+      tree,
+      'react',
+      packageJson,
+      ['devDependencies']
+    );
+    expect(version).toBe('^17.0.0');
+  });
+
+  describe('with catalog references', () => {
+    beforeEach(() => {
+      vi.spyOn(pacakgeManager, 'detectPackageManager').mockReturnValue('pnpm');
+      tree.write(
+        'pnpm-workspace.yaml',
+        `
+packages:
+  - packages/*
+catalog:
+  react: "^18.2.0"
+  lodash: "^4.17.21"
+catalogs:
+  frontend:
+    vue: "^3.3.0"
+`
+      );
+    });
+
+    it('should resolve catalog reference for single package', () => {
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+      });
+
+      const version = getDependencyVersionFromPackageJson(tree, 'react');
+      expect(version).toBe('^18.2.0');
+    });
+
+    it('should resolve named catalog reference', () => {
+      writeJson(tree, 'package.json', {
+        dependencies: { vue: 'catalog:frontend' },
+      });
+
+      const version = getDependencyVersionFromPackageJson(tree, 'vue');
+      expect(version).toBe('^3.3.0');
+    });
+
+    it('should return null when catalog reference cannot be resolved', () => {
+      writeJson(tree, 'package.json', {
+        dependencies: { unknown: 'catalog:' },
+      });
+
+      const version = getDependencyVersionFromPackageJson(tree, 'unknown');
+      expect(version).toBeNull();
+    });
+
+    it('should work with pre-loaded package.json', () => {
+      const packageJson: PackageJson = {
+        name: 'test',
+        version: '1.0.0',
+        dependencies: { react: 'catalog:' },
+      };
+      writeJson(tree, 'package.json', packageJson);
+
+      const version = getDependencyVersionFromPackageJson(
+        tree,
+        'react',
+        packageJson
+      );
+
+      expect(version).toBe('^18.2.0');
+    });
+
+    it('should resolve catalog reference with section-specific lookup', () => {
+      writeJson(tree, 'package.json', {
+        dependencies: { react: 'catalog:' },
+        devDependencies: { lodash: 'catalog:' },
+      });
+
+      const reactVersion = getDependencyVersionFromPackageJson(
+        tree,
+        'react',
+        'package.json',
+        ['dependencies']
+      );
+      const lodashVersion = getDependencyVersionFromPackageJson(
+        tree,
+        'lodash',
+        'package.json',
+        ['devDependencies']
+      );
+
+      expect(reactVersion).toBe('^18.2.0');
+      expect(lodashVersion).toBe('^4.17.21');
+    });
+  });
+});
+
+describe('readNxMigrateConfig', () => {
+  it.each([
+    '../../../../etc/profile',
+    '/etc/profile',
+    'migrations/../../../escape.json',
+  ])('should reject the escaping migrations path %s', (migrations) => {
+    expect(() =>
+      readNxMigrateConfig({
+        name: 'hostile',
+        version: '1.0.0',
+        'nx-migrations': { migrations },
+      })
+    ).toThrow(/Invalid migrations path .* in package "hostile@1.0.0"/);
+  });
+
+  it('should reject an escaping migrations path given in the string shorthand', () => {
+    expect(() =>
+      readNxMigrateConfig({
+        name: 'hostile',
+        version: '1.0.0',
+        'nx-migrations': '../../../../etc/profile',
+      } as any)
+    ).toThrow(/Invalid migrations path/);
+  });
+
+  it('should carry supportsOptionalMigrations from the nx-migrations config', () => {
+    const config = readNxMigrateConfig({
+      'nx-migrations': {
+        migrations: './migrations.json',
+        supportsOptionalMigrations: true,
+      },
+    });
+
+    expect(config).toMatchObject({
+      migrations: './migrations.json',
+      supportsOptionalMigrations: true,
+    });
+  });
+
+  it('should carry supportsOptionalMigrations from the ng-update config', () => {
+    const config = readNxMigrateConfig({
+      'ng-update': {
+        migrations: './migrations.json',
+        supportsOptionalMigrations: true,
+      },
+    });
+
+    expect(config).toMatchObject({
+      migrations: './migrations.json',
+      supportsOptionalMigrations: true,
+    });
+  });
+
+  it('should not set supportsOptionalMigrations when the config omits it', () => {
+    const config = readNxMigrateConfig({
+      'nx-migrations': { migrations: './migrations.json' },
+    });
+
+    expect(config.supportsOptionalMigrations).toBeUndefined();
+  });
+
+  it('should not set supportsOptionalMigrations when the config sets it to false', () => {
+    const config = readNxMigrateConfig({
+      'nx-migrations': {
+        migrations: './migrations.json',
+        supportsOptionalMigrations: false,
+      },
+    });
+
+    expect(config.supportsOptionalMigrations).toBeUndefined();
+  });
+});

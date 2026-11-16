@@ -1,0 +1,91 @@
+Program {
+  type: "Program",
+  body: [
+    ClassDeclaration {
+      type: "ClassDeclaration",
+      abstract: false,
+      body: ClassBody {
+        type: "ClassBody",
+        body: [],
+
+        range: [38, 40],
+        loc: {
+          start: { column: 10, line: 3 },
+          end: { column: 12, line: 3 },
+        },
+      },
+      declare: false,
+      decorators: [
+        Decorator {
+          type: "Decorator",
+          expression: Identifier {
+            type: "Identifier",
+            decorators: [],
+            name: "decoratorOne",
+            optional: false,
+
+            range: [1, 13],
+            loc: {
+              start: { column: 1, line: 1 },
+              end: { column: 13, line: 1 },
+            },
+          },
+
+          range: [0, 13],
+          loc: {
+            start: { column: 0, line: 1 },
+            end: { column: 13, line: 1 },
+          },
+        },
+        Decorator {
+          type: "Decorator",
+          expression: Identifier {
+            type: "Identifier",
+            decorators: [],
+            name: "decoratorTwo",
+            optional: false,
+
+            range: [15, 27],
+            loc: {
+              start: { column: 1, line: 2 },
+              end: { column: 13, line: 2 },
+            },
+          },
+
+          range: [14, 27],
+          loc: {
+            start: { column: 0, line: 2 },
+            end: { column: 13, line: 2 },
+          },
+        },
+      ],
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "Foo",
+        optional: false,
+
+        range: [34, 37],
+        loc: {
+          start: { column: 6, line: 3 },
+          end: { column: 9, line: 3 },
+        },
+      },
+      implements: [],
+      superClass: null,
+
+      range: [0, 40],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 12, line: 3 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 41],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 4 },
+  },
+}

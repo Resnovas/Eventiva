@@ -1,0 +1,145 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        FunctionNameDefinition$1 {
+          name: Identifier<"foo">,
+          node: TSDeclareFunction$1,
+        },
+        FunctionNameDefinition$4 {
+          name: Identifier<"foo">,
+          node: FunctionDeclaration$2,
+        },
+      ],
+      name: "foo",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ParameterDefinition$2 {
+          name: Identifier<"a">,
+          node: TSDeclareFunction$1,
+        },
+      ],
+      name: "a",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"b">,
+          node: TSDeclareFunction$1,
+        },
+      ],
+      name: "b",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$6 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$7 {
+      defs: [
+        ParameterDefinition$5 {
+          name: Identifier<"a">,
+          node: FunctionDeclaration$2,
+        },
+      ],
+      name: "a",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$7,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$8 {
+      defs: [
+        ParameterDefinition$6 {
+          name: Identifier<"b">,
+          node: FunctionDeclaration$2,
+        },
+      ],
+      name: "b",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$3,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "foo" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+    FunctionScope$2 {
+      block: TSDeclareFunction$1,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "arguments" => Variable$3,
+        "a" => Variable$4,
+        "b" => Variable$5,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+        Variable$5,
+      ],
+    },
+    FunctionScope$3 {
+      block: FunctionDeclaration$2,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "arguments" => Variable$6,
+        "a" => Variable$7,
+        "b" => Variable$8,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$6,
+        Variable$7,
+        Variable$8,
+      ],
+    },
+  ],
+}

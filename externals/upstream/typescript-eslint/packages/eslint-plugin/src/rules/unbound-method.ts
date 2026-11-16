@@ -1,0 +1,505 @@
+import type { TSESTree } from '@typescript-eslint/utils';
+
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
+import * as ts from 'typescript';
+
+import {
+  createRule,
+  getModifiers,
+  getParserServices,
+  isBuiltinSymbolLike,
+  isSymbolFromDefaultLibrary,
+} from '../util';
+
+//------------------------------------------------------------------------------
+// Rule Definition
+//------------------------------------------------------------------------------
+
+interface Config {
+  ignoreStatic: boolean;
+}
+
+export type Options = [Config];
+
+export type MessageIds = 'unbound' | 'unboundWithoutThisAnnotation';
+
+/**
+ * Static methods on these globals are either not `this`-aware or supported being
+ * called without `this`.
+ *
+ * - `Promise` is not in the list because it supports subclassing by using `this`
+ * - `Array` is in the list because although it supports subclassing, the `this`
+ *   value defaults to `Array` when unbound
+ *
+ * This is now a language-design invariant: static methods are never `this`-aware
+ * because TC39 wants to make `array.map(Class.method)` work!
+ */
+const SUPPORTED_GLOBALS = [
+  'Number',
+  'Object',
+  'String', // eslint-disable-line @typescript-eslint/internal/prefer-ast-types-enum
+  'RegExp',
+  'Symbol',
+  'Array',
+  'Proxy',
+  'Date',
+  'Atomics',
+  'Reflect',
+  'console',
+  'Math',
+  'JSON',
+  'Intl',
+] as const;
+const nativelyBoundMembers = new Set(
+  SUPPORTED_GLOBALS.flatMap(namespace => {
+    if (!(namespace in global)) {
+      // node.js might not have namespaces like Intl depending on compilation options
+      // https://nodejs.org/api/intl.html#intl_options_for_building_node_js
+      return [];
+    }
+    const object = global[namespace];
+    return Object.getOwnPropertyNames(object)
+      .filter(
+        name =>
+          !name.startsWith('_') &&
+          typeof (object as Record<string, unknown>)[name] === 'function',
+      )
+      .map(name => `${namespace}.${name}`);
+  }),
+);
+
+const SUPPORTED_GLOBAL_TYPES = [
+  'NumberConstructor',
+  'ObjectConstructor',
+  'StringConstructor',
+  'SymbolConstructor',
+  'ArrayConstructor',
+  'Array',
+  'ProxyConstructor',
+  'Console',
+  'DateConstructor',
+  'Atomics',
+  'Math',
+  'JSON',
+];
+
+/**
+ * Methods on instances of built-in classes that are defined by the ECMAScript
+ * spec as *bound* to their instance (i.e. they are safe to call without their
+ * receiver), but whose TypeScript declarations don't model that binding - they
+ * are declared as plain methods that would require a `this` value.
+ *
+ * For example, `Intl.Collator.prototype.compare` is defined as a bound getter
+ * function per the ECMA-402 spec:
+ * https://tc39.es/ecma402/#sec-intl.collator.prototype.compare
+ * ...but `lib.es5.d.ts` declares it as a regular method, so this rule would
+ * otherwise incorrectly flag usages such as `array.sort(collator.compare)`.
+ */
+const nativelyBoundInstanceMethods = new Set<string>(['Collator.compare']);
+
+const isNotImported = (
+  symbol: ts.Symbol,
+  currentSourceFile: ts.SourceFile | undefined,
+): boolean => {
+  const { valueDeclaration } = symbol;
+  if (!valueDeclaration) {
+    // working around https://github.com/microsoft/TypeScript/issues/31294
+    return false;
+  }
+
+  return (
+    !!currentSourceFile &&
+    currentSourceFile !== valueDeclaration.getSourceFile()
+  );
+};
+
+/**
+ * Returns `true` if `propertyName` is a member of a built-in class instance
+ * that is defined by the spec as bound to that instance (see
+ * `nativelyBoundInstanceMethods` above).
+ */
+function isSpecBoundBuiltinMethod(
+  program: ts.Program,
+  objectType: ts.Type,
+  propertyName: string,
+): boolean {
+  const symbol = objectType.getSymbol();
+  if (!symbol || !isSymbolFromDefaultLibrary(program, symbol)) {
+    return false;
+  }
+
+  return nativelyBoundInstanceMethods.has(
+    `${symbol.getName()}.${propertyName}`,
+  );
+}
+
+const BASE_MESSAGE = [
+  `A method that is not declared with \`this: void\` may cause unintentional scoping of \`this\` when separated from its object.`,
+  `Consider using an arrow function or explicitly \`.bind()\`ing the method to avoid calling the method with an unintended \`this\` value. `,
+].join('\n');
+
+export default createRule<Options, MessageIds>({
+  name: 'unbound-method',
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Enforce unbound methods are called with their expected scope',
+      recommended: 'recommended',
+      requiresTypeChecking: true,
+    },
+    messages: {
+      unbound: BASE_MESSAGE,
+      unboundWithoutThisAnnotation: `${BASE_MESSAGE}\nIf a function does not access \`this\`, it can be annotated with \`this: void\`.`,
+    },
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ignoreStatic: {
+            type: 'boolean',
+            description:
+              'Whether to skip checking whether `static` methods are correctly bound.',
+          },
+        },
+      },
+    ],
+  },
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- For compatibility with ESLint 8, see #12842
+  defaultOptions: [
+    {
+      ignoreStatic: false,
+    },
+  ],
+  create(context, [{ ignoreStatic }]) {
+    const services = getParserServices(context);
+    const currentSourceFile = services.program.getSourceFile(context.filename);
+
+    function checkIfMethodAndReport(
+      node: TSESTree.Node,
+      symbol: ts.Symbol | undefined,
+    ): boolean {
+      if (!symbol) {
+        return false;
+      }
+
+      const { dangerous, firstParamIsThis } = checkIfMethod(
+        symbol,
+        ignoreStatic,
+      );
+      if (dangerous) {
+        context.report({
+          node,
+          messageId:
+            firstParamIsThis === false
+              ? 'unboundWithoutThisAnnotation'
+              : 'unbound',
+        });
+        return true;
+      }
+      return false;
+    }
+
+    function checkUnionConstituentsAndReport(
+      reportNode: TSESTree.Node,
+      propertyName: string,
+      type: ts.Type,
+    ): boolean {
+      for (const intersectionPart of tsutils
+        .unionConstituents(type)
+        .flatMap(unionPart => tsutils.intersectionConstituents(unionPart))) {
+        const reported = checkIfMethodAndReport(
+          reportNode,
+          intersectionPart.getProperty(propertyName),
+        );
+        if (reported) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function getAccessedPropertyNames(
+      node: TSESTree.MemberExpression,
+    ): string[] {
+      if (!node.computed) {
+        return node.property.type === AST_NODE_TYPES.Identifier
+          ? [node.property.name]
+          : [];
+      }
+
+      return tsutils
+        .unionConstituents(services.getTypeAtLocation(node.property))
+        .flatMap(part => {
+          return part.isStringLiteral() || part.isNumberLiteral()
+            ? [part.value.toString()]
+            : [];
+        });
+    }
+
+    function isNativelyBound(
+      object: TSESTree.Node,
+      property: TSESTree.Node,
+    ): boolean {
+      // We can't rely entirely on the type-level checks made at the end of this
+      // function, because sometimes type declarations don't come from the
+      // default library, but come from, for example, "@types/node". And we can't
+      // tell if a method is unbound just by looking at its signature declared in
+      // the interface.
+      //
+      // See related discussion https://github.com/typescript-eslint/typescript-eslint/pull/8952#discussion_r1576543310
+      if (
+        object.type === AST_NODE_TYPES.Identifier &&
+        property.type === AST_NODE_TYPES.Identifier
+      ) {
+        const objectSymbol = services.getSymbolAtLocation(object);
+        const notImported =
+          objectSymbol != null &&
+          isNotImported(objectSymbol, currentSourceFile);
+
+        if (
+          notImported &&
+          nativelyBoundMembers.has(`${object.name}.${property.name}`)
+        ) {
+          return true;
+        }
+      }
+
+      if (property.type === AST_NODE_TYPES.Identifier) {
+        const objectType = services.getTypeAtLocation(object);
+        if (
+          isSpecBoundBuiltinMethod(services.program, objectType, property.name)
+        ) {
+          return true;
+        }
+      }
+
+      // if `${object.name}.${property.name}` doesn't match any of
+      // the nativelyBoundMembers, then we fallback to type-level checks
+      return (
+        isBuiltinSymbolLike(
+          services.program,
+          services.getTypeAtLocation(object),
+          SUPPORTED_GLOBAL_TYPES,
+        ) &&
+        isSymbolFromDefaultLibrary(
+          services.program,
+          services.getTypeAtLocation(property).getSymbol(),
+        )
+      );
+    }
+
+    return {
+      MemberExpression(node: TSESTree.MemberExpression): void {
+        if (isSafeUse(node) || isNativelyBound(node.object, node.property)) {
+          return;
+        }
+
+        const propertyNames = getAccessedPropertyNames(node);
+        if (propertyNames.length === 0) {
+          return;
+        }
+
+        const objectType = services.getTypeAtLocation(node.object);
+        for (const propertyName of propertyNames) {
+          if (checkUnionConstituentsAndReport(node, propertyName, objectType)) {
+            break;
+          }
+        }
+      },
+      ObjectPattern(node): void {
+        if (isNodeInsideTypeDeclaration(node)) {
+          return;
+        }
+        let initNode: TSESTree.Node | null = null;
+        if (node.parent.type === AST_NODE_TYPES.VariableDeclarator) {
+          initNode = node.parent.init;
+        } else if (
+          node.parent.type === AST_NODE_TYPES.AssignmentPattern ||
+          node.parent.type === AST_NODE_TYPES.AssignmentExpression
+        ) {
+          initNode = node.parent.right;
+        }
+
+        for (const property of node.properties) {
+          if (
+            property.type !== AST_NODE_TYPES.Property ||
+            property.key.type !== AST_NODE_TYPES.Identifier
+          ) {
+            continue;
+          }
+
+          if (initNode) {
+            if (!isNativelyBound(initNode, property.key)) {
+              const reported = checkIfMethodAndReport(
+                property.key,
+                services
+                  .getTypeAtLocation(initNode)
+                  .getProperty(property.key.name),
+              );
+              if (reported) {
+                continue;
+              }
+              // In assignment patterns, we should also check the type of
+              // Foo's nativelyBound method because initNode might be used as
+              // default value:
+              //   function ({ nativelyBound }: Foo = NativeObject) {}
+            } else if (node.parent.type !== AST_NODE_TYPES.AssignmentPattern) {
+              continue;
+            }
+          }
+
+          checkUnionConstituentsAndReport(
+            property.key,
+            property.key.name,
+            services.getTypeAtLocation(node),
+          );
+        }
+      },
+    };
+  },
+});
+
+function isNodeInsideTypeDeclaration(node: TSESTree.Node): boolean {
+  let parent: TSESTree.Node | undefined = node;
+  while ((parent = parent.parent)) {
+    if (
+      (parent.type === AST_NODE_TYPES.ClassDeclaration && parent.declare) ||
+      parent.type === AST_NODE_TYPES.TSAbstractMethodDefinition ||
+      parent.type === AST_NODE_TYPES.TSDeclareFunction ||
+      parent.type === AST_NODE_TYPES.TSFunctionType ||
+      parent.type === AST_NODE_TYPES.TSInterfaceDeclaration ||
+      parent.type === AST_NODE_TYPES.TSTypeAliasDeclaration ||
+      (parent.type === AST_NODE_TYPES.VariableDeclaration && parent.declare)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+interface CheckMethodResult {
+  dangerous: boolean;
+  firstParamIsThis?: boolean;
+}
+
+function checkIfMethod(
+  symbol: ts.Symbol,
+  ignoreStatic: boolean,
+): CheckMethodResult {
+  const { valueDeclaration } = symbol;
+  if (!valueDeclaration) {
+    // working around https://github.com/microsoft/TypeScript/issues/31294
+    return { dangerous: false };
+  }
+
+  switch (valueDeclaration.kind) {
+    case ts.SyntaxKind.PropertyAssignment:
+    case ts.SyntaxKind.PropertyDeclaration: {
+      const { initializer } = valueDeclaration as
+        ts.PropertyAssignment | ts.PropertyDeclaration;
+      if (!initializer || !ts.isFunctionExpression(initializer)) {
+        return { dangerous: false };
+      }
+      return checkMethod(initializer, ignoreStatic);
+    }
+    case ts.SyntaxKind.MethodDeclaration:
+    case ts.SyntaxKind.MethodSignature: {
+      return checkMethod(
+        valueDeclaration as ts.MethodDeclaration | ts.MethodSignature,
+        ignoreStatic,
+      );
+    }
+  }
+
+  return { dangerous: false };
+}
+
+function checkMethod(
+  valueDeclaration:
+    ts.FunctionExpression | ts.MethodDeclaration | ts.MethodSignature,
+  ignoreStatic: boolean,
+): CheckMethodResult {
+  const firstParam = valueDeclaration.parameters.at(0);
+  const firstParamIsThis =
+    firstParam?.name.kind === ts.SyntaxKind.Identifier &&
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    firstParam.name.escapedText === 'this';
+  const thisArgIsVoid =
+    firstParamIsThis && firstParam.type?.kind === ts.SyntaxKind.VoidKeyword;
+
+  return {
+    dangerous:
+      !thisArgIsVoid &&
+      !(
+        ignoreStatic &&
+        tsutils.includesModifier(
+          getModifiers(valueDeclaration),
+          ts.SyntaxKind.StaticKeyword,
+        )
+      ),
+    firstParamIsThis,
+  };
+}
+
+function isSafeUse(node: TSESTree.Node): boolean {
+  const parent = node.parent;
+
+  switch (parent?.type) {
+    case AST_NODE_TYPES.IfStatement:
+    case AST_NODE_TYPES.ForStatement:
+    case AST_NODE_TYPES.MemberExpression:
+    case AST_NODE_TYPES.SwitchStatement:
+    case AST_NODE_TYPES.UpdateExpression:
+    case AST_NODE_TYPES.WhileStatement:
+      return true;
+
+    case AST_NODE_TYPES.CallExpression:
+      return parent.callee === node;
+
+    case AST_NODE_TYPES.ConditionalExpression:
+      return parent.test === node;
+
+    case AST_NODE_TYPES.TaggedTemplateExpression:
+      return parent.tag === node;
+
+    case AST_NODE_TYPES.UnaryExpression:
+      // the first case is safe for obvious
+      // reasons. The second one is also fine
+      // since we're returning something falsy
+      return ['!', 'delete', 'typeof', 'void'].includes(parent.operator);
+
+    case AST_NODE_TYPES.BinaryExpression:
+      return ['!=', '!==', '==', '===', 'instanceof'].includes(parent.operator);
+
+    case AST_NODE_TYPES.AssignmentExpression:
+      return (
+        parent.operator === '=' &&
+        (node === parent.left ||
+          (node.type === AST_NODE_TYPES.MemberExpression &&
+            node.object.type === AST_NODE_TYPES.Super &&
+            parent.left.type === AST_NODE_TYPES.MemberExpression &&
+            parent.left.object.type === AST_NODE_TYPES.ThisExpression))
+      );
+
+    case AST_NODE_TYPES.ChainExpression:
+    case AST_NODE_TYPES.TSNonNullExpression:
+    case AST_NODE_TYPES.TSAsExpression:
+    case AST_NODE_TYPES.TSTypeAssertion:
+      return isSafeUse(parent);
+
+    case AST_NODE_TYPES.LogicalExpression:
+      if (parent.operator === '&&' && parent.left === node) {
+        // this is safe, as && will return the left if and only if it's falsy
+        return true;
+      }
+
+      // in all other cases, it's likely the logical expression will return the method ref
+      // so make sure the parent is a safe usage
+      return isSafeUse(parent);
+  }
+
+  return false;
+}

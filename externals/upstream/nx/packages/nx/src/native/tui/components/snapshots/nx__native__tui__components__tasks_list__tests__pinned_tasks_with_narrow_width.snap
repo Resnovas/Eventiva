@@ -1,0 +1,19 @@
+---
+source: packages/nx/src/native/tui/components/tasks_list.rs
+expression: terminal.backend()
+---
+"                                        "
+" NX    Test Tasks               Duration"
+"                                        "
+"                                        "
+"> ·    app1:build                    ..."
+"  ·    app1:test [1]                 ..."
+"  ·    app2:lint                     ..."
+"                                        "
+"                                        "
+"                                        "
+"                                        "
+"                                        "
+"                                        "
+"                                        "
+"                                        "

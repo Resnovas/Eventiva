@@ -1,0 +1,159 @@
+import { multiselectPrompt, textPrompt } from '../../../utils/prompt-helpers';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import ignore = require('ignore');
+import { join, relative } from 'path';
+import { InitArgs } from '../init-v1';
+import { readJsonFile } from '../../../utils/fileutils';
+import { output } from '../../../utils/output';
+import { detectPackageManager } from '../../../utils/package-manager';
+import {
+  addDepsToPackageJson,
+  createNxJsonFile,
+  initCloud,
+  runInstall,
+  updateGitIgnore,
+} from './utils';
+import { connectExistingRepoToNxCloudPrompt } from '../../nx-cloud/connect/connect-to-nx-cloud';
+import { MessageOptionKey } from '../../../utils/ab-testing';
+
+type Options = Pick<InitArgs, 'nxCloud' | 'interactive' | 'cacheable'> & {
+  legacy?: boolean;
+};
+
+export async function addNxToMonorepo(
+  options: Options,
+  guided: boolean = true
+) {
+  const repoRoot = process.cwd();
+
+  output.log({ title: '🐳 Nx initialization' });
+
+  const packageJsonFiles = allProjectPackageJsonFiles(repoRoot);
+  const scripts = combineAllScriptNames(repoRoot, packageJsonFiles);
+
+  let targetDefaults: string[];
+  let cacheableOperations: string[];
+  let scriptOutputs = {} as { [script: string]: string };
+  let nxCloudChoice: MessageOptionKey;
+
+  if (options.interactive && scripts.length > 0 && guided) {
+    output.log({
+      title:
+        '🧑‍🔧 Please answer the following questions about the scripts found in your workspace in order to generate task runner configuration',
+    });
+
+    targetDefaults = await multiselectPrompt({
+      message:
+        'Which scripts need to be run in order? (e.g. before building a project, dependent projects must be built)',
+      choices: scripts,
+    });
+
+    cacheableOperations = await multiselectPrompt({
+      message:
+        'Which scripts are cacheable? (Produce the same output given the same input, e.g. build, test and lint usually are, serve and start are not)',
+      choices: scripts,
+    });
+
+    for (const scriptName of cacheableOperations) {
+      scriptOutputs[scriptName] = await textPrompt({
+        message: `Does the "${scriptName}" script create any outputs? If not, leave blank, otherwise provide a path relative to a project root (e.g. dist, lib, build, coverage)`,
+      });
+    }
+
+    nxCloudChoice =
+      options.nxCloud === true
+        ? 'yes'
+        : options.nxCloud === false
+          ? 'skip'
+          : await connectExistingRepoToNxCloudPrompt();
+  } else {
+    targetDefaults = [];
+    cacheableOperations = options.cacheable ?? [];
+    nxCloudChoice =
+      options.nxCloud === true
+        ? 'yes'
+        : options.nxCloud === false
+          ? 'skip'
+          : options.interactive
+            ? await connectExistingRepoToNxCloudPrompt()
+            : 'skip';
+  }
+
+  createNxJsonFile(
+    repoRoot,
+    targetDefaults,
+    cacheableOperations,
+    scriptOutputs
+  );
+
+  updateGitIgnore(repoRoot);
+  const packageManager = detectPackageManager(repoRoot);
+  addDepsToPackageJson(repoRoot, packageManager);
+
+  output.log({ title: '📦 Installing dependencies' });
+  runInstall(repoRoot, packageManager);
+
+  if (nxCloudChoice === 'yes') {
+    output.log({ title: '🛠️ Setting up Nx Cloud' });
+    await initCloud('nx-init-monorepo');
+  }
+}
+
+// scanning package.json files
+function allProjectPackageJsonFiles(repoRoot: string) {
+  const packageJsonFiles = allPackageJsonFiles(repoRoot, repoRoot);
+  return packageJsonFiles.filter((c) => c != 'package.json');
+}
+
+function allPackageJsonFiles(repoRoot: string, dirName: string) {
+  const ignoredGlobs = getIgnoredGlobs(repoRoot);
+  const relDirName = relative(repoRoot, dirName);
+  if (
+    relDirName &&
+    (ignoredGlobs.ignores(relDirName) ||
+      relDirName.indexOf(`node_modules`) > -1)
+  ) {
+    return [];
+  }
+
+  let res = [];
+  try {
+    readdirSync(dirName).forEach((c) => {
+      const child = join(dirName, c);
+      if (ignoredGlobs.ignores(relative(repoRoot, child))) {
+        return;
+      }
+      try {
+        const s = statSync(child);
+        if (s.isFile() && c == 'package.json') {
+          res.push(relative(repoRoot, child));
+        } else if (s.isDirectory()) {
+          res = [...res, ...allPackageJsonFiles(repoRoot, child)];
+        }
+      } catch {}
+    });
+  } catch {}
+  return res;
+}
+
+function getIgnoredGlobs(repoRoot: string) {
+  const ig = ignore();
+  try {
+    ig.add(readFileSync(`${repoRoot}/.gitignore`, 'utf-8'));
+  } catch {}
+  return ig;
+}
+
+function combineAllScriptNames(
+  repoRoot: string,
+  packageJsonFiles: string[]
+): string[] {
+  const res = new Set<string>();
+  packageJsonFiles.forEach((p) => {
+    const packageJson = readJsonFile(join(repoRoot, p));
+    Object.keys(packageJson.scripts || {}).forEach((scriptName) =>
+      res.add(scriptName)
+    );
+  });
+  return [...res];
+}

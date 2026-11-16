@@ -1,0 +1,322 @@
+import { runInNewContext } from 'node:vm'
+
+import {
+  DOMExceptionCoercer,
+  ErrorEventCoercer,
+  ErrorCoercer,
+  ObjectCoercer,
+  StringCoercer,
+  EventCoercer,
+} from './coercers'
+import { PrimitiveCoercer } from './coercers/primitive-coercer'
+import { PromiseRejectionEventCoercer } from './coercers/promise-rejection-event'
+import { ErrorPropertiesBuilder } from './error-properties-builder'
+import { createStackParser } from './parsers'
+import { ExceptionLike } from './types'
+
+describe('ErrorPropertiesBuilder', () => {
+  describe('coerceUnknown', () => {
+    class CustomTestError extends Error {
+      constructor(message: string, cause?: unknown) {
+        super(message)
+        this.name = 'CustomTestError'
+        this.cause = cause
+      }
+    }
+
+    const errorPropertiesBuilder = new ErrorPropertiesBuilder(
+      [
+        new DOMExceptionCoercer(),
+        new ErrorEventCoercer(),
+        new ErrorCoercer(),
+        new PromiseRejectionEventCoercer(),
+        new EventCoercer(),
+        new ObjectCoercer(),
+        new StringCoercer(),
+        new PrimitiveCoercer(),
+      ],
+      createStackParser('web:javascript'),
+      []
+    )
+
+    function coerceInput(input: unknown, error: Error = new Error()): ExceptionLike | undefined {
+      const coercingContext = errorPropertiesBuilder.buildCoercingContext(
+        { handled: false },
+        {
+          syntheticException: error,
+        }
+      )
+      return coercingContext.apply(input)
+    }
+
+    it('should handle null values', async () => {
+      const syntheticError = new Error()
+      const exception = coerceInput(null, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'Error',
+        value: 'Primitive value captured as exception: null',
+        stack: syntheticError.stack,
+      })
+    })
+
+    it('should handle string', () => {
+      const syntheticError = new Error()
+      const exception = coerceInput('test', syntheticError)
+      expect(exception).toMatchObject({
+        type: 'Error',
+        value: 'test',
+        stack: syntheticError.stack,
+      })
+    })
+
+    it('should handle exception string', () => {
+      const syntheticError = new Error()
+      const exception = coerceInput('Uncaught exception: InternalError: but somehow still a string', syntheticError)
+      expect(exception).toMatchObject({
+        type: 'InternalError',
+        value: 'but somehow still a string',
+        stack: syntheticError.stack,
+      })
+    })
+
+    it('should use keys in objects', async () => {
+      const syntheticError = new Error()
+      const errorObject = { foo: 'Foo value', bar: 'Bar value' }
+      const exception = coerceInput(errorObject, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'Error',
+        value: 'Object captured as exception with keys: bar, foo',
+        stack: syntheticError.stack,
+      })
+    })
+
+    it('should handle object with an error property', () => {
+      const nestedError = new CustomTestError('My special error')
+      const errorObject = { error: nestedError }
+      const syntheticError = new Error()
+      const exception = coerceInput(errorObject, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'My special error',
+        stack: nestedError.stack,
+      })
+    })
+
+    it('should handle error', () => {
+      const errorObject = new CustomTestError('My special error')
+      const exception = coerceInput(errorObject)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'My special error',
+        stack: errorObject.stack,
+      })
+    })
+
+    it('should fall back to the synthetic stack when the error has no stack', () => {
+      // Firefox rejects a network `fetch` with a `TypeError` that carries no
+      // stack, so the frames must come from the synthetic exception instead.
+      const errorObject = new CustomTestError('My special error')
+      errorObject.stack = ''
+      const syntheticError = new Error()
+      const exception = coerceInput(errorObject, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'My special error',
+        stack: syntheticError.stack,
+        synthetic: true,
+      })
+    })
+
+    it('should preserve a cross-realm error', () => {
+      const crossRealmError = runInNewContext(
+        `new TypeError('cross-realm error', {
+          cause: new Error('cross-realm cause')
+        })`
+      )
+      expect(crossRealmError).not.toBeInstanceOf(Error)
+
+      expect(coerceInput(crossRealmError)).toMatchObject({
+        type: 'TypeError',
+        value: 'cross-realm error',
+        stack: crossRealmError.stack,
+        synthetic: false,
+        cause: {
+          type: 'Error',
+          value: 'cross-realm cause',
+          stack: crossRealmError.cause.stack,
+          synthetic: false,
+        },
+      })
+    })
+
+    it('should handle error with error cause', () => {
+      const secondError = new CustomTestError('My original error')
+      const firstError = new CustomTestError('My wrapped error', secondError)
+      const exception = coerceInput(firstError)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'My wrapped error',
+        stack: firstError.stack,
+        cause: {
+          type: 'CustomTestError',
+          value: 'My original error',
+          stack: secondError.stack,
+        },
+      })
+    })
+
+    it('should handle error with object cause', () => {
+      const originalCause = { foo: 'bar', test: 'test' }
+      const kaboomError = new CustomTestError('Front error', originalCause)
+      const syntheticError = new Error()
+      const exception = coerceInput(kaboomError, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'Front error',
+        stack: kaboomError.stack,
+        cause: {
+          type: 'Error',
+          value: 'Object captured as exception with keys: foo, test',
+          // Do we want to use the stack from the synthetic error?
+          stack: undefined,
+        },
+      })
+    })
+
+    it('should handle error with string cause', () => {
+      const originalCause = 'My original error'
+      const kaboomError = new CustomTestError('Front error', originalCause)
+      const syntheticError = new Error()
+      const exception = coerceInput(kaboomError, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'CustomTestError',
+        value: 'Front error',
+        stack: kaboomError.stack,
+        cause: {
+          type: 'Error',
+          value: 'My original error',
+          // Do we want to use the stack from the synthetic error?
+          stack: undefined,
+        },
+      })
+    })
+
+    it('should convert a plain Event to an error', () => {
+      class MouseEvent extends Event {
+        constructor(type: string, eventInitDict?: EventInit) {
+          super(type, eventInitDict)
+        }
+      }
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, composed: true })
+      const syntheticError = new Error()
+      const exception = coerceInput(event, syntheticError)
+      expect(exception).toMatchObject({
+        type: 'MouseEvent',
+        value: 'MouseEvent captured as exception with keys: [object has no keys]',
+        stack: syntheticError.stack,
+        synthetic: true,
+      })
+    })
+
+    it('should convert a DOM Error to an error', () => {
+      class FakeDomError {
+        constructor(
+          public name: string,
+          public message: string
+        ) {}
+        [Symbol.toStringTag] = 'DOMError'
+      }
+      const event = new FakeDomError('click', 'foo')
+      const exception = coerceInput(event)
+      expect(exception).toMatchObject({
+        type: 'DOMError',
+        value: 'click: foo',
+        stack: undefined,
+        synthetic: false,
+      })
+    })
+
+    it('should convert a DOM Exception to an error', () => {
+      const event = new DOMException('oh no disaster', 'dom-exception')
+      const exception = coerceInput(event)
+      expect(exception).toBeDefined()
+      expect(exception).toMatchObject({
+        type: 'DOMException',
+        value: 'dom-exception: oh no disaster',
+        synthetic: false,
+      })
+    })
+
+    it('should extract the buried Error from a CustomEvent wrapping a PromiseRejectionEvent', () => {
+      const buriedError = new Error('Extension context invalidated.')
+      const customEvent = new CustomEvent('unhandledrejection', {
+        detail: {
+          reason: buriedError,
+          promise: Promise.resolve(),
+        },
+      })
+
+      const exception = coerceInput(customEvent)
+
+      expect(exception).toMatchObject({
+        type: 'Error',
+        value: 'Extension context invalidated.',
+        stack: buriedError.stack,
+      })
+    })
+
+    it('should preserve an error-like stack from a CustomEvent wrapping a PromiseRejectionEvent', () => {
+      const stack = 'TypeError: Extension context invalidated.\n    at extension.js:1:2'
+      const customEvent = new CustomEvent('unhandledrejection', {
+        detail: {
+          reason: {
+            name: 'TypeError',
+            message: 'Extension context invalidated.',
+            stack,
+          },
+        },
+      })
+
+      expect(coerceInput(customEvent)).toMatchObject({
+        type: 'TypeError',
+        value: "'TypeError' captured as exception with message: 'Extension context invalidated.'",
+        stack,
+      })
+    })
+
+    it('should fall back to Error when the object has no name property', () => {
+      const exception = coerceInput({ message: 'oh no disaster' })
+
+      expect(exception).toMatchObject({
+        type: 'Error',
+        value: 'oh no disaster',
+      })
+    })
+
+    it('should fall back to Error when the name property is an empty string', () => {
+      const exception = coerceInput({ name: '', message: 'oh no disaster' })
+
+      expect(exception).toMatchObject({
+        type: 'Error',
+      })
+    })
+
+    it('should preserve a string type when name is a stateful accessor', () => {
+      let reads = 0
+      const candidate = { message: 'boom' }
+
+      Object.defineProperty(candidate, 'name', {
+        // Keep this non-enumerable so the object property scan does not read it first.
+        get() {
+          reads += 1
+          return reads === 1 ? 'TypeError' : 42
+        },
+      })
+
+      expect(coerceInput(candidate)).toMatchObject({
+        type: 'TypeError',
+        value: 'boom',
+      })
+    })
+  })
+})

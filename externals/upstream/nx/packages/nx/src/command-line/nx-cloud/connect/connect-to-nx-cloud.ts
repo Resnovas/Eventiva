@@ -1,0 +1,332 @@
+import { handleImport } from '../../../utils/handle-import';
+import { selectPrompt } from '../../../utils/prompt-helpers';
+import { output } from '../../../utils/output';
+import { readNxJson } from '../../../config/configuration';
+import { FsTree, flushChanges } from '../../../generators/tree';
+import {
+  connectToNxCloud,
+  ConnectToNxCloudOptions,
+} from '../../../nx-cloud/generators/connect-to-nx-cloud/connect-to-nx-cloud';
+import { createNxCloudOnboardingURL } from '../../../nx-cloud/utilities/url-shorten';
+import { isNxCloudUsed } from '../../../utils/nx-cloud-utils';
+import { runNxSync } from '../../../utils/child-process';
+import { NxJsonConfiguration } from '../../../config/nx-json';
+import { NxArgs } from '../../../utils/command-line-utils';
+import {
+  MessageKey,
+  MessageOptionKey,
+  recordStat,
+  messages,
+  nxCloudDemoHyperlink,
+  nxCloudHyperlink,
+} from '../../../utils/ab-testing';
+import { nxVersion } from '../../../utils/versions';
+import { isCI } from '../../../utils/is-ci';
+import { isAiAgent, openUrl } from '../../../native';
+import { detectPackageManager } from '../../../utils/package-manager';
+import { workspaceRoot } from '../../../utils/workspace-root';
+import { getVcsRemoteInfo } from '../../../utils/git-utils';
+import * as pc from 'picocolors';
+const ora = require('ora');
+
+export function onlyDefaultRunnerIsUsed(nxJson: NxJsonConfiguration) {
+  const defaultRunner = nxJson.tasksRunnerOptions?.default?.runner;
+
+  if (!defaultRunner) {
+    // No tasks runner options OR no default runner defined:
+    // - If access token defined, uses cloud runner
+    // - If no access token defined, uses default
+    return (
+      !(
+        nxJson.nxCloudAccessToken ??
+        process.env.NX_CLOUD_AUTH_TOKEN ??
+        process.env.NX_CLOUD_ACCESS_TOKEN
+      ) && !nxJson.nxCloudId
+    );
+  }
+
+  return defaultRunner === 'nx/tasks-runners/default';
+}
+
+export async function connectToNxCloudIfExplicitlyAsked(
+  opts: NxArgs
+): Promise<void> {
+  if (opts['cloud'] === true) {
+    const nxJson = readNxJson();
+    if (!onlyDefaultRunnerIsUsed(nxJson)) return;
+
+    output.log({
+      title: '--cloud requires the workspace to be connected to Nx Cloud.',
+    });
+    runNxSync(`connect-to-nx-cloud`, {
+      stdio: [0, 1, 2],
+    });
+    output.success({
+      title: 'Your workspace has been successfully connected to Nx Cloud.',
+    });
+    process.exit(0);
+  }
+}
+
+export async function connectWorkspaceToCloud(
+  options: ConnectToNxCloudOptions,
+  directory = workspaceRoot
+) {
+  const tree = new FsTree(directory, false, 'connect-to-nx-cloud');
+  const accessToken = await connectToNxCloud(tree, options);
+  tree.lock();
+  flushChanges(directory, tree.listChanges());
+  return accessToken;
+}
+
+export async function connectToNxCloudCommand(
+  options: { generateToken?: boolean; checkRemote?: boolean },
+  command?: string
+): Promise<boolean> {
+  // `connectToNxCloudWithPrompt` (called from `migrate`) records its own stat; skip here to avoid double-counting.
+  const selfRecord = !command;
+  const baseMeta = {
+    nodeVersion: process.versions.node,
+    os: process.platform,
+    packageManager: detectPackageManager(),
+    aiAgent: isAiAgent(),
+    isCI: isCI(),
+  };
+  if (selfRecord) {
+    await recordStat({
+      command: 'connect',
+      nxVersion,
+      useCloud: true,
+      meta: { type: 'start', ...baseMeta },
+    });
+  }
+  try {
+    const result = await runConnectToNxCloud(options, command);
+    if (selfRecord) {
+      await recordStat({
+        command: 'connect',
+        nxVersion,
+        useCloud: result,
+        meta: { type: 'complete', ...baseMeta },
+      });
+    }
+    return result;
+  } catch (error) {
+    if (selfRecord) {
+      const message =
+        (error instanceof Error && error.message) ||
+        String(error ?? 'Unknown error');
+      const errorName =
+        typeof (error as any)?.code === 'string'
+          ? ((error as any).code as string)
+          : error instanceof Error
+            ? error.name
+            : typeof error;
+      await recordStat({
+        command: 'connect',
+        nxVersion,
+        useCloud: false,
+        meta: {
+          type: 'error',
+          errorCode: 'UNKNOWN',
+          errorName,
+          errorMessage: message.slice(0, 500),
+          ...baseMeta,
+        },
+      });
+    }
+    throw error;
+  }
+}
+
+async function runConnectToNxCloud(
+  options: { generateToken?: boolean; checkRemote?: boolean },
+  command?: string
+): Promise<boolean> {
+  const nxJson = readNxJson();
+
+  const installationSource = process.env.NX_CONSOLE
+    ? 'nx-console'
+    : 'nx-connect';
+
+  const hasRemote = !!getVcsRemoteInfo();
+  if (!hasRemote && options.checkRemote) {
+    output.error({
+      title: 'Missing VCS provider',
+      bodyLines: [
+        'Push this repository to a VCS provider (e.g., GitHub) and try again.',
+        'Go to https://github.com/new to create a repository on GitHub.',
+      ],
+    });
+    return false;
+  }
+
+  if (isNxCloudUsed(nxJson)) {
+    const token =
+      process.env.NX_CLOUD_AUTH_TOKEN ||
+      process.env.NX_CLOUD_ACCESS_TOKEN ||
+      nxJson.nxCloudAccessToken ||
+      nxJson.nxCloudId;
+    if (!token) {
+      throw new Error(
+        `Unable to authenticate. If you are connecting to Nx Cloud locally, set Nx Cloud ID in nx.json. If you are connecting in a CI context, either define accessToken in nx.json or set the NX_CLOUD_ACCESS_TOKEN env variable.`
+      );
+    }
+    const connectCloudUrl = await createNxCloudOnboardingURL(
+      installationSource,
+      token,
+      undefined,
+      options?.generateToken === true
+    );
+    output.log({
+      title: '✔ This workspace already has Nx Cloud set up',
+      bodyLines: [
+        'If you have not done so already, connect your workspace to your Nx Cloud account with the following URL:',
+        '',
+        `${connectCloudUrl}`,
+      ],
+    });
+
+    return false;
+  }
+  const token = await connectWorkspaceToCloud({
+    generateToken: options?.generateToken,
+    installationSource: command ?? installationSource,
+  });
+
+  const connectCloudUrl = await createNxCloudOnboardingURL(
+    'nx-connect',
+    token,
+    undefined,
+    options?.generateToken === true
+  );
+  const manualConnectNote = {
+    title: `Your Nx Cloud workspace is ready.`,
+    bodyLines: [
+      `To claim it, connect it to your Nx Cloud account:`,
+      `- Go to the following URL to connect your workspace to Nx Cloud:`,
+      '',
+      `${connectCloudUrl}`,
+    ],
+  };
+  try {
+    const cloudConnectSpinner = ora(
+      `Opening Nx Cloud ${connectCloudUrl} in your browser to connect your workspace.`
+    ).start();
+    await sleep(2000);
+    if (openUrl(connectCloudUrl)) {
+      cloudConnectSpinner.succeed();
+    } else {
+      cloudConnectSpinner.fail();
+      output.note(manualConnectNote);
+    }
+  } catch (e) {
+    output.note(manualConnectNote);
+  }
+
+  return true;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function connectExistingRepoToNxCloudPrompt(
+  command = 'init',
+  key: MessageKey = 'setupNxCloud',
+  recordCompletion = true
+): Promise<MessageOptionKey> {
+  const res = await nxCloudPrompt(key, utmContentForCommand(command));
+  // TODO: once legacy init-v1 (the NX_ADD_PLUGINS=false / useInferencePlugins:false path) is
+  // removed, drop this recordStat and the recordCompletion flag entirely - init-v2 records its
+  // own complete, and view-logs should record its own stat, so this shared helper won't record.
+  // init-v2 records its own init "complete" stat, so it opts out here to avoid double-counting.
+  // Other callers (e.g. view-logs, legacy init-v1) rely on this as their only completion event.
+  if (recordCompletion) {
+    await recordStat({
+      command,
+      nxVersion,
+      useCloud: res === 'yes',
+      meta: {
+        type: 'complete',
+        setupCloudPrompt: messages.codeOfSelectedPromptMessage(key) || '',
+        nxCloudArg: res,
+        nodeVersion: process.versions.node,
+        os: process.platform,
+        packageManager: detectPackageManager(),
+        aiAgent: isAiAgent(),
+        isCI: isCI(),
+      },
+    });
+  }
+  return res;
+}
+
+export async function connectToNxCloudWithPrompt(command: string) {
+  const setNxCloud = await nxCloudPrompt(
+    'setupNxCloud',
+    utmContentForCommand(command)
+  );
+  let useCloud = false;
+  if (setNxCloud === 'yes') {
+    useCloud = await connectToNxCloudCommand({ generateToken: false }, command);
+  }
+  await recordStat({
+    command,
+    nxVersion,
+    useCloud,
+    meta: {
+      type: 'complete',
+      setupCloudPrompt:
+        messages.codeOfSelectedPromptMessage('setupNxCloud') || '',
+      nxCloudArg: setNxCloud,
+      nodeVersion: process.versions.node,
+      os: process.platform,
+      packageManager: detectPackageManager(),
+      aiAgent: isAiAgent(),
+      isCI: isCI(),
+    },
+  });
+}
+
+function utmContentForCommand(command: string): string {
+  switch (command) {
+    case 'migrate':
+      return 'nx-migrate';
+    case 'view-logs':
+      return 'nx-connect';
+    default:
+      return 'nx-init';
+  }
+}
+
+async function nxCloudPrompt(
+  key: MessageKey,
+  utmContent: string
+): Promise<MessageOptionKey> {
+  const { message, choices, initial, footer, hint } = messages.getPrompt(key);
+
+  // No separate footer/hint slot, so both are folded into the message.
+  const suffix = [
+    hint,
+    footer && `${footer} ${nxCloudHyperlink(utmContent)}`,
+    `See it in action: ${nxCloudDemoHyperlink(utmContent)}`,
+  ]
+    .filter(Boolean)
+    .map((t) => pc.dim(t));
+
+  return (await selectPrompt({
+    message: [message, ...suffix].join('\n'),
+    // These choices are `{ value, name }` where `name` is the display text,
+    // the inverse of enquirer's usual `{ name, message }`. Prefer `value` so
+    // the answer is the key the caller compares against, not the label.
+    choices: (choices as any[]).map((c) =>
+      typeof c === 'string'
+        ? { value: c, label: c }
+        : { value: c.value ?? c.name, label: c.message ?? c.name ?? c.value }
+    ),
+    initial:
+      (choices as any[])[initial ?? 0]?.value ??
+      (choices as any[])[initial ?? 0]?.name,
+  })) as MessageOptionKey;
+}

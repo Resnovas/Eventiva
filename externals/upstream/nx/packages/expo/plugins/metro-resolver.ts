@@ -1,0 +1,291 @@
+import type { MatchPath } from 'tsconfig-paths';
+import { createMatchPath, loadConfig } from 'tsconfig-paths';
+import { resolvePathsBaseUrl } from '@nx/js';
+import * as pc from 'picocolors';
+import { CachedInputFileSystem, ResolverFactory } from 'enhanced-resolve';
+import { dirname, join } from 'path';
+import * as fs from 'fs';
+import { workspaceRoot } from '@nx/devkit';
+
+const metroResolverCache = new Map<string, any>();
+
+// The resolver must come from the same Metro instance Expo uses: `@expo/metro`
+// on SDK 55+, standalone `metro-resolver` on 53/54. Resolve from the app root
+// so each app gets its own SDK's copy.
+function getMetroResolver(appRoot: string | undefined, usesExpoMetro: boolean) {
+  const cacheKey = `${appRoot ?? ''}|${usesExpoMetro}`;
+  let metroResolver = metroResolverCache.get(cacheKey);
+  if (!metroResolver) {
+    const candidates = usesExpoMetro
+      ? ['@expo/metro/metro-resolver', 'metro-resolver']
+      : ['metro-resolver', '@expo/metro/metro-resolver'];
+    for (const candidate of candidates) {
+      try {
+        metroResolver = require(
+          require.resolve(candidate, appRoot ? { paths: [appRoot] } : undefined)
+        );
+        break;
+      } catch {}
+    }
+    if (!metroResolver) {
+      throw new Error(
+        'Unable to load Metro resolver. Install `@expo/metro` (Expo SDK 55+) or `metro-resolver` (>= 0.82.0).'
+      );
+    }
+    metroResolverCache.set(cacheKey, metroResolver);
+  }
+  return metroResolver;
+}
+
+/*
+ * Use tsconfig to resolve additional workspace libs.
+ *
+ * This resolve function requires projectRoot to be set to
+ * workspace root in order modules and assets to be registered and watched.
+ */
+export function getResolveRequest(
+  extensions: string[],
+  exportsConditionNames: string[] = [],
+  mainFields: string[] = [],
+  // which app is being bundled; default keeps the process-wide preference
+  anchor: { appRoot?: string; usesExpoMetro: boolean } = {
+    usesExpoMetro: true,
+  }
+) {
+  return function (
+    _context: any,
+    realModuleName: string,
+    platform: string | null
+  ) {
+    const debug = process.env.NX_REACT_NATIVE_DEBUG === 'true';
+
+    const { resolveRequest, ...context } = _context;
+
+    const resolvedPath =
+      resolveRequestFromContext(
+        resolveRequest,
+        _context,
+        realModuleName,
+        platform,
+        debug
+      ) ??
+      defaultMetroResolver(context, realModuleName, platform, debug, anchor) ??
+      tsconfigPathsResolver(
+        context,
+        extensions,
+        realModuleName,
+        platform,
+        debug,
+        anchor
+      ) ??
+      pnpmResolver(
+        extensions,
+        context,
+        realModuleName,
+        debug,
+        exportsConditionNames,
+        mainFields
+      );
+    if (resolvedPath) {
+      return resolvedPath;
+    }
+    if (debug) {
+      console.log(
+        pc.red(`[Nx] Unable to resolve with any resolver: ${realModuleName}`)
+      );
+    }
+    throw new Error(`Cannot resolve ${pc.bold(realModuleName)}`);
+  };
+}
+
+function resolveRequestFromContext(
+  resolveRequest: Function,
+  context: any,
+  realModuleName: string,
+  platform: string | null,
+  debug: boolean
+) {
+  try {
+    return resolveRequest(context, realModuleName, platform);
+  } catch {
+    if (debug)
+      console.log(
+        pc.cyan(
+          `[Nx] Unable to resolve with default resolveRequest: ${realModuleName}`
+        )
+      );
+  }
+}
+
+/**
+ * This function try to resolve path using metro's default resolver
+ * @returns path if resolved, else undefined
+ */
+function defaultMetroResolver(
+  context: any,
+  realModuleName: string,
+  platform: string | null,
+  debug: boolean,
+  anchor: { appRoot?: string; usesExpoMetro: boolean }
+) {
+  try {
+    const resolver = getMetroResolver(anchor.appRoot, anchor.usesExpoMetro);
+    return resolver.resolve(context, realModuleName, platform);
+  } catch {
+    if (debug)
+      console.log(
+        pc.cyan(
+          `[Nx] Unable to resolve with default Metro resolver: ${realModuleName}`
+        )
+      );
+  }
+}
+
+/**
+ * This resolver try to resolve module for pnpm.
+ * @returns path if resolved, else undefined
+ * This pnpm resolver is inspired from https://github.com/vjpr/pnpm-react-native-example/blob/main/packages/pnpm-expo-helper/util/make-resolver.js
+ */
+function pnpmResolver(
+  extensions: string[],
+  context: any,
+  realModuleName: string,
+  debug: boolean,
+  exportsConditionNames: string[] = [],
+  mainFields: string[] = []
+) {
+  try {
+    const pnpmResolve = getPnpmResolver(
+      extensions,
+      exportsConditionNames,
+      mainFields
+    );
+    let lookupStartPath = dirname(context.originModulePath);
+
+    // Defensive: ensure path is within workspace root.
+    // Handles Expo SDK 54+ where originModulePath may be project-relative.
+    if (!lookupStartPath.startsWith(workspaceRoot)) {
+      lookupStartPath = workspaceRoot;
+    }
+
+    const filePath = pnpmResolve.resolveSync(
+      {},
+      lookupStartPath,
+      realModuleName
+    );
+    if (filePath) {
+      return { type: 'sourceFile', filePath };
+    }
+  } catch {
+    if (debug)
+      console.log(
+        pc.cyan(
+          `[Nx] Unable to resolve with default PNPM resolver: ${realModuleName}`
+        )
+      );
+  }
+}
+
+/**
+ * This function try to resolve files that are specified in tsconfig's paths
+ * @returns path if resolved, else undefined
+ */
+function tsconfigPathsResolver(
+  context: any,
+  extensions: string[],
+  realModuleName: string,
+  platform: string | null,
+  debug: boolean,
+  anchor: { appRoot?: string; usesExpoMetro: boolean }
+) {
+  try {
+    const tsConfigPathMatcher = getMatcher(debug);
+    const match = tsConfigPathMatcher(
+      realModuleName,
+      undefined,
+      undefined,
+      extensions.map((ext) => `.${ext}`)
+    );
+    const resolver = getMetroResolver(anchor.appRoot, anchor.usesExpoMetro);
+    return resolver.resolve(context, match, platform);
+  } catch {
+    if (debug) {
+      console.log(pc.cyan(`[Nx] Failed to resolve ${pc.bold(realModuleName)}`));
+      console.log(
+        pc.cyan(
+          `[Nx] The following tsconfig paths was used:\n:${pc.bold(
+            JSON.stringify(paths, null, 2)
+          )}`
+        )
+      );
+    }
+  }
+}
+
+let matcher: MatchPath;
+let absoluteBaseUrl: string;
+let paths: Record<string, string[]>;
+
+function getMatcher(debug: boolean) {
+  if (!matcher) {
+    const result = loadConfig();
+    if (result.resultType === 'success') {
+      absoluteBaseUrl = resolvePathsBaseUrl(result.configFileAbsolutePath);
+      paths = result.paths;
+      if (debug) {
+        console.log(
+          pc.cyan(`[Nx] Located tsconfig at ${pc.bold(absoluteBaseUrl)}`)
+        );
+        console.log(
+          pc.cyan(
+            `[Nx] Found the following paths:\n:${pc.bold(
+              JSON.stringify(paths, null, 2)
+            )}`
+          )
+        );
+      }
+      matcher = createMatchPath(absoluteBaseUrl, paths);
+    } else {
+      console.log(pc.cyan(`[Nx] Failed to locate tsconfig}`));
+      throw new Error(`Could not load tsconfig for project`);
+    }
+  }
+  return matcher;
+}
+
+/**
+ * This function returns resolver for pnpm.
+ * It is inspired form https://github.com/vjpr/pnpm-expo-example/blob/main/packages/pnpm-expo-helper/util/make-resolver.js.
+ */
+let pnpmpResolver;
+function getPnpmResolver(
+  extensions: string[],
+  exportsConditionNames: string[] = [],
+  mainFields: string[] = []
+) {
+  if (!pnpmpResolver) {
+    // Create a filesystem adapter that matches enhanced-resolve's expected interface
+    // The issue is that Node.js fs types allow withFileTypes: true, but enhanced-resolve expects withFileTypes?: false
+    // This is compatible with the latest version of enhanced-resolve and is the intended way to use it.
+    // See https://github.com/webpack/enhanced-resolve/commit/d55471f20c17bce4def0b53cfe0b7027e7b48d82
+    const fileSystem = new CachedInputFileSystem(fs as any, 4000);
+    pnpmpResolver = ResolverFactory.createResolver({
+      fileSystem,
+      extensions: extensions.map((extension) => '.' + extension),
+      useSyncFileSystemCalls: true,
+      modules: [join(workspaceRoot, 'node_modules'), 'node_modules'],
+      conditionNames: [
+        'native',
+        'browser',
+        'require',
+        'default',
+        'react-native',
+        'node',
+        ...exportsConditionNames,
+      ],
+      mainFields: ['react-native', 'browser', 'main', ...mainFields],
+      aliasFields: ['browser'],
+    });
+  }
+  return pnpmpResolver;
+}

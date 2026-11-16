@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "target": "es2015",
+    "module": "commonjs",
+    "strict": true,
+    "types": ["node", "react"],
+    "lib": ["es2015", "es2017", "esnext"],
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "stableTypeOrdering": true
+  },
+  "include": [
+    "file.ts",
+    "consistent-type-exports.ts",
+    "deprecated.ts",
+    "mixed-enums-decl.ts",
+    "react.tsx",
+    "var-declaration.ts",
+    "errors.ts",
+    "switch-exhaustiveness-check.ts"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "<%= projectName %>",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@expo/vector-icons": "*",<% if (usesExpoMetro) { %>
+    "@expo/metro": "*",<% } else { %>
+    "@expo/metro-config": "*",<% } %>
+    "@testing-library/react-native": "*",
+    "expo": "*",
+    "expo-splash-screen": "*",
+    "expo-status-bar": "*",
+    "expo-system-ui": "*",
+    "jest-expo": "*",<% if (!usesExpoMetro) { %>
+    "metro-config": "*",
+    "metro-resolver": "*",<% } %>
+    "react": "*",
+    "react-native": "*",
+    "react-native-svg": "*",
+    "react-native-svg-transformer": "*",
+    "react-native-web": "*"
+  },
+  "scripts": {
+    "eas-build-pre-install": "cd <%= offsetFromRoot %> && node tools/scripts/eas-build-pre-install.mjs . <%= appProjectRoot %>",
+    "eas-build-post-install": "cd <%= offsetFromRoot %> && node tools/scripts/eas-build-post-install.mjs . <%= appProjectRoot %>"
+  }
+}

@@ -1,0 +1,122 @@
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import type ts from "typescript"
+import * as LSP from "../core/LSP.js"
+import * as Nano from "../core/Nano.js"
+import * as TypeCheckerUtils from "../core/TypeCheckerUtils.js"
+import * as TypeParser from "../core/TypeParser.js"
+import * as TypeScriptApi from "../core/TypeScriptApi.js"
+
+export const strictEffectProvide = LSP.createDiagnostic({
+  name: "strictEffectProvide",
+  code: 27,
+  description: "Warns when using Effect.provide with layers outside of application entry points",
+  group: "antipattern",
+  severity: "off",
+  fixable: false,
+  supportedEffect: ["v3", "v4"],
+  apply: Nano.fn("strictEffectProvide.apply")(function*(sourceFile, report) {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    const typeCheckerUtils = yield* Nano.service(TypeCheckerUtils.TypeCheckerUtils)
+    const typeParser = yield* Nano.service(TypeParser.TypeParser)
+
+    const entryPointEffectRunners = [
+      "runPromise",
+      "runSync",
+      "runFork",
+      "runPromiseExit",
+      "runSyncExit"
+    ]
+
+    const isEntryPointRunner = (node: ts.Expression) =>
+      Nano.firstSuccessOf([
+        ...entryPointEffectRunners.map((name) => typeParser.isNodeReferenceToEffectModuleApi(name)(node)),
+        typeParser.isNodeReferenceToPackageModuleApi("@effect/platform-node", "runMain")(node),
+        typeParser.isNodeReferenceToPackageModuleApi("@effect/platform-bun", "runMain")(node),
+        typeParser.isNodeReferenceToPackageModuleApi("effect", "make")(node),
+        typeParser.isNodeReferenceToEffectLayerModuleApi("launch")(node)
+      ])
+
+    const parseEffectProvideWithLayerGen = Nano.fn("strictEffectProvide.parseEffectProvideWithLayer")(
+      function*(node: ts.CallExpression) {
+        // Check if the expression is from the Effect module
+        yield* typeParser.isNodeReferenceToEffectModuleApi("provide")(node.expression)
+
+        // Check if any argument is a Layer using firstSuccessOf
+        return yield* Nano.firstSuccessOf(
+          node.arguments.map((arg) => {
+            const argType = typeCheckerUtils.getTypeAtLocation(arg)
+            if (!argType) return TypeParser.typeParserIssue("Could not get argument type")
+            return typeParser.layerType(argType, arg)
+          })
+        )
+      }
+    )
+
+    const parseEffectProvideWithLayer = (node: ts.Node) => {
+      // Check if this is a call expression: Effect.provide(...)
+      if (
+        !ts.isCallExpression(node) ||
+        node.arguments.length === 0
+      ) {
+        return TypeParser.TypeParserIssue.issue
+      }
+
+      return parseEffectProvideWithLayerGen(node)
+    }
+
+    const nodeToVisit: Array<ts.Node> = []
+    const entryPointProvides = new Set<ts.CallExpression>()
+    const flows = yield* typeParser.pipingFlows(false)(sourceFile)
+
+    for (const flow of flows) {
+      for (let index = 0; index < flow.transformations.length; index++) {
+        const transformation = flow.transformations[index]
+        const nextTransformation = flow.transformations[index + 1]
+        if (!nextTransformation) continue
+
+        const runner = yield* pipe(isEntryPointRunner(nextTransformation.callee), Nano.option)
+        if (Option.isNone(runner)) continue
+
+        if (
+          ts.isCallExpression(transformation.callee.parent) &&
+          transformation.callee.parent.expression === transformation.callee
+        ) {
+          entryPointProvides.add(transformation.callee.parent)
+        }
+      }
+
+      const firstTransformation = flow.transformations[0]
+      if (
+        ts.isCallExpression(flow.subject.node) &&
+        firstTransformation &&
+        Option.isSome(yield* pipe(isEntryPointRunner(firstTransformation.callee), Nano.option))
+      ) {
+        entryPointProvides.add(flow.subject.node)
+      }
+    }
+    const appendNodeToVisit = (node: ts.Node) => {
+      nodeToVisit.push(node)
+      return undefined
+    }
+    ts.forEachChild(sourceFile, appendNodeToVisit)
+
+    while (nodeToVisit.length > 0) {
+      const node = nodeToVisit.shift()!
+      ts.forEachChild(node, appendNodeToVisit)
+
+      if (ts.isCallExpression(node)) {
+        if (entryPointProvides.has(node)) continue
+        const layerCheck = yield* pipe(parseEffectProvideWithLayer(node), Nano.option)
+        if (Option.isSome(layerCheck)) {
+          report({
+            location: node,
+            messageText:
+              "Effect.provide with a Layer should only be used at application entry points. If this is an entry point, you can safely disable this diagnostic. Otherwise, using Effect.provide may break scope lifetimes. Compose all layers at your entry point and provide them at once.",
+            fixes: []
+          })
+        }
+      }
+    }
+  })
+})

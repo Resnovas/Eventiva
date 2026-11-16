@@ -1,0 +1,116 @@
+import type { PreTasksExecutionContext } from './public-api';
+import { readNxJson } from '../../config/nx-json';
+import { getPlugins } from './get-plugins';
+import { isOnDaemon } from '../../daemon/is-on-daemon';
+import { daemonClient, isDaemonEnabled } from '../../daemon/client/client';
+import { workspaceRoot } from '../../utils/workspace-root';
+import {
+  stubTerminalOutputs,
+  type MaybeStubbedPostTasksExecutionContext,
+} from './task-results-stub';
+import {
+  capabilitiesOfNxPluginsReadFromCache,
+  type NxPluginCapabilities,
+} from './nx-plugin-capabilities';
+
+/** True only when the cached graph's recorded rows show no plugin has `hook`; unknown is false. */
+function knownThatNoPluginRegisters(
+  hook: keyof Pick<
+    NxPluginCapabilities,
+    'hasPreTasksExecution' | 'hasPostTasksExecution'
+  >
+): boolean {
+  const recorded = capabilitiesOfNxPluginsReadFromCache();
+  return !!recorded && !recorded.some((capabilities) => capabilities[hook]);
+}
+
+export async function runPreTasksExecution(
+  pluginContext: PreTasksExecutionContext
+) {
+  if (isOnDaemon() || !isDaemonEnabled()) {
+    if (knownThatNoPluginRegisters('hasPreTasksExecution')) {
+      return [];
+    }
+    performance.mark(`preTasksExecution:start`);
+    const plugins = await getPlugins(
+      readNxJson(pluginContext.workspaceRoot),
+      pluginContext.workspaceRoot
+    );
+    const envs = await Promise.all(
+      plugins
+        .filter((p) => p.preTasksExecution)
+        .map(async (plugin) => {
+          performance.mark(`${plugin.name}:preTasksExecution:start`);
+          try {
+            return await plugin.preTasksExecution(pluginContext);
+          } finally {
+            performance.mark(`${plugin.name}:preTasksExecution:end`);
+            performance.measure(
+              `${plugin.name}:preTasksExecution`,
+              `${plugin.name}:preTasksExecution:start`,
+              `${plugin.name}:preTasksExecution:end`
+            );
+          }
+        })
+    );
+
+    if (!isDaemonEnabled()) {
+      applyProcessEnvs(envs);
+    }
+    performance.mark(`preTasksExecution:end`);
+    performance.measure(
+      `preTasksExecution`,
+      `preTasksExecution:start`,
+      `preTasksExecution:end`
+    );
+    return envs;
+  } else {
+    const envs = await daemonClient.runPreTasksExecution(pluginContext);
+    applyProcessEnvs(envs);
+  }
+}
+
+function applyProcessEnvs(envs: NodeJS.ProcessEnv[]) {
+  for (const env of envs) {
+    for (const key in env) {
+      process.env[key] = env[key];
+    }
+  }
+}
+
+export async function runPostTasksExecution(
+  context: MaybeStubbedPostTasksExecutionContext
+) {
+  if (isOnDaemon() || !isDaemonEnabled()) {
+    if (knownThatNoPluginRegisters('hasPostTasksExecution')) {
+      return;
+    }
+    performance.mark(`postTasksExecution:start`);
+    const plugins = await getPlugins(readNxJson(workspaceRoot));
+    await Promise.all(
+      plugins
+        .filter((p) => p.postTasksExecution)
+        .map(async (plugin) => {
+          performance.mark(`${plugin.name}:postTasksExecution:start`);
+          try {
+            await plugin.postTasksExecution(context);
+          } finally {
+            performance.mark(`${plugin.name}:postTasksExecution:end`);
+            performance.measure(
+              `${plugin.name}:postTasksExecution`,
+              `${plugin.name}:postTasksExecution:start`,
+              `${plugin.name}:postTasksExecution:end`
+            );
+          }
+        })
+    );
+    performance.mark(`postTasksExecution:end`);
+    performance.measure(
+      `postTasksExecution`,
+      `postTasksExecution:start`,
+      `postTasksExecution:end`
+    );
+  } else {
+    await daemonClient.runPostTasksExecution(stubTerminalOutputs(context));
+  }
+}

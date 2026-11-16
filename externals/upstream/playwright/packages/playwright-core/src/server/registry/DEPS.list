@@ -1,0 +1,9 @@
+[*]
+@utils/**
+@isomorphic/**
+../../bootstrap.ts
+../../package.ts
+../utils.ts
+../userAgent.ts
+node_modules/colors/safe
+node_modules/progress

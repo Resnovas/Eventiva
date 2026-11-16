@@ -1,0 +1,70 @@
+---
+description: 'Enforce the use of `for-of` loop over the standard `for` loop where possible.'
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+> 🛑 This file is source code, not the primary documentation location! 🛑
+>
+> See **https://typescript-eslint.io/rules/prefer-for-of** for documentation.
+
+Many developers default to writing `for (let i = 0; i < ...` loops to iterate over arrays.
+However, in many of those arrays, the loop iterator variable (e.g. `i`) is only used to access the respective element of the array.
+In those cases, a `for-of` loop is easier to read and write.
+
+This rule recommends a for-of loop when the loop index is only used to read from an array that is being iterated.
+
+## Examples
+
+<Tabs>
+<TabItem value="❌ Incorrect">
+
+```ts
+declare const array: string[];
+
+for (let i = 0; i < array.length; i++) {
+  console.log(array[i]);
+}
+```
+
+</TabItem>
+<TabItem value="✅ Correct">
+
+```ts
+declare const array: string[];
+
+for (const x of array) {
+  console.log(x);
+}
+
+for (let i = 0; i < array.length; i++) {
+  // i is used, so for-of could not be used.
+  console.log(i, array[i]);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## DOM Elements
+
+By default, TypeScript's type checking only allows `for-of` loops over DOM iterables such as `HTMLCollectionOf` when the `dom.iterable` `lib` option is enabled.
+If you are using this rule in a project that works with DOM elements, be sure to enable `dom.iterable` in your TSConfig `lib`.
+See [aka.ms/tsconfig#lib](https://aka.ms/tsconfig#lib) for more information.
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["esnext", "dom", "dom.iterable"]
+  }
+}
+```
+
+## When Not To Use It
+
+Note that this rule does not use type information to determine whether iterated elements are arrays.
+It only checks if a `.length` property is used in a loop.
+If your project loops over objects that happen to have `.length`, this rule may report false positives.
+You might consider using [ESLint disable comments](https://eslint.org/docs/latest/use/configure/rules#use-configuration-comments) for those specific situations instead of completely disabling this rule.

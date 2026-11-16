@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSImportEqualsDeclaration > _error_ > entity-name-invalid > TSESTree - Error`]
+TSError
+> 1 | import F = 1;
+    |            ^ Identifier expected.
+  2 |

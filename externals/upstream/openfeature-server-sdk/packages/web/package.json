@@ -1,0 +1,59 @@
+{
+  "name": "@openfeature/web-sdk",
+  "version": "1.10.0",
+  "description": "OpenFeature SDK for Web",
+  "main": "./dist/cjs/index.js",
+  "unpkg": "dist/global/index.min.js",
+  "jsdelivr": "dist/global/index.min.js",
+  "files": [
+    "dist/"
+  ],
+  "exports": {
+    "types": "./dist/types.d.ts",
+    "import": "./dist/esm/index.js",
+    "require": "./dist/cjs/index.js",
+    "default": "./dist/cjs/index.js"
+  },
+  "types": "./dist/types.d.ts",
+  "scripts": {
+    "test": "jest --verbose",
+    "lint": "eslint ./",
+    "lint:fix": "eslint ./ --fix",
+    "clean": "shx rm -rf ./dist",
+    "build:web-esm": "esbuild src/index.ts --bundle --external:@openfeature/core --sourcemap --target=es2015 --platform=browser --format=esm --outfile=./dist/esm/index.js --analyze",
+    "build:web-cjs": "esbuild src/index.ts --bundle --external:@openfeature/core --sourcemap --target=es2015 --platform=browser --format=cjs --outfile=./dist/cjs/index.js --analyze",
+    "build:web-global": "esbuild src/index.ts --bundle --sourcemap --target=es2015 --platform=browser --format=iife --outfile=./dist/global/index.js --global-name=OpenFeature --analyze",
+    "build:web-global:min": "esbuild src/index.ts --bundle --sourcemap --target=es2015 --platform=browser --format=iife --outfile=./dist/global/index.min.js --global-name=OpenFeature --minify --analyze",
+    "build:rollup-types": "rollup -c ../../rollup.config.mjs",
+    "build": "npm run clean && npm run build:web-esm && npm run build:web-cjs && npm run build:web-global && npm run build:web-global:min && npm run build:rollup-types",
+    "postbuild": "shx cp ./../../package.esm.json ./dist/esm/package.json",
+    "current-version": "echo $npm_package_version",
+    "prepack": "shx cp ./../../LICENSE ./LICENSE",
+    "publish-if-not-exists": "cp $NPM_CONFIG_USERCONFIG .npmrc && if [ \"$(npm show $npm_package_name@$npm_package_version version)\" = \"$(npm run current-version -s)\" ]; then echo 'already published, skipping'; else npm publish --access public; fi"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/open-feature/js-sdk.git"
+  },
+  "keywords": [
+    "openfeature",
+    "feature",
+    "flags",
+    "toggles",
+    "browser",
+    "web"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/open-feature/js-sdk/issues"
+  },
+  "homepage": "https://github.com/open-feature/js-sdk#readme",
+  "peerDependencies": {
+    "@openfeature/core": "^1.12.0"
+  },
+  "devDependencies": {
+    "@openfeature/core": "^1.9.2"
+  },
+  "sideEffects": false
+}

@@ -1,0 +1,154 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"arrow">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "arrow",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"arrow">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: ArrowFunctionExpression$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        VariableDefinition$2 {
+          name: Identifier<"i">,
+          node: VariableDeclarator$3,
+        },
+      ],
+      name: "i",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"i">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$3,
+          writeExpr: Literal$4,
+        },
+        Reference$4 {
+          identifier: Identifier<"i">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [
+        VariableDefinition$3 {
+          name: Identifier<"j">,
+          node: VariableDeclarator$5,
+        },
+      ],
+      name: "j",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"j">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$4,
+          writeExpr: Literal$6,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [
+        VariableDefinition$4 {
+          name: Identifier<"unresolved">,
+          node: VariableDeclarator$7,
+        },
+      ],
+      name: "unresolved",
+      references: [
+        Reference$5 {
+          identifier: Identifier<"unresolved">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$5,
+          writeExpr: Identifier<"j">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$8,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$5,
+        Reference$6 {
+          identifier: Identifier<"j">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "arrow" => Variable$2,
+        "unresolved" => Variable$5,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$5,
+      ],
+    },
+    FunctionScope$2 {
+      block: ArrowFunctionExpression$2,
+      isStrict: false,
+      references: [
+        Reference$2,
+        Reference$3,
+        Reference$4,
+      ],
+      set: Map {
+        "i" => Variable$3,
+        "j" => Variable$4,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+      ],
+    },
+  ],
+}

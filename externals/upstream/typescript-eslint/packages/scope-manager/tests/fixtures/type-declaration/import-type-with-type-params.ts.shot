@@ -1,0 +1,59 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"Param">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "Param",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"Param">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TypeDefinition$2 {
+          name: Identifier<"T">,
+          node: TSTypeAliasDeclaration$2,
+        },
+      ],
+      name: "T",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$3,
+      isStrict: false,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Param" => Variable$2,
+        "T" => Variable$3,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$3,
+      ],
+    },
+  ],
+}

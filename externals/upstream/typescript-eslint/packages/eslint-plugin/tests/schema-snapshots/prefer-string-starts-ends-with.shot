@@ -1,0 +1,29 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowSingleElementEquality": {
+        "description": "Whether to allow equality checks against the first or last element of a string.",
+        "enum": ["always", "never"],
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to allow equality checks against the first or last element of a string. */
+    allowSingleElementEquality?:
+      | 'never'
+      /** Whether to allow equality checks against the first or last element of a string. */
+      | 'always';
+  },
+];

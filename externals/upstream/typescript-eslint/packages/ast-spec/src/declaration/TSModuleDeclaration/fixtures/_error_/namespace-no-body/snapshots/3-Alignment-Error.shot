@@ -1,0 +1,4 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSModuleDeclaration > _error_ > namespace-no-body > Error Alignment`]
+Both errored

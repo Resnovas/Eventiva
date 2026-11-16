@@ -1,0 +1,84 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TSEnumNameDefinition$1 {
+          name: Identifier<"Foo">,
+          node: TSEnumDeclaration$1,
+        },
+      ],
+      name: "Foo",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"Foo">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TSEnumMemberDefinition$2 {
+          name: Identifier<"a">,
+          node: TSEnumMember$2,
+        },
+      ],
+      name: "a",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        TSEnumMemberDefinition$3 {
+          name: Identifier<"b">,
+          node: TSEnumMember$3,
+        },
+      ],
+      name: "b",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$4,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Foo" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+    TSEnumScope$2 {
+      block: TSEnumDeclaration$1,
+      isStrict: true,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "a" => Variable$3,
+        "b" => Variable$4,
+      },
+      type: "tsEnum",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+      ],
+    },
+  ],
+}

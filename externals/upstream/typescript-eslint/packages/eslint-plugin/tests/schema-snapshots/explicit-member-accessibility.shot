@@ -1,0 +1,103 @@
+
+# SCHEMA:
+
+[
+  {
+    "$defs": {
+      "accessibilityLevel": {
+        "oneOf": [
+          {
+            "description": "Always require an accessor.",
+            "enum": ["explicit"],
+            "type": "string"
+          },
+          {
+            "description": "Require an accessor except when public.",
+            "enum": ["no-public"],
+            "type": "string"
+          },
+          {
+            "description": "Never check whether there is an accessor.",
+            "enum": ["off"],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "accessibility": {
+        "$ref": "#/items/0/$defs/accessibilityLevel",
+        "description": "Which accessibility modifier is required to exist or not exist."
+      },
+      "ignoredMethodNames": {
+        "description": "Specific method names that may be ignored.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "overrides": {
+        "additionalProperties": false,
+        "description": "Changes to required accessibility modifiers for specific kinds of class members.",
+        "properties": {
+          "accessors": {
+            "$ref": "#/items/0/$defs/accessibilityLevel",
+            "description": "Which member accessibility modifier requirements to apply for accessors."
+          },
+          "constructors": {
+            "$ref": "#/items/0/$defs/accessibilityLevel",
+            "description": "Which member accessibility modifier requirements to apply for constructors."
+          },
+          "methods": {
+            "$ref": "#/items/0/$defs/accessibilityLevel",
+            "description": "Which member accessibility modifier requirements to apply for methods."
+          },
+          "parameterProperties": {
+            "$ref": "#/items/0/$defs/accessibilityLevel",
+            "description": "Which member accessibility modifier requirements to apply for parameterProperties."
+          },
+          "properties": {
+            "$ref": "#/items/0/$defs/accessibilityLevel",
+            "description": "Which member accessibility modifier requirements to apply for properties."
+          }
+        },
+        "type": "object"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type AccessibilityLevel =
+  /** Always require an accessor. */
+  | 'explicit'
+  /** Never check whether there is an accessor. */
+  | 'off'
+  /** Require an accessor except when public. */
+  | 'no-public';
+
+type Options = [
+  {
+    /** Which accessibility modifier is required to exist or not exist. */
+    accessibility?: AccessibilityLevel;
+    /** Specific method names that may be ignored. */
+    ignoredMethodNames?: string[];
+    /** Changes to required accessibility modifiers for specific kinds of class members. */
+    overrides?: {
+      /** Which member accessibility modifier requirements to apply for accessors. */
+      accessors?: AccessibilityLevel;
+      /** Which member accessibility modifier requirements to apply for constructors. */
+      constructors?: AccessibilityLevel;
+      /** Which member accessibility modifier requirements to apply for methods. */
+      methods?: AccessibilityLevel;
+      /** Which member accessibility modifier requirements to apply for parameterProperties. */
+      parameterProperties?: AccessibilityLevel;
+      /** Which member accessibility modifier requirements to apply for properties. */
+      properties?: AccessibilityLevel;
+    };
+  },
+];

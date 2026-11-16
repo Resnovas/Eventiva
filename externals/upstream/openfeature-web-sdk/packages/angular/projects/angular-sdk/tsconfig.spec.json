@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": ["vitest/globals", "node"],
+    "baseUrl": "../",
+    "paths": {
+      "angular": ["./dist/angular"],
+      "@openfeature/core": ["../../shared/src"],
+      "@openfeature/web-sdk": ["../../web/src"]
+    },
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "noImplicitOverride": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "strict": false
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/test-provider.ts"]
+}

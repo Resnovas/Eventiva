@@ -1,0 +1,255 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        VariableDefinition$1 {
+          name: Identifier<"outer">,
+          node: VariableDeclarator$1,
+        },
+      ],
+      name: "outer",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"outer">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$2,
+          writeExpr: Literal$2,
+        },
+        Reference$6 {
+          identifier: Identifier<"outer">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [
+        ParameterDefinition$2 {
+          name: Identifier<"a">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "a",
+      references: [
+        Reference$4 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+        Reference$7 {
+          identifier: Identifier<"a">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$4 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"b">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "b",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [
+        ParameterDefinition$4 {
+          name: Identifier<"c">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "c",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$6 {
+      defs: [
+        ParameterDefinition$5 {
+          name: Identifier<"d">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "d",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"d">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$6,
+          writeExpr: Literal$4,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$7 {
+      defs: [
+        ParameterDefinition$6 {
+          name: Identifier<"e">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "e",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"e">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$7,
+          writeExpr: Identifier<"a">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$8 {
+      defs: [
+        ParameterDefinition$7 {
+          name: Identifier<"f">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "f",
+      references: [
+        Reference$5 {
+          identifier: Identifier<"f">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$8,
+          writeExpr: Identifier<"outer">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$9 {
+      defs: [
+        ParameterDefinition$8 {
+          name: Identifier<"g">,
+          node: ArrowFunctionExpression$3,
+        },
+      ],
+      name: "g",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$10 {
+      defs: [
+        VariableDefinition$9 {
+          name: Identifier<"unresolved">,
+          node: VariableDeclarator$5,
+        },
+      ],
+      name: "unresolved",
+      references: [
+        Reference$8 {
+          identifier: Identifier<"unresolved">,
+          init: true,
+          isRead: false,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: true,
+          resolved: Variable$10,
+          writeExpr: Identifier<"g">,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$6,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$8,
+        Reference$9 {
+          identifier: Identifier<"g">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: null,
+        },
+      ],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "outer" => Variable$2,
+        "unresolved" => Variable$10,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$10,
+      ],
+    },
+    FunctionScope$2 {
+      block: ArrowFunctionExpression$3,
+      isStrict: false,
+      references: [
+        Reference$2,
+        Reference$3,
+        Reference$4,
+        Reference$5,
+        Reference$6,
+        Reference$7,
+      ],
+      set: Map {
+        "a" => Variable$3,
+        "b" => Variable$4,
+        "c" => Variable$5,
+        "d" => Variable$6,
+        "e" => Variable$7,
+        "f" => Variable$8,
+        "g" => Variable$9,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+        Variable$5,
+        Variable$6,
+        Variable$7,
+        Variable$8,
+        Variable$9,
+      ],
+    },
+  ],
+}

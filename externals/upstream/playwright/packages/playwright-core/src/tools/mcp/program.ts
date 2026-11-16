@@ -1,0 +1,201 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Option as ProgramOption } from 'commander';
+import * as mcpServer from '../utils/mcp/server';
+import { commaSeparatedList, defaultCodegenLanguage, dotenvFileLoader, enumParser, headerParser, numberParser, resolutionParser, resolveCLIConfigForMCP, semicolonSeparatedList } from './config';
+import { setupExitWatchdog } from './watchdog';
+import { connectToBrowserEndpoint, createBrowserWithInfo, createIdleTimer } from './browserFactory';
+import { BrowserBackend } from '../backend/browserBackend';
+import { filteredTools } from '../backend/tools';
+import { testDebug } from './log';
+import { packageJSON } from '../../package';
+
+import type { Command } from 'commander';
+import type { ClientInfo } from '../utils/mcp/server';
+import type { BrowserWithInfo } from './browserFactory';
+import type * as playwright from '../../..';
+
+const version = packageJSON.version;
+
+export function decorateMCPCommand(command: Command) {
+  command
+      .option('--allowed-hosts <hosts...>', 'comma-separated list of hosts this server is allowed to serve from. Defaults to localhost, loopback IPs and the host passed via --host; other hosts must be listed explicitly. Pass \'*\' to disable the host check.', commaSeparatedList)
+      .option('--allowed-origins <origins>', 'semicolon-separated list of TRUSTED origins to allow the browser to request. Default is to allow all.\nImportant: *does not* serve as a security boundary and *does not* affect redirects. ', semicolonSeparatedList)
+      .option('--allow-unrestricted-file-access', 'allow access to files outside of the workspace roots. Also allows unrestricted access to file:// URLs. By default access to file system is restricted to workspace root directories (or cwd if no roots are configured) only, and navigation to file:// URLs is blocked.')
+      .option('--blocked-origins <origins>', 'semicolon-separated list of origins to block the browser from requesting. Blocklist is evaluated before allowlist. If used without the allowlist, requests not matching the blocklist are still allowed.\nImportant: *does not* serve as a security boundary and *does not* affect redirects.', semicolonSeparatedList)
+      .option('--block-service-workers', 'block service workers')
+      .option('--browser <browser>', 'browser or chrome channel to use, possible values: chrome, firefox, webkit, msedge.')
+      .option('--caps <caps>', 'comma-separated list of additional capabilities to enable, possible values: vision, pdf, devtools.', commaSeparatedList)
+      .option('--cdp-endpoint <endpoint>', 'CDP endpoint to connect to.')
+      .option('--cdp-header <headers...>', 'CDP headers to send with the connect request, multiple can be specified.', headerParser)
+      .option('--cdp-timeout <timeout>', 'timeout in milliseconds for connecting to CDP endpoint, defaults to 30000ms', numberParser)
+      .option('--codegen <lang>', `specify the language to use for code generation, possible values: "typescript", "python", "java", "csharp", "none". Default is "${defaultCodegenLanguage}".`, enumParser.bind(null, '--codegen', ['none', 'typescript', 'python', 'java', 'csharp']))
+      .option('--config <path>', 'path to the configuration file.')
+      .option('--console-level <level>', 'level of console messages to return: "error", "warning", "info", "debug". Each level includes the messages of more severe levels.', enumParser.bind(null, '--console-level', ['error', 'warning', 'info', 'debug']))
+      .option('--device <device>', 'device to emulate, for example: "iPhone 15"')
+      .option('--mobile', 'emulate a generic mobile device (Pixel 10 for Chromium, iPhone 17 for WebKit). Mobile pages are usually lighter, which saves tokens. Cannot be combined with --device.')
+      .option('--executable-path <path>', 'path to the browser executable.')
+      .option('--extension', 'Connect to a running browser instance (Edge/Chrome only). Requires the "Playwright Extension" to be installed.')
+      .option('--endpoint <endpoint>', 'Bound browser endpoint to connect to.')
+      .option('--file-paths <mode>', 'how file paths are rendered in tool results, "relative" to the workspace root or "absolute". Default is "relative".', enumParser.bind(null, '--file-paths', ['relative', 'absolute']))
+      .option('--grant-permissions <permissions...>', 'List of permissions to grant to the browser context, for example "geolocation", "clipboard-read", "clipboard-write".', commaSeparatedList)
+      .option('--headless', 'run browser in headless mode, headed by default')
+      .option('--host <host>', 'host to bind server to. Default is localhost. Use 0.0.0.0 to bind to all interfaces.')
+      .option('--idle-timeout <timeout>', 'close the browser after this many milliseconds without a completed tool call, the next tool call relaunches it. Defaults to one hour for headless browsers, never for headed ones, 0 disables.', numberParser)
+      .option('--ignore-https-errors', 'ignore https errors')
+      .option('--ignore-roots', 'do not ask the client for its workspace roots, use the current working directory as the workspace root instead. Use this with clients that advertise roots, but can not answer the roots request.')
+      .option('--init-page <path...>', 'path to TypeScript file to evaluate on Playwright page object')
+      .option('--init-script <path...>', 'path to JavaScript file to add as an initialization script. The script will be evaluated in every page before any of the page\'s scripts. Can be specified multiple times.')
+      .option('--isolated', 'keep the browser profile in memory, do not save it to disk.')
+      .option('--image-responses <mode>', 'whether to send image responses to the client. Can be "allow", "omit" or "only". With "only", a response that carries an image consists of the image parts alone, without the text part. Defaults to "allow".', enumParser.bind(null, '--image-responses', ['allow', 'omit', 'only']))
+      .option('--no-sandbox', 'disable the sandbox for all process types that are normally sandboxed.')
+      .option('--background', 'do not activate controlled tabs or focus the browser window when using --extension.')
+      .option('--no-tab-group', 'do not group controlled tabs when using --extension.')
+      .option('--no-webmcp', 'do not collect or expose the tools that a page registers through the WebMCP API.')
+      .option('--output-dir <path>', 'path to the directory for automatically named output files, for example a screenshot taken without an explicit file name. Files with an explicit name are resolved against the workspace root instead and are not affected by this option.')
+      .option('--output-max-size <bytes>', 'Threshold for evicting old output files, in bytes.', numberParser)
+      .option('--port <port>', 'port to listen on for SSE transport.')
+      .option('--profile-dir-name <name>', 'name of the profile directory in the user data dir to connect to with --extension, for example "Profile 1". Defaults to the last used profile that has the extension installed.')
+      .option('--proxy-bypass <bypass>', 'comma-separated domains to bypass proxy, for example ".com,chromium.org,.domain.com"')
+      .option('--proxy-server <proxy>', 'specify proxy server, for example "http://myproxy:3128", "http://user:password@myproxy:3128" or "socks5://myproxy:8080"')
+      .option('--redact-url-params <names>', 'comma-separated list of URL query and fragment parameter names, for example "access_token,code", whose values are replaced with <redacted> in the tool responses.', commaSeparatedList)
+      .addOption(new ProgramOption('--remote-header <headers...>', 'headers to send with the remote endpoint connect request, multiple can be specified.').argParser(headerParser).hideHelp())
+      .option('--sandbox', 'enable the sandbox for all process types that are normally not sandboxed.')
+      .option('--save-session', 'Whether to save the Playwright MCP session into the output directory.')
+      .option('--secrets <path>', 'path to a file containing secrets in the dotenv format', dotenvFileLoader)
+      .option('--shared-browser-context', 'reuse the same browser context between all connected HTTP clients.')
+      .option('--snapshot-boxes', 'include each element\'s bounding box as [box=x,y,width,height] in snapshots. Coordinates are viewport-relative, in CSS pixels.')
+      .option('--snapshot-mode <mode>', 'when taking snapshots for responses, specifies the mode to use. Can be "full" or "none". Default is "full".')
+      .option('--storage-state <path>', 'path to the storage state file for isolated sessions.')
+      .option('--test-id-attribute <attribute>', 'specify the attribute to use for test ids, defaults to "data-testid"')
+      .option('--timeout-action <timeout>', 'specify action timeout in milliseconds, defaults to 5000ms', numberParser)
+      .option('--timeout-navigation <timeout>', 'specify navigation timeout in milliseconds, defaults to 60000ms', numberParser)
+      .option('--timeout-settle <timeout>', 'how long to wait after each action for triggered work to settle, in milliseconds, defaults to 500ms', numberParser)
+      .option('--user-agent <ua string>', 'specify user agent string')
+      .option('--user-data-dir <path>', 'path to the user data directory. If not specified, a temporary directory will be created.')
+      .option('--viewport-size <size>', 'specify browser viewport size in pixels, for example "1280x720"', resolutionParser.bind(null, '--viewport-size'))
+      .addOption(new ProgramOption('--vision', 'Legacy option, use --caps=vision instead').hideHelp())
+      .action(async options => {
+        setupExitWatchdog();
+
+        if (options.vision) {
+          // eslint-disable-next-line no-console
+          console.error('The --vision option is deprecated, use --caps=vision instead');
+          options.caps ??= [];
+          options.caps.push('vision');
+        }
+
+        if (options.caps?.includes('tracing'))
+          options.caps.push('devtools');
+
+        const config = await resolveCLIConfigForMCP(options);
+        const tools = filteredTools(config);
+        const useSharedBrowser = config.sharedBrowserContext || config.browser.isolated;
+        let sharedBrowserPromise: Promise<BrowserWithInfo> | undefined;
+        let clientCount = 0;
+        const clientNameCounters = new Map<string, number>();
+
+        const factory: mcpServer.ServerBackendFactory = {
+          name: 'Playwright',
+          nameInConfig: 'playwright',
+          version,
+          toolSchemas: tools.map(tool => tool.schema),
+          ignoreRoots: config.ignoreRoots,
+          create: async (clientInfo: ClientInfo) => {
+            if (useSharedBrowser && !sharedBrowserPromise) {
+              const promise = createBrowserWithInfo(config, clientInfo, options, { title: clientInfo.clientName, workspaceDir: clientInfo.cwd }).then(shared => {
+                shared.browser.once('disconnected', () => {
+                  if (sharedBrowserPromise === promise)
+                    sharedBrowserPromise = undefined;
+                });
+                return shared;
+              }, error => {
+                if (sharedBrowserPromise === promise)
+                  sharedBrowserPromise = undefined;
+                throw error;
+              });
+              sharedBrowserPromise = promise;
+            }
+            clientCount++;
+            const promise = sharedBrowserPromise;
+            let shared: BrowserWithInfo | undefined;
+            let info: BrowserWithInfo;
+            let browser: BrowserWithInfo['browser'];
+            try {
+              shared = await promise;
+              if (shared) {
+                testDebug('connect to shared browser');
+                info = shared;
+                browser = await connectToBrowserEndpoint(config, shared.browser, shared.endpoint);
+              } else {
+                const count = (clientNameCounters.get(clientInfo.clientName) ?? 0) + 1;
+                clientNameCounters.set(clientInfo.clientName, count);
+                const sessionName = count > 1 ? `${clientInfo.clientName} (${count})` : clientInfo.clientName;
+                info = await createBrowserWithInfo(config, clientInfo, options, { title: sessionName, workspaceDir: clientInfo.cwd });
+                browser = info.browser;
+              }
+            } catch (error) {
+              // The dispose callback never runs for a failed create.
+              clientCount--;
+              throw error;
+            }
+
+            let browserContext: playwright.BrowserContext;
+            try {
+              // A `launchServer` remote isolates contexts per connection, so a fresh connection may see none.
+              browserContext = config.browser.isolated ? await browser.newContext(config.browser.contextOptions) : browser.contexts()[0] ?? await browser.newContext(config.browser.contextOptions);
+            } catch (error) {
+              clientCount--;
+              await browser.close().catch(() => { });
+              throw error;
+            }
+
+            // Each isolated client owns a context in the shared browser, so it has its own idle timer.
+            // Otherwise an idle client keeps its context open while other clients are active.
+            const clientIdleTimer = shared && config.browser.isolated ? createIdleTimer(config, shared.ownership, () => browserContext.close().catch(() => { })) : undefined;
+
+            return new BrowserBackend(config, browserContext, tools, {
+              idleTimer: clientIdleTimer ?? info.idleTimer,
+              dispose: async () => {
+                clientIdleTimer?.dispose();
+                clientCount--;
+                const last = !shared || !clientCount;
+                if (last && sharedBrowserPromise === promise)
+                  sharedBrowserPromise = undefined;
+
+                if (!last) {
+                  if (config.browser.isolated) {
+                    testDebug('close context');
+                    await browserContext.close().catch(() => { });
+                  } else {
+                    testDebug('disconnect from shared browser');
+                  }
+                  await browser.close().catch(() => { });
+                  return;
+                }
+
+                testDebug('close browser');
+                await browserContext.close().catch(() => { });
+                await browser.close().catch(() => { });
+                await shared?.browser.close().catch(() => { });
+              },
+            });
+          },
+        };
+        await mcpServer.start(factory, config.server);
+      });
+}

@@ -1,0 +1,862 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
+import rule from '../../src/rules/no-unsafe-return';
+import { getFixturesRootDir } from '../RuleTester';
+
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.noImplicitThis.json',
+      projectService: false,
+      tsconfigRootDir: getFixturesRootDir(),
+    },
+  },
+});
+
+ruleTester.run('no-unsafe-return', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    `
+function foo() {
+  return;
+}
+    `,
+    `
+function foo() {
+  return 1;
+}
+    `,
+    `
+function foo() {
+  return '';
+}
+    `,
+    `
+function foo() {
+  return true;
+}
+    `,
+    // this actually types as `never[]`
+    `
+function foo() {
+  return [];
+}
+    `,
+    // explicit any return type is allowed, if you want to be unsafe like that
+    `
+function foo(): any {
+  return {} as any;
+}
+    `,
+    `
+declare function foo(arg: () => any): void;
+foo((): any => 'foo' as any);
+    `,
+    `
+declare function foo(arg: null | (() => any)): void;
+foo((): any => 'foo' as any);
+    `,
+    // explicit any array return type is allowed, if you want to be unsafe like that
+    `
+function foo(): any[] {
+  return [] as any[];
+}
+    `,
+    // explicit any generic return type is allowed, if you want to be unsafe like that
+    `
+function foo(): Set<any> {
+  return new Set<any>();
+}
+    `,
+    `
+async function foo(): Promise<any> {
+  return Promise.resolve({} as any);
+}
+    `,
+    `
+async function foo(): Promise<any> {
+  return {} as any;
+}
+    `,
+    `
+function foo(): object {
+  return Promise.resolve({} as any);
+}
+    `,
+    // TODO - this should error, but it's hard to detect, as the type references are different
+    `
+function foo(): ReadonlySet<number> {
+  return new Set<any>();
+}
+    `,
+    `
+function foo(): Set<number> {
+  return new Set([1]);
+}
+    `,
+    `
+type Foo<T = number> = { prop: T };
+function foo(): Foo {
+  return { prop: 1 } as Foo<number>;
+}
+    `,
+    `
+type Foo = { prop: any };
+function foo(): Foo {
+  return { prop: '' } as Foo;
+}
+    `,
+    // TS 3.9 changed this to be safe
+    `
+function fn<T extends any>(x: T) {
+  return x;
+}
+    `,
+    `
+function fn<T extends any>(x: T): unknown {
+  return x as any;
+}
+    `,
+    `
+function fn<T extends any>(x: T): unknown[] {
+  return x as any[];
+}
+    `,
+    `
+function fn<T extends any>(x: T): Set<unknown> {
+  return x as Set<any>;
+}
+    `,
+    `
+async function fn<T extends any>(x: T): Promise<unknown> {
+  return x as any;
+}
+    `,
+    `
+function fn<T extends any>(x: T): Promise<unknown> {
+  return Promise.resolve(x as any);
+}
+    `,
+    `
+type Wrapper<T> = { inner: T };
+type Extractor<D extends Wrapper<any>> = D extends Wrapper<infer V> ? V : never;
+const fn =
+  <D extends Wrapper<any>>(foo: Extractor<D>) =>
+  () =>
+    foo;
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/2109
+    `
+function test(): Map<string, string> {
+  return new Map();
+}
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/3549
+    `
+function foo(): any {
+  return [] as any[];
+}
+    `,
+    `
+function foo(): unknown {
+  return [] as any[];
+}
+    `,
+    `
+declare const value: Promise<any>;
+function foo() {
+  return value;
+}
+    `,
+    'const foo: (() => void) | undefined = () => 1;',
+    `
+class Foo {
+  public foo(): this {
+    return this;
+  }
+
+  protected then(resolve: () => void): void {
+    resolve();
+  }
+}
+    `,
+    {
+      // `Awaited` copied from TypeScript's built-in (lib.es5.d.ts)
+      code: `
+type Awaited<T> = T extends null | undefined
+  ? T
+  : T extends object & { then(onfulfilled: infer F, ...args: infer _): any }
+    ? F extends (value: infer V, ...args: infer _) => any
+      ? Awaited<V>
+      : never
+    : T;
+
+class Foo {
+  public foo(x: Awaited<this>) {
+    return x;
+  }
+
+  protected then(resolve: () => void): void {
+    resolve();
+  }
+}
+
+export {};
+      `,
+    },
+  ],
+  invalid: [
+    {
+      code: `
+function foo() {
+  return 1 as any;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return Object.create(null);
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+const foo = () => {
+  return 1 as any;
+};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: 'const foo = () => Object.create(null);',
+      errors: [
+        {
+          column: 19,
+          data: { type: '`any`' },
+          endColumn: 38,
+          endLine: 1,
+          line: 1,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return [] as any[];
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any[]`' },
+          endColumn: 22,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return [] as Array<any>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any[]`' },
+          endColumn: 27,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return [] as readonly any[];
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any[]`' },
+          endColumn: 31,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return [] as Readonly<any[]>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any[]`' },
+          endColumn: 32,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+const foo = () => {
+  return [] as any[];
+};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any[]`' },
+          endColumn: 22,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: 'const foo = () => [] as any[];',
+      errors: [
+        {
+          column: 19,
+          data: { type: '`any[]`' },
+          endColumn: 30,
+          endLine: 1,
+          line: 1,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Set<string> {
+  return new Set<any>();
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { receiver: 'Set<string>', sender: 'Set<any>' },
+          endColumn: 25,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Map<string, string> {
+  return new Map<string, any>();
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { receiver: 'Map<string, string>', sender: 'Map<string, any>' },
+          endColumn: 33,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Set<string[]> {
+  return new Set<any[]>();
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { receiver: 'Set<string[]>', sender: 'Set<any[]>' },
+          endColumn: 27,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Set<Set<Set<string>>> {
+  return new Set<Set<Set<any>>>();
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            receiver: 'Set<Set<Set<string>>>',
+            sender: 'Set<Set<Set<any>>>',
+          },
+          endColumn: 35,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+
+    {
+      code: `
+type Fn = () => Set<string>;
+const foo1: Fn = () => new Set<any>();
+      `,
+      errors: [
+        {
+          column: 24,
+          data: { receiver: 'Set<string>', sender: 'Set<any>' },
+          endColumn: 38,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+type Fn = () => Set<string>;
+const foo2: Fn = function test() {
+  return new Set<any>();
+};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { receiver: 'Set<string>', sender: 'Set<any>' },
+          endColumn: 25,
+          endLine: 4,
+          line: 4,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+type Fn = () => Set<string>;
+function receiver(arg: Fn) {}
+receiver(() => new Set<any>());
+      `,
+      errors: [
+        {
+          column: 16,
+          data: { receiver: 'Set<string>', sender: 'Set<any>' },
+          endColumn: 30,
+          endLine: 4,
+          line: 4,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+type Fn = () => Set<string>;
+function receiver(arg: Fn) {}
+receiver(function test() {
+  return new Set<any>();
+});
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { receiver: 'Set<string>', sender: 'Set<any>' },
+          endColumn: 25,
+          endLine: 5,
+          line: 5,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+function foo() {
+  return this;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 15,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnThis',
+        },
+      ],
+    },
+    {
+      code: `
+function bar() {
+  return () => this;
+}
+      `,
+      errors: [
+        {
+          column: 16,
+          data: { type: '`any`' },
+          endColumn: 20,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturnThis',
+        },
+      ],
+    },
+    {
+      code: `
+declare function foo(arg: null | (() => any)): void;
+foo(() => 'foo' as any);
+      `,
+      errors: [
+        {
+          column: 11,
+          data: { type: '`any`' },
+          endColumn: 23,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+let value: NotKnown;
+
+function example() {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: 'error' },
+          endColumn: 16,
+          endLine: 5,
+          line: 5,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+declare const value: any;
+async function foo() {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+declare const value: Promise<any>;
+async function foo(): Promise<number> {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+type Awaited<T> = Promise<T>;
+declare const value: Awaited<any>;
+async function foo(): Promise<number> {
+  return value;
+}
+export {};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 16,
+          endLine: 5,
+          line: 5,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      // `Awaited` copied from TypeScript's built-in (lib.es5.d.ts)
+      code: `
+type Awaited<T> = T extends null | undefined
+  ? T
+  : T extends object & { then(onfulfilled: infer F, ...args: infer _): any }
+    ? F extends (value: infer V, ...args: infer _) => any
+      ? Awaited<V>
+      : never
+    : T;
+
+declare const value: Awaited<Promise<Promise<any>>>;
+async function foo(): Promise<number> {
+  return value;
+}
+
+export {};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 16,
+          endLine: 12,
+          line: 12,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo(arg: number) {
+  return arg as Promise<any>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Promise<any> {
+  return {} as any;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 20,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+function foo(): Promise<object> {
+  return {} as any;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`any`' },
+          endColumn: 20,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return Promise.resolve<any>({});
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 35,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return Promise.resolve<Promise<Promise<any>>>({} as Promise<any>);
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 69,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return {} as Promise<Promise<Promise<Promise<any>>>>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 56,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<Promise<Promise<Promise<any>>>>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 56,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<any> | Promise<object>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 47,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<any | object>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 38,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<any> & { __brand: 'any' };
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 50,
+          endLine: 3,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+    {
+      code: `
+interface Alias<T> extends Promise<any> {
+  foo: 'bar';
+}
+
+declare const value: Alias<number>;
+async function foo() {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: '`Promise<any>`' },
+          endColumn: 16,
+          endLine: 8,
+          line: 8,
+          messageId: 'unsafeReturn',
+        },
+      ],
+    },
+  ],
+});

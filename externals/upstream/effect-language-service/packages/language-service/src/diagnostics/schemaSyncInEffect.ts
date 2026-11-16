@@ -1,0 +1,85 @@
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import type ts from "typescript"
+import * as LSP from "../core/LSP.js"
+import * as Nano from "../core/Nano.js"
+import * as TypeParser from "../core/TypeParser.js"
+import * as TypeScriptApi from "../core/TypeScriptApi.js"
+
+const syncToEffectMethodV3: Record<string, string> = {
+  decodeSync: "decode",
+  decodeUnknownSync: "decodeUnknown",
+  encodeSync: "encode",
+  encodeUnknownSync: "encodeUnknown"
+}
+const syncToEffectMethodV4: Record<string, string> = {
+  decodeSync: "decodeEffect",
+  decodeUnknownSync: "decodeUnknownEffect",
+  encodeSync: "encodeEffect",
+  encodeUnknownSync: "encodeUnknownEffect"
+}
+
+export const schemaSyncInEffect = LSP.createDiagnostic({
+  name: "schemaSyncInEffect",
+  code: 43,
+  description: "Suggests using Effect-based Schema methods instead of sync methods inside Effect generators",
+  group: "antipattern",
+  severity: "suggestion",
+  fixable: false,
+  supportedEffect: ["v3"],
+  apply: Nano.fn("schemaSyncInEffect.apply")(function*(sourceFile, report) {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    const typeParser = yield* Nano.service(TypeParser.TypeParser)
+    const syncToEffectMethod = typeParser.supportedEffect() === "v3" ? syncToEffectMethodV3 : syncToEffectMethodV4
+
+    const parseSchemaSyncMethod = (node: ts.Node, methodName: string) =>
+      pipe(
+        typeParser.isNodeReferenceToEffectParseResultModuleApi(methodName)(node),
+        Nano.orElse(() => typeParser.isNodeReferenceToEffectSchemaParserModuleApi(methodName)(node)),
+        Nano.map(() => ({ node, methodName }))
+      )
+
+    const nodeToVisit: Array<ts.Node> = []
+    const appendNodeToVisit = (node: ts.Node) => {
+      nodeToVisit.push(node)
+      return undefined
+    }
+    ts.forEachChild(sourceFile, appendNodeToVisit)
+
+    while (nodeToVisit.length > 0) {
+      const node = nodeToVisit.shift()!
+      ts.forEachChild(node, appendNodeToVisit)
+
+      // Check if this is a call expression
+      if (!ts.isCallExpression(node)) continue
+
+      // Verify it's a Schema sync method call using TypeParser
+      const isSchemaSyncCall = yield* pipe(
+        Nano.firstSuccessOf(
+          Object.keys(syncToEffectMethod).map((methodName) => parseSchemaSyncMethod(node.expression, methodName))
+        ),
+        Nano.option
+      )
+
+      if (Option.isNone(isSchemaSyncCall)) continue
+
+      // Find enclosing scope and Effect generator using TypeParser helper
+      const inEffect = ((yield* typeParser.getEffectContextFlags(node)) & TypeParser.EffectContextFlags.InEffect) !== 0
+
+      if (!inEffect) continue
+
+      const nodeText = sourceFile.text.substring(
+        ts.getTokenPosOfNode(node.expression, sourceFile),
+        node.expression.end
+      )
+      const effectMethodName = syncToEffectMethod[isSchemaSyncCall.value.methodName]
+
+      report({
+        location: node.expression,
+        messageText:
+          `\`${nodeText}\` is used inside an Effect generator. \`Schema.${effectMethodName}\` preserves the typed Effect error channel for this operation without throwing.`,
+        fixes: []
+      })
+    }
+  })
+})

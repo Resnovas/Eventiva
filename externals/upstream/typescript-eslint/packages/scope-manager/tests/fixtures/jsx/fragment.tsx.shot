@@ -1,0 +1,20 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$1,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+      ],
+    },
+  ],
+}

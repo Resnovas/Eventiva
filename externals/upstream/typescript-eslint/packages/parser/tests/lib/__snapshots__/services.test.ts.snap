@@ -1,0 +1,360 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`services > fixtures/isolated-file.src 1`] = `
+{
+  "body": [
+    {
+      "declarations": [
+        {
+          "definite": false,
+          "id": {
+            "decorators": [],
+            "loc": {
+              "end": {
+                "column": 7,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "name": "x",
+            "optional": false,
+            "range": [
+              6,
+              7,
+            ],
+            "type": "Identifier",
+          },
+          "init": {
+            "elements": [
+              {
+                "loc": {
+                  "end": {
+                    "column": 12,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 11,
+                    "line": 1,
+                  },
+                },
+                "range": [
+                  11,
+                  12,
+                ],
+                "raw": "3",
+                "type": "Literal",
+                "value": 3,
+              },
+              {
+                "loc": {
+                  "end": {
+                    "column": 15,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 14,
+                    "line": 1,
+                  },
+                },
+                "range": [
+                  14,
+                  15,
+                ],
+                "raw": "4",
+                "type": "Literal",
+                "value": 4,
+              },
+              {
+                "loc": {
+                  "end": {
+                    "column": 18,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                },
+                "range": [
+                  17,
+                  18,
+                ],
+                "raw": "5",
+                "type": "Literal",
+                "value": 5,
+              },
+            ],
+            "loc": {
+              "end": {
+                "column": 19,
+                "line": 1,
+              },
+              "start": {
+                "column": 10,
+                "line": 1,
+              },
+            },
+            "range": [
+              10,
+              19,
+            ],
+            "type": "ArrayExpression",
+          },
+          "loc": {
+            "end": {
+              "column": 19,
+              "line": 1,
+            },
+            "start": {
+              "column": 6,
+              "line": 1,
+            },
+          },
+          "range": [
+            6,
+            19,
+          ],
+          "type": "VariableDeclarator",
+        },
+      ],
+      "declare": false,
+      "kind": "const",
+      "loc": {
+        "end": {
+          "column": 20,
+          "line": 1,
+        },
+        "start": {
+          "column": 0,
+          "line": 1,
+        },
+      },
+      "range": [
+        0,
+        20,
+      ],
+      "type": "VariableDeclaration",
+    },
+  ],
+  "comments": [],
+  "loc": {
+    "end": {
+      "column": 0,
+      "line": 2,
+    },
+    "start": {
+      "column": 0,
+      "line": 1,
+    },
+  },
+  "range": [
+    0,
+    21,
+  ],
+  "sourceType": "module",
+  "tokens": [
+    {
+      "loc": {
+        "end": {
+          "column": 5,
+          "line": 1,
+        },
+        "start": {
+          "column": 0,
+          "line": 1,
+        },
+      },
+      "range": [
+        0,
+        5,
+      ],
+      "type": "Keyword",
+      "value": "const",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 7,
+          "line": 1,
+        },
+        "start": {
+          "column": 6,
+          "line": 1,
+        },
+      },
+      "range": [
+        6,
+        7,
+      ],
+      "type": "Identifier",
+      "value": "x",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 9,
+          "line": 1,
+        },
+        "start": {
+          "column": 8,
+          "line": 1,
+        },
+      },
+      "range": [
+        8,
+        9,
+      ],
+      "type": "Punctuator",
+      "value": "=",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 11,
+          "line": 1,
+        },
+        "start": {
+          "column": 10,
+          "line": 1,
+        },
+      },
+      "range": [
+        10,
+        11,
+      ],
+      "type": "Punctuator",
+      "value": "[",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 12,
+          "line": 1,
+        },
+        "start": {
+          "column": 11,
+          "line": 1,
+        },
+      },
+      "range": [
+        11,
+        12,
+      ],
+      "type": "Numeric",
+      "value": "3",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 13,
+          "line": 1,
+        },
+        "start": {
+          "column": 12,
+          "line": 1,
+        },
+      },
+      "range": [
+        12,
+        13,
+      ],
+      "type": "Punctuator",
+      "value": ",",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 15,
+          "line": 1,
+        },
+        "start": {
+          "column": 14,
+          "line": 1,
+        },
+      },
+      "range": [
+        14,
+        15,
+      ],
+      "type": "Numeric",
+      "value": "4",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 16,
+          "line": 1,
+        },
+        "start": {
+          "column": 15,
+          "line": 1,
+        },
+      },
+      "range": [
+        15,
+        16,
+      ],
+      "type": "Punctuator",
+      "value": ",",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 18,
+          "line": 1,
+        },
+        "start": {
+          "column": 17,
+          "line": 1,
+        },
+      },
+      "range": [
+        17,
+        18,
+      ],
+      "type": "Numeric",
+      "value": "5",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 19,
+          "line": 1,
+        },
+        "start": {
+          "column": 18,
+          "line": 1,
+        },
+      },
+      "range": [
+        18,
+        19,
+      ],
+      "type": "Punctuator",
+      "value": "]",
+    },
+    {
+      "loc": {
+        "end": {
+          "column": 20,
+          "line": 1,
+        },
+        "start": {
+          "column": 19,
+          "line": 1,
+        },
+      },
+      "range": [
+        19,
+        20,
+      ],
+      "type": "Punctuator",
+      "value": ";",
+    },
+  ],
+  "type": "Program",
+}
+`;

@@ -1,0 +1,78 @@
+{
+  "name": "@typescript-eslint/website-eslint",
+  "private": true,
+  "description": "ESLint which works in browsers.",
+  "files": [
+    "dist",
+    "!**/*.js.map",
+    "!**/*.tsbuildinfo"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/website-eslint"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io",
+  "license": "MIT",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "scripts": {
+    "build": "pnpm exec nx build",
+    "clean": "rimraf dist/",
+    "format": "pnpm -w run format",
+    "lint": "pnpm -w exec nx lint",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@typescript-eslint/eslint-plugin": "workspace:*",
+    "@typescript-eslint/parser": "workspace:*",
+    "@typescript-eslint/scope-manager": "workspace:*",
+    "@typescript-eslint/typescript-estree": "workspace:*",
+    "@typescript-eslint/visitor-keys": "workspace:*",
+    "@typescript/native": "catalog:",
+    "esbuild": "~0.28.0",
+    "eslint": "catalog:",
+    "esquery": "catalog:",
+    "rimraf": "catalog:",
+    "tsx": "catalog:"
+  },
+  "nx": {
+    "name": "website-eslint",
+    "includedScripts": [
+      "clean"
+    ],
+    "targets": {
+      "build": {
+        "command": "tsx build.mts",
+        "dependsOn": [
+          "^build",
+          "types:copy-ast-spec"
+        ],
+        "cache": true,
+        "outputs": [
+          "{projectRoot}/dist"
+        ],
+        "options": {
+          "cwd": "{projectRoot}"
+        }
+      },
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck:tsc6": {}
+    }
+  }
+}

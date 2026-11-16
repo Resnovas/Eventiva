@@ -1,0 +1,23 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "treatUndefinedAsUnspecified": {
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    treatUndefinedAsUnspecified?: boolean;
+  },
+];

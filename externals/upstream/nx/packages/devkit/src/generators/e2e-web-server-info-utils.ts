@@ -1,0 +1,91 @@
+import {
+  type Tree,
+  detectPackageManager,
+  getPackageManagerCommand,
+  readNxJson,
+} from 'nx/src/devkit-exports';
+import { readTargetDefaultsForTarget } from './target-defaults-utils';
+import { findPluginForConfigFile } from '../utils/find-plugin-for-config-file';
+
+interface E2EWebServerDefaultValues {
+  defaultServeTargetName: string;
+  defaultServeStaticTargetName: string;
+  defaultE2EWebServerAddress: string;
+  defaultE2ECiBaseUrl: string;
+  defaultE2EPort: number;
+  /**
+   * Set when the port was explicitly requested rather than defaulted. The caller has
+   * already applied it to both URLs above, so this helper must not re-derive from
+   * targetDefaults — doing so overrides the request and desyncs the two URLs.
+   */
+  e2EPortIsExplicit?: boolean;
+}
+
+interface E2EWebServerPluginOptions {
+  plugin: string;
+  configFilePath: string;
+  serveTargetName: string;
+  serveStaticTargetName: string;
+}
+
+export interface E2EWebServerDetails {
+  e2eWebServerAddress: string;
+  e2eWebServerCommand: string;
+  e2eCiWebServerCommand: string;
+  e2eCiBaseUrl: string;
+  e2eDevServerTarget: string;
+}
+
+export async function getE2EWebServerInfo(
+  tree: Tree,
+  projectName: string,
+  pluginOptions: E2EWebServerPluginOptions,
+  defaultValues: E2EWebServerDefaultValues
+): Promise<E2EWebServerDetails> {
+  const pm = getPackageManagerCommand(detectPackageManager(tree.root));
+  const foundPlugin = await findPluginForConfigFile(
+    tree,
+    pluginOptions.plugin,
+    pluginOptions.configFilePath
+  );
+  if (
+    !foundPlugin ||
+    typeof foundPlugin === 'string' ||
+    !foundPlugin?.options
+  ) {
+    return {
+      e2eWebServerAddress: defaultValues.defaultE2EWebServerAddress,
+      e2eWebServerCommand: `${pm.exec} nx run ${projectName}:${defaultValues.defaultServeTargetName}`,
+      e2eCiWebServerCommand: `${pm.exec} nx run ${projectName}:${defaultValues.defaultServeStaticTargetName}`,
+      e2eCiBaseUrl: defaultValues.defaultE2ECiBaseUrl,
+      e2eDevServerTarget: `${projectName}:${defaultValues.defaultServeTargetName}`,
+    };
+  }
+
+  const nxJson = readNxJson(tree);
+  let e2ePort = defaultValues.defaultE2EPort ?? 4200;
+  const serveTargetName =
+    foundPlugin.options[pluginOptions.serveTargetName] ??
+    defaultValues.defaultServeTargetName;
+
+  if (!defaultValues.e2EPortIsExplicit) {
+    e2ePort =
+      readTargetDefaultsForTarget(serveTargetName, nxJson.targetDefaults)
+        ?.options?.port ?? e2ePort;
+  }
+
+  const e2eWebServerAddress = defaultValues.e2EPortIsExplicit
+    ? defaultValues.defaultE2EWebServerAddress
+    : defaultValues.defaultE2EWebServerAddress.replace(/:\d+/, `:${e2ePort}`);
+
+  return {
+    e2eWebServerAddress,
+    e2eWebServerCommand: `${pm.exec} nx run ${projectName}:${serveTargetName}`,
+    e2eCiWebServerCommand: `${pm.exec} nx run ${projectName}:${
+      foundPlugin.options[pluginOptions.serveStaticTargetName] ??
+      defaultValues.defaultServeStaticTargetName
+    }`,
+    e2eCiBaseUrl: defaultValues.defaultE2ECiBaseUrl,
+    e2eDevServerTarget: `${projectName}:${serveTargetName}`,
+  };
+}

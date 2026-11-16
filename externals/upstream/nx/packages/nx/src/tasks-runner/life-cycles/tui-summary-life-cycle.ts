@@ -1,0 +1,626 @@
+import { EOL } from 'node:os';
+import { TaskStatus as NativeTaskStatus } from '../../native';
+import { Task, TaskGraph } from '../../config/task-graph';
+import { output } from '../../utils/output';
+import type { LifeCycle } from '../life-cycle';
+import type { TaskStatus } from '../tasks-runner';
+import { formatFlags, formatTargetsAndProjects } from './formatting-utils';
+import { prettyTime } from './pretty-time';
+import { getLeafTasks } from '../task-graph-utils';
+import { viewLogsFooterRows } from './view-logs-utils';
+import * as figures from 'figures';
+import * as pc from 'picocolors';
+import { getTasksHistoryLifeCycle } from './task-history-life-cycle';
+
+const LEFT_PAD = `   `;
+const SPACER = `  `;
+const EXTENDED_LEFT_PAD = `      `;
+
+export function getTuiTerminalSummaryLifeCycle({
+  projectNames,
+  tasks,
+  taskGraph,
+  args,
+  overrides,
+  initiatingProject,
+  initiatingTasks,
+  resolveRenderIsDonePromise,
+}: {
+  projectNames: string[];
+  tasks: Task[];
+  taskGraph: TaskGraph;
+  args: { targets?: string[]; configuration?: string; parallel?: number };
+  overrides: Record<string, unknown>;
+  initiatingProject: string;
+  initiatingTasks: Task[];
+  resolveRenderIsDonePromise: (value: void) => void;
+}) {
+  const lifeCycle = {} as Partial<LifeCycle>;
+
+  const start = process.hrtime();
+  const targets = args.targets;
+  const totalTasks = tasks.length;
+
+  let totalCachedTasks = 0;
+  let totalSuccessfulTasks = 0;
+  let totalFailedTasks = 0;
+  let totalCompletedTasks = 0;
+  let timeTakenText: string;
+
+  const failedTasks = new Set<string>();
+  const skippedTasks = new Set<string>();
+  const inProgressTasks = new Set<string>();
+  // Tasks ended with 'stopped' status (interrupted, didn't finish — counts as failure)
+  const stoppedTasks = new Set<string>();
+  // Tasks shown with cyan stopped icon (includes fulfilled continuous tasks ended as 'success')
+  const displayStoppedTasks = new Set<string>();
+
+  // Chunks accumulated progressively during task execution
+  const taskOutputChunks: Record<string, string[]> = {};
+  // Finalized output strings set on task completion — read by summary print functions
+  const tasksToTerminalOutputs: Record<string, string> = {};
+  const tasksToTaskStatus: Record<string, TaskStatus> = {};
+  const batchWorkerLogs: [batchId: string, path: string][] = [];
+
+  const taskIdsInTheOrderTheyStart = new Set<string>();
+
+  const getTerminalOutput = (taskId: string): string =>
+    tasksToTerminalOutputs[taskId] ?? taskOutputChunks[taskId]?.join('') ?? '';
+
+  lifeCycle.startTasks = (tasks) => {
+    for (let t of tasks) {
+      taskOutputChunks[t.id] ??= [];
+      taskIdsInTheOrderTheyStart.add(t.id);
+      inProgressTasks.add(t.id);
+    }
+  };
+
+  lifeCycle.appendTaskOutput = (taskId, output) => {
+    // Task already completed and output was finalized by endTasks — discard late-arriving data
+    if (!taskOutputChunks[taskId]) {
+      return;
+    }
+    taskOutputChunks[taskId].push(output);
+  };
+
+  // TODO(@AgentEnder): The following 2 methods should be one but will need more refactoring
+  lifeCycle.printTaskTerminalOutput = (task, taskStatus, output) => {
+    tasksToTaskStatus[task.id] = taskStatus;
+    // Store the complete output for display in the summary
+    // This is called with the full output for cached tasks. For non-cached tasks,
+    // the output doesn't include the portion of the output that prints the command that was being ran.
+    if (
+      output &&
+      !(['failure', 'success'] as Array<TaskStatus>).includes(taskStatus)
+    ) {
+      tasksToTerminalOutputs[task.id] = output;
+    }
+  };
+  lifeCycle.setTaskStatus = (taskId, taskStatus) => {
+    if (taskStatus === NativeTaskStatus.Stopped) {
+      displayStoppedTasks.add(taskId);
+      inProgressTasks.delete(taskId);
+    } else if (taskStatus === NativeTaskStatus.Skipped) {
+      // Skipped tasks don't get an endTasks() call; clear them here so the run
+      // summary doesn't treat them as still-in-progress and report Cancelled.
+      tasksToTaskStatus[taskId] = 'skipped';
+      skippedTasks.add(taskId);
+      inProgressTasks.delete(taskId);
+    }
+  };
+
+  lifeCycle.endTasks = (taskResults) => {
+    for (const { task, status, terminalOutput } of taskResults) {
+      totalCompletedTasks++;
+      inProgressTasks.delete(task.id);
+      // A batch that crashes after reporting the task skipped still ends it
+      // here, as failed or stopped
+      skippedTasks.delete(task.id);
+      tasksToTaskStatus[task.id] = status;
+      if (status === 'stopped') {
+        stoppedTasks.add(task.id);
+      }
+
+      switch (status) {
+        case 'remote-cache':
+        case 'local-cache':
+        case 'local-cache-kept-existing':
+          totalCachedTasks++;
+          totalSuccessfulTasks++;
+          break;
+        case 'success':
+          totalSuccessfulTasks++;
+          break;
+        case 'failure':
+          totalFailedTasks++;
+          failedTasks.add(task.id);
+          break;
+        case 'stopped':
+          break;
+      }
+
+      // Store the final string directly — shares the same reference as
+      // TaskResultsLifeCycle, old chunks become GC-eligible
+      if (terminalOutput !== undefined) {
+        tasksToTerminalOutputs[task.id] = terminalOutput;
+        delete taskOutputChunks[task.id];
+      }
+    }
+  };
+
+  lifeCycle.batchOutputAvailable = (batchId, path) => {
+    batchWorkerLogs.push([batchId, path]);
+  };
+
+  lifeCycle.endCommand = () => {
+    timeTakenText = prettyTime(process.hrtime(start));
+    resolveRenderIsDonePromise();
+  };
+
+  const batchWorkerLogRows = (): string[] => [
+    `${LEFT_PAD}${output.dim('Batch worker logs:')}`,
+    '',
+    ...batchWorkerLogs.map(
+      ([batchId, path]) =>
+        `${EXTENDED_LEFT_PAD}${output.dim(`- ${batchId}: ${path}`)}`
+    ),
+  ];
+
+  const printSummary = () => {
+    const isRunOne = initiatingProject && targets?.length === 1;
+
+    // Handles when the user interrupts the process
+    timeTakenText ??= prettyTime(process.hrtime(start));
+
+    if (totalTasks === 0) {
+      console.log(`\n${output.applyNxPrefix('gray', 'No tasks were run')}\n`);
+      return;
+    }
+
+    const failure = totalSuccessfulTasks !== totalTasks;
+    const cancelled =
+      stoppedTasks.size > 0 ||
+      inProgressTasks.size > 0 ||
+      [...getLeafTasks(taskGraph)].some((t) => taskGraph.tasks[t]?.continuous);
+
+    if (isRunOne) {
+      printRunOneSummary({
+        failure,
+        cancelled,
+      });
+    } else {
+      printRunManySummary({
+        failure,
+        cancelled,
+      });
+    }
+    getTasksHistoryLifeCycle().printFlakyTasksMessage();
+  };
+
+  const printRunOneSummary = ({
+    failure,
+    cancelled,
+  }: {
+    failure: boolean;
+    cancelled: boolean;
+  }) => {
+    // Print task outputs in start order above the summary.
+    for (const taskId of taskIdsInTheOrderTheyStart) {
+      const taskStatus = tasksToTaskStatus[taskId];
+      // Skipped tasks never ran; don't print a misleading `> nx run` header.
+      if (taskStatus === 'skipped') {
+        continue;
+      }
+      const terminalOutput = getTerminalOutput(taskId);
+      output.logCommandOutput(taskId, taskStatus, terminalOutput);
+    }
+
+    // Print vertical separator
+    const separatorLines = output.getVerticalSeparatorLines(
+      failure ? 'red' : 'green'
+    );
+    for (const line of separatorLines) {
+      console.log(line);
+    }
+
+    if (!failure && !cancelled) {
+      const text = `Successfully ran ${formatTargetsAndProjects(
+        [initiatingProject],
+        targets,
+        tasks
+      )}`;
+
+      // Build success message with color applied to the entire block
+      const messageLines = [
+        output.applyNxPrefix(
+          'green',
+          output.colors.green(text) + output.dim(` (${timeTakenText})`)
+        ),
+      ];
+
+      const filteredOverrides = Object.entries(overrides).filter(
+        // Don't print the data passed through from the version subcommand to the publish executor options, it could be quite large and it's an implementation detail.
+        ([flag]) => flag !== 'nxReleaseVersionData'
+      );
+      if (filteredOverrides.length > 0) {
+        messageLines.push('');
+        messageLines.push(
+          `${EXTENDED_LEFT_PAD}${pc.dim(pc.green('With additional flags:'))}`
+        );
+        filteredOverrides
+          .map(([flag, value]) =>
+            pc.dim(pc.green(formatFlags(EXTENDED_LEFT_PAD, flag, value)))
+          )
+          .forEach((arg) => messageLines.push(arg));
+      }
+
+      if (totalCachedTasks > 0) {
+        messageLines.push(
+          output.dim(
+            `${EOL}Nx read the output from the cache instead of running the command for ${totalCachedTasks} out of ${totalTasks} tasks.`
+          )
+        );
+      }
+
+      // Print the entire success message block with green color
+      console.log(output.colors.green(messageLines.join(EOL)));
+    } else if (!cancelled) {
+      let text = `Ran target ${output.bold(
+        targets[0]
+      )} for project ${output.bold(initiatingProject)}`;
+      if (tasks.length > 1) {
+        text += ` and ${output.bold(tasks.length - 1)} task(s) they depend on`;
+      }
+
+      // Build failure message lines
+      const messageLines = [
+        output.applyNxPrefix(
+          'red',
+          output.colors.red(text) + output.dim(` (${timeTakenText})`)
+        ),
+      ];
+
+      const filteredOverrides = Object.entries(overrides).filter(
+        // Don't print the data passed through from the version subcommand to the publish executor options, it could be quite large and it's an implementation detail.
+        ([flag]) => flag !== 'nxReleaseVersionData'
+      );
+      if (filteredOverrides.length > 0) {
+        messageLines.push('');
+        messageLines.push(
+          `${EXTENDED_LEFT_PAD}${pc.dim(pc.red('With additional flags:'))}`
+        );
+        filteredOverrides
+          .map(([flag, value]) =>
+            pc.dim(pc.red(formatFlags(EXTENDED_LEFT_PAD, flag, value)))
+          )
+          .forEach((arg) => messageLines.push(arg));
+      }
+
+      messageLines.push('');
+      messageLines.push(
+        `${LEFT_PAD}${output.colors.red(
+          figures.cross
+        )}${SPACER}${totalFailedTasks}${`/${totalTasks}`} failed`
+      );
+      messageLines.push(
+        `${LEFT_PAD}${output.dim(
+          figures.tick
+        )}${SPACER}${totalSuccessfulTasks}${`/${totalTasks}`} succeeded ${output.dim(
+          `[${totalCachedTasks} read from cache]`
+        )}`
+      );
+      if (skippedTasks.size > 0) {
+        messageLines.push(
+          `${LEFT_PAD}${pc.yellow('⏭')}${SPACER}${skippedTasks.size}/${totalTasks} skipped`
+        );
+      }
+
+      if (batchWorkerLogs.length > 0) {
+        messageLines.push('', ...batchWorkerLogRows());
+      }
+
+      const viewLogs = viewLogsFooterRows(totalFailedTasks);
+      messageLines.push(...viewLogs);
+
+      // Print the entire failure message block with red color
+      console.log(output.colors.red(messageLines.join(EOL)));
+    } else {
+      const messageLines = [
+        output.applyNxPrefix(
+          'red',
+          output.colors.red(
+            `Cancelled running target ${output.bold(
+              targets[0]
+            )} for project ${output.bold(initiatingProject)}`
+          ) + output.dim(` (${timeTakenText})`)
+        ),
+      ];
+      if (batchWorkerLogs.length > 0) {
+        messageLines.push('', ...batchWorkerLogRows());
+      }
+      console.log(messageLines.join(EOL));
+    }
+
+    // adds some vertical space after the summary to avoid bunching against terminal
+    console.log('');
+  };
+
+  const printRunManySummary = ({
+    failure,
+    cancelled,
+  }: {
+    failure: boolean;
+    cancelled: boolean;
+  }) => {
+    console.log('');
+
+    // Collect checklist lines to print after task outputs
+    const checklistLines: string[] = [];
+
+    // Sort tasks by status: successful tasks first, failed tasks at the end.
+    // A task skipped before it started never reached startTasks.
+    const sortedTaskIds = [
+      ...new Set([...taskIdsInTheOrderTheyStart, ...skippedTasks]),
+    ].sort((a, b) => {
+      const statusA = tasksToTaskStatus[a];
+      const statusB = tasksToTaskStatus[b];
+      const isFailureA = statusA === 'failure' || !statusA ? 1 : 0;
+      const isFailureB = statusB === 'failure' || !statusB ? 1 : 0;
+      return isFailureA - isFailureB;
+    });
+
+    // First pass: Print task outputs and collect checklist lines
+    for (const taskId of sortedTaskIds) {
+      const taskStatus = tasksToTaskStatus[taskId];
+      const terminalOutput = getTerminalOutput(taskId);
+      if (
+        displayStoppedTasks.has(taskId) ||
+        !taskStatus ||
+        taskStatus === 'stopped'
+      ) {
+        output.logCommandOutput(taskId, taskStatus, terminalOutput);
+        output.addNewline();
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.cyan(
+            figures.squareSmallFilled
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}`
+        );
+      } else if (taskStatus === 'failure') {
+        output.logCommandOutput(taskId, taskStatus, terminalOutput);
+        output.addNewline();
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.red(
+            figures.cross
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}`
+        );
+      } else if (taskStatus === 'local-cache') {
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.green(
+            figures.tick
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}  ${output.dim(
+            '[local cache]'
+          )}`
+        );
+      } else if (taskStatus === 'local-cache-kept-existing') {
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.green(
+            figures.tick
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}  ${output.dim(
+            '[existing outputs match the cache, left as is]'
+          )}`
+        );
+      } else if (taskStatus === 'remote-cache') {
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.green(
+            figures.tick
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}  ${output.dim(
+            '[remote cache]'
+          )}`
+        );
+      } else if (taskStatus === 'success') {
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.green(
+            figures.tick
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}`
+        );
+      } else if (taskStatus === 'skipped') {
+        checklistLines.push(
+          `${LEFT_PAD}${pc.yellow('⏭')}${SPACER}${output.colors.gray(
+            'nx run '
+          )}${taskId}`
+        );
+      } else {
+        const unhandled: never = taskStatus;
+        void unhandled;
+        checklistLines.push(
+          `${LEFT_PAD}${output.colors.cyan(
+            figures.squareSmallFilled
+          )}${SPACER}${output.colors.gray('nx run ')}${taskId}`
+        );
+      }
+    }
+
+    // Print all checklist lines together
+    console.log();
+    for (const line of checklistLines) {
+      console.log(line);
+    }
+
+    // Print vertical separator
+    const separatorLines = output.getVerticalSeparatorLines(
+      failure ? 'red' : 'green'
+    );
+    for (const line of separatorLines) {
+      console.log(line);
+    }
+
+    if (totalSuccessfulTasks === totalTasks) {
+      const text = `Successfully ran ${formatTargetsAndProjects(
+        projectNames,
+        targets,
+        tasks
+      )}`;
+
+      const successSummaryRows = [
+        output.applyNxPrefix(
+          'green',
+          output.colors.green(text) + pc.dim(pc.white(` (${timeTakenText})`))
+        ),
+      ];
+
+      const filteredOverrides = Object.entries(overrides).filter(
+        // Don't print the data passed through from the version subcommand to the publish executor options, it could be quite large and it's an implementation detail.
+        ([flag]) => flag !== 'nxReleaseVersionData'
+      );
+      if (filteredOverrides.length > 0) {
+        successSummaryRows.push('');
+        successSummaryRows.push(
+          `${EXTENDED_LEFT_PAD}${pc.dim(pc.green('With additional flags:'))}`
+        );
+        filteredOverrides
+          .map(([flag, value]) =>
+            pc.dim(pc.green(formatFlags(EXTENDED_LEFT_PAD, flag, value)))
+          )
+          .forEach((arg) => successSummaryRows.push(arg));
+      }
+
+      if (totalCachedTasks > 0) {
+        successSummaryRows.push(
+          output.dim(
+            `${EOL}Nx read the output from the cache instead of running the command for ${totalCachedTasks} out of ${totalTasks} tasks.`
+          )
+        );
+      }
+
+      console.log(successSummaryRows.join(EOL));
+    } else {
+      const text = `${
+        cancelled ? 'Cancelled while running' : 'Ran'
+      } ${formatTargetsAndProjects(projectNames, targets, tasks)}`;
+
+      const failureSummaryRows: string[] = [
+        output.applyNxPrefix(
+          'red',
+          output.colors.red(text) + pc.dim(pc.white(` (${timeTakenText})`))
+        ),
+      ];
+
+      const filteredOverrides = Object.entries(overrides).filter(
+        // Don't print the data passed through from the version subcommand to the publish executor options, it could be quite large and it's an implementation detail.
+        ([flag]) => flag !== 'nxReleaseVersionData'
+      );
+      if (filteredOverrides.length > 0) {
+        failureSummaryRows.push('');
+        failureSummaryRows.push(
+          `${EXTENDED_LEFT_PAD}${pc.dim(pc.red('With additional flags:'))}`
+        );
+        filteredOverrides
+          .map(([flag, value]) =>
+            pc.dim(pc.red(formatFlags(EXTENDED_LEFT_PAD, flag, value)))
+          )
+          .forEach((arg) => failureSummaryRows.push(arg));
+      }
+
+      failureSummaryRows.push('');
+
+      // For display purposes, treat stopped tasks as in-progress
+      // (they were running when the process was interrupted)
+      const displayCompleted = totalCompletedTasks - stoppedTasks.size;
+      const displayInProgress = new Set([...inProgressTasks, ...stoppedTasks]);
+
+      if (totalSuccessfulTasks > 0) {
+        failureSummaryRows.push(
+          output.dim(
+            `${LEFT_PAD}${output.dim(
+              figures.tick
+            )}${SPACER}${totalSuccessfulTasks}${`/${totalTasks}`} succeeded ${output.dim(
+              `[${totalCachedTasks} read from cache]`
+            )}`
+          ),
+          ''
+        );
+      }
+      if (totalFailedTasks > 0) {
+        const numFailedToPrint = 5;
+        const failedTasksForPrinting = Array.from(failedTasks).slice(
+          0,
+          numFailedToPrint
+        );
+        failureSummaryRows.push(
+          `${LEFT_PAD}${output.colors.red(
+            figures.cross
+          )}${SPACER}${totalFailedTasks}${`/${totalTasks}`} targets failed, including the following:`,
+          '',
+          `${failedTasksForPrinting
+            .map(
+              (t) =>
+                `${EXTENDED_LEFT_PAD}${output.colors.red(
+                  '-'
+                )} ${output.formatCommand(t.toString())}`
+            )
+            .join('\n')}`,
+          ''
+        );
+        if (failedTasks.size > numFailedToPrint) {
+          failureSummaryRows.push(
+            output.dim(
+              `${EXTENDED_LEFT_PAD}...and ${
+                failedTasks.size - numFailedToPrint
+              } more...`
+            )
+          );
+        }
+      }
+      if (skippedTasks.size > 0) {
+        failureSummaryRows.push(
+          output.dim(
+            `${LEFT_PAD}${pc.yellow('⏭')}${SPACER}${skippedTasks.size}/${totalTasks} targets were skipped.`
+          ),
+          ''
+        );
+      }
+      if (displayCompleted !== totalTasks) {
+        const remainingTasks =
+          totalTasks - displayCompleted - skippedTasks.size;
+        if (displayInProgress.size) {
+          failureSummaryRows.push(
+            `${LEFT_PAD}${output.colors.red(figures.ellipsis)}${SPACER}${
+              displayInProgress.size
+            }${`/${totalTasks}`} targets were in progress, including the following:`,
+            '',
+            `${Array.from(displayInProgress)
+              .map(
+                (t) =>
+                  `${EXTENDED_LEFT_PAD}${output.colors.red(
+                    '-'
+                  )} ${output.formatCommand(t.toString())}`
+              )
+              .join(EOL)}`,
+            ''
+          );
+        }
+        if (remainingTasks - displayInProgress.size > 0) {
+          failureSummaryRows.push(
+            output.dim(
+              `${LEFT_PAD}${output.colors.red(figures.ellipsis)}${SPACER}${
+                remainingTasks - displayInProgress.size
+              }${`/${totalTasks}`} targets had not started.`
+            ),
+            ''
+          );
+        }
+      }
+
+      if (batchWorkerLogs.length > 0) {
+        failureSummaryRows.push(...batchWorkerLogRows(), '');
+      }
+      failureSummaryRows.push(...viewLogsFooterRows(failedTasks.size));
+
+      console.log(output.colors.red(failureSummaryRows.join(EOL)));
+    }
+
+    // adds some vertical space after the summary to avoid bunching against terminal
+    console.log('');
+  };
+  return { lifeCycle: lifeCycle as LifeCycle, printSummary };
+}

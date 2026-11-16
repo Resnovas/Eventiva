@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ClassDeclaration > _error_ > non-identifier-type-param > TSESTree - Error`]
+TSError
+> 1 | class C<1> {}
+    |         ^ Type parameter declaration expected.
+  2 |

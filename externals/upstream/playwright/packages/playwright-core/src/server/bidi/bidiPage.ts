@@ -1,0 +1,774 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the 'License');
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an 'AS IS' BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { debugLogger } from '@utils/debugLogger';
+import { eventsHelper } from '@utils/eventsHelper';
+import { monotonicTime } from '@isomorphic/time';
+import * as dialog from '../dialog';
+import * as dom from '../dom';
+import * as js from '../javascript';
+import { BidiBrowserContext, getScreenOrientation } from './bidiBrowser';
+import { Page, Worker } from '../page';
+import { BidiExecutionContext, createHandle } from './bidiExecutionContext';
+import { RawKeyboardImpl, RawMouseImpl, RawTouchscreenImpl } from './bidiInput';
+import { BidiNetworkManager } from './bidiNetworkManager';
+import { BidiPDF } from './bidiPdf';
+import * as bidi from './third_party/bidiProtocol';
+import { nullProgress } from '../progress';
+import { startAutomaticVideoRecording } from '../videoRecorder';
+
+import * as frames from '../frames';
+import * as network from '../network';
+import type { RegisteredListener } from '@utils/eventsHelper';
+import type { InitScript, PageDelegate } from '../page';
+import type { Progress } from '../progress';
+import type * as types from '../types';
+import type { BidiSession } from './bidiConnection';
+import type * as channels from '../channels';
+
+const UTILITY_WORLD_NAME = '__playwright_utility_world__';
+export const kPlaywrightBindingChannel = 'playwrightChannel';
+
+export class BidiPage implements PageDelegate {
+  readonly rawMouse: RawMouseImpl;
+  readonly rawKeyboard: RawKeyboardImpl;
+  readonly rawTouchscreen: RawTouchscreenImpl;
+  readonly _page: Page;
+  readonly _session: BidiSession;
+  readonly _opener: BidiPage | null;
+  readonly _contextIdToContext: Map<string, dom.FrameExecutionContext>;
+  private _realmToWorkerContext = new Map<string, js.ExecutionContext>();
+  private _sessionListeners: RegisteredListener[] = [];
+  readonly _browserContext: BidiBrowserContext;
+  readonly _networkManager: BidiNetworkManager;
+  private readonly _pdf: BidiPDF;
+  private _initScriptIds = new Map<InitScript, string>();
+  private readonly _fragmentNavigations = new Set<string>();
+  private readonly _failedNavigations = new Map<string, string>();
+  private _screencastTimer: NodeJS.Timeout | undefined;
+  private _screencastGeneration = 0;
+  private _screencastRunning = false;
+
+  constructor(browserContext: BidiBrowserContext, bidiSession: BidiSession, opener: BidiPage | null) {
+    this._session = bidiSession;
+    this._opener = opener;
+    this.rawKeyboard = new RawKeyboardImpl(this);
+    this.rawMouse = new RawMouseImpl(bidiSession);
+    this.rawTouchscreen = new RawTouchscreenImpl(bidiSession);
+    this._contextIdToContext = new Map();
+    this._page = new Page(this, browserContext);
+    this._browserContext = browserContext;
+    this._networkManager = new BidiNetworkManager(this._session, this._page);
+    this._pdf = new BidiPDF(this._session);
+    this._page.on(Page.Events.FrameDetached, (frame: frames.Frame) => this._removeContextsForFrame(frame, false));
+    this._sessionListeners = [
+      eventsHelper.addEventListener(bidiSession, 'script.realmCreated', this._onRealmCreated.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'script.message', this._onScriptMessage.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.contextDestroyed', this._onBrowsingContextDestroyed.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.navigationStarted', this._onNavigationStarted.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.navigationCommitted', this._onNavigationCommitted.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.navigationAborted', this._onNavigationAborted.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.navigationFailed', this._onNavigationFailed.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.fragmentNavigated', this._onFragmentNavigated.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.historyUpdated', this._onHistoryUpdated.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.domContentLoaded', this._onDomContentLoaded.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.load', this._onLoad.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.downloadWillBegin', this._onDownloadWillBegin.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.downloadEnd', this._onDownloadEnded.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.userPromptOpened', this._onUserPromptOpened.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'browsingContext.userPromptClosed', this._onUserPromptClosed.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'log.entryAdded', this._onLogEntryAdded.bind(this)),
+      eventsHelper.addEventListener(bidiSession, 'input.fileDialogOpened', this._onFileDialogOpened.bind(this)),
+    ];
+
+    // Initialize main frame.
+    // TODO: Wait for first execution context to be created and maybe about:blank navigated.
+    this._initialize().then(
+        () => this._page.reportAsNew(this._opener?._page),
+        error => this._page.reportAsNew(this._opener?._page, error));
+  }
+
+  private async _initialize() {
+    // Initialize main frame.
+    this._onFrameAttached(this._session.sessionId, null);
+    await Promise.all([
+      this.updateHttpCredentials(),
+      // If the page is created by the Playwright client's call, some initialization
+      // may be pending. Wait for it to complete before reporting the page as new.
+    ]);
+    startAutomaticVideoRecording(this._page);
+  }
+
+  didClose() {
+    this._session.dispose();
+    eventsHelper.removeEventListeners(this._sessionListeners);
+    this._page._didClose();
+  }
+
+  private _onFrameAttached(frameId: string, parentFrameId: string | null): frames.Frame {
+    return this._page.frameManager.frameAttached(frameId, parentFrameId);
+  }
+
+  private _removeContextsForFrame(frame: frames.Frame, notifyFrame: boolean) {
+    for (const [contextId, context] of this._contextIdToContext) {
+      if (context.frame === frame) {
+        this._contextIdToContext.delete(contextId);
+        if (notifyFrame)
+          frame.contextDestroyed(context);
+      }
+    }
+  }
+
+  private _onRealmCreated(realmInfo: bidi.Script.RealmInfo) {
+    if (realmInfo.type === 'dedicated-worker') {
+      const delegate = new BidiExecutionContext(this._session, realmInfo);
+      const worker = new Worker(this._page, realmInfo.origin);
+      this._realmToWorkerContext.set(realmInfo.realm, worker.createExecutionContext(delegate));
+      worker.workerScriptLoaded();
+      this._page.addWorker(realmInfo.realm, worker);
+      return;
+    }
+    if (this._contextIdToContext.has(realmInfo.realm))
+      return;
+    if (realmInfo.type !== 'window' || realmInfo.sandbox)
+      return;
+    const frame = this._page.frameManager.frame(realmInfo.context);
+    if (!frame)
+      return;
+    const delegate = new BidiExecutionContext(this._session, realmInfo);
+    const context = new dom.FrameExecutionContext(delegate, frame, 'main');
+    frame.contextCreated('main', context);
+    this._contextIdToContext.set(realmInfo.realm, context);
+    this._createUtilityWorld(realmInfo, frame, context);
+  }
+
+  private async _createUtilityWorld(realmInfo: bidi.Script.WindowRealmInfo, frame: frames.Frame, mainContext: dom.FrameExecutionContext) {
+    try {
+      const result = await this._session.send('script.evaluate', {
+        expression: '1 + 1',
+        target: {
+          context: realmInfo.context,
+          sandbox: UTILITY_WORLD_NAME,
+        },
+        serializationOptions: {
+          maxObjectDepth: 10,
+          maxDomDepth: 10,
+        },
+        awaitPromise: true,
+        userActivation: true,
+      });
+      if (await frame.mainContext() !== mainContext)
+        return;
+      const delegate = new BidiExecutionContext(this._session, {
+        ...realmInfo,
+        realm: result.realm,
+        sandbox: UTILITY_WORLD_NAME
+      });
+      const utilityContext = new dom.FrameExecutionContext(delegate, frame, 'utility');
+      frame.contextCreated('utility', utilityContext);
+      this._contextIdToContext.set(result.realm, utilityContext);
+    } catch (error) {
+      debugLogger.log('error', error);
+    }
+  }
+
+  _onRealmDestroyed(params: bidi.Script.RealmDestroyedParameters): boolean {
+    const context = this._contextIdToContext.get(params.realm);
+    if (context) {
+      this._contextIdToContext.delete(params.realm);
+      context.frame.contextDestroyed(context);
+      return true;
+    }
+    const existed = this._realmToWorkerContext.delete(params.realm);
+    if (existed) {
+      this._page.removeWorker(params.realm);
+      return true;
+    }
+    return false;
+  }
+
+  // TODO: route the message directly to the browser
+  private _onBrowsingContextDestroyed(params: bidi.BrowsingContext.Info) {
+    this._browserContext._browser._onBrowsingContextDestroyed(params);
+  }
+
+  private _onNavigationStarted(params: bidi.BrowsingContext.NavigationInfo) {
+    const frameId = params.context;
+    this._failedNavigations.delete(frameId);
+    this._page.frameManager.frameRequestedNavigation(frameId, params.navigation!);
+  }
+
+  private _onNavigationCommitted(params: bidi.BrowsingContext.NavigationInfo) {
+    const frameId = params.context;
+    const frame = this._page.frameManager.frame(frameId)!;
+    this._browserContext.doGrantGlobalPermissionsForURL(params.url).catch(error => debugLogger.log('error', error));
+    this._page.frameManager.frameCommittedNewDocumentNavigation(frameId, params.url, frame._name, params.navigation!, /* initial */ false);
+  }
+
+  private _onDomContentLoaded(params: bidi.BrowsingContext.NavigationInfo) {
+    const frameId = params.context;
+    this._page.frameManager.frameLifecycleEvent(frameId, 'domcontentloaded');
+  }
+
+  private _onLoad(params: bidi.BrowsingContext.NavigationInfo) {
+    this._page.frameManager.frameLifecycleEvent(params.context, 'load');
+  }
+
+  private _onNavigationAborted(params: bidi.BrowsingContext.NavigationInfo) {
+    this._page.frameManager.frameAbortedNavigation(params.context, 'Navigation aborted', params.navigation || undefined);
+  }
+
+  private _onNavigationFailed(params: bidi.BrowsingContext.NavigationInfo) {
+    if (params.navigation)
+      this._failedNavigations.set(params.context, params.navigation);
+    this._page.frameManager.frameAbortedNavigation(params.context, 'Navigation failed', params.navigation || undefined);
+  }
+
+  private _onFragmentNavigated(params: bidi.BrowsingContext.NavigationInfo) {
+    if (params.navigation)
+      this._fragmentNavigations.add(params.navigation);
+    this._page.frameManager.frameCommittedSameDocumentNavigation(params.context, params.url);
+  }
+
+  private _onHistoryUpdated(params: bidi.BrowsingContext.HistoryUpdatedParameters) {
+    this._page.frameManager.frameCommittedSameDocumentNavigation(params.context, params.url);
+  }
+
+  private _onUserPromptOpened(event: bidi.BrowsingContext.UserPromptOpenedParameters) {
+    this._page.browserContext.dialogManager.dialogDidOpen(new dialog.Dialog(
+        this._page,
+        event.type as dialog.DialogType,
+        event.message,
+        async (accept: boolean, userText?: string) => {
+          await this._session.send('browsingContext.handleUserPrompt', { context: event.context, accept, userText });
+        },
+        event.defaultValue));
+  }
+
+  private _onUserPromptClosed() {
+    this._page.browserContext.dialogManager.dialogWasClosedInBrowser(this._page);
+  }
+
+  private _onDownloadWillBegin(event: bidi.BrowsingContext.DownloadWillBeginParams) {
+    // TODO: remove the event.navigation fallback when Chrome supports event.download
+    // See https://github.com/GoogleChromeLabs/chromium-bidi/issues/4155
+    if (!event.download && !event.navigation)
+      return;
+
+    this._page.frameManager.frameAbortedNavigation(event.context, 'Download is starting');
+
+    let originPage = this._page.initializedOrUndefined();
+    // If it's a new window download, report it on the opener page.
+    if (!originPage && this._opener)
+      originPage = this._opener._page.initializedOrUndefined();
+    if (!originPage)
+      return;
+
+    this._browserContext._browser.downloadCreated(originPage, event.download ?? event.navigation, event.url, event.suggestedFilename, event.suggestedFilename);
+  }
+
+  private _onDownloadEnded(event: bidi.BrowsingContext.DownloadEndParams) {
+    // TODO: remove the event.navigation fallback when Chrome supports event.download
+    // See https://github.com/GoogleChromeLabs/chromium-bidi/issues/4155
+    if (!event.download && !event.navigation)
+      return;
+    this._browserContext._browser.downloadFinished(event.download ?? event.navigation, event.status === 'canceled' ? 'canceled' : undefined);
+  }
+
+  private _onLogEntryAdded(params: bidi.Log.Entry) {
+    if (params.type === 'javascript' && params.level === 'error') {
+      let errorName = '';
+      let errorMessage: string | undefined;
+      if (params.text?.includes(': ')) {
+        const index = params.text.indexOf(': ');
+        errorName = params.text.substring(0, index);
+        errorMessage = params.text.substring(index + 2);
+      } else {
+        errorMessage = params.text ?? undefined;
+      }
+      const error = new Error(errorMessage);
+      error.name = errorName;
+      error.stack = `${params.text}\n${params.stackTrace?.callFrames.map(f => {
+        const location = `${f.url}:${f.lineNumber + 1}:${f.columnNumber + 1}`;
+        return f.functionName ? `    at ${f.functionName} (${location})` : `    at ${location}`;
+      }).join('\n')}`;
+      const callFrame = params.stackTrace?.callFrames[0];
+      const location = callFrame ?? { url: '', lineNumber: 1, columnNumber: 1 };
+      this._page.addPageError(error, location);
+      return;
+    }
+    if (params.type !== 'console')
+      return;
+    const entry: bidi.Log.ConsoleLogEntry = params as bidi.Log.ConsoleLogEntry;
+    const context = this._contextIdToContext.get(params.source.realm) ?? this._realmToWorkerContext.get(params.source.realm);
+    if (!context)
+      return;
+
+    const callFrame = params.stackTrace?.callFrames[0];
+    const location = callFrame ?? { url: '', lineNumber: 1, columnNumber: 1 };
+    const type = entry.method === 'warn' ? 'warning' : entry.method;
+    const text = (entry.method === 'timeLog' || entry.method === 'timeEnd') && entry.text ? entry.text : undefined;
+    this._page.addConsoleMessage(null, type, entry.args.map(arg => createHandle(context, arg)), location, text, params.timestamp);
+  }
+
+  private async _onFileDialogOpened(params: bidi.Input.FileDialogInfo) {
+    if (!params.element)
+      return;
+    const frame = this._page.frameManager.frame(params.context);
+    if (!frame)
+      return;
+    const executionContext = await frame.mainContext();
+    try {
+      const handle = await toBidiExecutionContext(executionContext).remoteObjectForNodeId(executionContext, { sharedId: params.element.sharedId });
+      await this._page._onFileChooserOpened(handle as dom.ElementHandle);
+    } catch {}
+  }
+
+  async navigateFrame(frame: frames.Frame, url: string, referrer: string | undefined): Promise<frames.GotoResult> {
+    try {
+      const { navigation } = await this._session.send('browsingContext.navigate', {
+        context: frame._id,
+        url,
+      });
+      if (navigation && this._fragmentNavigations.has(navigation)) {
+        this._fragmentNavigations.delete(navigation);
+        return {};
+      }
+      return { newDocumentId: navigation || undefined };
+    } catch (error) {
+      const navigation = this._failedNavigations.get(frame._id);
+      this._failedNavigations.delete(frame._id);
+      throw new frames.NavigationAbortedError(navigation, `${error.message} at ${url}`);
+    }
+  }
+
+  async updateExtraHTTPHeaders(): Promise<void> {
+    const allHeaders = network.mergeHeaders([
+      this._browserContext._options.extraHTTPHeaders,
+      this._page.extraHTTPHeaders(),
+    ]);
+    await this._session.send('network.setExtraHeaders', {
+      headers: allHeaders.map(({ name, value }) => ({ name, value: { type: 'string' as 'string', value } })),
+      contexts: [this._session.sessionId],
+    });
+  }
+
+  async updateEmulateMedia(): Promise<void> {
+    const features = this._page.emulatedMedia();
+    const colorScheme =
+      features.colorScheme === 'no-override'
+        ? null
+        : features.colorScheme === 'no-preference'
+          ? undefined
+          : features.colorScheme;
+    await this._session.send('emulation.setMediaFeaturesOverride', {
+      features: { 'prefers-color-scheme': colorScheme },
+      contexts: [this._session.sessionId, ...this._session._browsingContexts],
+    });
+  }
+
+  async updateUserAgent(): Promise<void> {
+  }
+
+  async bringToFront(): Promise<void> {
+    await this._session.send('browsingContext.activate', {
+      context: this._session.sessionId,
+    });
+  }
+
+  async updateEmulatedViewportSize(): Promise<void> {
+    const options = this._browserContext._options;
+    const emulatedSize = this._page.emulatedSize();
+    if (!emulatedSize)
+      return;
+    const screenSize = emulatedSize.screen;
+    const viewportSize = emulatedSize.viewport;
+    await Promise.all([
+      this._session.send('browsingContext.setViewport', {
+        context: this._session.sessionId,
+        viewport: {
+          width: viewportSize.width,
+          height: viewportSize.height,
+        },
+        devicePixelRatio: options.deviceScaleFactor || 1
+      }),
+      this._session.send('emulation.setScreenOrientationOverride', {
+        contexts: [this._session.sessionId],
+        screenOrientation: getScreenOrientation(!!options.isMobile, screenSize)
+      }),
+      this._session.send('emulation.setScreenSettingsOverride', {
+        contexts: [this._session.sessionId],
+        screenArea: {
+          width: screenSize.width,
+          height: screenSize.height,
+        }
+      })
+    ]);
+  }
+
+  async updateRequestInterception(): Promise<void> {
+    await this._networkManager.setRequestInterception(this._page.requestInterceptors.length > 0);
+  }
+
+  async updateOffline() {
+  }
+
+  async updateHttpCredentials() {
+    await this._networkManager.setCredentials(this._browserContext._options.httpCredentials, this._browserContext.proxyCredentials());
+  }
+
+  async updateFileChooserInterception() {
+  }
+
+  async reload(): Promise<void> {
+    await this._session.send('browsingContext.reload', {
+      context: this._session.sessionId,
+      // ignoreCache: true,
+      wait: bidi.BrowsingContext.ReadinessState.Interactive,
+    });
+  }
+
+  async goBack(): Promise<boolean> {
+    return await this._session.send('browsingContext.traverseHistory', {
+      context: this._session.sessionId,
+      delta: -1,
+    }).then(() => true).catch(() => false);
+  }
+
+  async goForward(): Promise<boolean> {
+    return await this._session.send('browsingContext.traverseHistory', {
+      context: this._session.sessionId,
+      delta: +1,
+    }).then(() => true).catch(() => false);
+  }
+
+  async requestGC(): Promise<void> {
+    const result = await this._session.send('script.evaluate', {
+      expression: 'TestUtils.gc()',
+      target: { context: this._session.sessionId },
+      awaitPromise: true,
+    });
+    if (result.type === 'exception')
+      throw new Error('Method not implemented.');
+  }
+
+  private async _onScriptMessage(event: bidi.Script.MessageParameters) {
+    if (event.channel !== kPlaywrightBindingChannel)
+      return;
+    const pageOrError = await this._page.waitForInitializedOrError();
+    if (pageOrError instanceof Error)
+      return;
+    const context = this._contextIdToContext.get(event.source.realm);
+    if (!context)
+      return;
+    if (event.data.type !== 'string')
+      return;
+    await this._page.onBindingCalled(event.data.value, context);
+  }
+
+  async addInitScript(initScript: InitScript): Promise<void> {
+    const { script } = await this._session.send('script.addPreloadScript', {
+      // TODO: remove function call from the source.
+      functionDeclaration: `() => { return ${initScript.source} }`,
+      // TODO: push to iframes?
+      contexts: [this._session.sessionId],
+    });
+    this._initScriptIds.set(initScript, script);
+  }
+
+  async removeInitScripts(initScripts: InitScript[]): Promise<void> {
+    const ids: string[] = [];
+    for (const script of initScripts) {
+      const id = this._initScriptIds.get(script);
+      if (id)
+        ids.push(id);
+      this._initScriptIds.delete(script);
+    }
+    await Promise.all(ids.map(script => this._session.send('script.removePreloadScript', { script })));
+  }
+
+  async closePage(runBeforeUnload: boolean): Promise<void> {
+    if (runBeforeUnload) {
+      this._session.sendMayFail('browsingContext.close', {
+        context: this._session.sessionId,
+        promptUnload: runBeforeUnload,
+      });
+    } else {
+      await this._session.send('browsingContext.close', {
+        context: this._session.sessionId,
+        promptUnload: runBeforeUnload,
+      });
+    }
+  }
+
+  async setBackgroundColor(color?: { r: number; g: number; b: number; a: number; }): Promise<void> {
+    if (color)
+      throw new Error('Not implemented');
+  }
+
+  async takeScreenshot(progress: Progress, format: string, documentRect: types.Rect | undefined, viewportRect: types.Rect | undefined, quality: number | undefined, fitsViewport: boolean, scale: 'css' | 'device'): Promise<Buffer> {
+    const rect = (documentRect || viewportRect)!;
+    const { data } = await progress.race(this._session.send('browsingContext.captureScreenshot', {
+      context: this._session.sessionId,
+      format: {
+        type: `image/${format === 'png' || format === 'webp' ? format : 'jpeg'}`,
+        quality: quality !== undefined ? quality / 100 : undefined,
+      },
+      origin: documentRect ? 'document' : 'viewport',
+      clip: {
+        type: 'box',
+        ...rect,
+      }
+    }));
+    return Buffer.from(data, 'base64');
+  }
+
+  async getContentFrame(handle: dom.ElementHandle): Promise<frames.Frame | null> {
+    const executionContext = toBidiExecutionContext(handle._context);
+    const frameId = await executionContext.contentFrameIdForFrame(handle);
+    if (!frameId)
+      return null;
+    return this._page.frameManager.frame(frameId);
+  }
+
+  async getOwnerFrame(handle: dom.ElementHandle): Promise<string | null> {
+    // TODO: switch to utility world?
+    const windowHandle = await handle.evaluateHandle(node => {
+      const doc = node.ownerDocument ?? node as Document;
+      return doc.defaultView;
+    });
+    if (!windowHandle)
+      return null;
+    const executionContext = toBidiExecutionContext(handle._context);
+    return executionContext.frameIdForWindowHandle(windowHandle);
+  }
+
+  async getBoundingBox(handle: dom.ElementHandle): Promise<types.Rect | null> {
+    const box = await handle.evaluate(element => {
+      if (!(element instanceof Element) || element.getClientRects().length === 0)
+        return null;
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    });
+    if (!box)
+      return null;
+    const position = await this._framePosition(handle._frame);
+    if (!position)
+      return null;
+    box.x += position.x;
+    box.y += position.y;
+    return box;
+  }
+
+  // TODO: move to Frame.
+  private async _framePosition(frame: frames.Frame): Promise<types.Point | null> {
+    if (frame === this._page.mainFrame())
+      return { x: 0, y: 0 };
+    const element = await frame.frameElement(nullProgress);
+    const box = await element.boundingBox(nullProgress);
+    if (!box)
+      return null;
+    const style = await element.evaluateInUtility(([injected, iframe]) => injected.describeIFrameStyle(iframe as Element), {}).catch(e => 'error:notconnected' as const);
+    if (style === 'error:notconnected' || style === 'transformed')
+      return null;
+    // Content box is offset by border and padding widths.
+    box.x += style.left;
+    box.y += style.top;
+    return box;
+  }
+
+  async scrollRectIntoViewIfNeeded(handle: dom.ElementHandle<Element>, rect?: types.Rect): Promise<'error:notvisible' | 'error:notconnected' | 'done'> {
+    return await handle.evaluateInUtility(([injected, node]) => {
+      node.scrollIntoView({
+        block: 'center',
+        inline: 'center',
+        behavior: 'instant',
+      });
+    }, null).then(() => 'done' as const).catch(e => {
+      if (e instanceof Error && e.message.includes('Node is detached from document'))
+        return 'error:notconnected';
+      if (e instanceof Error && e.message.includes('Node does not have a layout object'))
+        return 'error:notvisible';
+      throw e;
+    });
+  }
+
+  startScreencast(options: { width: number, height: number, quality: number }) {
+    if (this._screencastRunning)
+      return;
+
+    this._screencastRunning = true;
+    const generation = ++this._screencastGeneration;
+    const captureFrame = async () => {
+      if (this._session.isDisposed()) {
+        this.stopScreencast();
+        return;
+      }
+
+      const startTime = monotonicTime();
+      const payload = await this._session.sendMayFail('browsingContext.captureScreenshot', {
+        context: this._session.sessionId,
+        format: {
+          type: 'image/jpeg',
+          quality: options.quality / 100
+        },
+        imageSize: {
+          maxWidth: options.width,
+          maxHeight: options.height,
+        }
+      });
+      if (payload) {
+        const buffer = Buffer.from(payload.data, 'base64');
+        const { width, height } = jpegDimensions(buffer);
+        await this._page.screencast.onScreencastFrame({
+          buffer,
+          frameSwapWallTime: Date.now(),
+          viewportWidth: width,
+          viewportHeight: height,
+        });
+      }
+      if (!this._screencastRunning || generation !== this._screencastGeneration)
+        return;
+      this._screencastTimer = setTimeout(captureFrame, Math.max(0, 40 - (monotonicTime() - startTime)));
+    };
+    void captureFrame();
+  }
+
+  stopScreencast() {
+    this._screencastRunning = false;
+    if (this._screencastTimer) {
+      clearTimeout(this._screencastTimer);
+      this._screencastTimer = undefined;
+    }
+  }
+
+  rafCountForStablePosition(): number {
+    return 1;
+  }
+
+  async getContentQuads(handle: dom.ElementHandle<Element>): Promise<types.Quad[] | null | 'error:notconnected'> {
+    const quads = await handle.evaluateInUtility(([injected, node]) => {
+      if (!node.isConnected)
+        return 'error:notconnected';
+      const rects = node.getClientRects();
+      if (!rects)
+        return null;
+      return [...rects].map(rect => [
+        { x: rect.left, y: rect.top },
+        { x: rect.right, y: rect.top },
+        { x: rect.right, y: rect.bottom },
+        { x: rect.left, y: rect.bottom },
+      ]);
+    }, null);
+    if (!quads || quads === 'error:notconnected')
+      return quads;
+    // TODO: consider transforming quads to support clicks in iframes.
+    const position = await this._framePosition(handle._frame);
+    if (!position)
+      return null;
+    quads.forEach(quad => quad.forEach(point => {
+      point.x += position.x;
+      point.y += position.y;
+    }));
+    return quads as types.Quad[];
+  }
+
+  async setInputFilePaths(progress: Progress, handle: dom.ElementHandle<HTMLInputElement>, paths: string[]): Promise<void> {
+    const fromContext = toBidiExecutionContext(handle._context);
+    await progress.race(this._session.send('input.setFiles', {
+      context: this._session.sessionId,
+      element: await progress.race(fromContext.nodeIdForElementHandle(handle)),
+      files: paths,
+    }));
+  }
+
+  async adoptElementHandle<T extends Node>(handle: dom.ElementHandle<T>, to: dom.FrameExecutionContext): Promise<dom.ElementHandle<T>> {
+    const fromContext = toBidiExecutionContext(handle._context);
+    const nodeId = await fromContext.nodeIdForElementHandle(handle);
+    const executionContext = toBidiExecutionContext(to);
+    try {
+      return await executionContext.remoteObjectForNodeId(to, nodeId) as dom.ElementHandle<T>;
+    } catch {
+      throw new Error(dom.kUnableToAdoptErrorMessage);
+    }
+  }
+
+  async inputActionEpilogue(): Promise<void> {
+  }
+
+  async resetForReuse(progress: Progress): Promise<void> {
+    // See https://github.com/microsoft/playwright/issues/22432.
+    await this.rawMouse.move(progress, 0, 0, 'none', new Set(), new Set(), false);
+  }
+
+  async pdf(options: channels.PagePdfParams): Promise<Buffer> {
+    return this._pdf.generate(options);
+  }
+
+  async getFrameElement(frame: frames.Frame): Promise<dom.ElementHandle> {
+    const parent = frame.parentFrame();
+    if (!parent)
+      throw new Error('Frame has been detached.');
+    const node = await this._getFrameNode(frame);
+    if (!node?.sharedId)
+      throw new Error('Frame has been detached.');
+    const parentFrameExecutionContext = await parent.mainContext();
+    return await toBidiExecutionContext(parentFrameExecutionContext).remoteObjectForNodeId(parentFrameExecutionContext, { sharedId: node.sharedId });
+  }
+
+  async _getFrameNode(frame: frames.Frame): Promise<bidi.Script.NodeRemoteValue | undefined> {
+    const parent = frame.parentFrame();
+    if (!parent)
+      return undefined;
+
+    const result = await this._session.send('browsingContext.locateNodes', {
+      context: parent._id,
+      locator: { type: 'context', value: { context: frame._id } },
+    });
+    const node = result.nodes[0];
+    return node;
+  }
+
+  shouldToggleStyleSheetToSyncAnimations(): boolean {
+    return true;
+  }
+
+  async setDockTile(image: Buffer): Promise<void> {
+  }
+}
+
+function toBidiExecutionContext(executionContext: dom.FrameExecutionContext): BidiExecutionContext {
+  return executionContext.delegate as BidiExecutionContext;
+}
+
+function jpegDimensions(buffer: Buffer): { width: number, height: number } {
+  let i = 2; // skip SOI marker (FF D8)
+  while (i < buffer.length - 8) {
+    if (buffer[i] !== 0xFF)
+      break;
+    const marker = buffer[i + 1];
+    const segmentLength = buffer.readUInt16BE(i + 2);
+    // SOF markers: C0 (baseline), C2 (progressive), C1, C3, C5-C7, C9-CB, CD-CF
+    if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
+        (marker >= 0xC9 && marker <= 0xCB) || (marker >= 0xCD && marker <= 0xCF)) {
+      const height = buffer.readUInt16BE(i + 5);
+      const width = buffer.readUInt16BE(i + 7);
+      return { width, height };
+    }
+    i += 2 + segmentLength;
+  }
+  throw new Error('Could not parse JPEG dimensions');
+}

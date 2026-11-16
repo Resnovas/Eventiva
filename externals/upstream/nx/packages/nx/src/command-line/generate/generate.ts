@@ -1,0 +1,451 @@
+import * as pc from 'picocolors';
+import { selectPrompt, textPrompt } from '../../utils/prompt-helpers';
+import { relative } from 'path';
+
+import { readNxJson } from '../../config/configuration';
+import { ProjectsConfigurations } from '../../config/workspace-json-project-json';
+import { ProjectGraph } from '../../config/project-graph';
+import { FileChange, flushChanges, FsTree } from '../../generators/tree';
+import {
+  createProjectGraphAsync,
+  readProjectsConfigurationFromProjectGraph,
+} from '../../project-graph/project-graph';
+import { retrieveProjectConfigurationsWithoutPluginInference } from '../../project-graph/utils/retrieve-workspace-files';
+import { logger, NX_PREFIX } from '../../utils/logger';
+import {
+  combineOptionsForGenerator,
+  Options,
+  Schema,
+} from '../../utils/params';
+import { handleErrors } from '../../utils/handle-errors';
+import { handleImport } from '../../utils/handle-import';
+import { getLocalWorkspacePlugins } from '../../utils/plugins/local-plugins';
+import { printHelp } from '../../utils/print-help';
+import { workspaceRoot } from '../../utils/workspace-root';
+import { calculateDefaultProjectName } from '../../config/calculate-default-project-name';
+import { findInstalledPlugins } from '../../utils/plugins/installed-plugins';
+import { getGeneratorInformation } from './generator-utils';
+import { getCwd } from '../../utils/path';
+import { reportNxGenerateCommand } from '../../analytics';
+
+export interface GenerateOptions {
+  collectionName: string;
+  generatorName: string;
+  generatorOptions: Options;
+  help: boolean;
+  dryRun: boolean;
+  interactive: boolean;
+  defaults: boolean;
+  quiet: boolean;
+}
+
+export function printChanges(fileChanges: FileChange[]) {
+  fileChanges.forEach((f) => {
+    if (f.type === 'CREATE') {
+      console.log(`${pc.green('CREATE')} ${f.path}`);
+    } else if (f.type === 'UPDATE') {
+      console.log(`${pc.white('UPDATE')} ${f.path}`);
+    } else if (f.type === 'DELETE') {
+      console.log(`${pc.yellow('DELETE')} ${f.path}`);
+    }
+  });
+}
+
+async function promptForCollection(
+  generatorName: string,
+  interactive: boolean,
+  projectsConfiguration: ProjectsConfigurations
+): Promise<string> {
+  const localPlugins = await getLocalWorkspacePlugins(
+    projectsConfiguration,
+    readNxJson()
+  );
+
+  const installedCollections = Array.from(
+    new Set(findInstalledPlugins().map((x) => x.name))
+  );
+
+  const choicesMap = new Set<string>();
+
+  const deprecatedChoices = new Set<string>();
+
+  for (const collectionName of installedCollections) {
+    try {
+      const {
+        resolvedCollectionName,
+        normalizedGeneratorName,
+        generatorConfiguration: { ['x-deprecated']: deprecated, hidden },
+      } = getGeneratorInformation(
+        collectionName,
+        generatorName,
+        workspaceRoot,
+        projectsConfiguration.projects
+      );
+      if (hidden) {
+        continue;
+      }
+      if (deprecated) {
+        deprecatedChoices.add(
+          `${resolvedCollectionName}:${normalizedGeneratorName}`
+        );
+      } else {
+        choicesMap.add(`${resolvedCollectionName}:${normalizedGeneratorName}`);
+      }
+    } catch {}
+  }
+
+  const choicesFromLocalPlugins: {
+    name: string;
+    message: string;
+    value: string;
+  }[] = [];
+  for (const [name] of localPlugins) {
+    try {
+      const {
+        resolvedCollectionName,
+        normalizedGeneratorName,
+        generatorConfiguration: { ['x-deprecated']: deprecated, hidden },
+      } = getGeneratorInformation(
+        name,
+        generatorName,
+        workspaceRoot,
+        projectsConfiguration.projects
+      );
+      if (hidden) {
+        continue;
+      }
+      const value = `${resolvedCollectionName}:${normalizedGeneratorName}`;
+      if (!choicesMap.has(value)) {
+        if (deprecated) {
+          deprecatedChoices.add(value);
+        } else {
+          choicesFromLocalPlugins.push({
+            name: value,
+            message: pc.bold(value),
+            value,
+          });
+        }
+      }
+    } catch {}
+  }
+  if (choicesFromLocalPlugins.length) {
+    choicesFromLocalPlugins[choicesFromLocalPlugins.length - 1].message += '\n';
+  }
+  const choices = (
+    choicesFromLocalPlugins as (
+      | string
+      | {
+          name: string;
+          message: string;
+          value: string;
+        }
+    )[]
+  ).concat(...choicesMap);
+  if (choices.length === 1) {
+    return typeof choices[0] === 'string' ? choices[0] : choices[0].value;
+  } else if (!interactive && choices.length > 1) {
+    throwInvalidInvocation(Array.from(choicesMap));
+  } else if (interactive && choices.length > 1) {
+    const noneOfTheAbove = `None of the above`;
+    // Blank line before the last entry. The newline has to trail the choice
+    // *before* the gap: a leading one would land between the following
+    // choice's radio marker and its text, splitting that row in two.
+    const beforeGap = choices.length - 1;
+    choices.push(noneOfTheAbove);
+    const generator = await selectPrompt({
+      message: `Which generator would you like to use?`,
+      // Local-plugin entries carry a separate display label; the rest are
+      // plain collection names. Only the label takes the newline, so the
+      // value still resolves as a collection name.
+      choices: choices.map((c, i) => {
+        const choice =
+          typeof c === 'string'
+            ? { value: c, label: c }
+            : { value: c.value, label: c.message };
+        return i === beforeGap && !choice.label.endsWith('\n')
+          ? { ...choice, label: `${choice.label}\n` }
+          : choice;
+      }),
+    });
+
+    if (generator !== noneOfTheAbove) {
+      return generator;
+    }
+
+    const customCollection = await textPrompt({
+      message: `Which collection would you like to use?`,
+      validate: (value) => {
+        try {
+          getGeneratorInformation(
+            value,
+            generatorName,
+            workspaceRoot,
+            projectsConfiguration.projects
+          );
+          return undefined;
+        } catch {
+          return `Could not find ${value}:${generatorName}`;
+        }
+      },
+    });
+    return `${customCollection}:${generatorName}`;
+  } else if (deprecatedChoices.size > 0) {
+    throw new Error(
+      [
+        `All installed generators named "${generatorName}" are deprecated. To run one, provide its full \`collection:generator\` id.`,
+        [...deprecatedChoices].map((x) => `  - ${x}`),
+      ].join('\n')
+    );
+  } else {
+    throw new Error(`Could not find any generators named "${generatorName}"`);
+  }
+}
+
+export function parseGeneratorString(value: string): {
+  collection?: string;
+  generator: string;
+} {
+  const separatorIndex = value.lastIndexOf(':');
+
+  if (separatorIndex > 0) {
+    return {
+      collection: value.slice(0, separatorIndex),
+      generator: value.slice(separatorIndex + 1),
+    };
+  } else {
+    return {
+      generator: value,
+    };
+  }
+}
+
+async function convertToGenerateOptions(
+  generatorOptions: { [p: string]: any },
+  mode: 'generate' | 'new',
+  projectsConfiguration?: ProjectsConfigurations
+): Promise<GenerateOptions> {
+  let collectionName: string | null = null;
+  let generatorName: string | null = null;
+  const interactive = generatorOptions.interactive as boolean;
+
+  if (mode === 'generate') {
+    const generatorDescriptor = generatorOptions['generator'] as string;
+    const { collection, generator } = parseGeneratorString(generatorDescriptor);
+
+    if (collection) {
+      collectionName = collection;
+      generatorName = generator;
+    } else {
+      const generatorString = await promptForCollection(
+        generatorDescriptor,
+        interactive,
+        projectsConfiguration
+      );
+      const parsedGeneratorString = parseGeneratorString(generatorString);
+      collectionName = parsedGeneratorString.collection;
+      generatorName = parsedGeneratorString.generator;
+    }
+  } else {
+    collectionName = generatorOptions.collection as string;
+    generatorName = 'new';
+  }
+
+  const res = {
+    collectionName,
+    generatorName,
+    generatorOptions,
+    help: generatorOptions.help as boolean,
+    dryRun: generatorOptions.dryRun as boolean,
+    interactive,
+    defaults: generatorOptions.defaults as boolean,
+    quiet: generatorOptions.quiet,
+  };
+
+  delete generatorOptions.d;
+  delete generatorOptions.dryRun;
+  delete generatorOptions['dry-run'];
+  delete generatorOptions.interactive;
+  delete generatorOptions.help;
+  delete generatorOptions.collection;
+  delete generatorOptions.verbose;
+  delete generatorOptions.generator;
+  delete generatorOptions['--'];
+  delete generatorOptions['$0'];
+  delete generatorOptions.quiet;
+
+  return res;
+}
+
+function throwInvalidInvocation(availableGenerators: string[]) {
+  throw new Error(
+    `Specify the generator name (e.g., nx generate ${availableGenerators.join(
+      ', '
+    )})`
+  );
+}
+
+export function printGenHelp(
+  opts: GenerateOptions,
+  schema: Schema,
+  normalizedGeneratorName: string,
+  aliases: string[]
+) {
+  printHelp(
+    `generate ${opts.collectionName}:${normalizedGeneratorName}`,
+    {
+      ...schema,
+      properties: schema.properties,
+    },
+    {
+      mode: 'generate',
+      plugin: opts.collectionName,
+      entity: normalizedGeneratorName,
+      aliases,
+    }
+  );
+}
+
+export async function generate(args: { [k: string]: any }) {
+  return handleErrors(args.verbose, async () => {
+    const nxJsonConfiguration = readNxJson();
+
+    let projectGraph: ProjectGraph | undefined;
+    let projectsConfigurations: ProjectsConfigurations;
+
+    if (args.skipProjectGraph) {
+      const projects =
+        await retrieveProjectConfigurationsWithoutPluginInference(
+          workspaceRoot
+        );
+      projectsConfigurations = { version: 2, projects };
+    } else {
+      projectGraph = await createProjectGraphAsync();
+      projectsConfigurations =
+        readProjectsConfigurationFromProjectGraph(projectGraph);
+    }
+
+    const opts = await convertToGenerateOptions(
+      args,
+      'generate',
+      projectsConfigurations
+    );
+
+    const {
+      normalizedGeneratorName,
+      schema,
+      implementationFactory,
+      generatorConfiguration: {
+        aliases,
+        hidden,
+        ['x-deprecated']: deprecated,
+        ['x-use-standalone-layout']: isStandalonePreset,
+      },
+    } = getGeneratorInformation(
+      opts.collectionName,
+      opts.generatorName,
+      workspaceRoot,
+      projectsConfigurations.projects
+    );
+
+    if (deprecated) {
+      logger.warn(
+        [
+          `${NX_PREFIX}: ${opts.collectionName}:${normalizedGeneratorName} is deprecated`,
+          `${deprecated}`,
+        ].join('\n')
+      );
+    }
+    if (!opts.quiet && !opts.help) {
+      logger.info(
+        `NX Generating ${opts.collectionName}:${normalizedGeneratorName}`
+      );
+    }
+
+    if (opts.help) {
+      printGenHelp(opts, schema, normalizedGeneratorName, aliases);
+      return 0;
+    }
+
+    const cwd = getCwd();
+
+    const combinedOpts = await combineOptionsForGenerator(
+      opts.generatorOptions,
+      opts.collectionName,
+      normalizedGeneratorName,
+      projectsConfigurations,
+      nxJsonConfiguration,
+      schema,
+      opts.interactive,
+      calculateDefaultProjectName(
+        cwd,
+        workspaceRoot,
+        projectsConfigurations,
+        nxJsonConfiguration
+      ),
+      relative(workspaceRoot, cwd),
+      args.verbose
+    );
+
+    reportNxGenerateCommand(
+      `${opts.collectionName}:${normalizedGeneratorName}`
+    );
+
+    if (
+      getGeneratorInformation(
+        opts.collectionName,
+        normalizedGeneratorName,
+        workspaceRoot,
+        projectsConfigurations.projects
+      ).isNxGenerator
+    ) {
+      const host = new FsTree(
+        workspaceRoot,
+        args.verbose,
+        `generating (${opts.collectionName}:${normalizedGeneratorName})`
+      );
+      const implementation = implementationFactory();
+
+      // @todo(v17): Remove this, isStandalonePreset property is defunct.
+      if (normalizedGeneratorName === 'preset' && !isStandalonePreset) {
+        host.write('apps/.gitkeep', '');
+        host.write('libs/.gitkeep', '');
+      }
+
+      const task = await implementation(host, combinedOpts);
+      host.lock();
+
+      const changes = host.listChanges();
+
+      if (!opts.quiet) {
+        printChanges(changes);
+      }
+      if (!opts.dryRun) {
+        flushChanges(workspaceRoot, changes);
+        if (task) {
+          await task();
+        }
+      } else {
+        logger.warn(`\nNOTE: The "dryRun" flag means no changes were made.`);
+      }
+    } else {
+      if (!projectGraph) {
+        throw new Error(
+          `Cannot run non-Nx generators with --skipProjectGraph. Remove the flag or use an Nx generator.`
+        );
+      }
+      require('../../adapter/compat');
+      return (
+        await handleImport('../../adapter/ngcli-adapter.js', __dirname)
+      ).generate(
+        workspaceRoot,
+        {
+          ...opts,
+          generatorOptions: combinedOpts,
+        },
+        projectsConfigurations.projects,
+        args.verbose,
+        projectGraph
+      );
+    }
+  });
+}

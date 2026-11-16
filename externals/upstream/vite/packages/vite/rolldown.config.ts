@@ -1,0 +1,431 @@
+import { writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { ImportType, init, parse } from 'es-module-lexer'
+import MagicString from 'magic-string'
+import type { Plugin } from 'rolldown'
+import { defineConfig } from 'rolldown'
+import pkg from './package.json' with { type: 'json' }
+import licensePlugin from './rollupLicensePlugin'
+
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
+const dirname = import.meta.dirname
+
+const disableSourceMap = !!process.env.DEBUG_DISABLE_SOURCE_MAP
+
+const envConfig = defineConfig({
+  input: path.resolve(dirname, 'src/client/env.ts'),
+  platform: 'browser',
+  transform: {
+    target: 'es2020',
+  },
+  output: {
+    dir: path.resolve(dirname, 'dist'),
+    entryFileNames: 'client/env.mjs',
+  },
+})
+
+const clientConfig = defineConfig({
+  input: path.resolve(dirname, 'src/client/clientEntry.ts'),
+  platform: 'browser',
+  transform: {
+    target: 'es2020',
+  },
+  external: ['@vite/env'],
+  output: {
+    dir: path.resolve(dirname, 'dist'),
+    entryFileNames: 'client/client.mjs',
+  },
+})
+
+// separate entry so the full-bundle-mode HMR code is never bundled into `client.mjs`
+const bundledDevClientConfig = defineConfig({
+  input: path.resolve(dirname, 'src/client/bundledDevClient.ts'),
+  platform: 'browser',
+  transform: {
+    target: 'es2020',
+  },
+  // the runtime is served from the installed rolldown at dev time (`getRolldownDevRuntimeFiles`)
+  external: ['@vite/env', 'rolldown/experimental/runtime'],
+  output: {
+    dir: path.resolve(dirname, 'dist'),
+    entryFileNames: 'client/bundledDevClient.mjs',
+  },
+})
+
+const sharedNodeOptions = defineConfig({
+  platform: 'node',
+  treeshake: {
+    moduleSideEffects: [
+      {
+        test: /acorn|astring|escape-html/,
+        sideEffects: false,
+      },
+      {
+        external: true,
+        sideEffects: false,
+      },
+    ],
+    propertyReadSideEffects: false,
+  },
+  output: {
+    dir: './dist',
+    entryFileNames: `node/[name].js`,
+    chunkFileNames: 'node/chunks/[name].js',
+    exports: 'named',
+    format: 'esm',
+    externalLiveBindings: false,
+  },
+})
+
+const nodeConfig = defineConfig({
+  ...sharedNodeOptions,
+  input: {
+    index: path.resolve(dirname, 'src/node/index.ts'),
+    cli: path.resolve(dirname, 'src/node/cli.ts'),
+    internal: path.resolve(dirname, 'src/node/internalIndex.ts'),
+  },
+  external: [
+    /^vite\//,
+    'fsevents',
+    /^rolldown\//,
+    /^tsx\//,
+    /^@vitejs\/devtools\//,
+    /^#/,
+    'sugarss', // postcss-import -> sugarss
+    'supports-color',
+    'utf-8-validate', // ws
+    'bufferutil', // ws
+    ...Object.keys(pkg.dependencies),
+    ...Object.keys(pkg.peerDependencies),
+  ],
+  plugins: [
+    shimDepsPlugin({
+      'postcss-load-config/src/req.js': [
+        {
+          src: "const { pathToFileURL } = require('node:url')",
+          replacement: `const { fileURLToPath, pathToFileURL } = require('node:url')`,
+        },
+        {
+          src: '__filename',
+          replacement: 'fileURLToPath(import.meta.url)',
+        },
+      ],
+      // postcss-import uses the `resolve` dep if the `resolve` option is not passed.
+      // However, we always pass the `resolve` option. It also uses `read-cache` if
+      // the `load` option is not passed, but we also always pass the `load` option.
+      // Remove these two imports to avoid bundling them.
+      'postcss-import/index.js': [
+        {
+          src: 'const resolveId = require("./lib/resolve-id")',
+          replacement: 'const resolveId = (id) => id',
+        },
+        {
+          src: 'const loadContent = require("./lib/load-content")',
+          replacement: 'const loadContent = () => ""',
+        },
+      ],
+      'postcss-import/lib/parse-styles.js': [
+        {
+          src: 'const resolveId = require("./resolve-id")',
+          replacement: 'const resolveId = (id) => id',
+        },
+      ],
+    }),
+    buildTimeImportMetaUrlPlugin(),
+    licensePlugin(
+      path.resolve(dirname, 'LICENSE.md'),
+      'Vite core license',
+      'Vite',
+    ),
+    writeTypesPlugin(),
+    enableSourceMapsInWatchModePlugin(),
+    externalizeDepsInWatchPlugin(),
+  ],
+})
+
+const moduleRunnerConfig = defineConfig({
+  ...sharedNodeOptions,
+  input: {
+    'module-runner': path.resolve(dirname, 'src/module-runner/index.ts'),
+  },
+  external: [
+    'fsevents',
+    'lightningcss',
+    /^rolldown\//,
+    ...Object.keys(pkg.dependencies),
+  ],
+  plugins: [bundleSizeLimit(55), enableSourceMapsInWatchModePlugin()],
+  output: {
+    ...sharedNodeOptions.output,
+    minify: {
+      compress: true,
+      mangle: false,
+      codegen: false,
+    },
+  },
+})
+
+export default defineConfig([
+  envConfig,
+  clientConfig,
+  bundledDevClientConfig,
+  nodeConfig,
+  moduleRunnerConfig,
+])
+
+// #region Plugins
+
+function enableSourceMapsInWatchModePlugin(): Plugin {
+  return {
+    name: 'enable-source-maps',
+    outputOptions(options) {
+      if (this.meta.watchMode && !disableSourceMap) {
+        options.sourcemap = 'inline'
+      }
+    },
+  }
+}
+
+function writeTypesPlugin(): Plugin {
+  return {
+    name: 'write-types',
+    writeBundle() {
+      if (this.meta.watchMode) {
+        writeFileSync(
+          'dist/node/index.d.ts',
+          "export * from '../../src/node/index.ts'",
+        )
+        writeFileSync(
+          'dist/node/module-runner.d.ts',
+          "export * from '../../src/module-runner/index.ts'",
+        )
+      }
+    },
+  }
+}
+
+function externalizeDepsInWatchPlugin(): Plugin {
+  return {
+    name: 'externalize-deps-in-watch',
+    options(options) {
+      if (this.meta.watchMode) {
+        options.external ||= []
+        if (!Array.isArray(options.external))
+          throw new Error('external must be an array')
+        options.external = [
+          ...options.external,
+          ...Object.keys(pkg.devDependencies),
+        ]
+      }
+    },
+  }
+}
+
+interface ShimOptions {
+  src?: string
+  replacement: string
+  pattern?: RegExp
+}
+
+function shimDepsPlugin(deps: Record<string, ShimOptions[]>): Plugin {
+  const transformed: Record<string, boolean> = {}
+
+  return {
+    name: 'shim-deps',
+    transform: {
+      filter: {
+        id: new RegExp(`(?:${Object.keys(deps).join('|')})$`),
+      },
+      handler(code, id) {
+        const file = Object.keys(deps).find((file) =>
+          id.replace(/\\/g, '/').endsWith(file),
+        )
+        if (!file) return
+
+        for (const { src, replacement, pattern } of deps[file]) {
+          const magicString = new MagicString(code)
+
+          if (src) {
+            const pos = code.indexOf(src)
+            if (pos < 0) {
+              this.error(
+                `Could not find expected src "${src}" in file "${file}"`,
+              )
+            }
+            transformed[file] = true
+            magicString.overwrite(pos, pos + src.length, replacement)
+          }
+
+          if (pattern) {
+            let match
+            while ((match = pattern.exec(code))) {
+              transformed[file] = true
+              const start = match.index
+              const end = start + match[0].length
+              let _replacement = replacement
+              for (let i = 1; i <= match.length; i++) {
+                _replacement = _replacement.replace(`$${i}`, match[i] || '')
+              }
+              magicString.overwrite(start, end, _replacement)
+            }
+            if (!transformed[file]) {
+              this.error(
+                `Could not find expected pattern "${pattern}" in file "${file}"`,
+              )
+            }
+          }
+
+          code = magicString.toString()
+        }
+
+        console.log(`shimmed: ${file}`)
+
+        return code
+      },
+    },
+    buildEnd(err) {
+      if (this.meta.watchMode) return
+
+      if (!err) {
+        for (const file in deps) {
+          if (!transformed[file]) {
+            this.error(
+              `Did not find "${file}" which is supposed to be shimmed, was the file renamed?`,
+            )
+          }
+        }
+      }
+    },
+  }
+}
+
+function buildTimeImportMetaUrlPlugin(): Plugin {
+  const idMap: Record<string, number> = {}
+  let lastIndex = 0
+
+  const prefix = `__vite_buildTimeImportMetaUrl_`
+  const keepCommentRE = /\/\*\*\s*[#@]__KEEP__\s*\*\/\s*$/
+
+  return {
+    name: 'import-meta-current-dirname',
+    transform: {
+      filter: {
+        code: 'import.meta.url',
+      },
+      async handler(code, id) {
+        const relativeId = path.relative(dirname, id).replaceAll('\\', '/')
+        // only replace import.meta.url in src/
+        if (!relativeId.startsWith('src/')) return
+
+        let index: number
+        if (idMap[id]) {
+          index = idMap[id]
+        } else {
+          index = idMap[id] = lastIndex
+          lastIndex++
+        }
+
+        await init
+
+        const s = new MagicString(code)
+        const [imports] = parse(code)
+        for (const { t, ss, se } of imports) {
+          if (
+            t === ImportType.ImportMeta &&
+            code.slice(se, se + 4) === '.url'
+          ) {
+            // ignore import.meta.url with /** #__KEEP__ */ comment
+            if (keepCommentRE.test(code.slice(0, ss))) {
+              keepCommentRE.lastIndex = 0
+              continue
+            }
+
+            // import.meta.url
+            s.overwrite(ss, se + 4, `${prefix}${index}`)
+          }
+        }
+        return s.hasChanged()
+          ? {
+              code: s.toString(),
+              map: s.generateMap({ source: id, hires: 'boundary' }),
+            }
+          : undefined
+      },
+    },
+    renderChunk(code, chunk, outputOptions) {
+      if (!code.includes(prefix)) return
+
+      const s = new MagicString(code)
+      const pattern = /__vite_buildTimeImportMetaUrl_(\d+)/g
+      let match
+      while ((match = pattern.exec(code))) {
+        const originalFile = Object.keys(idMap).find(
+          (key) => idMap[key] === +match![1],
+        )
+        if (!originalFile) {
+          throw new Error(
+            `Could not find original file for ${prefix}${match[1]} in ${chunk.fileName}`,
+          )
+        }
+        const outputFile = path.resolve(outputOptions.dir!, chunk.fileName)
+        const relativePath = path
+          .relative(path.dirname(outputFile), originalFile)
+          .replaceAll('\\', '/')
+
+        let replacement: string
+        if (outputOptions.format === 'es') {
+          replacement = `new URL(${JSON.stringify(relativePath)}, import.meta.url)`
+        } else if (outputOptions.format === 'cjs') {
+          replacement = `new URL(${JSON.stringify(
+            relativePath,
+          )}, require('node:url').pathToFileURL(__filename))`
+        } else {
+          throw new Error(`Unsupported output format ${outputOptions.format}`)
+        }
+        s.overwrite(match.index, match.index + match[0].length, replacement)
+      }
+
+      if (!outputOptions.sourcemap) {
+        return s.toString()
+      }
+      return { code: s.toString(), map: s.generateMap({ hires: 'boundary' }) }
+    },
+  }
+}
+
+/**
+ * Guard the bundle size
+ *
+ * @param limit size in kB
+ */
+function bundleSizeLimit(limit: number): Plugin {
+  let size = 0
+
+  return {
+    name: 'bundle-limit',
+    generateBundle(_, bundle) {
+      if (this.meta.watchMode) return
+
+      size = Buffer.byteLength(
+        Object.values(bundle)
+          .map((i) => ('code' in i ? i.code : ''))
+          .join(''),
+        'utf-8',
+      )
+    },
+    closeBundle() {
+      if (this.meta.watchMode) return
+
+      const kb = size / 1000
+      if (kb > limit) {
+        this.error(
+          `Bundle size exceeded ${limit} kB, current size is ${kb.toFixed(
+            2,
+          )}kb.`,
+        )
+      }
+    },
+  }
+}
+
+// #endregion

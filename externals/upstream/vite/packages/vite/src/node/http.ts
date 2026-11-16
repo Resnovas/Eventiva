@@ -1,0 +1,355 @@
+import fsp from 'node:fs/promises'
+import type { OutgoingHttpHeaders as HttpServerHeaders } from 'node:http'
+import type { ServerOptions as HttpsServerOptions } from 'node:https'
+import net from 'node:net'
+import path from 'node:path'
+import colors from 'picocolors'
+import type { Connect } from '#dep-types/connect'
+import { wildcardHosts } from './constants'
+import type { Logger } from './logger'
+import type { HttpServer } from './server'
+import type { ProxyOptions } from './server/middlewares/proxy'
+
+export interface CommonServerOptions {
+  /**
+   * Specify server port. Note if the port is already being used, Vite will
+   * automatically try the next available port so this may not be the actual
+   * port the server ends up listening on.
+   */
+  port?: number
+  /**
+   * If enabled, vite will exit if specified port is already in use
+   */
+  strictPort?: boolean
+  /**
+   * Specify which IP addresses the server should listen on.
+   * Set to 0.0.0.0 to listen on all addresses, including LAN and public addresses.
+   */
+  host?: string | boolean
+  /**
+   * The hostnames that Vite is allowed to respond to.
+   * `localhost` and subdomains under `.localhost` and all IP addresses are allowed by default.
+   * When using HTTPS, this check is skipped.
+   *
+   * If a string starts with `.`, it will allow that hostname without the `.` and all subdomains under the hostname.
+   * For example, `.example.com` will allow `example.com`, `foo.example.com`, and `foo.bar.example.com`.
+   *
+   * If set to `true`, the server is allowed to respond to requests for any hosts.
+   * This is not recommended as it will be vulnerable to DNS rebinding attacks.
+   */
+  allowedHosts?: string[] | true
+  /**
+   * Enable TLS + HTTP/2.
+   * Note: this downgrades to TLS only when the proxy option is also used.
+   */
+  https?: HttpsServerOptions
+  /**
+   * Open browser window on startup
+   */
+  open?: boolean | string
+  /**
+   * Configure custom proxy rules for the dev server. Expects an object
+   * of `{ key: options }` pairs.
+   * Uses [`http-proxy-3`](https://github.com/sagemathinc/http-proxy-3).
+   * Full options [here](https://github.com/sagemathinc/http-proxy-3#options).
+   *
+   * Example `vite.config.js`:
+   * ``` js
+   * module.exports = {
+   *   proxy: {
+   *     // string shorthand: /foo -> http://localhost:4567/foo
+   *     '/foo': 'http://localhost:4567',
+   *     // with options
+   *     '/api': {
+   *       target: 'http://jsonplaceholder.typicode.com',
+   *       changeOrigin: true,
+   *       rewrite: path => path.replace(/^\/api/, '')
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  proxy?: Record<string, string | ProxyOptions>
+  /**
+   * Configure CORS for the dev server.
+   * Uses https://github.com/expressjs/cors.
+   *
+   * When enabling this option, **we recommend setting a specific value
+   * rather than `true`** to avoid exposing the source code to untrusted origins.
+   *
+   * Set to `true` to allow all methods from any origin, or configure separately
+   * using an object.
+   *
+   * @default { origin: /^https?:\/\/(?:(?:[^:]+\.)?localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/ }
+   */
+  cors?: CorsOptions | boolean
+  /**
+   * Specify server response headers.
+   */
+  headers?: HttpServerHeaders
+}
+
+/**
+ * https://github.com/expressjs/cors#configuration-options
+ */
+export interface CorsOptions {
+  /**
+   * Configures the Access-Control-Allow-Origin CORS header.
+   *
+   * **We recommend setting a specific value rather than
+   * `true`** to avoid exposing the source code to untrusted origins.
+   */
+  origin?:
+    | CorsOrigin
+    | ((
+        origin: string | undefined,
+        cb: (err: Error, origins: CorsOrigin) => void,
+      ) => void)
+  methods?: string | string[]
+  allowedHeaders?: string | string[]
+  exposedHeaders?: string | string[]
+  credentials?: boolean
+  maxAge?: number
+  preflightContinue?: boolean
+  optionsSuccessStatus?: number
+}
+
+export type CorsOrigin = boolean | string | RegExp | (string | RegExp)[]
+
+export async function resolveHttpServer(
+  app: Connect.Server,
+  httpsOptions?: HttpsServerOptions,
+): Promise<HttpServer> {
+  if (!httpsOptions) {
+    const { createServer } = await import('node:http')
+    return createServer(app)
+  }
+
+  const { createSecureServer } = await import('node:http2')
+  return createSecureServer(
+    {
+      // Manually increase the session memory to prevent 502 ENHANCE_YOUR_CALM
+      // errors on large numbers of requests
+      maxSessionMemory: 1000,
+      // Increase the stream reset rate limit to prevent net::ERR_HTTP2_PROTOCOL_ERROR
+      // errors on large numbers of requests
+      streamResetBurst: 100000,
+      streamResetRate: 33,
+      ...httpsOptions,
+      allowHTTP1: true,
+    },
+    // @ts-expect-error TODO: is this correct?
+    app,
+  )
+}
+
+export async function resolveHttpsConfig(
+  https: HttpsServerOptions | undefined,
+): Promise<HttpsServerOptions | undefined> {
+  if (!https) return undefined
+
+  const [ca, cert, key, pfx] = await Promise.all([
+    readFileIfExists(https.ca),
+    readFileIfExists(https.cert),
+    readFileIfExists(https.key),
+    readFileIfExists(https.pfx),
+  ])
+  return { ...https, ca, cert, key, pfx }
+}
+
+async function readFileIfExists(value?: string | Buffer | any[]) {
+  if (typeof value === 'string') {
+    return fsp.readFile(path.resolve(value)).catch(() => value)
+  }
+  return value
+}
+
+// Let the OS select an ephemeral port on the first wildcard interface, then
+// verify that same concrete port is available on every remaining interface.
+async function getAvailableEphemeralPort(
+  specifiedHost: string | undefined,
+): Promise<number | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // Passing 0 asks the OS for a new candidate on every attempt.
+    // We assume that the OS will return a different candidate on every attempt,
+    // which does not always hold true, but it should be fine for most cases.
+    let port = 0
+    let available = true
+    for (const host of [...wildcardHosts, specifiedHost]) {
+      // Gracefully handle errors (e.g., IPv6 disabled on the system)
+      const availablePort = await tryListen(port, host).catch(() => port)
+      if (availablePort == null) {
+        available = false
+        break
+      }
+      port = availablePort
+    }
+    if (available) return port
+  }
+  return null
+}
+
+// Check if a port is available on wildcard addresses (0.0.0.0, ::)
+async function isPortAvailable(port: number): Promise<boolean> {
+  for (const host of wildcardHosts) {
+    // Gracefully handle errors (e.g., IPv6 disabled on the system)
+    const available = await tryListen(port, host).catch(() => true)
+    if (!available) return false
+  }
+  return true
+}
+
+function tryListen(
+  port: number,
+  host: string | undefined,
+): Promise<number | null> {
+  return new Promise((resolve) => {
+    const server = net.createServer()
+    server.once('error', (e: NodeJS.ErrnoException) => {
+      server.close(() => resolve(e.code === 'EADDRINUSE' ? null : port))
+    })
+    server.once('listening', () => {
+      const address = server.address()
+      server.close(() =>
+        resolve(typeof address === 'object' && address ? address.port : port),
+      )
+    })
+    server.listen(port, host)
+  })
+}
+
+async function tryBindServer(
+  httpServer: HttpServer,
+  port: number,
+  host: string | undefined,
+): Promise<
+  { success: true } | { success: false; error: NodeJS.ErrnoException }
+> {
+  return new Promise((resolve) => {
+    const onError = (e: NodeJS.ErrnoException) => {
+      httpServer.off('error', onError)
+      httpServer.off('listening', onListening)
+      resolve({ success: false, error: e })
+    }
+    const onListening = () => {
+      httpServer.off('error', onError)
+      httpServer.off('listening', onListening)
+      resolve({ success: true })
+    }
+
+    httpServer.on('error', onError)
+    httpServer.on('listening', onListening)
+
+    httpServer.listen(port, host)
+  })
+}
+
+const MAX_PORT = 65535
+
+export async function httpServerStart(
+  httpServer: HttpServer,
+  serverOptions: {
+    port: number
+    strictPort: boolean | undefined
+    host: string | undefined
+    logger: Logger
+  },
+): Promise<number> {
+  const { port: startPort, strictPort, host, logger } = serverOptions
+
+  if (startPort === 0) {
+    const port = await getAvailableEphemeralPort(host)
+    if (port == null) {
+      throw new Error('No available ephemeral port found')
+    }
+
+    const result = await tryBindServer(httpServer, port, host)
+    if (result.success) {
+      return port
+    }
+    if (result.error.code !== 'EADDRINUSE') {
+      throw result.error
+    }
+    // this can happen if the port was listened by other process between getAvailableEphemeralPort and tryBindServer
+    throw new Error(`Port ${port} is already in use`)
+  }
+
+  for (let port = startPort; port <= MAX_PORT; port++) {
+    // Pre-check port availability on wildcard addresses (0.0.0.0, ::)
+    // so that we avoid conflicts with other servers listening on all interfaces
+    const portAvailableOnWildcard = await isPortAvailable(port)
+
+    // If port is not available on a wildcard address but strictPort is set,
+    // we still try binding directly before giving up.
+    if (strictPort) {
+      const result = await tryBindServer(httpServer, port, host)
+      if (result.success) {
+        if (!portAvailableOnWildcard) {
+          logger.warn(
+            colors.yellow(
+              `Port ${port} is in use on a wildcard address, but ${host ?? 'localhost'}:${port} is available. ` +
+                `There may be another server running on a wildcard IP on port ${port}.`,
+            ),
+          )
+        }
+        return port
+      }
+      if (result.error.code !== 'EADDRINUSE') {
+        throw result.error
+      }
+      throw new Error(`Port ${port} is already in use`)
+    }
+
+    if (portAvailableOnWildcard) {
+      const result = await tryBindServer(httpServer, port, host)
+      if (result.success) {
+        return port
+      }
+      if (result.error.code !== 'EADDRINUSE') {
+        throw result.error
+      }
+    }
+    logger.info(`Port ${port} is in use, trying another one...`)
+  }
+  throw new Error(
+    `No available ports found between ${startPort} and ${MAX_PORT}`,
+  )
+}
+
+export function setClientErrorHandler(
+  server: HttpServer,
+  logger: Logger,
+): void {
+  server.on('clientError', (err, socket) => {
+    // https://github.com/nodejs/node/blob/v26.2.0/lib/_http_server.js#L992
+    let msg
+    switch ((err as any).code) {
+      case 'HPE_HEADER_OVERFLOW': {
+        msg = '431 Request Header Fields Too Large'
+        logger.warn(
+          colors.yellow(
+            'Server responded with status code 431. ' +
+              'See https://vite.dev/guide/troubleshooting.html#_431-request-header-fields-too-large.',
+          ),
+        )
+        break
+      }
+      case 'HPE_CHUNK_EXTENSIONS_OVERFLOW': {
+        msg = '413 Payload Too Large'
+        break
+      }
+      case 'ERR_HTTP_REQUEST_TIMEOUT': {
+        msg = '408 Request Timeout'
+        break
+      }
+      default: {
+        msg = '400 Bad Request'
+        break
+      }
+    }
+    if ((err as any).code === 'ECONNRESET' || !socket.writable) {
+      return
+    }
+    socket.end(`HTTP/1.1 ${msg}\r\nConnection: close\r\n\r\n`)
+  })
+}

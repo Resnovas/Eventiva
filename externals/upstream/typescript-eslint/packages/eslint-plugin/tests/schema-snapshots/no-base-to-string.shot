@@ -1,0 +1,34 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "checkUnknown": {
+        "description": "Whether to also check values of type `unknown`",
+        "type": "boolean"
+      },
+      "ignoredTypeNames": {
+        "description": "Stringified type names to ignore.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to also check values of type `unknown` */
+    checkUnknown?: boolean;
+    /** Stringified type names to ignore. */
+    ignoredTypeNames?: string[];
+  },
+];

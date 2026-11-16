@@ -1,0 +1,823 @@
+import '@nx/devkit/internal-testing-utils/mock-fs';
+
+import {
+  ProjectGraph,
+  ProjectGraphExternalNode,
+  ProjectGraphProjectNode,
+} from '@nx/devkit';
+import {
+  DepConstraint,
+  appIsMFERemote,
+  findConstraintsFor,
+  findTransitiveExternalDependencies,
+  getSourceFilePath,
+  hasBannedDependencies,
+  hasBannedImport,
+  hasNoneOfTheseTags,
+  belongsToDifferentEntryPoint,
+  isTerminalRun,
+  parseExports,
+} from './runtime-lint-utils';
+import { createRequire } from 'node:module';
+import { fs as memfs, vol } from 'memfs';
+import { mockCjsModule } from '@nx/devkit/internal-testing-utils';
+
+// Import resolution loads typescript with `require`, which reads through the
+// CJS `fs`; the import graph has loaded it already, so evict it onto memfs.
+mockCjsModule(import.meta.url, 'fs', memfs);
+const cjsRequire = createRequire(import.meta.url);
+delete cjsRequire.cache[cjsRequire.resolve('typescript')];
+
+vi.mock('@nx/devkit', async () => ({
+  ...(await vi.importActual<any>('@nx/devkit')),
+  workspaceRoot: '/root',
+}));
+
+describe('findConstraintsFor', () => {
+  it('should find constraints matching tag', () => {
+    const constriants: DepConstraint[] = [
+      { sourceTag: 'a', onlyDependOnLibsWithTags: ['b'] },
+      { sourceTag: 'b', onlyDependOnLibsWithTags: ['c'] },
+      { sourceTag: 'c', onlyDependOnLibsWithTags: ['a'] },
+    ];
+
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['b'] },
+      })
+    ).toEqual([{ sourceTag: 'b', onlyDependOnLibsWithTags: ['c'] }]);
+  });
+
+  it('should find constraints matching *', () => {
+    const constriants: DepConstraint[] = [
+      { sourceTag: 'a', onlyDependOnLibsWithTags: ['b'] },
+      { sourceTag: 'b', onlyDependOnLibsWithTags: ['c'] },
+      { sourceTag: '*', onlyDependOnLibsWithTags: ['a'] },
+    ];
+
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['b'] },
+      })
+    ).toEqual([
+      { sourceTag: 'b', onlyDependOnLibsWithTags: ['c'] },
+      { sourceTag: '*', onlyDependOnLibsWithTags: ['a'] },
+    ]);
+  });
+
+  it('should find constraints matching regex', () => {
+    const constriants: DepConstraint[] = [
+      { sourceTag: 'a', onlyDependOnLibsWithTags: ['a'] },
+      { sourceTag: '/^b$/', onlyDependOnLibsWithTags: ['c'] },
+      { sourceTag: '/a|b/', onlyDependOnLibsWithTags: ['c'] },
+    ];
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['b'] },
+      })
+    ).toEqual([
+      { sourceTag: '/^b$/', onlyDependOnLibsWithTags: ['c'] },
+      { sourceTag: '/a|b/', onlyDependOnLibsWithTags: ['c'] },
+    ]);
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['baz'] },
+      })
+    ).toEqual([{ sourceTag: '/a|b/', onlyDependOnLibsWithTags: ['c'] }]);
+  });
+
+  it('should find constraints matching glob', () => {
+    const constriants: DepConstraint[] = [
+      { sourceTag: 'a:*', onlyDependOnLibsWithTags: ['b:*'] },
+      { sourceTag: 'b:*', onlyDependOnLibsWithTags: ['c:*'] },
+      { sourceTag: 'c:*', onlyDependOnLibsWithTags: ['a:*'] },
+    ];
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['a:a'] },
+      })
+    ).toEqual([{ sourceTag: 'a:*', onlyDependOnLibsWithTags: ['b:*'] }]);
+    expect(
+      findConstraintsFor(constriants, {
+        type: 'lib',
+        name: 'someLib',
+        data: { root: '.', tags: ['a:abc'] },
+      })
+    ).toEqual([{ sourceTag: 'a:*', onlyDependOnLibsWithTags: ['b:*'] }]);
+  });
+});
+
+describe('hasBannedImport', () => {
+  const source: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'aLib',
+    data: {
+      tags: ['a'],
+    } as any,
+  };
+
+  const target: ProjectGraphExternalNode = {
+    type: 'npm',
+    name: 'npm:react-native',
+    data: {
+      packageName: 'react-native',
+      version: '0.0.1',
+    },
+  };
+
+  it('should return DepConstraint banning given target', () => {
+    const constraints: DepConstraint[] = [
+      {
+        sourceTag: 'a',
+      },
+      {
+        sourceTag: 'a',
+        bannedExternalImports: ['react-native'],
+      },
+      {
+        sourceTag: 'b',
+        bannedExternalImports: ['react-native'],
+      },
+    ];
+
+    expect(hasBannedImport(source, target, constraints, 'react-native')).toBe(
+      constraints[1]
+    );
+  });
+
+  it('should return just first DepConstraint banning given target', () => {
+    const constraints: DepConstraint[] = [
+      {
+        sourceTag: 'a',
+      },
+      {
+        sourceTag: 'a',
+        bannedExternalImports: ['react-native'],
+      },
+      {
+        sourceTag: 'a',
+        bannedExternalImports: ['react-native'],
+      },
+    ];
+
+    expect(hasBannedImport(source, target, constraints, 'react-native')).toBe(
+      constraints[1]
+    );
+  });
+
+  it('should return null if tag does not match', () => {
+    const constraints: DepConstraint[] = [
+      {
+        sourceTag: 'a',
+      },
+      {
+        sourceTag: 'notA',
+        bannedExternalImports: ['react-native'],
+      },
+      {
+        sourceTag: 'b',
+        bannedExternalImports: ['react-native'],
+      },
+    ];
+
+    expect(hasBannedImport(source, target, constraints, 'react-native')).toBe(
+      undefined
+    );
+  });
+
+  it('should return null if packages does not match', () => {
+    const constraints: DepConstraint[] = [
+      {
+        sourceTag: 'a',
+      },
+      {
+        sourceTag: 'a',
+        bannedExternalImports: ['react-native-with-suffix'],
+      },
+    ];
+
+    expect(hasBannedImport(source, target, constraints, 'react-native')).toBe(
+      undefined
+    );
+  });
+});
+
+describe('dependentsHaveBannedImport + findTransitiveExternalDependencies', () => {
+  const source: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'aLib',
+    data: {
+      tags: ['a'],
+    } as any,
+  };
+
+  const target: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'bLib',
+    data: {
+      tags: ['b'],
+    } as any,
+  };
+
+  const c: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'cLib',
+    data: {
+      tags: ['c'],
+    } as any,
+  };
+
+  const d: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'dLib',
+    data: {
+      tags: ['d'],
+    } as any,
+  };
+
+  const bannedTarget: ProjectGraphExternalNode = {
+    type: 'npm',
+    name: 'npm:react-native',
+    data: {
+      packageName: 'react-native',
+      version: '0.0.1',
+    },
+  };
+
+  const nonBannedTarget: ProjectGraphExternalNode = {
+    type: 'npm',
+    name: 'npm:react',
+    data: {
+      packageName: 'react',
+      version: '18.0.1',
+    },
+  };
+
+  const nonBannedTarget2: ProjectGraphExternalNode = {
+    type: 'npm',
+    name: 'npm:react-native-with-suffix',
+    data: {
+      packageName: 'react-native-with-suffix',
+      version: '18.0.1',
+    },
+  };
+
+  const graph: ProjectGraph = {
+    nodes: {
+      aLib: source,
+      bLib: target,
+      cLib: c,
+      dLib: d,
+    },
+    externalNodes: {
+      'npm:react-native': bannedTarget,
+      'npm:react': nonBannedTarget,
+      'npm:react-native-with-suffix': nonBannedTarget2,
+    },
+    dependencies: {
+      aLib: [
+        { type: 'static', target: 'bLib', source: 'aLib' },
+        { type: 'static', target: 'npm:react', source: 'aLib' },
+      ],
+      bLib: [
+        {
+          type: 'static',
+          target: 'npm:react-native-with-suffix',
+          source: 'bLib',
+        },
+        { type: 'static', target: 'npm:react', source: 'bLib' },
+        { type: 'static', target: 'cLib', source: 'bLib' },
+        { type: 'static', target: 'dLib', source: 'bLib' },
+      ],
+      cLib: [{ type: 'static', target: 'npm:react', source: 'cLib' }],
+      dLib: [{ type: 'static', target: 'npm:react-native', source: 'dLib' }],
+    },
+  };
+
+  const externalDependencies = [
+    graph.dependencies.aLib[1],
+    graph.dependencies.bLib[0],
+    graph.dependencies.bLib[1],
+    graph.dependencies.cLib[0],
+    graph.dependencies.dLib[0],
+  ];
+
+  it('should findTransitiveExternalDependencies', () => {
+    expect(findTransitiveExternalDependencies(graph, source)).toStrictEqual(
+      externalDependencies
+    );
+  });
+
+  it("should return empty array if any dependents don't have banned import", () => {
+    expect(
+      hasBannedDependencies(externalDependencies.slice(1), graph, {
+        sourceTag: 'a',
+        bannedExternalImports: ['angular'],
+      })
+    ).toStrictEqual([]);
+  });
+
+  it('should return target and constraint pair if any dependents have banned import', () => {
+    const constraint: DepConstraint = {
+      sourceTag: 'a',
+      bannedExternalImports: ['react-native'],
+    };
+
+    expect(
+      hasBannedDependencies(externalDependencies.slice(1), graph, constraint)
+    ).toStrictEqual([[bannedTarget, d, constraint]]);
+  });
+
+  it('should return multiple target and constraint pairs if any dependents have banned import', () => {
+    const constraint: DepConstraint = {
+      sourceTag: 'a',
+      bannedExternalImports: ['react'],
+    };
+
+    expect(
+      hasBannedDependencies(externalDependencies.slice(1), graph, constraint)
+    ).toStrictEqual([
+      [nonBannedTarget, target, constraint],
+      [nonBannedTarget, c, constraint],
+    ]);
+  });
+});
+
+describe('is terminal run', () => {
+  const originalArgv = process.argv;
+
+  // Mutate process.argv: reassigning the global `process` binding throws in
+  // sandboxed test globals (Node >= 26).
+  const mockProcessArgv = (argv: string[]) => {
+    process.argv = argv;
+  };
+
+  afterEach(() => {
+    process.argv = originalArgv;
+  });
+
+  it('is a terminal run when the command is started from the nx executor on Mac', () => {
+    // Mac: $run npx nx lint my-nx-project
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v16.13.0/bin/node',
+      '/Users/user/my-repo/node_modules/nx/dist/bin/run-executor.js',
+      '{"targetDescription":{"project":"my-nx-project","target":"lint"}',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run when the command is started from the nx executor on Windows', () => {
+    // Windows: $run npx nx lint my-nx-project
+    mockProcessArgv([
+      'C:\\Program Files\\nodejs\\node.exe',
+      'C:\\dev\\my-repo\\node_modules\\nx\\dist\\bin\\run-executor.js',
+      '{"targetDescription":{"project":"my-nx-project","target":"lint"}',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run when the command is started from the node module eslint on Mac', () => {
+    // Mac: $run npx eslint my-file.ts
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v16.13.0/bin/node',
+      '/Users/user/rabobank/my-repo/node_modules/.bin/eslint',
+      'my-file.ts',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run when the command is started from the node module eslint on Windows', () => {
+    // Windows: $run npx eslint my-file.ts
+    mockProcessArgv([
+      'C:\\Program Files\\nodejs\\node.exe',
+      'C:\\dev\\my-repo\\node_modules\\nx\\bin\\eslint',
+      'my-file.ts',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run inside an ESLint concurrency worker on Mac', () => {
+    // ESLint's `--concurrency` lints in worker threads. Node sets a worker's
+    // argv[1] to the worker script, so the eslint binary is not what is seen
+    // here. Workers are started per `lintFiles()` call and end with it, so the
+    // project graph memo cannot outlive a single lint run.
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v22.12.0/bin/node',
+      '/Users/user/my-repo/node_modules/eslint/lib/eslint/worker.js',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run inside an ESLint concurrency worker on Windows', () => {
+    mockProcessArgv([
+      'C:\\Program Files\\nodejs\\node.exe',
+      'C:\\dev\\my-repo\\node_modules\\eslint\\lib\\eslint\\worker.js',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run when the command is started from the node module oxlint', () => {
+    // `@nx/oxlint`'s boundaries bridge. Without this the graph memo never takes
+    // and every linted file re-reads the whole project graph.
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v22.12.0/bin/node',
+      '/Users/user/my-repo/node_modules/oxlint/bin/oxlint',
+      '.',
+    ]);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is not a terminal run when oxlint is serving as a language server', () => {
+    // `oxlint --lsp` is the same entry point as the CLI, so it can only be told
+    // apart by the flag — and it is the long-lived editor process this guard is
+    // meant to keep on a fresh graph.
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v22.12.0/bin/node',
+      '/Users/user/my-repo/node_modules/oxlint/bin/oxlint',
+      '--lsp',
+    ]);
+    expect(isTerminalRun()).toBe(false);
+  });
+
+  it('is not a terminal run under the standalone oxc language server', () => {
+    mockProcessArgv([
+      '/Users/user/.nvm/versions/node/v22.12.0/bin/node',
+      '/Users/user/my-repo/node_modules/.bin/oxc_language_server',
+    ]);
+    expect(isTerminalRun()).toBe(false);
+  });
+
+  it('is a terminal run when bun lint runs the rule on Mac', () => {
+    // Mac: $run bun lint .
+    mockProcessArgv(['/Users/user/.bun/bin/bun', 'lint', '.']);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is a terminal run when bun lint runs the rule on Windows', () => {
+    mockProcessArgv(['C:\\Users\\user\\.bun\\bin\\bun.exe', 'lint']);
+    expect(isTerminalRun()).toBe(true);
+  });
+
+  it('is not a terminal run for other bun commands', () => {
+    mockProcessArgv(['/Users/user/.bun/bin/bun', 'run', 'dev']);
+    expect(isTerminalRun()).toBe(false);
+  });
+
+  it('is not a terminal run when the is started from the IDE', () => {
+    // Visual Studio Code mac
+    mockProcessArgv([
+      '/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper.app/Contents/MacOS/Code Helper',
+      '/Users/user/.vscode/extensions/dbaeumer.vscode-eslint-2.2.6/server/out/eslintServer.js',
+      '--node-ipc',
+      '--clientProcessId=95193',
+    ]);
+    expect(isTerminalRun()).toBe(false);
+  });
+});
+
+describe('isAngularSecondaryEntrypoint', () => {
+  const tsConfig = {
+    compilerOptions: {
+      baseUrl: '.',
+      resolveJsonModule: true,
+      paths: {
+        '@project/standard': ['libs/standard/src/index.ts'],
+        '@project/standard/secondary': ['libs/standard/secondary/src/index.ts'],
+        '@project/features': ['libs/features/index.ts'],
+        '@project/features/*': ['libs/features/*/random/folder/api.ts'],
+      },
+    },
+  };
+
+  beforeEach(() => {
+    const fsJson = {
+      'tsconfig.base.json': JSON.stringify(tsConfig),
+      'libs/standard/package.json': '{ "version": "0.0.0" }',
+      'libs/standard/src/index.ts': 'const bla = "foo"',
+      'libs/standard/secondary/ng-package.json': JSON.stringify({
+        lib: { entryFile: 'src/index.ts' },
+      }),
+      'libs/standard/secondary/src/index.ts': 'const bla = "foo"',
+      'libs/features/package.json': '{ "version": "0.0.0" }',
+      'libs/features/ng-package.json': JSON.stringify({
+        lib: { entryFile: 'index.ts' },
+      }),
+      'libs/features/index.ts': 'const bla = "foo"',
+      'libs/features/secondary/ng-package.json': JSON.stringify({
+        lib: { entryFile: 'random/folder/api.ts' },
+      }),
+      'libs/features/secondary/random/folder/api.ts': 'const bla = "foo"',
+    };
+    vol.fromJSON(fsJson, '/root');
+  });
+
+  it('should return false if they belong to same entrypoints', () => {
+    // main
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard',
+        'libs/standard/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(false);
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/features',
+        'libs/features/src/subfolder/index.ts',
+        'libs/features'
+      )
+    ).toBe(false);
+    // secondary
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard/secondary',
+        'libs/standard/secondary/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(false);
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/features/secondary',
+        'libs/features/secondary/random/folder/src/index.ts',
+        'libs/features'
+      )
+    ).toBe(false);
+  });
+
+  it('should return true if they belong to different entrypoints', () => {
+    // main
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard',
+        'libs/standard/secondary/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(true);
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/features',
+        'libs/features/secondary/random/folder/src/index.ts',
+        'libs/features'
+      )
+    ).toBe(true);
+    // secondary
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard/secondary',
+        'libs/standard/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(true);
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/features/secondary',
+        'libs/features/src/subfolder/index.ts',
+        'libs/features'
+      )
+    ).toBe(true);
+  });
+
+  it('should handle secondary entry points with no entry file defined in ng-package.json', () => {
+    vol.writeFileSync('/root/libs/standard/secondary/ng-package.json', '{}');
+    vol.renameSync(
+      '/root/libs/standard/secondary/src/index.ts',
+      '/root/libs/standard/secondary/src/public_api.ts'
+    );
+    const updatedTsConfig = {
+      ...tsConfig,
+      compilerOptions: {
+        ...tsConfig.compilerOptions,
+        paths: {
+          ...tsConfig.compilerOptions.paths,
+          '@project/standard/secondary': [
+            'libs/standard/secondary/src/public_api.ts',
+          ],
+        },
+      },
+    };
+    vol.writeFileSync(
+      '/root/tsconfig.base.json',
+      JSON.stringify(updatedTsConfig)
+    );
+
+    // main
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard',
+        'libs/standard/secondary/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(true);
+    // secondary
+    expect(
+      belongsToDifferentEntryPoint(
+        '@project/standard/secondary',
+        'libs/standard/src/subfolder/index.ts',
+        'libs/standard'
+      )
+    ).toBe(true);
+  });
+});
+
+describe('hasNoneOfTheseTags', () => {
+  const source: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'aLib',
+    data: {
+      tags: ['abc'],
+    } as any,
+  };
+
+  it.each([
+    [true, ['a']],
+    [true, ['b']],
+    [true, ['c']],
+    [true, ['az*']],
+    [true, ['/[A-Z]+/']],
+    [false, ['ab*']],
+    [false, ['*']],
+    [false, ['/[a-z]*/']],
+  ])(
+    'should return %s when project has tags ["abc"] and requested tags are %s',
+    (expected, tags) => {
+      expect(hasNoneOfTheseTags(source, tags)).toBe(expected);
+    }
+  );
+});
+
+describe('getSourceFilePath', () => {
+  it.each([
+    ['/root/libs/dev-kit/package.json', '/root'],
+    ['/root/libs/dev-kit/package.json', 'C:\\root'],
+    ['C:\\root\\libs\\dev-kit\\package.json', '/root'],
+    ['C:\\root\\libs\\dev-kit\\package.json', 'C:\\root'],
+  ])(
+    'should return "libs/dev-kit/package.json" when sourceFileName is "%s" and projectPath is "%s"',
+    (sourceFileName, projectPath) => {
+      expect(getSourceFilePath(sourceFileName, projectPath)).toBe(
+        'libs/dev-kit/package.json'
+      );
+    }
+  );
+});
+
+describe('appIsMFERemote', () => {
+  const targetJs: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'aApp',
+    data: {
+      tags: ['abc'],
+      root: 'apps/remote1',
+    } as any,
+  };
+  const targetTs: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'bApp',
+    data: {
+      tags: ['abc'],
+      root: 'apps/remote2',
+    } as any,
+  };
+  const targetNoExposes: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'cApp',
+    data: {
+      tags: ['abc'],
+      root: 'apps/remote3',
+    } as any,
+  };
+  const targetNone: ProjectGraphProjectNode = {
+    type: 'lib',
+    name: 'dApp',
+    data: {
+      tags: ['abc'],
+      root: 'apps/nonremote',
+    } as any,
+  };
+  const fsJson = {
+    'apps/remote1/module-federation.config.js': JSON.stringify({
+      name: 'remote1',
+      exposes: {
+        './Module': './apps/remote1/src/app/remote-entry/entry.module.ts',
+      },
+    }),
+    'apps/remote2/module-federation.config.ts': JSON.stringify({
+      name: 'remote2',
+      exposes: {
+        './Module': './apps/remote2/src/app/remote-entry/entry.module.ts',
+      },
+    }),
+    'apps/remote3/module-federation.config.js': JSON.stringify({
+      name: 'remote3',
+    }),
+  };
+  vol.fromJSON(fsJson, '/root');
+
+  it('should return true for remote apps with JS mfe config', () => {
+    expect(appIsMFERemote(targetJs)).toBe(true);
+  });
+  it('should return true for remote apps with TS mfe config', () => {
+    expect(appIsMFERemote(targetTs)).toBe(true);
+  });
+  it('should return true for remote apps with no exposes mfe config', () => {
+    expect(appIsMFERemote(targetNoExposes)).toBe(false);
+  });
+  it('should return true for remote apps with no mfe config', () => {
+    expect(appIsMFERemote(targetNone)).toBe(false);
+  });
+});
+
+describe('parseExports', () => {
+  it('should return empty array if exports is a string', () => {
+    const result = [];
+    parseExports('index.js', '/root', result);
+    expect(result).toEqual([]);
+  });
+  it('should return empty array if only default conditional exports', () => {
+    const result = [];
+    parseExports({ default: 'index.js', import: 'index.mjs' }, '/root', result);
+    expect(result).toEqual([]);
+  });
+  it('should return empty array if only default require exports', () => {
+    const result = [];
+    parseExports({ require: 'index.cjs' }, '/root', result);
+    expect(result).toEqual([]);
+  });
+  it('should return empty array if only default import exports', () => {
+    const result = [];
+    parseExports({ import: 'index.mjs' }, '/root', result);
+    expect(result).toEqual([]);
+  });
+  it('should return empty array if only default import exports', () => {
+    const result = [];
+    parseExports({ '.': 'index.js' }, '/root', result);
+    expect(result).toEqual([]);
+  });
+  it('should return secondary entry point if exists', () => {
+    const result = [];
+    parseExports(
+      { '.': './src/index.js', './secondary': './src/secondary.js' },
+      '/root',
+      result
+    );
+    expect(result).toEqual([
+      { file: '/root/src/secondary.js', path: '/root/secondary' },
+    ]);
+  });
+  it('should return nested secondary entry point with default export', () => {
+    const result = [];
+    parseExports(
+      { '.': './src/index.js', './secondary': './src/secondary.js' },
+      '/root',
+      result
+    );
+    expect(result).toEqual([
+      { file: '/root/src/secondary.js', path: '/root/secondary' },
+    ]);
+  });
+  it('should return nested conditionalsecondary entry point with default export', () => {
+    const result = [];
+    parseExports(
+      {
+        '.': './src/index.js',
+        './secondary': {
+          default: './src/secondary.js',
+          import: './src/secondary.mjs',
+          require: './src/secondary.cjs',
+        },
+      },
+      '/root',
+      result
+    );
+    expect(result).toEqual([
+      { file: '/root/src/secondary.js', path: '/root/secondary' },
+    ]);
+  });
+  it('should ignore root and null exports', () => {
+    const result = [];
+    parseExports(
+      {
+        '.': './src/index.js',
+        './secondary': './src/secondary.js',
+        './tertiary': './src/tertiary.js',
+        './tertiary/private': null,
+      },
+      '/root',
+      result
+    );
+    expect(result).toEqual([
+      { file: '/root/src/secondary.js', path: '/root/secondary' },
+      { file: '/root/src/tertiary.js', path: '/root/tertiary' },
+    ]);
+  });
+});

@@ -1,0 +1,524 @@
+use std::env;
+use tracing::debug;
+
+/// Detects if the current process is being run by Claude Code
+fn is_claude_ai() -> bool {
+    match env::var("CLAUDECODE") {
+        Ok(_) => {
+            debug!("Claude AI detected via CLAUDECODE environment variable");
+            true
+        }
+        Err(_) => match env::var("CLAUDE_CODE") {
+            Ok(_) => {
+                debug!("Claude AI detected via CLAUDE_CODE environment variable");
+                true
+            }
+            Err(_) => false,
+        },
+    }
+}
+
+/// Detects if the current process is being run by Repl.it
+fn is_replit_ai() -> bool {
+    match env::var("REPL_ID") {
+        Ok(_) => {
+            debug!("Repl.it AI detected via REPL_ID environment variable");
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Detects if the current process is being run by Cursor AI
+fn is_cursor_ai() -> bool {
+    let pager_matches = env::var("PAGER")
+        .map(|v| v == "head -n 10000 | cat")
+        .unwrap_or(false);
+    let has_cursor_trace_id = env::var("CURSOR_TRACE_ID").is_ok();
+    let has_composer_no_interaction = env::var("COMPOSER_NO_INTERACTION").is_ok();
+
+    let is_cursor = pager_matches && has_cursor_trace_id && has_composer_no_interaction;
+
+    if is_cursor {
+        debug!(
+            "Cursor AI detected via PAGER, CURSOR_TRACE_ID, and COMPOSER_NO_INTERACTION environment variables"
+        );
+    }
+
+    is_cursor
+}
+
+/// Detects if the current process is being run by OpenCode
+fn is_opencode_ai() -> bool {
+    match env::var("OPENCODE") {
+        Ok(_) => {
+            debug!("OpenCode AI detected via OPENCODE environment variable");
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Detects if the current process is being run by Gemini CLI
+fn is_gemini_ai() -> bool {
+    match env::var("GEMINI_CLI") {
+        Ok(_) => {
+            debug!("Gemini CLI detected via GEMINI_CLI environment variable");
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Detects if the current process is being run by a VS Code AI agent
+fn is_vscode_ai() -> bool {
+    match env::var("VSCODE_AGENT") {
+        Ok(_) => {
+            debug!("VS Code AI detected via VSCODE_AGENT environment variable");
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Detects if the current process is being run by the OpenAI Codex CLI.
+///
+/// `CODEX_THREAD_ID` is set per session by the Codex CLI (verified against
+/// `openai/codex` Rust source). Superset exposes the active agent via
+/// `SUPERSET_AGENT_ID=codex`. Do not use `CODEX_TUI_RECORD_SESSION` — that
+/// variable is *read* by Codex, not set by it.
+fn is_codex_ai() -> bool {
+    match env::var("CODEX_THREAD_ID") {
+        Ok(_) => {
+            debug!("Codex AI detected via CODEX_THREAD_ID environment variable");
+            true
+        }
+        Err(_) => match env::var("SUPERSET_AGENT_ID") {
+            Ok(agent_id) if agent_id == "codex" => {
+                debug!("Codex AI detected via SUPERSET_AGENT_ID=codex environment variable");
+                true
+            }
+            _ => false,
+        },
+    }
+}
+
+/// Detects if the current process is being run by the GitHub Copilot CLI.
+///
+/// `COPILOT_CLI=1` is set by the CLI in the shells it spawns (verified against
+/// 1.0.80, alongside `COPILOT_CLI_BINARY_VERSION` and
+/// `COPILOT_AGENT_SESSION_ID`). Distinct from `is_vscode_ai`, which reports the
+/// VS Code extension's agent mode: the two are different products with
+/// different sandbox configuration, so they must not collapse to one name.
+fn is_copilot_cli_ai() -> bool {
+    match env::var("COPILOT_CLI") {
+        Ok(_) => {
+            debug!("Copilot CLI detected via COPILOT_CLI environment variable");
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Detects which AI agent is running and returns its name.
+/// Returns None if no agent is detected or when running inside the Nx daemon.
+/// Filtering against supported agents should be done on the TypeScript side.
+#[napi]
+pub fn detect_ai_agent() -> Option<String> {
+    if env::var("NX_DAEMON_PROCESS").is_ok() {
+        return None;
+    }
+
+    if is_claude_ai() {
+        Some("claude".to_string())
+    } else if is_cursor_ai() {
+        Some("cursor".to_string())
+    } else if is_opencode_ai() {
+        Some("opencode".to_string())
+    } else if is_codex_ai() {
+        Some("codex".to_string())
+    } else if is_gemini_ai() {
+        Some("gemini".to_string())
+    } else if is_copilot_cli_ai() {
+        Some("copilot-cli".to_string())
+    } else if is_vscode_ai() {
+        Some("copilot".to_string())
+    } else if is_replit_ai() {
+        Some("replit".to_string())
+    } else {
+        None
+    }
+}
+
+/// Detects if the current process is being run by an AI agent.
+/// Always returns false when running inside the Nx daemon, since the daemon
+/// is a long-lived process that should not inherit AI agent behavior from
+/// the client that connected to it.
+#[napi]
+pub fn is_ai_agent() -> bool {
+    if env::var("NX_DAEMON_PROCESS").is_ok() {
+        return false;
+    }
+
+    let is_ai = is_claude_ai()
+        || is_replit_ai()
+        || is_cursor_ai()
+        || is_opencode_ai()
+        || is_codex_ai()
+        || is_gemini_ai()
+        || is_copilot_cli_ai()
+        || is_vscode_ai();
+
+    if is_ai {
+        debug!("AI agent detected");
+    }
+
+    is_ai
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn clear_ai_env_vars() {
+        let ai_vars = [
+            "CLAUDECODE",
+            "CLAUDE_CODE",
+            "REPL_ID",
+            "PAGER",
+            "CURSOR_TRACE_ID",
+            "COMPOSER_NO_INTERACTION",
+            "OPENCODE",
+            "CODEX_THREAD_ID",
+            "SUPERSET_AGENT_ID",
+            "GEMINI_CLI",
+            "VSCODE_AGENT",
+        ];
+        for var in &ai_vars {
+            unsafe {
+                std::env::remove_var(var);
+            }
+        }
+    }
+
+    #[test]
+    fn test_ai_agent_detection() {
+        // Save original environment state
+        let original_claudecode = env::var("CLAUDECODE").ok();
+        let original_claude_code = env::var("CLAUDE_CODE").ok();
+        let original_repl_id = env::var("REPL_ID").ok();
+        let original_pager = env::var("PAGER").ok();
+        let original_cursor_trace_id = env::var("CURSOR_TRACE_ID").ok();
+        let original_composer_no_interaction = env::var("COMPOSER_NO_INTERACTION").ok();
+        let original_opencode = env::var("OPENCODE").ok();
+        let original_codex_thread_id = env::var("CODEX_THREAD_ID").ok();
+        let original_superset_agent_id = env::var("SUPERSET_AGENT_ID").ok();
+        let original_gemini_cli = env::var("GEMINI_CLI").ok();
+        let original_vscode_agent = env::var("VSCODE_AGENT").ok();
+
+        // Start with clean environment
+        clear_ai_env_vars();
+
+        // Test no AI detection
+        assert!(
+            !is_claude_ai(),
+            "Should not detect Claude AI without CLAUDECODE"
+        );
+        assert!(
+            !is_replit_ai(),
+            "Should not detect Repl.it AI without REPL_ID"
+        );
+        assert!(
+            !is_cursor_ai(),
+            "Should not detect Cursor AI without all variables"
+        );
+        assert!(
+            !is_opencode_ai(),
+            "Should not detect OpenCode AI without OPENCODE"
+        );
+        assert!(
+            !is_codex_ai(),
+            "Should not detect Codex AI without CODEX_THREAD_ID"
+        );
+        assert!(
+            !is_gemini_ai(),
+            "Should not detect Gemini CLI without GEMINI_CLI"
+        );
+        assert!(
+            !is_vscode_ai(),
+            "Should not detect VS Code AI without VSCODE_AGENT"
+        );
+        assert!(!is_ai_agent(), "Should not detect any AI agent");
+
+        // Test Claude AI detection via CLAUDECODE
+        unsafe {
+            env::set_var("CLAUDECODE", "1");
+        }
+        assert!(is_claude_ai(), "Should detect Claude AI with CLAUDECODE");
+        assert!(is_ai_agent(), "Main function should detect Claude AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("claude".to_string()),
+            "detect_ai_agent should return claude"
+        );
+        unsafe {
+            env::remove_var("CLAUDECODE");
+        }
+
+        // Test Claude AI detection via CLAUDE_CODE (underscore variant)
+        unsafe {
+            env::set_var("CLAUDE_CODE", "1");
+        }
+        assert!(is_claude_ai(), "Should detect Claude AI with CLAUDE_CODE");
+        assert!(
+            is_ai_agent(),
+            "Main function should detect Claude AI via CLAUDE_CODE"
+        );
+        assert_eq!(
+            detect_ai_agent(),
+            Some("claude".to_string()),
+            "detect_ai_agent should return claude for CLAUDE_CODE"
+        );
+        unsafe {
+            env::remove_var("CLAUDE_CODE");
+        }
+
+        // Test Repl.it AI detection
+        unsafe {
+            env::set_var("REPL_ID", "some-repl-id");
+        }
+        assert!(is_replit_ai(), "Should detect Repl.it AI with REPL_ID");
+        assert!(is_ai_agent(), "Main function should detect Repl.it AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("replit".to_string()),
+            "detect_ai_agent should return replit"
+        );
+        unsafe {
+            env::remove_var("REPL_ID");
+        }
+
+        // Test OpenCode AI detection
+        unsafe {
+            env::set_var("OPENCODE", "1");
+        }
+        assert!(is_opencode_ai(), "Should detect OpenCode AI with OPENCODE");
+        assert!(is_ai_agent(), "Main function should detect OpenCode AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("opencode".to_string()),
+            "detect_ai_agent should return opencode"
+        );
+        unsafe {
+            env::remove_var("OPENCODE");
+        }
+
+        // Test Codex AI detection
+        unsafe {
+            env::set_var("CODEX_THREAD_ID", "thread-abc");
+        }
+        assert!(is_codex_ai(), "Should detect Codex AI with CODEX_THREAD_ID");
+        assert!(is_ai_agent(), "Main function should detect Codex AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("codex".to_string()),
+            "detect_ai_agent should return codex"
+        );
+        unsafe {
+            env::remove_var("CODEX_THREAD_ID");
+        }
+
+        // Test Codex AI detection via Superset
+        unsafe {
+            env::set_var("SUPERSET_AGENT_ID", "codex");
+        }
+        assert!(
+            is_codex_ai(),
+            "Should detect Codex AI with SUPERSET_AGENT_ID=codex"
+        );
+        assert!(is_ai_agent(), "Main function should detect Codex AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("codex".to_string()),
+            "detect_ai_agent should return codex for SUPERSET_AGENT_ID=codex"
+        );
+        unsafe {
+            env::set_var("SUPERSET_AGENT_ID", "claude");
+        }
+        assert!(
+            !is_codex_ai(),
+            "Should not detect Codex AI with a non-codex SUPERSET_AGENT_ID"
+        );
+        unsafe {
+            env::remove_var("SUPERSET_AGENT_ID");
+        }
+
+        // Test Cursor AI detection with wrong PAGER
+        unsafe {
+            env::set_var("PAGER", "wrong-value");
+            env::set_var("CURSOR_TRACE_ID", "trace-123");
+            env::set_var("COMPOSER_NO_INTERACTION", "1");
+        }
+        assert!(
+            !is_cursor_ai(),
+            "Should not detect Cursor AI with wrong PAGER value"
+        );
+
+        // Test Cursor AI detection with correct PAGER
+        unsafe {
+            env::set_var("PAGER", "head -n 10000 | cat");
+        }
+        assert!(
+            is_cursor_ai(),
+            "Should detect Cursor AI with correct PAGER and all variables"
+        );
+        assert!(is_ai_agent(), "Main function should detect Cursor AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("cursor".to_string()),
+            "detect_ai_agent should return cursor"
+        );
+        clear_ai_env_vars();
+
+        // Test Gemini CLI detection
+        unsafe {
+            env::set_var("GEMINI_CLI", "1");
+        }
+        assert!(is_gemini_ai(), "Should detect Gemini CLI with GEMINI_CLI");
+        assert!(is_ai_agent(), "Main function should detect Gemini CLI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("gemini".to_string()),
+            "detect_ai_agent should return gemini"
+        );
+        unsafe {
+            env::remove_var("GEMINI_CLI");
+        }
+
+        // Test Copilot CLI detection
+        unsafe {
+            env::set_var("COPILOT_CLI", "1");
+        }
+        assert!(
+            is_copilot_cli_ai(),
+            "Should detect Copilot CLI with COPILOT_CLI"
+        );
+        assert!(is_ai_agent(), "Main function should detect Copilot CLI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("copilot-cli".to_string()),
+            "detect_ai_agent should return copilot-cli for the Copilot CLI"
+        );
+        unsafe {
+            env::remove_var("COPILOT_CLI");
+        }
+
+        // The CLI and the VS Code extension are different products with
+        // different sandbox configuration, so the CLI must win rather than
+        // being reported as the extension when both are somehow present.
+        unsafe {
+            env::set_var("COPILOT_CLI", "1");
+            env::set_var("VSCODE_AGENT", "1");
+        }
+        assert_eq!(
+            detect_ai_agent(),
+            Some("copilot-cli".to_string()),
+            "the CLI should not be reported as the VS Code extension"
+        );
+        unsafe {
+            env::remove_var("COPILOT_CLI");
+            env::remove_var("VSCODE_AGENT");
+        }
+
+        // Test VS Code AI detection
+        unsafe {
+            env::set_var("VSCODE_AGENT", "1");
+        }
+        assert!(is_vscode_ai(), "Should detect VS Code AI with VSCODE_AGENT");
+        assert!(is_ai_agent(), "Main function should detect VS Code AI");
+        assert_eq!(
+            detect_ai_agent(),
+            Some("copilot".to_string()),
+            "detect_ai_agent should return copilot for VS Code AI"
+        );
+        unsafe {
+            env::remove_var("VSCODE_AGENT");
+        }
+
+        // Test multiple AI agents
+        unsafe {
+            env::set_var("CLAUDECODE", "1");
+            env::set_var("REPL_ID", "some-repl-id");
+        }
+        assert!(
+            is_ai_agent(),
+            "Should detect AI when multiple agents are present"
+        );
+
+        // Test detect_ai_agent with no agents
+        clear_ai_env_vars();
+        assert_eq!(
+            detect_ai_agent(),
+            None,
+            "detect_ai_agent should return None when no agent is detected"
+        );
+
+        // Restore original environment
+        clear_ai_env_vars();
+        if let Some(val) = original_claudecode {
+            unsafe {
+                env::set_var("CLAUDECODE", val);
+            }
+        }
+        if let Some(val) = original_claude_code {
+            unsafe {
+                env::set_var("CLAUDE_CODE", val);
+            }
+        }
+        if let Some(val) = original_repl_id {
+            unsafe {
+                env::set_var("REPL_ID", val);
+            }
+        }
+        if let Some(val) = original_pager {
+            unsafe {
+                env::set_var("PAGER", val);
+            }
+        }
+        if let Some(val) = original_cursor_trace_id {
+            unsafe {
+                env::set_var("CURSOR_TRACE_ID", val);
+            }
+        }
+        if let Some(val) = original_composer_no_interaction {
+            unsafe {
+                env::set_var("COMPOSER_NO_INTERACTION", val);
+            }
+        }
+        if let Some(val) = original_opencode {
+            unsafe {
+                env::set_var("OPENCODE", val);
+            }
+        }
+        if let Some(val) = original_codex_thread_id {
+            unsafe {
+                env::set_var("CODEX_THREAD_ID", val);
+            }
+        }
+        if let Some(val) = original_superset_agent_id {
+            unsafe {
+                env::set_var("SUPERSET_AGENT_ID", val);
+            }
+        }
+        if let Some(val) = original_gemini_cli {
+            unsafe {
+                env::set_var("GEMINI_CLI", val);
+            }
+        }
+        if let Some(val) = original_vscode_agent {
+            unsafe {
+                env::set_var("VSCODE_AGENT", val);
+            }
+        }
+    }
+}

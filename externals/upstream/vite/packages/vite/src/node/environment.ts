@@ -1,0 +1,31 @@
+import type { PluginContext } from 'rolldown'
+import type { UnknownEnvironment } from './baseEnvironment'
+import type { BuildEnvironment } from './build'
+import type { ScanEnvironment } from './optimizer/scan'
+import type { DevEnvironment } from './server/environment'
+
+export type Environment =
+  | DevEnvironment
+  | BuildEnvironment
+  | /** @internal */ ScanEnvironment
+  | UnknownEnvironment
+
+/**
+ * Creates a function that hides the complexities of a WeakMap with an initial value
+ * to implement object metadata. Used by plugins to implement cross hooks per
+ * environment metadata
+ *
+ * @experimental
+ */
+export function perEnvironmentState<State>(
+  initial: (environment: Environment) => State,
+): (context: PluginContext) => State {
+  const stateMap = new WeakMap<Environment, State>()
+  return function (context: PluginContext) {
+    const { environment } = context
+    if (!stateMap.has(environment)) {
+      stateMap.set(environment, initial(environment))
+    }
+    return stateMap.get(environment)!
+  }
+}

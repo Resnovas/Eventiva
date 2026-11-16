@@ -1,0 +1,25 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "ignoreStatic": {
+        "description": "Whether to skip checking whether `static` methods are correctly bound.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to skip checking whether `static` methods are correctly bound. */
+    ignoreStatic?: boolean;
+  },
+];

@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Util generates a local asset for a given descriptor 1`] = `
+"module.exports = require(\\"react-native-module/asset-resolver\\").registerAsset({
+  \\"__packager_asset\\": true,
+  \\"hash\\": \\"9ec9c5721fcd5cc401b4499a0cc8878bc1a18bb5\\",
+  \\"height\\": 24,
+  \\"name\\": \\"my-asset\\",
+  \\"scales\\": [1, 1.5, 2, 3, 4],
+  \\"type\\": \\"png\\",
+  \\"width\\": 240
+});"
+`;

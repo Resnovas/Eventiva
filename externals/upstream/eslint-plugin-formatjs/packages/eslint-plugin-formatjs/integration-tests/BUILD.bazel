@@ -1,0 +1,70 @@
+load("@npm//:eslint/package_json.bzl", eslint_bin = "bin")
+load("@npm//:oxlint/package_json.bzl", oxlint_bin = "bin")
+load("//tools:package_json.bzl", "generate_package_json")
+
+generate_package_json(
+    package_name = "integration-tests",
+    private = True,
+    deps = [
+        "//:node_modules/eslint",
+        "//:node_modules/eslint-plugin-formatjs",
+        "//:node_modules/react-intl",
+    ],
+)
+
+eslint_bin.eslint_test(
+    name = "eslint_test",
+    args = [
+        "--config",
+        "eslint.config.mjs",
+        "fixture.js",
+    ],
+    chdir = package_name(),
+    data = [
+        "eslint.config.mjs",
+        "fixture.js",
+        "//:node_modules/eslint-plugin-formatjs",
+    ],
+    expected_exit_code = 1,
+    node_options = [
+        "--experimental-vm-modules",
+    ],
+)
+
+oxlint_bin.oxlint_test(
+    name = "oxlint_test",
+    args = [
+        "--config",
+        ".oxlintrc.json",
+        "fixture.js",
+    ],
+    chdir = package_name(),
+    data = [
+        ".oxlintrc.json",
+        "fixture.js",
+        "//:node_modules/eslint-plugin-formatjs",
+    ],
+    expected_exit_code = 1,
+    node_options = [
+        "--experimental-vm-modules",
+    ],
+)
+
+oxlint_bin.oxlint_test(
+    name = "oxlint_test2",
+    args = [
+        "--config",
+        ".oxlintrc.json",
+        "fixture2.js",
+    ],
+    chdir = package_name(),
+    data = [
+        ".oxlintrc.json",
+        "fixture2.js",
+        "//:node_modules/eslint-plugin-formatjs",
+    ],
+    expected_exit_code = 1,
+    node_options = [
+        "--experimental-vm-modules",
+    ],
+)

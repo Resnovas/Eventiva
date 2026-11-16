@@ -1,0 +1,95 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        TypeDefinition$1 {
+          name: Identifier<"Fn">,
+          node: TSTypeAliasDeclaration$1,
+        },
+      ],
+      name: "Fn",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$3 {
+      defs: [
+        TypeDefinition$2 {
+          name: Identifier<"A">,
+          node: TSTypeParameter$2,
+        },
+      ],
+      name: "A",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"A">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$3,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ParameterDefinition$3 {
+          name: Identifier<"a">,
+          node: TSFunctionType$3,
+        },
+      ],
+      name: "a",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$4,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "Fn" => Variable$2,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+      ],
+    },
+    TypeScope$2 {
+      block: TSTypeAliasDeclaration$1,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "A" => Variable$3,
+      },
+      type: "type",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+      ],
+    },
+    FunctionTypeScope$3 {
+      block: TSFunctionType$3,
+      isStrict: true,
+      references: [
+        Reference$1,
+      ],
+      set: Map {
+        "a" => Variable$4,
+      },
+      type: "functionType",
+      upper: TypeScope$2,
+      variables: [
+        Variable$4,
+      ],
+    },
+  ],
+}

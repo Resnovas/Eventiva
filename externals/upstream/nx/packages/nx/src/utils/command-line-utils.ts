@@ -1,0 +1,380 @@
+import yargsParser from 'yargs-parser';
+import type { Arguments } from 'yargs';
+import { TEN_MEGABYTES } from '../project-graph/file-utils';
+import { output } from './output';
+import { NxJsonConfiguration } from '../config/nx-json';
+import { execFileSync } from 'child_process';
+import { ProjectGraph } from '../config/project-graph';
+import { assertValidGitRevision } from './git-revision';
+import { workspaceRoot } from './workspace-root';
+import { readParallelFromArgsAndEnv } from '../command-line/yargs-utils/shared-options';
+// Type-only, so it erases and cannot deepen the existing cycle with that module.
+import type { OutputStyle } from '../command-line/yargs-utils/shared-options';
+
+export interface RawNxArgs extends NxArgs {
+  prod?: boolean;
+}
+
+export interface NxArgs {
+  targets?: string[];
+  configuration?: string;
+  /**
+   * @deprecated Custom task runners will be replaced by a new API starting with Nx 21. More info: https://nx.dev/deprecated/custom-tasks-runner
+   */
+  runner?: string;
+  parallel?: number;
+  untracked?: boolean;
+  uncommitted?: boolean;
+  all?: boolean;
+  base?: string;
+  head?: string;
+  exclude?: string[];
+  files?: string[];
+  verbose?: boolean;
+  help?: boolean;
+  version?: boolean;
+  plain?: boolean;
+  projects?: string[];
+  select?: string;
+  graph?: string | boolean;
+  skipNxCache?: boolean;
+  explain?: string | boolean;
+  skipRemoteCache?: boolean;
+  /**
+   * The style the user named - CLI flag or `NX_DEFAULT_OUTPUT_STYLE`. Left
+   * undefined when they named none, and that absence is load-bearing: it is how
+   * the streaming and renderer-selection decisions tell "the user wants static"
+   * from "we defaulted to static", which stream continuous tasks differently.
+   */
+  specifiedOutputStyle?: OutputStyle;
+  /**
+   * What the run actually renders with, after the TUI, agent and failures-only
+   * defaults are applied. Always set. Every decision about what to PRINT reads
+   * this; every decision about what the user ASKED FOR reads the field above.
+   */
+  resolvedOutputStyle?: OutputStyle;
+  /**
+   * @deprecated Read `specifiedOutputStyle` for what the user named, or
+   * `resolvedOutputStyle` for what the run renders with. This will be removed
+   * in Nx 24.
+   */
+  outputStyle?: string;
+  tui?: boolean;
+  nxBail?: boolean;
+  nxIgnoreCycles?: boolean;
+  type?: string;
+  batch?: boolean;
+  excludeTaskDependencies?: boolean;
+  skipSync?: boolean;
+  sortRootTsconfigPaths?: boolean;
+}
+
+export function createOverrides(__overrides_unparsed__: string[] = []) {
+  let overrides: Record<string, any> =
+    yargsParser(__overrides_unparsed__, {
+      configuration: {
+        'camel-case-expansion': false,
+        'dot-notation': true,
+      },
+    }) || {};
+
+  if (!overrides._ || overrides._.length === 0) {
+    delete overrides._;
+  }
+
+  overrides.__overrides_unparsed__ = __overrides_unparsed__;
+  return overrides;
+}
+
+export function getBaseRef(nxJson: NxJsonConfiguration) {
+  return nxJson.defaultBase ?? nxJson.affected?.defaultBase ?? 'main';
+}
+
+export function splitArgsIntoNxArgsAndOverrides(
+  args: { [k: string]: any },
+  mode: 'run-one' | 'run-many' | 'affected' | 'print-affected',
+  options = { printWarnings: true },
+  nxJson: NxJsonConfiguration
+): {
+  nxArgs: NxArgs;
+  overrides: Arguments & { __overrides_unparsed__: string[] };
+} {
+  // this is to lerna case when this function is invoked imperatively
+  if (args['target'] && !args['targets']) {
+    args['targets'] = [args['target']];
+  }
+  delete args['target'];
+  delete args['t'];
+
+  if (!args.__overrides_unparsed__ && args._) {
+    // required for backwards compatibility
+    args.__overrides_unparsed__ = args._;
+    delete args._;
+  }
+  // This handles the way Lerna passes in overrides
+  if (!args.__overrides_unparsed__ && args.__overrides__) {
+    // required for backwards compatibility
+    args.__overrides_unparsed__ = args.__overrides__;
+    delete args._;
+  }
+
+  const nxArgs: RawNxArgs = args;
+
+  let overrides = createOverrides(args.__overrides_unparsed__);
+  delete (nxArgs as any).$0;
+  delete (nxArgs as any).__overrides_unparsed__;
+
+  if (mode === 'run-many') {
+    const args = nxArgs as any;
+    if (!args.projects) {
+      args.projects = [];
+    } else if (typeof args.projects === 'string') {
+      args.projects = args.projects.split(',');
+    }
+  }
+
+  if (nxArgs.prod) {
+    delete nxArgs.prod;
+    nxArgs.configuration = 'production';
+  }
+
+  if (mode === 'affected') {
+    if (options.printWarnings && nxArgs.all) {
+      output.warn({
+        title: `Running affected:* commands with --all can result in very slow builds.`,
+        bodyLines: [
+          `${output.bold(
+            '--all'
+          )} is not meant to be used for any sizable project or to be used in CI.`,
+          '',
+          `${output.dim(
+            'Learn more about checking only what is affected: https://nx.dev/nx/affected'
+          )}`,
+        ],
+      });
+    }
+
+    // Allow setting base and head via environment variables (lower priority than direct command arguments)
+    if (!nxArgs.base && process.env.NX_BASE) {
+      nxArgs.base = process.env.NX_BASE;
+      if (options.printWarnings) {
+        output.note({
+          title: `No explicit --base argument provided, but found environment variable NX_BASE so using its value as the affected base: ${output.bold(
+            `${nxArgs.base}`
+          )}`,
+        });
+      }
+    }
+    if (!nxArgs.head && process.env.NX_HEAD) {
+      nxArgs.head = process.env.NX_HEAD;
+      if (options.printWarnings) {
+        output.note({
+          title: `No explicit --head argument provided, but found environment variable NX_HEAD so using its value as the affected head: ${output.bold(
+            `${nxArgs.head}`
+          )}`,
+        });
+      }
+    }
+
+    if (!nxArgs.base) {
+      nxArgs.base = getBaseRef(nxJson);
+
+      // No user-provided arguments to set the affected criteria, so inform the user of the defaults being used
+      if (
+        options.printWarnings &&
+        !nxArgs.head &&
+        !nxArgs.files &&
+        !nxArgs.uncommitted &&
+        !nxArgs.untracked &&
+        !nxArgs.all
+      ) {
+        output.note({
+          title: `Affected criteria defaulted to --base=${output.bold(
+            `${nxArgs.base}`
+          )} --head=${output.bold('HEAD')}`,
+        });
+      }
+    }
+
+    if (nxArgs.base) {
+      nxArgs.base = getMergeBase(nxArgs.base, nxArgs.head);
+    }
+  }
+
+  if (typeof args.exclude === 'string') {
+    nxArgs.exclude = args.exclude.split(',');
+  }
+
+  if (!nxArgs.skipNxCache) {
+    nxArgs.skipNxCache =
+      process.env.NX_SKIP_NX_CACHE === 'true' ||
+      process.env.NX_DISABLE_NX_CACHE === 'true';
+  }
+
+  if (!nxArgs.skipRemoteCache) {
+    nxArgs.skipRemoteCache =
+      process.env.NX_DISABLE_REMOTE_CACHE === 'true' ||
+      process.env.NX_SKIP_REMOTE_CACHE === 'true';
+  }
+
+  normalizeNxArgsRunner(nxArgs, nxJson, options);
+
+  nxArgs['parallel'] = readParallelFromArgsAndEnv(args);
+
+  return { nxArgs, overrides } as any;
+}
+
+function normalizeNxArgsRunner(
+  nxArgs: RawNxArgs,
+  nxJson: NxJsonConfiguration<string[] | '*'>,
+  options: { printWarnings: boolean }
+) {
+  if (!nxArgs.runner) {
+    const envKey = 'NX_TASKS_RUNNER';
+    const runner = process.env[envKey];
+    if (runner) {
+      const runnerExists = nxJson.tasksRunnerOptions?.[runner];
+      if (options.printWarnings) {
+        if (runnerExists) {
+          output.note({
+            title: `No explicit --runner argument provided, but found environment variable ${envKey} so using its value: ${output.bold(
+              `${runner}`
+            )}`,
+          });
+        } else if (
+          nxArgs.verbose ||
+          process.env.NX_VERBOSE_LOGGING === 'true'
+        ) {
+          output.warn({
+            title: `Could not find ${output.bold(
+              `${runner}`
+            )} within \`nx.json\` tasksRunnerOptions.`,
+            bodyLines: [
+              `${output.bold(`${runner}`)} was set by ${envKey}`,
+              ``,
+              `To suppress this message, either:`,
+              `  - provide a valid task runner with --runner`,
+              `  - ensure NX_TASKS_RUNNER matches a task runner defined in nx.json`,
+            ],
+          });
+        }
+      }
+      if (runnerExists) {
+        nxArgs.runner = runner;
+      }
+    }
+  }
+}
+
+export function parseFiles(options: NxArgs): { files: string[] } {
+  const { files, uncommitted, untracked, base, head } = options;
+
+  if (files) {
+    return {
+      files,
+    };
+  } else if (uncommitted) {
+    return {
+      files: getUncommittedFiles(),
+    };
+  } else if (untracked) {
+    return {
+      files: getUntrackedFiles(),
+    };
+  } else if (base && head) {
+    return {
+      files: getFilesUsingBaseAndHead(base, head),
+    };
+  } else if (base) {
+    return {
+      files: Array.from(
+        new Set([
+          ...getFilesUsingBaseAndHead(base, 'HEAD'),
+          ...getUncommittedFiles(),
+          ...getUntrackedFiles(),
+        ])
+      ),
+    };
+  }
+}
+
+function getUncommittedFiles(): string[] {
+  return parseGitOutput([
+    'diff',
+    '--name-only',
+    '--no-renames',
+    '--relative',
+    '-z',
+    'HEAD',
+    '.',
+  ]);
+}
+
+function getUntrackedFiles(): string[] {
+  return parseGitOutput(['ls-files', '--others', '--exclude-standard', '-z']);
+}
+
+function getMergeBase(base: string, head: string = 'HEAD') {
+  assertValidGitRevision(base);
+  assertValidGitRevision(head);
+  try {
+    return runGit(['merge-base', base, head]).toString().trim();
+  } catch {
+    try {
+      return runGit(['merge-base', '--fork-point', base, head])
+        .toString()
+        .trim();
+    } catch {
+      return base;
+    }
+  }
+}
+
+function getFilesUsingBaseAndHead(base: string, head: string): string[] {
+  assertValidGitRevision(base);
+  assertValidGitRevision(head);
+  return parseGitOutput([
+    'diff',
+    '--name-only',
+    '--no-renames',
+    '--relative',
+    '-z',
+    base,
+    head,
+  ]);
+}
+
+function runGit(args: string[]): Buffer {
+  return execFileSync('git', args, {
+    maxBuffer: TEN_MEGABYTES,
+    cwd: workspaceRoot,
+    stdio: 'pipe',
+    windowsHide: true,
+  });
+}
+
+/**
+ * Parses NUL-terminated paths, so callers must pass `-z`, and must pass it
+ * before the pathspec — git fatals on a `-z` that follows one. Without `-z` git
+ * escapes paths that contain non-ASCII or quoting characters, and honours
+ * `core.quotepath`, which is on by default.
+ */
+function parseGitOutput(args: string[]): string[] {
+  return runGit(args)
+    .toString('utf-8')
+    .split('\0')
+    .filter((a) => a.length > 0);
+}
+
+export function getProjectRoots(
+  projectNames: string[],
+  { nodes }: ProjectGraph
+): string[] {
+  return projectNames.map((name) => nodes[name].data.root);
+}
+
+export function readGraphFileFromGraphArg({ graph }: Pick<NxArgs, 'graph'>) {
+  return typeof graph === 'string' && graph !== 'true' && graph !== ''
+    ? graph
+    : undefined;
+}

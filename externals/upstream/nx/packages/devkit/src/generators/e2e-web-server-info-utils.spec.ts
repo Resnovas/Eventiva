@@ -1,0 +1,311 @@
+// Stub out the real @nx/vite/plugin so findPluginForConfigFile's dynamic
+// `await import('@nx/vite/plugin')` doesn't pull @nx/vite and @nx/js source
+// into this test. Only the createNodesV2 glob is consumed, and the include/
+// exclude assertions depend on the nxJson registration, not the real plugin.
+vi.mock('@nx/vite/plugin', () => ({
+  // Vitest throws on reading an export the factory did not return.
+  createNodes: undefined,
+  createNodesV2: ['**/{vite,vitest}.config.{js,ts,mjs,mts,cjs,cts}', vi.fn()],
+}));
+
+import { createTreeWithEmptyWorkspace } from 'nx/src/devkit-testing-exports';
+import { type Tree, readNxJson, updateNxJson } from 'nx/src/devkit-exports';
+import { TempFs } from 'nx/src/internal-testing-utils/temp-fs';
+import { getE2EWebServerInfo } from './e2e-web-server-info-utils';
+
+describe('getE2EWebServerInfo', () => {
+  let tree: Tree;
+  let tempFs: TempFs;
+  beforeEach(() => {
+    tempFs = new TempFs('e2e-webserver-info');
+    tree = createTreeWithEmptyWorkspace();
+    tree.root = tempFs.tempDir;
+
+    tree.write(`app/vite.config.ts`, ``);
+    tempFs.createFileSync(`app/vite.config.ts`, ``);
+  });
+
+  afterEach(() => {
+    tempFs.cleanup();
+    vi.resetModules();
+  });
+
+  it('should use the default values of the plugin when the plugin is just a string', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    nxJson.plugins = ['@nx/vite/plugin'];
+    updateNxJson(tree, nxJson);
+
+    // ACT
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4200',
+        defaultE2ECiBaseUrl: 'http://localhost:4300',
+        defaultE2EPort: 4200,
+      }
+    );
+
+    // ASSERT
+    expect(e2eWebServerInfo).toMatchInlineSnapshot(`
+      {
+        "e2eCiBaseUrl": "http://localhost:4300",
+        "e2eCiWebServerCommand": "npx nx run app:preview",
+        "e2eDevServerTarget": "app:serve",
+        "e2eWebServerAddress": "http://localhost:4200",
+        "e2eWebServerCommand": "npx nx run app:serve",
+      }
+    `);
+  });
+
+  it('should use the values of the registered plugin when there is no includes or excludes defined', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    nxJson.plugins ??= [];
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite:serve',
+        previewTargetName: 'vite:preview',
+      },
+    });
+    updateNxJson(tree, nxJson);
+
+    // ACT
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4200',
+        defaultE2ECiBaseUrl: 'http://localhost:4300',
+        defaultE2EPort: 4200,
+      }
+    );
+
+    // ASSERT
+    expect(e2eWebServerInfo).toMatchInlineSnapshot(`
+      {
+        "e2eCiBaseUrl": "http://localhost:4300",
+        "e2eCiWebServerCommand": "npx nx run app:vite:preview",
+        "e2eDevServerTarget": "app:vite:serve",
+        "e2eWebServerAddress": "http://localhost:4200",
+        "e2eWebServerCommand": "npx nx run app:vite:serve",
+      }
+    `);
+  });
+
+  it('should handle targetDefaults', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    nxJson.plugins ??= [];
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite:serve',
+        previewTargetName: 'vite:preview',
+      },
+    });
+    nxJson.targetDefaults ??= {};
+    nxJson.targetDefaults['vite:serve'] = {
+      options: {
+        port: 4400,
+      },
+    };
+    updateNxJson(tree, nxJson);
+
+    // ACT
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4200',
+        defaultE2ECiBaseUrl: 'http://localhost:4300',
+        defaultE2EPort: 4200,
+      }
+    );
+
+    // ASSERT
+    expect(e2eWebServerInfo).toMatchInlineSnapshot(`
+      {
+        "e2eCiBaseUrl": "http://localhost:4300",
+        "e2eCiWebServerCommand": "npx nx run app:vite:preview",
+        "e2eDevServerTarget": "app:vite:serve",
+        "e2eWebServerAddress": "http://localhost:4400",
+        "e2eWebServerCommand": "npx nx run app:vite:serve",
+      }
+    `);
+  });
+
+  it('should handle array-shaped targetDefaults', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    nxJson.plugins ??= [];
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite:serve',
+        previewTargetName: 'vite:preview',
+      },
+    });
+    nxJson.targetDefaults = {
+      'vite:serve': [
+        {
+          options: {
+            port: 4500,
+          },
+        },
+      ],
+    };
+    updateNxJson(tree, nxJson);
+
+    // ACT
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4200',
+        defaultE2ECiBaseUrl: 'http://localhost:4300',
+        defaultE2EPort: 4200,
+      }
+    );
+
+    // ASSERT
+    expect(e2eWebServerInfo).toMatchInlineSnapshot(`
+      {
+        "e2eCiBaseUrl": "http://localhost:4300",
+        "e2eCiWebServerCommand": "npx nx run app:vite:preview",
+        "e2eDevServerTarget": "app:vite:serve",
+        "e2eWebServerAddress": "http://localhost:4500",
+        "e2eWebServerCommand": "npx nx run app:vite:serve",
+      }
+    `);
+  });
+
+  it('should use the values of the correct registered plugin when there are includes or excludes defined', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    nxJson.plugins ??= [];
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite:serve',
+        previewTargetName: 'vite:preview',
+      },
+      include: ['libs/**'],
+    });
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite-serve',
+        previewTargetName: 'vite-preview',
+      },
+      include: ['app/**'],
+    });
+    updateNxJson(tree, nxJson);
+
+    // ACT
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4200',
+        defaultE2ECiBaseUrl: 'http://localhost:4300',
+        defaultE2EPort: 4400,
+      }
+    );
+
+    // ASSERT
+    expect(e2eWebServerInfo).toMatchInlineSnapshot(`
+      {
+        "e2eCiBaseUrl": "http://localhost:4300",
+        "e2eCiWebServerCommand": "npx nx run app:vite-preview",
+        "e2eDevServerTarget": "app:vite-serve",
+        "e2eWebServerAddress": "http://localhost:4400",
+        "e2eWebServerCommand": "npx nx run app:vite-serve",
+      }
+    `);
+  });
+
+  it('should not re-derive from targetDefaults when the port was explicit', async () => {
+    // ARRANGE
+    const nxJson = readNxJson(tree);
+    // The plugin must be registered, or findPluginForConfigFile bails early and
+    // the port-resolution branch under test is never reached.
+    nxJson.plugins ??= [];
+    nxJson.plugins.push({
+      plugin: '@nx/vite/plugin',
+      options: {
+        serveTargetName: 'vite:serve',
+        previewTargetName: 'vite:preview',
+      },
+    });
+    nxJson.targetDefaults = { 'vite:serve': { options: { port: 4300 } } };
+    updateNxJson(tree, nxJson);
+
+    // ACT — the caller resolved 4321 and baked it into both URLs. Re-deriving here
+    // would rewrite the address to 4300 and leave the CI URL at 4321.
+    const e2eWebServerInfo = await getE2EWebServerInfo(
+      tree,
+      'app',
+      {
+        plugin: '@nx/vite/plugin',
+        configFilePath: 'app/vite.config.ts',
+        serveTargetName: 'serveTargetName',
+        serveStaticTargetName: 'previewTargetName',
+      },
+      {
+        defaultServeTargetName: 'serve',
+        defaultServeStaticTargetName: 'preview',
+        defaultE2EWebServerAddress: 'http://localhost:4321',
+        defaultE2ECiBaseUrl: 'http://localhost:4321',
+        defaultE2EPort: 4321,
+        e2EPortIsExplicit: true,
+      }
+    );
+
+    // ASSERT — both URLs keep the explicitly requested port, and agree
+    expect(e2eWebServerInfo.e2eWebServerAddress).toBe('http://localhost:4321');
+    expect(e2eWebServerInfo.e2eCiBaseUrl).toBe('http://localhost:4321');
+  });
+});

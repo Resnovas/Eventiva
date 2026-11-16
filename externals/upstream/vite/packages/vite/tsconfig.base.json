@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "target": "es2023",
+    "module": "preserve",
+    "types": ["node"],
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "isolatedDeclarations": true,
+    "declaration": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "useUnknownInCatchVariables": false
+  }
+}

@@ -1,0 +1,673 @@
+import { HashPlanInspector } from './hash-plan-inspector';
+import { ProjectGraph } from '../config/project-graph';
+import { TempFs } from '../internal-testing-utils/temp-fs';
+import { ProjectGraphBuilder } from '../project-graph/project-graph-builder';
+
+describe('HashPlanInspector', () => {
+  let tempFs: TempFs;
+  let inspector: HashPlanInspector;
+  let projectGraph: ProjectGraph;
+
+  beforeAll(async () => {
+    tempFs = new TempFs('hash-plan-inspector');
+
+    // Create a minimal workspace structure
+    await tempFs.createFiles({
+      'package.json': JSON.stringify({
+        name: 'test-workspace',
+        devDependencies: {
+          nx: '0.0.0',
+        },
+      }),
+      'nx.json': JSON.stringify({
+        extends: 'nx/presets/npm.json',
+        targetDefaults: {
+          build: {
+            cache: true,
+          },
+          test: {
+            cache: true,
+          },
+        },
+        namedInputs: {
+          default: ['{projectRoot}/**/*'],
+          production: ['default', '!{projectRoot}/**/*.spec.ts'],
+        },
+      }),
+      'apps/test-app/project.json': JSON.stringify({
+        name: 'test-app',
+        sourceRoot: 'apps/test-app/src',
+        targets: {
+          build: {
+            executor: '@nx/webpack:webpack',
+            options: {
+              outputPath: 'dist/apps/test-app',
+            },
+          },
+          test: {
+            executor: '@nx/jest:jest',
+            options: {
+              jestConfig: 'apps/test-app/jest.config.ts',
+            },
+          },
+        },
+      }),
+      'apps/test-app/src/main.ts': 'console.log("Hello from test-app");',
+      'libs/test-lib/project.json': JSON.stringify({
+        name: 'test-lib',
+        sourceRoot: 'libs/test-lib/src',
+        targets: {
+          build: {
+            executor: '@nx/rollup:rollup',
+            options: {
+              outputPath: 'dist/libs/test-lib',
+            },
+          },
+          test: {
+            executor: '@nx/jest:jest',
+            options: {
+              jestConfig: 'libs/test-lib/jest.config.ts',
+            },
+          },
+        },
+      }),
+      'libs/test-lib/src/index.ts': 'export const lib = "test-lib";',
+    });
+
+    // Build project graph
+    const builder = new ProjectGraphBuilder();
+
+    builder.addNode({
+      name: 'test-app',
+      type: 'app',
+      data: {
+        root: 'apps/test-app',
+        sourceRoot: 'apps/test-app/src',
+        targets: {
+          build: {
+            executor: '@nx/webpack:webpack',
+            options: {
+              outputPath: 'dist/apps/test-app',
+            },
+          },
+          test: {
+            executor: '@nx/jest:jest',
+            options: {
+              jestConfig: 'apps/test-app/jest.config.ts',
+            },
+          },
+        },
+      },
+    });
+
+    builder.addNode({
+      name: 'test-lib',
+      type: 'lib',
+      data: {
+        root: 'libs/test-lib',
+        sourceRoot: 'libs/test-lib/src',
+        targets: {
+          build: {
+            executor: '@nx/rollup:rollup',
+            options: {
+              outputPath: 'dist/libs/test-lib',
+            },
+          },
+          test: {
+            executor: '@nx/jest:jest',
+            options: {
+              jestConfig: 'libs/test-lib/jest.config.ts',
+            },
+          },
+        },
+      },
+    });
+
+    builder.addImplicitDependency('test-app', 'test-lib');
+
+    projectGraph = builder.getUpdatedProjectGraph();
+
+    inspector = new HashPlanInspector(projectGraph, tempFs.tempDir);
+  });
+
+  afterAll(() => {
+    tempFs.reset();
+  });
+
+  describe('includeIgnored filesets', () => {
+    it('expands the group on disk, including gitignored files', async () => {
+      await tempFs.createFiles({
+        '.gitignore': 'dist\n',
+        'apps/test-app/dist/out.js': 'built',
+        'apps/test-app/dist/out.js.map': 'map',
+      });
+      const graph: ProjectGraph = JSON.parse(JSON.stringify(projectGraph));
+      graph.nodes['test-app'].data.targets.build.inputs = [
+        { fileset: '{projectRoot}/dist/**/*.js', includeIgnored: true },
+        { fileset: '!{projectRoot}/dist/**/*.map', includeIgnored: true },
+      ];
+      const diskInspector = new HashPlanInspector(graph, tempFs.tempDir);
+      await diskInspector.init();
+
+      const inputs = diskInspector.inspectTaskInputs({
+        project: 'test-app',
+        target: 'build',
+      })['test-app:build'];
+
+      expect(inputs.files).toContain('apps/test-app/dist/out.js');
+      expect(inputs.files).not.toContain('apps/test-app/dist/out.js.map');
+    });
+
+    it('leaves out the files of a project nested below the project root', async () => {
+      await tempFs.createFiles({
+        '.gitignore': 'dist\nbuild\n',
+        'apps/test-app/dist/out.js': 'built',
+        'apps/test-app/nested/project.json': '{}',
+        'apps/test-app/nested/src/index.ts': 'nested',
+        'apps/test-app/nested/build/out.js': 'nested build',
+      });
+      const graph: ProjectGraph = JSON.parse(JSON.stringify(projectGraph));
+      graph.nodes['nested'] = {
+        name: 'nested',
+        type: 'lib',
+        data: { root: 'apps/test-app/nested', targets: {} },
+      };
+      graph.dependencies['nested'] = [];
+      graph.nodes['test-app'].data.targets.build.inputs = [
+        { fileset: '{projectRoot}/**/*', includeIgnored: true },
+      ];
+      const diskInspector = new HashPlanInspector(graph, tempFs.tempDir);
+      await diskInspector.init();
+
+      const inputs = diskInspector.inspectTaskInputs({
+        project: 'test-app',
+        target: 'build',
+      })['test-app:build'];
+
+      expect(inputs.files).toContain('apps/test-app/dist/out.js');
+      expect(inputs.files).toContain('apps/test-app/src/main.ts');
+      expect(
+        inputs.files.filter((f) => f.startsWith('apps/test-app/nested/'))
+      ).toEqual([]);
+    });
+
+    it('does not report a declared exact path that is missing', async () => {
+      const graph: ProjectGraph = JSON.parse(JSON.stringify(projectGraph));
+      graph.nodes['test-app'].data.targets.build.inputs = [
+        { fileset: '{projectRoot}/dist/absent.js', includeIgnored: true },
+      ];
+      const diskInspector = new HashPlanInspector(graph, tempFs.tempDir);
+      await diskInspector.init();
+
+      const inputs = diskInspector.inspectTaskInputs({
+        project: 'test-app',
+        target: 'build',
+      })['test-app:build'];
+
+      // Not on disk, so not an input until it appears.
+      expect(inputs.files).not.toContain('apps/test-app/dist/absent.js');
+    });
+  });
+
+  describe('inspectHashPlan', () => {
+    beforeAll(async () => {
+      await inspector.init();
+    });
+
+    it('should inspect hash plan for single project and target', () => {
+      const result = inspector.inspectHashPlan(['test-app'], ['build']);
+
+      // Should return a record mapping task IDs to arrays of hash instructions
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+
+      // Should only contain test-app:build (and not test-lib:build in this case)
+      expect(Object.keys(result)).toEqual(['test-app:build']);
+
+      const testAppPlan = result['test-app:build'];
+      expect(Array.isArray(testAppPlan)).toBe(true);
+      expect(testAppPlan.length).toBeGreaterThan(0);
+
+      // Should include nx.json
+      expect(testAppPlan).toContain('file:nx.json');
+
+      // Should include environment variable
+      expect(testAppPlan).toContain('env:NX_CLOUD_ENCRYPTION_KEY');
+
+      // Should include test-app files
+      expect(testAppPlan).toContain('file:apps/test-app/project.json');
+      expect(testAppPlan).toContain('file:apps/test-app/src/main.ts');
+
+      // Should include test-lib files (due to dependency)
+      expect(testAppPlan).toContain('file:libs/test-lib/project.json');
+      expect(testAppPlan).toContain('file:libs/test-lib/src/index.ts');
+
+      // Should include project configurations
+      expect(testAppPlan).toContain('test-app:ProjectConfiguration');
+      expect(testAppPlan).toContain('test-lib:ProjectConfiguration');
+
+      // Should include TypeScript configurations
+      expect(testAppPlan).toContain('test-app:TsConfig');
+      expect(testAppPlan).toContain('test-lib:TsConfig');
+    });
+
+    it('should inspect hash plan for multiple projects', () => {
+      const result = inspector.inspectHashPlan(
+        ['test-app', 'test-lib'],
+        ['build']
+      );
+
+      // Should have hash plans for both projects
+      expect(Object.keys(result).sort()).toEqual([
+        'test-app:build',
+        'test-lib:build',
+      ]);
+
+      // Check test-app:build hash plan
+      const testAppPlan = result['test-app:build'];
+      expect(Array.isArray(testAppPlan)).toBe(true);
+
+      // test-app should include its own files
+      expect(testAppPlan).toContain('file:apps/test-app/project.json');
+      expect(testAppPlan).toContain('file:apps/test-app/src/main.ts');
+
+      // test-app should also include test-lib files (due to dependency)
+      expect(testAppPlan).toContain('file:libs/test-lib/project.json');
+      expect(testAppPlan).toContain('file:libs/test-lib/src/index.ts');
+
+      // Should include configurations for both projects
+      expect(testAppPlan).toContain('test-app:ProjectConfiguration');
+      expect(testAppPlan).toContain('test-lib:ProjectConfiguration');
+      expect(testAppPlan).toContain('test-app:TsConfig');
+      expect(testAppPlan).toContain('test-lib:TsConfig');
+
+      // Should include common files
+      expect(testAppPlan).toContain('file:nx.json');
+      expect(testAppPlan).toContain('env:NX_CLOUD_ENCRYPTION_KEY');
+
+      // Check test-lib:build hash plan
+      const testLibPlan = result['test-lib:build'];
+      expect(Array.isArray(testLibPlan)).toBe(true);
+
+      // test-lib should only include its own files (no dependencies)
+      expect(testLibPlan).toContain('file:libs/test-lib/project.json');
+      expect(testLibPlan).toContain('file:libs/test-lib/src/index.ts');
+
+      // Should not include test-app files
+      expect(testLibPlan).not.toContain('file:apps/test-app/project.json');
+      expect(testLibPlan).not.toContain('file:apps/test-app/src/main.ts');
+
+      // Should include only test-lib configurations
+      expect(testLibPlan).toContain('test-lib:ProjectConfiguration');
+      expect(testLibPlan).toContain('test-lib:TsConfig');
+      expect(testLibPlan).not.toContain('test-app:ProjectConfiguration');
+      expect(testLibPlan).not.toContain('test-app:TsConfig');
+
+      // Should include common files
+      expect(testLibPlan).toContain('file:nx.json');
+      expect(testLibPlan).toContain('env:NX_CLOUD_ENCRYPTION_KEY');
+    });
+
+    it('should inspect hash plan for multiple targets', () => {
+      const result = inspector.inspectHashPlan(['test-app'], ['build', 'test']);
+
+      expect(Object.keys(result)).toContain('test-app:build');
+      expect(Object.keys(result)).toContain('test-app:test');
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+      expect(Array.isArray(result['test-app:test'])).toBe(true);
+    });
+
+    it('should handle configuration parameter', () => {
+      const result = inspector.inspectHashPlan(
+        ['test-app'],
+        ['build'],
+        'production'
+      );
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should handle overrides parameter', () => {
+      const overrides = { watch: true };
+      const result = inspector.inspectHashPlan(
+        ['test-app'],
+        ['build'],
+        undefined,
+        overrides
+      );
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should handle extraTargetDependencies parameter', () => {
+      const extraTargetDependencies = {
+        build: [{ target: 'test' }],
+      };
+      const result = inspector.inspectHashPlan(
+        ['test-app'],
+        ['build'],
+        undefined,
+        {},
+        extraTargetDependencies
+      );
+
+      // Should include both build and test tasks due to extra dependency
+      expect(Object.keys(result)).toContain('test-app:build');
+      expect(Object.keys(result)).toContain('test-app:test');
+    });
+
+    it('should handle excludeTaskDependencies parameter', () => {
+      const result = inspector.inspectHashPlan(
+        ['test-app'],
+        ['build'],
+        undefined,
+        {},
+        {},
+        true
+      );
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should handle empty project names array', () => {
+      const result = inspector.inspectHashPlan([], ['build']);
+
+      expect(Object.keys(result)).toHaveLength(0);
+    });
+
+    it('should handle empty targets array', () => {
+      const result = inspector.inspectHashPlan(['test-app'], []);
+
+      expect(Object.keys(result)).toHaveLength(0);
+    });
+  });
+
+  describe('inspectTask', () => {
+    beforeAll(async () => {
+      await inspector.init();
+    });
+
+    it('should inspect a single task', () => {
+      const target = { project: 'test-app', target: 'build' };
+      const result = inspector.inspectTask(target);
+
+      // Should only contain test-app:build
+      expect(Object.keys(result)).toEqual(['test-app:build']);
+
+      const testAppPlan = result['test-app:build'];
+      expect(Array.isArray(testAppPlan)).toBe(true);
+
+      // Should include test-app files
+      expect(testAppPlan).toContain('file:apps/test-app/project.json');
+      expect(testAppPlan).toContain('file:apps/test-app/src/main.ts');
+
+      // Should include test-lib files (due to dependency)
+      expect(testAppPlan).toContain('file:libs/test-lib/project.json');
+      expect(testAppPlan).toContain('file:libs/test-lib/src/index.ts');
+
+      // Should include common files
+      expect(testAppPlan).toContain('file:nx.json');
+      expect(testAppPlan).toContain('env:NX_CLOUD_ENCRYPTION_KEY');
+
+      // Should include configurations
+      expect(testAppPlan).toContain('test-app:TsConfig');
+      expect(testAppPlan).toContain('test-lib:TsConfig');
+      expect(testAppPlan).toContain('test-app:ProjectConfiguration');
+      expect(testAppPlan).toContain('test-lib:ProjectConfiguration');
+    });
+
+    it('should inspect task with configuration', () => {
+      const target = {
+        project: 'test-app',
+        target: 'build',
+        configuration: 'production',
+      };
+      const result = inspector.inspectTask(target);
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should handle parsed args parameter', () => {
+      const target = { project: 'test-app', target: 'build' };
+      const parsedArgs = { watch: true, verbose: true };
+      const result = inspector.inspectTask(target, parsedArgs);
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should handle extraTargetDependencies parameter', () => {
+      const target = { project: 'test-app', target: 'build' };
+      const extraTargetDependencies = {
+        build: [{ target: 'test' }],
+      };
+      const result = inspector.inspectTask(target, {}, extraTargetDependencies);
+
+      // Should include both build and test tasks due to extra dependency
+      expect(Object.keys(result)).toContain('test-app:build');
+      expect(Object.keys(result)).toContain('test-app:test');
+    });
+
+    it('should handle excludeTaskDependencies parameter', () => {
+      const target = { project: 'test-app', target: 'build' };
+      const result = inspector.inspectTask(target, {}, {}, true);
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+
+    it('should inspect test target', () => {
+      const target = { project: 'test-app', target: 'test' };
+      const result = inspector.inspectTask(target);
+
+      expect(result['test-app:test']).toBeDefined();
+      expect(Array.isArray(result['test-app:test'])).toBe(true);
+    });
+
+    it('should inspect library project task', () => {
+      const target = { project: 'test-lib', target: 'build' };
+      const result = inspector.inspectTask(target);
+
+      expect(result['test-lib:build']).toBeDefined();
+      expect(Array.isArray(result['test-lib:build'])).toBe(true);
+    });
+
+    it('should handle complex parsed args with configuration override', () => {
+      const target = { project: 'test-app', target: 'build' };
+      const parsedArgs = {
+        configuration: 'development',
+        targets: ['build'],
+        parallel: 3,
+        maxParallel: 3,
+      };
+      const result = inspector.inspectTask(target, parsedArgs);
+
+      expect(result['test-app:build']).toBeDefined();
+      expect(Array.isArray(result['test-app:build'])).toBe(true);
+    });
+  });
+
+  describe('integration scenarios', () => {
+    beforeAll(async () => {
+      await inspector.init();
+    });
+
+    it('should handle both inspectHashPlan and inspectTask on same instance', () => {
+      const hashPlanResult = inspector.inspectHashPlan(['test-app'], ['build']);
+      const taskResult = inspector.inspectTask({
+        project: 'test-app',
+        target: 'build',
+      });
+
+      expect(hashPlanResult['test-app:build']).toBeDefined();
+      expect(taskResult['test-app:build']).toBeDefined();
+      expect(Array.isArray(hashPlanResult['test-app:build'])).toBe(true);
+      expect(Array.isArray(taskResult['test-app:build'])).toBe(true);
+    });
+
+    it('should work with project dependencies', () => {
+      // test-app depends on test-lib, so building test-app should include test-lib
+      const result = inspector.inspectHashPlan(['test-app'], ['build']);
+
+      // Should only contain test-app:build (test-lib:build is not included as a separate task)
+      expect(Object.keys(result)).toEqual(['test-app:build']);
+
+      const testAppPlan = result['test-app:build'];
+
+      // Should include test-lib files in the hash plan due to the dependency
+      expect(testAppPlan).toContain('file:libs/test-lib/project.json');
+      expect(testAppPlan).toContain('file:libs/test-lib/src/index.ts');
+
+      // Should include both project configurations
+      expect(testAppPlan).toContain('test-app:ProjectConfiguration');
+      expect(testAppPlan).toContain('test-lib:ProjectConfiguration');
+
+      // Should include both TypeScript configurations
+      expect(testAppPlan).toContain('test-app:TsConfig');
+      expect(testAppPlan).toContain('test-lib:TsConfig');
+
+      // Should include common files
+      expect(testAppPlan).toContain('env:NX_CLOUD_ENCRYPTION_KEY');
+      expect(testAppPlan).toContain('file:nx.json');
+
+      // Should include test-app files
+      expect(testAppPlan).toContain('file:apps/test-app/project.json');
+      expect(testAppPlan).toContain('file:apps/test-app/src/main.ts');
+    });
+
+    it('should throw error for non-existent project', () => {
+      expect(() => {
+        inspector.inspectHashPlan(['non-existent-project'], ['build']);
+      }).toThrow();
+    });
+
+    it('should throw error for non-existent target', () => {
+      expect(() => {
+        inspector.inspectHashPlan(['test-app'], ['non-existent-target']);
+      }).toThrow();
+    });
+  });
+});
+
+describe('HashPlanInspector with continuous dependencies', () => {
+  // e2e depends on web:serve, which depends on api:serve. There is no project
+  // dependency between the three, so only the task graph links them.
+  let tempFs: TempFs;
+  let inspector: HashPlanInspector;
+
+  const serveTarget = (dependsOn?: { projects: string; target: string }[]) => ({
+    executor: 'nx:run-commands',
+    continuous: true,
+    inputs: ['production', '^production'],
+    ...(dependsOn ? { dependsOn } : {}),
+  });
+  const e2eTarget = {
+    executor: 'nx:run-commands',
+    inputs: ['{projectRoot}/**/*'],
+    dependsOn: [{ projects: 'web', target: 'serve' }],
+  };
+
+  beforeAll(async () => {
+    tempFs = new TempFs('hash-plan-inspector-continuous');
+    await tempFs.createFiles({
+      'package.json': JSON.stringify({
+        name: 'test-workspace',
+        devDependencies: { nx: '0.0.0' },
+      }),
+      'nx.json': JSON.stringify({
+        extends: 'nx/presets/npm.json',
+        namedInputs: {
+          default: ['{projectRoot}/**/*'],
+          production: ['default', '!{projectRoot}/**/*.spec.ts'],
+        },
+      }),
+      'apps/e2e/project.json': JSON.stringify({
+        name: 'e2e',
+        targets: { e2e: e2eTarget },
+      }),
+      'apps/e2e/src/app.spec.ts': '',
+      'apps/web/project.json': JSON.stringify({
+        name: 'web',
+        targets: {
+          serve: serveTarget([{ projects: 'api', target: 'serve' }]),
+        },
+      }),
+      'apps/web/src/main.ts': '',
+      'apps/web/src/main.spec.ts': '',
+      'apps/api/project.json': JSON.stringify({
+        name: 'api',
+        targets: { serve: serveTarget() },
+      }),
+      'apps/api/src/server.ts': '',
+    });
+
+    const builder = new ProjectGraphBuilder();
+    builder.addNode({
+      name: 'api',
+      type: 'app',
+      data: { root: 'apps/api', targets: { serve: serveTarget() } },
+    });
+    builder.addNode({
+      name: 'web',
+      type: 'app',
+      data: {
+        root: 'apps/web',
+        targets: {
+          serve: serveTarget([{ projects: 'api', target: 'serve' }]),
+        },
+      },
+    });
+    builder.addNode({
+      name: 'e2e',
+      type: 'app',
+      data: { root: 'apps/e2e', targets: { e2e: e2eTarget } },
+    });
+
+    inspector = new HashPlanInspector(
+      builder.getUpdatedProjectGraph(),
+      tempFs.tempDir
+    );
+    await inspector.init();
+  });
+
+  afterAll(() => {
+    tempFs.reset();
+  });
+
+  it('reports the files of every server in the chain as inputs of the served task', () => {
+    const plan = inspector.inspectTask({ project: 'e2e', target: 'e2e' })[
+      'e2e:e2e'
+    ];
+
+    expect(plan).toContain('file:apps/e2e/src/app.spec.ts');
+    expect(plan).toContain('file:apps/web/src/main.ts');
+    expect(plan).toContain('file:apps/api/src/server.ts');
+
+    const { files } = inspector.inspectTaskInputs({
+      project: 'e2e',
+      target: 'e2e',
+    })['e2e:e2e'];
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'apps/e2e/src/app.spec.ts',
+        'apps/web/src/main.ts',
+        'apps/api/src/server.ts',
+      ])
+    );
+  });
+
+  it("honors each server's own declared inputs", () => {
+    const plan = inspector.inspectTask({ project: 'e2e', target: 'e2e' })[
+      'e2e:e2e'
+    ];
+
+    // web:serve declares `production`, which excludes its spec files; e2e's
+    // own `{projectRoot}/**/*` still brings in e2e's.
+    expect(plan).not.toContain('file:apps/web/src/main.spec.ts');
+    expect(plan).toContain('file:apps/e2e/src/app.spec.ts');
+  });
+});

@@ -1,0 +1,466 @@
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+
+import rule, { phrases } from '../../src/rules/prefer-function-type';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('prefer-function-type', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    `
+interface Foo {
+  (): void;
+  bar: number;
+}
+    `,
+    `
+type Foo = {
+  (): void;
+  bar: number;
+};
+    `,
+    `
+function foo(bar: { (): string; baz: number }): string {
+  return bar();
+}
+    `,
+    `
+interface Foo {
+  bar: string;
+}
+interface Bar extends Foo {
+  (): void;
+}
+    `,
+    `
+interface Foo {
+  bar: string;
+}
+interface Bar extends Function, Foo {
+  (): void;
+}
+    `,
+  ],
+
+  invalid: [
+    {
+      code: `
+interface Foo {
+  (): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo = () => string;
+      `,
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/3004
+    {
+      code: `
+export default interface Foo {
+  /** comment */
+  (): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+interface Foo {
+  // comment
+  (): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+// comment
+type Foo = () => string;
+      `,
+    },
+    {
+      code: `
+export interface Foo {
+  /** comment */
+  (): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+/** comment */
+export type Foo = () => string;
+      `,
+    },
+    {
+      code: `
+export interface Foo {
+  // comment
+  (): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+// comment
+export type Foo = () => string;
+      `,
+    },
+    {
+      code: `
+function foo(bar: { /* comment */ (s: string): number } | undefined): number {
+  return bar('hello');
+}
+      `,
+      errors: [
+        {
+          column: 35,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 54,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+function foo(bar: /* comment */ ((s: string) => number) | undefined): number {
+  return bar('hello');
+}
+      `,
+    },
+    {
+      code: `
+type Foo = {
+  (): string;
+};
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo = () => string;
+      `,
+    },
+    {
+      code: `
+function foo(bar: { (s: string): number }): number {
+  return bar('hello');
+}
+      `,
+      errors: [
+        {
+          column: 21,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 40,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+function foo(bar: (s: string) => number): number {
+  return bar('hello');
+}
+      `,
+    },
+    {
+      code: `
+function foo(bar: { (s: string): number } | undefined): number {
+  return bar('hello');
+}
+      `,
+      errors: [
+        {
+          column: 21,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 40,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+function foo(bar: ((s: string) => number) | undefined): number {
+  return bar('hello');
+}
+      `,
+    },
+    {
+      code: `
+interface Foo extends Function {
+  (): void;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 12,
+          endLine: 3,
+          line: 3,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo = () => void;
+      `,
+    },
+    {
+      code: `
+interface Foo<T> {
+  (bar: T): string;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 20,
+          endLine: 3,
+          line: 3,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo<T> = (bar: T) => string;
+      `,
+    },
+    {
+      code: `
+interface Foo<T> {
+  (this: T): void;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo<T> = (this: T) => void;
+      `,
+    },
+    {
+      code: `
+type Foo<T> = { (this: string): T };
+      `,
+      errors: [
+        {
+          column: 17,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 34,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type Foo<T> = (this: string) => T;
+      `,
+    },
+    {
+      code: `
+interface Foo {
+  (arg: this): void;
+}
+      `,
+      errors: [
+        {
+          column: 9,
+          data: {
+            interfaceName: 'Foo',
+          },
+          endColumn: 13,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThisOnFunctionOnlyInterface',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+interface Foo {
+  (arg: number): this | undefined;
+}
+      `,
+      errors: [
+        {
+          column: 18,
+          data: {
+            interfaceName: 'Foo',
+          },
+          endColumn: 22,
+          endLine: 3,
+          line: 3,
+          messageId: 'unexpectedThisOnFunctionOnlyInterface',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+// isn't actually valid ts but want to not give message saying it refers to Foo.
+interface Foo {
+  (): {
+    a: {
+      nested: this;
+    };
+    between: this;
+    b: {
+      nested: string;
+    };
+  };
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSInterfaceDeclaration],
+          },
+          endColumn: 5,
+          endLine: 12,
+          line: 4,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+// isn't actually valid ts but want to not give message saying it refers to Foo.
+type Foo = () => {
+    a: {
+      nested: this;
+    };
+    between: this;
+    b: {
+      nested: string;
+    };
+  };
+      `,
+    },
+    {
+      code: noFormat`
+type X = {} | { (): void; }
+      `,
+      errors: [
+        {
+          column: 17,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 26,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type X = {} | (() => void)
+      `,
+    },
+    {
+      code: noFormat`
+type X = {} & { (): void; };
+      `,
+      errors: [
+        {
+          column: 17,
+          data: {
+            literalOrInterface: phrases[AST_NODE_TYPES.TSTypeLiteral],
+          },
+          endColumn: 26,
+          endLine: 2,
+          line: 2,
+          messageId: 'functionTypeOverCallableType',
+        },
+      ],
+      output: `
+type X = {} & (() => void);
+      `,
+    },
+  ],
+});

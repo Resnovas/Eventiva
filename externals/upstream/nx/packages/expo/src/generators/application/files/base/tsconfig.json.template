@@ -1,0 +1,22 @@
+{
+  "extends": "<%= offsetFromRoot %>tsconfig.base.json",
+  <%_ if (!isTsSolutionSetup) { _%>
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-native",
+    "lib": ["dom", "esnext"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "declaration": true
+  },
+  <%_ } _%>
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

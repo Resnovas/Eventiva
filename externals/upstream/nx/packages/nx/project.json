@@ -1,0 +1,142 @@
+{
+  "name": "nx",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nx",
+  "projectType": "library",
+  "implicitDependencies": ["graph-client"],
+  "release": {
+    "version": {
+      "generator": "@nx/js:release-version"
+    }
+  },
+  "targets": {
+    "check-native-wasm": {
+      "cache": true,
+      "inputs": ["native", "{workspaceRoot}/scripts/check-wasm-target.sh"],
+      "outputs": [],
+      "parallelism": false,
+      "command": "./scripts/check-wasm-target.sh"
+    },
+    "build-native-wasm": {
+      "cache": true,
+      "inputs": ["native"],
+      "outputs": [
+        "{projectRoot}/src/native/*.wasm",
+        "{projectRoot}/src/native/!(index|browser).js",
+        "{projectRoot}/src/native/*.cjs",
+        "{projectRoot}/src/native/*.mjs",
+        "{projectRoot}/src/native/index.d.ts"
+      ],
+      "executor": "@monodon/rust:napi",
+      "options": {
+        "target": "wasm32-wasip1-threads",
+        "dist": "packages/nx/src/native",
+        "jsFile": "native-bindings.js",
+        "release": true
+      }
+    },
+    "build-native": {
+      "outputs": [
+        "{projectRoot}/src/native/*.node",
+        "{projectRoot}/src/native/*.wasm",
+        "{projectRoot}/src/native/!(index|browser).js",
+        "{projectRoot}/src/native/index.d.ts"
+      ],
+      "executor": "@monodon/rust:napi",
+      "options": {
+        "dist": "packages/nx/src/native",
+        "jsFile": "native-bindings.js",
+        "release": true
+      },
+      "configurations": {
+        "local": {
+          "release": false
+        }
+      }
+    },
+    "copy-native-package-directories": {
+      "command": "node scripts/copy.js packages/nx/dist/native-packages/* dist/packages"
+    },
+    "artifacts": {
+      "dependsOn": ["copy-native-package-directories"],
+      "command": "pnpm napi artifacts --package-json-path packages/nx/package.json -d ./artifacts --npm-dir dist/packages"
+    },
+    "echo": {
+      "command": "echo hi"
+    },
+    "long-task": {
+      "command": "node -e \"let i = 0; let interval = setInterval(() => { console.log('Long task running ' + i++ + '---------------------------------------------------------------'); }, 200); setTimeout(() => { clearInterval(interval); console.log('Long task finished'); }, 62_000);\"",
+      "dependsOn": ["echo"]
+    },
+    "build-base": {
+      "outputs": [
+        "{projectRoot}/dist/**/*.{js,cjs,mjs,jsx,json,d.ts,d.cts,d.mts}{,.map}",
+        "{projectRoot}/dist/tsconfig.tsbuildinfo"
+      ]
+    },
+    "copy-assets": {
+      "dependsOn": ["build-native", "^build-client"]
+    },
+    "build": {
+      "dependsOn": ["build-base"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "dependentTasksOutputFiles": "**/*.node",
+          "transitive": true
+        },
+        "{workspaceRoot}/scripts/chmod.js",
+        "copyReadme"
+      ],
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{workspaceRoot}/packages/nx/dist/bin/nx.js",
+        "{workspaceRoot}/packages/nx/README.md"
+      ],
+      "options": {
+        "commands": [
+          {
+            "command": "node ./scripts/chmod packages/nx/dist/bin/nx.js"
+          },
+          {
+            "command": "node ./scripts/copy-readme.js nx packages/nx/readme-template.md packages/nx/README.md"
+          }
+        ],
+        "parallel": false
+      }
+    },
+    "test-native": {},
+    "format-native": {
+      "command": "cargo fmt",
+      "cache": true,
+      "inputs": ["native"],
+      "options": {
+        "cwd": "{projectRoot}/src/native",
+        "args": ["--all", "--check"]
+      },
+      "configurations": {
+        "fix": {
+          "args": ["--all"]
+        }
+      }
+    },
+    "expand-deps": {
+      "command": "ts-node scripts/expand-deps.ts nx"
+    },
+    "lint-native": {
+      "command": "cargo clippy",
+      "cache": true,
+      "inputs": ["native"],
+      "options": {
+        "cwd": "{projectRoot}/src/native",
+        "args": ["--frozen"]
+      },
+      "configurations": {
+        "fix": {
+          "args": []
+        }
+      }
+    }
+  }
+}

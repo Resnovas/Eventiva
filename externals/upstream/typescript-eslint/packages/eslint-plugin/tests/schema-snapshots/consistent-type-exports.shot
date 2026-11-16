@@ -1,0 +1,25 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "fixMixedExportsWithInlineTypeSpecifier": {
+        "description": "Whether the rule will autofix \"mixed\" export cases using TS inline type specifiers.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether the rule will autofix "mixed" export cases using TS inline type specifiers. */
+    fixMixedExportsWithInlineTypeSpecifier?: boolean;
+  },
+];

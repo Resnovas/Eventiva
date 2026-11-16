@@ -1,0 +1,292 @@
+import type { ParserOptions } from '@typescript-eslint/types';
+
+import * as scopeManager from '@typescript-eslint/scope-manager';
+import * as typescriptESTree from '@typescript-eslint/typescript-estree';
+import { ScriptTarget } from 'typescript';
+
+import { parse, parseForESLint } from '../../src/parser.js';
+import { FIXTURES_DIR } from '../test-utils/test-utils.js';
+
+describe('parser', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('parse() should return just the AST from parseForESLint()', () => {
+    const code = 'const valid = true;';
+    expect(parse(code)).toStrictEqual(parseForESLint(code).ast);
+  });
+
+  it('parseForESLint() should work if options are `null`', () => {
+    const code = 'const valid = true;';
+    expect(() => {
+      parseForESLint(code, null);
+    }).not.toThrow();
+  });
+
+  it('parseAndGenerateServices() should be called with options', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    const config: ParserOptions = {
+      ecmaFeatures: {
+        globalReturn: false,
+        jsx: false,
+      },
+      sourceType: 'module' as const,
+      // ts-estree specific
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      extraFileExtensions: ['.foo'],
+      filePath: './isolated-file.src.ts',
+      project: 'tsconfig.json',
+      tsconfigRootDir: FIXTURES_DIR,
+    };
+    parseForESLint(code, config);
+    expect(spy).toHaveBeenCalledExactlyOnceWith(code, {
+      comment: true,
+      jsx: false,
+      loc: true,
+      onUnsupportedTypeScriptVersion: 'warn',
+      range: true,
+      tokens: true,
+      ...config,
+    });
+  });
+
+  it('overrides `errorOnTypeScriptSyntacticAndSemanticIssues: false` when provided `errorOnTypeScriptSyntacticAndSemanticIssues: false`', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    parseForESLint(code, { errorOnTypeScriptSyntacticAndSemanticIssues: true });
+    expect(spy).toHaveBeenCalledExactlyOnceWith(code, {
+      comment: true,
+      ecmaFeatures: {},
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      jsx: false,
+      loc: true,
+      onUnsupportedTypeScriptVersion: 'warn',
+      range: true,
+      sourceType: 'script',
+      tokens: true,
+    });
+  });
+
+  it('sets `onUnsupportedTypeScriptVersion: ignore` on typescript-estree when provided `warnOnUnsupportedTypeScriptVersion: false`', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    parseForESLint(code, { warnOnUnsupportedTypeScriptVersion: false });
+    expect(spy).toHaveBeenCalledExactlyOnceWith(code, {
+      comment: true,
+      ecmaFeatures: {},
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      jsx: false,
+      loc: true,
+      onUnsupportedTypeScriptVersion: 'ignore',
+      range: true,
+      sourceType: 'script',
+      tokens: true,
+      warnOnUnsupportedTypeScriptVersion: false,
+    });
+  });
+
+  it('sets `onUnsupportedTypeScriptVersion: warn` on typescript-estree when provided `warnOnUnsupportedTypeScriptVersion: true`', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    parseForESLint(code, { warnOnUnsupportedTypeScriptVersion: true });
+    expect(spy).toHaveBeenCalledExactlyOnceWith(code, {
+      comment: true,
+      ecmaFeatures: {},
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      jsx: false,
+      loc: true,
+      onUnsupportedTypeScriptVersion: 'warn',
+      range: true,
+      sourceType: 'script',
+      tokens: true,
+      warnOnUnsupportedTypeScriptVersion: true,
+    });
+  });
+
+  it('forwards `onUnsupportedTypeScriptVersion` to typescript-estree', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    parseForESLint(code, { onUnsupportedTypeScriptVersion: 'error' });
+    expect(spy).toHaveBeenCalledExactlyOnceWith(code, {
+      comment: true,
+      ecmaFeatures: {},
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      jsx: false,
+      loc: true,
+      onUnsupportedTypeScriptVersion: 'error',
+      range: true,
+      sourceType: 'script',
+      tokens: true,
+    });
+  });
+
+  it('throws when both `onUnsupportedTypeScriptVersion` and the deprecated `warnOnUnsupportedTypeScriptVersion` are provided', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(typescriptESTree, 'parseAndGenerateServices');
+    expect(() =>
+      parseForESLint(code, {
+        onUnsupportedTypeScriptVersion: 'error',
+        warnOnUnsupportedTypeScriptVersion: false,
+      }),
+    ).toThrow(
+      'Cannot use both the `onUnsupportedTypeScriptVersion` and the deprecated `warnOnUnsupportedTypeScriptVersion` options. Please use only `onUnsupportedTypeScriptVersion`.',
+    );
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('should call analyze() with inferred analyze options when no analyze options are provided', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(scopeManager, 'analyze');
+    const config: ParserOptions = {
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      filePath: 'isolated-file.src.ts',
+      project: 'tsconfig.json',
+      tsconfigRootDir: FIXTURES_DIR,
+    };
+
+    parseForESLint(code, config);
+
+    expect(spy).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      globalReturn: undefined,
+      jsxFragmentName: undefined,
+      jsxPragma: undefined,
+      lib: ['lib'],
+      sourceType: 'script',
+    });
+  });
+
+  it.for([
+    ['esnext.full', ScriptTarget.ESNext],
+    ['es2025.full', ScriptTarget.ES2025],
+    ['es2024.full', ScriptTarget.ES2024],
+    ['es2023.full', ScriptTarget.ES2023],
+    ['es2022.full', ScriptTarget.ES2022],
+    ['es2021.full', ScriptTarget.ES2021],
+    ['es2020.full', ScriptTarget.ES2020],
+    ['es2019.full', ScriptTarget.ES2019],
+    ['es2018.full', ScriptTarget.ES2018],
+    ['es2017.full', ScriptTarget.ES2017],
+    ['es2016.full', ScriptTarget.ES2016],
+    ['es6', ScriptTarget.ES2015],
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- Deprecated in TS 6 but we support TS < 6
+    ['lib', ScriptTarget.ES5],
+  ] as const)(
+    'calls analyze() with `lib: [%s]` when the compiler options target is %s',
+    ([lib, target], { expect }) => {
+      const code = 'const valid = true;';
+      const spy = vi.spyOn(scopeManager, 'analyze');
+      const config: ParserOptions = {
+        filePath: 'isolated-file.src.ts',
+        project: 'tsconfig.json',
+        tsconfigRootDir: FIXTURES_DIR,
+      };
+
+      vi.spyOn(
+        typescriptESTree,
+        'parseAndGenerateServices',
+      ).mockReturnValueOnce({
+        ast: {},
+        services: {
+          program: {
+            getCompilerOptions: () => ({ target }),
+          },
+        },
+      } as typescriptESTree.ParseAndGenerateServicesResult<typescriptESTree.TSESTreeOptions>);
+
+      parseForESLint(code, config);
+
+      expect(spy).toHaveBeenCalledExactlyOnceWith(
+        expect.anything(),
+        expect.objectContaining({
+          lib: [lib],
+        }),
+      );
+    },
+  );
+
+  it.for([
+    ['lib', '5.9'],
+    [`es${new Date().getFullYear() - 1}.full`, '6.0'],
+  ] as const)(
+    'calls analyze() with `lib: [%s]` as the default when TS version is %s',
+    ([lib, tsVersion], { expect }) => {
+      const code = 'const valid = true;';
+      const spy = vi.spyOn(scopeManager, 'analyze');
+      const config: ParserOptions = {
+        filePath: 'isolated-file.src.ts',
+        project: 'tsconfig.json',
+        tsconfigRootDir: FIXTURES_DIR,
+      };
+
+      vi.spyOn(
+        typescriptESTree,
+        'parseAndGenerateServices',
+      ).mockReturnValueOnce({
+        ast: {},
+        services: {
+          program: {
+            // Explicitly not setting a target so that the default is used
+            getCompilerOptions: () => ({ target: undefined }),
+          },
+        },
+      } as typescriptESTree.ParseAndGenerateServicesResult<typescriptESTree.TSESTreeOptions>);
+
+      vi.spyOn(
+        typescriptESTree,
+        'typescriptVersionIsAtLeast',
+        'get',
+      ).mockReturnValue({
+        '5.9': false,
+        '6.0': false,
+        [tsVersion]: true,
+      } as Record<string, boolean>);
+
+      parseForESLint(code, config);
+
+      expect(spy).toHaveBeenCalledExactlyOnceWith(
+        expect.anything(),
+        expect.objectContaining({
+          lib: [lib],
+        }),
+      );
+    },
+  );
+
+  it('calls analyze() with the provided analyze options when analyze options are provided', () => {
+    const code = 'const valid = true;';
+    const spy = vi.spyOn(scopeManager, 'analyze');
+    const config: ParserOptions = {
+      ecmaFeatures: {
+        globalReturn: false,
+        jsx: false,
+      },
+      sourceType: 'module' as const,
+      // scope-manager specific
+      jsxFragmentName: 'Bar',
+      jsxPragma: 'Foo',
+      lib: ['dom.iterable'],
+      // ts-estree specific
+      errorOnTypeScriptSyntacticAndSemanticIssues: false,
+      extraFileExtensions: ['.foo'],
+      filePath: 'isolated-file.src.ts',
+      project: 'tsconfig.json',
+      tsconfigRootDir: FIXTURES_DIR,
+    };
+
+    parseForESLint(code, config);
+
+    expect(spy).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      globalReturn: false,
+      jsxFragmentName: 'Bar',
+      jsxPragma: 'Foo',
+      lib: ['dom.iterable'],
+      sourceType: 'module',
+    });
+  });
+});

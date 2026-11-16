@@ -1,0 +1,1028 @@
+import '@nx/devkit/internal-testing-utils/mock-fs';
+import { createRequire } from 'node:module';
+import { fs as memfs, vol } from 'memfs';
+import type { ProjectGraph } from '@nx/devkit';
+import { mockCjsModule } from '@nx/devkit/internal-testing-utils';
+import { findNpmDependencies } from './find-npm-dependencies';
+
+// typescript reads tsconfigs through the CJS `fs` it captured on load, and the
+// import graph has loaded it already: evict it so it reloads onto memfs.
+mockCjsModule(import.meta.url, 'fs', memfs);
+const cjsRequire = createRequire(import.meta.url);
+delete cjsRequire.cache[cjsRequire.resolve('typescript')];
+
+vi.mock('@nx/devkit', async () => ({
+  ...(await vi.importActual<any>('@nx/devkit')),
+  workspaceRoot: '/root',
+}));
+
+vi.mock('nx/src/utils/workspace-root', () => ({
+  workspaceRoot: '/root',
+}));
+
+describe('findNpmDependencies', () => {
+  const nxJson = {
+    targetDefaults: {
+      build: {
+        inputs: [
+          '{projectRoot}/**/*',
+          '!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)',
+        ],
+      },
+    },
+  };
+
+  afterEach(() => {
+    vol.reset();
+  });
+
+  it('should pick up external npm dependencies and their versions', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+      },
+      '/root'
+    );
+    const libWithExternalDeps = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: { build: {} },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithExternalDeps,
+      },
+      externalNodes: {
+        'npm:foo': {
+          name: 'npm:foo' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: 'foo',
+            version: '1.0.0',
+          },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = {
+      'my-lib': [
+        {
+          file: 'libs/my-lib/index.ts',
+          hash: '123',
+          deps: ['npm:foo'],
+        },
+      ],
+    };
+
+    const results = findNpmDependencies(
+      '/root',
+      libWithExternalDeps,
+      projectGraph,
+      projectFileMap,
+      'build'
+    );
+
+    expect(results).toEqual({
+      foo: '1.0.0',
+    });
+  });
+
+  it('should pick up helper npm dependencies if required', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+        './libs/my-lib/tsconfig.json': JSON.stringify({
+          compilerOptions: {
+            importHelpers: true,
+          },
+        }),
+        './libs/my-lib/.swcrc': JSON.stringify({
+          jsc: {
+            externalHelpers: true,
+          },
+        }),
+      },
+      '/root'
+    );
+    const libWithHelpers = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build1: {
+            executor: '@nx/js:tsc',
+            options: {
+              tsConfig: 'libs/my-lib/tsconfig.json',
+            },
+          },
+          build2: {
+            executor: '@nx/js:swc',
+            options: {},
+          },
+        },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithHelpers,
+      },
+      externalNodes: {
+        'npm:tslib': {
+          name: 'npm:tslib' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: 'tslib',
+            version: '2.6.0',
+          },
+        },
+        'npm:@swc/helpers': {
+          name: 'npm:@swc/helpers' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: '@swc/helpers',
+            version: '0.5.0',
+          },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = {
+      'my-lib': [],
+    };
+
+    expect(
+      findNpmDependencies(
+        '/root',
+        libWithHelpers,
+        projectGraph,
+        projectFileMap,
+        'build1'
+      )
+    ).toEqual({
+      tslib: '2.6.0',
+    });
+    expect(
+      findNpmDependencies(
+        '/root',
+        libWithHelpers,
+        projectGraph,
+        projectFileMap,
+        'build2'
+      )
+    ).toEqual({
+      '@swc/helpers': '0.5.0',
+    });
+  });
+
+  it.each`
+    fileName                | command
+    ${'tsconfig.base.json'} | ${'tsc --build tsconfig.lib.json --pretty --verbose'}
+    ${'tsconfig.json'}      | ${'tsc --build tsconfig.lib.json --pretty --verbose'}
+    ${'tsconfig.base.json'} | ${'tsgo --build tsconfig.lib.json'}
+    ${'tsconfig.json'}      | ${'tsgo --build tsconfig.lib.json'}
+  `(
+    'should pick up helper npm dependencies when using "$command" and run-commands',
+    ({ fileName, command }) => {
+      vol.fromJSON(
+        {
+          [`./${fileName}`]: JSON.stringify({
+            compilerOptions: { importHelpers: true },
+          }),
+          './nx.json': JSON.stringify(nxJson),
+          './libs/my-lib/tsconfig.json': JSON.stringify({
+            compilerOptions: {
+              importHelpers: true,
+            },
+          }),
+        },
+        '/root'
+      );
+      const lib = {
+        name: 'my-lib',
+        type: 'lib' as const,
+        data: {
+          root: 'libs/my-lib',
+          targets: {
+            build: {
+              executor: 'nx:run-commands',
+              options: {
+                command,
+              },
+            },
+          },
+        },
+      };
+      const projectGraph = {
+        nodes: {
+          'my-lib': lib,
+        },
+        externalNodes: {
+          'npm:tslib': {
+            name: 'npm:tslib' as const,
+            type: 'npm' as const,
+            data: {
+              packageName: 'tslib',
+              version: '2.6.0',
+            },
+          },
+        },
+        dependencies: {},
+      };
+      const projectFileMap = {
+        'my-lib': [],
+      };
+
+      expect(
+        findNpmDependencies('/root', lib, projectGraph, projectFileMap, 'build')
+      ).toEqual({
+        tslib: '2.6.0',
+      });
+    }
+  );
+
+  it.each`
+    rootImportHelpers | projectImportHelpers | expected
+    ${false}          | ${true}              | ${{ tslib: '2.6.0' }}
+    ${true}           | ${false}             | ${{}}
+  `(
+    'should resolve importHelpers from project tsconfig (root=$rootImportHelpers, project=$projectImportHelpers) for run-commands',
+    ({ rootImportHelpers, projectImportHelpers, expected }) => {
+      vol.fromJSON(
+        {
+          './tsconfig.base.json': JSON.stringify({
+            compilerOptions: { importHelpers: rootImportHelpers },
+          }),
+          './nx.json': JSON.stringify(nxJson),
+          './libs/my-lib/tsconfig.lib.json': JSON.stringify({
+            compilerOptions: { importHelpers: projectImportHelpers },
+          }),
+        },
+        '/root'
+      );
+      const lib = {
+        name: 'my-lib',
+        type: 'lib' as const,
+        data: {
+          root: 'libs/my-lib',
+          targets: {
+            build: {
+              executor: 'nx:run-commands',
+              options: {
+                command: 'tsc --build tsconfig.lib.json',
+                cwd: 'libs/my-lib',
+              },
+            },
+          },
+        },
+      };
+      const projectGraph = {
+        nodes: { 'my-lib': lib },
+        externalNodes: {
+          'npm:tslib': {
+            name: 'npm:tslib' as const,
+            type: 'npm' as const,
+            data: { packageName: 'tslib', version: '2.6.0' },
+          },
+        },
+        dependencies: {},
+      };
+      const projectFileMap = { 'my-lib': [] };
+
+      expect(
+        findNpmDependencies('/root', lib, projectGraph, projectFileMap, 'build')
+      ).toEqual(expected);
+    }
+  );
+
+  it('should handle missing ts/swc helper packages from externalNodes', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+        './libs/my-lib/tsconfig.json': JSON.stringify({
+          compilerOptions: {
+            importHelpers: true,
+          },
+        }),
+        './libs/my-lib/.swcrc': JSON.stringify({
+          jsc: {
+            externalHelpers: true,
+          },
+        }),
+      },
+      '/root'
+    );
+    const libWithHelpers = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build1: {
+            executor: '@nx/js:tsc',
+            options: {
+              tsConfig: 'libs/my-lib/tsconfig.json',
+            },
+          },
+          build2: {
+            executor: '@nx/js:swc',
+            options: {},
+          },
+        },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithHelpers,
+      },
+      externalNodes: {},
+      dependencies: {},
+    };
+    const projectFileMap = {
+      'my-lib': [],
+    };
+
+    expect(
+      findNpmDependencies(
+        '/root',
+        libWithHelpers,
+        projectGraph,
+        projectFileMap,
+        'build1'
+      )
+    ).toEqual({});
+    expect(
+      findNpmDependencies(
+        '/root',
+        libWithHelpers,
+        projectGraph,
+        projectFileMap,
+        'build2'
+      )
+    ).toEqual({});
+  });
+
+  describe('when the helpers have only versioned nodes', () => {
+    const libWithHelpers = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build1: {
+            executor: '@nx/js:tsc',
+            options: {
+              tsConfig: 'libs/my-lib/tsconfig.json',
+            },
+          },
+          build2: {
+            executor: '@nx/js:swc',
+            options: {},
+          },
+        },
+      },
+    };
+    const helperNodes = {
+      'npm:tslib@1.14.1': {
+        name: 'npm:tslib@1.14.1' as const,
+        type: 'npm' as const,
+        data: { packageName: 'tslib', version: '1.14.1' },
+      },
+      'npm:tslib@2.6.0': {
+        name: 'npm:tslib@2.6.0' as const,
+        type: 'npm' as const,
+        data: { packageName: 'tslib', version: '2.6.0' },
+      },
+      'npm:@swc/helpers@0.5.0': {
+        name: 'npm:@swc/helpers@0.5.0' as const,
+        type: 'npm' as const,
+        data: { packageName: '@swc/helpers', version: '0.5.0' },
+      },
+      'npm:@swc/helpers@0.5.15': {
+        name: 'npm:@swc/helpers@0.5.15' as const,
+        type: 'npm' as const,
+        data: { packageName: '@swc/helpers', version: '0.5.15' },
+      },
+    };
+    const projectFileMap = { 'my-lib': [] };
+
+    beforeEach(() => {
+      vol.fromJSON(
+        {
+          './nx.json': JSON.stringify(nxJson),
+          './libs/my-lib/tsconfig.json': JSON.stringify({
+            compilerOptions: { importHelpers: true },
+          }),
+          './libs/my-lib/.swcrc': JSON.stringify({
+            jsc: { externalHelpers: true },
+          }),
+        },
+        '/root'
+      );
+    });
+
+    it('should pick up the versions that the project depends on', () => {
+      const projectGraph = {
+        nodes: { 'my-lib': libWithHelpers },
+        externalNodes: helperNodes,
+        dependencies: {
+          'my-lib': [
+            {
+              type: 'static',
+              source: 'my-lib',
+              target: 'npm:tslib@1.14.1',
+            },
+            {
+              type: 'static',
+              source: 'my-lib',
+              target: 'npm:@swc/helpers@0.5.0',
+            },
+          ],
+        },
+      };
+
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: '1.14.1' });
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build2'
+        )
+      ).toEqual({ '@swc/helpers': '0.5.0' });
+    });
+
+    it('should pick up the highest versions when the project does not depend on them', () => {
+      const projectGraph = {
+        nodes: { 'my-lib': libWithHelpers },
+        externalNodes: helperNodes,
+        dependencies: {},
+      };
+
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: '2.6.0' });
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build2'
+        )
+      ).toEqual({ '@swc/helpers': '0.5.15' });
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build1',
+          { runtimeHelpers: ['tslib'] }
+        )
+      ).toEqual({ tslib: '2.6.0' });
+    });
+
+    it('should prefer the highest stable version over a prerelease', () => {
+      const projectGraph = {
+        nodes: { 'my-lib': libWithHelpers },
+        externalNodes: {
+          ...helperNodes,
+          'npm:tslib@3.0.0-beta.1': {
+            name: 'npm:tslib@3.0.0-beta.1' as const,
+            type: 'npm' as const,
+            data: { packageName: 'tslib', version: '3.0.0-beta.1' },
+          },
+        },
+        dependencies: {},
+      };
+
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          projectGraph,
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: '2.6.0' });
+    });
+
+    it('should skip a bare outside link when registry versions exist', () => {
+      const linkNode = {
+        name: 'npm:tslib' as const,
+        type: 'npm' as const,
+        data: { packageName: 'tslib', version: 'link:../outside/tslib' },
+      };
+      const graphWith = (dependencies: ProjectGraph['dependencies']) => ({
+        nodes: { 'my-lib': libWithHelpers },
+        externalNodes: { ...helperNodes, 'npm:tslib': linkNode },
+        dependencies,
+      });
+
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          graphWith({
+            'my-lib': [
+              {
+                type: 'static',
+                source: 'my-lib',
+                target: 'npm:tslib@1.14.1',
+              },
+            ],
+          }),
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: '1.14.1' });
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          graphWith({}),
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: '2.6.0' });
+      expect(
+        findNpmDependencies(
+          '/root',
+          libWithHelpers,
+          {
+            nodes: { 'my-lib': libWithHelpers },
+            externalNodes: { 'npm:tslib': linkNode },
+            dependencies: {},
+          },
+          projectFileMap,
+          'build1'
+        )
+      ).toEqual({ tslib: 'link:../outside/tslib' });
+    });
+  });
+
+  it('should not pick up helper npm dependencies if not required', () => {
+    vol.fromJSON(
+      {
+        './libs/my-lib/tsconfig.json': JSON.stringify({
+          compilerOptions: {
+            importHelpers: false,
+          },
+        }),
+        './libs/my-lib/.swcrc': JSON.stringify({
+          jsc: {
+            externalHelpers: false,
+          },
+        }),
+      },
+      '/root'
+    );
+    const libWithInlinedHelpers = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build1: {
+            executor: '@nx/js:tsc',
+            options: {
+              tsConfig: 'libs/my-lib/tsconfig.json',
+            },
+          },
+          build2: {
+            executor: '@nx/js:swc',
+            options: {},
+          },
+        },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithInlinedHelpers,
+      },
+      externalNodes: {
+        'npm:tslib': {
+          name: 'npm:tslib' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: 'tslib',
+            version: '2.6.0',
+          },
+        },
+        'npm:@swc/helpers': {
+          name: 'npm:@swc/helpers' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: '@swc/helpers',
+            version: '0.5.0',
+          },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = {
+      'my-lib': [],
+    };
+
+    const results = findNpmDependencies(
+      '/root',
+      libWithInlinedHelpers,
+      projectGraph,
+      projectFileMap,
+      'build'
+    );
+
+    expect(results).toEqual({});
+  });
+
+  it('should pick up helper npm dependencies from runtimeHelpers', () => {
+    const libWithUnknownExecutor = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build: { executor: '@my-org/some-package:build' },
+        },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithUnknownExecutor,
+      },
+      externalNodes: {
+        'npm:tslib': {
+          name: 'npm:tslib' as const,
+          type: 'npm' as const,
+          data: { packageName: 'tslib', version: '2.6.0' },
+        },
+        'npm:@swc/helpers': {
+          name: 'npm:@swc/helpers' as const,
+          type: 'npm' as const,
+          data: { packageName: '@swc/helpers', version: '0.5.0' },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = { 'my-lib': [] };
+
+    const results = findNpmDependencies(
+      '/root',
+      libWithUnknownExecutor,
+      projectGraph,
+      projectFileMap,
+      'build',
+      { runtimeHelpers: ['tslib'] }
+    );
+
+    expect(results).toStrictEqual({ tslib: '2.6.0' });
+  });
+
+  it('should not duplicate helper npm dependencies when additionally set in runtimeHelpers', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+        './libs/my-lib/tsconfig.json': JSON.stringify({
+          compilerOptions: { importHelpers: true },
+        }),
+      },
+      '/root'
+    );
+    const libWithUnknownExecutor = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: {
+          build: {
+            executor: '@nx/js:tsc',
+            options: { tsConfig: 'libs/my-lib/tsconfig.json' },
+          },
+        },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': libWithUnknownExecutor,
+      },
+      externalNodes: {
+        'npm:tslib': {
+          name: 'npm:tslib' as const,
+          type: 'npm' as const,
+          data: { packageName: 'tslib', version: '2.6.0' },
+        },
+        'npm:@swc/helpers': {
+          name: 'npm:@swc/helpers' as const,
+          type: 'npm' as const,
+          data: { packageName: '@swc/helpers', version: '0.5.0' },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = { 'my-lib': [] };
+
+    const results = findNpmDependencies(
+      '/root',
+      libWithUnknownExecutor,
+      projectGraph,
+      projectFileMap,
+      'build',
+      { runtimeHelpers: ['tslib'] }
+    );
+
+    expect(results).toStrictEqual({ tslib: '2.6.0' });
+  });
+
+  it('should support recursive collection of dependencies', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+      },
+      '/root'
+    );
+    const parentLib = {
+      name: 'parent',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/parent',
+        targets: { build: {} },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        parent: parentLib,
+        child1: {
+          name: 'child1',
+          type: 'lib' as const,
+          data: {
+            root: 'libs/child1',
+            targets: { build: {} },
+          },
+        },
+        child2: {
+          name: 'child2',
+          type: 'lib' as const,
+          data: {
+            root: 'libs/child2',
+            targets: { build: {} },
+          },
+        },
+      },
+      externalNodes: {
+        'npm:foo': {
+          name: 'npm:foo' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: 'foo',
+            version: '1.0.0',
+          },
+        },
+      },
+      dependencies: {
+        parent: [
+          {
+            type: 'static',
+            source: 'parent',
+            target: 'child1',
+          },
+        ],
+        child1: [
+          {
+            type: 'static',
+            source: 'child1',
+            target: 'child2',
+          },
+        ],
+        child2: [
+          {
+            type: 'static',
+            source: 'child2',
+            target: 'npm:foo',
+          },
+        ],
+      },
+    };
+    const projectFileMap = {
+      parent: [{ file: 'libs/parent/index.ts', hash: '123', deps: ['child1'] }],
+      child1: [{ file: 'libs/child1/index.ts', hash: '123', deps: ['child2'] }],
+      child2: [
+        { file: 'libs/child2/index.ts', hash: '123', deps: ['npm:foo'] },
+      ],
+    };
+
+    const results = findNpmDependencies(
+      '/root',
+      parentLib,
+      projectGraph,
+      projectFileMap,
+      'build',
+      {
+        includeTransitiveDependencies: true,
+      }
+    );
+
+    expect(results).toEqual({
+      foo: '1.0.0',
+    });
+  });
+
+  it('should find workspace dependencies', () => {
+    vol.fromJSON(
+      {
+        './libs/lib3/package.json': JSON.stringify({
+          name: '@acme/lib3',
+          version: '0.0.1',
+        }),
+        './nx.json': JSON.stringify(nxJson),
+      },
+      '/root'
+    );
+    const lib1 = {
+      name: 'lib1',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/lib1',
+        targets: { build: {} },
+      },
+    };
+    const lib2 = {
+      name: 'lib2',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/lib2',
+        targets: { build: {} },
+      },
+    };
+    const lib3 = {
+      name: 'lib3',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/lib3',
+        targets: { build: {} },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        lib1: lib1,
+        lib2: lib2,
+        lib3: lib3,
+      },
+      externalNodes: {},
+      dependencies: {},
+    };
+    const projectFileMap = {
+      lib1: [{ file: 'libs/lib1/index.ts', hash: '123', deps: ['lib3'] }],
+      lib2: [{ file: 'libs/lib1/index.ts', hash: '123', deps: ['lib3'] }],
+      lib3: [],
+    };
+
+    expect(
+      findNpmDependencies('/root', lib1, projectGraph, projectFileMap, 'build')
+    ).toEqual({
+      '@acme/lib3': '0.0.1',
+    });
+    expect(
+      findNpmDependencies('/root', lib2, projectGraph, projectFileMap, 'build')
+    ).toEqual({
+      '@acme/lib3': '0.0.1',
+    });
+  });
+
+  it('should support local path for workspace dependencies', () => {
+    vol.fromJSON(
+      {
+        './libs/c/package.json': JSON.stringify({
+          name: '@acme/c',
+          version: '0.0.1',
+        }),
+        './nx.json': JSON.stringify(nxJson),
+      },
+      '/root'
+    );
+    const a = {
+      name: 'a',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/a',
+        targets: { build: {} },
+      },
+    };
+    const b = {
+      name: 'b',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/b',
+        targets: { build: {} },
+      },
+    };
+    const c = {
+      name: 'c',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/c',
+        targets: { build: {} },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        a: a,
+        b: b,
+        c: c,
+      },
+      externalNodes: {},
+      dependencies: {},
+    };
+    const projectFileMap = {
+      a: [{ file: 'libs/a/index.ts', hash: '123', deps: ['c'] }],
+      b: [{ file: 'libs/a/index.ts', hash: '123', deps: ['c'] }],
+      c: [],
+    };
+
+    expect(
+      findNpmDependencies('/root', a, projectGraph, projectFileMap, 'build', {
+        useLocalPathsForWorkspaceDependencies: true,
+      })
+    ).toEqual({
+      '@acme/c': 'file:../c',
+    });
+    expect(
+      findNpmDependencies('/root', b, projectGraph, projectFileMap, 'build', {
+        useLocalPathsForWorkspaceDependencies: true,
+      })
+    ).toEqual({
+      '@acme/c': 'file:../c',
+    });
+  });
+
+  it('should support ignoring extra file patterns in addition to task input', () => {
+    vol.fromJSON(
+      {
+        './nx.json': JSON.stringify(nxJson),
+      },
+      '/root'
+    );
+    const lib = {
+      name: 'my-lib',
+      type: 'lib' as const,
+      data: {
+        root: 'libs/my-lib',
+        targets: { build: {} },
+      },
+    };
+    const projectGraph = {
+      nodes: {
+        'my-lib': lib,
+      },
+      externalNodes: {
+        'npm:foo': {
+          name: 'npm:foo' as const,
+          type: 'npm' as const,
+          data: {
+            packageName: 'foo',
+            version: '1.0.0',
+          },
+        },
+      },
+      dependencies: {},
+    };
+    const projectFileMap = {
+      'my-lib': [
+        {
+          file: 'libs/my-lib/vite.config.ts',
+          hash: '123',
+          deps: ['npm:foo'],
+        },
+      ],
+    };
+
+    const results = findNpmDependencies(
+      '/root',
+      lib,
+      projectGraph,
+      projectFileMap,
+      'build',
+      { ignoredFiles: ['{projectRoot}/vite.config.ts'] }
+    );
+
+    expect(results).toEqual({});
+  });
+});

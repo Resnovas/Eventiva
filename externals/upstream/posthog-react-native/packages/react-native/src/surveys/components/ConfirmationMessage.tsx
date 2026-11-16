@@ -1,0 +1,76 @@
+import React from 'react'
+import { Text, View, ViewStyle } from 'react-native'
+
+import { createSafeStyleSheet } from '../safeStyleSheet'
+import {
+  closeButtonSize,
+  defaultDescriptionOpacity,
+  getContrastingTextColor,
+  getMaxFontSizeMultiplier,
+  shouldRenderDescription,
+  SurveyAppearanceTheme,
+} from '../surveys-utils'
+import { SurveyQuestionDescriptionContentType } from '@posthog/core'
+import { BottomSection } from './BottomSection'
+
+export function ConfirmationMessage({
+  appearance,
+  header,
+  description,
+  contentType,
+  onClose,
+  styleOverrides,
+  isModal,
+}: {
+  appearance: SurveyAppearanceTheme
+  header: string
+  description: string
+  contentType?: SurveyQuestionDescriptionContentType
+  onClose: () => void
+  styleOverrides?: ViewStyle
+  isModal: boolean
+}): JSX.Element {
+  const textColor = getContrastingTextColor(appearance.backgroundColor)
+
+  return (
+    <View style={styleOverrides}>
+      <View style={styles.thankYouMessageContainer}>
+        {header ? (
+          <Text
+            maxFontSizeMultiplier={getMaxFontSizeMultiplier(appearance, 'header')}
+            style={[styles.thankYouMessageHeader, { color: textColor }]}
+          >
+            {header}
+          </Text>
+        ) : null}
+        {shouldRenderDescription(description, contentType) && (
+          <Text
+            maxFontSizeMultiplier={getMaxFontSizeMultiplier(appearance, 'description')}
+            style={{ color: textColor, opacity: defaultDescriptionOpacity }}
+          >
+            {description}
+          </Text>
+        )}
+      </View>
+      {isModal && (
+        <BottomSection
+          text={appearance.thankYouMessageCloseButtonText}
+          submitDisabled={false}
+          appearance={appearance}
+          onSubmit={onClose}
+        />
+      )}
+    </View>
+  )
+}
+
+const styles = createSafeStyleSheet({
+  thankYouMessageContainer: {
+    padding: 10,
+    paddingRight: closeButtonSize,
+  },
+  thankYouMessageHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+})

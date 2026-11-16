@@ -1,0 +1,47 @@
+Program {
+  type: "Program",
+  body: [
+    ExportDefaultDeclaration {
+      type: "ExportDefaultDeclaration",
+      declaration: FunctionDeclaration {
+        type: "FunctionDeclaration",
+        async: false,
+        body: BlockStatement {
+          type: "BlockStatement",
+          body: [],
+
+          range: [27, 29],
+          loc: {
+            start: { column: 27, line: 1 },
+            end: { column: 29, line: 1 },
+          },
+        },
+        declare: false,
+        expression: false,
+        generator: false,
+        id: null,
+        params: [],
+
+        range: [15, 29],
+        loc: {
+          start: { column: 15, line: 1 },
+          end: { column: 29, line: 1 },
+        },
+      },
+      exportKind: "value",
+
+      range: [0, 29],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 29, line: 1 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 30],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}

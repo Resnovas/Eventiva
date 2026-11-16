@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > TSModuleDeclaration > _error_ > namespace-declare-no-body > Babel - Error`]
+BabelError
+> 1 | declare namespace F;
+    |                    ^ Unexpected token, expected "{" (1:19)
+  2 |
+  

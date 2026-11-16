@@ -1,0 +1,60 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allow": {
+        "description": "Locations and kinds of functions that are allowed to be empty.",
+        "items": {
+          "enum": [
+            "arrowFunctions",
+            "asyncFunctions",
+            "asyncMethods",
+            "constructors",
+            "decoratedFunctions",
+            "functions",
+            "generatorFunctions",
+            "generatorMethods",
+            "getters",
+            "methods",
+            "overrideMethods",
+            "private-constructors",
+            "protected-constructors",
+            "setters"
+          ],
+          "type": "string"
+        },
+        "type": "array",
+        "uniqueItems": true
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Locations and kinds of functions that are allowed to be empty. */
+    allow?: (
+      | 'arrowFunctions'
+      | 'asyncFunctions'
+      | 'asyncMethods'
+      | 'constructors'
+      | 'decoratedFunctions'
+      | 'functions'
+      | 'generatorFunctions'
+      | 'generatorMethods'
+      | 'getters'
+      | 'methods'
+      | 'overrideMethods'
+      | 'private-constructors'
+      | 'protected-constructors'
+      | 'setters'
+    )[];
+  },
+];

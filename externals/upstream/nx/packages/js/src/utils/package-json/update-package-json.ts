@@ -1,0 +1,439 @@
+import {
+  createPackageJson,
+  fileExists,
+  generatePrunedDeployOutput,
+  type PackageJson,
+  readFileMapCache,
+} from '@nx/devkit/internal';
+
+import {
+  detectPackageManager,
+  ExecutorContext,
+  getOutputsForTargetAndConfiguration,
+  joinPathFragments,
+  logger,
+  ProjectFileMap,
+  ProjectGraph,
+  ProjectGraphExternalNode,
+  ProjectGraphProjectNode,
+  readJsonFile,
+  workspaceRoot,
+  writeJsonFile,
+} from '@nx/devkit';
+import { DependentBuildableProjectNode } from '../buildable-libs-utils';
+import { existsSync } from 'node:fs';
+import { basename, dirname, join, parse, relative } from 'path';
+
+import { getRelativeDirectoryToProjectRoot } from '../get-main-file-dir';
+import { stripGlobToBaseDir } from '../strip-glob-to-base-dir';
+
+export type SupportedFormat = 'cjs' | 'esm';
+
+export interface UpdatePackageJsonOption {
+  rootDir?: string;
+  projectRoot: string;
+  main: string;
+  additionalEntryPoints?: string[];
+  format?: SupportedFormat[];
+  outputPath: string;
+  outputFileName?: string;
+  outputFileExtensionForCjs?: `.${string}`;
+  outputFileExtensionForEsm?: `.${string}`;
+  skipTypings?: boolean;
+  generateExportsField?: boolean;
+  excludeLibsInPackageJson?: boolean;
+  updateBuildableProjectDepsInPackageJson?: boolean;
+  buildableProjectDepsInPackageJsonType?: 'dependencies' | 'peerDependencies';
+  generateLockfile?: boolean;
+  packageJsonPath?: string;
+  developmentConditionName?: string | null;
+}
+
+export function updatePackageJson(
+  options: UpdatePackageJsonOption,
+  context: ExecutorContext,
+  target: ProjectGraphProjectNode,
+  dependencies: DependentBuildableProjectNode[],
+  fileMap: ProjectFileMap = null
+): void {
+  let packageJson: PackageJson;
+  if (fileMap == null) {
+    fileMap = readFileMapCache()?.fileMap?.projectFileMap || {};
+  }
+
+  if (options.updateBuildableProjectDepsInPackageJson) {
+    packageJson = createPackageJson(
+      context.projectName,
+      context.projectGraph,
+      {
+        target: context.targetName,
+        root: context.root,
+        // By default we remove devDependencies since this is a production build.
+        isProduction: true,
+      },
+      fileMap
+    );
+
+    if (options.excludeLibsInPackageJson) {
+      dependencies = dependencies.filter((dep) => dep.node.type !== 'lib');
+    }
+
+    addMissingDependencies(
+      packageJson,
+      context,
+      dependencies,
+      options.buildableProjectDepsInPackageJsonType
+    );
+  } else {
+    const pathToPackageJson = join(
+      context.root,
+      options.projectRoot,
+      'package.json'
+    );
+    packageJson = fileExists(pathToPackageJson)
+      ? readJsonFile(pathToPackageJson)
+      : { name: context.projectName, version: '0.0.1' };
+  }
+
+  if (packageJson.type === 'module') {
+    if (options.format?.includes('cjs')) {
+      logger.warn(
+        `Package type is set to "module" but "cjs" format is included. Going to use "esm" format instead. You can change the package type to "commonjs" or remove type in the package.json file.`
+      );
+    }
+    options.format = ['esm'];
+  } else if (packageJson.type === 'commonjs') {
+    if (options.format?.includes('esm')) {
+      logger.warn(
+        `Package type is set to "commonjs" but "esm" format is included. Going to use "cjs" format instead. You can change the package type to "module" or remove type in the package.json file.`
+      );
+    }
+    options.format = ['cjs'];
+  }
+
+  packageJson = getUpdatedPackageJsonContent(packageJson, options);
+
+  const packageManager = detectPackageManager(context.root);
+  if (options.generateLockfile) {
+    generatePrunedDeployOutput(
+      packageJson,
+      context.projectGraph,
+      options.projectRoot,
+      {
+        outputDirectory: options.outputPath,
+        packageManager,
+        workspaceRoot: context.root,
+      }
+    );
+  }
+
+  writeJsonFile(`${options.outputPath}/package.json`, packageJson);
+}
+
+function isNpmNode(
+  node: ProjectGraphProjectNode | ProjectGraphExternalNode,
+  graph: ProjectGraph
+): node is ProjectGraphExternalNode {
+  return !!(graph.externalNodes[node.name]?.type === 'npm');
+}
+
+function isWorkspaceProject(
+  node: ProjectGraphProjectNode | ProjectGraphExternalNode,
+  graph: ProjectGraph
+): node is ProjectGraphProjectNode {
+  return !!graph.nodes[node.name];
+}
+
+function addMissingDependencies(
+  packageJson: PackageJson,
+  {
+    projectName,
+    targetName,
+    configurationName,
+    root,
+    projectGraph,
+  }: ExecutorContext,
+  dependencies: DependentBuildableProjectNode[],
+  propType: 'dependencies' | 'peerDependencies' = 'dependencies'
+) {
+  const workspacePackageJson = readJsonFile(
+    joinPathFragments(workspaceRoot, 'package.json')
+  );
+  dependencies.forEach((entry) => {
+    if (isNpmNode(entry.node, projectGraph)) {
+      const { packageName, version } = entry.node.data;
+      if (
+        packageJson.dependencies?.[packageName] ||
+        packageJson.devDependencies?.[packageName] ||
+        packageJson.peerDependencies?.[packageName]
+      ) {
+        return;
+      }
+      if (workspacePackageJson.devDependencies?.[packageName]) {
+        return;
+      }
+
+      packageJson[propType] ??= {};
+      packageJson[propType][packageName] = version;
+    } else if (isWorkspaceProject(entry.node, projectGraph)) {
+      const packageName = entry.name;
+      if (!!workspacePackageJson.devDependencies?.[packageName]) {
+        return;
+      }
+
+      if (
+        !packageJson.dependencies?.[packageName] &&
+        !packageJson.devDependencies?.[packageName] &&
+        !packageJson.peerDependencies?.[packageName]
+      ) {
+        const outputs = getOutputsForTargetAndConfiguration(
+          {
+            project: projectName,
+            target: targetName,
+            configuration: configurationName,
+          },
+          {},
+          entry.node
+        );
+
+        const depPackageJsonPath = join(
+          root,
+          stripGlobToBaseDir(outputs[0]),
+          'package.json'
+        );
+
+        if (existsSync(depPackageJsonPath)) {
+          const version = readJsonFile(depPackageJsonPath).version;
+
+          packageJson[propType] ??= {};
+          packageJson[propType][packageName] = version;
+        }
+      }
+    }
+  });
+}
+
+interface Exports {
+  '.': string;
+
+  [name: string]: string;
+}
+
+export function getExports(
+  options: Pick<
+    UpdatePackageJsonOption,
+    | 'main'
+    | 'rootDir'
+    | 'projectRoot'
+    | 'outputFileName'
+    | 'additionalEntryPoints'
+    | 'outputPath'
+    | 'packageJsonPath'
+  > & {
+    fileExt: string;
+  }
+): Exports {
+  const outputDir = getOutputDir(options);
+  const mainFile = options.outputFileName
+    ? basename(options.outputFileName).replace(/\.[tj]s$/, '')
+    : basename(options.main).replace(/\.[tj]s$/, '');
+  const exports: Exports = {
+    '.': outputDir + mainFile + options.fileExt,
+  };
+
+  if (options.additionalEntryPoints) {
+    const jsRegex = /\.[jt]sx?$/;
+
+    for (const file of options.additionalEntryPoints) {
+      const { ext: fileExt, name: fileName } = parse(file);
+      const relativeDir = getRelativeDirectoryToProjectRoot(
+        file,
+        options.projectRoot
+      );
+      const sourceFilePath = relativeDir + fileName;
+      const entryRelativeDir = relativeDir.replace(/^\.\/src\//, './');
+      const entryFilepath = entryRelativeDir + fileName;
+      const isJsFile = jsRegex.test(fileExt);
+      if (isJsFile && fileName === 'index') {
+        const barrelEntry = entryRelativeDir.replace(/\/$/, '');
+        exports[barrelEntry] = sourceFilePath + options.fileExt;
+      }
+      exports[isJsFile ? entryFilepath : entryFilepath + fileExt] =
+        sourceFilePath + (isJsFile ? options.fileExt : fileExt);
+    }
+  }
+
+  return exports;
+}
+
+export function getUpdatedPackageJsonContent(
+  packageJson: PackageJson,
+  options: UpdatePackageJsonOption
+): PackageJson {
+  // Default is CJS unless esm is explicitly passed.
+  const hasCjsFormat = !options.format || options.format?.includes('cjs');
+  const hasEsmFormat = options.format?.includes('esm');
+
+  if (options.generateExportsField) {
+    packageJson.exports ??=
+      typeof packageJson.exports === 'string' ? {} : { ...packageJson.exports };
+    packageJson.exports['./package.json'] ??= './package.json';
+
+    if (options.developmentConditionName && (hasCjsFormat || hasEsmFormat)) {
+      packageJson.exports['.'] ??= {};
+      const developmentExports = getDevelopmentExports(options);
+      for (const [exportEntry, filePath] of Object.entries(
+        developmentExports
+      )) {
+        if (!packageJson.exports[exportEntry]) {
+          packageJson.exports[exportEntry] ??= {};
+          packageJson.exports[exportEntry][options.developmentConditionName] ??=
+            filePath;
+        } else if (typeof packageJson.exports[exportEntry] === 'object') {
+          packageJson.exports[exportEntry][options.developmentConditionName] ??=
+            filePath;
+        }
+      }
+    }
+  }
+
+  if (!options.skipTypings) {
+    const mainFile = basename(options.main).replace(/\.[tj]s$/, '');
+    const outputDir = getOutputDir(options);
+    const typingsFile = `${outputDir}${mainFile}.d.ts`;
+    packageJson.types ??= typingsFile;
+
+    if (options.generateExportsField) {
+      if (!packageJson.exports['.']) {
+        packageJson.exports['.'] = { types: typingsFile };
+      } else if (
+        typeof packageJson.exports['.'] === 'object' &&
+        !packageJson.exports['.'].types
+      ) {
+        packageJson.exports['.'].types = typingsFile;
+      }
+    }
+  }
+
+  if (hasEsmFormat) {
+    const esmExports = getExports({
+      ...options,
+      fileExt: options.outputFileExtensionForEsm ?? '.js',
+    });
+
+    packageJson.module ??= esmExports['.'];
+
+    if (!hasCjsFormat) {
+      packageJson.type ??= 'module';
+      packageJson.main ??= esmExports['.'];
+    }
+
+    if (options.generateExportsField) {
+      for (const [exportEntry, filePath] of Object.entries(esmExports)) {
+        if (!packageJson.exports[exportEntry]) {
+          packageJson.exports[exportEntry] ??= hasCjsFormat
+            ? { import: filePath }
+            : filePath;
+        } else if (typeof packageJson.exports[exportEntry] === 'object') {
+          packageJson.exports[exportEntry].import ??= filePath;
+          if (!hasCjsFormat) {
+            packageJson.exports[exportEntry].default ??= filePath;
+          }
+        }
+      }
+    }
+  }
+
+  // CJS output may have .cjs or .js file extensions.
+  // Bundlers like rollup and esbuild supports .cjs for CJS and .js for ESM.
+  // Bundlers/Compilers like webpack, tsc, swc do not have different file extensions (unless you use .mts or .cts in source).
+  if (hasCjsFormat) {
+    const cjsExports = getExports({
+      ...options,
+      fileExt: options.outputFileExtensionForCjs ?? '.js',
+    });
+
+    packageJson.main ??= cjsExports['.'];
+    if (!hasEsmFormat) {
+      packageJson.type ??= 'commonjs';
+    }
+
+    if (options.generateExportsField) {
+      for (const [exportEntry, filePath] of Object.entries(cjsExports)) {
+        if (!packageJson.exports[exportEntry]) {
+          packageJson.exports[exportEntry] ??= hasEsmFormat
+            ? { default: filePath }
+            : filePath;
+        } else if (typeof packageJson.exports[exportEntry] === 'object') {
+          packageJson.exports[exportEntry].default ??= filePath;
+        }
+      }
+    }
+  }
+
+  return packageJson;
+}
+
+function getDevelopmentExports(
+  options: Pick<
+    UpdatePackageJsonOption,
+    'additionalEntryPoints' | 'main' | 'projectRoot'
+  >
+) {
+  const mainRelativeDir = getRelativeDirectoryToProjectRoot(
+    options.main,
+    options.projectRoot
+  );
+  const exports: Exports = {
+    '.': mainRelativeDir + basename(options.main),
+  };
+
+  if (options.additionalEntryPoints?.length) {
+    const jsRegex = /\.[jt]sx?$/;
+
+    for (const file of options.additionalEntryPoints) {
+      const { ext: fileExt, name: fileName, base: baseName } = parse(file);
+      if (!jsRegex.test(fileExt)) {
+        continue;
+      }
+
+      const relativeDir = getRelativeDirectoryToProjectRoot(
+        file,
+        options.projectRoot
+      );
+      const sourceFilePath = relativeDir + baseName;
+      const entryRelativeDir = relativeDir.replace(/^\.\/src\//, './');
+      const entryFilePath = entryRelativeDir + fileName;
+      if (fileName === 'index') {
+        const barrelEntry = entryRelativeDir.replace(/\/$/, '');
+        exports[barrelEntry] = sourceFilePath;
+      }
+      exports[entryFilePath] = sourceFilePath;
+    }
+  }
+
+  return exports;
+}
+
+export function getOutputDir(
+  options: Pick<
+    UpdatePackageJsonOption,
+    | 'main'
+    | 'rootDir'
+    | 'projectRoot'
+    | 'outputFileName'
+    | 'outputPath'
+    | 'packageJsonPath'
+  >
+): string {
+  const packageJsonDir = options.packageJsonPath
+    ? dirname(options.packageJsonPath)
+    : options.outputPath;
+  const relativeOutputPath = relative(packageJsonDir, options.outputPath);
+  const relativeMainDir = options.outputFileName
+    ? dirname(options.outputFileName)
+    : relative(options.rootDir ?? options.projectRoot, dirname(options.main));
+  const outputDir = joinPathFragments(relativeOutputPath, relativeMainDir);
+
+  return outputDir === '.' ? `./` : `./${outputDir}/`;
+}

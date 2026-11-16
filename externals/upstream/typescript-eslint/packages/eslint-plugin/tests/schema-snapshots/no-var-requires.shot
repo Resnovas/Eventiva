@@ -1,0 +1,28 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allow": {
+        "description": "Patterns of import paths to allow requiring from.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Patterns of import paths to allow requiring from. */
+    allow?: string[];
+  },
+];

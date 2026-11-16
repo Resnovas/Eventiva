@@ -1,0 +1,31 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "ignoreIntersections": {
+        "description": "Whether to ignore `&` intersections.",
+        "type": "boolean"
+      },
+      "ignoreUnions": {
+        "description": "Whether to ignore `|` unions.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to ignore `&` intersections. */
+    ignoreIntersections?: boolean;
+    /** Whether to ignore `|` unions. */
+    ignoreUnions?: boolean;
+  },
+];

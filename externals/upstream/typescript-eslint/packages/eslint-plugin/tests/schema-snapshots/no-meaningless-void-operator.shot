@@ -1,0 +1,25 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "checkNever": {
+        "description": "Whether to suggest removing `void` when a call's return type is `never`.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to suggest removing `void` when a call's return type is `never`. */
+    checkNever?: boolean;
+  },
+];

@@ -1,0 +1,7304 @@
+import type { MockInstance } from 'vitest';
+const mocks = {
+  prompt: vi.fn(),
+  getInstalledNxVersion: vi.fn(),
+  getInstalledVersion: vi.fn(),
+  getInstalledPackageGroup: vi.fn(),
+  getInstalledLegacyNrwlWorkspaceVersion: vi.fn(),
+};
+const mockPrompt = mocks.prompt;
+const mockGetInstalledNxVersion = mocks.getInstalledNxVersion;
+const mockGetInstalledVersion = mocks.getInstalledVersion;
+const mockGetInstalledPackageGroup = mocks.getInstalledPackageGroup;
+const mockGetInstalledLegacyNrwlWorkspaceVersion =
+  mocks.getInstalledLegacyNrwlWorkspaceVersion;
+vi.mock('@clack/prompts', () => ({
+  autocomplete: (...args: any[]) => mocks.prompt(...args),
+  text: (...args: any[]) => mocks.prompt(...args),
+  isCancel: () => false,
+}));
+vi.mock('../../utils/installed-nx-version', () => ({
+  getInstalledNxVersion: () => mocks.getInstalledNxVersion(),
+  getInstalledVersion: (pkg: string) => mocks.getInstalledVersion(pkg),
+  getInstalledPackageGroup: (pkg: string) =>
+    mocks.getInstalledPackageGroup(pkg),
+  getInstalledLegacyNrwlWorkspaceVersion: () =>
+    mocks.getInstalledLegacyNrwlWorkspaceVersion(),
+}));
+// These tests exercise the migrate logic, not the cooldown wrapper: delegate the
+// policy-aware resolver to the legacy registry resolution so the existing
+// `resolvePackageVersionUsingRegistry` spies keep driving the assertions.
+vi.mock('./resolve-package-version', () => ({
+  isRegistryResolutionEnabled: () => true,
+  resolvePackageVersionRespectingMinReleaseAge: async (
+    packageName: string,
+    version: string
+  ) =>
+    (
+      await import('../../utils/package-manager')
+    ).resolvePackageVersionUsingRegistry(packageName, version),
+}));
+import { resolveCatalogSpecifiers } from '../../utils/catalog';
+import * as configModule from '../../config/configuration';
+import { PackageJson } from '../../utils/package-json';
+import * as packageMgrUtils from '../../utils/package-manager';
+import * as provenance from '../../utils/provenance';
+
+import {
+  confirmCommitsOnDefaultBranch,
+  resolveCreateCommits,
+} from './migrate-commits';
+import {
+  createFetcher,
+  filterDowngradedUpdates,
+  formatCommandFailure,
+  formatSkippedPromptsNextStep,
+  generateMigrationsJsonAndUpdatePackageJson,
+  isHybridMigration,
+  isNpmPeerDepsError,
+  isPromptOnlyMigration,
+  isRunPhaseInvocation,
+  Migrator,
+  normalizeVersion,
+  parseMigrationReturn,
+  parseMigrationsOptions,
+  readLocalNxVersion,
+  ResolvedMigrationConfiguration,
+  resolveCanonicalNxPackage,
+  resolveDocumentationFileToWorkspacePath,
+  resolveInclude,
+} from './migrate';
+import type { MigrateArgs } from './command-object';
+import { applyNxJsonMigrateDefaults } from './migrate-config';
+import { MinReleaseAgeViolationError } from '../../utils/min-release-age/errors';
+import { TempFs } from '../../internal-testing-utils/temp-fs';
+import {
+  promptContentKey,
+  readPromptFilesFromInstall,
+  validateMigrationEntries,
+  writePromptMigrationFiles,
+} from './prompt-files';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'fs';
+import { tmpdir } from 'os';
+import Module from 'node:module';
+import { dirname, join } from 'path';
+import { gt } from 'semver';
+import { logger } from '../../utils/logger';
+import { output } from '../../utils/output';
+import { setWorkspaceRoot } from '../../utils/workspace-root';
+
+const createPackageJson = (
+  overrides: Partial<PackageJson> = {}
+): PackageJson => ({
+  name: 'some-workspace',
+  version: '0.0.0',
+  ...overrides,
+});
+
+// Stub fetcher driving the `--include` supportsOptionalMigrations gate without the
+// registry/install round-trip. `supportsOptionalMigrations` defaults to true; pass a
+// predicate to mark specific (package, version) targets unsupported.
+const includeGateFetch =
+  (
+    supportsOptionalMigrations:
+      | boolean
+      | ((pkg: string, version: string) => boolean) = true
+  ): ((
+    pkg: string,
+    version: string
+  ) => Promise<ResolvedMigrationConfiguration>) =>
+  (pkg, version) =>
+    Promise.resolve({
+      name: pkg,
+      version,
+      supportsOptionalMigrations:
+        typeof supportsOptionalMigrations === 'function'
+          ? supportsOptionalMigrations(pkg, version)
+          : supportsOptionalMigrations,
+    });
+
+describe('Migration', () => {
+  describe('packageJson patch', () => {
+    it('should throw an error when the target package is not available', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: () => '1.0',
+        fetch: (_p, _v) => {
+          throw new Error('cannot fetch');
+        },
+        from: {},
+        to: {},
+      });
+
+      await expect(migrator.migrate('mypackage', 'myversion')).rejects.toThrow(
+        /cannot fetch/
+      );
+    });
+
+    it('should fail fast when a fetched migration config is missing a version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () => Promise.resolve({} as ResolvedMigrationConfiguration),
+        from: {},
+        to: {},
+      });
+
+      await expect(migrator.migrate('mypackage', '2.0.0')).rejects.toThrow(
+        'Fetched migration metadata for mypackage is invalid: the target version is missing.'
+      );
+    });
+
+    it('should fail fast when a fetched migration config carries a version that is not a version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () =>
+          Promise.resolve({
+            version: 'git+https://git.example.com/mypackage.git',
+          }),
+        from: {},
+        to: {},
+      });
+
+      await expect(migrator.migrate('mypackage', 'latest')).rejects.toThrow(
+        'Fetched migration metadata for mypackage is invalid: the target version "git+https://git.example.com/mypackage.git" is not a valid version.'
+      );
+    });
+
+    it('should return a patch to the new version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (_p, _v) => Promise.resolve({ version: '2.0.0' }),
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('mypackage', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should collect the information recursively from upserts', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { child: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                    newChild: {
+                      version: '3.0.0',
+                      addToPackageJson: 'devDependencies',
+                    },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child') {
+            return Promise.resolve({ version: '2.0.0' });
+          } else if (p === 'newChild') {
+            return Promise.resolve({ version: '2.0.0' });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child: { version: '2.0.0', addToPackageJson: false },
+          newChild: { version: '2.0.0', addToPackageJson: 'devDependencies' },
+        },
+      });
+    });
+
+    it('should support the deprecated "alwaysAddToPackageJson" option', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { child1: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'mypackage') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '3.0.0', alwaysAddToPackageJson: false },
+                    child2: { version: '3.0.0', alwaysAddToPackageJson: true },
+                  },
+                },
+              },
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({ version: '3.0.0' });
+          } else if (p === 'child2') {
+            return Promise.resolve({ version: '3.0.0' });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('mypackage', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+          child1: { version: '3.0.0', addToPackageJson: false },
+          child2: { version: '3.0.0', addToPackageJson: 'dependencies' },
+        },
+      });
+    });
+
+    it('should support "alwaysAddToPackageJson" with string values', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { child1: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'mypackage') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: {
+                      version: '3.0.0',
+                      alwaysAddToPackageJson: 'dependencies',
+                    },
+                    child2: {
+                      version: '3.0.0',
+                      alwaysAddToPackageJson: 'devDependencies',
+                    },
+                  },
+                },
+              },
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({ version: '3.0.0' });
+          } else if (p === 'child2') {
+            return Promise.resolve({ version: '3.0.0' });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('mypackage', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+          child1: { version: '3.0.0', addToPackageJson: 'dependencies' },
+          child2: { version: '3.0.0', addToPackageJson: 'devDependencies' },
+        },
+      });
+    });
+
+    it('should stop recursive calls when exact version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { child: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    parent: { version: '2.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should set the version of a dependency to the newest', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            child1: '1.0.0',
+            child2: '1.0.0',
+            grandchild: '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '2.0.0' },
+                    child2: { version: '2.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    grandchild: { version: '3.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child2') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    grandchild: { version: '4.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else {
+            return Promise.resolve({ version: '4.0.0' });
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child1: { version: '2.0.0', addToPackageJson: false },
+          child2: { version: '2.0.0', addToPackageJson: false },
+          grandchild: { version: '4.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should skip the versions < currently installed', async () => {
+      const packageJson = {
+        dependencies: { parent: '1.0.0', child: '2.0.0', grandchild: '3.0.0' },
+      };
+      const migrator = new Migrator({
+        packageJson: createPackageJson(packageJson),
+        getInstalledPackageVersion: (name) => {
+          return packageJson.dependencies[name];
+        },
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '1.0.0',
+                  packages: {
+                    grandchild: { version: '2.0.0' },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else {
+            return Promise.resolve({ version: '2.0.0' });
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should fail fast when an applied package update is missing a version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            parent: '1.0.0',
+            child: '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: undefined as any },
+                  },
+                },
+              },
+            });
+          }
+
+          return Promise.resolve({ version: '2.0.0' });
+        },
+        from: {},
+        to: {},
+      });
+
+      await expect(migrator.migrate('parent', '2.0.0')).rejects.toThrow(
+        'Fetched migration metadata for parent is invalid: the target version for child is missing.'
+      );
+    });
+
+    it('should not fail for a skipped package update with a missing version', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            parent: '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  requires: {
+                    other: '1.0.0',
+                  },
+                  packages: {
+                    child: { version: undefined as any },
+                  },
+                },
+              },
+            });
+          }
+
+          return Promise.resolve({ version: '2.0.0' });
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should conditionally process packages if they are installed', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: { child1: '1.0.0', child2: '1.0.0' },
+        }),
+        getInstalledPackageVersion: (p) =>
+          p !== 'not-installed' ? '1.0.0' : null,
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '2.0.0', ifPackageInstalled: 'other' },
+                    child2: {
+                      version: '2.0.0',
+                      ifPackageInstalled: 'not-installed',
+                    },
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({ version: '2.0.0' });
+          } else if (p === 'child2') {
+            throw new Error('should not be processed');
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child1: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should migrate related libraries using packageGroup', async () => {
+      const migrator = new Migrator({
+        packageJson: {
+          name: 'some-workspace',
+          version: '0.0.0',
+
+          devDependencies: {
+            '@my-company/nx-workspace': '0.9.0',
+            '@my-company/lib-1': '0.9.0',
+            '@my-company/lib-2': '0.9.0',
+            '@my-company/lib-3': '0.9.0',
+            '@my-company/lib-3-child': '0.9.0',
+            '@my-company/lib-4': '0.9.0',
+            '@my-company/lib-5': '0.9.0',
+            '@my-company/lib-6': '0.9.0',
+          },
+        },
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: async (pkg, version) => {
+          if (pkg === '@my-company/nx-workspace') {
+            return {
+              version: '2.0.0',
+              packageGroup: [
+                { package: '@my-company/lib-1', version: '*' },
+                { package: '@my-company/lib-2', version: '*' },
+                { package: '@my-company/lib-3', version: '*' },
+                { package: '@my-company/lib-4', version: 'latest' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/lib-6') {
+            return {
+              version: '2.0.0',
+              packageGroup: [
+                { version: '*', package: '@my-company/nx-workspace' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/lib-3') {
+            return {
+              version: '2.0.0',
+              packageGroup: [
+                { version: '*', package: '@my-company/lib-3-child' },
+              ],
+            };
+          }
+          if (version === 'latest') {
+            return { version: '2.0.1' };
+          }
+          return { version: '2.0.0' };
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(
+        await migrator.migrate('@my-company/nx-workspace', '2.0.0')
+      ).toStrictEqual({
+        migrations: [],
+        packageUpdates: {
+          '@my-company/nx-workspace': {
+            version: '2.0.0',
+            addToPackageJson: false,
+          },
+          '@my-company/lib-1': { version: '2.0.0', addToPackageJson: false },
+          '@my-company/lib-2': { version: '2.0.0', addToPackageJson: false },
+          '@my-company/lib-3': { version: '2.0.0', addToPackageJson: false },
+          '@my-company/lib-3-child': {
+            version: '2.0.0',
+            addToPackageJson: false,
+          },
+          '@my-company/lib-4': { version: '2.0.1', addToPackageJson: false },
+        },
+        minVersionWithSkippedUpdates: undefined,
+      });
+    });
+
+    it('should skip package group processing when ignorePackageGroup is true', async () => {
+      const migrator = new Migrator({
+        packageJson: {
+          name: 'some-workspace',
+          version: '0.0.0',
+          devDependencies: {
+            parent: '1.0.0',
+            '@my-company/nx-workspace': '1.0.0',
+            '@my-company/lib-1': '1.0.0',
+            '@my-company/lib-2': '1.0.0',
+          },
+        },
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: async (pkg) => {
+          if (pkg === 'parent') {
+            return {
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    '@my-company/nx-workspace': {
+                      version: '2.0.0',
+                      ignorePackageGroup: true,
+                    },
+                  },
+                },
+              },
+            };
+          }
+          if (pkg === '@my-company/nx-workspace') {
+            return {
+              version: '2.0.0',
+              packageGroup: [
+                { package: '@my-company/lib-1', version: '^2.0.0' },
+                { package: '@my-company/lib-2', version: '^2.0.0' },
+              ],
+            };
+          }
+          return { version: '2.1.0' };
+        },
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      // @my-company/nx-workspace should be updated but its package group should NOT be processed
+      expect(result.packageUpdates).toStrictEqual({
+        parent: { version: '2.0.0', addToPackageJson: false },
+        '@my-company/nx-workspace': {
+          version: '2.0.0',
+          addToPackageJson: false,
+        },
+      });
+      // lib-1 and lib-2 should NOT be in the updates because ignorePackageGroup was true
+      expect(result.packageUpdates['@my-company/lib-1']).toBeUndefined();
+      expect(result.packageUpdates['@my-company/lib-2']).toBeUndefined();
+    });
+
+    it('should skip migration collection when ignoreMigrations is true', async () => {
+      const migrator = new Migrator({
+        packageJson: {
+          name: 'some-workspace',
+          version: '0.0.0',
+          devDependencies: {
+            parent: '1.0.0',
+            child: '1.0.0',
+          },
+        },
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: async (pkg) => {
+          if (pkg === 'parent') {
+            return {
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: {
+                      version: '2.0.0',
+                      ignoreMigrations: true,
+                    },
+                  },
+                },
+              },
+            };
+          }
+          if (pkg === 'child') {
+            return {
+              version: '2.0.0',
+              generators: {
+                'child-migration': {
+                  version: '2.0.0',
+                  description: 'A migration that should be skipped',
+                  factory: './migrations/child-migration',
+                },
+              },
+            };
+          }
+          return { version: '2.0.0' };
+        },
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      // child package should be updated
+      expect(result.packageUpdates['child']).toBeDefined();
+      expect(result.packageUpdates['child'].version).toBe('2.0.0');
+      // But migrations from child should NOT be collected
+      expect(result.migrations).toEqual([]);
+    });
+
+    it('should properly handle cyclic dependency in nested packageGroup', async () => {
+      const migrator = new Migrator({
+        packageJson: {
+          name: 'some-workspace',
+          version: '0.0.0',
+
+          devDependencies: {
+            '@my-company/nx-workspace': '0.9.0',
+            '@my-company/lib-1': '0.9.0',
+            '@my-company/lib-2': '0.9.0',
+          },
+        },
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: async (pkg, version) => {
+          if (pkg === '@my-company/nx-workspace' && version === '2.0.0') {
+            return {
+              version: '2.0.0',
+              packageGroup: [
+                { package: '@my-company/lib-1', version: 'latest' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/nx-workspace' && version === '3.0.0') {
+            return {
+              version: '3.0.0',
+              packageGroup: [
+                { package: '@my-company/lib-1', version: '*' },
+                { package: '@my-company/lib-2', version: '*' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/lib-1' && version === 'latest') {
+            return {
+              version: '3.0.0',
+              packageGroup: [
+                { package: '@my-company/nx-workspace', version: '*' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/lib-1' && version === '3.0.0') {
+            return {
+              version: '3.0.0',
+              packageGroup: [
+                { package: '@my-company/nx-workspace', version: '*' },
+              ],
+            };
+          }
+          if (pkg === '@my-company/lib-2' && version === '3.0.0') {
+            return {
+              version: '3.0.0',
+              packageGroup: [
+                // this should be ignored because it's a smaller version
+                { package: '@my-company/nx-workspace', version: '2.99.0' },
+              ],
+            };
+          }
+          throw new Error(`Should not call fetch for ${pkg}@${version}`);
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(
+        await migrator.migrate('@my-company/nx-workspace', '2.0.0')
+      ).toStrictEqual({
+        migrations: [],
+        packageUpdates: {
+          '@my-company/nx-workspace': {
+            version: '3.0.0',
+            addToPackageJson: false,
+          },
+          '@my-company/lib-1': { version: '3.0.0', addToPackageJson: false },
+          '@my-company/lib-2': { version: '3.0.0', addToPackageJson: false },
+        },
+        minVersionWithSkippedUpdates: undefined,
+      });
+    });
+
+    it('should not throw when packages are missing', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: (p) => (p === '@nx/nest' ? null : '1.0.0'),
+        fetch: (_p, _v) =>
+          Promise.resolve({
+            version: '2.0.0',
+            packageJsonUpdates: { one: { version: '2.0.0', packages: {} } },
+          }),
+        from: {},
+        to: {},
+      });
+      await migrator.migrate('@nx/workspace', '2.0.0');
+    });
+
+    it('should only fetch packages that are installed', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: (p) => (p === '@nx/nest' ? null : '1.0.0'),
+        fetch: (p, _v) => {
+          if (p === '@nx/nest') {
+            throw new Error('Boom');
+          }
+          return Promise.resolve({
+            version: '2.0.0',
+            packageJsonUpdates: { one: { version: '2.0.0', packages: {} } },
+          });
+        },
+        from: {},
+        to: {},
+      });
+      await migrator.migrate('@nx/workspace', '2.0.0');
+    });
+
+    it('should only fetch packages that are top-level deps', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          devDependencies: { parent: '1.0.0', child1: '1.0.0' },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '2.0.0' },
+                    child2: { version: '2.0.0' }, // should not be fetched, it's not a top-level dep
+                  },
+                },
+              },
+              schematics: {},
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {},
+            });
+          } else if (p === 'child2') {
+            throw new Error('Boom');
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      await migrator.migrate('parent', '2.0.0');
+    });
+
+    describe('--interactive', () => {
+      beforeEach(() => {
+        vi.clearAllMocks();
+      });
+
+      it('should prompt when --interactive and there is a package updates group with confirmation prompts', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('Yes'));
+        const promptMessage =
+          'Do you want to update the packages related to <some fwk name>?';
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: { child1: '1.0.0', child2: '1.0.0', child3: '1.0.0' },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  version2: {
+                    version: '2.0.0',
+                    packages: {
+                      child1: { version: '3.0.0' },
+                    },
+                  },
+                  'version2-prompt-group': {
+                    version: '2.0.0',
+                    'x-prompt': promptMessage,
+                    packages: {
+                      child2: { version: '3.0.0' },
+                      child3: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'child1' || p === 'child2' || p === 'child3') {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child1: { version: '3.0.0', addToPackageJson: false },
+            child2: { version: '3.0.0', addToPackageJson: false },
+            child3: { version: '3.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+        expect(mockPrompt).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining(promptMessage),
+          })
+        );
+      });
+
+      it('should filter out updates when prompt answer is false', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('No'));
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: { child1: '1.0.0', child2: '1.0.0', child3: '1.0.0' },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  version2: {
+                    version: '2.0.0',
+                    packages: {
+                      child1: { version: '3.0.0' },
+                    },
+                  },
+                  'version2-prompt-group': {
+                    version: '2.0.0',
+                    'x-prompt':
+                      'Do you want to update the packages related to <some fwk name>?',
+                    packages: {
+                      child2: { version: '3.0.0' },
+                      child3: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'child1' || p === 'child2' || p === 'child3') {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child1: { version: '3.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: '2.0.0',
+        });
+        expect(mockPrompt).toHaveBeenCalled();
+      });
+
+      it('should not prompt and get all updates when --interactive=false', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('No'));
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: { child1: '1.0.0', child2: '1.0.0', child3: '1.0.0' },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  version2: {
+                    version: '2.0.0',
+                    packages: {
+                      child1: { version: '3.0.0' },
+                    },
+                  },
+                  'version2-prompt-group': {
+                    version: '2.0.0',
+                    'x-prompt':
+                      'Do you want to update the packages related to <some fwk name>?',
+                    packages: {
+                      child2: { version: '3.0.0' },
+                      child3: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'child1' || p === 'child2' || p === 'child3') {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+          interactive: false,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child1: { version: '3.0.0', addToPackageJson: false },
+            child2: { version: '3.0.0', addToPackageJson: false },
+            child3: { version: '3.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('--include', () => {
+      beforeEach(() => {
+        vi.clearAllMocks();
+      });
+
+      it('should keep required packages and drop optional ones when include is required', async () => {
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              requiredChild: '1.0.0',
+              optionalChild: '1.0.0',
+            },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  mixed: {
+                    version: '2.0.0',
+                    packages: {
+                      requiredChild: { version: '3.0.0' },
+                      optionalChild: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'requiredChild') {
+              return Promise.resolve({ version: '3.0.0' });
+            }
+            return Promise.resolve(null);
+          },
+          from: {},
+          to: {},
+          include: 'required',
+          requiredPackages: new Set(['mypackage', 'requiredChild']),
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result.packageUpdates).toEqual({
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+          requiredChild: { version: '3.0.0', addToPackageJson: false },
+        });
+        expect(result.packageUpdates.optionalChild).toBeUndefined();
+      });
+
+      it('should drop entries that contain only optional packages without firing their x-prompt', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('Yes'));
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              optionalA: '1.0.0',
+              optionalB: '1.0.0',
+            },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  optionalOnly: {
+                    version: '2.0.0',
+                    'x-prompt': 'Update optional packages?',
+                    packages: {
+                      optionalA: { version: '3.0.0' },
+                      optionalB: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            }
+            return Promise.resolve(null);
+          },
+          from: {},
+          to: {},
+          interactive: true,
+          include: 'required',
+          requiredPackages: new Set(['mypackage']),
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result.packageUpdates).toEqual({
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+        });
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+
+      it('should source required gate from the provided set, not getNxPackageGroup', async () => {
+        // Sanity: a name commonly returned by getNxPackageGroup() that we
+        // deliberately exclude from the required set should be filtered out,
+        // and an arbitrary unrelated name that we include should be kept.
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              '@nx/react': '1.0.0',
+              'not-in-nx-package-group': '1.0.0',
+            },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'nx') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  group: {
+                    version: '2.0.0',
+                    packages: {
+                      '@nx/react': { version: '2.0.0' },
+                      'not-in-nx-package-group': { version: '2.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'not-in-nx-package-group') {
+              return Promise.resolve({ version: '2.0.0' });
+            }
+            return Promise.resolve(null);
+          },
+          from: {},
+          to: {},
+          include: 'required',
+          requiredPackages: new Set(['nx', 'not-in-nx-package-group']),
+        });
+
+        const result = await migrator.migrate('nx', '2.0.0');
+
+        expect(result.packageUpdates).toEqual({
+          nx: { version: '2.0.0', addToPackageJson: false },
+          'not-in-nx-package-group': {
+            version: '2.0.0',
+            addToPackageJson: false,
+          },
+        });
+        expect(result.packageUpdates['@nx/react']).toBeUndefined();
+      });
+
+      it('should drop required packages and keep optional ones when include is optional', async () => {
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              requiredChild: '1.0.0',
+              optionalChild: '1.0.0',
+            },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  mixed: {
+                    version: '2.0.0',
+                    packages: {
+                      requiredChild: { version: '3.0.0' },
+                      optionalChild: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'requiredChild' || p === 'optionalChild') {
+              return Promise.resolve({ version: '3.0.0' });
+            }
+            return Promise.resolve(null);
+          },
+          from: {},
+          to: {},
+          include: 'optional',
+          requiredPackages: new Set(['mypackage', 'requiredChild']),
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result.packageUpdates).toEqual({
+          optionalChild: { version: '3.0.0', addToPackageJson: false },
+        });
+        expect(result.packageUpdates.mypackage).toBeUndefined();
+        expect(result.packageUpdates.requiredChild).toBeUndefined();
+      });
+
+      it('should skip optional update migrations when include is required', async () => {
+        const migrator = new Migrator({
+          packageJson: createPackageJson({ dependencies: { dep: '1.0.0' } }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                generators: {
+                  migration: { version: '2.0.0' },
+                  'update-dep': {
+                    version: '2.0.0',
+                    requires: { dep: '>=1.0.0 <2.0.0' },
+                    optionalUpdate: true,
+                  },
+                },
+              });
+            }
+            return Promise.resolve(null);
+          },
+          from: {},
+          to: {},
+          include: 'required',
+          requiredPackages: new Set(['mypackage']),
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result.migrations.map((m) => m.name)).toEqual(['migration']);
+      });
+
+      it("should collect required packages' optional update migrations and the migrations the optional updates enable when include is optional", async () => {
+        const installed: Record<string, string> = {
+          nx: '24.0.0',
+          '@nx/angular': '24.0.0',
+          '@angular/core': '21.2.0',
+          cypress: '15.5.0',
+          rxjs: '7.8.0',
+        };
+        const migrator = new Migrator({
+          packageJson: createPackageJson({ dependencies: installed }),
+          getInstalledPackageVersion: (p, overrides) =>
+            overrides?.[p] ?? installed[p] ?? null,
+          fetch: (p, v) => {
+            if (p === 'nx') {
+              return Promise.resolve({
+                version: '24.0.0',
+                packageGroup: [{ package: '@nx/angular', version: '*' }],
+              });
+            }
+            if (p === '@nx/angular') {
+              return Promise.resolve({
+                version: '24.0.0',
+                packageJsonUpdates: {
+                  '20.0.0': {
+                    version: '20.0.0',
+                    packages: { rxjs: { version: '6.6.0' } },
+                  },
+                  '23.1.0': {
+                    version: '23.1.0',
+                    requires: { '@angular/core': '>=21.2.0 <22.0.0' },
+                    packages: { '@angular/core': { version: '22.0.0' } },
+                  },
+                },
+                generators: {
+                  // met only by the stale rxjs pin, which is never written
+                  'update-for-rxjs-6': {
+                    version: '20.0.0',
+                    requires: { rxjs: '>=6.0.0 <7.0.0' },
+                  },
+                  // already applied
+                  'update-for-angular-21': {
+                    version: '22.0.0',
+                    requires: { '@angular/core': '>=21.0.0' },
+                  },
+                  'update-for-angular-22': {
+                    version: '23.1.0',
+                    requires: { '@angular/core': '>=22.0.0' },
+                  },
+                  'upgrade-to-cypress-16': {
+                    version: '23.1.0',
+                    requires: { cypress: '>=15.0.0 <16.0.0' },
+                    optionalUpdate: true,
+                  },
+                },
+              });
+            }
+            return Promise.resolve({ version: v });
+          },
+          from: { nx: '0.0.0' },
+          to: {},
+          excludeAppliedMigrations: true,
+          include: 'optional',
+          requiredPackages: new Set(['nx', '@nx/angular']),
+        });
+
+        const result = await migrator.migrate('nx', '24.0.0');
+
+        expect(result.migrations.map((m) => m.name)).toEqual([
+          'update-for-angular-22',
+          'upgrade-to-cypress-16',
+        ]);
+      });
+
+      it.each([
+        {
+          scenario: 'stop at the installed plugin version',
+          pluginVersion: '23.2.0',
+          groupVersion: '*',
+          targetVersion: '24.0.0',
+          expected: ['optional-update-22'],
+        },
+        {
+          scenario: 'include fixed-version package group members',
+          pluginVersion: '24.0.0',
+          groupVersion: '24.0.0',
+          targetVersion: '24.0.0',
+          expected: ['optional-update-22', 'optional-update-23-3'],
+        },
+        {
+          scenario: 'stop at a target older than the installed version',
+          pluginVersion: '24.0.0',
+          groupVersion: '*',
+          targetVersion: '23.0.0',
+          expected: ['optional-update-22'],
+        },
+      ])(
+        "should $scenario when collecting required packages' migrations with include optional",
+        async ({ pluginVersion, groupVersion, targetVersion, expected }) => {
+          const installed: Record<string, string> = {
+            nx: '24.0.0',
+            '@nx/cypress': pluginVersion,
+            cypress: '14.5.0',
+          };
+          const migrator = new Migrator({
+            packageJson: createPackageJson({ dependencies: installed }),
+            getInstalledPackageVersion: (p, overrides) =>
+              overrides?.[p] ?? installed[p] ?? null,
+            fetch: (p, v) => {
+              if (p === 'nx') {
+                return Promise.resolve({
+                  version: v,
+                  packageGroup: [
+                    { package: '@nx/cypress', version: groupVersion },
+                  ],
+                });
+              }
+              if (p === '@nx/cypress') {
+                return Promise.resolve({
+                  version: v,
+                  generators: {
+                    // Metadata above the installed version pruned this entry.
+                    ...(!gt(v, pluginVersion) && {
+                      'optional-update-22': {
+                        version: '22.0.0',
+                        requires: { cypress: '^14.0.0' },
+                        optionalUpdate: true,
+                      },
+                    }),
+                    'optional-update-23-3': {
+                      version: '23.3.0',
+                      requires: { cypress: '^14.0.0' },
+                      optionalUpdate: true,
+                    },
+                  },
+                });
+              }
+              return Promise.resolve({ version: v });
+            },
+            from: { nx: '0.0.0' },
+            to: {},
+            excludeAppliedMigrations: true,
+            include: 'optional',
+            requiredPackages: new Set(['nx', '@nx/cypress']),
+          });
+
+          const result = await migrator.migrate('nx', targetVersion);
+
+          expect(result.migrations.map((m) => m.name)).toEqual(expected);
+        }
+      );
+
+      it.each(['required', 'optional'] as const)(
+        'should throw when constructed with include=%s but no requiredPackages',
+        (include) => {
+          // Other required callbacks are unused — constructor rejects before any
+          // method runs — so stub them with the simplest valid shape.
+          expect(
+            () =>
+              new Migrator({
+                packageJson: createPackageJson({}),
+                getInstalledPackageVersion: () => '0.0.0',
+                fetch: () => Promise.resolve({ version: '0.0.0' }),
+                from: {},
+                to: {},
+                include,
+              })
+          ).toThrow(
+            `Error: 'requiredPackages' is required when 'include' is '${include}'.`
+          );
+        }
+      );
+    });
+
+    describe('requirements', () => {
+      beforeEach(() => {
+        vi.clearAllMocks();
+      });
+
+      it('should collect updates that meet requirements and leave out those that do not meet them', async () => {
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              child1: '1.0.0',
+              child2: '1.0.0',
+              child3: '1.0.0',
+              child4: '1.0.0',
+              child5: '1.0.0',
+              pkg1: '1.0.0',
+              pkg2: '2.0.0',
+            },
+          }),
+          getInstalledPackageVersion: (p) => (p === 'pkg2' ? '2.0.0' : '1.0.0'),
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  group1: {
+                    version: '2.0.0',
+                    packages: { child1: { version: '3.0.0' } },
+                    requires: {
+                      // exist on a lower version
+                      pkg1: '^2.0.0',
+                    },
+                  },
+                  group2: {
+                    version: '2.0.0',
+                    packages: {
+                      child2: { version: '3.0.0' },
+                      child3: { version: '3.0.0' },
+                    },
+                    requires: {
+                      // exists on a version satisfying the range
+                      pkg2: '^2.0.0',
+                    },
+                  },
+                  group3: {
+                    version: '2.0.0',
+                    packages: {
+                      child4: { version: '3.0.0' },
+                      child5: { version: '3.0.0' },
+                    },
+                    requires: {
+                      // non existent
+                      pkg3: '^2.0.0',
+                    },
+                  },
+                },
+              });
+            } else if (
+              ['child1', 'child2', 'child3', 'child4', 'child5'].includes(p)
+            ) {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child2: { version: '3.0.0', addToPackageJson: false },
+            child3: { version: '3.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+      });
+
+      it('should meet requirements with versions set by dependent package updates in package groups', async () => {
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: {
+              child1: '1.0.0',
+              child2: '1.0.0',
+              child3: '1.0.0',
+              pkg1: '1.0.0',
+              pkg2: '1.0.0',
+            },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p): Promise<ResolvedMigrationConfiguration> => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  group1: {
+                    version: '2.0.0',
+                    packages: { child1: { version: '3.0.0' } },
+                  },
+                },
+                packageGroup: [
+                  { package: 'pkg1', version: '*' },
+                  { package: 'pkg2', version: '*' },
+                ],
+              });
+            } else if (p === 'pkg1') {
+              // add a delay to showcase the dependent requirement will wait for it
+              return new Promise((resolve) => {
+                setTimeout(() => {
+                  resolve({
+                    version: '2.0.0',
+                    packageJsonUpdates: {
+                      group1: {
+                        version: '2.0.0',
+                        packages: { child2: { version: '3.0.0' } },
+                        requires: { child1: '^3.0.0' },
+                      },
+                    },
+                  });
+                }, 100);
+              });
+            } else if (p === 'pkg2') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  group1: {
+                    version: '2.0.0',
+                    packages: { child3: { version: '3.0.0' } },
+                    // installed version doesn't satisfy the requirements, but
+                    // a package update from "pkg1" fulfills it, it waits for it
+                    // because of the packageGroup order
+                    requires: { child2: '^3.0.0' },
+                  },
+                },
+              });
+            } else if (['child1', 'child2', 'child3'].includes(p)) {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child1: { version: '3.0.0', addToPackageJson: false },
+            child2: { version: '3.0.0', addToPackageJson: false },
+            child3: { version: '3.0.0', addToPackageJson: false },
+            pkg1: { version: '2.0.0', addToPackageJson: false },
+            pkg2: { version: '2.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+      });
+
+      it('should re-evaluate held updates after later package groups satisfy their gates', async () => {
+        mockPrompt.mockResolvedValue('Yes');
+        const installedVersions = {
+          mypackage: '1.0.0',
+          'first-owner': '1.0.0',
+          'second-owner': '1.0.0',
+          'third-owner': '1.0.0',
+          blocker: '1.0.0',
+          'intermediate-blocker': '1.0.0',
+          result: '1.0.0',
+          'shared-result': '1.0.0',
+        };
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: installedVersions,
+          }),
+          getInstalledPackageVersion: (p) => installedVersions[p] ?? null,
+          fetch: (p): Promise<ResolvedMigrationConfiguration> => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageGroup: [
+                  { package: 'first-owner', version: '*' },
+                  { package: 'second-owner', version: '*' },
+                  { package: 'third-owner', version: '*' },
+                ],
+              });
+            } else if (p === 'first-owner') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  gated: {
+                    version: '2.0.0',
+                    'x-prompt': 'Apply held update?',
+                    incompatibleWith: { blocker: '<2.0.0' },
+                    packages: {
+                      result: { version: '2.0.0' },
+                      'shared-result': { version: '2.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'second-owner') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  unblock: {
+                    version: '2.0.0',
+                    incompatibleWith: { 'intermediate-blocker': '<2.0.0' },
+                    packages: { blocker: { version: '2.0.0' } },
+                  },
+                },
+              });
+            } else if (p === 'third-owner') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  unblock: {
+                    version: '2.0.0',
+                    requires: { mypackage: '>=2.0.0' },
+                    packages: {
+                      'intermediate-blocker': { version: '2.0.0' },
+                      'shared-result': { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            }
+
+            return Promise.resolve({ version: '2.0.0' });
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result.packageUpdates).toEqual({
+          mypackage: { version: '2.0.0', addToPackageJson: false },
+          'first-owner': { version: '2.0.0', addToPackageJson: false },
+          'second-owner': { version: '2.0.0', addToPackageJson: false },
+          'third-owner': { version: '2.0.0', addToPackageJson: false },
+          blocker: { version: '2.0.0', addToPackageJson: false },
+          'intermediate-blocker': {
+            version: '2.0.0',
+            addToPackageJson: false,
+          },
+          result: { version: '2.0.0', addToPackageJson: false },
+          'shared-result': { version: '3.0.0', addToPackageJson: false },
+        });
+        expect(mockPrompt).toHaveBeenCalledTimes(1);
+      });
+
+      it('should not re-prompt or apply a held update that was declined once its gate was satisfied', async () => {
+        mockPrompt.mockResolvedValue('No');
+        const installedVersions = {
+          mypackage: '1.0.0',
+          'gated-owner': '1.0.0',
+          'unblocker-owner': '1.0.0',
+          blocker: '1.0.0',
+          result: '1.0.0',
+        };
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: installedVersions,
+          }),
+          getInstalledPackageVersion: (p) => installedVersions[p] ?? null,
+          fetch: (p): Promise<ResolvedMigrationConfiguration> => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageGroup: [
+                  { package: 'gated-owner', version: '*' },
+                  { package: 'unblocker-owner', version: '*' },
+                ],
+              });
+            } else if (p === 'gated-owner') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  gated: {
+                    version: '2.0.0',
+                    'x-prompt': 'Apply held update?',
+                    incompatibleWith: { blocker: '<2.0.0' },
+                    packages: { result: { version: '2.0.0' } },
+                  },
+                },
+              });
+            } else if (p === 'unblocker-owner') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  unblock: {
+                    version: '2.0.0',
+                    requires: { mypackage: '>=2.0.0' },
+                    packages: { blocker: { version: '2.0.0' } },
+                  },
+                },
+              });
+            }
+
+            return Promise.resolve({ version: '2.0.0' });
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            'gated-owner': { version: '2.0.0', addToPackageJson: false },
+            'unblocker-owner': { version: '2.0.0', addToPackageJson: false },
+            blocker: { version: '2.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: '2.0.0',
+        });
+        expect(mockPrompt).toHaveBeenCalledTimes(1);
+      });
+
+      it('should keep the last metadata when a package is staged twice at the same version, gated or not', async () => {
+        const installedVersions = {
+          mypackage: '1.0.0',
+          gate: '2.0.0',
+          child: '1.0.0',
+        };
+        const createMigrator = (gated: boolean) =>
+          new Migrator({
+            packageJson: createPackageJson({
+              dependencies: installedVersions,
+            }),
+            getInstalledPackageVersion: (p) => installedVersions[p] ?? null,
+            fetch: (p): Promise<ResolvedMigrationConfiguration> => {
+              if (p === 'mypackage') {
+                return Promise.resolve({
+                  version: '2.0.0',
+                  packageJsonUpdates: {
+                    first: {
+                      version: '2.0.0',
+                      // Already satisfied: the gate only selects the code path,
+                      // it never holds the group.
+                      ...(gated ? { requires: { gate: '^2.0.0' } } : {}),
+                      packages: {
+                        child: {
+                          version: '2.0.0',
+                          addToPackageJson: 'dependencies',
+                        },
+                      },
+                    },
+                    second: {
+                      version: '2.0.0',
+                      ...(gated ? { requires: { gate: '^2.0.0' } } : {}),
+                      packages: {
+                        child: {
+                          version: '2.0.0',
+                          addToPackageJson: 'devDependencies',
+                          ignoreMigrations: true,
+                        },
+                      },
+                    },
+                  },
+                });
+              }
+
+              return Promise.resolve({ version: '2.0.0' });
+            },
+            from: {},
+            to: {},
+          });
+
+        const gated = await createMigrator(true).migrate('mypackage', '2.0.0');
+        const ungated = await createMigrator(false).migrate(
+          'mypackage',
+          '2.0.0'
+        );
+
+        const expected = {
+          version: '2.0.0',
+          addToPackageJson: 'devDependencies',
+          ignoreMigrations: true,
+        };
+        expect(gated.packageUpdates.child).toEqual(expected);
+        expect(ungated.packageUpdates.child).toEqual(expected);
+      });
+
+      it('should prompt when requirements are met', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('Yes'));
+        const promptMessage =
+          'Do you want to update the packages related to <some fwk name>?';
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: { child1: '1.0.0', pkg1: '2.0.0' },
+          }),
+          getInstalledPackageVersion: (p) => (p === 'pkg1' ? '2.0.0' : '1.0.0'),
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  version2: {
+                    version: '2.0.0',
+                    'x-prompt': promptMessage,
+                    requires: { pkg1: '^2.0.0' },
+                    packages: {
+                      child1: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'child1') {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+            child1: { version: '3.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+        expect(mockPrompt).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining(promptMessage),
+          })
+        );
+      });
+
+      it('should not prompt when requirements are not met', async () => {
+        mockPrompt.mockReturnValue(Promise.resolve('Yes'));
+        const promptMessage =
+          'Do you want to update the packages related to <some fwk name>?';
+        const migrator = new Migrator({
+          packageJson: createPackageJson({
+            dependencies: { child1: '1.0.0', pkg1: '1.0.0' },
+          }),
+          getInstalledPackageVersion: () => '1.0.0',
+          fetch: (p) => {
+            if (p === 'mypackage') {
+              return Promise.resolve({
+                version: '2.0.0',
+                packageJsonUpdates: {
+                  version2: {
+                    version: '2.0.0',
+                    'x-prompt': promptMessage,
+                    requires: { pkg1: '^2.0.0' },
+                    packages: {
+                      child1: { version: '3.0.0' },
+                    },
+                  },
+                },
+              });
+            } else if (p === 'child1') {
+              return Promise.resolve({ version: '3.0.0' });
+            } else {
+              return Promise.resolve(null);
+            }
+          },
+          from: {},
+          to: {},
+          interactive: true,
+        });
+
+        const result = await migrator.migrate('mypackage', '2.0.0');
+
+        expect(result).toStrictEqual({
+          migrations: [],
+          packageUpdates: {
+            mypackage: { version: '2.0.0', addToPackageJson: false },
+          },
+          minVersionWithSkippedUpdates: undefined,
+        });
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('migrations', () => {
+    it('should create a list of migrations to run', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: { child: '1.0.0', newChild: '1.0.0' },
+        }),
+        getInstalledPackageVersion: (p) => {
+          if (p === 'parent') return '1.0.0';
+          if (p === 'child') return '1.0.0';
+          return null;
+        },
+        fetch: (p: string): Promise<ResolvedMigrationConfiguration> => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                    newChild: {
+                      version: '3.0.0',
+                    },
+                  },
+                },
+              },
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'parent-desc',
+                },
+              },
+            });
+          } else if (p === 'child') {
+            return Promise.resolve({
+              version: '2.0.0',
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'child-desc',
+                },
+              },
+            });
+          } else if (p === 'newChild') {
+            return Promise.resolve({
+              version: '3.0.0',
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'new-child-desc',
+                },
+              },
+            });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [
+          {
+            version: '2.0.0',
+            name: 'version2',
+            package: 'parent',
+            description: 'parent-desc',
+          },
+          {
+            package: 'child',
+            version: '2.0.0',
+            name: 'version2',
+            description: 'child-desc',
+          },
+        ],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child: { version: '2.0.0', addToPackageJson: false },
+          newChild: { version: '3.0.0', addToPackageJson: false },
+        },
+        uninstalledDeclaredPackages: ['newChild'],
+      });
+    });
+
+    it('should not generate migrations for non top-level packages', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { child: '1.0.0' } }),
+        getInstalledPackageVersion: (p) => {
+          if (p === 'parent') return '1.0.0';
+          if (p === 'child') return '1.0.0';
+          if (p === 'newChild') return '1.0.0'; // installed as a transitive dep, not a top-level dep
+          return null;
+        },
+        fetch: (p: string): Promise<ResolvedMigrationConfiguration> => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                    newChild: {
+                      version: '3.0.0',
+                    },
+                  },
+                },
+              },
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'parent-desc',
+                },
+              },
+            });
+          } else if (p === 'child') {
+            return Promise.resolve({
+              version: '2.0.0',
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'child-desc',
+                },
+              },
+            });
+          } else if (p === 'newChild') {
+            return Promise.resolve({
+              version: '3.0.0',
+              generators: {
+                version2: {
+                  version: '3.0.0',
+                  description: 'new-child-desc',
+                },
+              },
+            });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      expect(await migrator.migrate('parent', '2.0.0')).toEqual({
+        migrations: [
+          {
+            version: '2.0.0',
+            name: 'version2',
+            package: 'parent',
+            description: 'parent-desc',
+          },
+          {
+            package: 'child',
+            version: '2.0.0',
+            name: 'version2',
+            description: 'child-desc',
+          },
+        ],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          child: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should not generate migrations for packages which confirmation prompt answer was false', async () => {
+      mockPrompt.mockReturnValue(Promise.resolve('No'));
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: { child: '1.0.0', child2: '1.0.0' },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: (p) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '2.0.0' },
+                    child2: { version: '3.0.0' },
+                  },
+                  'x-prompt':
+                    'Do you want to update the packages related to <some fwk name>?',
+                },
+              },
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'parent-desc',
+                },
+              },
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({
+              version: '2.0.0',
+              generators: {
+                version2: {
+                  version: '2.0.0',
+                  description: 'child1-desc',
+                },
+              },
+            });
+          } else if (p === 'child2') {
+            return Promise.resolve({
+              version: '3.0.0',
+              generators: {
+                version2: {
+                  version: '3.0.0',
+                  description: 'child2-desc',
+                },
+              },
+            });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+        interactive: true,
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      expect(result).toEqual({
+        migrations: [
+          {
+            version: '2.0.0',
+            name: 'version2',
+            package: 'parent',
+            description: 'parent-desc',
+          },
+        ],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+        },
+        minVersionWithSkippedUpdates: '2.0.0',
+      });
+      expect(mockPrompt).toHaveBeenCalled();
+    });
+
+    it('should generate migrations that meet requirements and leave out those that do not meet them', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            child1: '1.0.0',
+            child2: '1.0.0',
+            pkg1: '1.0.0',
+            pkg2: '2.0.0',
+            pkg3: '2.0.0',
+          },
+        }),
+        getInstalledPackageVersion: (p) =>
+          p === 'pkg2' || p === 'pkg3' ? '2.0.0' : '1.0.0',
+        fetch: (p) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child1: { version: '2.0.0' },
+                    child2: { version: '3.0.0' },
+                  },
+                },
+              },
+              generators: {
+                migration1: {
+                  version: '2.0.0',
+                  description: 'migration1 desc',
+                  requires: {
+                    // exist on a lower version
+                    pkg1: '^2.0.0',
+                  },
+                },
+                migration2: {
+                  version: '2.0.0',
+                  description: 'migration2 desc',
+                  requires: {
+                    // exists on a version satisfying the range
+                    pkg2: '^2.0.0',
+                  },
+                },
+              },
+            });
+          } else if (p === 'child1') {
+            return Promise.resolve({
+              version: '2.0.0',
+              generators: {
+                migration1: {
+                  version: '2.0.0',
+                  description: 'child1 - migration 1 desc',
+                  requires: {
+                    // exists on a version satisfying the range
+                    pkg3: '^2.0.0',
+                  },
+                },
+              },
+            });
+          } else if (p === 'child2') {
+            return Promise.resolve({
+              version: '3.0.0',
+              generators: {
+                migration1: {
+                  version: '3.0.0',
+                  description: 'child2 - migration1 desc',
+                  requires: {
+                    // non existent
+                    pkg4: '^2.0.0',
+                  },
+                },
+              },
+            });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      expect(result).toEqual({
+        migrations: [
+          {
+            version: '2.0.0',
+            name: 'migration2',
+            package: 'parent',
+            description: 'migration2 desc',
+            requires: { pkg2: '^2.0.0' },
+          },
+          {
+            version: '2.0.0',
+            name: 'migration1',
+            package: 'child1',
+            description: 'child1 - migration 1 desc',
+            requires: { pkg3: '^2.0.0' },
+          },
+        ],
+        packageUpdates: {
+          child1: { version: '2.0.0', addToPackageJson: false },
+          child2: { version: '3.0.0', addToPackageJson: false },
+          parent: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+
+    it('should generate the correct migrations when  "--exclude-applied-migrations"', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            parent: '1.0.0',
+            pkg1: '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: (p, overrides) => overrides?.[p] ?? '1.0.0',
+        fetch: (p) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageGroup: [{ package: 'pkg1', version: '*' }],
+              generators: {
+                // previous migration
+                migration1: {
+                  version: '1.0.0',
+                  description: 'migration1 desc',
+                  requires: {
+                    // didn't meet requirements and now meets requirements, should collect it
+                    pkg1: '>=2.0.0',
+                  },
+                },
+                // previous migration
+                migration2: {
+                  version: '1.0.0',
+                  description: 'migration2 desc',
+                  requires: {
+                    // didn't meet requirements and now doesn't meet requirements, should not collect it
+                    pkg1: '>=3.0.0',
+                  },
+                },
+                // previous migration, no requirements, should not collect it
+                migration3: {
+                  version: '1.0.0',
+                  description: 'migration3 desc',
+                },
+                // new migration
+                migration4: {
+                  version: '2.0.0',
+                  description: 'migration4 desc',
+                  requires: {
+                    // meets requirements, should collect it
+                    pkg1: '>=2.0.0',
+                  },
+                },
+                // new migration
+                migration5: {
+                  version: '2.0.0',
+                  description: 'migration5 desc',
+                  requires: {
+                    // doesn't meet requirements, should not collect it
+                    pkg1: '>=3.0.0',
+                  },
+                },
+                // new migrationg, no requirements, should collect it
+                migration6: {
+                  version: '2.0.0',
+                  description: 'migration6 desc',
+                },
+              },
+            });
+          } else if (p === 'pkg1') {
+            return Promise.resolve({ version: '2.0.0' });
+          } else {
+            return Promise.resolve(null);
+          }
+        },
+        from: { parent: '0.1.0' },
+        to: {},
+        excludeAppliedMigrations: true,
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      expect(result).toEqual({
+        migrations: [
+          {
+            version: '1.0.0',
+            name: 'migration1',
+            package: 'parent',
+            description: 'migration1 desc',
+            requires: { pkg1: '>=2.0.0' },
+          },
+          {
+            version: '2.0.0',
+            name: 'migration4',
+            package: 'parent',
+            description: 'migration4 desc',
+            requires: { pkg1: '>=2.0.0' },
+          },
+          {
+            version: '2.0.0',
+            name: 'migration6',
+            package: 'parent',
+            description: 'migration6 desc',
+          },
+        ],
+        packageUpdates: {
+          parent: { version: '2.0.0', addToPackageJson: false },
+          pkg1: { version: '2.0.0', addToPackageJson: false },
+        },
+      });
+    });
+  });
+
+  describe('normalizeVersions', () => {
+    it('should return version when it meets semver requirements', () => {
+      expect(normalizeVersion('1.2.3')).toEqual('1.2.3');
+      expect(normalizeVersion('1.2.3-beta.1')).toEqual('1.2.3-beta.1');
+      expect(normalizeVersion('1.2.3-beta-next.1')).toEqual(
+        '1.2.3-beta-next.1'
+      );
+    });
+
+    it('should handle versions missing a patch or a minor', () => {
+      expect(normalizeVersion('1.2')).toEqual('1.2.0');
+      expect(normalizeVersion('1')).toEqual('1.0.0');
+      expect(normalizeVersion('1-beta.1')).toEqual('1.0.0-beta.1');
+    });
+
+    it('should handle incorrect versions', () => {
+      expect(normalizeVersion('1-invalid-version')).toEqual(
+        '1.0.0-invalid-version'
+      );
+      expect(normalizeVersion('1.invalid-version')).toEqual('1.0.0');
+      expect(normalizeVersion('invalid-version')).toEqual('0.0.0');
+    });
+  });
+
+  describe('command failures', () => {
+    it('should format child process failures using stderr output', () => {
+      expect(
+        formatCommandFailure('pnpm add nx@22.6.1', {
+          message: 'Command failed: pnpm add nx@22.6.1',
+          stderr: 'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/nx',
+        })
+      ).toBe(
+        [
+          'Command failed: pnpm add nx@22.6.1',
+          'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/nx',
+        ].join('\n')
+      );
+    });
+
+    it('should fall back to the child process message when no output is available', () => {
+      expect(
+        formatCommandFailure('pnpm add nx@22.6.1', {
+          message:
+            'Command failed: pnpm add nx@22.6.1\nSomething else went wrong',
+        })
+      ).toBe(
+        [
+          'Command failed: pnpm add nx@22.6.1',
+          'Something else went wrong',
+        ].join('\n')
+      );
+    });
+  });
+
+  describe('readLocalNxVersion', () => {
+    let root: string;
+
+    beforeEach(() => {
+      root = realpathSync(mkdtempSync(join(tmpdir(), 'nx-local-version-')));
+    });
+
+    afterEach(() => {
+      rmSync(root, { recursive: true, force: true });
+    });
+
+    it('resolves the version installed in the given workspace, not the running nx package', () => {
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({
+          name: 'nx',
+          version: '22.3.4',
+          exports: { './package.json': './package.json' },
+        })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('22.3.4');
+    });
+
+    it('returns undefined when the workspace has no nx installed', () => {
+      expect(readLocalNxVersion(root)).toBeUndefined();
+    });
+
+    it('resolves the installed nx when the workspace root package itself is named nx', () => {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({
+          name: 'nx',
+          version: '1.0.0',
+          exports: { './package.json': './package.json' },
+        })
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({
+          name: 'nx',
+          version: '22.3.4',
+          exports: { './package.json': './package.json' },
+        })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('22.3.4');
+    });
+
+    it('resolves through the PnP manifest, without requiring an active PnP runtime', () => {
+      // The empty yarn.lock is what makes detectPackageManager answer yarn,
+      // which the manifest consult requires (same in the fixtures below).
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, 'pkg'), { recursive: true });
+      writeFileSync(
+        join(root, 'pkg', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.0.0');
+    });
+
+    it('observes a rewritten PnP manifest, as left behind by an install', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      for (const [dir, version] of [
+        ['pkg1', '21.0.0'],
+        ['pkg2', '23.2.0'],
+      ]) {
+        mkdirSync(join(root, dir), { recursive: true });
+        writeFileSync(
+          join(root, dir, 'package.json'),
+          JSON.stringify({ name: 'nx', version })
+        );
+      }
+      const manifestFor = (dir: string) =>
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, '${dir}', 'package.json') };`;
+      writeFileSync(join(root, '.pnp.cjs'), manifestFor('pkg1'));
+
+      expect(readLocalNxVersion(root)).toBe('21.0.0');
+      writeFileSync(join(root, '.pnp.cjs'), manifestFor('pkg2'));
+      expect(readLocalNxVersion(root)).toBe('23.2.0');
+    });
+
+    it('falls back to the node_modules scan when the PnP manifest cannot be evaluated', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(join(ws, '.pnp.cjs'), `this is not javascript {{{`);
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBe('23.4.0');
+    });
+
+    it('reads the version from the PnP locator when the resolved file sits inside a zip archive', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => ({
+    name: 'nx',
+    reference: 'virtual:abc123#npm:21.5.0',
+  }),
+};`
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.5.0');
+    });
+
+    it('prefers a readable node_modules install over a zip-served manifest after a move off yarn', () => {
+      // A real move off yarn keeps yarn.lock (npm even rewrites it in place);
+      // the other manager's lockfile is what marks the manifest as leftover.
+      writeFileSync(join(root, 'package-lock.json'), '{}');
+      writeFileSync(join(root, 'yarn.lock'), '');
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => ({
+    name: 'nx',
+    reference: 'virtual:abc123#npm:21.5.0',
+  }),
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('23.4.0');
+    });
+
+    it('keeps the locator answer over a stray root install while yarn still drives the zip-served workspace', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => ({
+    name: 'nx',
+    reference: 'virtual:abc123#npm:21.5.0',
+  }),
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.5.0');
+    });
+
+    it("prefers the workspace's own install over a readable manifest-resolved nx, as left behind by a switch away from PnP", () => {
+      writeFileSync(join(root, 'package-lock.json'), '{}');
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, '.yarn', 'unplugged', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, '.yarn', 'unplugged', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, '.yarn', 'unplugged', 'nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('23.4.0');
+    });
+
+    it('does not consult a leftover manifest once the workspace moved off yarn', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(join(ws, 'pnp-nx'), { recursive: true });
+      writeFileSync(join(ws, 'package-lock.json'), '{}');
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, 'pnp-nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pnp-nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBe('21.0.0');
+    });
+
+    it('does not let a stray root install shadow a live yarn PnP install', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, 'pnp-nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'pnp-nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pnp-nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.0.0');
+    });
+
+    it('does not let a leftover .nx installation shadow a live PnP install', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, '.nx', 'installation', 'node_modules', 'nx'), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(root, '.nx', 'installation', 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+      mkdirSync(join(root, 'pnp-nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'pnp-nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pnp-nx', 'package.json') };`
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.0.0');
+    });
+
+    it('still answers from the manifest when a competing lockfile was written without an install', () => {
+      // `pnpm install --lockfile-only` writes pnpm-lock.yaml into a live PnP
+      // workspace without touching yarn.lock, .pnp.cjs, or the installation.
+      writeFileSync(join(root, 'yarn.lock'), '');
+      writeFileSync(join(root, 'pnpm-lock.yaml'), '');
+      mkdirSync(join(root, 'pkg'), { recursive: true });
+      writeFileSync(
+        join(root, 'pkg', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+      );
+
+      expect(readLocalNxVersion(root)).toBe('21.0.0');
+    });
+
+    it.each(['bun.lock', 'bun.lockb'])(
+      'recognizes %s as competing when nx.json pins yarn',
+      (bunLockfile) => {
+        // Only an nx.json pin makes this observable: without it, bun's
+        // lockfiles outrank yarn.lock in detection and the manifest is
+        // skipped anyway.
+        const spy = vi
+          .spyOn(configModule, 'readNxJson')
+          .mockReturnValue({ cli: { packageManager: 'yarn' } });
+        try {
+          writeFileSync(join(root, 'yarn.lock'), '');
+          writeFileSync(join(root, bunLockfile), '');
+          mkdirSync(join(root, 'pkg'), { recursive: true });
+          writeFileSync(
+            join(root, 'pkg', 'package.json'),
+            JSON.stringify({ name: 'nx', version: '21.0.0' })
+          );
+          writeFileSync(
+            join(root, '.pnp.cjs'),
+            `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+          );
+          mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+          writeFileSync(
+            join(root, 'node_modules', 'nx', 'package.json'),
+            JSON.stringify({ name: 'nx', version: '24.0.0' })
+          );
+
+          expect(readLocalNxVersion(root)).toBe('24.0.0');
+        } finally {
+          spy.mockRestore();
+        }
+      }
+    );
+
+    it('recognizes npm-shrinkwrap.json as a move off yarn', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      writeFileSync(join(root, 'npm-shrinkwrap.json'), '{}');
+      mkdirSync(join(root, '.yarn', 'unplugged', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, '.yarn', 'unplugged', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, '.yarn', 'unplugged', 'nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(root)).toBe('23.4.0');
+    });
+
+    it('does not consult a manifest when the detected package manager is not yarn', () => {
+      // No lockfile on disk: detection falls back to the invoking package
+      // manager, the same answer the hand-off's spawn selector produces.
+      const userAgent = process.env.npm_config_user_agent;
+      process.env.npm_config_user_agent = 'pnpm/9.15.0 npm/? node/v20.0.0';
+      try {
+        mkdirSync(join(root, 'pkg'), { recursive: true });
+        writeFileSync(
+          join(root, 'pkg', 'package.json'),
+          JSON.stringify({ name: 'nx', version: '24.0.0' })
+        );
+        writeFileSync(
+          join(root, '.pnp.cjs'),
+          `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+        );
+        mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+        writeFileSync(
+          join(root, 'node_modules', 'nx', 'package.json'),
+          JSON.stringify({ name: 'nx', version: '23.4.0' })
+        );
+
+        expect(readLocalNxVersion(root)).toBe('23.4.0');
+      } finally {
+        if (userAgent === undefined) {
+          delete process.env.npm_config_user_agent;
+        } else {
+          process.env.npm_config_user_agent = userAgent;
+        }
+      }
+    });
+
+    it('falls back to the node_modules scan when the package-manager detection throws', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, '.yarn', 'unplugged', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, '.yarn', 'unplugged', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '21.0.0' })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, '.yarn', 'unplugged', 'nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+      // detectPackageManager reads nx.json, which throws on a malformed file.
+      const spy = vi
+        .spyOn(configModule, 'readNxJson')
+        .mockImplementation(() => {
+          throw new Error('Cannot parse nx.json');
+        });
+      try {
+        expect(readLocalNxVersion(root)).toBe('23.4.0');
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('returns undefined when the PnP-resolved package.json declares a non-string version', () => {
+      writeFileSync(join(root, 'yarn.lock'), '');
+      mkdirSync(join(root, 'pkg'), { recursive: true });
+      writeFileSync(
+        join(root, 'pkg', 'package.json'),
+        JSON.stringify({ name: 'nx', version: { major: 24 } })
+      );
+      writeFileSync(
+        join(root, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+      );
+
+      expect(readLocalNxVersion(root)).toBeUndefined();
+    });
+
+    it('skips an install whose package.json declares a non-string version', () => {
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: { major: 24 } })
+      );
+
+      expect(readLocalNxVersion(root)).toBeUndefined();
+    });
+
+    it("returns undefined rather than the workspace's own install when the PnP-resolved package.json has no version", () => {
+      const ws = join(root, 'ws');
+      mkdirSync(join(ws, 'pkg'), { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, 'pkg', 'package.json'),
+        JSON.stringify({ name: 'nx' })
+      );
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'pkg', 'package.json') };`
+      );
+      mkdirSync(join(ws, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(ws, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBeUndefined();
+    });
+
+    it('does not let an ancestor install shadow the PnP locator when the manifest resolves nx', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => ({
+    name: 'nx',
+    reference: 'virtual:abc123#npm:21.5.0',
+  }),
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBe('21.5.0');
+    });
+
+    it('returns undefined rather than an ancestor version when a resolving manifest is unreadable and has no usable locator', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node\nmodule.exports = { resolveRequest: () => require('path').join(__dirname, 'cache', 'nx.zip', 'node_modules', 'nx', 'package.json') };`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBeUndefined();
+    });
+
+    it('returns undefined rather than an ancestor version when the manifest locator throws', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => {
+    throw new Error('locator failed');
+  },
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBeUndefined();
+    });
+
+    it('returns undefined rather than an ancestor version when the manifest locator throws a value that cannot be stringified', () => {
+      const verboseSpy = vi.spyOn(logger, 'verbose').mockImplementation();
+      try {
+        const ws = join(root, 'ws');
+        mkdirSync(ws, { recursive: true });
+        writeFileSync(join(ws, 'yarn.lock'), '');
+        writeFileSync(
+          join(ws, '.pnp.cjs'),
+          `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => {
+    throw Object.create(null);
+  },
+};`
+        );
+        mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+        writeFileSync(
+          join(root, 'node_modules', 'nx', 'package.json'),
+          JSON.stringify({ name: 'nx', version: '24.0.0' })
+        );
+
+        expect(readLocalNxVersion(ws)).toBeUndefined();
+        // A null-prototype object defeats String() but not the
+        // Object.prototype.toString rung.
+        expect(verboseSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[object Object]')
+        );
+      } finally {
+        verboseSpy.mockRestore();
+      }
+    });
+
+    it('returns undefined rather than an ancestor version when the manifest locator throws a revoked proxy', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () =>
+    require('path').join(
+      __dirname,
+      'cache',
+      'nx.zip',
+      'node_modules',
+      'nx',
+      'package.json'
+    ),
+  findPackageLocator: () => {
+    const { proxy, revoke } = Proxy.revocable({}, {});
+    revoke();
+    throw proxy;
+  },
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBeUndefined();
+    });
+
+    it('returns undefined rather than an ancestor version when the resolved path cannot be read or printed', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(ws, { recursive: true });
+      writeFileSync(join(ws, 'yarn.lock'), '');
+      // readFileSync accepts a Buffer path, so the read succeeds (pointed at
+      // the non-JSON manifest itself), the JSON parse throws, and the error
+      // rewrite coerces the path through its own toString, which throws an
+      // unprintable value.
+      writeFileSync(
+        join(ws, '.pnp.cjs'),
+        `#!/usr/bin/env node
+module.exports = {
+  resolveRequest: () => {
+    const p = Buffer.from(__filename);
+    p.toString = () => {
+      throw Object.create(null);
+    };
+    return p;
+  },
+};`
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBeUndefined();
+    });
+
+    it('walks ancestor directories to find an nx hoisted above an npm workspace root', () => {
+      const inner = join(root, 'apps', 'inner');
+      mkdirSync(inner, { recursive: true });
+      writeFileSync(join(inner, 'package-lock.json'), '{}');
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(inner)).toBe('24.0.0');
+    });
+
+    it('walks ancestor directories to find an nx installed at an outer pnpm workspace root', () => {
+      const inner = join(root, 'apps', 'inner');
+      mkdirSync(inner, { recursive: true });
+      writeFileSync(
+        join(root, 'pnpm-workspace.yaml'),
+        `packages:\n  - 'apps/inner'\n`
+      );
+      writeFileSync(join(inner, 'pnpm-lock.yaml'), '');
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '24.0.0' })
+      );
+
+      expect(readLocalNxVersion(inner)).toBe('24.0.0');
+    });
+
+    it('skips a versionless nx manifest and keeps scanning the remaining install locations', () => {
+      const ws = join(root, 'ws');
+      mkdirSync(join(ws, '.nx', 'installation', 'node_modules', 'nx'), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(ws, '.nx', 'installation', 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx' })
+      );
+      mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(root, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '23.4.0' })
+      );
+
+      expect(readLocalNxVersion(ws)).toBe('23.4.0');
+    });
+
+    it('logs the location that supplied the version', () => {
+      const verboseSpy = vi.spyOn(logger, 'verbose').mockImplementation();
+      try {
+        mkdirSync(join(root, 'node_modules', 'nx'), { recursive: true });
+        writeFileSync(
+          join(root, 'node_modules', 'nx', 'package.json'),
+          JSON.stringify({ name: 'nx', version: '22.3.4' })
+        );
+
+        expect(readLocalNxVersion(root)).toBe('22.3.4');
+        expect(verboseSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            join(root, 'node_modules', 'nx', 'package.json')
+          )
+        );
+      } finally {
+        verboseSpy.mockRestore();
+      }
+    });
+
+    it('follows a symlinked node_modules to the installed nx', () => {
+      const sibling = `${root}-linked`;
+      mkdirSync(join(sibling, 'node_modules', 'nx'), { recursive: true });
+      writeFileSync(
+        join(sibling, 'node_modules', 'nx', 'package.json'),
+        JSON.stringify({ name: 'nx', version: '9.9.9' })
+      );
+      symlinkSync(
+        join(sibling, 'node_modules'),
+        join(root, 'node_modules'),
+        'junction'
+      );
+
+      try {
+        expect(readLocalNxVersion(root)).toBe('9.9.9');
+      } finally {
+        rmSync(sibling, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('parseMigrationsOptions', () => {
+    // Pin non-TTY so the canPrompt-gated eligibility fetch stays off as it does
+    // on CI, instead of hitting the registry in a local TTY run.
+    let originalStdinIsTTY: boolean | undefined;
+    beforeEach(() => {
+      originalStdinIsTTY = process.stdin.isTTY;
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: false,
+        configurable: true,
+      });
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      // `getInstalledVersion(pkg)` mirrors the installed nx version for the
+      // canonical packages so optional bound checks read the same value.
+      mockGetInstalledVersion.mockImplementation((pkg: string) =>
+        pkg === 'nx' || pkg === '@nx/workspace'
+          ? mockGetInstalledNxVersion()
+          : null
+      );
+      mockGetInstalledPackageGroup.mockReturnValue(
+        new Set([
+          'nx',
+          'nx-cloud',
+          'create-nx-workspace',
+          '@nx/js',
+          '@nx/workspace',
+          '@nx/react',
+        ])
+      );
+      mockGetInstalledLegacyNrwlWorkspaceVersion.mockReturnValue(null);
+    });
+    afterEach(() => {
+      mockGetInstalledNxVersion.mockReset();
+      mockGetInstalledVersion.mockReset();
+      mockGetInstalledPackageGroup.mockReset();
+      mockGetInstalledLegacyNrwlWorkspaceVersion.mockReset();
+      vi.restoreAllMocks();
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: originalStdinIsTTY,
+        configurable: true,
+      });
+    });
+
+    it('should work for generating migrations', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('12.3.0');
+      const r = await parseMigrationsOptions({
+        packageAndVersion: '8.12.0',
+        from: '@myscope/a@12.3,@myscope/b@1.1.1',
+        to: '@myscope/c@12.3.1',
+      });
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '8.12.0',
+        from: {
+          '@myscope/a': '12.3.0',
+          '@myscope/b': '1.1.1',
+        },
+        to: {
+          '@myscope/c': '12.3.1',
+        },
+      });
+    });
+
+    it('should work for running migrations', async () => {
+      const r = await parseMigrationsOptions({
+        runMigrations: '',
+        ifExists: true,
+      });
+      expect(r).toEqual({
+        type: 'runMigrations',
+        runMigrations: 'migrations.json',
+        ifExists: true,
+        agentic: undefined,
+        validate: undefined,
+      });
+    });
+
+    it('should propagate the agentic and validate values when running migrations', async () => {
+      const r = await parseMigrationsOptions({
+        runMigrations: '',
+        ifExists: true,
+        agentic: 'claude-code',
+        validate: false,
+      });
+      expect(r).toMatchObject({
+        type: 'runMigrations',
+        agentic: 'claude-code',
+        validate: false,
+      });
+    });
+
+    it('should propagate the interactive value when running migrations', async () => {
+      const r = await parseMigrationsOptions({
+        runMigrations: '',
+        ifExists: true,
+        interactive: false,
+      });
+      expect(r).toMatchObject({
+        type: 'runMigrations',
+        interactive: false,
+      });
+    });
+
+    it('should discriminate a single migration when --run-migration is set', async () => {
+      const r = await parseMigrationsOptions({
+        runMigration: '@nx/js:my-migration',
+      });
+      expect(r).toEqual({
+        type: 'runSingleMigration',
+        runMigration: '@nx/js:my-migration',
+        runId: undefined,
+      });
+    });
+
+    it('should carry the run id for a recorded single migration', async () => {
+      const r = await parseMigrationsOptions({
+        runMigration: '@nx/js:my-migration',
+        runId: 'run-1',
+      });
+      expect(r).toMatchObject({
+        type: 'runSingleMigration',
+        runMigration: '@nx/js:my-migration',
+        runId: 'run-1',
+      });
+    });
+
+    it('should reject an empty --run-migration', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: '' })
+      ).rejects.toThrow(/'--run-migration' requires a migration id/);
+    });
+
+    it('should reject an empty --run-id', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', runId: '' })
+      ).rejects.toThrow(/'--run-id' requires the id of the migrate run/);
+    });
+
+    describe('orchestrator reconcile', () => {
+      it('discriminates a reconcile from a bare --run-id', async () => {
+        expect(await parseMigrationsOptions({ runId: 'run-1' })).toEqual({
+          type: 'orchestratorReconcile',
+          runId: 'run-1',
+        });
+      });
+
+      it('carries a --step-action decision on a reconcile', async () => {
+        expect(
+          await parseMigrationsOptions({ runId: 'run-1', stepAction: 'retry' })
+        ).toEqual({
+          type: 'orchestratorReconcile',
+          runId: 'run-1',
+          stepAction: 'retry',
+        });
+      });
+
+      it('rejects an unrecognized --step-action value instead of forwarding it unchecked', async () => {
+        await expect(() =>
+          parseMigrationsOptions({ runId: 'run-1', stepAction: 'bogus' })
+        ).rejects.toThrow(
+          /'--step-action' must be one of retry, skip, retry-clean, adopt, unresolved/
+        );
+      });
+
+      it('still rejects an empty --run-id', async () => {
+        await expect(() =>
+          parseMigrationsOptions({ runId: '' })
+        ).rejects.toThrow(/'--run-id' requires the id of the migrate run/);
+      });
+
+      it('rejects --run-migrations rather than silently reconciling instead', async () => {
+        await expect(() =>
+          parseMigrationsOptions({
+            runId: 'run-1',
+            runMigrations: 'migrations.json',
+          })
+        ).rejects.toThrow(
+          /'--run-id' .* cannot be combined with '--run-migrations'.*pass '--agentic' \(or '--agentic=<agent>'\) as well/
+        );
+        await expect(() =>
+          parseMigrationsOptions({
+            runId: 'run-1',
+            runMigrations: 'migrations.json',
+            agentic: false,
+          })
+        ).rejects.toThrow(
+          /'--run-id' .* cannot be combined with '--run-migrations'/
+        );
+      });
+
+      it('continues a run in a new agent session for --run-migrations --agentic=<agent> --run-id', async () => {
+        expect(
+          await parseMigrationsOptions({
+            runId: 'run-1',
+            runMigrations: 'migrations.json',
+            agentic: 'claude-code',
+            ifExists: false,
+          })
+        ).toEqual({
+          type: 'runMigrations',
+          runMigrations: 'migrations.json',
+          ifExists: false,
+          agentic: 'claude-code',
+          validate: undefined,
+          interactive: undefined,
+          runId: 'run-1',
+        });
+        expect(
+          await parseMigrationsOptions({
+            runId: 'run-1',
+            runMigrations: '',
+            agentic: true,
+            ifExists: false,
+          })
+        ).toMatchObject({ type: 'runMigrations', runId: 'run-1' });
+      });
+
+      it('rejects a step action on a continue', async () => {
+        await expect(() =>
+          parseMigrationsOptions({
+            runId: 'run-1',
+            runMigrations: 'migrations.json',
+            agentic: 'claude-code',
+            stepAction: 'retry',
+          })
+        ).rejects.toThrow(
+          /'--step-action' cannot be combined with '--run-migrations'/
+        );
+      });
+    });
+
+    describe('--start-fresh', () => {
+      it('carries it on a --run-migrations invocation only', async () => {
+        expect(
+          await parseMigrationsOptions({
+            runMigrations: 'migrations.json',
+            startFresh: true,
+            runId: 'run-1',
+            ifExists: false,
+          })
+        ).toEqual({
+          type: 'runMigrations',
+          runMigrations: 'migrations.json',
+          ifExists: false,
+          agentic: undefined,
+          validate: undefined,
+          interactive: undefined,
+          runId: 'run-1',
+          startFresh: true,
+        });
+      });
+
+      it('rejects it without --run-migrations or --run-id', async () => {
+        await expect(() =>
+          parseMigrationsOptions({ startFresh: true })
+        ).rejects.toThrow(/'--start-fresh' requires '--run-migrations'/);
+        await expect(() =>
+          parseMigrationsOptions({
+            startFresh: true,
+            runMigrations: 'migrations.json',
+          })
+        ).rejects.toThrow(
+          /'--start-fresh' requires '--run-id=<id>' naming the run to replace/
+        );
+      });
+    });
+
+    it('should reject --step-action without --run-id', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ stepAction: 'retry' })
+      ).rejects.toThrow(/'--step-action' requires '--run-id'/);
+    });
+
+    it('should reject --step-action combined with --run-migration', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', stepAction: 'retry' })
+      ).rejects.toThrow(
+        /'--step-action' cannot be combined with '--run-migration'/
+      );
+    });
+
+    it('should reject --run-migration combined with --run-migrations', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', runMigrations: '' })
+      ).rejects.toThrow(/cannot be combined with '--run-migrations'/);
+    });
+
+    it('should reject --run-migration combined with --include', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', include: 'required' })
+      ).rejects.toThrow(/cannot be combined with '--include'/);
+    });
+
+    it('should reject --run-migration combined with --multi-major-mode', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', multiMajorMode: 'direct' })
+      ).rejects.toThrow(/cannot be combined with '--multi-major-mode'/);
+    });
+
+    it('should accept --run-migration combined with --agentic and --validate', async () => {
+      await expect(
+        parseMigrationsOptions({
+          runMigration: 'a',
+          agentic: 'claude-code',
+          validate: true,
+        })
+      ).resolves.toEqual({
+        type: 'runSingleMigration',
+        runMigration: 'a',
+        agentic: 'claude-code',
+        validate: true,
+      });
+    });
+
+    it('should reject --agentic combined with --run-id', async () => {
+      // A recorded run is driven by the outer agent; only the explicit "on"
+      // values conflict, on both the recorded and the bare reconcile shape.
+      await expect(() =>
+        parseMigrationsOptions({
+          runMigration: 'a',
+          runId: 'r1',
+          agentic: true,
+        })
+      ).rejects.toThrow(/'--agentic' cannot be combined with '--run-id'/);
+      await expect(() =>
+        parseMigrationsOptions({ runId: 'r1', agentic: 'claude-code' })
+      ).rejects.toThrow(/'--agentic' cannot be combined with '--run-id'/);
+      await expect(
+        parseMigrationsOptions({
+          runMigration: 'a',
+          runId: 'r1',
+          agentic: false,
+        })
+      ).resolves.toMatchObject({ type: 'runSingleMigration', runId: 'r1' });
+    });
+
+    it('should reject --run-migration combined with --if-exists', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ runMigration: 'a', ifExists: true })
+      ).rejects.toThrow(/cannot be combined with '--if-exists'/);
+    });
+
+    it('should accept explicit "off" values of the other run-phase flags with --run-migration', async () => {
+      // `ifExists: false` is the yargs default, not a user request, and
+      // matches what this path does anyway.
+      await expect(
+        parseMigrationsOptions({
+          runMigration: 'a',
+          agentic: false,
+          validate: false,
+          ifExists: false,
+        })
+      ).resolves.toEqual({
+        type: 'runSingleMigration',
+        runMigration: 'a',
+        agentic: false,
+        validate: false,
+      });
+    });
+
+    it('classifies the run flags as run-phase and everything else as not', () => {
+      expect(isRunPhaseInvocation({ runMigration: '@nx/js:x' })).toBe(true);
+      expect(isRunPhaseInvocation({ runId: 'run-1' })).toBe(true);
+      expect(isRunPhaseInvocation({ stepAction: 'retry' })).toBe(true);
+      // Variables rather than fresh literals: the Pick parameter drops
+      // MigrateArgs's index signature, so excess-property checking would
+      // reject these near-miss keys inline.
+      const runMigrationsArgs: MigrateArgs = { runMigrations: '' };
+      expect(isRunPhaseInvocation(runMigrationsArgs)).toBe(false);
+      const packageAndVersionArgs: MigrateArgs = {
+        packageAndVersion: 'nx@latest',
+      };
+      expect(isRunPhaseInvocation(packageAndVersionArgs)).toBe(false);
+    });
+
+    it('should default to nx@latest when no packageAndVersion is provided', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockImplementation((pkg, version) => Promise.resolve(version));
+      const r = await parseMigrationsOptions({});
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: 'latest',
+      });
+    });
+
+    it.each([
+      {
+        desc: 'pre-v22 modern install',
+        installedNx: '21.3.0',
+        installedLegacy: null,
+      },
+      {
+        desc: 'legacy nx (<14) install',
+        installedNx: '13.5.0',
+        installedLegacy: null,
+      },
+      {
+        desc: 'legacy @nrwl/workspace install',
+        installedNx: null,
+        installedLegacy: '13.5.0',
+      },
+      { desc: 'nx not installed', installedNx: null, installedLegacy: null },
+    ])(
+      'should throw for a bare invocation on a pre-v22 install: $desc',
+      async ({ installedNx, installedLegacy }) => {
+        mockGetInstalledNxVersion.mockReturnValue(installedNx);
+        mockGetInstalledLegacyNrwlWorkspaceVersion.mockReturnValue(
+          installedLegacy
+        );
+        await expect(() => parseMigrationsOptions({})).rejects.toThrow(
+          'Provide the package and version to migrate to. E.g., `nx migrate nx@<version>`.'
+        );
+      }
+    );
+
+    it('should resolve the latest dist-tag up front for a bare invocation on v22+', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('23.1.0');
+      const r = await parseMigrationsOptions({});
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '23.1.0',
+      });
+    });
+
+    it('should accept --include=required for a target that supports optional updates', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: 'nx@23.0.0',
+          include: 'required',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '23.0.0',
+        include: 'required',
+      });
+    });
+
+    it('should accept --include=required for a non-nx target that supports optional updates', async () => {
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: '@nx/react@23.0.0',
+          include: 'required',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: '@nx/react',
+        targetVersion: '23.0.0',
+        include: 'required',
+      });
+    });
+
+    it('should reject --include for a target that does not support optional updates', async () => {
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: '@nx/react@22.0.0',
+            include: 'required',
+          },
+          includeGateFetch(false)
+        )
+      ).rejects.toThrow(
+        `Error: '--include' requires the target package to support optional updates, but '@nx/react@22.0.0' does not.`
+      );
+    });
+
+    it('should accept --include combined with --interactive for a target that supports optional updates', async () => {
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: 'nx@23.0.0',
+          include: 'required',
+          interactive: true,
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '23.0.0',
+        include: 'required',
+        interactive: true,
+      });
+    });
+
+    it('should reject --include=optional combined with --interactive', async () => {
+      await expect(() =>
+        parseMigrationsOptions({ include: 'optional', interactive: true })
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot be combined with '--interactive'.`
+      );
+    });
+
+    it('should reject the nx.json `optional` value combined with --interactive', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@22.5.0',
+            includeFromConfig: 'optional',
+            interactive: true,
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot be combined with '--interactive'.`
+      );
+    });
+
+    it('should allow --interactive for a target that supports optional updates (resolves to "all" in non-TTY)', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      const r = await parseMigrationsOptions({
+        packageAndVersion: 'nx@22.7.0',
+        interactive: true,
+      });
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '22.7.0',
+        interactive: true,
+        include: 'all',
+      });
+    });
+
+    it('should allow --no-interactive when migrating to v23+', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      const r = await parseMigrationsOptions({
+        packageAndVersion: 'nx@23.0.0',
+        interactive: false,
+      });
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '23.0.0',
+        interactive: false,
+      });
+    });
+
+    it('should allow --interactive for non-nx-equivalent targets', async () => {
+      const r = await parseMigrationsOptions({
+        packageAndVersion: 'mypackage@2.0.0',
+        interactive: true,
+      });
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'mypackage',
+        targetVersion: '2.0.0',
+        interactive: true,
+        include: 'all',
+      });
+    });
+
+    it('should handle different variations of the target package', async () => {
+      const packageRegistryViewSpy = vi
+        .spyOn(packageMgrUtils, 'resolvePackageVersionUsingRegistry')
+        .mockImplementation((pkg, version) => {
+          return Promise.resolve(version);
+        });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '@angular/core' })
+      ).toMatchObject({
+        targetPackage: '@angular/core',
+        targetVersion: 'latest',
+      });
+      packageRegistryViewSpy.mockResolvedValue('8.12.5');
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '8.12' })
+      ).toMatchObject({
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '8.12.5',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '8' })
+      ).toMatchObject({
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '8.12.5',
+      });
+      packageRegistryViewSpy.mockResolvedValue('12.6.3');
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '12' })
+      ).toMatchObject({
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '12.6.3',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '8.12.0-beta.0' })
+      ).toMatchObject({
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '8.12.0-beta.0',
+      });
+      packageRegistryViewSpy.mockImplementation((pkg, version) =>
+        Promise.resolve(version)
+      );
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: 'next' })
+      ).toMatchObject({
+        targetPackage: 'nx',
+        targetVersion: 'next',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: 'canary' })
+      ).toMatchObject({
+        targetPackage: 'nx',
+        targetVersion: 'canary',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: '13.10.0' })
+      ).toMatchObject({
+        targetPackage: '@nrwl/workspace',
+        targetVersion: '13.10.0',
+      });
+      packageRegistryViewSpy.mockResolvedValue('8.12.0');
+      expect(
+        await parseMigrationsOptions({
+          packageAndVersion: '@nx/workspace@8.12',
+        })
+      ).toMatchObject({
+        targetPackage: '@nx/workspace',
+        targetVersion: '8.12.0',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: 'mypackage@8.12' })
+      ).toMatchObject({
+        targetPackage: 'mypackage',
+        targetVersion: '8.12.0',
+      });
+      packageRegistryViewSpy.mockImplementation((pkg, version) =>
+        Promise.resolve(version)
+      );
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: 'mypackage' })
+      ).toMatchObject({
+        targetPackage: 'mypackage',
+        targetVersion: 'latest',
+      });
+      expect(
+        await parseMigrationsOptions({ packageAndVersion: 'mypackage2' })
+      ).toMatchObject({
+        targetPackage: 'mypackage2',
+        targetVersion: 'latest',
+      });
+      expect(
+        await parseMigrationsOptions({
+          packageAndVersion: '@nx/workspace@latest',
+        })
+      ).toMatchObject({
+        targetPackage: '@nx/workspace',
+        targetVersion: 'latest',
+      });
+      expect(
+        await parseMigrationsOptions({
+          packageAndVersion: '@nx/workspace@alpha',
+        })
+      ).toMatchObject({
+        targetPackage: '@nx/workspace',
+        targetVersion: 'alpha',
+      });
+    });
+
+    it('should handle incorrect from', async () => {
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: '8.12.0',
+          from: '@myscope/a@',
+        })
+      ).rejects.toThrow(
+        `Incorrect 'from' section. Use --from="package@version"`
+      );
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: '8.12.0',
+          from: '@myscope/a',
+        })
+      ).rejects.toThrow(
+        `Incorrect 'from' section. Use --from="package@version"`
+      );
+      await expect(() =>
+        parseMigrationsOptions({ packageAndVersion: '8.12.0', from: 'myscope' })
+      ).rejects.toThrow(
+        `Incorrect 'from' section. Use --from="package@version"`
+      );
+    });
+
+    it('should handle incorrect to', async () => {
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: '8.12.0',
+          to: '@myscope/a@',
+        })
+      ).rejects.toThrow(`Incorrect 'to' section. Use --to="package@version"`);
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: '8.12.0',
+          to: '@myscope/a',
+        })
+      ).rejects.toThrow(`Incorrect 'to' section. Use --to="package@version"`);
+      await expect(() =>
+        parseMigrationsOptions({ packageAndVersion: '8.12.0', to: 'myscope' })
+      ).rejects.toThrow(`Incorrect 'to' section. Use --to="package@version"`);
+    });
+
+    it('should reject --include combined with --run-migrations', async () => {
+      await expect(() =>
+        parseMigrationsOptions({
+          runMigrations: 'migrations.json',
+          include: 'required',
+        })
+      ).rejects.toThrow(
+        `Error: '--include' cannot be combined with '--run-migrations'.`
+      );
+    });
+
+    it('should reject --include for a modern target that does not support optional updates', async () => {
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: '@nx/react@22.0.0',
+            include: 'required',
+          },
+          includeGateFetch(false)
+        )
+      ).rejects.toThrow(
+        `Error: '--include' requires the target package to support optional updates, but '@nx/react@22.0.0' does not.`
+      );
+    });
+
+    it('should reject --include for a legacy target that does not support optional updates', async () => {
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@13.0.0',
+            include: 'required',
+          },
+          includeGateFetch(false)
+        )
+      ).rejects.toThrow(
+        `Error: '--include' requires the target package to support optional updates, but 'nx@13.0.0' does not.`
+      );
+    });
+
+    it('should reject --include=optional combined with --from', async () => {
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: 'nx@22.0.0',
+          include: 'optional',
+          from: 'nx@21.0.0',
+        })
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot be combined with '--from'.`
+      );
+    });
+
+    it('should reject --include=optional combined with --exclude-applied-migrations', async () => {
+      await expect(() =>
+        parseMigrationsOptions({
+          packageAndVersion: 'nx@22.0.0',
+          include: 'optional',
+          excludeAppliedMigrations: true,
+        })
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot be combined with '--exclude-applied-migrations'.`
+      );
+    });
+
+    it.each([
+      {
+        desc: 'bare invocation, modern nx installed',
+        positional: undefined,
+        installedNx: '23.5.0',
+        installedLegacy: null,
+        expected: { targetPackage: 'nx', targetVersion: '23.5.0' },
+      },
+      {
+        desc: 'bare-package-name positional `nx`, modern nx installed',
+        positional: 'nx',
+        installedNx: '23.5.0',
+        installedLegacy: null,
+        expected: { targetPackage: 'nx', targetVersion: '23.5.0' },
+      },
+    ])(
+      'should anchor --include=optional to installed canonical: $desc',
+      async ({ positional, installedNx, installedLegacy, expected }) => {
+        mockGetInstalledNxVersion.mockReturnValue(installedNx);
+        mockGetInstalledLegacyNrwlWorkspaceVersion.mockReturnValue(
+          installedLegacy
+        );
+        const r = await parseMigrationsOptions(
+          {
+            ...(positional ? { packageAndVersion: positional } : {}),
+            include: 'optional',
+          },
+          includeGateFetch()
+        );
+        expect(r).toMatchObject({
+          type: 'generateMigrations',
+          include: 'optional',
+          ...expected,
+        });
+      }
+    );
+
+    it('should reject --include=optional when nx is not installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue(null);
+      await expect(() =>
+        parseMigrationsOptions({ include: 'optional' })
+      ).rejects.toThrow(
+        `Error: '--include=optional' requires 'nx' (or '@nrwl/workspace' on Nx <14) to be installed in your workspace.`
+      );
+    });
+
+    it('should reject --include=optional when target is higher than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@24.0.0',
+            include: 'optional',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got 'nx@24.0.0', installed 'nx@23.0.0').`
+      );
+    });
+
+    it('should accept --include=optional when target is lower than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.5.0');
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: 'nx@23.0.0',
+          include: 'optional',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '23.0.0',
+        include: 'optional',
+      });
+    });
+
+    it('should gate --include=optional on the installed version, not the older explicit target', async () => {
+      // Catch-up reads `supportsOptionalMigrations` at the INSTALLED version (what you
+      // have), not the older explicit target. The stub only marks 23.0.0 as
+      // supporting optional updates, so eligibility proves the gate read installed 23,
+      // even though the target 22 predates the flag.
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: 'nx@22.0.0',
+          include: 'optional',
+        },
+        includeGateFetch((_pkg, version) => version === '23.0.0')
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: 'nx',
+        targetVersion: '22.0.0',
+        include: 'optional',
+      });
+    });
+
+    it('should reject --include=optional when the installed version does not support optional updates, naming the installed version', async () => {
+      // Reject mirror of the gate above: eligibility reads the INSTALLED
+      // version, so the rejection names installed 22 - not the older explicit
+      // target 21. The stub marks only 23.0.0 as supporting optional updates.
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@21.0.0',
+            include: 'optional',
+          },
+          includeGateFetch((_pkg, version) => version === '23.0.0')
+        )
+      ).rejects.toThrow(
+        `Error: '--include' requires the target package to support optional updates, but 'nx@22.0.0' does not.`
+      );
+    });
+
+    it('should surface a fetch failure instead of reporting the target as unsupported', async () => {
+      // The gate resolves `supportsOptionalMigrations` through the shared fetcher (registry,
+      // then install). A genuine fetch failure must surface as-is, not be
+      // swallowed into a misleading "does not support optional updates" rejection.
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      const failingFetch = () =>
+        Promise.reject(new Error('registry and install both failed'));
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@23.0.0',
+            include: 'required',
+          },
+          failingFetch as any
+        )
+      ).rejects.toThrow('registry and install both failed');
+    });
+
+    it('should accept --include=optional with @nx/workspace target, preserve typed target, and swap to nx canonical at walk time', async () => {
+      // `parseMigrationsOptions` preserves the typed target verbatim; the
+      // silent `@nx/workspace` → `nx` swap happens later in
+      // `generateMigrationsJsonAndUpdatePackageJson` via
+      // `resolveCanonicalNxPackage`.
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: '@nx/workspace@23.0.0',
+          include: 'optional',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: '@nx/workspace',
+        targetVersion: '23.0.0',
+        include: 'optional',
+      });
+      expect(
+        resolveCanonicalNxPackage(
+          (r as { targetVersion: string }).targetVersion
+        )
+      ).toBe('nx');
+    });
+
+    it('should anchor @nx/workspace --include=optional to installed nx when only nx is installed', async () => {
+      // #2 regression: the installed lookup must normalize `@nx/workspace` ->
+      // `nx`. With @nx/workspace absent but nx present, it resolves against nx
+      // instead of failing "requires @nx/workspace to be installed".
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      mockGetInstalledVersion.mockImplementation((pkg: string) =>
+        pkg === 'nx' ? '23.0.0' : null
+      );
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: '@nx/workspace',
+          include: 'optional',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: '@nx/workspace',
+        targetVersion: '23.0.0',
+        include: 'optional',
+      });
+    });
+
+    it('should reject --include=optional with --to canonical higher than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@23.0.0',
+            include: 'optional',
+            to: 'nx@24.0.0',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got '--to nx@24.0.0', installed 'nx@23.0.0').`
+      );
+    });
+
+    it('should reject --include=optional with --to for required packages higher than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@23.0.0',
+            include: 'optional',
+            to: '@nx/js@23.6.4',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got '--to @nx/js@23.6.4', installed 'nx@23.0.0').`
+      );
+    });
+
+    it('should reject --include=optional with --to create-nx-workspace higher than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@23.0.0',
+            include: 'optional',
+            to: 'create-nx-workspace@23.6.4',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got '--to create-nx-workspace@23.6.4', installed 'nx@23.0.0').`
+      );
+    });
+
+    it('should reject --include=optional with --to @nx/workspace higher than installed', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: 'nx@23.0.0',
+            include: 'optional',
+            to: '@nx/workspace@24.0.0',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got '--to @nx/workspace@24.0.0', installed 'nx@23.0.0').`
+      );
+    });
+
+    it('should cap --to against nx full group when migrating @nx/workspace in `optional` value', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      // `@nx/workspace` declares a narrow group; the bound check must use nx's
+      // full closure (which includes `@nx/jest`) to mirror the walk.
+      mockGetInstalledPackageGroup.mockImplementation((pkg: string) =>
+        pkg === '@nx/workspace'
+          ? new Set(['@nx/workspace', 'nx', 'nx-cloud'])
+          : new Set(['nx', 'nx-cloud', '@nx/js', '@nx/jest', '@nx/react'])
+      );
+      await expect(() =>
+        parseMigrationsOptions(
+          {
+            packageAndVersion: '@nx/workspace',
+            include: 'optional',
+            to: '@nx/jest@24.0.0',
+          },
+          includeGateFetch()
+        )
+      ).rejects.toThrow(
+        `Error: '--include=optional' cannot migrate to a version higher than what is currently installed (got '--to @nx/jest@24.0.0', installed 'nx@22.0.0').`
+      );
+    });
+
+    it('should accept --include=optional with --to for non-canonical packages', async () => {
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      const r = await parseMigrationsOptions(
+        {
+          packageAndVersion: 'nx@23.0.0',
+          include: 'optional',
+          to: 'react@18.0.0',
+        },
+        includeGateFetch()
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        include: 'optional',
+        to: { react: '18.0.0' },
+      });
+    });
+
+    it('should handle backslashes in package names', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockImplementation((pkg, version) => {
+        return Promise.resolve('12.3.0');
+      });
+      const r = await parseMigrationsOptions({
+        packageAndVersion: '@nx\\workspace@8.12.0',
+        from: '@myscope\\a@12.3,@myscope\\b@1.1.1',
+        to: '@myscope\\c@12.3.1',
+      });
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetPackage: '@nx/workspace',
+        targetVersion: '8.12.0',
+        from: {
+          '@myscope/a': '12.3.0',
+          '@myscope/b': '1.1.1',
+        },
+        to: {
+          '@myscope/c': '12.3.1',
+        },
+      });
+    });
+
+    it('should skip packageJsonUpdates when incompatible packages are present', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            parent: '1.0.0',
+            'incompatible-package': '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: (pkg) => {
+          if (pkg === 'parent') return '1.0.0';
+          if (pkg === 'incompatible-package') return '1.0.0';
+          return null;
+        },
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                  },
+                  incompatibleWith: {
+                    'incompatible-package': '*',
+                  },
+                },
+              },
+              schematics: {},
+            });
+          }
+          return Promise.resolve(null);
+        },
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      // The packageJsonUpdate should be skipped due to incompatibleWith
+      expect(result.packageUpdates).toEqual({
+        parent: { version: '2.0.0', addToPackageJson: false },
+      });
+      // 'child' should not be in packageUpdates because the update was skipped
+      expect(result.packageUpdates.child).toBeUndefined();
+    });
+
+    it('should apply packageJsonUpdates when incompatible packages are not present', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: {
+            parent: '1.0.0',
+            child: '1.0.0',
+          },
+        }),
+        getInstalledPackageVersion: (pkg) => {
+          if (pkg === 'parent') return '1.0.0';
+          if (pkg === 'child') return '1.0.0';
+          return null; // incompatible-package is not installed
+        },
+        fetch: (p, _v) => {
+          if (p === 'parent') {
+            return Promise.resolve({
+              version: '2.0.0',
+              packageJsonUpdates: {
+                version2: {
+                  version: '2.0.0',
+                  packages: {
+                    child: { version: '2.0.0' },
+                  },
+                  incompatibleWith: {
+                    'incompatible-package': '*',
+                  },
+                },
+              },
+              schematics: {},
+            });
+          }
+          if (p === 'child') {
+            return Promise.resolve({
+              version: '2.0.0',
+              schematics: {},
+            });
+          }
+          return Promise.resolve(null);
+        },
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('parent', '2.0.0');
+
+      // The packageJsonUpdate should be applied since incompatible package is not present
+      expect(result.packageUpdates).toEqual({
+        parent: { version: '2.0.0', addToPackageJson: false },
+        child: { version: '2.0.0', addToPackageJson: false },
+      });
+    });
+
+    describe('nx.json migrate.include overlay (integration)', () => {
+      it('does not treat nx.json migrate.include as an explicit --include for a target that does not support optional updates', async () => {
+        // The original footgun: a workspace-wide migrate.include default made
+        // `nx migrate <pkg>` hard-fail with a `--include` error the user never
+        // passed. The overlay must carry it as a default, not a flag, and a
+        // target that doesn't support optional updates must fall back to 'all' with a warning.
+        const warnSpy = vi
+          .spyOn((await import('../../utils/output')).output, 'warn')
+          .mockImplementation(() => {});
+        const result = await parseMigrationsOptions(
+          applyNxJsonMigrateDefaults(
+            { packageAndVersion: '@angular/core@18.0.0' },
+            { include: 'required' }
+          ),
+          includeGateFetch(false)
+        );
+        expect(result).toMatchObject({
+          type: 'generateMigrations',
+          targetPackage: '@angular/core',
+          include: 'all',
+        });
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: expect.stringContaining(
+              "The configured nx.json migrate.include 'required' is not available"
+            ),
+          })
+        );
+      });
+
+      it('applies nx.json migrate.include through the overlay for a target that supports optional updates', async () => {
+        const result = await parseMigrationsOptions(
+          applyNxJsonMigrateDefaults(
+            { packageAndVersion: 'nx@23.0.0' },
+            { include: 'required' }
+          ),
+          includeGateFetch()
+        );
+        expect(result).toMatchObject({
+          type: 'generateMigrations',
+          targetPackage: 'nx',
+          include: 'required',
+        });
+      });
+    });
+  });
+
+  describe('resolveInclude', () => {
+    let originalCi: string | undefined;
+    let originalTty: boolean | undefined;
+
+    beforeEach(() => {
+      originalCi = process.env.CI;
+      originalTty = process.stdin.isTTY;
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      if (originalCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCi;
+      }
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: originalTty,
+        configurable: true,
+      });
+    });
+
+    const supportsOptionalMigrationsContext = {
+      hasFrom: false,
+      hasExcludeAppliedMigrations: false,
+      targetSupportsOptionalUpdates: true,
+    };
+
+    it('should return the provided include without prompting', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(
+        'required',
+        supportsOptionalMigrationsContext
+      );
+      expect(result).toBe('required');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should return the provided include even when the target does not support optional updates', async () => {
+      // The `supportsOptionalMigrations` gate is enforced in `resolveTargetAndInclude`;
+      // `resolveInclude` honors an explicit include as-is.
+      const result = await resolveInclude('required', {
+        hasFrom: false,
+        hasExcludeAppliedMigrations: false,
+        targetSupportsOptionalUpdates: false,
+      });
+      expect(result).toBe('required');
+    });
+
+    it('should default to "all" without prompting in non-TTY environments', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: false,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(
+        undefined,
+        supportsOptionalMigrationsContext
+      );
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should default to "all" without prompting when running in CI', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'true';
+      const result = await resolveInclude(
+        undefined,
+        supportsOptionalMigrationsContext
+      );
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should default to "all" without prompting when --no-interactive is passed in a TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(undefined, {
+        ...supportsOptionalMigrationsContext,
+        interactive: false,
+      });
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should default to "all" without prompting when the target does not support optional updates', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(undefined, {
+        hasFrom: false,
+        hasExcludeAppliedMigrations: false,
+        targetSupportsOptionalUpdates: false,
+      });
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('should prompt and return the selection in interactive TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      mockPrompt.mockReturnValueOnce(Promise.resolve('required'));
+      const result = await resolveInclude(
+        undefined,
+        supportsOptionalMigrationsContext
+      );
+      expect(result).toBe('required');
+      expect(mockPrompt).toHaveBeenCalled();
+    });
+
+    it('should include optional in prompt choices by default', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      mockPrompt.mockReturnValueOnce(Promise.resolve('all'));
+      await resolveInclude(undefined, supportsOptionalMigrationsContext);
+      const choices = mockPrompt.mock.calls[0][0].options;
+      expect(choices.map((c: { value: string }) => c.value)).toEqual([
+        'required',
+        'optional',
+        'all',
+      ]);
+    });
+
+    it('should hide optional from prompt choices when --from is provided', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      mockPrompt.mockReturnValueOnce(Promise.resolve('all'));
+      await resolveInclude(undefined, {
+        hasFrom: true,
+        hasExcludeAppliedMigrations: false,
+        targetSupportsOptionalUpdates: true,
+      });
+      const choices = mockPrompt.mock.calls[0][0].options;
+      expect(choices.map((c: { value: string }) => c.value)).toEqual([
+        'required',
+        'all',
+      ]);
+    });
+
+    it('should hide optional from prompt choices when --exclude-applied-migrations is provided', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      mockPrompt.mockReturnValueOnce(Promise.resolve('all'));
+      await resolveInclude(undefined, {
+        hasFrom: false,
+        hasExcludeAppliedMigrations: true,
+        targetSupportsOptionalUpdates: true,
+      });
+      const choices = mockPrompt.mock.calls[0][0].options;
+      expect(choices.map((c: { value: string }) => c.value)).toEqual([
+        'required',
+        'all',
+      ]);
+    });
+
+    it('should hide optional from prompt choices when --interactive is provided', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      mockPrompt.mockReturnValueOnce(Promise.resolve('all'));
+      await resolveInclude(undefined, {
+        ...supportsOptionalMigrationsContext,
+        interactive: true,
+      });
+      const choices = mockPrompt.mock.calls[0][0].options;
+      expect(choices.map((c: { value: string }) => c.value)).toEqual([
+        'required',
+        'all',
+      ]);
+    });
+
+    it('uses the nx.json configured include for a target that supports optional updates without prompting', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(
+        undefined,
+        supportsOptionalMigrationsContext,
+        'required'
+      );
+      expect(result).toBe('required');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('uses the nx.json configured include for a target that supports optional updates in CI', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'true';
+      const result = await resolveInclude(
+        undefined,
+        supportsOptionalMigrationsContext,
+        'required'
+      );
+      expect(result).toBe('required');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('lets an explicit include win over the nx.json configured include', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(
+        'all',
+        supportsOptionalMigrationsContext,
+        'required'
+      );
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it('ignores the nx.json configured include when the target does not support optional updates', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      process.env.CI = 'false';
+      const result = await resolveInclude(
+        undefined,
+        {
+          hasFrom: false,
+          hasExcludeAppliedMigrations: false,
+          targetSupportsOptionalUpdates: false,
+        },
+        'required'
+      );
+      expect(result).toBe('all');
+      expect(mockPrompt).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveCanonicalNxPackage', () => {
+    it.each([
+      ['14.0.0', 'nx'],
+      ['14.0.0-beta.0', 'nx'],
+      ['13.0.0', '@nrwl/workspace'],
+    ] as const)('should resolve %s to %s', (version, expected) => {
+      expect(resolveCanonicalNxPackage(version)).toBe(expected);
+    });
+  });
+
+  describe('filterDowngradedUpdates', () => {
+    it('should drop updates whose proposed version is lower than resolved', () => {
+      const result = filterDowngradedUpdates(
+        {
+          react: { version: '18.3.1', addToPackageJson: 'dependencies' },
+        },
+        createPackageJson({ dependencies: { react: '19.0.0' } }),
+        () => '19.0.0'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should keep updates whose proposed version is strictly newer than resolved', () => {
+      const update = {
+        version: '20.0.0',
+        addToPackageJson: 'dependencies' as const,
+      };
+      const result = filterDowngradedUpdates(
+        { react: update },
+        createPackageJson({ dependencies: { react: '19.0.0' } }),
+        () => '19.0.0'
+      );
+
+      expect(result).toEqual({ react: update });
+    });
+
+    it('should keep updates when the package is not installed', () => {
+      const update = {
+        version: '1.0.0',
+        addToPackageJson: 'dependencies' as const,
+      };
+      const result = filterDowngradedUpdates(
+        { 'new-pkg': update },
+        createPackageJson({}),
+        () => null
+      );
+
+      expect(result).toEqual({ 'new-pkg': update });
+    });
+
+    it('should keep narrowing rewrites where the specifier covers a lower version than resolved', () => {
+      // user has `vite: ^6.0.0`, resolved 6.4.2. Cascade proposes `6.4.2` (exact).
+      // Specifier floor is 6.0.0 < resolved 6.4.2 → narrowing → keep.
+      const update = {
+        version: '6.4.2',
+        addToPackageJson: 'devDependencies' as const,
+      };
+      const result = filterDowngradedUpdates(
+        { vite: update },
+        createPackageJson({ devDependencies: { vite: '^6.0.0' } }),
+        () => '6.4.2'
+      );
+
+      expect(result).toEqual({ vite: update });
+    });
+
+    it('should drop no-op rewrites where the specifier is already exact at resolved', () => {
+      // user has `react: 19.0.0` exact, resolved 19.0.0. Cascade proposes `19.0.0`.
+      // Specifier floor is 19.0.0 === resolved 19.0.0 → no-op → drop.
+      const result = filterDowngradedUpdates(
+        {
+          react: { version: '19.0.0', addToPackageJson: 'dependencies' },
+        },
+        createPackageJson({ dependencies: { react: '19.0.0' } }),
+        () => '19.0.0'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should drop equal-version rewrites when the package has no specifier in package.json', () => {
+      // No specifier means there is nothing to narrow; the equal-version write
+      // would just add a new entry that the user never declared. Drop.
+      const result = filterDowngradedUpdates(
+        {
+          'orphan-dep': {
+            version: '1.0.0',
+            addToPackageJson: 'dependencies',
+          },
+        },
+        createPackageJson({}),
+        () => '1.0.0'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should drop downgrades even when the specifier covers the proposed version', () => {
+      // user has `vite: ^6.0.0`, resolved 6.4.2. Cascade proposes `6.2.0`.
+      // Specifier floor 6.0.0 covers 6.2.0, but resolved 6.4.2 > proposed.
+      // Real installed would regress → drop.
+      const result = filterDowngradedUpdates(
+        {
+          vite: { version: '6.2.0', addToPackageJson: 'devDependencies' },
+        },
+        createPackageJson({ devDependencies: { vite: '^6.0.0' } }),
+        () => '6.4.2'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should compare via normalizeVersion so prerelease tags do not block bumps', () => {
+      const update = {
+        version: '1.0.0',
+        addToPackageJson: 'dependencies' as const,
+      };
+      const result = filterDowngradedUpdates(
+        { pkg: update },
+        createPackageJson({ dependencies: { pkg: '1.0.0-beta-next.2' } }),
+        () => '1.0.0-beta-next.2'
+      );
+
+      expect(result).toEqual({ pkg: update });
+    });
+
+    it('should keep narrowing rewrites when the specifier is a tilde range covering a lower version', () => {
+      // user has `vite: ~6.2.0`, resolved 6.2.5. Cascade proposes `6.2.5` (exact).
+      // Tilde floor is 6.2.0 < resolved 6.2.5 → narrowing → keep.
+      const update = {
+        version: '6.2.5',
+        addToPackageJson: 'devDependencies' as const,
+      };
+      const result = filterDowngradedUpdates(
+        { vite: update },
+        createPackageJson({ devDependencies: { vite: '~6.2.0' } }),
+        () => '6.2.5'
+      );
+
+      expect(result).toEqual({ vite: update });
+    });
+
+    it('should drop no-op rewrites when a tilde range is already pinned to resolved', () => {
+      // user has `vite: ~6.2.5`, resolved 6.2.5. Cascade proposes `6.2.5`.
+      // Tilde floor 6.2.5 === resolved 6.2.5 → no-op → drop.
+      const result = filterDowngradedUpdates(
+        {
+          vite: { version: '6.2.5', addToPackageJson: 'devDependencies' },
+        },
+        createPackageJson({ devDependencies: { vite: '~6.2.5' } }),
+        () => '6.2.5'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should drop downgrades inside a tilde range', () => {
+      // user has `vite: ~6.2.0`, resolved 6.2.7. Cascade proposes `6.2.3`.
+      // Tilde floor 6.2.0 covers 6.2.3, but resolved 6.2.7 > proposed → drop.
+      const result = filterDowngradedUpdates(
+        {
+          vite: { version: '6.2.3', addToPackageJson: 'devDependencies' },
+        },
+        createPackageJson({ devDependencies: { vite: '~6.2.0' } }),
+        () => '6.2.7'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should drop equal-version rewrites for peer-deps-only packages (no dep/devDep specifier)', () => {
+      // `peerDependencies` is intentionally not considered — only direct
+      // dependencies / devDependencies count as a specifier. A package present
+      // only as a peer dep behaves like an unspecified package: equal-version
+      // rewrites become orphan writes and are dropped.
+      const result = filterDowngradedUpdates(
+        {
+          'peer-only': { version: '5.0.0', addToPackageJson: 'dependencies' },
+        },
+        createPackageJson({ peerDependencies: { 'peer-only': '^5.0.0' } }),
+        () => '5.0.0'
+      );
+
+      expect(result).toEqual({});
+    });
+
+    it('should not narrow non-range specifiers (workspace:/npm:/git/file)', () => {
+      const nonSemverSpecifiers = [
+        'workspace:*',
+        'workspace:^',
+        'npm:@scope/alias@^1.0.0',
+        'git+https://github.com/owner/repo.git',
+        'file:../local-pkg',
+      ];
+
+      for (const specifier of nonSemverSpecifiers) {
+        const result = filterDowngradedUpdates(
+          { pkg: { version: '1.0.0', addToPackageJson: 'dependencies' } },
+          createPackageJson({ dependencies: { pkg: specifier } }),
+          () => '1.0.0'
+        );
+
+        expect(result).toEqual({});
+      }
+    });
+  });
+
+  describe('resolveCatalogSpecifiers', () => {
+    it('returns null when given null', () => {
+      expect(resolveCatalogSpecifiers(null)).toBeNull();
+    });
+
+    it('passes plain semver specifiers through unchanged', () => {
+      const packageJson = createPackageJson({
+        dependencies: { react: '^18.0.0' },
+        devDependencies: { vite: '~6.2.0' },
+      });
+
+      const result = resolveCatalogSpecifiers(packageJson);
+
+      expect(result?.dependencies).toEqual({ react: '^18.0.0' });
+      expect(result?.devDependencies).toEqual({ vite: '~6.2.0' });
+    });
+
+    it('leaves an unresolvable catalog reference as-is instead of throwing', () => {
+      // Unresolvable catalog entry: preserved rather than throwing.
+      const packageJson = createPackageJson({
+        dependencies: { 'nonexistent-pkg-xyz': 'catalog:does-not-exist' },
+      });
+
+      const run = () => resolveCatalogSpecifiers(packageJson);
+
+      expect(run).not.toThrow();
+      expect(run()?.dependencies).toEqual({
+        'nonexistent-pkg-xyz': 'catalog:does-not-exist',
+      });
+    });
+  });
+
+  describe('isNpmPeerDepsError', () => {
+    it('should detect the npm 7-9 ERESOLVE code line', () => {
+      const stderr = [
+        'npm ERR! code ERESOLVE',
+        'npm ERR! ERESOLVE unable to resolve dependency tree',
+      ].join('\n');
+      expect(isNpmPeerDepsError(stderr)).toBe(true);
+    });
+
+    it('should detect the npm 10+ ERESOLVE code line', () => {
+      const stderr = [
+        'npm error code ERESOLVE',
+        'npm error ERESOLVE could not resolve',
+      ].join('\n');
+      expect(isNpmPeerDepsError(stderr)).toBe(true);
+    });
+
+    it('should fall back to phrase matching when ERESOLVE is absent', () => {
+      expect(
+        isNpmPeerDepsError('npm ERR! Unable to resolve dependency tree')
+      ).toBe(true);
+      expect(
+        isNpmPeerDepsError('Could not resolve dependency: peer react@"^18"')
+      ).toBe(true);
+      expect(
+        isNpmPeerDepsError('Conflicting peer dependency: typescript@5.0.0')
+      ).toBe(true);
+    });
+
+    it('should not match unrelated npm errors', () => {
+      expect(
+        isNpmPeerDepsError('npm ERR! code ENOENT\nnpm ERR! path ./missing')
+      ).toBe(false);
+      expect(
+        isNpmPeerDepsError(
+          'network timeout fetching https://registry.npmjs.org'
+        )
+      ).toBe(false);
+      expect(isNpmPeerDepsError('')).toBe(false);
+    });
+
+    it('should not match substrings of unrelated words', () => {
+      // `\bERESOLVE\b` must not match arbitrary identifiers that merely contain
+      // the letters (e.g. a hypothetical "PREERESOLVED" token).
+      expect(isNpmPeerDepsError('some PREERESOLVED cache entry')).toBe(false);
+    });
+  });
+
+  describe('minimum-release-age violation propagation', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function violation() {
+      return new MinReleaseAgeViolationError({
+        packageManager: 'npm',
+        packageName: 'mypackage',
+        spec: 'latest',
+        // npm's headline contains "No matching version", which the Migrator
+        // catch would otherwise rewrap into a plain Error and lose the type.
+        pmShapedDetail:
+          'No matching version found for mypackage@latest with a date before 2020.',
+        blocked: [],
+        remediation: [
+          'Wait until a matching version is older than the window.',
+        ],
+      });
+    }
+
+    it('the Migrator rethrows a cooldown violation without rewrapping it', async () => {
+      const err = violation();
+      const migrator = new Migrator({
+        packageJson: createPackageJson(),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () => Promise.reject(err),
+        from: {},
+        to: {},
+      });
+      await expect(migrator.migrate('mypackage', '2.0.0')).rejects.toBe(err);
+    });
+
+    it('the fetcher surfaces a cooldown violation instead of falling back to install', async () => {
+      const err = violation();
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(err);
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', 'latest')).rejects.toBe(err);
+    });
+
+    it('the fetcher surfaces a release whose version is not a version instead of falling back to install', async () => {
+      const err = new packageMgrUtils.InvalidResolvedVersionError(
+        'mypackage',
+        'git+https://git.example.com/mypackage.git'
+      );
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(err);
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', 'latest')).rejects.toBe(err);
+    });
+
+    it('the fetcher rejects when an exact requested version comes back as a different version', async () => {
+      // A config surface (registry proxy, override, cooldown gate) silently
+      // substituting another version must fail the run, not corrupt the plan.
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('2.0.1');
+      vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+        JSON.stringify({
+          dist: {
+            tarball:
+              'https://registry.npmjs.org/mypackage/-/mypackage-2.0.1.tgz',
+          },
+        })
+      );
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', '2.0.0')).rejects.toThrow(
+        'resolved to version 2.0.1'
+      );
+    });
+
+    it('the fetcher passes through tag and range specs that resolve to a different version', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('2.0.1');
+      vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+        JSON.stringify({
+          dist: {
+            tarball:
+              'https://registry.npmjs.org/mypackage/-/mypackage-2.0.1.tgz',
+          },
+        })
+      );
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', 'latest')).resolves.toMatchObject({
+        version: '2.0.1',
+      });
+    });
+  });
+
+  describe('fetched package names', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('does not fall back to installing a flag-shaped package name', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(new Error('Unable to resolve version'));
+      const createTempNpmDirectory = vi
+        .spyOn(packageMgrUtils, 'createTempNpmDirectory')
+        .mockImplementation(() => {
+          throw new Error('installed');
+        });
+      const fetch = createFetcher({ add: 'npm-add' } as any);
+
+      await expect(fetch('--userconfig=/tmp/x', 'latest')).rejects.toThrow(
+        /Invalid package name: "--userconfig=\/tmp\/x"/
+      );
+      expect(createTempNpmDirectory).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fetching migrations config from the registry', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it.each([
+      ['the npm registry', 'registry.npmjs.org'],
+      // npmjs' CNAME, so it serves the same metadata.
+      ['the yarn registry', 'registry.yarnpkg.com'],
+      ['a local registry', 'localhost'],
+      // The loopback literals a local registry is just as often reached by,
+      // neither of which contains "localhost".
+      ['a local registry on IPv4 loopback', '127.0.0.1'],
+      ['a local registry on IPv6 loopback', '[::1]'],
+      ['an Artifactory host', 'myco.artifactory.example.com'],
+    ])(
+      'reads a migration-less packument straight from %s',
+      async (_label, host) => {
+        vi.spyOn(
+          packageMgrUtils,
+          'resolvePackageVersionUsingRegistry'
+        ).mockResolvedValue('2.0.1');
+        vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+          JSON.stringify({
+            dist: {
+              tarball: `https://${host}/mypackage/-/mypackage-2.0.1.tgz`,
+            },
+          })
+        );
+        const fetch = createFetcher({} as any);
+        await expect(fetch('mypackage', 'latest')).resolves.toMatchObject({
+          version: '2.0.1',
+        });
+        expect(fetch.stats).toMatchObject({
+          registryCount: 1,
+          installCount: 0,
+        });
+      }
+    );
+
+    it('reads the one-element array npm 12 prints for an exact spec', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('2.0.1');
+      vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+        JSON.stringify([
+          {
+            dist: {
+              tarball:
+                'https://registry.npmjs.org/mypackage/-/mypackage-2.0.1.tgz',
+            },
+          },
+        ])
+      );
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', '2.0.1')).resolves.toMatchObject({
+        version: '2.0.1',
+      });
+      expect(fetch.stats).toMatchObject({
+        registryCount: 1,
+        installCount: 0,
+      });
+    });
+
+    it('skips the tarball-host check when the package declares migration config', async () => {
+      // The tarball host is off the allowlist on purpose, so only the declared
+      // nx-migrations can skip the check.
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockResolvedValue('2.0.1');
+      vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+        JSON.stringify({
+          'nx-migrations': { packageGroup: ['mypackage-plugin'] },
+          dist: {
+            tarball:
+              'https://registry.corp.example.com/mypackage/-/mypackage-2.0.1.tgz',
+          },
+        })
+      );
+      const fetch = createFetcher({} as any);
+      await expect(fetch('mypackage', 'latest')).resolves.toMatchObject({
+        version: '2.0.1',
+      });
+      expect(fetch.stats).toMatchObject({
+        registryCount: 1,
+        installCount: 0,
+      });
+    });
+
+    it.each([
+      ['an unsupported registry', 'registry.corp.example.com'],
+      // Look-alikes of the exact-matched hosts: a substring test would take these
+      // for the official registries and skip the install fallback.
+      [
+        'a host the yarn registry is a prefix of',
+        'registry.yarnpkg.com.corp.example',
+      ],
+      [
+        'a host the yarn registry is a suffix of',
+        'mirror-registry.yarnpkg.com',
+      ],
+      [
+        'a host the npm registry is a prefix of',
+        'registry.npmjs.org.corp.example',
+      ],
+      ['a host the loopback address is a prefix of', '127.0.0.1.corp.example'],
+    ])(
+      'falls back to install for a migration-less packument from %s',
+      async (_label, host) => {
+        vi.spyOn(
+          packageMgrUtils,
+          'resolvePackageVersionUsingRegistry'
+        ).mockResolvedValue('2.0.1');
+        vi.spyOn(packageMgrUtils, 'packageRegistryView').mockResolvedValue(
+          JSON.stringify({
+            dist: {
+              tarball: `https://${host}/mypackage/-/mypackage-2.0.1.tgz`,
+            },
+          })
+        );
+        vi.spyOn(packageMgrUtils, 'createTempNpmDirectory').mockReturnValue({
+          dir: join(tmpdir(), 'nx-migrate-spec-does-not-exist'),
+          cleanup: async () => {},
+        });
+        const fetch = createFetcher({ add: 'npm-add' } as any);
+        // The install fails in this harness; the assertion is that the fetcher routed
+        // to install after the registry refusal, retrying the original spec rather
+        // than the resolved version.
+        await expect(fetch('mypackage', 'latest')).rejects.toThrow(
+          'Failed to fetch migrations for mypackage@latest'
+        );
+        expect(fetch.stats).toMatchObject({
+          installCount: 1,
+          fallbackReason: 'unsupported-registry',
+        });
+      }
+    );
+
+    it('installs the exact nx version whose provenance was verified', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(new Error('registry unavailable'));
+      const provenanceSpy = vi
+        .spyOn(provenance, 'resolveVersionWithProvenance')
+        .mockResolvedValue('2.0.1');
+      vi.spyOn(packageMgrUtils, 'createTempNpmDirectory').mockReturnValue({
+        dir: join(tmpdir(), 'nx-migrate-spec-does-not-exist'),
+        cleanup: async () => {},
+      });
+      const fetch = createFetcher({ add: 'npm-add' } as any);
+
+      await expect(fetch('nx', 'latest')).rejects.toThrow(
+        'Command failed: npm-add nx@2.0.1'
+      );
+      expect(provenanceSpy).toHaveBeenCalledWith('nx', 'latest');
+    });
+
+    it('passes the install fallback spec to the shell as a single argument', async () => {
+      const dir = realpathSync(
+        mkdtempSync(join(tmpdir(), 'nx-migrate-install-spec-'))
+      );
+      const marker = join(dir, 'marker');
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(new Error('No match found for version'));
+      vi.spyOn(packageMgrUtils, 'createTempNpmDirectory').mockReturnValue({
+        dir,
+        cleanup: async () => {},
+      });
+      const fetch = createFetcher({ add: 'npm-add' } as any);
+      const version = `latest; echo x > ${marker}`;
+
+      try {
+        await expect(fetch('mypackage', version)).rejects.toThrow(
+          `Failed to fetch migrations for mypackage@${version}`
+        );
+        expect(existsSync(marker)).toBe(false);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('installs without lifecycle scripts when falling back to install', async () => {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockRejectedValue(new Error('registry unavailable'));
+      const dir = mkdtempSync(join(tmpdir(), 'nx-migrate-spec-'));
+      vi.spyOn(packageMgrUtils, 'createTempNpmDirectory').mockReturnValue({
+        dir,
+        cleanup: async () => {},
+      });
+      writeFileSync(
+        join(dir, 'add.js'),
+        `const fs = require('fs');
+        fs.mkdirSync('node_modules/mypackage', { recursive: true });
+        fs.writeFileSync(
+          'node_modules/mypackage/package.json',
+          JSON.stringify({ name: 'mypackage', version: '2.0.1' })
+        );
+        fs.writeFileSync(
+          'call.json',
+          JSON.stringify({
+            args: process.argv.slice(2),
+            YARN_ENABLE_SCRIPTS: process.env.YARN_ENABLE_SCRIPTS,
+          })
+        );`
+      );
+
+      try {
+        const fetch = createFetcher({
+          add: 'node add.js',
+          ignoreScriptsFlag: '--ignore-scripts',
+        } as any);
+        await expect(fetch('mypackage', 'latest')).resolves.toMatchObject({
+          version: '2.0.1',
+        });
+        expect(
+          JSON.parse(readFileSync(join(dir, 'call.json'), 'utf-8'))
+        ).toEqual({
+          args: ['mypackage@latest', '--ignore-scripts'],
+          YARN_ENABLE_SCRIPTS: 'false',
+        });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('multi-major migration prompt', () => {
+    let originalCi: string | undefined;
+    const originalTtyDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdin,
+      'isTTY'
+    );
+    let originalMultiMajorMode: string | undefined;
+
+    beforeEach(() => {
+      originalCi = process.env.CI;
+      originalMultiMajorMode = process.env.NX_MULTI_MAJOR_MODE;
+      mockGetInstalledNxVersion.mockReturnValue('21.0.0');
+      mockGetInstalledVersion.mockImplementation((pkg: string) =>
+        pkg === 'nx' || pkg === '@nx/workspace'
+          ? mockGetInstalledNxVersion()
+          : null
+      );
+      mockGetInstalledPackageGroup.mockReturnValue(
+        new Set(['nx', '@nx/js', '@nx/workspace'])
+      );
+      mockGetInstalledLegacyNrwlWorkspaceVersion.mockReturnValue(null);
+      delete process.env.CI;
+      delete process.env.NX_MULTI_MAJOR_MODE;
+    });
+
+    afterEach(() => {
+      mockGetInstalledNxVersion.mockReset();
+      mockGetInstalledVersion.mockReset();
+      mockGetInstalledPackageGroup.mockReset();
+      mockGetInstalledLegacyNrwlWorkspaceVersion.mockReset();
+      mockPrompt.mockReset();
+      if (originalCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCi;
+      }
+      if (originalMultiMajorMode === undefined) {
+        delete process.env.NX_MULTI_MAJOR_MODE;
+      } else {
+        process.env.NX_MULTI_MAJOR_MODE = originalMultiMajorMode;
+      }
+      if (originalTtyDescriptor) {
+        Object.defineProperty(process.stdin, 'isTTY', originalTtyDescriptor);
+      } else {
+        delete (process.stdin as { isTTY?: boolean }).isTTY;
+      }
+      vi.restoreAllMocks();
+    });
+
+    function setTty(value: boolean) {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value,
+        configurable: true,
+      });
+    }
+
+    function mockRegistry(map: { latest?: string } & Record<string, string>) {
+      vi.spyOn(
+        packageMgrUtils,
+        'resolvePackageVersionUsingRegistry'
+      ).mockImplementation((_pkg, version) => {
+        const v = String(version);
+        if (v in map) return Promise.resolve(map[v]!);
+        const match = v.match(/^\^(\d+)\.0\.0$/);
+        if (match && map[match[1]]) return Promise.resolve(map[match[1]]!);
+        if (match) return Promise.reject(new Error('none'));
+        return Promise.resolve(v);
+      });
+    }
+
+    async function spyWarn() {
+      return vi
+        .spyOn((await import('../../utils/output')).output, 'warn')
+        .mockImplementation(() => {});
+    }
+
+    // Every scenario here migrates a target that supports optional updates; the stub satisfies
+    // the `--include` gate so the tests exercise multi-major resolution alone.
+    const parseWithIncludes = (options: { [k: string]: any }) =>
+      parseMigrationsOptions(options, includeGateFetch());
+
+    it('should prompt and replace targetVersion with the chosen value (inferred target, TTY)', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        next: '23.1.0',
+        canary: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('21.5.3');
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'next',
+        include: 'all',
+      });
+
+      expect(mockPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'How would you like to proceed?',
+          options: expect.arrayContaining([
+            expect.objectContaining({ value: '21.5.3' }),
+            expect.objectContaining({ value: '22.5.3' }),
+            expect.objectContaining({ value: '23.1.0' }),
+          ]),
+        })
+      );
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        targetVersion: '21.5.3',
+      });
+    });
+
+    it('should not include the current-major option when installed is already at latest of current major', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('21.5.3');
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('22.5.3');
+
+      await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      const promptArgs = mockPrompt.mock.calls[0][0];
+      const choices = promptArgs.options as { value: string }[];
+      expect(choices.map((c) => c.value)).toEqual(['22.5.3', '23.1.0']);
+    });
+
+    it('should not include the current-major option when installed is on the latest minor of the current major but behind on patch', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('21.5.0');
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('22.5.3');
+
+      await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      const promptArgs = mockPrompt.mock.calls[0][0];
+      const choices = promptArgs.options as { value: string }[];
+      expect(choices.map((c) => c.value)).toEqual(['22.5.3', '23.1.0']);
+    });
+
+    it('should omit the current-major (v22) step from the multi-major prompt', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      mockRegistry({
+        latest: '24.1.0',
+        '22': '22.5.3',
+        '23': '23.5.3',
+      });
+      mockPrompt.mockResolvedValue('23.5.3');
+
+      await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      const promptArgs = mockPrompt.mock.calls[0][0];
+      const choices = promptArgs.options as { value: string }[];
+      // The 22.x current-major step is suppressed; only next-major and direct.
+      expect(choices.map((c) => c.value)).toEqual(['23.5.3', '24.1.0']);
+    });
+
+    it('should keep --include=required valid when multi-major redirects to the next major (v22 install)', async () => {
+      // Include is resolved before multi-major; suppressing the v22 step guarantees
+      // every multi-major option stays >= v23, so a required selection can't
+      // be invalidated by the redirect.
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('22.0.0');
+      mockRegistry({
+        latest: '24.1.0',
+        '22': '22.5.3',
+        '23': '23.5.3',
+      });
+      mockPrompt.mockResolvedValue('23.5.3');
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'nx@24.0.0',
+        include: 'required',
+      });
+
+      expect(r).toMatchObject({
+        type: 'generateMigrations',
+        include: 'required',
+        targetVersion: '23.5.3',
+      });
+    });
+
+    it('should prompt (not warn) when target was explicitly typed as numeric semver', async () => {
+      setTty(true);
+      mockRegistry({
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('21.5.3');
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'nx@23.1.0',
+        include: 'all',
+      });
+
+      expect(mockPrompt).toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '21.5.3' });
+    });
+
+    it('should warn (not prompt) in non-TTY environments', async () => {
+      setTty(false);
+      mockRegistry({ latest: '23.1.0' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should warn (not prompt) when --no-interactive is passed in a TTY', async () => {
+      setTty(true);
+      mockRegistry({ latest: '23.1.0' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        interactive: false,
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should not prompt or warn when --multi-major-mode=direct is set', async () => {
+      setTty(true);
+      mockRegistry({ latest: '23.1.0' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'direct',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should not prompt or warn when NX_MULTI_MAJOR_MODE=direct is set', async () => {
+      setTty(true);
+      process.env.NX_MULTI_MAJOR_MODE = 'direct';
+      mockRegistry({ latest: '23.1.0' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should pick the latest in current major and skip prompts/warns when --multi-major-mode=gradual is set', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '21.5.3' });
+    });
+
+    it('should fall back to the next major when the current-major option is filtered out under --multi-major-mode=gradual', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('21.5.3');
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '22.5.3' });
+    });
+
+    it('should warn and fall back to the requested target when --multi-major-mode=gradual has no incremental option', async () => {
+      setTty(true);
+      // Installed at latest of its major → current-major option dropped.
+      // Next-major lookup fails → next-major option dropped. Both unavailable.
+      mockGetInstalledNxVersion.mockReturnValue('21.5.3');
+      mockRegistry({ latest: '23.1.0', '21': '21.5.3' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining(
+            'Could not look up incremental migration options for --multi-major-mode=gradual'
+          ),
+        })
+      );
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should honour NX_MULTI_MAJOR_MODE=gradual when no flag is set', async () => {
+      setTty(true);
+      process.env.NX_MULTI_MAJOR_MODE = 'gradual';
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '21.5.3' });
+    });
+
+    it('should let the flag win over the env var (flag=direct, env=gradual)', async () => {
+      setTty(true);
+      process.env.NX_MULTI_MAJOR_MODE = 'gradual';
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'direct',
+      });
+
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should bypass --multi-major-mode=gradual when --include=optional', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      // the `optional` value anchors at the installed canonical (here 23.0.0) and
+      // must not be redirected to an incremental target. `maybePromptOrWarn…`
+      // early-returns on `include === 'optional'` before consulting gradual,
+      // so the flag is accepted but is a no-op.
+      mockRegistry({
+        latest: '25.1.0',
+        '23': '23.5.3',
+        '24': '24.5.3',
+      });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'nx@23.0.0',
+        include: 'optional',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.0.0' });
+    });
+
+    it('should not prompt or warn when delta is exactly 1 major', async () => {
+      setTty(true);
+      mockRegistry({ latest: '22.5.3' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '22.5.3' });
+    });
+
+    it('should not prompt or warn when installed is legacy-era (< 14)', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('13.10.0');
+      mockRegistry({ latest: '23.1.0' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should not prompt or warn for --include=optional', async () => {
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('23.0.0');
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({ include: 'optional' });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ include: 'optional' });
+    });
+
+    it.each(['nx', '@nx/workspace'])(
+      'should resolve bare-package-name positional `%s` and fire the prompt',
+      async (positional) => {
+        // Regression: `nx migrate nx` and `nx migrate @nx/workspace` previously
+        // bypassed the multi-major check because parseTargetPackageAndVersion
+        // leaves targetVersion as the literal 'latest' for bare-package-name
+        // input.
+        setTty(true);
+        mockRegistry({
+          latest: '23.1.0',
+          '21': '21.5.3',
+          '22': '22.5.3',
+        });
+        mockPrompt.mockResolvedValue('21.5.3');
+
+        const r = await parseWithIncludes({
+          packageAndVersion: positional,
+          include: 'all',
+        });
+
+        expect(mockPrompt).toHaveBeenCalled();
+        expect(r).toMatchObject({
+          type: 'generateMigrations',
+          targetVersion: '21.5.3',
+        });
+      }
+    );
+
+    it('should warn (not prompt) when next-major lookup fails and current-major option is unavailable', async () => {
+      setTty(true);
+      // Installed at latest of its major → current-major option dropped.
+      // Next-major lookup fails → next-major option dropped. Both
+      // unavailable → fall back to warn.
+      mockGetInstalledNxVersion.mockReturnValue('21.5.3');
+      mockRegistry({ latest: '23.1.0', '21': '21.5.3' });
+      const warnSpy = await spyWarn();
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(mockPrompt).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+    });
+
+    it('should set originalTargetVersion when gradual mode redirects to an incremental step', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(r).toMatchObject({
+        targetVersion: '21.5.3',
+        originalTargetVersion: '23.1.0',
+      });
+    });
+
+    it('should set originalTargetVersion when the interactive prompt picks an incremental step', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('22.5.3');
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(r).toMatchObject({
+        targetVersion: '22.5.3',
+        originalTargetVersion: '23.1.0',
+      });
+    });
+
+    it('should leave originalTargetVersion undefined when the interactive prompt picks the requested target', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('23.1.0');
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+      expect(
+        (r as { originalTargetVersion?: string }).originalTargetVersion
+      ).toBeUndefined();
+    });
+
+    it('should leave originalTargetVersion undefined under --multi-major-mode=direct', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'direct',
+      });
+
+      expect(r).toMatchObject({ targetVersion: '23.1.0' });
+      expect(
+        (r as { originalTargetVersion?: string }).originalTargetVersion
+      ).toBeUndefined();
+    });
+
+    it('should leave originalTargetVersion undefined for bare invocations within a single-major delta', async () => {
+      // Regression guard: dist-tag resolution alone (target == installed
+      // after resolving 'latest') must not be treated as a redirect, or
+      // Next Steps would suggest re-running toward the version the user
+      // already landed on.
+      setTty(true);
+      mockGetInstalledNxVersion.mockReturnValue('22.5.3');
+      mockRegistry({ latest: '22.5.3' });
+
+      const bare = await parseWithIncludes({ include: 'all' });
+      expect(bare).toMatchObject({ targetVersion: '22.5.3' });
+      expect(
+        (bare as { originalTargetVersion?: string }).originalTargetVersion
+      ).toBeUndefined();
+
+      const barePkg = await parseWithIncludes({
+        packageAndVersion: 'nx',
+        include: 'all',
+      });
+      expect(barePkg).toMatchObject({ targetVersion: '22.5.3' });
+      expect(
+        (barePkg as { originalTargetVersion?: string }).originalTargetVersion
+      ).toBeUndefined();
+    });
+
+    it('should propagate gradual to multiMajorMode when gradual mode redirects', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+        multiMajorMode: 'gradual',
+      });
+
+      expect(r).toMatchObject({
+        targetVersion: '21.5.3',
+        originalTargetVersion: '23.1.0',
+        multiMajorMode: 'gradual',
+      });
+    });
+
+    it('should NOT propagate gradual to multiMajorMode when the interactive prompt picks an incremental step', async () => {
+      setTty(true);
+      mockRegistry({
+        latest: '23.1.0',
+        '21': '21.5.3',
+        '22': '22.5.3',
+      });
+      mockPrompt.mockResolvedValue('22.5.3');
+
+      const r = await parseWithIncludes({
+        packageAndVersion: 'latest',
+        include: 'all',
+      });
+
+      expect(r).toMatchObject({
+        targetVersion: '22.5.3',
+        originalTargetVersion: '23.1.0',
+      });
+      expect((r as { multiMajorMode?: string }).multiMajorMode).toBeUndefined();
+    });
+  });
+
+  describe('prompt-bearing migrations', () => {
+    it('should expose resolved prompt content via promptContents keyed by package and prompt path', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({
+          dependencies: { '@nx/expo': '1.0.0' },
+        }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () =>
+          Promise.resolve({
+            version: '2.0.0',
+            generators: {
+              'ai-instructions': {
+                version: '2.0.0',
+                description: 'AI prompt only',
+                prompt: './files/ai-instructions.md',
+              },
+            },
+            resolvedPromptFiles: {
+              './files/ai-instructions.md': 'PROMPT BODY',
+            },
+          } as ResolvedMigrationConfiguration),
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('@nx/expo', '2.0.0');
+      expect(result.migrations).toEqual([
+        {
+          version: '2.0.0',
+          name: 'ai-instructions',
+          package: '@nx/expo',
+          description: 'AI prompt only',
+          prompt: './files/ai-instructions.md',
+        },
+      ]);
+      expect(result.promptContents).toEqual({
+        '@nx/expo::./files/ai-instructions.md': 'PROMPT BODY',
+      });
+    });
+
+    // Regression guard: `documentation` rides through `createMigrateJson`'s
+    // spread untyped (GeneratedMigrationDetails treats it as optional and the
+    // generated migrations.json is written via an `as any` cast), so a future
+    // refactor could silently drop it from the generated file with no type
+    // error. This test fails if that happens.
+    it('should preserve the documentation field on migration entries', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { pkg: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () =>
+          Promise.resolve({
+            version: '2.0.0',
+            generators: {
+              documented: {
+                version: '2.0.0',
+                description: 'documented migration',
+                implementation: './migrations/documented',
+                documentation: './src/migrations/update-2-0-0/documented.md',
+              },
+            },
+          } as ResolvedMigrationConfiguration),
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('pkg', '2.0.0');
+      expect(result.migrations[0]).toMatchObject({
+        name: 'documented',
+        documentation: './src/migrations/update-2-0-0/documented.md',
+      });
+    });
+
+    it('should preserve both prompt and implementation on hybrid entries', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { pkg: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () =>
+          Promise.resolve({
+            version: '2.0.0',
+            generators: {
+              hybrid: {
+                version: '2.0.0',
+                description: 'hybrid',
+                implementation: './migrations/hybrid',
+                prompt: './files/hybrid.md',
+              },
+            },
+            resolvedPromptFiles: {
+              './files/hybrid.md': 'HYBRID',
+            },
+          } as ResolvedMigrationConfiguration),
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('pkg', '2.0.0');
+      expect(result.migrations[0]).toMatchObject({
+        implementation: './migrations/hybrid',
+        prompt: './files/hybrid.md',
+      });
+      expect(result.promptContents).toEqual({
+        'pkg::./files/hybrid.md': 'HYBRID',
+      });
+    });
+
+    it('should omit promptContents from the result when no prompts were resolved', async () => {
+      const migrator = new Migrator({
+        packageJson: createPackageJson({ dependencies: { pkg: '1.0.0' } }),
+        getInstalledPackageVersion: () => '1.0.0',
+        fetch: () =>
+          Promise.resolve({
+            version: '2.0.0',
+            generators: {
+              one: {
+                version: '2.0.0',
+                description: 'plain',
+                implementation: './migrations/one',
+              },
+            },
+          } as ResolvedMigrationConfiguration),
+        from: {},
+        to: {},
+      });
+
+      const result = await migrator.migrate('pkg', '2.0.0');
+      expect(result).not.toHaveProperty('promptContents');
+    });
+  });
+
+  describe('validateMigrationEntries', () => {
+    it('should not throw when all entries have at least one of implementation/factory/prompt', () => {
+      expect(() =>
+        validateMigrationEntries('@nx/x', '2.0.0', {
+          generators: {
+            a: { version: '2.0.0', implementation: './a' },
+            b: { version: '2.0.0', factory: './b' },
+            c: { version: '2.0.0', prompt: './c.md' },
+          },
+        })
+      ).not.toThrow();
+    });
+
+    it('should throw when an entry has none of implementation/factory/prompt', () => {
+      expect(() =>
+        validateMigrationEntries('@nx/x', '2.0.0', {
+          generators: {
+            broken: { version: '2.0.0', description: 'oops' },
+          },
+        })
+      ).toThrow(
+        /Invalid migration "broken" in package "@nx\/x@2\.0\.0": migration entries must have at least one of "implementation", "factory", or "prompt"\./
+      );
+    });
+
+    it('should validate entries from both generators and schematics', () => {
+      expect(() =>
+        validateMigrationEntries('pkg', '1.0.0', {
+          schematics: {
+            broken: { version: '1.0.0' },
+          },
+        })
+      ).toThrow(/Invalid migration "broken" in package "pkg@1\.0\.0"/);
+    });
+  });
+
+  describe('prompt path traversal', () => {
+    it.each([
+      ['../../etc/passwd'],
+      ['./safe/../../escape.md'],
+      ['/etc/passwd'],
+      ['..\\..\\etc\\passwd'],
+      ['safe/..\\..\\escape.md'],
+    ])(
+      'should reject prompt path %p that escapes the migrations directory',
+      async (badPath) => {
+        await expect(
+          readPromptFilesFromInstall(
+            'pkg',
+            '1.0.0',
+            {
+              generators: {
+                m: { version: '1.0.0', prompt: badPath },
+              },
+            },
+            '/tmp/fake-pkg/migrations.json'
+          )
+        ).rejects.toThrow(/Invalid prompt path/);
+      }
+    );
+
+    describe('in an installed package', () => {
+      let dir: string;
+      let packageDir: string;
+
+      const readPrompt = (prompt: string) =>
+        readPromptFilesFromInstall(
+          'pkg',
+          '1.0.0',
+          { generators: { m: { version: '1.0.0', prompt } } },
+          join(packageDir, 'migrations.json')
+        );
+
+      beforeEach(() => {
+        dir = mkdtempSync(join(tmpdir(), 'nx-prompt-install-'));
+        packageDir = join(dir, 'node_modules', 'pkg');
+        mkdirSync(join(packageDir, 'prompts'), { recursive: true });
+        writeFileSync(join(packageDir, 'prompts', 'x.md'), '# X');
+        mkdirSync(join(dir, 'outside'));
+        writeFileSync(join(dir, 'outside', 'credentials.md'), 'secret');
+      });
+
+      afterEach(() => {
+        rmSync(dir, { recursive: true, force: true });
+      });
+
+      it('should read a prompt file shipped by the package', async () => {
+        await expect(readPrompt('./prompts/x.md')).resolves.toEqual({
+          './prompts/x.md': '# X',
+        });
+      });
+
+      it('should read a prompt file when the package itself is a link', async () => {
+        const linkedPackageDir = join(dir, 'linked-pkg');
+        symlinkSync(packageDir, linkedPackageDir, 'dir');
+        packageDir = linkedPackageDir;
+
+        await expect(readPrompt('prompts/x.md')).resolves.toEqual({
+          'prompts/x.md': '# X',
+        });
+      });
+
+      it('should reject a prompt path that leaves the package through a linked dependency', async () => {
+        mkdirSync(join(packageDir, 'node_modules'));
+        symlinkSync(
+          join(dir, 'outside'),
+          join(packageDir, 'node_modules', 'pkg'),
+          'dir'
+        );
+
+        await expect(
+          readPrompt('node_modules/pkg/credentials.md')
+        ).rejects.toThrow(/Could not find prompt file/);
+      });
+
+      it('should reject a prompt path that leaves the package through any other link', async () => {
+        symlinkSync(join(dir, 'outside'), join(packageDir, 'linked'), 'dir');
+
+        await expect(readPrompt('linked/credentials.md')).rejects.toThrow(
+          /Could not find prompt file/
+        );
+      });
+
+      it('should reject a prompt path into a dependency copied into the package', async () => {
+        mkdirSync(join(packageDir, 'node_modules', 'pkg'), { recursive: true });
+        writeFileSync(
+          join(packageDir, 'node_modules', 'pkg', 'credentials.md'),
+          'secret'
+        );
+
+        await expect(
+          readPrompt('node_modules/pkg/credentials.md')
+        ).rejects.toThrow(/Could not find prompt file/);
+      });
+    });
+  });
+
+  describe('prompt file name', () => {
+    it.each([
+      ['./prompts/project.json'],
+      ['./prompts/vite.config.ts'],
+      ['./prompts/no-extension'],
+      ['./prompts/.md'],
+      ['./prompts/project.json:x.md'],
+      ['./prompts/a|b.md'],
+      ['./prompts/a?.md'],
+      ['./prompts/a*.md'],
+      ['./prompts/a<b>.md'],
+      ['./prompts/a"b.md'],
+      ['./prompts/a\nb.md'],
+      ['./pro:mpts/x.md'],
+    ])('should reject prompt path %s', async (badPath) => {
+      await expect(
+        readPromptFilesFromInstall(
+          'pkg',
+          '1.0.0',
+          {
+            generators: {
+              m: { version: '1.0.0', prompt: badPath },
+            },
+          },
+          '/tmp/fake-pkg/migrations.json'
+        )
+      ).rejects.toThrow(/prompt files must be markdown \(\.md\) files/);
+    });
+  });
+
+  describe('generateMigrationsJsonAndUpdatePackageJson (--include=optional)', () => {
+    let tempFs: TempFs;
+    let root: string;
+
+    beforeEach(() => {
+      // TempFs, not a bare mkdtemp: this path formats the files it writes, and
+      // the formatter resolves config from the workspace root. Without moving
+      // the root, that resolution escapes into the real repo.
+      tempFs = new TempFs('nx-migrate-optional');
+      root = tempFs.tempDir;
+      writeFileSync(join(root, 'nx.json'), JSON.stringify({}));
+    });
+
+    afterEach(() => {
+      tempFs.cleanup();
+    });
+
+    // NXC-4590: under `--include=optional` the target package (e.g. `nx`) is in
+    // its own required closure, so the Migrator drops its entry from
+    // `packageUpdates`. The orchestration must not assume that entry exists when
+    // resolving the version for the AI-migrations directory.
+    it('does not crash when the target package is filtered out of packageUpdates', async () => {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({
+          name: 'w',
+          version: '0.0.0',
+          devDependencies: {
+            nx: '0.0.0',
+            requiredChild: '1.0.0',
+            optionalChild: '1.0.0',
+          },
+        })
+      );
+
+      // `packageGroup` puts `requiredChild` in nx's required closure; both `nx`
+      // and `requiredChild` are dropped under optional, leaving `optionalChild`.
+      const fetch = (p: string, version: string) => {
+        if (p === 'nx') {
+          return Promise.resolve({
+            version: '23.0.0',
+            packageGroup: [{ package: 'requiredChild', version: '23.0.0' }],
+            packageJsonUpdates: {
+              mixed: {
+                version: '23.0.0',
+                packages: {
+                  requiredChild: { version: '3.0.0' },
+                  optionalChild: { version: '3.0.0' },
+                },
+              },
+            },
+          });
+        }
+        return Promise.resolve({ version: '3.0.0' });
+      };
+
+      const opts = {
+        type: 'generateMigrations' as const,
+        targetPackage: 'nx',
+        targetVersion: '23.0.0',
+        from: {},
+        to: {},
+        interactive: false,
+        include: 'optional' as const,
+      };
+
+      await expect(
+        generateMigrationsJsonAndUpdatePackageJson(root, opts, fetch as any)
+      ).resolves.toBeUndefined();
+
+      const updated = JSON.parse(
+        readFileSync(join(root, 'package.json'), 'utf-8')
+      );
+      // Optional update applied; the filtered-out required packages untouched.
+      expect(updated.devDependencies.optionalChild).toBe('3.0.0');
+      expect(updated.devDependencies.requiredChild).toBe('1.0.0');
+      expect(updated.devDependencies.nx).toBe('0.0.0');
+    });
+  });
+
+  describe('generateMigrationsJsonAndUpdatePackageJson (installed versions)', () => {
+    let tempFs: TempFs;
+    let root: string;
+    const originalNodePath = process.env.NODE_PATH;
+
+    beforeEach(() => {
+      tempFs = new TempFs('nx-migrate-installed');
+      root = join(tempFs.tempDir, 'ws');
+      tempFs.createFileSync('ws/nx.json', '{}');
+      setWorkspaceRoot(root);
+    });
+
+    afterEach(() => {
+      if (originalNodePath === undefined) delete process.env.NODE_PATH;
+      else process.env.NODE_PATH = originalNodePath;
+      (Module as any)._initPaths();
+      vi.restoreAllMocks();
+      tempFs.cleanup();
+    });
+
+    function writePackage(dir: string, name: string) {
+      tempFs.createFileSync(
+        `${dir}/package.json`,
+        JSON.stringify({ name, version: '1.0.0' })
+      );
+    }
+
+    // The layout pnpm's global virtual store installs.
+    function linkFromOutsideStore(name: string) {
+      writePackage(`store/${name}`, name);
+      tempFs.createSymlinkSync(
+        `store/${name}`,
+        `ws/node_modules/${name}`,
+        'dir'
+      );
+    }
+
+    async function generate(
+      devDependencies: Record<string, string>,
+      generators: Record<string, { requires?: Record<string, string> }>
+    ) {
+      tempFs.createFileSync(
+        'ws/package.json',
+        JSON.stringify({ name: 'ws', devDependencies })
+      );
+      const fetch = (pkg: string) =>
+        Promise.resolve(
+          pkg === 'nx'
+            ? {
+                version: '2.0.0',
+                packageGroup: [{ package: '@nx/js', version: '*' }],
+                generators: Object.fromEntries(
+                  Object.entries(generators).map(([name, generator]) => [
+                    name,
+                    { version: '2.0.0', factory: './unused', ...generator },
+                  ])
+                ),
+              }
+            : { version: '2.0.0' }
+        );
+
+      await generateMigrationsJsonAndUpdatePackageJson(
+        root,
+        {
+          type: 'generateMigrations',
+          targetPackage: 'nx',
+          targetVersion: '2.0.0',
+          from: {},
+          to: {},
+          interactive: false,
+          include: 'all',
+        },
+        fetch as any
+      );
+
+      const migrationsPath = join(root, 'migrations.json');
+      return {
+        devDependencies: JSON.parse(
+          readFileSync(join(root, 'package.json'), 'utf-8')
+        ).devDependencies,
+        migrations: existsSync(migrationsPath)
+          ? JSON.parse(readFileSync(migrationsPath, 'utf-8')).migrations.map(
+              (m: { name: string }) => m.name
+            )
+          : [],
+      };
+    }
+
+    // The layout an outer workspace that hoists its dependencies installs.
+    function installAboveWorkspace(name: string) {
+      writePackage(`node_modules/${name}`, name);
+    }
+
+    it.each([
+      ['linked from a store outside the workspace', linkFromOutsideStore],
+      ['installed only above the workspace', installAboveWorkspace],
+    ])('reads the versions of packages %s', async (_layout, install) => {
+      install('nx');
+      install('@nx/js');
+      install('dep');
+
+      const result = await generate(
+        { nx: '1.0.0', '@nx/js': '1.0.0', dep: '1.0.0' },
+        { 'needs-dep': { requires: { dep: '^1.0.0' } } }
+      );
+
+      expect(result.devDependencies['@nx/js']).toBe('2.0.0');
+      expect(result.migrations).toEqual(['needs-dep']);
+    });
+
+    it('warns about declared packages it cannot find installed', async () => {
+      const warn = vi.spyOn(output, 'warn').mockImplementation(() => {});
+      writePackage('ws/node_modules/nx', 'nx');
+
+      await generate({ nx: '1.0.0', '@nx/js': '1.0.0' }, {});
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining('installed: @nx/js'),
+        })
+      );
+    });
+
+    it('treats a NODE_PATH package in a directory the workspace root prefixes as not installed', async () => {
+      writePackage('ws/node_modules/nx', 'nx');
+      writePackage('ws-np/node_modules/sibling-dep', 'sibling-dep');
+      process.env.NODE_PATH = join(tempFs.tempDir, 'ws-np', 'node_modules');
+      (Module as any)._initPaths();
+
+      const result = await generate(
+        { nx: '1.0.0' },
+        {
+          unconditional: {},
+          'needs-sibling-dep': { requires: { 'sibling-dep': '^1.0.0' } },
+        }
+      );
+
+      expect(result.migrations).toEqual(['unconditional']);
+    });
+  });
+
+  describe('generateMigrationsJsonAndUpdatePackageJson (addToPackageJson)', () => {
+    let tempFs: TempFs;
+    let root: string;
+
+    beforeEach(() => {
+      tempFs = new TempFs('nx-migrate-add-to-package-json');
+      root = tempFs.tempDir;
+      writeFileSync(join(root, 'nx.json'), JSON.stringify({}));
+    });
+
+    afterEach(() => {
+      delete (Object.prototype as any).polluted;
+      tempFs.cleanup();
+    });
+
+    it('only adds packages to the dependencies and devDependencies sections', async () => {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({
+          name: 'w',
+          version: '0.0.0',
+          devDependencies: { plugin: '1.0.0' },
+        })
+      );
+
+      const fetch = (p: string) => {
+        if (p === 'plugin') {
+          return Promise.resolve({
+            version: '2.0.0',
+            packageJsonUpdates: {
+              version2: {
+                version: '2.0.0',
+                packages: {
+                  dep: { version: '2.0.0', addToPackageJson: 'dependencies' },
+                  devDep: {
+                    version: '2.0.0',
+                    alwaysAddToPackageJson: 'devDependencies',
+                  },
+                  polluted: { version: 'yes', addToPackageJson: '__proto__' },
+                  preinstall: {
+                    version: 'echo hi',
+                    alwaysAddToPackageJson: 'scripts',
+                  },
+                },
+              },
+            },
+          });
+        }
+        return Promise.resolve({ version: '2.0.0' });
+      };
+
+      await generateMigrationsJsonAndUpdatePackageJson(
+        root,
+        {
+          type: 'generateMigrations',
+          targetPackage: 'plugin',
+          targetVersion: '2.0.0',
+          from: { plugin: '1.0.0' },
+          to: {},
+          interactive: false,
+        },
+        fetch as any
+      );
+
+      expect(({} as any).polluted).toBeUndefined();
+      expect(
+        JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'))
+      ).toEqual({
+        name: 'w',
+        version: '0.0.0',
+        dependencies: { dep: '2.0.0' },
+        devDependencies: { plugin: '2.0.0', devDep: '2.0.0' },
+      });
+    });
+  });
+
+  describe('writePromptMigrationFiles', () => {
+    let tmpRoot: string;
+
+    beforeEach(() => {
+      tmpRoot = mkdtempSync(join(tmpdir(), 'nx-prompt-migrations-'));
+    });
+
+    afterEach(() => {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    });
+
+    it.each([
+      ['files/..\\..\\..\\..\\x.md', 'x.md'],
+      ['files\\x.md', 'x.md'],
+      ['files/x.md\\..', 'files'],
+    ])(
+      'should keep prompt %s inside the target version directory',
+      (prompt, baseName) => {
+        const migrations = [
+          { package: 'pkg', name: 'm', version: '1.0.0', prompt },
+        ];
+
+        const written = writePromptMigrationFiles(
+          tmpRoot,
+          migrations,
+          { [promptContentKey('pkg', prompt)]: 'X' },
+          '1.0.0'
+        );
+
+        expect(written).toEqual([`tools/ai-migrations/pkg/1.0.0/${baseName}`]);
+        expect(readdirSync(tmpRoot)).toEqual(['tools']);
+      }
+    );
+
+    it('should write prompt files under the package and target version directories using the basename', () => {
+      const migrations = [
+        {
+          package: '@nx/expo',
+          name: 'm',
+          version: '22.2.0-beta.3',
+          prompt:
+            './src/migrations/update-22-2-0/files/ai-instructions-for-expo-54.md',
+        },
+      ];
+      const promptContents = {
+        '@nx/expo::./src/migrations/update-22-2-0/files/ai-instructions-for-expo-54.md':
+          'EXPO',
+      };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '22.5.0'
+      );
+
+      const expectedPath =
+        'tools/ai-migrations/@nx/expo/22.5.0/ai-instructions-for-expo-54.md';
+      expect(written).toEqual([expectedPath]);
+      expect(migrations[0].prompt).toBe(expectedPath);
+      expect(readFileSync(join(tmpRoot, expectedPath), 'utf-8')).toBe('EXPO');
+    });
+
+    it('should write under the package directory when unscoped', () => {
+      const migrations = [
+        {
+          package: 'mypackage',
+          name: 'm',
+          version: '1.0.0',
+          prompt: './files/foo.md',
+        },
+      ];
+      const promptContents = { 'mypackage::./files/foo.md': 'X' };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '1.0.0'
+      );
+
+      expect(written).toEqual(['tools/ai-migrations/mypackage/1.0.0/foo.md']);
+    });
+
+    it('should write a single file when two entries reference the same source .md', () => {
+      const migrations = [
+        {
+          package: '@nx/vitest',
+          name: 'a',
+          version: '22.1.0-beta.8',
+          prompt: './files/ai-instructions-for-vitest-4.md',
+        },
+        {
+          package: '@nx/vitest',
+          name: 'b',
+          version: '22.3.2-beta.0',
+          prompt: './files/ai-instructions-for-vitest-4.md',
+        },
+      ];
+      const promptContents = {
+        '@nx/vitest::./files/ai-instructions-for-vitest-4.md': 'V',
+      };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '22.4.0'
+      );
+
+      const expectedPath =
+        'tools/ai-migrations/@nx/vitest/22.4.0/ai-instructions-for-vitest-4.md';
+      expect(written).toEqual([expectedPath]);
+      expect(migrations[0].prompt).toBe(expectedPath);
+      expect(migrations[1].prompt).toBe(expectedPath);
+      expect(readFileSync(join(tmpRoot, expectedPath), 'utf-8')).toBe('V');
+    });
+
+    it('should suffix the basename when two entries have different content but the same basename', () => {
+      const migrations = [
+        {
+          package: 'pkg',
+          name: 'a',
+          version: '1.0.0',
+          prompt: './a/foo.md',
+        },
+        {
+          package: 'pkg',
+          name: 'b',
+          version: '1.0.0',
+          prompt: './b/foo.md',
+        },
+      ];
+      const promptContents = {
+        'pkg::./a/foo.md': 'A',
+        'pkg::./b/foo.md': 'B',
+      };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '2.0.0'
+      );
+
+      expect(written).toEqual([
+        'tools/ai-migrations/pkg/2.0.0/foo.md',
+        'tools/ai-migrations/pkg/2.0.0/foo-1.md',
+      ]);
+      expect(migrations[0].prompt).toBe('tools/ai-migrations/pkg/2.0.0/foo.md');
+      expect(migrations[1].prompt).toBe(
+        'tools/ai-migrations/pkg/2.0.0/foo-1.md'
+      );
+      expect(
+        readFileSync(
+          join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0/foo.md'),
+          'utf-8'
+        )
+      ).toBe('A');
+      expect(
+        readFileSync(
+          join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0/foo-1.md'),
+          'utf-8'
+        )
+      ).toBe('B');
+    });
+
+    it('should reuse an existing on-disk file when its content is identical', () => {
+      const existing = join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0/foo.md');
+      mkdirSync(dirname(existing), { recursive: true });
+      writeFileSync(existing, 'SAME');
+
+      const migrations = [
+        {
+          package: 'pkg',
+          name: 'm',
+          version: '1.0.0',
+          prompt: './files/foo.md',
+        },
+      ];
+      const promptContents = { 'pkg::./files/foo.md': 'SAME' };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '2.0.0'
+      );
+
+      expect(written).toEqual([]);
+      expect(migrations[0].prompt).toBe('tools/ai-migrations/pkg/2.0.0/foo.md');
+      expect(readFileSync(existing, 'utf-8')).toBe('SAME');
+    });
+
+    it('should suffix when an existing on-disk file has different content', () => {
+      const existing = join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0/foo.md');
+      mkdirSync(dirname(existing), { recursive: true });
+      writeFileSync(existing, 'OLD');
+
+      const migrations = [
+        {
+          package: 'pkg',
+          name: 'm',
+          version: '1.0.0',
+          prompt: './files/foo.md',
+        },
+      ];
+      const promptContents = { 'pkg::./files/foo.md': 'NEW' };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '2.0.0'
+      );
+
+      expect(written).toEqual(['tools/ai-migrations/pkg/2.0.0/foo-1.md']);
+      expect(migrations[0].prompt).toBe(
+        'tools/ai-migrations/pkg/2.0.0/foo-1.md'
+      );
+      expect(readFileSync(existing, 'utf-8')).toBe('OLD');
+      expect(
+        readFileSync(
+          join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0/foo-1.md'),
+          'utf-8'
+        )
+      ).toBe('NEW');
+    });
+
+    it('should walk past existing suffixed files until it finds a free or content-matching slot', () => {
+      const dir = join(tmpRoot, 'tools/ai-migrations/pkg/2.0.0');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'foo.md'), 'A');
+      writeFileSync(join(dir, 'foo-1.md'), 'B');
+
+      const migrations = [
+        {
+          package: 'pkg',
+          name: 'm',
+          version: '1.0.0',
+          prompt: './files/foo.md',
+        },
+      ];
+      const promptContents = { 'pkg::./files/foo.md': 'C' };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '2.0.0'
+      );
+
+      expect(written).toEqual(['tools/ai-migrations/pkg/2.0.0/foo-2.md']);
+      expect(migrations[0].prompt).toBe(
+        'tools/ai-migrations/pkg/2.0.0/foo-2.md'
+      );
+      expect(readFileSync(join(dir, 'foo-2.md'), 'utf-8')).toBe('C');
+    });
+
+    it('should ignore entries whose prompt content is missing from the map', () => {
+      const migrations = [
+        { package: 'pkg', name: 'a', version: '1.0.0' },
+        {
+          package: 'pkg',
+          name: 'b',
+          version: '1.0.0',
+          prompt: './missing.md',
+        },
+        {
+          package: 'pkg',
+          name: 'c',
+          version: '1.0.0',
+          prompt: './x.md',
+        },
+      ];
+      const promptContents = { 'pkg::./x.md': 'X' };
+
+      const written = writePromptMigrationFiles(
+        tmpRoot,
+        migrations,
+        promptContents,
+        '1.0.0'
+      );
+      expect(written).toEqual(['tools/ai-migrations/pkg/1.0.0/x.md']);
+    });
+  });
+
+  describe('agentic helpers', () => {
+    const baseMigration = { package: 'p', name: 'n', version: '1.0.0' };
+
+    describe('isPromptOnlyMigration / isHybridMigration', () => {
+      it.each([
+        ['prompt only', { prompt: 'x.md' }, true, false],
+        [
+          'prompt + implementation (hybrid)',
+          { prompt: 'x.md', implementation: './impl.js' },
+          false,
+          true,
+        ],
+        [
+          'prompt + legacy factory (hybrid)',
+          { prompt: 'x.md', factory: './factory.js' },
+          false,
+          true,
+        ],
+        [
+          'implementation only (no prompt)',
+          { implementation: './impl.js' },
+          false,
+          false,
+        ],
+      ])(
+        'classifies %s correctly',
+        (_label, extra, expectedPromptOnly, expectedHybrid) => {
+          const migration = { ...baseMigration, ...extra };
+          expect(isPromptOnlyMigration(migration)).toBe(expectedPromptOnly);
+          expect(isHybridMigration(migration)).toBe(expectedHybrid);
+        }
+      );
+    });
+
+    describe('resolveCreateCommits', () => {
+      it.each<
+        [
+          string,
+          boolean | undefined,
+          'disabled' | 'inside-agent' | 'enabled',
+          { effective: boolean },
+        ]
+      >([
+        ['explicit true, no agentic', true, 'disabled', { effective: true }],
+        ['explicit false, no agentic', false, 'disabled', { effective: false }],
+        ['unset, no agentic', undefined, 'disabled', { effective: false }],
+        [
+          'unset, inside-agent',
+          undefined,
+          'inside-agent',
+          { effective: false },
+        ],
+        [
+          'unset, agentic enabled — soft-force on',
+          undefined,
+          'enabled',
+          { effective: true },
+        ],
+        [
+          'explicit true, agentic enabled',
+          true,
+          'enabled',
+          { effective: true },
+        ],
+      ])('git repo: %s', (_label, createCommits, agenticKind, expected) => {
+        expect(
+          resolveCreateCommits({
+            createCommits,
+            mode: agenticKind,
+            isGitRepo: true,
+          })
+        ).toEqual(expected);
+      });
+
+      it('warns when createCommits=false is explicit alongside agentic', () => {
+        const result = resolveCreateCommits({
+          createCommits: false,
+          mode: 'enabled',
+          isGitRepo: true,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.warning).toMatch(/--no-create-commits/);
+      });
+
+      it('words the explicit --no-create-commits warning without naming --agentic on the orchestrated path', () => {
+        const result = resolveCreateCommits({
+          createCommits: false,
+          mode: 'orchestrated',
+          isGitRepo: true,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.warning).toMatch(/orchestrated migrate runs/);
+        expect(result.warning).toMatch(/--no-create-commits/);
+        expect(result.warning).not.toMatch(/--agentic/);
+      });
+
+      it('words the no-git warning without naming --agentic on the orchestrated path', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'orchestrated',
+          isGitRepo: false,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.warning).toMatch(/Orchestrated migrate runs/);
+        expect(result.warning).toMatch(/not a git repository/);
+        expect(result.warning).not.toMatch(/--agentic/);
+      });
+
+      it('errors when --create-commits is explicit without a git repo', () => {
+        const result = resolveCreateCommits({
+          createCommits: true,
+          mode: 'disabled',
+          isGitRepo: false,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.error).toMatch(
+          /`--create-commits` requires a git repository/
+        );
+      });
+
+      it('degrades agentic without git (createCommits unset): warns, no error', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'enabled',
+          isGitRepo: false,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.error).toBeUndefined();
+        expect(result.warning).toMatch(/not a git repository/);
+      });
+
+      it('notes the dropped --commit-prefix in the agentic-without-git warning when the prefix is customized', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'enabled',
+          isGitRepo: false,
+          commitPrefixIsCustom: true,
+        });
+        expect(result.warning).toMatch(/--commit-prefix/);
+        expect(result.warning).toMatch(/no effect/);
+      });
+
+      it('notes the dropped --commit-prefix in the --no-create-commits + agentic warning when the prefix is customized', () => {
+        const result = resolveCreateCommits({
+          createCommits: false,
+          mode: 'enabled',
+          isGitRepo: true,
+          commitPrefixIsCustom: true,
+        });
+        expect(result.warning).toMatch(/--no-create-commits/);
+        expect(result.warning).toMatch(/--commit-prefix/);
+        expect(result.warning).toMatch(/no effect/);
+      });
+
+      it('does not mention --commit-prefix when the prefix is unchanged', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'enabled',
+          isGitRepo: false,
+          commitPrefixIsCustom: false,
+        });
+        expect(result.warning).not.toMatch(/--commit-prefix/);
+      });
+
+      it('warns that a configured commit prefix has no effect when commits stay disabled', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'disabled',
+          isGitRepo: true,
+          commitPrefixIsCustom: true,
+        });
+        expect(result.effective).toBe(false);
+        expect(result.warning).toMatch(/no effect/);
+        expect(result.warning).toMatch(/createCommits/);
+      });
+
+      it('does not warn about the commit prefix when commits are disabled and the prefix is default', () => {
+        const result = resolveCreateCommits({
+          createCommits: undefined,
+          mode: 'disabled',
+          isGitRepo: true,
+          commitPrefixIsCustom: false,
+        });
+        expect(result.warning).toBeUndefined();
+      });
+
+      it('does not warn when commits are enabled even though the agentic flow is disabled', () => {
+        const result = resolveCreateCommits({
+          createCommits: true,
+          mode: 'disabled',
+          isGitRepo: true,
+          commitPrefixIsCustom: true,
+        });
+        expect(result.effective).toBe(true);
+        expect(result.warning).toBeUndefined();
+      });
+    });
+
+    describe('confirmCommitsOnDefaultBranch', () => {
+      beforeEach(() => {
+        vi.clearAllMocks();
+      });
+
+      it('proceeds without prompting when the branch cannot be resolved', async () => {
+        await expect(
+          confirmCommitsOnDefaultBranch({
+            currentBranch: null,
+            defaultBranch: 'main',
+          })
+        ).resolves.toBe(true);
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+
+      it('proceeds without prompting when the default branch is unknown', async () => {
+        await expect(
+          confirmCommitsOnDefaultBranch({
+            currentBranch: 'main',
+            defaultBranch: null,
+          })
+        ).resolves.toBe(true);
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+
+      it('proceeds without prompting when not on the default branch', async () => {
+        await expect(
+          confirmCommitsOnDefaultBranch({
+            currentBranch: 'feature/foo',
+            defaultBranch: 'main',
+          })
+        ).resolves.toBe(true);
+        expect(mockPrompt).not.toHaveBeenCalled();
+      });
+
+      it('proceeds when the user confirms on the default branch', async () => {
+        mockPrompt.mockResolvedValue('Yes');
+        await expect(
+          confirmCommitsOnDefaultBranch({
+            currentBranch: 'main',
+            defaultBranch: 'main',
+          })
+        ).resolves.toBe(true);
+        expect(mockPrompt).toHaveBeenCalledTimes(1);
+      });
+
+      it('aborts when the user declines on the default branch', async () => {
+        mockPrompt.mockResolvedValue('No');
+        await expect(
+          confirmCommitsOnDefaultBranch({
+            currentBranch: 'main',
+            defaultBranch: 'main',
+          })
+        ).resolves.toBe(false);
+        expect(mockPrompt).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('parseMigrationReturn', () => {
+      it('reads both buckets from the object shape and tolerates partial shapes', () => {
+        expect(
+          parseMigrationReturn({
+            nextSteps: ['a'],
+            agentContext: ['b', 'c'],
+          })
+        ).toEqual({
+          nextSteps: ['a'],
+          agentContext: ['b', 'c'],
+          skipAgentic: false,
+        });
+        expect(parseMigrationReturn({ agentContext: ['x'] })).toEqual({
+          nextSteps: [],
+          agentContext: ['x'],
+          skipAgentic: false,
+        });
+      });
+
+      it('treats a string array as legacy workspace-wide nextSteps', () => {
+        expect(parseMigrationReturn(['a', 'b'])).toEqual({
+          nextSteps: ['a', 'b'],
+          agentContext: [],
+          skipAgentic: false,
+        });
+      });
+
+      it('filters non-string entries per bucket so a single bad entry does not drop the whole array', () => {
+        expect(
+          parseMigrationReturn({
+            nextSteps: ['ok', 1, null] as any,
+            agentContext: [true, 'ok'] as any,
+          })
+        ).toEqual({
+          nextSteps: ['ok'],
+          agentContext: ['ok'],
+          skipAgentic: false,
+        });
+        expect(parseMigrationReturn(['ok', 42] as any)).toEqual({
+          nextSteps: ['ok'],
+          agentContext: [],
+          skipAgentic: false,
+        });
+      });
+
+      it('opts out of the AI step only on a literal true', () => {
+        expect(parseMigrationReturn({ skipAgentic: true })).toEqual({
+          nextSteps: [],
+          agentContext: [],
+          skipAgentic: true,
+        });
+        expect(parseMigrationReturn({ skipAgentic: 'true' } as any)).toEqual({
+          nextSteps: [],
+          agentContext: [],
+          skipAgentic: false,
+        });
+      });
+    });
+
+    describe('formatSkippedPromptsNextStep', () => {
+      it('renders a parent instruction line and an indented bullet per skipped path', () => {
+        const result = formatSkippedPromptsNextStep([
+          {
+            package: '@nx/storybook',
+            name: 'migrate-css',
+            version: '9.2.0',
+            prompt: 'tools/ai-migrations/@nx/storybook/9.2.0/migrate-css.md',
+          },
+          {
+            package: '@nx/rspack',
+            name: 'perf-options',
+            version: '2.0.0',
+            prompt: 'tools/ai-migrations/@nx/rspack/2.0.0/perf-options.md',
+          },
+        ]);
+
+        expect(result).toBe(
+          'Some prompt migrations were skipped. Review and apply each of the following prompt files to the workspace, in the listed order:\n' +
+            '  - tools/ai-migrations/@nx/storybook/9.2.0/migrate-css.md\n' +
+            '  - tools/ai-migrations/@nx/rspack/2.0.0/perf-options.md'
+        );
+      });
+    });
+  });
+
+  describe('resolveDocumentationFileToWorkspacePath', () => {
+    let tmpRoot: string;
+
+    beforeEach(() => {
+      tmpRoot = realpathSync(mkdtempSync(join(tmpdir(), 'nx-doc-resolve-')));
+    });
+
+    afterEach(() => {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    });
+
+    it('resolves a package-relative documentation path to a workspace-relative path', () => {
+      const migrationsDir = join(tmpRoot, 'node_modules', '@nx/foo');
+      const docAbs = join(migrationsDir, 'src/migrations/update-1-0-0/do.md');
+      mkdirSync(dirname(docAbs), { recursive: true });
+      writeFileSync(docAbs, '# doc');
+      expect(
+        resolveDocumentationFileToWorkspacePath(
+          tmpRoot,
+          migrationsDir,
+          './src/migrations/update-1-0-0/do.md'
+        )
+      ).toBe(
+        join('node_modules', '@nx/foo', 'src/migrations/update-1-0-0/do.md')
+      );
+    });
+
+    it('returns undefined when the documentation file does not exist', () => {
+      const migrationsDir = join(tmpRoot, 'node_modules', '@nx/foo');
+      mkdirSync(migrationsDir, { recursive: true });
+      expect(
+        resolveDocumentationFileToWorkspacePath(
+          tmpRoot,
+          migrationsDir,
+          './missing.md'
+        )
+      ).toBeUndefined();
+    });
+  });
+});

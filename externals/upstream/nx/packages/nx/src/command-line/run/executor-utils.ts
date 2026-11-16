@@ -1,0 +1,178 @@
+import { dirname, join } from 'path';
+
+import { readPluginPackageJson } from '../../project-graph/plugins';
+import {
+  CustomHasher,
+  Executor,
+  ExecutorConfig,
+  ExecutorsJson,
+  TaskGraphExecutor,
+} from '../../config/misc-interfaces';
+import { readJsonFile } from '../../utils/fileutils';
+import {
+  getImplementationFactory,
+  resolveSchema,
+} from '../../config/schema-utils';
+import { getNxRequirePaths } from '../../utils/installation-directory';
+import { ProjectConfiguration } from '../../config/workspace-json-project-json';
+
+export function normalizeExecutorSchema(
+  schema: Partial<ExecutorConfig['schema']>
+): ExecutorConfig['schema'] {
+  const version = (schema.version ??= 1);
+  return {
+    version,
+    outputCapture:
+      (schema.outputCapture ?? version < 2) ? 'direct-nodejs' : 'pipe',
+    continuous: schema.continuous ?? false,
+    properties:
+      !schema.properties || typeof schema.properties !== 'object'
+        ? {}
+        : schema.properties,
+    ...schema,
+  };
+}
+
+function cacheKey(nodeModule: string, executor: string, root: string) {
+  return `${root}:${nodeModule}:${executor}`;
+}
+
+export function parseExecutor(
+  executorString: string
+): [module: string, name: string] {
+  return executorString.split(':') as [string, string];
+}
+
+const cachedExecutorInformation = {};
+
+export function getExecutorInformation(
+  nodeModule: string,
+  executor: string,
+  root: string,
+  /**
+   * A map of projects keyed by project name
+   */
+  projects: Record<string, ProjectConfiguration>
+): ExecutorConfig & { isNgCompat: boolean; isNxExecutor: boolean } {
+  try {
+    const key = cacheKey(nodeModule, executor, root);
+    if (cachedExecutorInformation[key]) return cachedExecutorInformation[key];
+
+    const { executorsFilePath, executorConfig, isNgCompat } = readExecutorJson(
+      nodeModule,
+      executor,
+      root,
+      projects
+    );
+    const executorsDir = dirname(executorsFilePath);
+    const schemaPath = resolveSchema(
+      executorConfig.schema,
+      executorsDir,
+      nodeModule,
+      projects
+    );
+    const schema = normalizeExecutorSchema(readJsonFile(schemaPath));
+
+    const implementationFactory = getImplementationFactory<Executor>(
+      executorConfig.implementation,
+      executorsDir,
+      nodeModule,
+      projects
+    );
+
+    const batchImplementationFactory = executorConfig.batchImplementation
+      ? getImplementationFactory<TaskGraphExecutor>(
+          executorConfig.batchImplementation,
+          executorsDir,
+          nodeModule,
+          projects
+        )
+      : null;
+
+    // TODO(v25): remove custom hasher support.
+    const hasherFactory = executorConfig.hasher
+      ? getImplementationFactory<CustomHasher>(
+          executorConfig.hasher,
+          executorsDir,
+          nodeModule,
+          projects
+        )
+      : null;
+
+    const res = {
+      schema,
+      implementationFactory,
+      batchImplementationFactory,
+      preferBatch: executorConfig.preferBatch,
+      hasherFactory,
+      isNgCompat,
+      isNxExecutor: !isNgCompat,
+    };
+
+    cachedExecutorInformation[key] = res;
+    return res;
+  } catch (e) {
+    throw new Error(
+      `Unable to resolve ${nodeModule}:${executor}.\n${e.message}`
+    );
+  }
+}
+
+function readExecutorJson(
+  nodeModule: string,
+  executor: string,
+  root: string,
+  projects: Record<string, ProjectConfiguration>,
+  extraRequirePaths: string[] = []
+): {
+  executorsFilePath: string;
+  executorConfig: {
+    implementation: string;
+    batchImplementation?: string;
+    preferBatch?: boolean;
+    schema: string;
+    hasher?: string;
+  };
+  isNgCompat: boolean;
+} {
+  const { json: packageJson, path: packageJsonPath } = readPluginPackageJson(
+    nodeModule,
+    projects,
+    root
+      ? [
+          root,
+          __dirname,
+          process.cwd(),
+          ...getNxRequirePaths(),
+          ...extraRequirePaths,
+        ]
+      : [__dirname, process.cwd(), ...getNxRequirePaths(), ...extraRequirePaths]
+  );
+  const executorsFile = packageJson.executors ?? packageJson.builders;
+
+  if (!executorsFile) {
+    throw new Error(
+      `The "${nodeModule}" package does not support Nx executors.`
+    );
+  }
+
+  const basePath = dirname(packageJsonPath);
+  const executorsFilePath = require.resolve(join(basePath, executorsFile));
+  const executorsJson = readJsonFile<ExecutorsJson>(executorsFilePath);
+  const executorConfig =
+    executorsJson.executors?.[executor] || executorsJson.builders?.[executor];
+  if (!executorConfig) {
+    throw new Error(
+      `Cannot find executor '${executor}' in ${executorsFilePath}.`
+    );
+  }
+  if (typeof executorConfig === 'string') {
+    // Angular CLI can have a builder pointing to another package:builder
+    const [packageName, executorName] = executorConfig.split(':');
+    return readExecutorJson(packageName, executorName, root, projects, [
+      basePath,
+    ]);
+  }
+  const isNgCompat = !executorsJson.executors?.[executor];
+  return { executorsFilePath, executorConfig, isNgCompat };
+}

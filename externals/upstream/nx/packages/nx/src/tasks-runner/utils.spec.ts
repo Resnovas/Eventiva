@@ -1,0 +1,1479 @@
+import {
+  expandDependencyConfigSyntaxSugar,
+  expandInitiatingTasksThroughNoop,
+  expandWildcardTargetConfiguration,
+  getCustomHasher,
+  getDependencyConfigs,
+  getOutputsForTargetAndConfiguration,
+  hashTaskOverrides,
+  interpolate,
+  pruneToSelectedTasks,
+  resetCustomHasherDeprecationWarnings,
+  transformLegacyOutputs,
+  validateOutputs,
+} from './utils';
+import { getExecutorInformation } from '../command-line/run/executor-utils';
+import { output } from '../utils/output';
+import { ProjectGraph, ProjectGraphProjectNode } from '../config/project-graph';
+import { Task, TaskGraph, TaskGraphEdge } from '../config/task-graph';
+import { ProjectConfiguration } from '../config/workspace-json-project-json';
+
+vi.mock('../command-line/run/executor-utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../command-line/run/executor-utils')>();
+  return {
+    ...actual,
+    getExecutorInformation: vi.fn(actual.getExecutorInformation),
+  };
+});
+
+describe('utils', () => {
+  function getNode(build): ProjectGraphProjectNode {
+    return {
+      name: 'myapp',
+      type: 'app',
+      data: {
+        root: 'myapp',
+        targets: {
+          build: { ...build, executor: '' },
+        },
+      },
+    };
+  }
+
+  describe('interpolate', () => {
+    it('should not mangle URLs', () => {
+      expect(interpolate('https://npm-registry.example.com/', {})).toEqual(
+        'https://npm-registry.example.com/'
+      );
+    });
+  });
+
+  describe('getOutputsForTargetAndConfiguration', () => {
+    const task = {
+      overrides: {},
+      target: {
+        project: 'myapp',
+        target: 'build',
+        configuration: 'production',
+      },
+    };
+
+    it('should return empty arrays', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: [],
+          })
+        )
+      ).toEqual([]);
+    });
+
+    it('should interpolate {workspaceRoot}, {projectRoot} and {projectName}', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: [
+              '{workspaceRoot}/one',
+              '{projectRoot}/two',
+              '{projectName}/three',
+            ],
+          })
+        )
+      ).toEqual(['one', 'myapp/two', 'myapp/three']);
+    });
+
+    it('should handle relative paths after {projectRoot}', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{projectRoot}/../relative/path'],
+          })
+        )
+      ).toEqual(['relative/path']);
+    });
+
+    it('should interpolate {projectRoot} when it is not at the beginning', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{workspaceRoot}/dist/{projectRoot}'],
+          })
+        )
+      ).toEqual(['dist/myapp']);
+    });
+
+    it('should throw when {workspaceRoot} is used not at the beginning', () => {
+      expect(() =>
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['test/{workspaceRoot}/dist'],
+          })
+        )
+      ).toThrow();
+    });
+
+    it('should interpolate {projectRoot} = . by removing the slash after it', () => {
+      const data = {
+        name: 'myapp',
+        type: 'app',
+        data: {
+          root: '.',
+          targets: {
+            build: {
+              outputs: ['{projectRoot}/dist'],
+            },
+          },
+          files: [],
+        },
+      };
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          data as any
+        )
+      ).toEqual(['dist']);
+    });
+
+    it('should interpolate {workspaceRoot} when {projectRoot} = . by removing the slash after it', () => {
+      const data = {
+        name: 'myapp',
+        type: 'app',
+        data: {
+          root: '.',
+          targets: {
+            build: {
+              outputs: ['{workspaceRoot}/dist'],
+            },
+          },
+          files: [],
+        },
+      };
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          data as any
+        )
+      ).toEqual(['dist']);
+    });
+
+    it('should interpolate {projectRoot} = . used not at the beginning by normalizing the path', () => {
+      const data = {
+        name: 'myapp',
+        type: 'app',
+        data: {
+          root: '.',
+          targets: {
+            build: {
+              outputs: ['{workspaceRoot}/test/{projectRoot}'],
+            },
+          },
+          files: [],
+        },
+      };
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          data as any
+        )
+      ).toEqual(['test']);
+    });
+
+    it('should interpolate {projectRoot} = . used in the middle by normalizing the path', () => {
+      const data = {
+        name: 'myapp',
+        type: 'app',
+        data: {
+          root: '.',
+          targets: {
+            build: {
+              outputs: ['{workspaceRoot}/dist/{projectRoot}/sub'],
+            },
+          },
+          files: [],
+        },
+      };
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          data as any
+        )
+      ).toEqual(['dist/sub']);
+    });
+
+    it('should support interpolation based on options', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{workspaceRoot}/path/{options.myVar}'],
+            options: {
+              myVar: 'value',
+            },
+          })
+        )
+      ).toEqual(['path/value']);
+    });
+
+    it('should support nested interpolation based on options', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{options.nested.myVar}'],
+            options: {
+              nested: {
+                myVar: 'value',
+              },
+            },
+          })
+        )
+      ).toEqual(['value']);
+    });
+
+    it('should support interpolation for non-existing options', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{options.outputFile}'],
+            options: {},
+          })
+        )
+      ).toEqual([]);
+    });
+
+    it.each([
+      [{}, ['dist/myapp']],
+      [{ outputPath: 'build/myapp' }, ['build/myapp']],
+    ])(
+      'should resolve ?? fallbacks with overrides %j',
+      (overrides, outputs) => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            overrides,
+            getNode({
+              outputs: [
+                '{options.outputPath ?? {workspaceRoot}/dist/{projectRoot}}',
+              ],
+            })
+          )
+        ).toEqual(outputs);
+      }
+    );
+
+    it.each([
+      ['dist/', 'myapp/dist/myapp'],
+      ['../', 'myapp'],
+    ])(
+      'should keep the separator a fallback literal ends with: %s',
+      (dir, output) => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              outputs: [`{projectRoot}/{options.dir ?? ${dir}}{projectName}`],
+            })
+          )
+        ).toEqual([output]);
+      }
+    );
+
+    it.each([
+      ['myapp', '{options.dir ?? /root/build/myapp}', '/root/build/myapp'],
+      [
+        '.',
+        '{projectRoot}/{options.dir ?? /root/build/myapp}',
+        '/root/build/myapp',
+      ],
+      [
+        'myapp',
+        '{projectRoot}/{options.dir ?? /root/build/myapp}',
+        'myapp/root/build/myapp',
+      ],
+    ])(
+      'should resolve a fallback literal starting with / like the same option value (root %s): %s',
+      (root, output, expected) => {
+        const node = getNode({ outputs: [output] });
+        node.data.root = root;
+        expect(
+          getOutputsForTargetAndConfiguration(task.target, {}, node)
+        ).toEqual([expected]);
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            { dir: '/root/build/myapp' },
+            node
+          )
+        ).toEqual([expected]);
+      }
+    );
+
+    it('should interpolate options set to 0 or false', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{projectRoot}/shard-{options.shard}-{options.cache}'],
+            options: { shard: 0, cache: false },
+          })
+        )
+      ).toEqual(['myapp/shard-0-false']);
+    });
+
+    it('should use a fallback that starts with env. as a path', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{projectRoot}/{options.outputFile ?? env.json}'],
+          })
+        )
+      ).toEqual(['myapp/env.json']);
+    });
+
+    it('should keep a glob that starts with env. as written', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: [
+              '{projectRoot}/src/{env.ts,env.d.ts}',
+              '{projectRoot}/{env.json}',
+              '{options.outputPath ?? {projectRoot}/dist/{env.json}}',
+            ],
+          })
+        )
+      ).toEqual([
+        'myapp/src/{env.ts,env.d.ts}',
+        'myapp/{env.json}',
+        'myapp/dist/{env.json}',
+      ]);
+    });
+
+    it('should support interpolation based on configuration-specific options', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          task.overrides,
+          getNode({
+            outputs: ['{options.myVar}'],
+            options: {
+              myVar: 'value',
+            },
+            configurations: {
+              production: {
+                myVar: 'value/production',
+              },
+            },
+          })
+        )
+      ).toEqual(['value/production']);
+    });
+
+    it('should support interpolation outputs from overrides', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          task.target,
+          {
+            myVar: 'value/override',
+          },
+          getNode({
+            outputs: ['{options.myVar}'],
+            options: {
+              myVar: 'value',
+            },
+            configurations: {
+              production: {
+                myVar: 'value/production',
+              },
+            },
+          })
+        )
+      ).toEqual(['value/override']);
+    });
+
+    describe('when `outputs` is missing (backwards compatibility)', () => {
+      it('should return the outputPath option', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              options: {
+                outputPath: 'value',
+              },
+            })
+          )
+        ).toEqual(['value']);
+      });
+
+      it('should handle outputPath overrides', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            {
+              outputPath: 'overrideOutputPath',
+            },
+            getNode({
+              options: {
+                outputPath: 'one',
+              },
+            })
+          )
+        ).toEqual(['overrideOutputPath']);
+      });
+
+      it('should return configuration-specific outputPath when defined', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              options: {
+                outputPath: 'value',
+              },
+              configurations: {
+                production: {
+                  outputPath: 'value/production',
+                },
+              },
+            })
+          )
+        ).toEqual(['value/production']);
+      });
+
+      it('should return configuration-independent outputPath when defined', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              options: {
+                outputPath: 'value',
+              },
+              configurations: {
+                production: {},
+              },
+            })
+          )
+        ).toEqual(['value']);
+      });
+
+      it('should return default output paths when nothing else is defined', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(task.target, task.overrides, {
+            name: 'myapp',
+            type: 'app',
+            data: {
+              root: 'root-myapp',
+              targets: {
+                build: {
+                  executor: '',
+                },
+              },
+            },
+          })
+        ).toEqual([
+          'dist/root-myapp',
+          'root-myapp/dist',
+          'root-myapp/build',
+          'root-myapp/public',
+        ]);
+      });
+    });
+
+    describe('invalid outputs should be transformed', () => {
+      it('should transform non-prefixed paths', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              outputs: ['{workspaceRoot}/dist'],
+            })
+          )
+        ).toEqual(['dist']);
+      });
+      it('should transform non-prefixed paths that use interpolation', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              outputs: ['{workspaceRoot}/dist/{projectRoot}'],
+            })
+          )
+        ).toEqual(['dist/myapp']);
+      });
+
+      it('should transform relative paths', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              outputs: ['{projectRoot}/sub'],
+            })
+          )
+        ).toEqual(['myapp/sub']);
+      });
+
+      it('should transform unix-absolute paths', () => {
+        expect(
+          getOutputsForTargetAndConfiguration(
+            task.target,
+            task.overrides,
+            getNode({
+              outputs: ['{workspaceRoot}/dist'],
+            })
+          )
+        ).toEqual(['dist']);
+      });
+    });
+  });
+
+  describe('transformLegacyOutputs', () => {
+    it('should prefix paths with {workspaceRoot}', () => {
+      const outputs = ['dist'];
+      const result = transformLegacyOutputs('myapp', outputs);
+      expect(result).toEqual(['{workspaceRoot}/dist']);
+    });
+
+    it('should prefix unix-absolute paths with {workspaceRoot}', () => {
+      const outputs = ['/dist'];
+      const result = transformLegacyOutputs('myapp', outputs);
+      expect(result).toEqual(['{workspaceRoot}/dist']);
+    });
+  });
+
+  it('should prefix relative paths with {projectRoot}', () => {
+    const outputs = ['./dist'];
+    const result = transformLegacyOutputs('myapp', outputs);
+    expect(result).toEqual(['{projectRoot}/dist']);
+  });
+
+  it('should prefix paths within the project with {projectRoot}', () => {
+    const outputs = ['myapp/dist'];
+
+    const result = transformLegacyOutputs('myapp', outputs);
+    expect(result).toEqual(['{projectRoot}/dist']);
+  });
+
+  describe('expandDependencyConfigSyntaxSugar', () => {
+    it('should expand syntax for simple target names', () => {
+      const result = expandDependencyConfigSyntaxSugar('build', {
+        dependencies: {},
+        nodes: {},
+      });
+      expect(result).toEqual({
+        target: 'build',
+      });
+    });
+
+    it('should assume target of self if simple target also matches project name', () => {
+      const result = expandDependencyConfigSyntaxSugar('build', {
+        dependencies: {},
+        nodes: {
+          build: {
+            name: 'build',
+            type: 'lib',
+            data: {
+              root: 'libs/build',
+            },
+          },
+        },
+      });
+      expect(result).toEqual({
+        target: 'build',
+      });
+    });
+
+    it('should expand syntax for simple target names targetting dependencies', () => {
+      const result = expandDependencyConfigSyntaxSugar('^build', {
+        dependencies: {},
+        nodes: {},
+      });
+      expect(result).toEqual({
+        target: 'build',
+        dependencies: true,
+      });
+    });
+
+    it('should expand syntax for strings like project:target if project is a valid project', () => {
+      const result = expandDependencyConfigSyntaxSugar('project:build', {
+        dependencies: {},
+        nodes: {
+          project: {
+            name: 'project',
+            type: 'app',
+            data: {
+              root: 'libs/project',
+              targets: {
+                build: {},
+              },
+            },
+          },
+        },
+      });
+      expect(result).toEqual({
+        target: 'build',
+        projects: ['project'],
+      });
+    });
+
+    it('should expand syntax for strings like target:with:colons', () => {
+      const result = expandDependencyConfigSyntaxSugar('target:with:colons', {
+        dependencies: {},
+        nodes: {},
+      });
+      expect(result).toEqual({
+        target: 'target:with:colons',
+      });
+    });
+
+    it('supports wildcards in targets', () => {
+      const result = getDependencyConfigs(
+        { project: 'project', target: 'build' },
+        {},
+        {
+          dependencies: {},
+          nodes: {
+            project: {
+              name: 'project',
+              type: 'app',
+              data: {
+                root: 'libs/project',
+                targets: {
+                  build: {
+                    dependsOn: ['build-*'],
+                  },
+                  'build-css': {},
+                  'build-js': {},
+                  'then-build-something-else': {},
+                },
+              },
+            },
+          },
+        },
+        ['build', 'build-css', 'build-js', 'then-build-something-else']
+      );
+      expect(result).toEqual([
+        {
+          target: 'build-css',
+          projects: ['project'],
+        },
+        {
+          target: 'build-js',
+          projects: ['project'],
+        },
+      ]);
+    });
+
+    it('should support wildcards with dependencies', () => {
+      const result = getDependencyConfigs(
+        { project: 'project', target: 'build' },
+        {},
+        {
+          dependencies: {},
+          nodes: {
+            project: {
+              name: 'project',
+              type: 'app',
+              data: {
+                root: 'libs/project',
+                targets: {
+                  build: {
+                    dependsOn: ['^build-*'],
+                  },
+                  'then-build-something-else': {},
+                },
+              },
+            },
+            dep1: {
+              name: 'dep1',
+              type: 'lib',
+              data: {
+                root: 'libs/dep1',
+                targets: {
+                  'build-css': {},
+                  'build-js': {},
+                },
+              },
+            },
+            dep2: {
+              name: 'dep2',
+              type: 'lib',
+              data: {
+                root: 'libs/dep2',
+                targets: {
+                  'build-python': {},
+                },
+              },
+            },
+          },
+        },
+        [
+          'build',
+          'build-css',
+          'build-js',
+          'then-build-something-else',
+          'build-python',
+        ]
+      );
+      expect(result).toEqual([
+        {
+          target: 'build-css',
+          dependencies: true,
+        },
+        {
+          target: 'build-js',
+          dependencies: true,
+        },
+        {
+          target: 'build-python',
+          dependencies: true,
+        },
+      ]);
+    });
+
+    it('should support multiple dependsOn chains', () => {
+      const graph = new GraphBuilder()
+        .addProjectConfiguration({
+          name: 'foo',
+          targets: {
+            build: {
+              dependsOn: ['build:one'],
+            },
+            'build:one': {
+              dependsOn: [{ target: 'build:two' }],
+            },
+            'build:two': {},
+          },
+        })
+        .addProjectConfiguration({
+          name: 'bar',
+          targets: {
+            build: {
+              dependsOn: ['build:one'],
+            },
+            'build:one': {
+              dependsOn: [{ target: 'build:two' }],
+            },
+            'build:two': {},
+          },
+        })
+        .build();
+
+      const getTargetDependencies = (project: string, target: string) =>
+        getDependencyConfigs(
+          {
+            project,
+            target,
+          },
+          {},
+          graph,
+          ['build', 'build:one', 'build:two']
+        );
+
+      expect(getTargetDependencies('foo', 'build')).toEqual([
+        {
+          target: 'build:one',
+          projects: ['foo'],
+        },
+      ]);
+
+      expect(getTargetDependencies('foo', 'build:one')).toEqual([
+        {
+          target: 'build:two',
+          projects: ['foo'],
+        },
+      ]);
+
+      expect(getTargetDependencies('foo', 'build:two')).toEqual([]);
+
+      expect(getTargetDependencies('bar', 'build')).toEqual([
+        {
+          target: 'build:one',
+          projects: ['bar'],
+        },
+      ]);
+
+      expect(getTargetDependencies('bar', 'build:one')).toEqual([
+        {
+          target: 'build:two',
+          projects: ['bar'],
+        },
+      ]);
+
+      expect(getTargetDependencies('bar', 'build:two')).toEqual([]);
+    });
+  });
+
+  describe('legacy dependsOn projects strings', () => {
+    function graphWith(
+      dependsOn: ProjectConfiguration['targets'][string]['dependsOn'],
+      extraProjects: string[] = []
+    ): ProjectGraph {
+      const nodes: ProjectGraph['nodes'] = {
+        app: {
+          name: 'app',
+          type: 'app',
+          data: {
+            root: 'apps/app',
+            targets: { test: { dependsOn }, build: {} },
+          },
+        },
+      };
+      for (const name of extraProjects) {
+        nodes[name] = {
+          name,
+          type: 'lib',
+          data: { root: `libs/${name}`, targets: { build: {} } },
+        };
+      }
+      return { nodes, dependencies: {} };
+    }
+
+    it.each(['self', 'dependencies'])(
+      "should reject projects: '%s' and point at nx repair",
+      (value) => {
+        const graph = graphWith([{ projects: value, target: 'build' }]);
+        expect(() =>
+          getDependencyConfigs({ project: 'app', target: 'test' }, {}, graph, [
+            'test',
+            'build',
+          ])
+        ).toThrow(new RegExp(`projects: '${value}'[\\s\\S]*nx repair`));
+      }
+    );
+
+    it("should resolve projects: 'self' to a project named self", () => {
+      const graph = graphWith(
+        [{ projects: 'self', target: 'build' }],
+        ['self']
+      );
+      expect(
+        getDependencyConfigs({ project: 'app', target: 'test' }, {}, graph, [
+          'test',
+          'build',
+        ])
+      ).toEqual([{ projects: ['self'], target: 'build' }]);
+    });
+  });
+
+  describe('expandWildcardDependencies', () => {
+    it('should expand wildcard dependencies', () => {
+      const allTargets = ['build', 'build:test', 'build:prod', 'build:dev'];
+      const results = expandWildcardTargetConfiguration(
+        {
+          target: 'build*',
+          projects: ['a'],
+        },
+        allTargets
+      );
+
+      expect(results).toEqual([
+        {
+          target: 'build',
+          projects: ['a'],
+        },
+        {
+          target: 'build:test',
+          projects: ['a'],
+        },
+        {
+          target: 'build:prod',
+          projects: ['a'],
+        },
+        {
+          target: 'build:dev',
+          projects: ['a'],
+        },
+      ]);
+
+      const results2 = expandWildcardTargetConfiguration(
+        {
+          target: 'build*',
+          projects: ['b'],
+        },
+        allTargets
+      );
+
+      expect(results2).toEqual([
+        {
+          target: 'build',
+          projects: ['b'],
+        },
+        {
+          target: 'build:test',
+          projects: ['b'],
+        },
+        {
+          target: 'build:prod',
+          projects: ['b'],
+        },
+        {
+          target: 'build:dev',
+          projects: ['b'],
+        },
+      ]);
+    });
+
+    it('should preserve params and options when expanding wildcards', () => {
+      const allTargets = ['build', 'build:test', 'build:prod'];
+      const results = expandWildcardTargetConfiguration(
+        {
+          target: 'build*',
+          projects: ['a'],
+          params: 'forward',
+        },
+        allTargets
+      );
+
+      expect(results).toEqual([
+        {
+          target: 'build',
+          projects: ['a'],
+          params: 'forward',
+        },
+        {
+          target: 'build:test',
+          projects: ['a'],
+          params: 'forward',
+        },
+        {
+          target: 'build:prod',
+          projects: ['a'],
+          params: 'forward',
+        },
+      ]);
+    });
+  });
+
+  describe('validateOutputs', () => {
+    it('returns undefined if there are no errors', () => {
+      expect(validateOutputs(['{projectRoot}/dist'])).toBeUndefined();
+    });
+
+    it('throws an error if the output is not an array', () => {
+      expect(() => validateOutputs('output' as unknown as string[])).toThrow(
+        "The 'outputs' field must be an array"
+      );
+    });
+
+    it("throws an error if the output has entries that aren't strings", () => {
+      expect(() =>
+        validateOutputs(['foo', 1, null, true, {}, []] as unknown as string[])
+      ).toThrow(
+        "The 'outputs' field must contain only strings, but received types: [string, number, object, boolean, object, object]"
+      );
+    });
+
+    it('throws an error if the output is a glob pattern from the workspace root', () => {
+      expect(() => validateOutputs(['{workspaceRoot}/**/dist/*.js']))
+        .toThrowErrorMatchingInlineSnapshot(`
+          [Error: The following outputs are defined by a glob pattern from the workspace root: 
+           - {workspaceRoot}/**/dist/*.js
+
+          These can be slow, replace them with a more specific pattern.]
+        `);
+    });
+
+    it("shouldn't throw an error if the output is a glob pattern from the project root", () => {
+      expect(() => validateOutputs(['{projectRoot}/*.js'])).not.toThrow();
+    });
+
+    it("shouldn't throw an error if the pattern is a glob based in a subdirectory of workspace root", () => {
+      expect(() =>
+        validateOutputs(['{workspaceRoot}/dist/**/*.js'])
+      ).not.toThrow();
+    });
+
+    it("throws an error if the output doesn't start with a prefix", () => {
+      expect(() => validateOutputs(['dist']))
+        .toThrowErrorMatchingInlineSnapshot(`
+          [Error: The following outputs are invalid: 
+           - dist
+             ** Reason: Outputs must start with either "{workspaceRoot}/" or "{projectRoot}/".
+
+          Run \`nx repair\` to fix this.]
+        `);
+    });
+
+    test('multiple errors formatted correctly', () => {
+      expect(() => validateOutputs(['foo', 'bar']))
+        .toThrowErrorMatchingInlineSnapshot(`
+          [Error: The following outputs are invalid: 
+           - foo
+             ** Reason: Outputs must start with either "{workspaceRoot}/" or "{projectRoot}/".
+           - bar
+             ** Reason: Outputs must start with either "{workspaceRoot}/" or "{projectRoot}/".
+
+          Run \`nx repair\` to fix this.]
+        `);
+    });
+  });
+});
+
+describe('expandInitiatingTasksThroughNoop', () => {
+  function mkTask(id: string): Task {
+    const [project, target] = id.split(':');
+    return {
+      id,
+      target: { project, target },
+      overrides: {},
+      outputs: [],
+      projectRoot: project,
+      parallelism: true,
+    };
+  }
+
+  function mkProjectGraph(
+    targets: Record<string, Record<string, { executor: string }>>
+  ): ProjectGraph {
+    const nodes: ProjectGraph['nodes'] = {};
+    for (const [project, ts] of Object.entries(targets)) {
+      nodes[project] = {
+        name: project,
+        type: 'lib',
+        data: { root: `libs/${project}`, targets: ts as any },
+      };
+    }
+    return { nodes, dependencies: {}, externalNodes: {} };
+  }
+
+  function mkTaskGraph(
+    tasks: string[],
+    dependencies: Record<string, string[]> = {},
+    continuousDependencies: Record<string, string[]> = {}
+  ): TaskGraph {
+    const taskMap: Record<string, Task> = {};
+    for (const t of tasks) taskMap[t] = mkTask(t);
+    const deps: Record<string, TaskGraphEdge[]> = {};
+    const cdeps: Record<string, TaskGraphEdge[]> = {};
+    for (const t of tasks) {
+      deps[t] = (dependencies[t] ?? []).map((id) => ({ id }));
+      cdeps[t] = (continuousDependencies[t] ?? []).map((id) => ({ id }));
+    }
+    return {
+      tasks: taskMap,
+      dependencies: deps,
+      continuousDependencies: cdeps,
+      roots: [],
+    };
+  }
+
+  it('returns initiating ids unchanged when none are noop', () => {
+    const projectGraph = mkProjectGraph({
+      app: { build: { executor: 'nx:run-commands' } },
+    });
+    const taskGraph = mkTaskGraph(['app:build']);
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:build']],
+      taskGraph,
+      projectGraph
+    );
+    expect([...result]).toEqual(['app:build']);
+  });
+
+  it('replaces a noop initiating task with its continuous dependencies', () => {
+    const projectGraph = mkProjectGraph({
+      app: {
+        dev: { executor: 'nx:noop' },
+        serve: { executor: 'nx:run-commands' },
+        watch: { executor: 'nx:run-commands' },
+      },
+    });
+    const taskGraph = mkTaskGraph(
+      ['app:dev', 'app:serve', 'app:watch'],
+      {},
+      { 'app:dev': ['app:serve', 'app:watch'] }
+    );
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:dev']],
+      taskGraph,
+      projectGraph
+    );
+    expect([...result].sort()).toEqual(['app:serve', 'app:watch']);
+  });
+
+  it('replaces a noop initiating task with its non-continuous dependencies', () => {
+    const projectGraph = mkProjectGraph({
+      app: {
+        orchestrate: { executor: 'nx:noop' },
+        build: { executor: 'nx:run-commands' },
+      },
+    });
+    const taskGraph = mkTaskGraph(['app:orchestrate', 'app:build'], {
+      'app:orchestrate': ['app:build'],
+    });
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:orchestrate']],
+      taskGraph,
+      projectGraph
+    );
+    expect([...result]).toEqual(['app:build']);
+  });
+
+  it('recursively collapses nested noop orchestrators', () => {
+    const projectGraph = mkProjectGraph({
+      app: {
+        outer: { executor: 'nx:noop' },
+        inner: { executor: 'nx:noop' },
+        serve: { executor: 'nx:run-commands' },
+      },
+    });
+    const taskGraph = mkTaskGraph(
+      ['app:outer', 'app:inner', 'app:serve'],
+      {},
+      {
+        'app:outer': ['app:inner'],
+        'app:inner': ['app:serve'],
+      }
+    );
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:outer']],
+      taskGraph,
+      projectGraph
+    );
+    expect([...result]).toEqual(['app:serve']);
+  });
+
+  it('returns an empty set for a noop with no dependencies', () => {
+    const projectGraph = mkProjectGraph({
+      app: { nothing: { executor: 'nx:noop' } },
+    });
+    const taskGraph = mkTaskGraph(['app:nothing']);
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:nothing']],
+      taskGraph,
+      projectGraph
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('terminates on cyclic noop dependencies', () => {
+    const projectGraph = mkProjectGraph({
+      app: {
+        a: { executor: 'nx:noop' },
+        b: { executor: 'nx:noop' },
+      },
+    });
+    const taskGraph = mkTaskGraph(['app:a', 'app:b'], {
+      'app:a': ['app:b'],
+      'app:b': ['app:a'],
+    });
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:a']],
+      taskGraph,
+      projectGraph
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('preserves non-noop initiating tasks alongside expanded noops', () => {
+    const projectGraph = mkProjectGraph({
+      app: {
+        dev: { executor: 'nx:noop' },
+        serve: { executor: 'nx:run-commands' },
+        test: { executor: 'nx:run-commands' },
+      },
+    });
+    const taskGraph = mkTaskGraph(
+      ['app:dev', 'app:serve', 'app:test'],
+      {},
+      { 'app:dev': ['app:serve'] }
+    );
+    const result = expandInitiatingTasksThroughNoop(
+      [taskGraph.tasks['app:dev'], taskGraph.tasks['app:test']],
+      taskGraph,
+      projectGraph
+    );
+    expect([...result].sort()).toEqual(['app:serve', 'app:test']);
+  });
+
+  it('throws a descriptive error when a task references a project missing from the graph', () => {
+    // e.g. a DTE agent whose local graph diverged from the coordinator's
+    const projectGraph = mkProjectGraph({
+      app: { build: { executor: 'nx:run-commands' } },
+    });
+    const taskGraph = mkTaskGraph(['other:build']);
+    expect(() =>
+      expandInitiatingTasksThroughNoop(
+        [taskGraph.tasks['other:build']],
+        taskGraph,
+        projectGraph
+      )
+    ).toThrow(
+      'Task "other:build" references project "other", which does not exist in the project graph.'
+    );
+  });
+  describe('negated outputs', () => {
+    const node = {
+      name: 'proj',
+      type: 'lib' as const,
+      data: {
+        root: 'apps/proj',
+        targets: {
+          build: {
+            outputs: [
+              '{workspaceRoot}/dist/obj/proj',
+              '!{workspaceRoot}/dist/obj/proj/project.assets.json',
+              '{projectRoot}/obj',
+              '!{projectRoot}/obj/*.nuget.g.props',
+            ],
+          },
+        },
+      },
+    };
+
+    it('should interpolate a negated {workspaceRoot} output instead of rejecting it', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          { project: 'proj', target: 'build' },
+          {},
+          node
+        )
+      ).toEqual([
+        'dist/obj/proj',
+        '!dist/obj/proj/project.assets.json',
+        'apps/proj/obj',
+        '!apps/proj/obj/*.nuget.g.props',
+      ]);
+    });
+
+    it('should keep the negation on a root project, where {projectRoot} interpolates to nothing', () => {
+      expect(
+        getOutputsForTargetAndConfiguration(
+          { project: 'root', target: 'build' },
+          {},
+          {
+            name: 'root',
+            type: 'lib' as const,
+            data: {
+              root: '.',
+              targets: {
+                build: {
+                  outputs: [
+                    '{projectRoot}/obj',
+                    '!{projectRoot}/obj/project.assets.json',
+                  ],
+                },
+              },
+            },
+          }
+        )
+      ).toEqual(['obj', '!obj/project.assets.json']);
+    });
+  });
+});
+
+class GraphBuilder {
+  nodes: Record<string, ProjectGraphProjectNode> = {};
+
+  addProjectConfiguration(
+    project: Omit<ProjectConfiguration, 'root'>,
+    type?: ProjectGraph['nodes'][string]['type']
+  ) {
+    const t = type ?? 'lib';
+    this.nodes[project.name] = {
+      name: project.name,
+      type: t,
+      data: { ...project, root: `${t}/${project.name}` },
+    };
+    return this;
+  }
+
+  build(): ProjectGraph {
+    return {
+      nodes: this.nodes,
+      dependencies: {},
+      externalNodes: {},
+    };
+  }
+}
+
+describe('pruneToSelectedTasks', () => {
+  const graph: TaskGraph = {
+    roots: ['lib:build', 'other:build'],
+    tasks: {
+      'app:build': { id: 'app:build' } as Task,
+      'lib:build': { id: 'lib:build' } as Task,
+      'other:build': { id: 'other:build' } as Task,
+    },
+    dependencies: {
+      'app:build': [{ id: 'lib:build' }],
+      'lib:build': [],
+      'other:build': [],
+    },
+    continuousDependencies: {
+      'app:build': [],
+      'lib:build': [],
+      'other:build': [],
+    },
+  };
+
+  it('keeps only the required tasks, and their edges', () => {
+    const pruned = pruneToSelectedTasks(graph, ['app:build', 'lib:build']);
+    expect(Object.keys(pruned.tasks).sort()).toEqual([
+      'app:build',
+      'lib:build',
+    ]);
+    expect(pruned.dependencies['app:build']).toEqual([{ id: 'lib:build' }]);
+    expect(pruned.roots).toEqual(['lib:build']);
+  });
+
+  /**
+   * A sync generator can remove a task between selecting it and rebuilding the
+   * graph, so an unknown id is dropped rather than thrown on.
+   */
+  it('ignores ids the graph does not contain', () => {
+    const pruned = pruneToSelectedTasks(graph, ['gone:build', 'lib:build']);
+    expect(Object.keys(pruned.tasks)).toEqual(['lib:build']);
+  });
+});
+
+describe('task overrides hash', () => {
+  function task(id: string, overrides: Record<string, unknown>): Task {
+    const [project, target, configuration] = id.split(':');
+    return {
+      id,
+      target: { project, target, configuration },
+      overrides,
+      outputs: [],
+      projectRoot: `libs/${project}`,
+    } as any as Task;
+  }
+
+  it('should separate the same task run with different overrides', () => {
+    expect(hashTaskOverrides(task('app:build', { watch: true }))).not.toBe(
+      hashTaskOverrides(task('app:build', { watch: false }))
+    );
+  });
+
+  it('should not depend on the order the overrides were written in', () => {
+    expect(hashTaskOverrides(task('app:build', { a: 1, b: 2 }))).toBe(
+      hashTaskOverrides(task('app:build', { b: 2, a: 1 }))
+    );
+  });
+
+  it('should ignore the raw argv restatement of the overrides', () => {
+    expect(
+      hashTaskOverrides(
+        task('app:build', { watch: true, __overrides_unparsed__: ['--watch'] })
+      )
+    ).toBe(
+      hashTaskOverrides(
+        task('app:build', {
+          watch: true,
+          __overrides_unparsed__: ['--watch=true'],
+        })
+      )
+    );
+  });
+
+  it('should not depend on the task id, which the tracker stores separately', () => {
+    expect(hashTaskOverrides(task('app:build', { watch: true }))).toBe(
+      hashTaskOverrides(task('other:test:ci', { watch: true }))
+    );
+  });
+
+  it('should grow a different hash on every hop when arguments accumulate', () => {
+    const hashes = [
+      hashTaskOverrides(task('app:build', { _: [] })),
+      hashTaskOverrides(task('app:build', { _: ['hello'] })),
+      hashTaskOverrides(task('app:build', { _: ['hello', 'hello'] })),
+    ];
+
+    // Why the tracker cannot rely on the hash alone to spot this recursion.
+    expect(new Set(hashes).size).toBe(3);
+  });
+});
+
+describe('getCustomHasher', () => {
+  const hasher = vi.fn();
+  const projects: Record<string, ProjectConfiguration> = {
+    a: {
+      root: 'a',
+      targets: {
+        build: { executor: '@acme/plugin:build' },
+        test: { executor: '@acme/plugin:build' },
+        lint: { executor: '@acme/plugin:lint' },
+      },
+    },
+  };
+
+  function task(target: string): Task {
+    return {
+      id: `a:${target}`,
+      target: { project: 'a', target },
+      overrides: {},
+      outputs: [],
+      parallelism: true,
+    } as Task;
+  }
+
+  let warn: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    resetCustomHasherDeprecationWarnings();
+    warn = vi.spyOn(output, 'warn').mockImplementation(() => {});
+    vi.mocked(getExecutorInformation).mockImplementation(
+      (_nodeModule, executor) =>
+        ({
+          hasherFactory: executor === 'build' ? () => hasher : undefined,
+        }) as any
+    );
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+    vi.mocked(getExecutorInformation).mockReset();
+  });
+
+  it('warns once per executor that declares a custom hasher', () => {
+    expect(getCustomHasher(task('build'), projects)).toBe(hasher);
+    expect(getCustomHasher(task('build'), projects)).toBe(hasher);
+    expect(getCustomHasher(task('test'), projects)).toBe(hasher);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const [{ title, bodyLines }] = warn.mock.calls[0];
+    expect(title).toContain('@acme/plugin:build');
+    expect(title).toContain('Nx 25');
+    expect(bodyLines.join('\n')).toContain(
+      'Replace the custom hasher with target inputs'
+    );
+    expect(bodyLines.join('\n')).toContain(
+      'https://nx.dev/docs/kb/local-executors#replace-a-custom-hasher-with-inputs'
+    );
+  });
+
+  it('does not warn for executors without a custom hasher', () => {
+    expect(getCustomHasher(task('lint'), projects)).toBeNull();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});

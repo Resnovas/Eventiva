@@ -1,0 +1,73 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "caseSensitive": {
+        "description": "Whether to sort using case sensitive string comparisons.",
+        "type": "boolean"
+      },
+      "checkIntersections": {
+        "description": "Whether to check intersection types (`&`).",
+        "type": "boolean"
+      },
+      "checkUnions": {
+        "description": "Whether to check union types (`|`).",
+        "type": "boolean"
+      },
+      "groupOrder": {
+        "description": "Ordering of the groups.",
+        "items": {
+          "enum": [
+            "conditional",
+            "function",
+            "import",
+            "intersection",
+            "keyword",
+            "literal",
+            "named",
+            "nullish",
+            "object",
+            "operator",
+            "tuple",
+            "union"
+          ],
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to sort using case sensitive string comparisons. */
+    caseSensitive?: boolean;
+    /** Whether to check intersection types (`&`). */
+    checkIntersections?: boolean;
+    /** Whether to check union types (`|`). */
+    checkUnions?: boolean;
+    /** Ordering of the groups. */
+    groupOrder?: (
+      | 'conditional'
+      | 'function'
+      | 'import'
+      | 'intersection'
+      | 'keyword'
+      | 'literal'
+      | 'named'
+      | 'nullish'
+      | 'object'
+      | 'operator'
+      | 'tuple'
+      | 'union'
+    )[];
+  },
+];

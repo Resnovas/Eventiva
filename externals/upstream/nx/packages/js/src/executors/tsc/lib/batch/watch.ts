@@ -1,0 +1,79 @@
+import { logger } from '@nx/devkit';
+import { join } from 'path';
+import type { TaskInfo } from './types';
+import { daemonClient } from '@nx/devkit/internal';
+
+export async function watchTaskProjectsPackageJsonFileChanges(
+  taskInfos: TaskInfo[],
+  callback: (changedTaskInfos: TaskInfo[]) => void
+): Promise<() => void> {
+  const projects: string[] = [];
+  const packageJsonTaskInfoMap = new Map<string, TaskInfo>();
+  taskInfos.forEach((t) => {
+    projects.push(t.context.projectName);
+    packageJsonTaskInfoMap.set(join(t.options.projectRoot, 'package.json'), t);
+  });
+
+  const unregisterFileWatcher = await daemonClient.registerFileWatcher(
+    { watchProjects: projects },
+    (err, data) => {
+      if (err === 'reconnecting') {
+        // Silent - daemon restarts automatically on lockfile changes
+        return;
+      } else if (err === 'reconnected') {
+        // Silent - reconnection succeeded
+        return;
+      } else if (err === 'closed') {
+        logger.error(`Failed to reconnect to daemon after multiple attempts`);
+        process.exit(1);
+      } else if (err) {
+        logger.error(`Watch error: ${err?.message ?? 'Unknown'}`);
+      } else {
+        const changedTasks = [];
+        data.changedFiles.forEach((file) => {
+          if (packageJsonTaskInfoMap.has(file.path)) {
+            changedTasks.push(packageJsonTaskInfoMap.get(file.path));
+          }
+        });
+
+        if (changedTasks.length) {
+          callback(changedTasks);
+        }
+      }
+    }
+  );
+
+  return () => unregisterFileWatcher();
+}
+
+export async function watchTaskProjectsFileChangesForAssets(
+  taskInfos: TaskInfo[]
+): Promise<() => void> {
+  const unregisterFileWatcher = await daemonClient.registerFileWatcher(
+    {
+      watchProjects: taskInfos.map((t) => t.context.projectName),
+      includeDependencies: true,
+      includeGlobalWorkspaceFiles: true,
+    },
+    (err, data) => {
+      if (err === 'reconnecting') {
+        // Silent - daemon restarts automatically on lockfile changes
+        return;
+      } else if (err === 'reconnected') {
+        // Silent - reconnection succeeded
+        return;
+      } else if (err === 'closed') {
+        logger.error(`Failed to reconnect to daemon after multiple attempts`);
+        process.exit(1);
+      } else if (err) {
+        logger.error(`Watch error: ${err?.message ?? 'Unknown'}`);
+      } else {
+        taskInfos.forEach((t) =>
+          t.assetsHandler.processWatchEvents(data.changedFiles)
+        );
+      }
+    }
+  );
+
+  return () => unregisterFileWatcher();
+}

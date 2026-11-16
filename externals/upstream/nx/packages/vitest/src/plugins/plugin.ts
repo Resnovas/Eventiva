@@ -1,0 +1,1138 @@
+import {
+  calculateHashesForCreateNodes,
+  getNamedInputs,
+  PluginCache,
+  hashObject,
+  workspaceDataDirectory,
+  deriveGroupNameFromTarget,
+  globWithWorkspaceContext,
+  quoteShellArg,
+  retryOnRequireEsmRace,
+} from '@nx/devkit/internal';
+import {
+  CreateNodesContext,
+  createNodesFromFiles,
+  CreateNodes,
+  detectPackageManager,
+  getPackageManagerCommand,
+  joinPathFragments,
+  normalizePath,
+  ProjectConfiguration,
+  TargetConfiguration,
+} from '@nx/devkit';
+import { getLockFileName, getRootTsConfigFileName } from '@nx/js';
+import {
+  walkTsconfigExtendsChain,
+  type RawTsconfigJsonCache,
+} from '@nx/js/internal';
+import { existsSync, readdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import type { ResolvedConfig } from 'vite';
+import type { InlineConfig } from 'vitest/node';
+import {
+  loadViteDynamicImport,
+  loadVitestConfigDynamicImport,
+} from '../utils/executor-utils';
+import {
+  collectSetupFileInputs,
+  resolveSetupFileCandidates,
+} from './setup-file-inputs';
+
+export interface VitestPluginOptions {
+  testTargetName?: string;
+  /**
+   * Atomizer for vitest
+   */
+  ciTargetName?: string;
+  /**
+   * The name that should be used to group atomized tasks on CI
+   */
+  ciGroupName?: string;
+  /**
+   * Default mode for running tests.
+   * - 'watch': Tests run in watch mode locally, auto-run in CI (default)
+   * - 'run': Tests run once and exit
+   */
+  testMode?: 'watch' | 'run';
+  /**
+   * How atomized test files (the `ciTargetName` targets) are discovered.
+   * - 'glob' (default): enumerate specs with a glob that mirrors Vitest's own
+   *   resolution instead of booting Vitest per project. Booting Vitest starts a
+   *   Vite dev server and runs the config's plugin hooks, so the glob is faster
+   *   during graph creation. The glob reads the Nx workspace file index, so
+   *   files ignored by `.gitignore`/`.nxignore` are never enumerated even when
+   *   Vitest itself would run them.
+   * - 'vitest': always enumerate through Vitest.
+   *
+   * Configs a glob cannot reproduce faithfully still boot Vitest automatically
+   * even under 'glob': `test.projects`/`test.workspace` (inline or an
+   * auto-loaded `vitest.workspace.*`/`vitest.projects.*` sibling file), plugins
+   * with a `configureVitest` hook, `test.changed`/`test.related`, enabled
+   * browser `instances` that set their own include/exclude/includeSource/dir,
+   * and `include`, `exclude`, `includeSource`, or `typecheck` include/exclude
+   * patterns the workspace glob reads differently (absolute paths, a trailing
+   * `/`, or an `!(...)` extglob, each optionally negated).
+   * @default 'glob'
+   */
+  discoverTestFiles?: 'glob' | 'vitest';
+}
+
+type VitestTargets = Pick<ProjectConfiguration, 'targets' | 'metadata'> & {
+  setupFileCandidates: string[];
+};
+
+const vitestConfigGlob = '**/{vite,vitest}.config.{js,ts,mjs,mts,cjs,cts}';
+
+export const createNodes: CreateNodes<VitestPluginOptions> = [
+  vitestConfigGlob,
+  async (configFilePaths, options, context) => {
+    const pmc = getPackageManagerCommand(
+      detectPackageManager(context.workspaceRoot)
+    );
+    const optionsHash = hashObject(options);
+    const normalizedOptions = normalizeOptions(options);
+    const cachePath = join(
+      workspaceDataDirectory,
+      `vitest-${optionsHash}.hash`
+    );
+    const targetsCache = new PluginCache<VitestTargets | null>(cachePath);
+
+    const { roots: projectRoots, configFiles: validConfigFiles } =
+      configFilePaths.reduce(
+        (acc, configFile) => {
+          const potentialRoot = dirname(configFile);
+          if (checkIfConfigFileShouldBeProject(potentialRoot, context)) {
+            acc.roots.push(potentialRoot);
+            acc.configFiles.push(configFile);
+          }
+          return acc;
+        },
+        {
+          roots: [],
+          configFiles: [],
+        } as {
+          roots: string[];
+          configFiles: string[];
+        }
+      );
+
+    const lockfile = getLockFileName(
+      detectPackageManager(context.workspaceRoot)
+    );
+    const tsconfigChainsByProjectRoot = collectTsconfigInputsByProjectRoot(
+      projectRoots,
+      context.workspaceRoot
+    );
+    const hashes = await calculateHashesForCreateNodes(
+      projectRoots,
+      normalizedOptions,
+      context,
+      projectRoots.map((root) => [
+        lockfile,
+        ...(tsconfigChainsByProjectRoot.get(root) ?? []),
+      ])
+    );
+
+    const setupTsconfigJsonCache: RawTsconfigJsonCache = new Map();
+
+    try {
+      return await createNodesFromFiles(
+        async (configFile, _, context, idx) => {
+          const projectRoot = dirname(configFile);
+
+          // results from vitest.config.js will be different from results of vite.config.js
+          // but the hash will be the same because it is based on the files under the project root.
+          // Adding the config file path to the hash ensures that the final hash value is different
+          // for different config files.
+          const hash = hashes[idx] + configFile;
+          const cachedTargets = targetsCache.get(hash);
+          // Older cache entries predate `setupFileCandidates`.
+          if (
+            cachedTargets === undefined ||
+            (cachedTargets && !cachedTargets.setupFileCandidates)
+          ) {
+            const result = await buildVitestTargets(
+              configFile,
+              projectRoot,
+              normalizedOptions,
+              context,
+              pmc,
+              tsconfigChainsByProjectRoot.get(projectRoot) ?? []
+            );
+            // Cache the result even when it's null (a root orchestrator config)
+            // so the config isn't re-resolved on every project-graph build.
+            targetsCache.set(hash, result);
+          }
+          const cached = targetsCache.get(hash);
+          // `buildVitestTargets` returns null for a root orchestrator config
+          // that must not become a project; register no node for it.
+          if (!cached) {
+            return { projects: {} };
+          }
+          const { metadata, targets, setupFileCandidates } = cached;
+
+          const project: ProjectConfiguration = {
+            root: projectRoot,
+            // Resolved on every run: the cache key does not cover setup files
+            // or their tsconfigs.
+            targets: withSetupFileInputs(
+              targets,
+              normalizedOptions.testTargetName,
+              setupFileCandidates,
+              projectRoot,
+              context.workspaceRoot,
+              setupTsconfigJsonCache
+            ),
+            metadata,
+          };
+
+          return {
+            projects: {
+              [projectRoot]: project,
+            },
+          };
+        },
+        validConfigFiles,
+        options,
+        context
+      );
+    } finally {
+      targetsCache.writeToDisk();
+    }
+  },
+];
+
+export const createNodesV2 = createNodes;
+
+async function buildVitestTargets(
+  configFilePath: string,
+  projectRoot: string,
+  options: VitestPluginOptions,
+  context: CreateNodesContext,
+  pmc: ReturnType<typeof getPackageManagerCommand>,
+  tsconfigInputs: string[]
+): Promise<VitestTargets | null> {
+  const absoluteConfigFilePath = joinPathFragments(
+    context.workspaceRoot,
+    configFilePath
+  );
+
+  // Workaround for the `build$3 is not a function` error that we sometimes see in agents.
+  // This should be removed later once we address the issue properly
+  try {
+    const importEsbuild = () => new Function('return import("esbuild")')();
+    await importEsbuild();
+  } catch {
+    // do nothing
+  }
+
+  // Workaround for race condition with vitest/node on Node 24+
+  // When multiple vitest.config files are processed in parallel, Node can throw:
+  // Error [ERR_INTERNAL_ASSERTION]: Cannot require() ES Module vitest/dist/node.js
+  // because it is not yet fully loaded.
+  // See: https://github.com/nrwl/nx/issues/34028
+  try {
+    const importVitestNode = () =>
+      new Function('return import("vitest/node")')();
+    await importVitestNode();
+  } catch {
+    // vitest/node not available or not needed, ignore
+  }
+
+  const { resolveConfig } = await loadViteDynamicImport();
+  // Vite fills a missing `root` with `process.cwd()`, which at graph time is
+  // the workspace root - not where the task runs. Capture what the config
+  // actually authored so a relative path can be resolved the way Vitest will.
+  let authoredViteRoot: string | undefined;
+  const viteBuildConfig = await retryOnRequireEsmRace(() =>
+    resolveConfig(
+      {
+        configFile: absoluteConfigFilePath,
+        mode: 'development',
+        plugins: [
+          {
+            name: 'nx-capture-authored-vitest-root',
+            enforce: 'post' as const,
+            config: {
+              order: 'post' as const,
+              handler(config: { root?: string }) {
+                authoredViteRoot = config.root;
+              },
+            },
+          },
+        ],
+      },
+      'build'
+    )
+  );
+
+  // A root config that aggregates project configs via `test.projects` is just an
+  // orchestrator; the actual tests live in the individual project configs. Skip it
+  // entirely so it does not register a project rooted at the workspace root (which
+  // would, for example, make `nx format` treat the whole workspace as one project).
+  const isWorkspaceRoot = projectRoot === '.';
+  const hasProjectsProperty = Array.isArray(viteBuildConfig.test?.projects);
+  if (isWorkspaceRoot && hasProjectsProperty) {
+    return null;
+  }
+
+  let metadata: ProjectConfiguration['metadata'] = {};
+
+  const { testOutputs, hasTest } = getOutputs(
+    viteBuildConfig,
+    projectRoot,
+    context.workspaceRoot
+  );
+
+  const namedInputs = getNamedInputs(projectRoot, context);
+
+  const targets: Record<string, TargetConfiguration> = {};
+  let setupFileCandidates: string[] = [];
+
+  // if file is vitest.config or vite.config has definition for test, create targets for test and/or atomized tests
+  if (configFilePath.includes('vitest.config') || hasTest) {
+    const isTypecheckEnabled = !!viteBuildConfig.test?.typecheck?.enabled;
+    setupFileCandidates = resolveSetupFileCandidates(
+      viteBuildConfig,
+      projectRoot,
+      context.workspaceRoot,
+      authoredViteRoot
+    );
+    targets[options.testTargetName] = await testTarget(
+      namedInputs,
+      testOutputs,
+      projectRoot,
+      options.testMode,
+      pmc,
+      isTypecheckEnabled,
+      tsconfigInputs
+    );
+
+    if (options.ciTargetName) {
+      const groupName =
+        options.ciGroupName ?? deriveGroupNameFromTarget(options.ciTargetName);
+      const targetGroup = [];
+      const dependsOn: string[] = [];
+      metadata = {
+        targetGroups: {
+          [groupName]: targetGroup,
+        },
+      };
+
+      // Not normalizing in normalizeOptions since it also affects the options
+      // computed for convert-to-inferred.
+      const useGlobDiscovery =
+        (options.discoverTestFiles ?? 'glob') !== 'vitest';
+      // Both discovery paths read the serve-resolved config: Vitest runs tests
+      // through a Vite server (the `serve` command), so `apply: 'serve'`
+      // plugins and command-sensitive `test` options (include/exclude and
+      // `dir`) are absent from the build resolution used above for outputs.
+      // Resolve under `mode: 'test'` to match Vitest, which defaults the Vite
+      // mode to 'test'; a config that branches on `command`/`mode` would
+      // otherwise enumerate a different spec set here than at test time.
+      // Capture the raw root after user hooks: graph construction and the
+      // atom run resolve it against different cwds.
+      let configuredViteRoot: string | undefined;
+      const viteServeConfig = await retryOnRequireEsmRace(() =>
+        resolveConfig(
+          {
+            configFile: absoluteConfigFilePath,
+            mode: 'test',
+            plugins: [
+              {
+                // Promotes test.root before user hooks as Vitest does, so a
+                // later hook can override it. No options.root: atoms pass no --root.
+                name: 'nx-promote-vitest-root',
+                enforce: 'pre' as const,
+                config(config: { root?: string; test?: { root?: string } }) {
+                  if (config.test?.root) {
+                    return { root: config.test.root };
+                  }
+                },
+              },
+              {
+                name: 'nx-capture-vitest-root',
+                enforce: 'post' as const,
+                config: {
+                  order: 'post' as const,
+                  handler(config: { root?: string }) {
+                    configuredViteRoot = config.root;
+                  },
+                },
+              },
+            ],
+          },
+          'serve'
+        )
+      );
+      const projectRootRelativeTestPaths =
+        await getTestPathsRelativeToProjectRoot(
+          projectRoot,
+          context.workspaceRoot,
+          // Only the glob path reads this config; the opt-out path forces the
+          // runtime by receiving no config, and takes `test.dir` separately.
+          useGlobDiscovery ? viteServeConfig : undefined,
+          viteServeConfig.test?.dir
+        );
+
+      // Each atom writes coverage to its own directory or the reports would
+      // overwrite one another. The nested flag never enables coverage.
+      const coverageReportsDirectory =
+        viteServeConfig.test?.coverage?.reportsDirectory || 'coverage';
+      // Atom directories mirror spec paths. A shared base outside the project
+      // gets a project-root prefix unless it already ends with it, as the
+      // generated `<offset>/coverage/<projectRoot>` configs do.
+      const fullProjectRoot = resolve(context.workspaceRoot, projectRoot);
+      // A relative reportsDirectory resolves against the Vitest root, mapped
+      // here as the atom run would (cwd is the project root). A root computed
+      // from runtime state such as `process.cwd()` cannot be mapped and is
+      // not supported.
+      const effectiveVitestRoot = !configuredViteRoot
+        ? fullProjectRoot
+        : isAbsolute(configuredViteRoot)
+          ? configuredViteRoot
+          : resolve(fullProjectRoot, configuredViteRoot);
+      const resolvedReportsDirectory = resolve(
+        effectiveVitestRoot,
+        coverageReportsDirectory
+      );
+      // Vitest refuses a reports directory equal to its root or cwd, and redirecting
+      // under it would point each atom at its own spec path for coverage to delete.
+      const vitestRejectsReportsDirectory =
+        relative(effectiveVitestRoot, resolvedReportsDirectory) === '' ||
+        relative(fullProjectRoot, resolvedReportsDirectory) === '';
+      const atomSubfolderPrefix =
+        isPathOutside(relative(fullProjectRoot, resolvedReportsDirectory)) &&
+        !endsWithProjectRoot(resolvedReportsDirectory, projectRoot)
+          ? projectRoot
+          : '';
+      // The cache only accepts outputs inside the workspace. A base outside it
+      // cannot be declared, and a cache hit would then replay without writing
+      // coverage, so the atoms and their parent are not cached either.
+      const isCoverageCacheable = !isPathOutside(
+        relative(context.workspaceRoot, resolvedReportsDirectory)
+      );
+      const atomOutputs: string[] = [];
+
+      for (const relativePath of projectRootRelativeTestPaths) {
+        if (relativePath.includes('../')) {
+          throw new Error(
+            '@nx/vitest attempted to run tests outside of the project root. This is not supported and should not happen. Please open an issue at https://github.com/nrwl/nx/issues/new/choose with the following information:\n\n' +
+              `\n\n${JSON.stringify(
+                {
+                  projectRoot,
+                  relativePath,
+                  projectRootRelativeTestPaths,
+                  context,
+                },
+                null,
+                2
+              )}`
+          );
+        }
+
+        const outputSubfolder = atomSubfolderPrefix
+          ? joinPathFragments(atomSubfolderPrefix, relativePath)
+          : relativePath;
+        // joinPathFragments strips Windows drive letters, so an absolute
+        // reports directory must be joined with the OS path helper.
+        const atomCoverageDirectory = isAbsolute(coverageReportsDirectory)
+          ? join(coverageReportsDirectory, outputSubfolder)
+          : joinPathFragments(coverageReportsDirectory, outputSubfolder);
+        const targetName = `${options.ciTargetName}--${relativePath}`;
+        dependsOn.push(targetName);
+        targets[targetName] = {
+          // It does not make sense to run atomized tests in watch mode as they are intended to be run in CI
+          command: `vitest run ${quoteShellArg(relativePath)}${
+            vitestRejectsReportsDirectory
+              ? ''
+              : ` --coverage.reportsDirectory=${quoteShellArg(
+                  atomCoverageDirectory
+                )}`
+          }`,
+          cache: isCoverageCacheable && targets[options.testTargetName].cache,
+          inputs: targets[options.testTargetName].inputs,
+          outputs:
+            isCoverageCacheable && !vitestRejectsReportsDirectory
+              ? [
+                  normalizeAtomOutputPath(
+                    join(resolvedReportsDirectory, outputSubfolder),
+                    fullProjectRoot,
+                    context.workspaceRoot
+                  ),
+                ]
+              : [],
+          options: {
+            cwd: projectRoot,
+            env: targets[options.testTargetName].options.env,
+          },
+          metadata: {
+            technologies: ['vitest'],
+            description: `Run Vitest Tests in ${relativePath}`,
+            help: {
+              command: `${pmc.exec} vitest --help`,
+              example: {
+                options: {
+                  coverage: true,
+                },
+              },
+            },
+          },
+        };
+        atomOutputs.push(...targets[targetName].outputs);
+        targetGroup.push(targetName);
+      }
+
+      if (targetGroup.length > 0) {
+        targets[options.ciTargetName] = {
+          executor: 'nx:noop',
+          cache: isCoverageCacheable,
+          inputs: targets[options.testTargetName].inputs,
+          // Exactly the atom directories: a cache restore replaces each declared
+          // directory, and any wider one can hold other projects' coverage.
+          outputs: atomOutputs,
+          dependsOn,
+          metadata: {
+            technologies: ['vitest'],
+            description: 'Run Vitest Tests in CI',
+            nonAtomizedTarget: options.testTargetName,
+            help: {
+              command: `${pmc.exec} vitest --help`,
+              example: {
+                options: {
+                  coverage: true,
+                },
+              },
+            },
+          },
+        };
+        targetGroup.unshift(options.ciTargetName);
+      }
+    }
+  }
+
+  return { targets, metadata, setupFileCandidates };
+}
+
+function withSetupFileInputs(
+  targets: Record<string, TargetConfiguration>,
+  testTargetName: string,
+  setupFileCandidates: string[],
+  projectRoot: string,
+  workspaceRoot: string,
+  jsonCache: RawTsconfigJsonCache
+): Record<string, TargetConfiguration> {
+  if (setupFileCandidates.length === 0) return targets;
+  const { files, tsconfigs } = collectSetupFileInputs(
+    setupFileCandidates,
+    projectRoot,
+    workspaceRoot,
+    jsonCache
+  );
+  if (files.length === 0 && tsconfigs.length === 0) return targets;
+
+  const setupInputs = [
+    ...tsconfigs.map((f) => ({
+      json: `{workspaceRoot}/${f}`,
+      fields: ['compilerOptions'],
+    })),
+    // Whole-file, not just `compilerOptions`: these are sources Vitest
+    // executes, so any change to them changes the run.
+    ...files.map((f) => `{workspaceRoot}/${f}`),
+  ];
+  const inputs = [...targets[testTargetName].inputs, ...setupInputs];
+  return Object.fromEntries(
+    Object.entries(targets).map(([name, target]) => [
+      name,
+      { ...target, inputs },
+    ])
+  );
+}
+
+async function testTarget(
+  namedInputs: {
+    [inputName: string]: any[];
+  },
+  outputs: string[],
+  projectRoot: string,
+  testMode: 'watch' | 'run' = 'watch',
+  pmc: ReturnType<typeof getPackageManagerCommand>,
+  isTypecheckEnabled: boolean,
+  tsconfigInputs: string[]
+) {
+  const command = testMode === 'run' ? 'vitest run' : 'vitest';
+  const depOutputsGlob = isTypecheckEnabled ? '**/*.{js,d.ts}' : '**/*.js';
+  return {
+    command,
+    options: { cwd: joinPathFragments(projectRoot) },
+    cache: true,
+    inputs: [
+      // Vitest runs on Vite, which transforms a dependency's sources and
+      // resolves their TypeScript project references. When a dependency's root
+      // tsconfig references its tsconfig.spec.json / tsconfig.storybook.json,
+      // those files are read during resolution, yet the `production` named
+      // input excludes them (so `^production` does not cover them). When
+      // `production` is in use, declare them explicitly so the dependency's
+      // spec/storybook tsconfigs are tracked as inputs.
+      ...('production' in namedInputs
+        ? [
+            'default',
+            '^production',
+            {
+              fileset: '{projectRoot}/tsconfig.spec.json',
+              dependencies: true as const,
+            },
+            {
+              fileset: '{projectRoot}/tsconfig.storybook.json',
+              dependencies: true as const,
+            },
+          ]
+        : ['default', '^default']),
+      ...tsconfigInputs.map((f) => ({
+        json: `{workspaceRoot}/${f}`,
+        fields: ['compilerOptions'],
+      })),
+      {
+        externalDependencies: ['vitest'],
+      },
+      { env: 'CI' },
+      { dependentTasksOutputFiles: depOutputsGlob, transitive: true },
+    ],
+    outputs,
+    metadata: {
+      technologies: ['vitest'],
+      description: `Run Vitest tests`,
+      help: {
+        command: `${pmc.exec} vitest --help`,
+        example: {
+          options: {
+            bail: 1,
+            coverage: true,
+          },
+        },
+      },
+    },
+  };
+}
+
+function getOutputs(
+  viteBuildConfig: Record<string, any> | undefined,
+  projectRoot: string,
+  workspaceRoot: string
+): {
+  testOutputs: string[];
+  hasTest: boolean;
+} {
+  const { test } = viteBuildConfig;
+
+  const reportsDirectoryPath = normalizeOutputPath(
+    test?.coverage?.reportsDirectory,
+    projectRoot,
+    workspaceRoot,
+    'coverage'
+  );
+
+  return {
+    testOutputs: [reportsDirectoryPath],
+    hasTest: !!test,
+  };
+}
+
+/**
+ * Whether a `relative()` result leaves the base directory. A directory named
+ * `..coverage` is a child, not traversal.
+ */
+function isPathOutside(relativePath: string): boolean {
+  return (
+    relativePath === '..' ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
+  );
+}
+
+/**
+ * Maps an atom's absolute coverage directory, which must be inside the
+ * workspace, to the narrowest Nx root token.
+ */
+function normalizeAtomOutputPath(
+  absoluteOutputPath: string,
+  fullProjectRoot: string,
+  workspaceRoot: string
+): string {
+  const relativeToProject = relative(fullProjectRoot, absoluteOutputPath);
+  if (!isPathOutside(relativeToProject)) {
+    return joinPathFragments('{projectRoot}', relativeToProject);
+  }
+  return joinPathFragments(
+    '{workspaceRoot}',
+    relative(workspaceRoot, absoluteOutputPath)
+  );
+}
+
+/**
+ * Whether the reports directory ends with the project root's segments. The
+ * root project has none, so it always holds.
+ */
+function endsWithProjectRoot(
+  resolvedPath: string,
+  projectRoot: string
+): boolean {
+  const pathSegments = resolvedPath.split(/[\\/]/).filter(Boolean);
+  const rootSegments = projectRoot
+    .split('/')
+    .filter((segment) => segment && segment !== '.');
+  return (
+    pathSegments.length >= rootSegments.length &&
+    rootSegments.every(
+      (segment, i) =>
+        pathSegments[pathSegments.length - rootSegments.length + i] === segment
+    )
+  );
+}
+
+function normalizeOutputPath(
+  outputPath: string | undefined,
+  projectRoot: string,
+  workspaceRoot: string,
+  path: 'coverage'
+): string | undefined {
+  if (!outputPath) {
+    if (projectRoot === '.') {
+      return `{projectRoot}/${path}`;
+    } else {
+      return `{workspaceRoot}/${path}/{projectRoot}`;
+    }
+  } else {
+    if (isAbsolute(outputPath)) {
+      return `{workspaceRoot}/${normalizePath(relative(workspaceRoot, outputPath))}`;
+    } else {
+      if (outputPath.startsWith('..')) {
+        return joinPathFragments('{workspaceRoot}', projectRoot, outputPath);
+      } else {
+        return joinPathFragments('{projectRoot}', outputPath);
+      }
+    }
+  }
+}
+
+function normalizeOptions(options: VitestPluginOptions): VitestPluginOptions {
+  options ??= {};
+  options.testTargetName ??= 'test';
+  options.testMode ??= 'watch';
+  return options;
+}
+
+/**
+ * Collects tsconfig files that Vite's esbuild-based config bundler reads
+ * but are outside the project root (and thus not covered by `default`).
+ *
+ * Vite < 8 uses esbuild's Build API to bundle config files. esbuild walks
+ * UP from the entry point, reading and parsing every `tsconfig.json` in
+ * every ancestor directory plus their `extends` chains. Vite >= 8 uses
+ * rolldown with `tsconfig: false`, but pnpm can resolve different Vite
+ * versions per project, so we always collect — the walk is cheap (cached
+ * JSON reads) and over-declaring inputs for Vite 8 projects is harmless.
+ *
+ * Files already handled elsewhere are excluded:
+ * - Inside the project root → covered by `default` (`{projectRoot}/**\/*`)
+ * - The root tsconfig (tsconfig.base.json or tsconfig.json) → covered by
+ *   the native TsConfiguration hash instruction
+ * - Inside node_modules → invalidated via lockfile
+ * - Outside the workspace → cannot be expressed as inputs
+ */
+function collectTsconfigInputsByProjectRoot(
+  projectRoots: string[],
+  workspaceRoot: string
+): Map<string, string[]> {
+  const jsonCache: RawTsconfigJsonCache = new Map();
+  const result = new Map<string, string[]>();
+
+  const rootTsConfigName = getRootTsConfigFileName();
+
+  // A directory cache requires project-specific filtering on replay.
+  const dirChainCache = new Map<string, string[]>();
+  const collectDirChain = (dir: string): string[] => {
+    const cached = dirChainCache.get(dir);
+    if (cached !== undefined) return cached;
+    const paths: string[] = [];
+    const localSeen = new Set<string>();
+    const tsconfigPath = dir
+      ? join(workspaceRoot, dir, 'tsconfig.json')
+      : join(workspaceRoot, 'tsconfig.json');
+    if (existsSync(tsconfigPath)) {
+      walkTsconfigExtendsChain(
+        tsconfigPath,
+        (absPath) => {
+          const wsRelative = relative(workspaceRoot, absPath)
+            .split(sep)
+            .join('/');
+          if (!localSeen.has(wsRelative)) {
+            localSeen.add(wsRelative);
+            paths.push(wsRelative);
+          }
+          return 'continue';
+        },
+        { jsonCache }
+      );
+    }
+    dirChainCache.set(dir, paths);
+    return paths;
+  };
+
+  for (const projectRoot of projectRoots) {
+    if (projectRoot === '.') continue;
+
+    const outside: string[] = [];
+    const seen = new Set<string>();
+    const projectPrefix = `${projectRoot}/`;
+
+    const collectWsRelative = (wsRelative: string) => {
+      if (seen.has(wsRelative)) return;
+      seen.add(wsRelative);
+      if (wsRelative.startsWith('../') || wsRelative === '..') return;
+      if (
+        wsRelative.startsWith('node_modules/') ||
+        wsRelative.includes('/node_modules/')
+      )
+        return;
+      if (wsRelative === projectRoot || wsRelative.startsWith(projectPrefix))
+        return;
+      if (wsRelative === rootTsConfigName) return;
+      outside.push(wsRelative);
+    };
+
+    const projectTsconfig = join(workspaceRoot, projectRoot, 'tsconfig.json');
+    if (existsSync(projectTsconfig)) {
+      walkTsconfigExtendsChain(
+        projectTsconfig,
+        (absPath) => {
+          const wsRelative = relative(workspaceRoot, absPath)
+            .split(sep)
+            .join('/');
+          collectWsRelative(wsRelative);
+          return 'continue';
+        },
+        { jsonCache }
+      );
+    }
+
+    // 2. Walk UP ancestor directories (esbuild reads every tsconfig.json
+    //    between the entry point and the filesystem root)
+    let dir = dirname(projectRoot);
+    while (dir && dir !== '.') {
+      for (const wsRelative of collectDirChain(dir)) {
+        collectWsRelative(wsRelative);
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+
+    // 3. Check the workspace root itself (dirname loop above stops at '.')
+    for (const wsRelative of collectDirChain('')) {
+      collectWsRelative(wsRelative);
+    }
+
+    if (outside.length > 0) {
+      result.set(projectRoot, outside);
+    }
+  }
+
+  return result;
+}
+
+function checkIfConfigFileShouldBeProject(
+  projectRoot: string,
+  context: CreateNodesContext
+): boolean {
+  // Do not create a project if package.json and project.json isn't there.
+  const siblingFiles = readdirSync(join(context.workspaceRoot, projectRoot));
+  if (
+    !siblingFiles.includes('package.json') &&
+    !siblingFiles.includes('project.json')
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+async function getTestPathsRelativeToProjectRoot(
+  projectRoot: string,
+  workspaceRoot: string,
+  viteConfig: ResolvedConfig | undefined,
+  // Serve-resolved `test.dir` (the command Vitest runs under). Only used on the
+  // opt-out path below, which receives no `viteConfig` to read it from.
+  optOutTestDir: string | undefined
+): Promise<string[]> {
+  const fullProjectRoot = join(workspaceRoot, projectRoot);
+
+  // `viteConfig` is resolved only when glob discovery is requested; its absence
+  // means the runtime path was selected (`discoverTestFiles: 'vitest'`).
+  if (viteConfig) {
+    const test: InlineConfig = viteConfig.test ?? {};
+    if (!configRequiresVitestRuntime(test, viteConfig, fullProjectRoot)) {
+      return globTestPathsRelativeToProjectRoot(
+        test,
+        workspaceRoot,
+        projectRoot,
+        fullProjectRoot
+      );
+    }
+
+    return getTestPathsViaVitestRuntime(fullProjectRoot, projectRoot, test.dir);
+  }
+
+  return getTestPathsViaVitestRuntime(
+    fullProjectRoot,
+    projectRoot,
+    optOutTestDir
+  );
+}
+
+/**
+ * The directory Vitest enumerates from: `test.dir` when set, else the project
+ * root. Vitest resolves a relative `test.dir` against the working directory,
+ * which for both the `test` and atomized targets is the project root.
+ */
+function resolveTestDir(fullProjectRoot: string, testDir: string | undefined) {
+  return testDir ? resolve(fullProjectRoot, testDir) : fullProjectRoot;
+}
+
+/**
+ * Enumerates a project's test files by mirroring Vitest's own resolution with
+ * a glob. Vitest globs `test.include` and `test.includeSource` (both skipped
+ * when typecheck is enabled with `only`, the latter also kept only when the
+ * file contains an in-source test) plus `test.typecheck.include` (when
+ * typecheck is enabled), each minus the relevant `exclude`, from `test.dir`
+ * when set and the project root otherwise. Defaults come from the installed
+ * Vitest so they track the user's version. Globbing goes through the Nx
+ * workspace context (the daemon-cached file index), so files ignored by
+ * `.gitignore`/`.nxignore` are never candidates. Callers must first confirm the
+ * config is reproducible with a glob via `configRequiresVitestRuntime`.
+ */
+async function globTestPathsRelativeToProjectRoot(
+  test: InlineConfig,
+  workspaceRoot: string,
+  projectRoot: string,
+  fullProjectRoot: string
+): Promise<string[]> {
+  const { configDefaults } = await loadVitestConfigDynamicImport();
+
+  const exclude: string[] = test.exclude ?? configDefaults.exclude;
+  const typecheck = test.typecheck;
+  const typecheckOnly = !!(typecheck?.enabled && typecheck?.only);
+  // The workspace context matches workspace-relative paths, while the config's
+  // patterns are relative to the directory Vitest enumerates from; anchor them
+  // to it.
+  const scanRoot = test.dir
+    ? normalizePath(
+        relative(workspaceRoot, resolveTestDir(fullProjectRoot, test.dir))
+      )
+    : projectRoot;
+  // The workspace context only reads `!` at index 0, so a negated pattern has
+  // to be re-prefixed rather than anchored as-is.
+  const anchor = (pattern: string) =>
+    isNegatedPattern(pattern)
+      ? `!${joinPathFragments(scanRoot, pattern.slice(1))}`
+      : joinPathFragments(scanRoot, pattern);
+
+  const globProjectFiles = (include: string[], ignore: string[]) => {
+    // The workspace context treats an all-negated (or empty) include set as
+    // "match everything" (it inverts to the exclude set), while Vitest
+    // enumerates nothing. Match Vitest: without a positive entry there is
+    // nothing to enumerate.
+    if (!include.some((pattern) => !isNegatedPattern(pattern))) {
+      return Promise.resolve([]);
+    }
+    return globWithWorkspaceContext(
+      workspaceRoot,
+      include.map(anchor),
+      // Vitest discards a negated `exclude` entry; forwarding it would turn the
+      // exclude set into an allowlist.
+      ignore.filter((pattern) => !isNegatedPattern(pattern)).map(anchor)
+    );
+  };
+
+  // Regular and type tests are independent walks; run them together.
+  const globJobs: Promise<string[]>[] = [];
+
+  // Typecheck enabled with `only` makes Vitest run only type tests, so skip
+  // regular tests.
+  if (!typecheckOnly) {
+    const include: string[] = test.include ?? configDefaults.include;
+    globJobs.push(globProjectFiles(include, exclude));
+  }
+
+  if (typecheck?.enabled) {
+    const include: string[] =
+      typecheck.include ?? configDefaults.typecheck.include;
+    const ignore: string[] =
+      typecheck.exclude ?? configDefaults.typecheck.exclude;
+    globJobs.push(globProjectFiles(include, ignore));
+  }
+
+  const matches = new Set<string>();
+  for (const files of await Promise.all(globJobs)) {
+    for (const file of files) matches.add(file);
+  }
+
+  // In-source tests: only files that actually contain a test are included.
+  // Typecheck enabled with `only` makes Vitest run only type tests, so skip
+  // these too.
+  if (!typecheckOnly && test.includeSource?.length) {
+    const sourceFiles = await globProjectFiles(test.includeSource, exclude);
+    // The candidate set can be the whole `src` tree, so read in bounded
+    // batches; an unbounded Promise.all over every file risks EMFILE.
+    const readConcurrency = 25;
+    for (let i = 0; i < sourceFiles.length; i += readConcurrency) {
+      const inSourceMatches = await Promise.all(
+        sourceFiles.slice(i, i + readConcurrency).map(async (file) => {
+          // Vitest tolerates unreadable in-source candidates and skips them;
+          // match that so a permission error or TOCTOU race can't abort graph
+          // creation.
+          try {
+            const content = await readFile(join(workspaceRoot, file), 'utf-8');
+            return content.includes('import.meta.vitest') ? file : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      for (const file of inSourceMatches) {
+        if (file) matches.add(file);
+      }
+    }
+  }
+
+  // The workspace context returns workspace-relative paths, so re-relativize
+  // them to the project root. An `include` pattern (`../lib2/**`) or an
+  // out-of-project `test.dir` can land outside the project root, so drop what
+  // does, matching the runtime path.
+  return [...matches]
+    .map((file) => normalizePath(relative(projectRoot, file)))
+    .filter((file) => !file.startsWith('../'))
+    .sort();
+}
+
+// Vitest reads a leading `!` as a negation, except when it opens an extglob
+// (`!(...)`), which the runtime gate routes away before discovery reaches here.
+function isNegatedPattern(pattern: string): boolean {
+  return pattern.startsWith('!') && !pattern.startsWith('!(');
+}
+
+/**
+ * Whether the workspace context resolves a pattern differently than Vitest.
+ * Anchoring rewrites an absolute pattern into a project-relative one that
+ * enumerates the wrong location; a trailing `/` becomes a recursive directory
+ * match where Vitest (globbing with `expandDirectories: false`) matches
+ * nothing; and `!(...)` converts to an include plus literal exclusions that
+ * reproduces Vitest's extglob only for some shapes. A leading `!` is stripped
+ * first so a negated form of any of these still routes to the runtime.
+ */
+function patternRequiresVitestRuntime(pattern: string): boolean {
+  const bare = isNegatedPattern(pattern) ? pattern.slice(1) : pattern;
+  return isAbsolute(bare) || bare.endsWith('/') || bare.includes('!(');
+}
+
+// Sibling files Vitest 3 auto-loads to define sub-projects even when the config
+// object declares none. Removed in Vitest 4 in favor of inline `test.projects`.
+const vitestWorkspaceFiles = ['vitest.workspace', 'vitest.projects'].flatMap(
+  (name) =>
+    ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'].map(
+      (ext) => `${name}.${ext}`
+    )
+);
+
+/**
+ * Whether a config's test discovery cannot be faithfully reproduced with a
+ * glob, so enumeration must go through Vitest itself.
+ */
+function configRequiresVitestRuntime(
+  // `workspace` (removed in Vitest 4) and the CLI-only `changed`/`related`
+  // filters are not part of the config-file `InlineConfig` type.
+  test: InlineConfig & {
+    workspace?: unknown;
+    changed?: unknown;
+    related?: unknown;
+  },
+  viteConfig: Pick<ResolvedConfig, 'plugins'>,
+  projectDir: string
+): boolean {
+  // Multi-project configs resolve include/exclude per sub-project.
+  if (Array.isArray(test?.projects) || test?.workspace) return true;
+  // Vitest 3 auto-loads a `vitest.workspace.*`/`vitest.projects.*` sibling file
+  // to define sub-projects even when the config object declares none; the glob
+  // resolves only the single config, so it cannot reproduce that.
+  if (vitestWorkspaceFiles.some((file) => existsSync(join(projectDir, file)))) {
+    return true;
+  }
+  // Vitest filters specs by VCS/graph state, which a glob cannot know.
+  if (test?.changed || test?.related) return true;
+  // Vitest's own defaults carry none of these shapes, so only a config that
+  // spells one out reaches the runtime for this reason.
+  const configuredPatterns: string[] = [
+    test?.include,
+    test?.exclude,
+    test?.includeSource,
+    test?.typecheck?.include,
+    test?.typecheck?.exclude,
+  ]
+    .filter(Array.isArray)
+    .flat();
+  if (configuredPatterns.some(patternRequiresVitestRuntime)) return true;
+  // Browser mode: an instance can override include/exclude/includeSource, and
+  // `dir` (the base directory Vitest scans), so a top-level glob enumerates a
+  // different spec set than the instance would. Vitest ignores `instances`
+  // while browser mode is off, and the atomized target runs `vitest run <file>`
+  // without a browser flag, so the resolved `enabled` matches the run.
+  const browserInstances: any[] = test?.browser?.instances ?? [];
+  if (
+    test?.browser?.enabled &&
+    browserInstances.some(
+      (instance) =>
+        instance &&
+        (instance.include?.length ||
+          instance.exclude?.length ||
+          instance.includeSource?.length ||
+          instance.dir)
+    )
+  ) {
+    return true;
+  }
+  // A plugin can inject or reshape projects through this Vitest-only hook.
+  const plugins: readonly unknown[] = viteConfig?.plugins ?? [];
+  return plugins.some(
+    (plugin) =>
+      plugin && typeof plugin === 'object' && 'configureVitest' in plugin
+  );
+}
+
+async function getTestPathsViaVitestRuntime(
+  fullProjectRoot: string,
+  projectRoot: string,
+  testDir?: string
+): Promise<string[]> {
+  const { createVitest } = await import('vitest/node');
+  const vitest = await createVitest('test', {
+    root: fullProjectRoot,
+    // `dir` defaults to `root`, and a relative `test.dir` would resolve against
+    // the working directory, which during graph creation is the workspace root
+    // rather than the project root.
+    dir: resolveTestDir(fullProjectRoot, testDir),
+    filesOnly: true,
+    watch: false,
+  });
+  const relevantTestSpecifications =
+    await vitest.getRelevantTestSpecifications();
+  // Sort to keep atomized target name insertion order stable.
+  // vitest.getRelevantTestSpecifications uses tinyglobby internally,
+  // which does not sort its filesystem traversal output.
+  return relevantTestSpecifications
+    .filter((ts) =>
+      fullProjectRoot === '.' ? true : ts.moduleId.startsWith(fullProjectRoot)
+    )
+    .map((ts) => normalizePath(relative(projectRoot, ts.moduleId)))
+    .sort();
+}

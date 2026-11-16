@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportNamedDeclaration > _error_ > anonymous-class > Babel - Error`]
+BabelError
+> 1 | export class {}
+    |              ^ A class name is required. (1:13)
+  2 |
+  

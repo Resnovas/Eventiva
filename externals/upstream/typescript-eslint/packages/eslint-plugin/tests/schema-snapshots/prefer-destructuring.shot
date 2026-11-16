@@ -1,0 +1,93 @@
+
+# SCHEMA:
+
+[
+  {
+    "oneOf": [
+      {
+        "additionalProperties": false,
+        "properties": {
+          "AssignmentExpression": {
+            "additionalProperties": false,
+            "properties": {
+              "array": {
+                "type": "boolean"
+              },
+              "object": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "VariableDeclarator": {
+            "additionalProperties": false,
+            "properties": {
+              "array": {
+                "type": "boolean"
+              },
+              "object": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      {
+        "additionalProperties": false,
+        "properties": {
+          "array": {
+            "type": "boolean"
+          },
+          "object": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "additionalProperties": false,
+    "properties": {
+      "enforceForDeclarationWithTypeAnnotation": {
+        "description": "Whether to enforce destructuring on variable declarations with type annotations.",
+        "type": "boolean"
+      },
+      "enforceForRenamedProperties": {
+        "description": "Whether to enforce destructuring that use a different variable name than the property name.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  (
+    | {
+        AssignmentExpression?: {
+          array?: boolean;
+          object?: boolean;
+        };
+        VariableDeclarator?: {
+          array?: boolean;
+          object?: boolean;
+        };
+      }
+    | {
+        array?: boolean;
+        object?: boolean;
+      }
+  ),
+  {
+    /** Whether to enforce destructuring on variable declarations with type annotations. */
+    enforceForDeclarationWithTypeAnnotation?: boolean;
+    /** Whether to enforce destructuring that use a different variable name than the property name. */
+    enforceForRenamedProperties?: boolean;
+  },
+];

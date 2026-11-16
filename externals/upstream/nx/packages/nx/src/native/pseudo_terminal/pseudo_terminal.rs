@@ -1,0 +1,433 @@
+use anyhow::anyhow;
+use crossbeam_channel::{Receiver, Sender, bounded, unbounded};
+use crossterm::{
+    terminal,
+    terminal::{disable_raw_mode, enable_raw_mode},
+    tty::IsTty,
+};
+use napi::bindgen_prelude::*;
+use parking_lot::{Mutex, RwLock};
+use portable_pty::{
+    CommandBuilder, MasterPty, NativePtySystem, PtyPair, PtySize, PtySystem, SlavePty,
+};
+use std::io::stdout;
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Instant,
+};
+use tracing::debug;
+use tracing::log::trace;
+use vt100_ctt::Parser;
+
+use super::os;
+use crate::native::pseudo_terminal::{child_process::ChildProcess, process_killer::ProcessKiller};
+
+pub enum PtyOutput {
+    CommandHeader(String),
+    Process(String),
+}
+
+pub struct PseudoTerminal {
+    // slave is listed before master so that it is dropped first, matching the
+    // drop order PtyPair documents and relies on.
+    pub slave: Box<dyn SlavePty + Send>,
+    pub master: MasterArc,
+    pub stdout_tx: Sender<PtyOutput>,
+    pub stdout_rx: Receiver<PtyOutput>,
+    pub printing_rx: Receiver<()>,
+    pub quiet: Arc<AtomicBool>,
+    pub running: Arc<AtomicBool>,
+    pub writer: WriterArc,
+    pub parser: ParserArc,
+    is_within_nx_tui: bool,
+}
+
+pub struct PseudoTerminalOptions {
+    pub size: (u16, u16),
+}
+
+impl Default for PseudoTerminalOptions {
+    fn default() -> Self {
+        let (w, h) = terminal::size().unwrap_or((80, 24));
+        Self { size: (w, h) }
+    }
+}
+
+pub type ParserArc = Arc<RwLock<Parser>>;
+pub type WriterArc = Arc<Mutex<Box<dyn Write + Send>>>;
+/// The control end of the pty. Resizing it issues the TIOCSWINSZ ioctl, which
+/// updates the winsize the kernel reports to the child and raises SIGWINCH so
+/// the child knows to redraw at the new dimensions.
+pub type MasterArc = Arc<Mutex<Box<dyn MasterPty + Send>>>;
+
+/// The handles the TUI needs to display and drive a running pty task: the parser
+/// it renders from, the writer it forwards input to, and the master it resizes.
+pub type PtyHandles = (ParserArc, WriterArc, MasterArc);
+
+/// Resize the pty so the child process is told its window changed.
+pub fn resize_master(master: &MasterArc, rows: u16, cols: u16) {
+    if let Err(e) = master.lock().resize(PtySize {
+        rows,
+        cols,
+        pixel_width: 0,
+        pixel_height: 0,
+    }) {
+        debug!("Failed to resize pty to {}x{}: {}", rows, cols, e);
+    }
+}
+
+impl PseudoTerminal {
+    pub fn new(options: PseudoTerminalOptions) -> Result<Self> {
+        let quiet = Arc::new(AtomicBool::new(true));
+        let running = Arc::new(AtomicBool::new(false));
+
+        let pty_system = NativePtySystem::default();
+
+        trace!("Opening Pseudo Terminal");
+        let (w, h) = options.size;
+        let PtyPair { slave, master } = pty_system.openpty(PtySize {
+            rows: h,
+            cols: w,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
+
+        let writer = master.take_writer()?;
+        let writer_arc = Arc::new(Mutex::new(writer));
+        let writer_clone = writer_arc.clone();
+
+        let is_within_nx_tui =
+            std::env::var("NX_TUI").unwrap_or_else(|_| String::from("false")) == "true";
+        if !is_within_nx_tui && stdout().is_tty() {
+            // Stdin -> pty stdin
+            trace!("Passing through stdin");
+            std::thread::spawn(move || {
+                let mut stdin = std::io::stdin();
+                if let Err(e) = os::write_to_pty(&mut stdin, writer_clone) {
+                    trace!("Error writing to pty: {:?}", e);
+                }
+            });
+        }
+
+        let mut reader = master.try_clone_reader()?;
+        let master_arc: MasterArc = Arc::new(Mutex::new(master));
+        let (stdout_tx, stdout_rx) = unbounded();
+        let (printing_tx, printing_rx) = unbounded();
+        // Output -> stdout handling
+        let quiet_clone = quiet.clone();
+        let running_clone = running.clone();
+
+        // Scrollback size matches PtyInstance::SCROLLBACK_SIZE (1000 rows).
+        // Larger values make resize reparse and all_contents_formatted() more
+        // expensive, which blocks the parser write lock and starves rendering.
+        const SCROLLBACK_SIZE: usize = 1000;
+        // When raw output exceeds this threshold, compact the parser to prevent
+        // unbounded Vec growth. Without this, extend_from_slice() eventually
+        // triggers multi-hundred-millisecond reallocs under the write lock,
+        // causing the TUI to hang progressively worse as output accumulates.
+        const MAX_RAW_OUTPUT_BYTES: usize = 5 * 1024 * 1024; // 5 MB
+
+        let parser = Arc::new(RwLock::new(Parser::new(h, w, SCROLLBACK_SIZE)));
+        let parser_clone = parser.clone();
+        let stdout_tx_clone = stdout_tx.clone();
+        std::thread::spawn(move || {
+            let mut stdout = std::io::stdout();
+            let mut buf = [0; 8 * 1024];
+            // Local buffer for batching parser writes when inside the TUI.
+            // Under firehose output, reader.read() returns a full 8KB buffer
+            // on every call. Without batching, the parser write lock is
+            // acquired on every 8KB chunk, leaving almost no gap for the
+            // rendering thread's try_read(). By accumulating locally and
+            // only flushing when the read returns short (PTY caught up) or
+            // the buffer exceeds a threshold, we reduce lock acquisitions
+            // and give rendering predictable windows to read.
+            let mut pending_tui_buf: Vec<u8> = Vec::new();
+            const BATCH_THRESHOLD: usize = 64 * 1024;
+            // Filters reply-eliciting escape sequences out of the captured
+            // copy only — the live stdout passthrough and the TUI parser get
+            // raw bytes, so a running child still talks to the real terminal.
+            let mut capture_filter = super::strip_queries::QueryFilter::new();
+            let mut capture_decoder = super::utf8_carry::Utf8Carry::default();
+
+            'read_loop: loop {
+                if let Ok(len) = reader.read(&mut buf) {
+                    if len == 0 {
+                        // EOF — flush any remaining buffered data before exiting
+                        if is_within_nx_tui && !pending_tui_buf.is_empty() {
+                            let mut parser = parser_clone.write();
+                            parser.process(&pending_tui_buf);
+                            pending_tui_buf.clear();
+                        }
+                        let mut held = capture_decoder.feed(&capture_filter.flush());
+                        held.push_str(&capture_decoder.flush());
+                        if !held.is_empty() {
+                            stdout_tx_clone.send(PtyOutput::Process(held)).ok();
+                        }
+                        break;
+                    }
+                    let captured = capture_decoder.feed(&capture_filter.feed(&buf[0..len]));
+                    if !captured.is_empty() {
+                        stdout_tx_clone.send(PtyOutput::Process(captured)).ok();
+                    }
+                    let quiet = quiet_clone.load(Ordering::Relaxed);
+                    trace!("Quiet: {}", quiet);
+                    debug!("Read {} bytes", len);
+                    if is_within_nx_tui {
+                        trace!("Processing data via vt100 for use in tui");
+                        pending_tui_buf.extend_from_slice(&buf[..len]);
+                        // Batch: only take the parser write lock when the PTY
+                        // reader has caught up (short read) or we've accumulated
+                        // enough data. Under firehose output, full-buffer reads
+                        // (len == buf.len()) indicate more data is immediately
+                        // available, so we defer processing. Short reads mean
+                        // we've drained the PTY buffer and the next read will
+                        // block, giving us a natural processing window.
+                        let should_flush =
+                            len < buf.len() || pending_tui_buf.len() >= BATCH_THRESHOLD;
+                        if should_flush {
+                            let mut parser = parser_clone.write();
+                            parser.process(&pending_tui_buf);
+                            pending_tui_buf.clear();
+                            // Compact when raw output grows too large. Replays
+                            // the formatted screen state (bounded by SCROLLBACK_SIZE)
+                            // through a fresh parser, keeping raw_output small.
+                            if parser.get_raw_output().len() > MAX_RAW_OUTPUT_BYTES {
+                                let screen = parser.screen();
+                                let (rows, cols) = screen.size();
+                                let formatted = screen.all_contents_formatted();
+                                let scrollback = screen.scrollback();
+                                let mut compacted = Parser::new(rows, cols, SCROLLBACK_SIZE);
+                                compacted.process(&formatted);
+                                compacted.screen_mut().set_scrollback(scrollback);
+                                *parser = compacted;
+                            }
+                        }
+                    }
+
+                    if !quiet {
+                        let mut logged_interrupted_error = false;
+
+                        let mut content = String::from_utf8_lossy(&buf[0..len]).to_string();
+                        if content.contains("\x1B[6n") {
+                            trace!("Prevented terminal escape sequence ESC[6n from being printed.");
+                            content = content.replace("\x1B[6n", "");
+                        }
+
+                        let write_buf = content.as_bytes();
+                        debug!("Escaped Stdout: {:?}", write_buf.escape_ascii().to_string());
+
+                        while let Err(e) = stdout.write_all(write_buf) {
+                            match e.kind() {
+                                std::io::ErrorKind::Interrupted => {
+                                    if !logged_interrupted_error {
+                                        trace!("Interrupted error writing to stdout: {:?}", e);
+                                        logged_interrupted_error = true;
+                                    }
+                                    continue;
+                                }
+                                _ => {
+                                    // We should figure out what to do for more error types as they appear.
+                                    trace!("Error writing to stdout: {:?}", e);
+                                    trace!("Error kind: {:?}", e.kind());
+                                    break 'read_loop;
+                                }
+                            }
+                        }
+                        let _ = stdout.flush();
+                    }
+                }
+                if !running_clone.load(Ordering::SeqCst) {
+                    printing_tx.send(()).ok();
+                }
+            }
+
+            printing_tx.send(()).ok();
+        });
+        Ok(PseudoTerminal {
+            quiet,
+            writer: writer_arc,
+            running,
+            parser,
+            slave,
+            master: master_arc,
+            stdout_rx,
+            stdout_tx,
+            printing_rx,
+            is_within_nx_tui,
+        })
+    }
+
+    pub fn run_command(
+        &mut self,
+        command: String,
+        command_dir: Option<String>,
+        js_env: Option<HashMap<String, String>>,
+        exec_argv: Option<Vec<String>>,
+        quiet: Option<bool>,
+        tty: Option<bool>,
+        command_label: Option<String>,
+    ) -> napi::Result<ChildProcess> {
+        let command_dir = get_directory(command_dir)?;
+
+        let quiet = quiet.unwrap_or(false);
+
+        self.quiet.store(quiet, Ordering::Relaxed);
+
+        let mut cmd = command_builder();
+        cmd.arg(command.as_str());
+        cmd.cwd(command_dir);
+
+        if let Some(js_env) = js_env {
+            for (key, value) in js_env {
+                cmd.env(key, value);
+            }
+        }
+
+        if let Some(exec_argv) = exec_argv {
+            cmd.env("NX_PSEUDO_TERMINAL_EXEC_ARGV", exec_argv.join("|"));
+        }
+
+        let (exit_to_process_tx, exit_to_process_rx) = bounded(1);
+
+        let command_clone = command.clone();
+        let command_info = format!("> {}\n\n\r", command_label.unwrap_or(command));
+        self.stdout_tx
+            .send(PtyOutput::CommandHeader(command_info.clone()))
+            .ok();
+
+        if self.is_within_nx_tui {
+            // within the tui, update the parser directly so it is displayed in the tui
+            self.parser.write().process(command_info.as_bytes());
+        } else if !quiet {
+            // outside the tui, just print to stdout so the user can see it
+            if let Err(e) = std::io::stdout().write_all(command_info.as_bytes()) {
+                debug!("Failed to write command info to stdout: {}", e);
+            }
+        }
+
+        trace!("Running {}", command_clone);
+        let mut child = self.slave.spawn_command(cmd)?;
+        self.running.store(true, Ordering::SeqCst);
+
+        let is_tty = tty.unwrap_or_else(|| std::io::stdout().is_tty());
+        // Do not manipulate raw mode if running within the context of the NX_TUI, it handles it itself
+        let should_control_raw_mode = is_tty && !self.is_within_nx_tui;
+        if should_control_raw_mode {
+            trace!("Enabling raw mode");
+            enable_raw_mode().expect("Failed to enter raw terminal mode");
+        }
+        let pid = child
+            .process_id()
+            .expect("unable to determine child process id") as i32;
+        let process_killer = ProcessKiller::new(pid);
+
+        trace!("Getting running clone");
+        let running_clone = self.running.clone();
+        trace!("Getting printing_rx clone");
+        let printing_rx = self.printing_rx.clone();
+
+        trace!("spawning thread to wait for command");
+        std::thread::spawn(move || {
+            trace!("Waiting for {}", command_clone);
+
+            let res = child.wait();
+            if let Ok(exit) = res {
+                trace!("{} Exited", command_clone);
+                // This mitigates the issues with ConPTY on windows and makes it work.
+                running_clone.store(false, Ordering::SeqCst);
+                if cfg!(windows) {
+                    trace!("Waiting for printing to finish");
+                    let timeout = 500;
+                    let a = Instant::now();
+                    loop {
+                        if printing_rx.try_recv().is_ok() {
+                            break;
+                        }
+                        if a.elapsed().as_millis() > timeout {
+                            break;
+                        }
+                    }
+                    trace!("Printing finished");
+                }
+                if should_control_raw_mode {
+                    trace!("Disabling raw mode");
+                    // Must not panic: that would skip the exit notification below,
+                    // leaving every consumer of this task's exit waiting forever.
+                    if let Err(e) = disable_raw_mode() {
+                        trace!("Failed to restore non-raw terminal: {:?}", e);
+                    }
+                }
+                exit_to_process_tx.send(exit.to_string()).ok();
+            } else {
+                trace!("Error waiting for {}", command_clone);
+            };
+        });
+
+        trace!("Returning ChildProcess");
+        Ok(ChildProcess::new(
+            self.parser.clone(),
+            self.writer.clone(),
+            self.master.clone(),
+            pid,
+            process_killer,
+            self.stdout_rx.clone(),
+            exit_to_process_rx,
+        ))
+    }
+}
+
+fn get_directory(command_dir: Option<String>) -> anyhow::Result<String> {
+    if let Some(command_dir) = command_dir {
+        Ok(command_dir)
+    } else {
+        std::env::current_dir()
+            .map(|v| v.to_string_lossy().to_string())
+            .map_err(|_| {
+                anyhow!("failed to get current directory, please specify command_dir explicitly")
+            })
+    }
+}
+
+fn command_builder() -> CommandBuilder {
+    if cfg!(windows) {
+        let comspec = std::env::var("COMSPEC");
+        let shell = comspec
+            .as_ref()
+            .map(|v| v.as_str())
+            .unwrap_or_else(|_| "cmd.exe");
+        let mut command = CommandBuilder::new(shell);
+        command.arg("/C");
+
+        command
+    } else {
+        let mut command = CommandBuilder::new("sh");
+        command.arg("-c");
+        command
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore] // hangs on Windows
+    fn can_run_commands() {
+        let mut i = 0;
+        let mut pseudo_terminal = PseudoTerminal::new(PseudoTerminalOptions::default()).unwrap();
+        while i < 10 {
+            println!("Running {}", i);
+            let cp1 = pseudo_terminal
+                .run_command(String::from("whoami"), None, None, None, None, None, None)
+                .unwrap();
+            cp1.wait_receiver.recv().unwrap();
+            i += 1;
+        }
+        drop(pseudo_terminal);
+    }
+}

@@ -1,0 +1,45 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "disallowTypeAnnotations": {
+        "description": "Whether to disallow type imports in type annotations (`import()`).",
+        "type": "boolean"
+      },
+      "fixStyle": {
+        "description": "The expected type modifier to be added when an import is detected as used only in the type position.",
+        "enum": ["inline-type-imports", "separate-type-imports"],
+        "type": "string"
+      },
+      "prefer": {
+        "description": "The expected import kind for type-only imports.",
+        "enum": ["no-type-imports", "type-imports"],
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    /** Whether to disallow type imports in type annotations (`import()`). */
+    disallowTypeAnnotations?: boolean;
+    /** The expected type modifier to be added when an import is detected as used only in the type position. */
+    fixStyle?:
+      | 'separate-type-imports'
+      /** The expected type modifier to be added when an import is detected as used only in the type position. */
+      | 'inline-type-imports';
+    /** The expected import kind for type-only imports. */
+    prefer?:
+      | 'type-imports'
+      /** The expected import kind for type-only imports. */
+      | 'no-type-imports';
+  },
+];

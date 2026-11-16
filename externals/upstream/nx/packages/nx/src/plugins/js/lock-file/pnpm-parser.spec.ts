@@ -1,0 +1,5382 @@
+import { joinPathFragments } from '../../../utils/path';
+import {
+  getPnpmLockfileNodes,
+  getPnpmLockfileDependencies,
+  stringifyPnpmLockfile,
+} from './pnpm-parser';
+import {
+  ProjectGraph,
+  type ProjectGraphExternalNode,
+} from '../../../config/project-graph';
+import { vol } from 'memfs';
+import { pruneProjectGraph } from './project-graph-pruning';
+import { getPrunedPnpmLocalPathArtifacts } from './pruned-output';
+import {
+  ProjectGraphBuilder,
+  RawProjectGraphDependency,
+} from '../../../project-graph/project-graph-builder';
+import { CreateDependenciesContext } from '../../../project-graph/plugins';
+import { hashArray } from '../../../hasher/file-hasher';
+
+vi.mock('node:fs', async () => {
+  const memFs = (await import('memfs')).fs;
+  return {
+    ...memFs,
+    existsSync: (p) => (p.endsWith('.node') ? true : memFs.existsSync(p)),
+  };
+});
+
+// The artifact collector (pruned-output) reads through 'fs', so mirror the mock
+// there for the stringify -> collect round-trip test.
+vi.mock('fs', () => {
+  const memFs = require('memfs').fs;
+  return {
+    ...memFs,
+    existsSync: (p) => (p.endsWith('.node') ? true : memFs.existsSync(p)),
+  };
+});
+
+const { readFileSync: realReadFileSync } =
+  await vi.importActual<typeof import('fs')>('fs');
+function loadJsonFixture(path: string) {
+  return JSON.parse(realReadFileSync(path, 'utf-8'));
+}
+
+vi.mock('../../../utils/workspace-root', () => ({
+  workspaceRoot: '/root',
+}));
+
+vi.mock('../../../hasher/file-hasher', () => ({
+  hashArray: (values: string[]) => values.join('|'),
+}));
+
+describe('pnpm LockFile utility', () => {
+  afterEach(() => {
+    vol.reset();
+  });
+
+  describe('next.js generated', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/@babel/preset-react/package.json':
+          '{"version": "7.18.6"}',
+        'node_modules/@eslint/eslintrc/package.json': '{"version": "1.3.3"}',
+        'node_modules/@next/eslint-plugin-next/package.json':
+          '{"version": "13.0.0"}',
+        'node_modules/@nrwl/cypress/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/eslint-plugin-nx/package.json':
+          '{"version": "15.3.3"}',
+        'node_modules/@nrwl/jest/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/linter/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/next/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/react/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/web/package.json': '{"version": "15.3.3"}',
+        'node_modules/@nrwl/workspace/package.json': '{"version": "15.3.3"}',
+        'node_modules/@rushstack/eslint-patch/package.json':
+          '{"version": "1.2.0"}',
+        'node_modules/@testing-library/react/package.json':
+          '{"version": "13.4.0"}',
+        'node_modules/@types/eslint/package.json': '{"version": "8.4.10"}',
+        'node_modules/@types/eslint-scope/package.json': '{"version": "3.7.4"}',
+        'node_modules/@types/jest/package.json': '{"version": "28.1.1"}',
+        'node_modules/@types/node/package.json': '{"version": "18.11.9"}',
+        'node_modules/@types/prettier/package.json': '{"version": "2.7.1"}',
+        'node_modules/@types/react/package.json': '{"version": "18.0.25"}',
+        'node_modules/@types/react-dom/package.json': '{"version": "18.0.9"}',
+        'node_modules/@typescript-eslint/eslint-plugin/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/parser/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/scope-manager/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/type-utils/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/types/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/typescript-estree/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/utils/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/@typescript-eslint/visitor-keys/package.json':
+          '{"version": "5.46.1"}',
+        'node_modules/babel-jest/package.json': '{"version": "28.1.1"}',
+        'node_modules/core-js/package.json': '{"version": "3.26.1"}',
+        'node_modules/cypress/package.json': '{"version": "11.2.0"}',
+        'node_modules/eslint/package.json': '{"version": "8.15.0"}',
+        'node_modules/eslint-config-next/package.json': '{"version": "13.0.0"}',
+        'node_modules/eslint-config-prettier/package.json':
+          '{"version": "8.1.0"}',
+        'node_modules/eslint-import-resolver-node/package.json':
+          '{"version": "0.3.6"}',
+        'node_modules/eslint-import-resolver-typescript/package.json':
+          '{"version": "2.7.1"}',
+        'node_modules/eslint-module-utils/package.json': '{"version": "2.7.4"}',
+        'node_modules/eslint-plugin-cypress/package.json':
+          '{"version": "2.12.1"}',
+        'node_modules/eslint-plugin-import/package.json':
+          '{"version": "2.26.0"}',
+        'node_modules/eslint-plugin-jsx-a11y/package.json':
+          '{"version": "6.6.1"}',
+        'node_modules/eslint-plugin-react/package.json':
+          '{"version": "7.31.11"}',
+        'node_modules/eslint-plugin-react-hooks/package.json':
+          '{"version": "4.6.0"}',
+        'node_modules/eslint-scope/package.json': '{"version": "7.1.1"}',
+        'node_modules/eslint-utils/package.json': '{"version": "3.0.0"}',
+        'node_modules/eslint-visitor-keys/package.json': '{"version": "3.3.0"}',
+        'node_modules/jest/package.json': '{"version": "28.1.1"}',
+        'node_modules/jest-environment-jsdom/package.json':
+          '{"version": "28.1.1"}',
+        'node_modules/next/package.json': '{"version": "13.0.0"}',
+        'node_modules/nx/package.json': '{"version": "15.3.3"}',
+        'node_modules/prettier/package.json': '{"version": "2.8.1"}',
+        'node_modules/react/package.json': '{"version": "18.2.0"}',
+        'node_modules/react-dom/package.json': '{"version": "18.2.0"}',
+        'node_modules/react-test-renderer/package.json':
+          '{"version": "18.2.0"}',
+        'node_modules/regenerator-runtime/package.json':
+          '{"version": "0.13.7"}',
+        'node_modules/ts-jest/package.json': '{"version": "28.0.5"}',
+        'node_modules/ts-node/package.json': '{"version": "10.9.1"}',
+        'node_modules/tslib/package.json': '{"version": "2.4.1"}',
+        'node_modules/typescript/package.json': '{"version": "4.8.4"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(__dirname, '__fixtures__/nextjs/.modules.yaml')
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    let externalNodes: ProjectGraph['externalNodes'];
+    let keyMap: Map<string, Set<ProjectGraphExternalNode>>;
+    let dependencies: RawProjectGraphDependency[];
+    let graph: ProjectGraph;
+
+    let lockFile: string;
+    let lockFileHash: string;
+
+    describe('v5.4', () => {
+      beforeEach(() => {
+        lockFile = require(
+          joinPathFragments(__dirname, '__fixtures__/nextjs/pnpm-lock.yaml')
+        ).default;
+        lockFileHash = '__fixtures__/nextjs/pnpm-lock.yaml';
+
+        const result = getPnpmLockfileNodes(lockFile, lockFileHash);
+        externalNodes = result.nodes;
+        keyMap = result.keyMap;
+        graph = {
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        };
+        const ctx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        dependencies = getPnpmLockfileDependencies(
+          lockFile,
+          lockFileHash,
+          ctx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder(graph);
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        graph = builder.getUpdatedProjectGraph();
+      });
+
+      it('should parse root lock file', async () => {
+        expect(Object.keys(externalNodes).length).toEqual(1280);
+      });
+
+      it('should prune lock file', async () => {
+        const appPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/nextjs/app/package.json.fixture'
+          )
+        );
+
+        // this is our pruned lock file structure
+        const prunedGraph = pruneProjectGraph(graph, appPackageJson);
+        // our pruning keep all transitive peer deps, mainly cypress and eslint
+        // which adds 119 more deps
+        //  but it's still possible to run `pnpm install --frozen-lockfile` on it (there are e2e tests for that)
+        expect(Object.keys(prunedGraph.externalNodes).length).toEqual(
+          863 + 119
+        );
+
+        // this should not fail
+        expect(() =>
+          stringifyPnpmLockfile(
+            prunedGraph,
+            lockFile,
+            appPackageJson,
+            '/virtual'
+          )
+        ).not.toThrow();
+      });
+    });
+
+    describe('v6.0', () => {
+      beforeEach(() => {
+        lockFile = require(
+          joinPathFragments(__dirname, '__fixtures__/nextjs/pnpm-lock-v6.yaml')
+        ).default;
+        lockFileHash = '__fixtures__/nextjs/pnpm-lock-v6.yaml';
+        const result = getPnpmLockfileNodes(lockFile, lockFileHash);
+        externalNodes = result.nodes;
+        keyMap = result.keyMap;
+        graph = {
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        };
+        const ctx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        dependencies = getPnpmLockfileDependencies(
+          lockFile,
+          lockFileHash,
+          ctx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder(graph);
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        graph = builder.getUpdatedProjectGraph();
+      });
+
+      it('should parse root lock file', async () => {
+        expect(Object.keys(graph.externalNodes).length).toEqual(1296);
+      });
+
+      it('should prune lock file', async () => {
+        const appPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/nextjs/app/package.json.fixture'
+          )
+        );
+        // this is original generated lock file
+        const appLockFile = require(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/nextjs/app/pnpm-lock-v6.yaml'
+          )
+        ).default;
+        const appLockFileHash = '__fixtures__/nextjs/app/pnpm-lock-v6.yaml';
+
+        const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+          appLockFile,
+          appLockFileHash
+        );
+        let appGraph: ProjectGraph = {
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        };
+        const appCtx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        const dependencies = getPnpmLockfileDependencies(
+          appLockFile,
+          appLockFileHash,
+          appCtx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder(appGraph);
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        appGraph = builder.getUpdatedProjectGraph();
+        expect(Object.keys(appGraph.externalNodes).length).toEqual(864);
+
+        // this is our pruned lock file structure
+        const prunedGraph = pruneProjectGraph(graph, appPackageJson);
+        expect(Object.keys(prunedGraph.externalNodes).length).toEqual(
+          864 + 119 // peer cypress adds additional 119 deps
+        );
+
+        // this should not fail
+        expect(() =>
+          stringifyPnpmLockfile(
+            prunedGraph,
+            appLockFile,
+            appPackageJson,
+            '/virtual'
+          )
+        ).not.toThrow();
+      });
+    });
+  });
+
+  describe('auxiliary packages', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/@eslint/eslintrc/package.json': '{"version": "1.3.3"}',
+        'node_modules/@nrwl/devkit/package.json': '{"version": "15.0.13"}',
+        'node_modules/eslint/package.json': '{"version": "8.29.0"}',
+        'node_modules/eslint-plugin-disable-autofix/package.json':
+          '{"version": "3.0.0"}',
+        'node_modules/eslint-rule-composer/package.json':
+          '{"version": "0.3.0"}',
+        'node_modules/eslint-scope/package.json': '{"version": "7.1.1"}',
+        'node_modules/eslint-utils/package.json': '{"version": "3.0.0"}',
+        'node_modules/eslint-visitor-keys/package.json': '{"version": "3.3.0"}',
+        'node_modules/postgres/package.json': '{"version": "3.2.4"}',
+        'node_modules/react/package.json': '{"version": "18.2.0"}',
+        'node_modules/typescript/package.json': '{"version": "4.8.4"}',
+        'node_modules/yargs/package.json': '{"version": "17.6.2"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/auxiliary-packages/.modules.yaml'
+          )
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should parse root lock file', async () => {
+      const lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/auxiliary-packages/pnpm-lock.yaml'
+        )
+      ).default;
+      const lockFileHash = '__fixtures__/auxiliary-packages/pnpm-lock.yaml';
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+
+      expect(Object.keys(graph.externalNodes).length).toEqual(214);
+
+      // The root does not declare minimatch, so neither version is bare.
+      expect(graph.externalNodes['npm:minimatch']).toBeUndefined();
+      expect(graph.externalNodes['npm:minimatch@3.1.2']).toMatchInlineSnapshot(`
+        {
+          "data": {
+            "hash": "sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==",
+            "packageName": "minimatch",
+            "version": "3.1.2",
+          },
+          "name": "npm:minimatch@3.1.2",
+          "type": "npm",
+        }
+      `);
+      expect(graph.externalNodes['npm:minimatch@5.1.1']).toMatchInlineSnapshot(`
+        {
+          "data": {
+            "hash": "sha512-362NP+zlprccbEt/SkxKfRMHnNY85V74mVnpUpNyr3F35covl09Kec7/sEFLt3RA4oXmewtoaanoIf67SE5Y5g==",
+            "packageName": "minimatch",
+            "version": "5.1.1",
+          },
+          "name": "npm:minimatch@5.1.1",
+          "type": "npm",
+        }
+      `);
+      expect(graph.externalNodes['npm:postgres']).toMatchInlineSnapshot(`
+        {
+          "data": {
+            "hash": "https://codeload.github.com/charsleysa/postgres/tar.gz/3b1a01b2da3e2fafb1a79006f838eff11a8de3cb",
+            "packageName": "postgres",
+            "version": "https://codeload.github.com/charsleysa/postgres/tar.gz/3b1a01b2da3e2fafb1a79006f838eff11a8de3cb",
+          },
+          "name": "npm:postgres",
+          "type": "npm",
+        }
+      `);
+      expect(graph.externalNodes['npm:eslint-plugin-disable-autofix'])
+        .toMatchInlineSnapshot(`
+        {
+          "data": {
+            "hash": "sha512-zYDdpaj+1Al8Ki3WpY2I9bOAd8NSgFWGT7yR6KemSi25qWwDMNArnR2q6gDEDKSw+KuYY4shFxkY/JpoNF64tg==",
+            "packageName": "eslint-plugin-disable-autofix",
+            "version": "npm:@mattlewis92/eslint-plugin-disable-autofix@3.0.0",
+          },
+          "name": "npm:eslint-plugin-disable-autofix",
+          "type": "npm",
+        }
+      `);
+    });
+
+    it('should prune lock file', () => {
+      const lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/auxiliary-packages/pnpm-lock.yaml'
+        )
+      ).default;
+      const lockFileHash = '__fixtures__/auxiliary-packages/pnpm-lock.yaml';
+      const prunedLockFile: string = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/auxiliary-packages/pnpm-lock.yaml.pruned'
+        )
+      ).default;
+
+      const prunedPackageJson = {
+        name: 'test',
+        version: '0.0.0',
+        license: 'MIT',
+        dependencies: {
+          '@nrwl/devkit': '15.0.13',
+          'eslint-plugin-disable-autofix':
+            'npm:@mattlewis92/eslint-plugin-disable-autofix@3.0.0',
+          postgres:
+            'https://codeload.github.com/charsleysa/postgres/tar.gz/3b1a01b2da3e2fafb1a79006f838eff11a8de3cb',
+          yargs: '17.6.2',
+        },
+        devDependencies: {
+          react: '18.2.0',
+        },
+        peerDependencies: {
+          typescript: '4.8.4',
+        },
+      };
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+      const prunedGraph = pruneProjectGraph(graph, prunedPackageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        prunedPackageJson,
+        '/virtual'
+      );
+      // we replace the dev: true with dev: false because the lock file is generated with dev: false
+      // this does not break the intallation, despite being inaccurate
+      const manipulatedLockFile = prunedLockFile.replace(
+        /dev: true/g,
+        'dev: false'
+      );
+      expect(result).toEqual(manipulatedLockFile);
+    });
+  });
+
+  describe('duplicate packages', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/@nrwl/devkit/package.json': '{"version": "14.8.6"}',
+        'node_modules/@nrwl/workspace/package.json': '{"version": "14.8.6"}',
+        'node_modules/@types/prettier/package.json': '{"version": "2.7.2"}',
+        'node_modules/nx/package.json': '{"version": "15.4.0"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/duplicate-package/.modules.yaml'
+          )
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should parse root lock file', async () => {
+      const lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/duplicate-package/pnpm-lock.yaml'
+        )
+      ).default;
+      const lockFileHash = '__fixtures__/duplicate-package/pnpm-lock.yaml';
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+      expect(Object.keys(graph.externalNodes).length).toEqual(370);
+      expect(Object.keys(graph.dependencies).length).toEqual(213);
+      expect(graph.dependencies['npm:@nrwl/devkit'].length).toEqual(6);
+    });
+  });
+
+  describe('optional packages', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/ssh2/package.json': '{"version": "1.11.6"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(__dirname, '__fixtures__/optional/.modules.yaml')
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should match parsed and pruned graph', async () => {
+      const lockFile = require(
+        joinPathFragments(__dirname, '__fixtures__/optional/pnpm-lock.yaml')
+      ).default;
+      const lockFileHash = '__fixtures__/optional/pnpm-lock.yaml';
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+      expect(Object.keys(graph.externalNodes).length).toEqual(8);
+
+      const packageJson = loadJsonFixture(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/optional/package.json.fixture'
+        )
+      );
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      expect(Object.keys(prunedGraph.externalNodes).length).toEqual(8);
+    });
+  });
+
+  describe('aliased and peer-context dependencies', () => {
+    beforeEach(() => {
+      vol.fromJSON(
+        { 'node_modules/.modules.yaml': 'hoistedDependencies: {}\n' },
+        '/root'
+      );
+    });
+
+    function pruneRealLockfile(
+      fixture: string,
+      prunedPackageJson: Parameters<typeof stringifyPnpmLockfile>[2]
+    ): string {
+      const lockFile = require(joinPathFragments(__dirname, fixture)).default;
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        fixture
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: { nonProjectFiles: [], projectFileMap: {} },
+        filesToProcess: { nonProjectFiles: [], projectFileMap: {} },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        fixture,
+        ctx,
+        keyMap
+      );
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+      const prunedGraph = pruneProjectGraph(graph, prunedPackageJson);
+      return stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        prunedPackageJson,
+        '/virtual'
+      );
+    }
+
+    // @isaacs/cliui declares npm-aliased deps (string-width-cjs: string-width@4.2.3).
+    // Pruning must keep the aliased target snapshots or a standalone install fails
+    // with ERR_PNPM_OUTDATED_LOCKFILE. Fixture generated by a real pnpm install.
+    it('keeps aliased dependency snapshots in the pruned lockfile', () => {
+      const result = pruneRealLockfile(
+        '__fixtures__/pruning/aliased-deps/pnpm-lock-v9.yaml',
+        {
+          name: 'app',
+          version: '0.0.0',
+          dependencies: { '@isaacs/cliui': '8.0.2' },
+        }
+      );
+
+      expect(result).toContain('string-width-cjs: string-width@4.2.3');
+      expect(result).toContain('strip-ansi-cjs: strip-ansi@6.0.1');
+      expect(result).toContain('wrap-ansi-cjs: wrap-ansi@7.0.0');
+      expect(result).toContain('string-width@4.2.3:');
+      expect(result).toContain('strip-ansi@6.0.1:');
+      expect(result).toContain('wrap-ansi@7.0.0:');
+      expect(result).not.toContain('type-fest');
+    });
+
+    // ts-api-utils resolves with a peer-dependency context (1.4.3(typescript@5.4.5)).
+    // The `@` inside the peer context must not derail snapshot selection. Fixture
+    // generated by a real pnpm install.
+    it('keeps peer-context dependency snapshots in the pruned lockfile', () => {
+      const result = pruneRealLockfile(
+        '__fixtures__/pruning/peer-context/pnpm-lock-v9.yaml',
+        {
+          name: 'app',
+          version: '0.0.0',
+          dependencies: { 'ts-api-utils': '1.4.3', typescript: '5.4.5' },
+        }
+      );
+
+      expect(result).toContain('ts-api-utils@1.4.3(typescript@5.4.5):');
+      expect(result).toContain('typescript@5.4.5:');
+      expect(result).not.toContain('type-fest');
+    });
+  });
+
+  describe('pruning', () => {
+    let graph, lockFile, lockFileHash;
+
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/argparse/package.json': '{"version": "2.0.1"}',
+        'node_modules/brace-expansion/package.json': '{"version": "1.1.11"}',
+        'node_modules/cliui/package.json': '{"version": "7.0.4"}',
+        'node_modules/js-yaml/package.json': '{"version": "4.1.0"}',
+        'node_modules/minimatch/package.json': '{"version": "3.0.5"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(__dirname, '__fixtures__/pruning/.modules.yaml')
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    describe('v5.4', () => {
+      beforeEach(() => {
+        lockFile = require(
+          joinPathFragments(__dirname, '__fixtures__/pruning/pnpm-lock.yaml')
+        ).default;
+        lockFileHash = '__fixtures__/pruning/pnpm-lock.yaml';
+
+        const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+          lockFile,
+          lockFileHash
+        );
+        graph = {
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        };
+        const ctx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        const dependencies = getPnpmLockfileDependencies(
+          lockFile,
+          lockFileHash,
+          ctx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder(graph);
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        graph = builder.getUpdatedProjectGraph();
+      });
+
+      it('should not name the bare node after the hoisted version', () => {
+        // .modules.yaml hoists tslib@2.5.0, but the root declares neither version.
+        expect(graph.externalNodes['npm:tslib']).toBeUndefined();
+        expect(graph.externalNodes['npm:tslib@1.14.1']).toBeDefined();
+        expect(graph.externalNodes['npm:tslib@2.5.0']).toBeDefined();
+      });
+
+      it('should prune single package', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          typescriptPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/typescript/pnpm-lock.yaml'
+            )
+          ).default
+        );
+      });
+
+      it('should prune multi packages', () => {
+        const multiPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/devkit-yargs/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, multiPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          multiPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/devkit-yargs/pnpm-lock.yaml'
+            )
+          ).default
+        );
+      });
+    });
+
+    describe('v6.0', () => {
+      beforeEach(() => {
+        lockFile = require(
+          joinPathFragments(__dirname, '__fixtures__/pruning/pnpm-lock-v6.yaml')
+        ).default;
+        lockFileHash = '__fixtures__/pruning/pnpm-lock-v6.yaml';
+
+        const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+          lockFile,
+          lockFileHash
+        );
+        graph = {
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        };
+        const ctx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        const dependencies = getPnpmLockfileDependencies(
+          lockFile,
+          lockFileHash,
+          ctx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder(graph);
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        graph = builder.getUpdatedProjectGraph();
+      });
+
+      it('should not name the bare node after the hoisted version', () => {
+        // .modules.yaml hoists tslib@2.5.0, but the root declares neither version.
+        expect(graph.externalNodes['npm:tslib']).toBeUndefined();
+        expect(graph.externalNodes['npm:tslib@1.14.1']).toBeDefined();
+        expect(graph.externalNodes['npm:tslib@2.5.0']).toBeDefined();
+      });
+
+      it('should prune single package', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          typescriptPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/typescript/pnpm-lock-v6.yaml'
+            )
+          ).default
+        );
+      });
+
+      it('should prune multi packages', () => {
+        const multiPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/devkit-yargs/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, multiPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          multiPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/devkit-yargs/pnpm-lock-v6.yaml'
+            )
+          ).default
+        );
+      });
+    });
+
+    describe('v9.0', () => {
+      beforeEach(() => {
+        lockFile = require(
+          joinPathFragments(__dirname, '__fixtures__/pruning/pnpm-lock-v9.yaml')
+        ).default;
+        lockFileHash = '__fixtures__/pruning/pnpm-lock-v9.yaml';
+        graph = buildGraph(lockFile, lockFileHash);
+      });
+
+      function buildGraph(lockFile: string, lockFileHash: string) {
+        const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+          lockFile,
+          lockFileHash
+        );
+        const ctx: CreateDependenciesContext = {
+          projects: {},
+          externalNodes,
+          fileMap: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          filesToProcess: {
+            nonProjectFiles: [],
+            projectFileMap: {},
+          },
+          nxJsonConfiguration: null,
+          workspaceRoot: '/virtual',
+        };
+        const dependencies = getPnpmLockfileDependencies(
+          lockFile,
+          lockFileHash,
+          ctx,
+          keyMap
+        );
+
+        const builder = new ProjectGraphBuilder({
+          nodes: {},
+          dependencies: {},
+          externalNodes,
+        });
+        for (const dep of dependencies) {
+          builder.addDependency(
+            dep.source,
+            dep.target,
+            dep.type,
+            'sourceFile' in dep ? dep.sourceFile : null
+          );
+        }
+        return builder.getUpdatedProjectGraph();
+      }
+
+      it('should not name the bare node after the hoisted version', () => {
+        // .modules.yaml hoists tslib@2.5.0, but the root declares neither version.
+        expect(graph.externalNodes['npm:tslib']).toBeUndefined();
+        expect(graph.externalNodes['npm:tslib@1.14.1']).toBeDefined();
+        expect(graph.externalNodes['npm:tslib@2.5.0']).toBeDefined();
+      });
+
+      it('should prune a wildcard dependency to a registry version when a nested importer links it from outside', () => {
+        const withNestedLink = lockFile.replace(
+          '\nimporters:\n\n',
+          `\nimporters:\n\n  packages/other:\n    dependencies:\n      tslib:\n        specifier: link:../../../outside/tslib\n        version: link:../../../outside/tslib\n\n`
+        );
+        const linkGraph = buildGraph(withNestedLink, '__nested_tslib_link__');
+        expect(linkGraph.externalNodes['npm:tslib'].data.version).toBe(
+          'link:../../../outside/tslib'
+        );
+        const appPackageJson = {
+          name: 'app',
+          version: '0.0.1',
+          dependencies: { tslib: '*' },
+        };
+
+        const prunedGraph = pruneProjectGraph(linkGraph, appPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          withNestedLink,
+          appPackageJson,
+          '/virtual'
+        );
+
+        expect(result).toContain('tslib@2.5.0');
+        expect(result).not.toContain('outside/tslib');
+      });
+
+      it('should prune single package', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          typescriptPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/typescript/pnpm-lock-v9.yaml'
+            )
+          ).default
+        );
+      });
+
+      it('should prune multi packages', () => {
+        const multiPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/devkit-yargs/package.json.fixture'
+          )
+        );
+        const prunedGraph = pruneProjectGraph(graph, multiPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFile,
+          multiPackageJson,
+          '/virtual'
+        );
+        expect(result).toEqual(
+          require(
+            joinPathFragments(
+              __dirname,
+              '__fixtures__/pruning/devkit-yargs/pnpm-lock-v9.yaml'
+            )
+          ).default
+        );
+      });
+
+      it('should strip catalogs from pruned lockfile', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        const lockFileWithCatalogs = lockFile.replace(
+          'lockfileVersion:',
+          'catalogs:\n  default:\n    typescript: 4.9.5\n\nlockfileVersion:'
+        );
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithCatalogs,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        expect(result).not.toContain('catalogs');
+      });
+
+      it('should strip standalone-incompatible config from the pruned lockfile and scope patches to surviving packages', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        // The v9 fixture already carries a `settings:` block; add the remaining
+        // config pnpm validates on a frozen install, plus two patches: one on
+        // typescript (survives the prune, kept) and one on fsevents (dropped by
+        // the prune, so its dangling entry must be scoped out).
+        const lockFileWithConfig = lockFile.replace(
+          'lockfileVersion:',
+          [
+            'overrides:',
+            '  foo: 1.0.0',
+            'packageExtensionsChecksum: sha256-abc',
+            'pnpmfileChecksum: sha256-def',
+            'ignoredOptionalDependencies:',
+            '  - fsevents',
+            'patchedDependencies:',
+            '  typescript@4.8.4:',
+            '    hash: sha256-tspatch',
+            '    path: patches/typescript@4.8.4.patch',
+            '  fsevents:',
+            '    hash: sha256-patch',
+            '    path: patches/fsevents.patch',
+            '',
+            'lockfileVersion:',
+          ].join('\n')
+        );
+
+        // Guard against a vacuous `settings:` assertion: the block comes from
+        // the fixture, not the injected config above.
+        expect(lockFileWithConfig).toMatch(/^settings:/m);
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithConfig,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        // Validated against config the standalone output lacks -> stripped.
+        expect(result).not.toMatch(/^overrides:/m);
+        expect(result).not.toMatch(/^packageExtensionsChecksum:/m);
+        expect(result).not.toMatch(/^pnpmfileChecksum:/m);
+        expect(result).not.toMatch(/^ignoredOptionalDependencies:/m);
+        expect(result).not.toMatch(/^settings:/m);
+        // The surviving package keeps its patch; the dropped one is scoped out
+        // (a dangling entry fails the frozen install with a config mismatch).
+        expect(result).toMatch(/^patchedDependencies:/m);
+        expect(result).toContain('patches/typescript@4.8.4.patch');
+        expect(result).not.toContain('fsevents');
+      });
+
+      it('should keep an overridden dependency version after stripping the overrides config', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        // pnpm applies `overrides` at resolution time and bakes the resolved
+        // version into each snapshot, so the pruned output can drop the config
+        // and still install the overridden version. typescript resolves to
+        // 4.8.4 here; pinning it via an override must survive the prune as a
+        // baked-in snapshot with no `overrides:` block left to mismatch against
+        // on a frozen install.
+        const lockFileWithOverride = lockFile.replace(
+          'lockfileVersion:',
+          ['overrides:', '  typescript: 4.8.4', '', 'lockfileVersion:'].join(
+            '\n'
+          )
+        );
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithOverride,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        expect(result).not.toMatch(/^overrides:/m);
+        expect(result).toContain('typescript@4.8.4');
+      });
+
+      it('should keep a patch declared with an unversioned key when the package survives the prune', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        // pnpm accepts a name-only patch key (patches every version) and then
+        // records it in the lockfile under the bare name while the package key
+        // stays versioned (typescript@4.8.4). The survivor filter must match
+        // the bare key against `${name}@...` package keys, not just the exact
+        // and `(patch_hash=...)` forms, or the patch is silently dropped and
+        // the dependency ships unpatched.
+        const lockFileWithUnversionedPatch = lockFile.replace(
+          'lockfileVersion:',
+          [
+            'patchedDependencies:',
+            '  typescript:',
+            '    hash: sha256-tspatch',
+            '    path: patches/typescript.patch',
+            '',
+            'lockfileVersion:',
+          ].join('\n')
+        );
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithUnversionedPatch,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        expect(result).toMatch(/^patchedDependencies:/m);
+        expect(result).toContain('patches/typescript.patch');
+      });
+
+      it('relocates a custom object-form patch path under patches/ preserving its subpath so the lockfile matches the config (pnpm 9-10)', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        // pnpm 9-10 record the patch path in the lockfile, and a frozen install
+        // aborts with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH when it disagrees with
+        // the emitted config. A patch kept outside patches/ ships under patches/
+        // with its subpath preserved, so the lockfile path must match.
+        const lockFileWithCustomPatch = lockFile.replace(
+          'lockfileVersion:',
+          [
+            'patchedDependencies:',
+            '  typescript@4.8.4:',
+            '    hash: sha256-tspatch',
+            '    path: tools/patches/typescript.patch',
+            '',
+            'lockfileVersion:',
+          ].join('\n')
+        );
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithCustomPatch,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        expect(result).toMatch(/^patchedDependencies:/m);
+        expect(result).toContain(
+          'path: patches/tools/patches/typescript.patch'
+        );
+      });
+
+      it('should keep a patch declared with a semver-range key when a matching version survives the prune', () => {
+        const typescriptPackageJson = loadJsonFixture(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pruning/typescript/package.json.fixture'
+          )
+        );
+        // pnpm accepts a range key (patches every matching version) and records
+        // it verbatim, while the package key stays the resolved exact version
+        // (typescript@4.8.4). The survivor filter must satisfy the range against
+        // the resolved version, not string-match, or the patch is dropped and
+        // the frozen install aborts with a config mismatch.
+        const lockFileWithRangePatch = lockFile.replace(
+          'lockfileVersion:',
+          [
+            'patchedDependencies:',
+            '  typescript@^4.0.0:',
+            '    hash: sha256-tspatch',
+            '    path: patches/typescript.patch',
+            '',
+            'lockfileVersion:',
+          ].join('\n')
+        );
+
+        const prunedGraph = pruneProjectGraph(graph, typescriptPackageJson);
+        const result = stringifyPnpmLockfile(
+          prunedGraph,
+          lockFileWithRangePatch,
+          typescriptPackageJson,
+          '/virtual'
+        );
+
+        expect(result).toMatch(/^patchedDependencies:/m);
+        expect(result).toContain('patches/typescript.patch');
+      });
+    });
+  });
+
+  describe('workspaces', () => {
+    let lockFile, lockFileHash;
+
+    beforeAll(() => {
+      const fileSys = {
+        'node_modules/react/package.json': '{"version": "17.0.2"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(__dirname, '__fixtures__/workspaces/.modules.yaml')
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+
+      lockFile = require(
+        joinPathFragments(__dirname, '__fixtures__/workspaces/pnpm-lock.yaml')
+      ).default;
+      lockFileHash = '__fixtures__/workspaces/pnpm-lock.yaml';
+    });
+
+    it('should parse lock file', async () => {
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      expect(Object.keys(externalNodes).length).toEqual(5);
+    });
+  });
+
+  describe('workspace-only lockfile (no packages block)', () => {
+    // pnpm omits the `packages:` block entirely when a project depends only on
+    // other workspace packages. Stringify must still emit the workspace module
+    // as a `file:` package instead of throwing on the missing block.
+    const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/b':
+        specifier: workspace:*
+        version: link:packages/b
+
+  packages/b: {}
+`;
+
+    it('should stringify without throwing and write the workspace module as a file: package', () => {
+      const graph: ProjectGraph = {
+        nodes: {
+          b: {
+            name: 'b',
+            type: 'lib',
+            data: {
+              root: 'packages/b',
+              metadata: { js: { packageName: '@myorg/b' } },
+            },
+          } as any,
+        },
+        dependencies: {},
+        externalNodes: {},
+      };
+      const packageJson = {
+        name: '@myorg/a',
+        version: '0.0.0',
+        dependencies: { '@myorg/b': 'workspace:*' },
+      } as any;
+
+      let result = '';
+      expect(() => {
+        result = stringifyPnpmLockfile(
+          graph,
+          lockFile,
+          packageJson,
+          '/virtual'
+        );
+      }).not.toThrow();
+      expect(result).toContain('workspace_modules/@myorg/b');
+    });
+  });
+
+  describe('mixed keys', () => {
+    let lockFile, lockFileHash;
+
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/@isaacs/cliui/package.json': '{"version": "8.0.2"}',
+        'node_modules/ansi-regex/package.json': '{"version": "5.0.1"}',
+        'node_modules/ansi-styles/package.json': '{"version": "4.3.0"}',
+        'node_modules/cliui/package.json': '{"version": "8.0.1"}',
+        'node_modules/color-convert/package.json': '{"version": "2.0.1"}',
+        'node_modules/color-name/package.json': '{"version": "1.1.4"}',
+        'node_modules/eastasianwidth/package.json': '{"version": "0.2.0"}',
+        'node_modules/emoji-regex/package.json': '{"version": "8.0.0"}',
+        'node_modules/is-fullwidth-code-point/package.json':
+          '{"version": "3.0.0"}',
+        'node_modules/string-width/package.json': '{"version": "5.1.2"}',
+        'node_modules/string-width-cjs/package.json': '{"version": "4.2.3"}',
+        'node_modules/strip-ansi/package.json': '{"version": "7.1.0"}',
+        'node_modules/strip-ansi-cjs/package.json': '{"version": "6.0.1"}',
+        'node_modules/wrap-ansi/package.json': '{"version": "8.1.0"}',
+        'node_modules/wrap-ansi-cjs/package.json': '{"version": "7.0.0"}',
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(__dirname, '__fixtures__/mixed-keys/.modules.yaml')
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should parse classic and prune packages with mixed keys (v6)', () => {
+      lockFile = require(
+        joinPathFragments(__dirname, '__fixtures__/mixed-keys/pnpm-lock.yaml')
+      ).default;
+      lockFileHash = '__fixtures__/mixed-keys/pnpm-lock.yaml';
+
+      const packageJson = loadJsonFixture(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/mixed-keys/package.json.fixture'
+        )
+      );
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+
+      expect(graph.externalNodes).toMatchInlineSnapshot(`
+        {
+          "npm:@isaacs/cliui": {
+            "data": {
+              "hash": "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==",
+              "packageName": "@isaacs/cliui",
+              "version": "8.0.2",
+            },
+            "name": "npm:@isaacs/cliui",
+            "type": "npm",
+          },
+          "npm:ansi-regex@5.0.1": {
+            "data": {
+              "hash": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+              "packageName": "ansi-regex",
+              "version": "5.0.1",
+            },
+            "name": "npm:ansi-regex@5.0.1",
+            "type": "npm",
+          },
+          "npm:ansi-regex@6.0.1": {
+            "data": {
+              "hash": "sha512-n5M855fKb2SsfMIiFFoVrABHJC8QtHwVx+mHWP3QcEqBHYienj5dHSgjbxtC0WEZXYt4wcD6zrQElDPhFuZgfA==",
+              "packageName": "ansi-regex",
+              "version": "6.0.1",
+            },
+            "name": "npm:ansi-regex@6.0.1",
+            "type": "npm",
+          },
+          "npm:ansi-styles@4.3.0": {
+            "data": {
+              "hash": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+              "packageName": "ansi-styles",
+              "version": "4.3.0",
+            },
+            "name": "npm:ansi-styles@4.3.0",
+            "type": "npm",
+          },
+          "npm:ansi-styles@6.2.1": {
+            "data": {
+              "hash": "sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==",
+              "packageName": "ansi-styles",
+              "version": "6.2.1",
+            },
+            "name": "npm:ansi-styles@6.2.1",
+            "type": "npm",
+          },
+          "npm:cliui": {
+            "data": {
+              "hash": "sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==",
+              "packageName": "cliui",
+              "version": "8.0.1",
+            },
+            "name": "npm:cliui",
+            "type": "npm",
+          },
+          "npm:color-convert": {
+            "data": {
+              "hash": "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==",
+              "packageName": "color-convert",
+              "version": "2.0.1",
+            },
+            "name": "npm:color-convert",
+            "type": "npm",
+          },
+          "npm:color-name": {
+            "data": {
+              "hash": "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==",
+              "packageName": "color-name",
+              "version": "1.1.4",
+            },
+            "name": "npm:color-name",
+            "type": "npm",
+          },
+          "npm:eastasianwidth": {
+            "data": {
+              "hash": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+              "packageName": "eastasianwidth",
+              "version": "0.2.0",
+            },
+            "name": "npm:eastasianwidth",
+            "type": "npm",
+          },
+          "npm:emoji-regex@8.0.0": {
+            "data": {
+              "hash": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+              "packageName": "emoji-regex",
+              "version": "8.0.0",
+            },
+            "name": "npm:emoji-regex@8.0.0",
+            "type": "npm",
+          },
+          "npm:emoji-regex@9.2.2": {
+            "data": {
+              "hash": "sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==",
+              "packageName": "emoji-regex",
+              "version": "9.2.2",
+            },
+            "name": "npm:emoji-regex@9.2.2",
+            "type": "npm",
+          },
+          "npm:is-fullwidth-code-point": {
+            "data": {
+              "hash": "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==",
+              "packageName": "is-fullwidth-code-point",
+              "version": "3.0.0",
+            },
+            "name": "npm:is-fullwidth-code-point",
+            "type": "npm",
+          },
+          "npm:string-width-cjs": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width-cjs",
+              "version": "npm:string-width@4.2.3",
+            },
+            "name": "npm:string-width-cjs",
+            "type": "npm",
+          },
+          "npm:string-width@4.2.3": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width",
+              "version": "4.2.3",
+            },
+            "name": "npm:string-width@4.2.3",
+            "type": "npm",
+          },
+          "npm:string-width@5.1.2": {
+            "data": {
+              "hash": "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==",
+              "packageName": "string-width",
+              "version": "5.1.2",
+            },
+            "name": "npm:string-width@5.1.2",
+            "type": "npm",
+          },
+          "npm:strip-ansi-cjs": {
+            "data": {
+              "hash": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+              "packageName": "strip-ansi-cjs",
+              "version": "npm:strip-ansi@6.0.1",
+            },
+            "name": "npm:strip-ansi-cjs",
+            "type": "npm",
+          },
+          "npm:strip-ansi@6.0.1": {
+            "data": {
+              "hash": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+              "packageName": "strip-ansi",
+              "version": "6.0.1",
+            },
+            "name": "npm:strip-ansi@6.0.1",
+            "type": "npm",
+          },
+          "npm:strip-ansi@7.1.0": {
+            "data": {
+              "hash": "sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==",
+              "packageName": "strip-ansi",
+              "version": "7.1.0",
+            },
+            "name": "npm:strip-ansi@7.1.0",
+            "type": "npm",
+          },
+          "npm:wrap-ansi-cjs": {
+            "data": {
+              "hash": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+              "packageName": "wrap-ansi-cjs",
+              "version": "npm:wrap-ansi@7.0.0",
+            },
+            "name": "npm:wrap-ansi-cjs",
+            "type": "npm",
+          },
+          "npm:wrap-ansi@7.0.0": {
+            "data": {
+              "hash": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+              "packageName": "wrap-ansi",
+              "version": "7.0.0",
+            },
+            "name": "npm:wrap-ansi@7.0.0",
+            "type": "npm",
+          },
+          "npm:wrap-ansi@8.1.0": {
+            "data": {
+              "hash": "sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==",
+              "packageName": "wrap-ansi",
+              "version": "8.1.0",
+            },
+            "name": "npm:wrap-ansi@8.1.0",
+            "type": "npm",
+          },
+        }
+      `);
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+      expect(result).toEqual(lockFile);
+    });
+
+    it('should parse classic and prune packages with mixed keys (v9)', () => {
+      lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/mixed-keys/pnpm-lock-v9.yaml'
+        )
+      ).default;
+      lockFileHash = '__fixtures__/mixed-keys/pnpm-lock-v9.yaml';
+
+      const packageJson = loadJsonFixture(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/mixed-keys/package.json.fixture'
+        )
+      );
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+
+      expect(graph.externalNodes).toMatchInlineSnapshot(`
+        {
+          "npm:@isaacs/cliui": {
+            "data": {
+              "hash": "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==",
+              "packageName": "@isaacs/cliui",
+              "version": "8.0.2",
+            },
+            "name": "npm:@isaacs/cliui",
+            "type": "npm",
+          },
+          "npm:ansi-regex@5.0.1": {
+            "data": {
+              "hash": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+              "packageName": "ansi-regex",
+              "version": "5.0.1",
+            },
+            "name": "npm:ansi-regex@5.0.1",
+            "type": "npm",
+          },
+          "npm:ansi-regex@6.0.1": {
+            "data": {
+              "hash": "sha512-n5M855fKb2SsfMIiFFoVrABHJC8QtHwVx+mHWP3QcEqBHYienj5dHSgjbxtC0WEZXYt4wcD6zrQElDPhFuZgfA==",
+              "packageName": "ansi-regex",
+              "version": "6.0.1",
+            },
+            "name": "npm:ansi-regex@6.0.1",
+            "type": "npm",
+          },
+          "npm:ansi-styles@4.3.0": {
+            "data": {
+              "hash": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+              "packageName": "ansi-styles",
+              "version": "4.3.0",
+            },
+            "name": "npm:ansi-styles@4.3.0",
+            "type": "npm",
+          },
+          "npm:ansi-styles@6.2.1": {
+            "data": {
+              "hash": "sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==",
+              "packageName": "ansi-styles",
+              "version": "6.2.1",
+            },
+            "name": "npm:ansi-styles@6.2.1",
+            "type": "npm",
+          },
+          "npm:cliui": {
+            "data": {
+              "hash": "sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==",
+              "packageName": "cliui",
+              "version": "8.0.1",
+            },
+            "name": "npm:cliui",
+            "type": "npm",
+          },
+          "npm:color-convert": {
+            "data": {
+              "hash": "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==",
+              "packageName": "color-convert",
+              "version": "2.0.1",
+            },
+            "name": "npm:color-convert",
+            "type": "npm",
+          },
+          "npm:color-name": {
+            "data": {
+              "hash": "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==",
+              "packageName": "color-name",
+              "version": "1.1.4",
+            },
+            "name": "npm:color-name",
+            "type": "npm",
+          },
+          "npm:eastasianwidth": {
+            "data": {
+              "hash": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+              "packageName": "eastasianwidth",
+              "version": "0.2.0",
+            },
+            "name": "npm:eastasianwidth",
+            "type": "npm",
+          },
+          "npm:emoji-regex@8.0.0": {
+            "data": {
+              "hash": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+              "packageName": "emoji-regex",
+              "version": "8.0.0",
+            },
+            "name": "npm:emoji-regex@8.0.0",
+            "type": "npm",
+          },
+          "npm:emoji-regex@9.2.2": {
+            "data": {
+              "hash": "sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==",
+              "packageName": "emoji-regex",
+              "version": "9.2.2",
+            },
+            "name": "npm:emoji-regex@9.2.2",
+            "type": "npm",
+          },
+          "npm:is-fullwidth-code-point": {
+            "data": {
+              "hash": "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==",
+              "packageName": "is-fullwidth-code-point",
+              "version": "3.0.0",
+            },
+            "name": "npm:is-fullwidth-code-point",
+            "type": "npm",
+          },
+          "npm:string-width-cjs": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width-cjs",
+              "version": "npm:string-width@4.2.3",
+            },
+            "name": "npm:string-width-cjs",
+            "type": "npm",
+          },
+          "npm:string-width@4.2.3": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width",
+              "version": "4.2.3",
+            },
+            "name": "npm:string-width@4.2.3",
+            "type": "npm",
+          },
+          "npm:string-width@5.1.2": {
+            "data": {
+              "hash": "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==",
+              "packageName": "string-width",
+              "version": "5.1.2",
+            },
+            "name": "npm:string-width@5.1.2",
+            "type": "npm",
+          },
+          "npm:strip-ansi-cjs": {
+            "data": {
+              "hash": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+              "packageName": "strip-ansi-cjs",
+              "version": "npm:strip-ansi@6.0.1",
+            },
+            "name": "npm:strip-ansi-cjs",
+            "type": "npm",
+          },
+          "npm:strip-ansi@6.0.1": {
+            "data": {
+              "hash": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+              "packageName": "strip-ansi",
+              "version": "6.0.1",
+            },
+            "name": "npm:strip-ansi@6.0.1",
+            "type": "npm",
+          },
+          "npm:strip-ansi@7.1.0": {
+            "data": {
+              "hash": "sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==",
+              "packageName": "strip-ansi",
+              "version": "7.1.0",
+            },
+            "name": "npm:strip-ansi@7.1.0",
+            "type": "npm",
+          },
+          "npm:wrap-ansi-cjs": {
+            "data": {
+              "hash": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+              "packageName": "wrap-ansi-cjs",
+              "version": "npm:wrap-ansi@7.0.0",
+            },
+            "name": "npm:wrap-ansi-cjs",
+            "type": "npm",
+          },
+          "npm:wrap-ansi@7.0.0": {
+            "data": {
+              "hash": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+              "packageName": "wrap-ansi",
+              "version": "7.0.0",
+            },
+            "name": "npm:wrap-ansi@7.0.0",
+            "type": "npm",
+          },
+          "npm:wrap-ansi@8.1.0": {
+            "data": {
+              "hash": "sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==",
+              "packageName": "wrap-ansi",
+              "version": "8.1.0",
+            },
+            "name": "npm:wrap-ansi@8.1.0",
+            "type": "npm",
+          },
+        }
+      `);
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+      // Nothing is pruned here, so the output matches the input except for the
+      // settings block, which is stripped from standalone output.
+      const expected = lockFile.replace(
+        'settings:\n  autoInstallPeers: true\n  excludeLinksFromLockfile: false\n\n',
+        ''
+      );
+      // Guard against the replace silently no-op'ing if the fixture changes.
+      expect(expected).not.toEqual(lockFile);
+      expect(result).toEqual(expected);
+    });
+  });
+
+  describe('regression check', () => {
+    let lockFile, lockFileHash, prunedLockFile;
+
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pnpm-regression/.modules.yaml'
+          )
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should correctly prune the lock file', () => {
+      lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-regression/pnpm-lock.yaml'
+        )
+      ).default;
+      prunedLockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-regression/pruned-pnpm-lock.yaml'
+        )
+      ).default;
+      lockFileHash = '__fixtures__/pnpm-regression/pnpm-lock.yaml';
+
+      const packageJson = loadJsonFixture(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-regression/package.json.fixture'
+        )
+      );
+
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      };
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        filesToProcess: {
+          nonProjectFiles: [],
+          projectFileMap: {},
+        },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        lockFileHash,
+        ctx,
+        keyMap
+      );
+
+      const builder = new ProjectGraphBuilder(graph);
+      for (const dep of dependencies) {
+        builder.addDependency(
+          dep.source,
+          dep.target,
+          dep.type,
+          'sourceFile' in dep ? dep.sourceFile : null
+        );
+      }
+      graph = builder.getUpdatedProjectGraph();
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+      expect(result).toEqual(prunedLockFile);
+    });
+  });
+
+  describe('pnpm semver range specifier', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/.modules.yaml': require(
+          joinPathFragments(
+            __dirname,
+            '__fixtures__/pnpm-semver-range-specifier/.modules.yaml'
+          )
+        ).default,
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should correctly prune the lock file', () => {
+      const lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-semver-range-specifier/pnpm-lock.yaml'
+        )
+      ).default;
+      const expectedPrunedLockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-semver-range-specifier/pruned-pnpm-lock.yaml'
+        )
+      ).default;
+
+      const packageJson = loadJsonFixture(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/pnpm-semver-range-specifier/app/package.json.fixture'
+        )
+      );
+
+      let graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes: {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: { version: '4.17.21', packageName: 'lodash' },
+          },
+          'npm:semver@5.7.2': {
+            type: 'npm',
+            name: 'npm:semver@5.7.2',
+            data: { version: '5.7.2', packageName: 'semver' },
+          },
+          'npm:semver@6.3.1': {
+            type: 'npm',
+            name: 'npm:semver@6.3.1',
+            data: { version: '6.3.1', packageName: 'semver' },
+          },
+          'npm:semver@7.7.2': {
+            type: 'npm',
+            name: 'npm:semver@7.7.2',
+            data: { version: '7.7.2', packageName: 'semver' },
+          },
+          'npm:tmp': {
+            type: 'npm',
+            name: 'npm:tmp',
+            data: { version: '0.2.3', packageName: 'tmp' },
+          },
+        },
+      };
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result).toEqual(expectedPrunedLockFile);
+    });
+  });
+
+  describe('missing workspace importer', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+        'node_modules/lodash/package.json': '{"version": "4.17.21"}',
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should throw clear error when workspace package importer is missing', () => {
+      // v9.0 lockfile
+      // Only has root importer (.)
+      // Root importer references a workspace package with link:
+      // But the workspace package's importer is MISSING
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      my-workspace-lib:
+        specifier: workspace:*
+        version: link:packages/my-workspace-lib
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          lodash: '^4.17.21',
+          'my-workspace-lib': 'workspace:*',
+        },
+      };
+
+      const graph: ProjectGraph = {
+        nodes: {
+          'my-workspace-lib': {
+            name: 'my-workspace-lib',
+            type: 'lib',
+            data: {
+              root: 'packages/my-workspace-lib',
+              metadata: {
+                js: {
+                  packageName: 'my-workspace-lib',
+                },
+              },
+            },
+          },
+        },
+        dependencies: {},
+        externalNodes: {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+      };
+
+      expect(() =>
+        stringifyPnpmLockfile(graph, lockFile, packageJson, '/virtual')
+      ).not.toThrow();
+    });
+  });
+
+  describe('pnpm 11 multi-document lockfiles', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+        'node_modules/lodash/package.json': '{"version": "4.17.21"}',
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should select the workspace lock document instead of package-manager metadata', () => {
+      const lockFile = `---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 11.0.0-rc.0
+        version: 11.0.0-rc.0
+
+packages:
+
+  pnpm@11.0.0-rc.0:
+    resolution: {integrity: sha512-pnpm-metadata}
+
+---
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const { nodes } = getPnpmLockfileNodes(lockFile, 'pnpm-11-multi-doc');
+
+      expect(nodes['npm:lodash']).toMatchObject({
+        data: {
+          packageName: 'lodash',
+          version: '4.17.21',
+          hash: 'sha512-lodash',
+        },
+        name: 'npm:lodash',
+        type: 'npm',
+      });
+      expect(nodes['npm:pnpm']).toBeUndefined();
+    });
+
+    it('should handle CRLF line endings', () => {
+      const lockFile = `---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 11.0.0-rc.0
+        version: 11.0.0-rc.0
+
+packages:
+
+  pnpm@11.0.0-rc.0:
+    resolution: {integrity: sha512-pnpm-metadata}
+
+---
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}`.replace(/\n/g, '\r\n');
+
+      const { nodes } = getPnpmLockfileNodes(lockFile, 'pnpm-11-crlf');
+
+      expect(nodes['npm:lodash']).toMatchObject({
+        data: {
+          packageName: 'lodash',
+          version: '4.17.21',
+          hash: 'sha512-lodash',
+        },
+        name: 'npm:lodash',
+        type: 'npm',
+      });
+      expect(nodes['npm:pnpm']).toBeUndefined();
+    });
+
+    it('should carry the package-manager document into the pruned lockfile', () => {
+      const envDocument = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 12.3.4
+        version: 12.3.4
+
+packages:
+
+  pnpm@12.3.4:
+    resolution: {integrity: sha512-pnpm-metadata}
+`;
+      const lockFile = `---
+${envDocument}
+---
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}
+`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { lodash: '^4.17.21' },
+      };
+      const graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes: {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-lodash',
+            },
+          },
+        },
+      };
+
+      const result = stringifyPnpmLockfile(
+        pruneProjectGraph(graph, packageJson),
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result.startsWith(`---\n${envDocument}\n---\n`)).toBe(true);
+      expect(result).toContain('packageManagerDependencies');
+      expect(result.slice(`---\n${envDocument}\n---\n`.length)).toEqual(
+        stringifyPnpmLockfile(
+          pruneProjectGraph(graph, packageJson),
+          lockFile.slice(`---\n${envDocument}\n---\n`.length),
+          packageJson,
+          '/virtual'
+        )
+      );
+    });
+
+    it('should leave a single-document lockfile unchanged', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}
+`;
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { lodash: '^4.17.21' },
+      };
+      const graph: ProjectGraph = {
+        nodes: {},
+        dependencies: {},
+        externalNodes: {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-lodash',
+            },
+          },
+        },
+      };
+
+      const result = stringifyPnpmLockfile(
+        pruneProjectGraph(graph, packageJson),
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result.startsWith('---')).toBe(false);
+      expect(result).not.toContain('packageManagerDependencies');
+    });
+  });
+
+  describe('patched dependencies', () => {
+    beforeEach(() => {
+      const fileSys = {
+        'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+        'node_modules/vitest/package.json': '{"version": "3.2.4"}',
+        'node_modules/lodash/package.json': '{"version": "4.17.21"}',
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should include patch hash in external node hash (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+patchedDependencies:
+  vitest:
+    hash: dde3c7a634692aefe0877c763192102a73d3451e6d12dae61df88fd1e6e9368e
+    path: patches/vitest.patch
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    hasBin: true
+
+snapshots:
+
+  lodash@4.17.21: {}
+
+  vitest@3.2.4: {}`;
+
+      const lockFileHash = 'test-lockfile-hash';
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+
+      // Lodash should have only the integrity hash
+      expect(externalNodes['npm:lodash']).toMatchObject({
+        type: 'npm',
+        name: 'npm:lodash',
+        data: {
+          version: '4.17.21',
+          packageName: 'lodash',
+          hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+        },
+      });
+
+      // Vitest should have integrity + patch hash combined
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          // This is hashArray([integrity, patchHash])
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|dde3c7a634692aefe0877c763192102a73d3451e6d12dae61df88fd1e6e9368e',
+        },
+      });
+    });
+
+    it('should include pnpm 11 scalar patch hash in external node hash', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest@3.2.4: pnpm-11-patch-hash
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-pnpm-11'
+      );
+
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|pnpm-11-patch-hash',
+        },
+      });
+    });
+
+    it('should detect patch hash changes', () => {
+      const lockFileWithPatch = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest:
+    hash: patch123
+    path: patches/vitest.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const lockFileWithModifiedPatch = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest:
+    hash: patch456
+    path: patches/vitest.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes1 } = getPnpmLockfileNodes(
+        lockFileWithPatch,
+        'test-lockfile-hash-1'
+      );
+
+      const { nodes: externalNodes2 } = getPnpmLockfileNodes(
+        lockFileWithModifiedPatch,
+        'test-lockfile-hash-2'
+      );
+
+      // Hashes should be different when patch changes
+      expect(externalNodes1['npm:vitest'].data.hash).not.toBe(
+        externalNodes2['npm:vitest'].data.hash
+      );
+
+      // First has integrity + patch123
+      expect(externalNodes1['npm:vitest'].data.hash).toBe(
+        'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|patch123'
+      );
+
+      // Second has integrity + patch456
+      expect(externalNodes2['npm:vitest'].data.hash).toBe(
+        'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|patch456'
+      );
+    });
+
+    it('should handle patch with exact version (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest@3.2.4:
+    hash: exact-version-patch-hash
+    path: patches/vitest@3.2.4.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-exact-version'
+      );
+
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|exact-version-patch-hash',
+        },
+      });
+    });
+
+    it('should handle scoped packages with patches (v9)', () => {
+      const fileSys = {
+        'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+        'node_modules/@babel/core/package.json': '{"version": "7.23.0"}',
+      };
+      vol.fromJSON(fileSys, '/root');
+
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  '@babel/core@7.23.0':
+    hash: babel-core-patch-hash
+    path: patches/@babel+core@7.23.0.patch
+
+importers:
+
+  .:
+    dependencies:
+      '@babel/core':
+        specifier: 7.23.0
+        version: 7.23.0
+
+packages:
+
+  '@babel/core@7.23.0':
+    resolution: {integrity: sha512-babelcorehash==}
+
+snapshots:
+
+  '@babel/core@7.23.0': {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-scoped'
+      );
+
+      // @babel/core should have the patch hash
+      expect(externalNodes['npm:@babel/core']).toMatchObject({
+        type: 'npm',
+        name: 'npm:@babel/core',
+        data: {
+          version: '7.23.0',
+          packageName: '@babel/core',
+          hash: 'sha512-babelcorehash==|babel-core-patch-hash',
+        },
+      });
+    });
+
+    it('should prioritize exact version patch over name-only patch (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest:
+    hash: name-only-patch-hash
+    path: patches/vitest.patch
+  vitest@3.2.4:
+    hash: exact-version-patch-hash
+    path: patches/vitest@3.2.4.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-prioritize'
+      );
+
+      // Should use the exact version patch (vitest@3.2.4) instead of the name-only (vitest)
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|exact-version-patch-hash',
+        },
+      });
+    });
+
+    it('should handle version range patches with caret (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest@^3.0.0:
+    hash: version-range-patch-hash
+    path: patches/vitest@^3.0.0.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-version-range-caret'
+      );
+
+      // Version 3.2.4 should match ^3.0.0 range
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|version-range-patch-hash',
+        },
+      });
+    });
+
+    it('should prioritize exact version over range match (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest@^3.0.0:
+    hash: range-patch-hash
+    path: patches/vitest@^3.0.0.patch
+  vitest@3.2.4:
+    hash: exact-patch-hash
+    path: patches/vitest@3.2.4.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-exact-over-range'
+      );
+
+      // Should prioritize exact version patch over range patch per PNPM's priority order
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==|exact-patch-hash',
+        },
+      });
+    });
+
+    it('should not apply patch when version does not match range (v9)', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  vitest@^2.0.0:
+    hash: v2-patch-hash
+    path: patches/vitest@^2.0.0.patch
+
+importers:
+
+  .:
+    dependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4
+
+packages:
+
+  vitest@3.2.4:
+    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
+
+snapshots:
+
+  vitest@3.2.4: {}`;
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        'test-lockfile-hash-no-match'
+      );
+
+      // Version 3.2.4 should NOT match ^2.0.0, so no patch should be applied
+      expect(externalNodes['npm:vitest']).toMatchObject({
+        type: 'npm',
+        name: 'npm:vitest',
+        data: {
+          version: '3.2.4',
+          packageName: 'vitest',
+          // Only the integrity hash, no patch hash
+          hash: 'sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==',
+        },
+      });
+    });
+  });
+
+  describe('alias-first-party', () => {
+    beforeEach(() => {
+      const modulesYaml = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/alias-first-party/.modules.yaml'
+        )
+      ).default;
+      const fileSys = {
+        'node_modules/.modules.yaml': modulesYaml,
+        'node_modules/string-width/package.json': '{"version": "5.1.2"}',
+        'node_modules/another-string-width/package.json':
+          '{"version": "5.1.2"}',
+        'node_modules/string-width-cjs/package.json': '{"version": "4.2.3"}',
+      };
+      vol.fromJSON(fileSys, '/root');
+    });
+
+    it('should handle first-party aliases (root package.json)', () => {
+      const lockFile = require(
+        joinPathFragments(
+          __dirname,
+          '__fixtures__/alias-first-party/pnpm-lock.yaml'
+        )
+      ).default;
+      const lockFileHash = '__fixtures__/alias-first-party/pnpm-lock.yaml';
+
+      const { nodes: externalNodes } = getPnpmLockfileNodes(
+        lockFile,
+        lockFileHash
+      );
+
+      // "string-width" is a direct dependency and should remain a node even with an alias present.
+      expect(externalNodes).toMatchInlineSnapshot(`
+        {
+          "npm:another-string-width": {
+            "data": {
+              "hash": "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==",
+              "packageName": "another-string-width",
+              "version": "npm:string-width@5.1.2",
+            },
+            "name": "npm:another-string-width",
+            "type": "npm",
+          },
+          "npm:ansi-regex@5.0.1": {
+            "data": {
+              "hash": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+              "packageName": "ansi-regex",
+              "version": "5.0.1",
+            },
+            "name": "npm:ansi-regex@5.0.1",
+            "type": "npm",
+          },
+          "npm:ansi-regex@6.2.2": {
+            "data": {
+              "hash": "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg==",
+              "packageName": "ansi-regex",
+              "version": "6.2.2",
+            },
+            "name": "npm:ansi-regex@6.2.2",
+            "type": "npm",
+          },
+          "npm:eastasianwidth": {
+            "data": {
+              "hash": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+              "packageName": "eastasianwidth",
+              "version": "0.2.0",
+            },
+            "name": "npm:eastasianwidth",
+            "type": "npm",
+          },
+          "npm:emoji-regex@8.0.0": {
+            "data": {
+              "hash": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+              "packageName": "emoji-regex",
+              "version": "8.0.0",
+            },
+            "name": "npm:emoji-regex@8.0.0",
+            "type": "npm",
+          },
+          "npm:emoji-regex@9.2.2": {
+            "data": {
+              "hash": "sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==",
+              "packageName": "emoji-regex",
+              "version": "9.2.2",
+            },
+            "name": "npm:emoji-regex@9.2.2",
+            "type": "npm",
+          },
+          "npm:is-fullwidth-code-point": {
+            "data": {
+              "hash": "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==",
+              "packageName": "is-fullwidth-code-point",
+              "version": "3.0.0",
+            },
+            "name": "npm:is-fullwidth-code-point",
+            "type": "npm",
+          },
+          "npm:string-width": {
+            "data": {
+              "hash": "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==",
+              "packageName": "string-width",
+              "version": "5.1.2",
+            },
+            "name": "npm:string-width",
+            "type": "npm",
+          },
+          "npm:string-width-cjs": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width-cjs",
+              "version": "npm:string-width@4.2.3",
+            },
+            "name": "npm:string-width-cjs",
+            "type": "npm",
+          },
+          "npm:string-width@4.2.3": {
+            "data": {
+              "hash": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+              "packageName": "string-width",
+              "version": "4.2.3",
+            },
+            "name": "npm:string-width@4.2.3",
+            "type": "npm",
+          },
+          "npm:strip-ansi@6.0.1": {
+            "data": {
+              "hash": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+              "packageName": "strip-ansi",
+              "version": "6.0.1",
+            },
+            "name": "npm:strip-ansi@6.0.1",
+            "type": "npm",
+          },
+          "npm:strip-ansi@7.1.2": {
+            "data": {
+              "hash": "sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA==",
+              "packageName": "strip-ansi",
+              "version": "7.1.2",
+            },
+            "name": "npm:strip-ansi@7.1.2",
+            "type": "npm",
+          },
+        }
+      `);
+    });
+  });
+
+  describe('transitive workspace dependencies', () => {
+    beforeEach(() => {
+      vol.fromJSON(
+        { 'node_modules/.modules.yaml': `hoistedDependencies: {}` },
+        '/root'
+      );
+    });
+
+    function makeGraph(
+      workspaceProjects: Array<{
+        projectName: string;
+        packageName: string;
+        root: string;
+      }>,
+      workspaceDeps: Record<string, string[]>,
+      externalNodes: Record<string, ProjectGraphExternalNode>,
+      externalDeps: Record<string, string[]> = {}
+    ): ProjectGraph {
+      const nodes: ProjectGraph['nodes'] = {};
+      const dependencies: ProjectGraph['dependencies'] = {};
+      for (const { projectName, packageName, root } of workspaceProjects) {
+        nodes[projectName] = {
+          name: projectName,
+          type: 'lib',
+          data: {
+            root,
+            metadata: { js: { packageName } },
+          },
+        } as any;
+        dependencies[projectName] = [
+          ...(workspaceDeps[projectName] ?? []).map((target) => ({
+            source: projectName,
+            target,
+            type: 'static' as any,
+          })),
+          ...(externalDeps[projectName] ?? []).map((target) => ({
+            source: projectName,
+            target,
+            type: 'static' as any,
+          })),
+        ];
+      }
+      return { nodes, dependencies, externalNodes };
+    }
+
+    it('should emit file: directory packages and npm packages for transitive workspace deps', () => {
+      // app -> @myorg/lib-a (workspace:*) -> @myorg/lib-b (workspace:*) -> lodash
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      '@myorg/lib-b':
+        specifier: workspace:*
+        version: link:../lib-b
+
+  libs/lib-b:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+          {
+            projectName: '@myorg/lib-b',
+            packageName: '@myorg/lib-b',
+            root: 'libs/lib-b',
+          },
+        ],
+        {
+          '@myorg/lib-a': ['@myorg/lib-b'],
+        },
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-b': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // Each workspace module becomes a pnpm `file:` directory package, not an
+      // importer block.
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      expect(result).toContain(
+        `'@myorg/lib-b@file:workspace_modules/@myorg/lib-b':`
+      );
+      expect(result).toContain(
+        `resolution: {directory: workspace_modules/@myorg/lib-a, type: directory}`
+      );
+      // Root importer references the module via file:, matching what
+      // copy-workspace-modules writes to package.json. `workspace:*` or `link:`
+      // would produce ERR_PNPM_OUTDATED_LOCKFILE.
+      expect(result).toMatch(
+        /'@myorg\/lib-a':\s+specifier: file:\.\/workspace_modules\/@myorg\/lib-a\s+version: file:workspace_modules\/@myorg\/lib-a/
+      );
+      // The inter-module edge resolves to the sibling's directory package.
+      expect(result).toContain(
+        `'@myorg/lib-b': file:workspace_modules/@myorg/lib-b`
+      );
+      // lib-b's own npm dep ships in its snapshot closure (regression for
+      // #36066: a workspace module's prod deps must be in its snapshot, or the
+      // deployed app cannot resolve them).
+      expect(result).toContain(`lodash@4.17.21:`);
+      expect(result).toMatch(
+        /'@myorg\/lib-b@file:workspace_modules\/@myorg\/lib-b':\s+dependencies:\s+lodash: 4\.17\.21/
+      );
+    });
+
+    it('should not infinite-loop on circular workspace dependencies', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      '@myorg/lib-b':
+        specifier: workspace:*
+        version: link:../lib-b
+
+  libs/lib-b:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:../lib-a
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+          {
+            projectName: '@myorg/lib-b',
+            packageName: '@myorg/lib-b',
+            root: 'libs/lib-b',
+          },
+        ],
+        {
+          '@myorg/lib-a': ['@myorg/lib-b'],
+          '@myorg/lib-b': ['@myorg/lib-a'],
+        },
+        {}
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      expect(result).toContain(
+        `'@myorg/lib-b@file:workspace_modules/@myorg/lib-b':`
+      );
+      // The cycle resolves to mutual file: directory-package edges.
+      expect(result).toContain(
+        `'@myorg/lib-b': file:workspace_modules/@myorg/lib-b`
+      );
+      expect(result).toContain(
+        `'@myorg/lib-a': file:workspace_modules/@myorg/lib-a`
+      );
+    });
+
+    it('should produce a single directory package for diamond workspace dependency shapes', () => {
+      // app -> lib-a -> shared
+      // app -> lib-b -> shared
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+      '@myorg/lib-b':
+        specifier: workspace:*
+        version: link:libs/lib-b
+
+  libs/lib-a:
+    dependencies:
+      '@myorg/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  libs/lib-b:
+    dependencies:
+      '@myorg/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  libs/shared:
+    dependencies: {}
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          '@myorg/lib-a': 'workspace:*',
+          '@myorg/lib-b': 'workspace:*',
+        },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+          {
+            projectName: '@myorg/lib-b',
+            packageName: '@myorg/lib-b',
+            root: 'libs/lib-b',
+          },
+          {
+            projectName: '@myorg/shared',
+            packageName: '@myorg/shared',
+            root: 'libs/shared',
+          },
+        ],
+        {
+          '@myorg/lib-a': ['@myorg/shared'],
+          '@myorg/lib-b': ['@myorg/shared'],
+        },
+        {}
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // Exactly one directory-package resolution for shared (deduped).
+      const sharedResolutions =
+        result.match(
+          /resolution: \{directory: workspace_modules\/@myorg\/shared,/g
+        ) ?? [];
+      expect(sharedResolutions).toHaveLength(1);
+      // BOTH consumers' snapshots reference the shared directory package; a
+      // bare toContain would pass if only one edge survived a regression.
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+dependencies:\s+'@myorg\/shared': file:workspace_modules\/@myorg\/shared/
+      );
+      expect(result).toMatch(
+        /'@myorg\/lib-b@file:workspace_modules\/@myorg\/lib-b':\s+dependencies:\s+'@myorg\/shared': file:workspace_modules\/@myorg\/shared/
+      );
+      expect(
+        result.match(
+          /'@myorg\/shared': file:workspace_modules\/@myorg\/shared/g
+        ) ?? []
+      ).toHaveLength(2);
+    });
+
+    it('should emit a directory package for a workspace module referenced via optionalDependencies', () => {
+      // app -> @myorg/lib-a (dependency) -> @myorg/lib-b (optionalDependency) -> lodash.
+      // optionalDependencies install in production, so the optional sibling must
+      // also become a file: directory package, or copy-workspace-modules (which
+      // copies the same sections) and the lockfile disagree on what ships.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    optionalDependencies:
+      '@myorg/lib-b':
+        specifier: workspace:*
+        version: link:../lib-b
+
+  libs/lib-b:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+          {
+            projectName: '@myorg/lib-b',
+            packageName: '@myorg/lib-b',
+            root: 'libs/lib-b',
+          },
+        ],
+        {
+          '@myorg/lib-a': ['@myorg/lib-b'],
+        },
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-b': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // lib-b is emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-b@file:workspace_modules/@myorg/lib-b':`
+      );
+      // ...referenced from lib-a through optionalDependencies, not dependencies...
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+optionalDependencies:\s+'@myorg\/lib-b': file:workspace_modules\/@myorg\/lib-b/
+      );
+      // ...and lib-b still carries its own npm dep.
+      expect(result).toMatch(
+        /'@myorg\/lib-b@file:workspace_modules\/@myorg\/lib-b':\s+dependencies:\s+lodash: 4\.17\.21/
+      );
+    });
+
+    it('should emit a directory package for a workspace module in the app optionalDependencies', () => {
+      // The app itself lists @myorg/lib-a under optionalDependencies. The root
+      // importer must reference it as a file: directory package under the same
+      // section; otherwise pnpm install --frozen-lockfile fails on the
+      // manifest/lockfile mismatch and copy-workspace-modules never ships it.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    optionalDependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        optionalDependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-a': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // lib-a is emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      // ...referenced from the root importer under optionalDependencies via file:.
+      expect(result).toMatch(
+        /optionalDependencies:\s+'@myorg\/lib-a':\s+specifier: file:\.\/workspace_modules\/@myorg\/lib-a\s+version: file:workspace_modules\/@myorg\/lib-a/
+      );
+      // lib-a still carries its own npm dep in its snapshot closure.
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+dependencies:\s+lodash: 4\.17\.21/
+      );
+    });
+
+    it('should emit a directory package for a workspace module in the app peerDependencies', () => {
+      // The app lists @myorg/lib-a under peerDependencies, but pnpm auto-installs
+      // the workspace peer and records it under the importer's dependencies. The
+      // pruned manifest also moves a peer-declared workspace module into
+      // dependencies (pnpm rejects a file: spec under peerDependencies), so the
+      // root importer must reference it as a file: directory package under
+      // dependencies, not peerDependencies.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        peerDependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-a': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // lib-a is emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      // ...referenced from the root importer under dependencies via file: (the
+      // peer collapsed into dependencies)...
+      expect(result).toMatch(
+        /dependencies:\s+'@myorg\/lib-a':\s+specifier: file:\.\/workspace_modules\/@myorg\/lib-a\s+version: file:workspace_modules\/@myorg\/lib-a/
+      );
+      // ...and never emitted under peerDependencies (pnpm rejects file: there).
+      expect(result).not.toMatch(/peerDependencies:/);
+    });
+
+    it('emits a workspace module the app peer-depends on when pnpm did not auto-install it (autoInstallPeers off)', () => {
+      // With autoInstallPeers off, pnpm records no importer entry for a
+      // workspace peer, so the root importer is empty. The pruned manifest
+      // still moves the peer into dependencies as a file: directory package, so
+      // the root importer must reference it or pnpm install --frozen-lockfile
+      // fails with ERR_PNPM_OUTDATED_LOCKFILE.
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  libs/lib-a:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        peerDependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-a': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // lib-a is still emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      // ...and referenced from the root importer under dependencies via file:.
+      expect(result).toMatch(
+        /'@myorg\/lib-a':\s+specifier: file:\.\/workspace_modules\/@myorg\/lib-a\s+version: file:workspace_modules\/@myorg\/lib-a/
+      );
+    });
+
+    it('emits a transitive workspace peer when pnpm did not auto-install it (autoInstallPeers off)', () => {
+      // app -> @myorg/lib-a (dependency); @myorg/lib-a peer-depends on the
+      // workspace @myorg/lib-b. With autoInstallPeers off, lib-a's importer is
+      // empty, so the peer is only visible in lib-a's manifest. The copied
+      // manifest moves it into dependencies, so the pruned lockfile must carry
+      // the same file: edge and directory package.
+      vol.fromJSON({
+        '/virtual/libs/lib-a/package.json': JSON.stringify({
+          name: '@myorg/lib-a',
+          version: '1.0.0',
+          peerDependencies: { '@myorg/lib-b': 'workspace:*' },
+        }),
+      });
+
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a: {}
+
+  libs/lib-b:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+          {
+            projectName: '@myorg/lib-b',
+            packageName: '@myorg/lib-b',
+            root: 'libs/lib-b',
+          },
+        ],
+        {
+          '@myorg/lib-a': ['@myorg/lib-b'],
+        },
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-b': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // The transitive peer is emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-b@file:workspace_modules/@myorg/lib-b':`
+      );
+      // ...and lib-a's directory package references it under dependencies.
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':[\s\S]*?dependencies:[\s\S]*?'@myorg\/lib-b': file:workspace_modules\/@myorg\/lib-b/
+      );
+    });
+
+    it('backfills a module local-path peer when pnpm did not auto-install it (autoInstallPeers off)', () => {
+      // app -> mylib (workspace dep); mylib peer-depends on a vendored link:
+      // directory and a vendored file: directory. With autoInstallPeers off the
+      // peers are only visible in mylib's manifest: the copied manifest moves
+      // them into dependencies, so the pruned lockfile must carry the matching
+      // snapshot edges and a synthesized directory package for the file: target
+      // (the shapes pnpm itself writes when it auto-installs the peers).
+      vol.fromJSON({
+        '/virtual/libs/mylib/package.json': JSON.stringify({
+          name: 'mylib',
+          version: '1.0.0',
+          peerDependencies: {
+            'linked-peer': 'link:../../vendor/linked-peer',
+            'dir-peer': 'file:../../vendor/dir-peer',
+          },
+        }),
+        '/virtual/vendor/linked-peer/package.json': JSON.stringify({
+          name: 'linked-peer',
+          version: '1.0.0',
+        }),
+        '/virtual/vendor/dir-peer/package.json': JSON.stringify({
+          name: 'dir-peer',
+          version: '1.0.0',
+        }),
+      });
+
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      mylib:
+        specifier: workspace:*
+        version: link:libs/mylib
+
+  libs/mylib: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { mylib: 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [{ projectName: 'mylib', packageName: 'mylib', root: 'libs/mylib' }],
+        {},
+        {}
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // mylib's directory package carries the edges pnpm records with
+      // autoInstallPeers on: file:/link: refs relocated to the shipped location.
+      expect(result).toMatch(
+        /mylib@file:workspace_modules\/mylib:[\s\S]*?dependencies:[\s\S]*?linked-peer: link:local_path_modules\/vendor\/linked-peer/
+      );
+      expect(result).toMatch(
+        /mylib@file:workspace_modules\/mylib:[\s\S]*?dependencies:[\s\S]*?dir-peer: file:local_path_modules\/vendor\/dir-peer/
+      );
+      // The file: peer gets a synthesized directory package entry...
+      expect(result).toContain(
+        'dir-peer@file:local_path_modules/vendor/dir-peer:'
+      );
+      expect(result).toContain(
+        'resolution: {directory: local_path_modules/vendor/dir-peer, type: directory}'
+      );
+      // ...while a link: ref needs no package entry.
+      expect(result).not.toContain('linked-peer@');
+    });
+
+    it('ships a vendored directory that sits under workspace_modules/', () => {
+      // `workspace_modules/vendor` is a real workspace directory here, not a
+      // module the prune copied. It must relocate like any other vendored path,
+      // or the output references a directory nothing writes.
+      vol.fromJSON({
+        '/virtual/workspace_modules/vendor/package.json': JSON.stringify({
+          name: 'vendored-lib',
+          version: '1.0.0',
+        }),
+      });
+
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      vendored-lib:
+        specifier: file:./workspace_modules/vendor
+        version: file:workspace_modules/vendor
+
+packages:
+
+  vendored-lib@file:workspace_modules/vendor:
+    resolution: {directory: workspace_modules/vendor, type: directory}
+    version: 1.0.0
+
+snapshots:
+
+  vendored-lib@file:workspace_modules/vendor: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { 'vendored-lib': 'file:./workspace_modules/vendor' },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:vendored-lib': {
+          type: 'npm',
+          name: 'npm:vendored-lib',
+          data: {
+            version: 'file:workspace_modules/vendor',
+            packageName: 'vendored-lib',
+            hash: 'sha512-vendored',
+          },
+        },
+      } as any);
+
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        undefined,
+        'pnpm'
+      );
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result).toContain(
+        'vendored-lib@file:local_path_modules/workspace_modules/vendor:'
+      );
+      expect(result).toContain(
+        'resolution: {directory: local_path_modules/workspace_modules/vendor, type: directory}'
+      );
+      expect(result).not.toContain(
+        'vendored-lib@file:workspace_modules/vendor:'
+      );
+    });
+
+    it('keeps the resolved edges of a local-path peer the prune already carries', () => {
+      // The app depends on the vendored directory directly and mylib
+      // peer-depends on it, so the peer backfill hits a target the prune
+      // already carries. The synthesized entry has no dependency edges, so
+      // letting it win drops lodash from the vendored package's install. The
+      // vendored path sorts before the shipped directory's own name, which is
+      // what decides which of the two colliding keys survives relocation.
+      vol.fromJSON({
+        '/virtual/libs/mylib/package.json': JSON.stringify({
+          name: 'mylib',
+          version: '1.0.0',
+          peerDependencies: { 'dir-peer': 'file:../../libs/vendor/dir-peer' },
+        }),
+        '/virtual/libs/vendor/dir-peer/package.json': JSON.stringify({
+          name: 'dir-peer',
+          version: '1.0.0',
+          dependencies: { lodash: '^4.17.21' },
+        }),
+      });
+
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      mylib:
+        specifier: workspace:*
+        version: link:libs/mylib
+      dir-peer:
+        specifier: file:../../libs/vendor/dir-peer
+        version: file:libs/vendor/dir-peer
+
+  libs/mylib: {}
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+  dir-peer@file:libs/vendor/dir-peer:
+    resolution: {directory: libs/vendor/dir-peer, type: directory}
+    version: 1.0.0
+
+snapshots:
+
+  lodash@4.17.21: {}
+
+  dir-peer@file:libs/vendor/dir-peer:
+    dependencies:
+      lodash: 4.17.21`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          lodash: '^4.17.21',
+          mylib: 'workspace:*',
+          'dir-peer': 'file:../../libs/vendor/dir-peer',
+        },
+      };
+
+      const graph = makeGraph(
+        [{ projectName: 'mylib', packageName: 'mylib', root: 'libs/mylib' }],
+        {},
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-lodash',
+            },
+          },
+          'npm:dir-peer': {
+            type: 'npm',
+            name: 'npm:dir-peer',
+            data: {
+              version: 'file:libs/vendor/dir-peer',
+              packageName: 'dir-peer',
+              hash: 'sha512-dirpeer',
+            },
+          },
+        } as any
+      );
+
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        undefined,
+        'pnpm'
+      );
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      const { load } = require('@zkochan/js-yaml');
+      const parsed = load(result) as {
+        packages: Record<string, unknown>;
+        snapshots: Record<string, unknown>;
+      };
+      // The vendored directory ships under the relocated key alone...
+      expect(Object.keys(parsed.packages)).toEqual([
+        'dir-peer@file:local_path_modules/libs/vendor/dir-peer',
+        'lodash@4.17.21',
+        'mylib@file:workspace_modules/mylib',
+      ]);
+      // ...and keeps the edges pnpm resolved for it.
+      expect(
+        parsed.snapshots[
+          'dir-peer@file:local_path_modules/libs/vendor/dir-peer'
+        ]
+      ).toEqual({ dependencies: { lodash: '4.17.21' } });
+    });
+
+    it('backfills a module local-path tarball peer with a tarball package entry', () => {
+      // A file: peer pointing at a packed tarball synthesizes a tarball
+      // resolution instead of a directory one; integrity is optional for a
+      // local tarball, so none is emitted.
+      vol.fromJSON({
+        '/virtual/libs/mylib/package.json': JSON.stringify({
+          name: 'mylib',
+          version: '1.0.0',
+          peerDependencies: {
+            'tarball-peer': 'file:../../vendor/tarball-peer-1.0.0.tgz',
+          },
+        }),
+        '/virtual/vendor/tarball-peer-1.0.0.tgz': 'tarball-bytes',
+      });
+
+      const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      mylib:
+        specifier: workspace:*
+        version: link:libs/mylib
+
+  libs/mylib: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { mylib: 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [{ projectName: 'mylib', packageName: 'mylib', root: 'libs/mylib' }],
+        {},
+        {}
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(result).toMatch(
+        /mylib@file:workspace_modules\/mylib:[\s\S]*?dependencies:[\s\S]*?tarball-peer: file:local_path_modules\/vendor\/tarball-peer-1\.0\.0\.tgz/
+      );
+      expect(result).toContain(
+        'tarball-peer@file:local_path_modules/vendor/tarball-peer-1.0.0.tgz:'
+      );
+      expect(result).toContain(
+        'resolution: {tarball: file:local_path_modules/vendor/tarball-peer-1.0.0.tgz}'
+      );
+    });
+
+    it('drops a name-only patch whose only surviving match is a workspace directory package', () => {
+      // A name-only patchedDependencies entry targets a versioned npm package.
+      // If that package is pruned out but a workspace module shares its name,
+      // the entry must not latch onto the module's file: directory package (pnpm
+      // cannot apply the patch there, and the .patch file is not shipped).
+      const lockFile = `lockfileVersion: '9.0'
+
+patchedDependencies:
+  is-number: 698c042b4fff0bfd4ed715c62cbe28d6e9b60a65ab09b985f933cddc464775fe
+
+importers:
+
+  .:
+    dependencies:
+      is-number:
+        specifier: workspace:*
+        version: link:libs/is-number
+
+  libs/is-number: {}
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { 'is-number': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: 'is-number',
+            packageName: 'is-number',
+            root: 'libs/is-number',
+          },
+        ],
+        {},
+        {}
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // The workspace module is emitted, but the npm patch is dropped.
+      expect(result).toContain(`is-number@file:workspace_modules/is-number:`);
+      expect(result).not.toMatch(/patchedDependencies:/);
+    });
+
+    it('should emit a directory package for a workspace module in the app devDependencies', () => {
+      // The app lists @myorg/lib-a under devDependencies. pnpm validates the
+      // whole manifest against the lockfile even under --prod, so the root
+      // importer must reference it as a file: directory package under
+      // devDependencies; a leftover workspace:*/link: fails
+      // pnpm install --frozen-lockfile (#35425).
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    devDependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        devDependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {
+          'npm:lodash': {
+            type: 'npm',
+            name: 'npm:lodash',
+            data: {
+              version: '4.17.21',
+              packageName: 'lodash',
+              hash: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+            },
+          },
+        },
+        {
+          '@myorg/lib-a': ['npm:lodash'],
+        }
+      );
+
+      const prunedGraph = pruneProjectGraph(graph, packageJson);
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // lib-a is emitted as a directory package...
+      expect(result).toContain(
+        `'@myorg/lib-a@file:workspace_modules/@myorg/lib-a':`
+      );
+      // ...referenced from the root importer under devDependencies via file:.
+      expect(result).toMatch(
+        /devDependencies:\s+'@myorg\/lib-a':\s+specifier: file:\.\/workspace_modules\/@myorg\/lib-a\s+version: file:workspace_modules\/@myorg\/lib-a/
+      );
+      // lib-a still carries its own npm dep in its snapshot closure.
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+dependencies:\s+lodash: 4\.17\.21/
+      );
+    });
+
+    it('prunes a file: tarball dependency without throwing on the manifest/lockfile path mismatch', () => {
+      // A vendored `file:` tarball is recorded relative to the declaring package
+      // in the manifest (app-relative `../../vendor/...`) but relative to the
+      // workspace root in the lockfile/external node (`vendor/...`), so the two
+      // specifiers never match by string. Pruning must match it by name instead
+      // of throwing "not found in the root lock file" and falling back to the
+      // unpruned root lockfile.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+      vendored-lib:
+        specifier: file:../../vendor/vendored-lib-1.0.0.tgz
+        version: file:vendor/vendored-lib-1.0.0.tgz
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+  vendored-lib@file:vendor/vendored-lib-1.0.0.tgz:
+    resolution: {integrity: sha512-vendored, tarball: file:vendor/vendored-lib-1.0.0.tgz}
+    version: 1.0.0
+
+snapshots:
+
+  lodash@4.17.21: {}
+
+  vendored-lib@file:vendor/vendored-lib-1.0.0.tgz: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          lodash: '^4.17.21',
+          'vendored-lib': 'file:../../vendor/vendored-lib-1.0.0.tgz',
+        },
+      };
+
+      // No workspace projects: the app is the pruned root, and both deps are
+      // external (a normal npm package and the vendored file: tarball).
+      const graph = makeGraph([], {}, {
+        'npm:lodash': {
+          type: 'npm',
+          name: 'npm:lodash',
+          data: {
+            version: '4.17.21',
+            packageName: 'lodash',
+            hash: 'sha512-lodash',
+          },
+        },
+        'npm:vendored-lib': {
+          type: 'npm',
+          name: 'npm:vendored-lib',
+          data: {
+            version: 'file:vendor/vendored-lib-1.0.0.tgz',
+            packageName: 'vendored-lib',
+            hash: 'sha512-vendored',
+          },
+        },
+      } as any);
+
+      // Neither pruning nor stringifying may throw on the path mismatch.
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        undefined,
+        'pnpm'
+      );
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      // The tarball keeps its single, name-prefixed package key, relocated to the
+      // shipped location...
+      expect(result).toContain(
+        `vendored-lib@file:local_path_modules/vendor/vendored-lib-1.0.0.tgz:`
+      );
+      // ...and never the spurious, name-stripped duplicate key a v9 tarball used
+      // to emit from findOriginalKeys. The duplicate carries no `@file:` marker,
+      // so containment leaves it at the source path.
+      expect(result).not.toMatch(
+        /^\s+file:vendor\/vendored-lib-1\.0\.0\.tgz:\s*$/m
+      );
+      // Exactly one packages: key ends in the tarball name, so a duplicate under
+      // either the source or the relocated spelling fails.
+      expect(result.match(/vendored-lib-1\.0\.0\.tgz:\s*$/gm)).toHaveLength(1);
+      // The root importer keeps the manifest's app-relative specifier (matching
+      // package.json for pnpm's frozen check) with the version relocated to the
+      // shipped tarball location (used to resolve it).
+      expect(result).toMatch(
+        /vendored-lib:\s+specifier: file:\.\.\/\.\.\/vendor\/vendored-lib-1\.0\.0\.tgz\s+version: file:local_path_modules\/vendor\/vendored-lib-1\.0\.0\.tgz/
+      );
+      // The normal npm dependency is unaffected.
+      expect(result).toContain('lodash@4.17.21:');
+    });
+
+    it('emits a nodeless link: dependency as a direct root importer entry', () => {
+      // A `link:` to a non-workspace directory has no lockfile packages: entry
+      // and no external node, so the pruned lockfile must carry it as a direct
+      // root importer entry rather than throwing "could not find external node".
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          lodash: '^4.17.21',
+          'vendored-lib': 'link:vendor/vendored-lib',
+        },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:lodash': {
+          type: 'npm',
+          name: 'npm:lodash',
+          data: {
+            version: '4.17.21',
+            packageName: 'lodash',
+            hash: 'sha512-lodash',
+          },
+        },
+      } as any);
+
+      const result = stringifyPnpmLockfile(
+        graph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      // The link: dep is a direct importer entry (specifier + version)...
+      expect(result).toMatch(
+        /vendored-lib:\s+specifier: link:vendor\/vendored-lib\s+version: link:vendor\/vendored-lib/
+      );
+      // ...and never gets a packages:/snapshots: entry of its own.
+      expect(result).not.toMatch(/vendored-lib@/);
+    });
+
+    it('rewrites a copied module link: snapshot ref relative to the lockfile dir', () => {
+      // A copied workspace module (@myorg/lib-a) links a vendored package. The
+      // source ref is importer-relative, but pnpm reads a snapshot link: ref
+      // relative to the lockfile dir, so the emitted ref must be rebased onto
+      // the deploy root where the target ships.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      vendored-thing:
+        specifier: link:../../vendor/thing
+        version: link:../../vendor/thing
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {}
+      );
+
+      const result = stringifyPnpmLockfile(
+        graph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      // The importer-relative ref (libs/lib-a + ../../vendor/thing) lands as the
+      // shipped location pnpm resolves from the lockfile dir.
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+dependencies:\s+vendored-thing: link:local_path_modules\/vendor\/thing/
+      );
+    });
+
+    it('throws on a nodeless file: dependency instead of emitting a broken importer entry', () => {
+      // Only a link: is valid importer-only; a file: importer entry without a
+      // packages: entry fails pnpm's frozen install with a broken lockfile.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-lodash}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          lodash: '^4.17.21',
+          'vendored-lib': 'file:vendor/vendored-lib',
+        },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:lodash': {
+          type: 'npm',
+          name: 'npm:lodash',
+          data: {
+            version: '4.17.21',
+            packageName: 'lodash',
+            hash: 'sha512-lodash',
+          },
+        },
+      } as any);
+
+      expect(() =>
+        stringifyPnpmLockfile(graph, lockFile, packageJson, '/root')
+      ).toThrow(
+        'Could not find external node for package vendored-lib@file:vendor/vendored-lib'
+      );
+    });
+
+    it('keeps a copied module link: ref that escapes the workspace root unrewritten', () => {
+      // copy-workspace-modules leaves the copied manifest's spec untouched for
+      // an unshippable target, so the lockfile ref must match it or a frozen
+      // install trips on the mismatch.
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      vendored-thing:
+        specifier: link:../../../outside
+        version: link:../../../outside
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {}
+      );
+
+      const result = stringifyPnpmLockfile(
+        graph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      expect(result).toMatch(
+        /'@myorg\/lib-a@file:workspace_modules\/@myorg\/lib-a':\s+dependencies:\s+vendored-thing: link:\.\.\/\.\.\/\.\.\/outside/
+      );
+    });
+
+    it('round-trips: the artifact collector finds the link target the stringifier emits', () => {
+      // Feeds the stringifier's actual output into the artifact collector so
+      // key-format or shape drift between the writer and the reader fails here
+      // instead of silently shipping nothing.
+      vol.fromJSON(
+        {
+          'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+          'vendor/thing/package.json':
+            '{"name":"vendored-thing","version":"1.0.0"}',
+          'vendor/thing/index.js': 'module.exports = {};',
+        },
+        '/root'
+      );
+
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      '@myorg/lib-a':
+        specifier: workspace:*
+        version: link:libs/lib-a
+
+  libs/lib-a:
+    dependencies:
+      vendored-thing:
+        specifier: link:../../vendor/thing
+        version: link:../../vendor/thing
+
+packages: {}
+
+snapshots: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { '@myorg/lib-a': 'workspace:*' },
+      };
+
+      const graph = makeGraph(
+        [
+          {
+            projectName: '@myorg/lib-a',
+            packageName: '@myorg/lib-a',
+            root: 'libs/lib-a',
+          },
+        ],
+        {},
+        {}
+      );
+
+      const result = stringifyPnpmLockfile(
+        graph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      expect(
+        getPrunedPnpmLocalPathArtifacts('/root', result)
+          .map((a) => a.path)
+          .sort()
+      ).toEqual([
+        'local_path_modules/vendor/thing/index.js',
+        'local_path_modules/vendor/thing/package.json',
+      ]);
+    });
+
+    it('relocates a link: ref a source package snapshot carries', () => {
+      // pnpm reads a snapshot link: ref against the lockfile directory, which is
+      // the deploy root in the pruned output, so a ref left at its workspace path
+      // points outside the shipped tree. The target then ships at that raw path,
+      // outside the declared task outputs, and a cache replay drops it: the
+      // install still exits 0 and the linked module is missing at runtime.
+      vol.fromJSON(
+        {
+          'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+          'libs/linked/package.json':
+            '{"name":"linked-thing","version":"1.0.0"}',
+          'libs/vendor/package.json': '{"name":"vendor-dir","version":"1.0.0"}',
+        },
+        '/root'
+      );
+
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      vendor-dir:
+        specifier: file:libs/vendor
+        version: file:libs/vendor
+
+packages:
+
+  vendor-dir@file:libs/vendor:
+    resolution: {directory: libs/vendor, type: directory}
+
+snapshots:
+
+  vendor-dir@file:libs/vendor:
+    dependencies:
+      linked-thing: link:libs/linked`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { 'vendor-dir': 'file:local_path_modules/libs/vendor' },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:vendor-dir': {
+          type: 'npm',
+          name: 'npm:vendor-dir',
+          data: { version: 'file:libs/vendor', packageName: 'vendor-dir' },
+        },
+      } as any);
+
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        '/root',
+        'pnpm'
+      );
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      expect(result).toContain(
+        'linked-thing: link:local_path_modules/libs/linked'
+      );
+      expect(result).not.toContain('linked-thing: link:libs/linked');
+      // The target ships where the ref now points, i.e. inside the declared
+      // output a cache replay restores.
+      expect(
+        getPrunedPnpmLocalPathArtifacts('/root', result).map((a) => a.path)
+      ).toContain('local_path_modules/libs/linked/package.json');
+    });
+
+    it('relocates an aliased file: ref together with the key it points at', () => {
+      // pnpm records an aliased local-path dependency as `<real name>@file:<path>`,
+      // both as the package key and as the ref pointing at it. Relocating only
+      // the key leaves the ref pointing at nothing, which pnpm rejects with
+      // ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY.
+      vol.fromJSON(
+        {
+          'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+          'libs/vendor/package.json': '{"name":"vendor-dir","version":"1.0.0"}',
+          'libs/vendor2/package.json':
+            '{"name":"vendor2-real-name","version":"1.0.0"}',
+        },
+        '/root'
+      );
+
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      vendor-dir:
+        specifier: file:libs/vendor
+        version: file:libs/vendor
+
+packages:
+
+  vendor-dir@file:libs/vendor:
+    resolution: {directory: libs/vendor, type: directory}
+
+  vendor2-real-name@file:libs/vendor2:
+    resolution: {directory: libs/vendor2, type: directory}
+
+snapshots:
+
+  vendor-dir@file:libs/vendor:
+    dependencies:
+      aliased-vendor: vendor2-real-name@file:libs/vendor2
+
+  vendor2-real-name@file:libs/vendor2: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: { 'vendor-dir': 'file:local_path_modules/libs/vendor' },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:vendor-dir': {
+          type: 'npm',
+          name: 'npm:vendor-dir',
+          data: { version: 'file:libs/vendor', packageName: 'vendor-dir' },
+        },
+        'npm:vendor2-real-name': {
+          type: 'npm',
+          name: 'npm:vendor2-real-name',
+          data: {
+            version: 'file:libs/vendor2',
+            packageName: 'vendor2-real-name',
+          },
+        },
+      } as any);
+      graph.dependencies['npm:vendor-dir'] = [
+        {
+          source: 'npm:vendor-dir',
+          target: 'npm:vendor2-real-name',
+          type: 'static',
+        },
+      ];
+
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        '/root',
+        'pnpm'
+      );
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      expect(result).toContain(
+        'aliased-vendor: vendor2-real-name@file:local_path_modules/libs/vendor2'
+      );
+      expect(result).toContain(
+        'vendor2-real-name@file:local_path_modules/libs/vendor2:'
+      );
+      expect(result).not.toContain('file:libs/vendor2');
+    });
+
+    it('prunes an aliased local-path dependency the lock file keys by its real name', () => {
+      // The manifest names the dependency by its alias while the lock file keys
+      // it by the target's real package name, so nothing matches it by name.
+      // Pruning used to throw "not found in the root lock file" and fall back to
+      // the unpruned root lockfile.
+      vol.fromJSON(
+        {
+          'node_modules/.modules.yaml': `hoistedDependencies: {}`,
+          'libs/vendor/package.json':
+            '{"name":"vendor-real-name","version":"1.0.0"}',
+        },
+        '/root'
+      );
+
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      aliased-vendor:
+        specifier: file:libs/vendor
+        version: vendor-real-name@file:libs/vendor
+
+packages:
+
+  vendor-real-name@file:libs/vendor:
+    resolution: {directory: libs/vendor, type: directory}
+
+snapshots:
+
+  vendor-real-name@file:libs/vendor: {}`;
+
+      const packageJson = {
+        name: 'test-app',
+        version: '1.0.0',
+        dependencies: {
+          'aliased-vendor': 'file:local_path_modules/libs/vendor',
+        },
+      };
+
+      const graph = makeGraph([], {}, {
+        'npm:vendor-real-name': {
+          type: 'npm',
+          name: 'npm:vendor-real-name',
+          data: {
+            version: 'file:libs/vendor',
+            packageName: 'vendor-real-name',
+          },
+        },
+      } as any);
+
+      const prunedGraph = pruneProjectGraph(
+        graph,
+        packageJson,
+        '/root',
+        'pnpm'
+      );
+      expect(prunedGraph.externalNodes['npm:vendor-real-name']).toBeDefined();
+
+      const result = stringifyPnpmLockfile(
+        prunedGraph,
+        lockFile,
+        packageJson,
+        '/root'
+      );
+
+      // The importer ref keeps the real package name, which is what the packages
+      // section is keyed by; a bare version would point at no entry.
+      expect(result).toMatch(
+        /aliased-vendor:\s+specifier: file:local_path_modules\/libs\/vendor\s+version: vendor-real-name@file:local_path_modules\/libs\/vendor/
+      );
+      expect(result).toContain(
+        'vendor-real-name@file:local_path_modules/libs/vendor:'
+      );
+    });
+  });
+
+  describe('missing .modules.yaml', () => {
+    beforeEach(() => {
+      vol.fromJSON(
+        { 'node_modules/lodash/package.json': '{"version": "4.17.21"}' },
+        '/root'
+      );
+    });
+
+    it('should throw an actionable error when node_modules/.modules.yaml is absent', () => {
+      const lockFile = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+packages:
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+snapshots:
+
+  lodash@4.17.21: {}`;
+
+      expect(() =>
+        getPnpmLockfileNodes(lockFile, '__missing_modules_yaml__')
+      ).toThrow(/was not installed with pnpm/);
+    });
+  });
+
+  describe('workspace-only lockfile', () => {
+    // pnpm omits the `packages` block entirely when every dependency resolves
+    // to a `link:`/`workspace:` reference; out-of-workspace links still mint
+    // external nodes.
+    const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      my-plugin:
+        specifier: link:../my-plugin
+        version: link:../my-plugin
+`;
+
+    beforeEach(() => {
+      // The parser requires `.modules.yaml` to exist; nothing is hoisted
+      // when the lockfile has no packages block.
+      vol.fromJSON(
+        { 'node_modules/.modules.yaml': 'hoistedDependencies: {}\n' },
+        '/root'
+      );
+    });
+
+    it('should produce a node only for the out-of-workspace link', () => {
+      const result = getPnpmLockfileNodes(lockFile, '__workspace_only__');
+
+      expect(result.nodes).toEqual({
+        'npm:my-plugin': {
+          type: 'npm',
+          name: 'npm:my-plugin',
+          data: {
+            version: 'link:../my-plugin',
+            packageName: 'my-plugin',
+            hash: hashArray(['my-plugin', 'link:../my-plugin']),
+          },
+        },
+      });
+    });
+
+    it('should produce no dependencies', () => {
+      const { keyMap } = getPnpmLockfileNodes(lockFile, '__workspace_only__');
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes: {},
+        fileMap: { nonProjectFiles: [], projectFileMap: {} },
+        filesToProcess: { nonProjectFiles: [], projectFileMap: {} },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+
+      expect(
+        getPnpmLockfileDependencies(lockFile, '__workspace_only__', ctx, keyMap)
+      ).toEqual([]);
+    });
+  });
+
+  describe('linked dependencies', () => {
+    // Out-of-workspace `link:` targets mint external nodes; links inside the
+    // workspace are workspace projects and must not.
+    const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      abs-out:
+        specifier: link:/elsewhere/abs-plugin
+        version: link:/elsewhere/abs-plugin
+      is-even:
+        specifier: ^1.0.0
+        version: 1.0.0
+      multi-target:
+        specifier: link:../elsewhere/root-target
+        version: link:../elsewhere/root-target
+    devDependencies:
+      '@scoped/linked-out':
+        specifier: link:../../elsewhere/plugin
+        version: link:../../elsewhere/plugin
+      abs-in:
+        specifier: link:/root/packages/local
+        version: link:/root/packages/local
+      dot-named:
+        specifier: link:..cache/plugin
+        version: link:..cache/plugin
+      linked-in:
+        specifier: link:packages/local
+        version: link:packages/local
+    optionalDependencies:
+      opt-linked:
+        specifier: link:../elsewhere/opt-plugin
+        version: link:../elsewhere/opt-plugin
+
+  packages/local:
+    dependencies:
+      multi-target:
+        specifier: link:../../elsewhere/nested-target
+        version: link:../../elsewhere/nested-target
+
+packages:
+
+  is-even@1.0.0:
+    resolution: {integrity: sha512-LEhnkAdJqic4Dbqn58A0y52IXoHWlsueqQkKfMfdEnIYG8A1sm/GHidKkS6yvXlMoRrkM34csHnXQtOqcb+Jzg==}
+
+snapshots:
+
+  is-even@1.0.0: {}
+`;
+
+    beforeEach(() => {
+      vol.fromJSON(
+        { 'node_modules/.modules.yaml': 'hoistedDependencies: {}\n' },
+        '/root'
+      );
+    });
+
+    it('should create a node for an out-of-workspace link but not an in-workspace one', () => {
+      const { nodes } = getPnpmLockfileNodes(lockFile, '__linked_deps__');
+
+      expect(nodes['npm:@scoped/linked-out']).toEqual({
+        type: 'npm',
+        name: 'npm:@scoped/linked-out',
+        data: {
+          version: 'link:../../elsewhere/plugin',
+          packageName: '@scoped/linked-out',
+          hash: hashArray([
+            '@scoped/linked-out',
+            'link:../../elsewhere/plugin',
+          ]),
+        },
+      });
+      expect(nodes['npm:linked-in']).toBeUndefined();
+      expect(Object.keys(nodes).filter((n) => n.includes('linked-in'))).toEqual(
+        []
+      );
+      expect(nodes['npm:is-even']).toBeDefined();
+    });
+
+    it('should mint nodes for outside links in dependencies and optionalDependencies', () => {
+      const { nodes } = getPnpmLockfileNodes(lockFile, '__linked_dep_types__');
+
+      expect(nodes['npm:abs-out']).toBeDefined();
+      expect(nodes['npm:opt-linked'].data.version).toBe(
+        'link:../elsewhere/opt-plugin'
+      );
+    });
+
+    it('should let the root importer win when several importers link the same name', () => {
+      const { nodes } = getPnpmLockfileNodes(lockFile, '__linked_competing__');
+
+      expect(nodes['npm:multi-target'].data.version).toBe(
+        'link:../elsewhere/root-target'
+      );
+    });
+
+    it('should resolve absolute link targets against the workspace root', () => {
+      const { nodes } = getPnpmLockfileNodes(lockFile, '__linked_abs__');
+
+      expect(nodes['npm:abs-out']).toEqual({
+        type: 'npm',
+        name: 'npm:abs-out',
+        data: {
+          version: 'link:/elsewhere/abs-plugin',
+          packageName: 'abs-out',
+          hash: hashArray(['abs-out', 'link:/elsewhere/abs-plugin']),
+        },
+      });
+      expect(nodes['npm:abs-in']).toBeUndefined();
+    });
+
+    it('should not treat a dot-prefixed directory name as an escape', () => {
+      const { nodes } = getPnpmLockfileNodes(lockFile, '__linked_dotname__');
+
+      expect(nodes['npm:dot-named']).toBeUndefined();
+    });
+
+    it('should not shadow a hoisted registry package with a link from a nested importer', () => {
+      const withNestedLink = lockFile.replace(
+        '  packages/local: {}',
+        `  packages/local:
+    dependencies:
+      is-even:
+        specifier: link:../../../other/is-even
+        version: link:../../../other/is-even`
+      );
+
+      const { nodes } = getPnpmLockfileNodes(withNestedLink, '__linked_dup__');
+
+      expect(nodes['npm:is-even'].data.version).toBe('1.0.0');
+    });
+  });
+
+  describe('aliased dependency on an earlier snapshot', () => {
+    const lockFile = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      auth0:
+        specifier: ^7.4.0
+        version: 7.4.0
+
+packages:
+
+  auth0@4.37.1:
+    resolution: {integrity: sha512-4.37.1}
+
+  auth0@7.4.0:
+    resolution: {integrity: sha512-7.4.0}
+
+snapshots:
+
+  auth0@4.37.1: {}
+
+  auth0@7.4.0:
+    dependencies:
+      auth0-legacy: auth0@4.37.1
+`;
+
+    beforeEach(() => {
+      vol.fromJSON(
+        { 'node_modules/.modules.yaml': 'hoistedDependencies: {}\n' },
+        '/root'
+      );
+    });
+
+    function buildGraph() {
+      const { nodes: externalNodes, keyMap } = getPnpmLockfileNodes(
+        lockFile,
+        '__alias_earlier_snapshot__'
+      );
+      const ctx: CreateDependenciesContext = {
+        projects: {},
+        externalNodes,
+        fileMap: { nonProjectFiles: [], projectFileMap: {} },
+        filesToProcess: { nonProjectFiles: [], projectFileMap: {} },
+        nxJsonConfiguration: null,
+        workspaceRoot: '/virtual',
+      };
+      const dependencies = getPnpmLockfileDependencies(
+        lockFile,
+        '__alias_earlier_snapshot__',
+        ctx,
+        keyMap
+      );
+      return { externalNodes, dependencies };
+    }
+
+    it('should link a package to the snapshot its alias points at', () => {
+      expect(buildGraph().dependencies).toEqual([
+        {
+          source: 'npm:auth0',
+          target: 'npm:auth0@4.37.1',
+          type: 'static',
+        },
+      ]);
+    });
+
+    it('should keep the aliased snapshot when pruning', () => {
+      const { externalNodes, dependencies } = buildGraph();
+      const builder = new ProjectGraphBuilder({
+        nodes: {},
+        dependencies: {},
+        externalNodes,
+      });
+      for (const dep of dependencies) {
+        builder.addDependency(dep.source, dep.target, dep.type);
+      }
+      const packageJson = {
+        name: 'app',
+        version: '0.0.0',
+        dependencies: { auth0: '7.4.0' },
+      };
+
+      const pruned = stringifyPnpmLockfile(
+        pruneProjectGraph(builder.getUpdatedProjectGraph(), packageJson),
+        lockFile,
+        packageJson,
+        '/virtual'
+      );
+
+      expect(pruned).toContain('auth0-legacy: auth0@4.37.1');
+      expect(pruned).toMatch(/^ {2}auth0@4\.37\.1:/m);
+    });
+  });
+});

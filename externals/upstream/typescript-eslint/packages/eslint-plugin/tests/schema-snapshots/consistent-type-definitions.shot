@@ -1,0 +1,20 @@
+
+# SCHEMA:
+
+[
+  {
+    "description": "Which type definition syntax to prefer.",
+    "enum": ["interface", "type"],
+    "type": "string"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  /** Which type definition syntax to prefer. */
+  | 'type'
+  /** Which type definition syntax to prefer. */
+  | 'interface',
+];

@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ClassDeclaration > _error_ > missing-body > TSESTree - Error`]
+TSError
+> 1 | class Foo;
+    |          ^ '{' expected.
+  2 |

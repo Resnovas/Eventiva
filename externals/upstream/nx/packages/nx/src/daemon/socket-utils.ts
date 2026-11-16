@@ -1,0 +1,160 @@
+import { unlinkSync } from 'fs';
+import { connect, Socket } from 'net';
+import { platform } from 'os';
+import { dirname } from 'path';
+import {
+  getDaemonSocketPath,
+  getForkedProcessSocketPath,
+  getPluginSocketPath,
+} from './tmp-dir';
+import { createSerializableError } from '../utils/serializable-error';
+import { isV8SerializerEnabled } from './is-v8-serializer-enabled';
+import { serialize as v8_serialize } from 'v8';
+import { writeMessage } from '../utils/consume-messages-from-socket';
+import {
+  describeRefusal,
+  isOwnedPrivateDir,
+  isSafeAncestry,
+} from '../utils/owned-private-dir';
+
+export const isWindows = platform() === 'win32';
+
+/**
+ * For IPC with the daemon server we use unix sockets or windows named pipes,
+ * depending on the user's operating system.
+ *
+ * The paths themselves — the directory, the file name, the named-pipe form, and
+ * the length budget — are all decided in `native/utils/socket_path.rs`, so that
+ * Nx and Nx Console cannot disagree about where a socket lives.
+ *
+ * See https://nodejs.org/dist/latest-v14.x/docs/api/net.html#net_identifying_paths_for_ipc_connections
+ * for a full breakdown of OS differences between Unix domain sockets and named
+ * pipes.
+ */
+export const getFullOsSocketPath = () => getDaemonSocketPath();
+
+export const getForkedProcessOsSocketPath = (id: string) =>
+  getForkedProcessSocketPath(id);
+
+export const getPluginOsSocketPath = (id: string) => getPluginSocketPath(id);
+
+/**
+ * Dial a recorded daemon socket only if its directory is ours and owner-only,
+ * and every level above it passes `isSafeAncestry`. Judging the directory alone
+ * lets whoever controls a level above it swap the path before the dial.
+ * A refusal fails the socket like any failed connect, with the directory's
+ * errno when it cannot be inspected and ENOENT otherwise.
+ */
+export function connectToDaemonSocket(
+  socketPath: string,
+  onConnect?: () => void
+): Socket {
+  // A named pipe has no directory to judge.
+  const verdict = isWindows ? undefined : judgeSocketDir(dirname(socketPath));
+  if (verdict?.status === 'refused') {
+    const { refusal } = verdict;
+    const code =
+      (refusal.kind === 'not-inspectable' && refusal.code) || 'ENOENT';
+    return new Socket().destroy(
+      Object.assign(
+        new Error(`connect ${code} ${socketPath}: ${describeRefusal(refusal)}`),
+        { code }
+      )
+    );
+  }
+  return connect(socketPath, onConnect);
+}
+
+function judgeSocketDir(dir: string) {
+  const ancestry = isSafeAncestry(dirname(dir));
+  return ancestry.status === 'refused' ? ancestry : isOwnedPrivateDir(dir);
+}
+
+export function killSocketOrPath(): void {
+  try {
+    unlinkSync(getFullOsSocketPath());
+  } catch {}
+}
+
+// Prepare a serialized project graph result for sending over IPC from the server to the client
+export function serializeResult(
+  error: Error | null,
+  serializedProjectGraph: string | null,
+  serializedSourceMaps: string | null
+): string | null {
+  // We do not want to repeat work `JSON.stringify`ing an object containing the potentially large project graph so merge as strings
+  return `{ "error": ${JSON.stringify(
+    error ? createSerializableError(error) : error
+  )}, "projectGraph": ${serializedProjectGraph}, "sourceMaps": ${serializedSourceMaps} }`;
+}
+
+function stackOf(e: unknown): string {
+  return e instanceof Error ? (e.stack ?? String(e)) : String(e);
+}
+
+function serializeAs(data: any, format: 'v8' | 'json'): Buffer {
+  return format === 'v8'
+    ? v8_serialize(data)
+    : Buffer.from(JSON.stringify(data), 'utf8');
+}
+
+/**
+ * Serialize using `preferred`, falling back to the other format when it throws.
+ * Neither format subsumes the other: JSON cannot represent a BigInt and hits the
+ * max string length far sooner, while v8 cannot clone a function.
+ *
+ * @param data Data to serialize
+ * @param preferred Format to attempt first
+ * @returns Serialized data as bytes ready to be framed onto a socket
+ */
+export function serializeWithFallback(
+  data: any,
+  preferred: 'v8' | 'json'
+): Buffer {
+  try {
+    return serializeAs(data, preferred);
+  } catch (preferredError) {
+    const fallback = preferred === 'v8' ? 'json' : 'v8';
+    console.warn(
+      `Data could not be serialized using ${preferred} serialization: ${preferredError}. Falling back to ${fallback} serialization.`
+    );
+    try {
+      return serializeAs(data, fallback);
+    } catch (fallbackError) {
+      throw new Error(
+        [
+          `Data could not be serialized using either ${preferred} or ${fallback} serialization.`,
+          `${preferred} failed with: ${stackOf(preferredError)}`,
+          `${fallback} failed with: ${stackOf(fallbackError)}`,
+        ].join('\n\n'),
+        { cause: fallbackError }
+      );
+    }
+  }
+}
+
+/**
+ * Serialize data for IPC using the format the user configured.
+ *
+ * @param data Data to serialize
+ * @returns Serialized data as bytes ready to be framed onto a socket
+ */
+export function serialize(data: any): Buffer {
+  return serializeWithFallback(data, isV8SerializerEnabled() ? 'v8' : 'json');
+}
+
+/**
+ * Serialize `data` and write it as one framed message.
+ *
+ * Lives here rather than in `writeMessage` so the framing stays a byte-level
+ * primitive: `utils/consume-messages-from-socket` is shared by callers that
+ * already hold bytes, and having it reach back into the daemon's serializer
+ * would invert the dependency.
+ */
+export function sendMessage(
+  socket: Socket,
+  data: any,
+  callback?: (err?: Error) => void
+): void {
+  writeMessage(socket, serialize(data), callback);
+}

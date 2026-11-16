@@ -1,0 +1,19 @@
+{
+  "background_color": "#443fd4",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "name": "typescript-eslint",
+  "short_name": "typescript-eslint",
+  "theme_color": "#443fd4"
+}

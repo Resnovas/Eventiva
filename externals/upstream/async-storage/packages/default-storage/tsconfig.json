@@ -1,0 +1,14 @@
+{
+  "extends": "../../.config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [
+      "@wdio/globals/types",
+      "@wdio/mocha-framework",
+      "expect-webdriverio",
+      "mocha",
+      "node"
+    ]
+  },
+  "include": ["example/**/*.ts", "example/**/*.tsx", "src"]
+}

@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > expression > ObjectExpression > _error_ > missing-setter-body > TSESTree - Error`]
+TSError
+> 1 | ({set foo(value);})
+    |                 ^ '{' expected.
+  2 |

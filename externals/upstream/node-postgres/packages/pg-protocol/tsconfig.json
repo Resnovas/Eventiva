@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "module": "node16",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "target": "es6",
+    "noImplicitAny": true,
+    "moduleResolution": "node16",
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "./src",
+    "incremental": true,
+    "declaration": true,
+    "paths": {
+      "*": [
+        "./node_modules/*"
+      ]
+    },
+    "types": [
+      "node",
+      "mocha"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

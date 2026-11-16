@@ -1,0 +1,207 @@
+/**
+ * Node IPC is specific to Node, but when spawning child processes in Rust, it won't have IPC.
+ *
+ * Thus, this is a wrapper which is spawned by Rust, which will create a Node IPC channel and pipe it to a ZeroMQ Channel
+ *
+ * Main Nx Process
+ *   * Calls Rust Fork Function
+ *     * `node fork.js`
+ *     * Create a Rust - Node.js Agnostic Channel aka Pseudo IPC Channel
+ *     * This returns RustChildProcess
+ *         * RustChildProcess.onMessage(msg => ());
+ *         * pseudo_ipc_channel.on_message() => tx.send(msg);
+ *   * Node.js Fork Wrapper (fork.js)
+ *     * fork(run-command.js) with `inherit` and `ipc`
+ *         * This will create a Node IPC Channel
+ *     * channel = getPseudoIpcChannel(process.env.NX_IPC_CHANNEL_ID)
+ *     * forkChildProcess.on('message', writeToPseudoIpcChannel)
+ */
+
+import { connect, Server, Socket } from 'net';
+import { unlinkSync } from 'fs';
+import {
+  consumeMessagesFromSocket,
+  writeMessage,
+  parseMessage,
+} from '../utils/consume-messages-from-socket';
+import { Serializable } from 'child_process';
+import { isWindows, sendMessage } from '../daemon/socket-utils';
+
+/**
+ * Remove a stale socket file if it exists.
+ * This handles cases where a previous process with the same PID
+ * left behind a socket file (e.g., due to PID recycling in containers).
+ */
+function cleanupSocketFile(path: string): void {
+  if (!isWindows) {
+    try {
+      unlinkSync(path);
+    } catch {}
+  }
+}
+
+export interface PseudoIPCMessage {
+  type: 'TO_CHILDREN_FROM_PARENT' | 'TO_PARENT_FROM_CHILDREN' | 'CHILD_READY';
+  id: string | undefined;
+  message: Serializable;
+}
+
+export class PseudoIPCServer {
+  private sockets = new Set<Socket>();
+  private server: Server | undefined;
+
+  private childMessages: {
+    onMessage: (message: Serializable) => void;
+    onClose?: () => void;
+    onError?: (err: Error) => void;
+  }[] = [];
+
+  constructor(private path: string) {}
+
+  init(): Promise<void> {
+    return new Promise((res) => {
+      cleanupSocketFile(this.path);
+
+      this.server = new Server((socket) => {
+        this.sockets.add(socket);
+        this.registerChildMessages(socket);
+        socket.on('close', () => {
+          this.sockets.delete(socket);
+        });
+      });
+      this.server.listen(this.path, () => {
+        res();
+      });
+    });
+  }
+
+  private childReadyMap = new Map<string, () => void>();
+
+  async waitForChildReady(childId: string) {
+    return new Promise<void>((res) => {
+      this.childReadyMap.set(childId, res);
+    });
+  }
+
+  private registerChildMessages(socket: Socket) {
+    socket.on(
+      'data',
+      consumeMessagesFromSocket(
+        async (rawMessage) => {
+          const { type, message } = parseMessage<PseudoIPCMessage>(rawMessage);
+          if (type === 'TO_PARENT_FROM_CHILDREN') {
+            for (const childMessage of this.childMessages) {
+              childMessage.onMessage(message);
+            }
+          } else if (type === 'CHILD_READY') {
+            const childId = message as string;
+            if (this.childReadyMap.has(childId)) {
+              this.childReadyMap.get(childId)();
+            }
+          }
+        },
+        // Nothing resynchronizes a length-prefixed stream, so report it the
+        // same way a socket error is reported and let the peer see the close.
+        (err) => {
+          for (const childMessage of this.childMessages) {
+            childMessage.onError?.(err);
+          }
+          socket.destroy();
+        }
+      )
+    );
+
+    socket.on('close', () => {
+      for (const childMessage of this.childMessages) {
+        childMessage.onClose?.();
+      }
+    });
+    socket.on('error', (err) => {
+      for (const childMessage of this.childMessages) {
+        childMessage.onError?.(err);
+      }
+    });
+  }
+
+  sendMessageToChildren(message: Serializable) {
+    this.sockets.forEach((socket) => {
+      sendMessage(socket, { type: 'TO_CHILDREN_FROM_PARENT', message });
+    });
+  }
+
+  sendMessageToChild(id: string, message: Serializable) {
+    this.sockets.forEach((socket) => {
+      sendMessage(socket, { type: 'TO_CHILDREN_FROM_PARENT', id, message });
+    });
+  }
+
+  onMessageFromChildren(
+    onMessage: (message: Serializable) => void,
+    onClose: () => void = () => {},
+    onError: (err: Error) => void = (err) => {}
+  ) {
+    this.childMessages.push({
+      onMessage,
+      onClose,
+      onError,
+    });
+  }
+
+  close() {
+    this.server?.close();
+    this.sockets.forEach((s) => s.destroy());
+  }
+}
+
+export class PseudoIPCClient {
+  private socket: Socket | undefined = connect(this.path);
+
+  constructor(private path: string) {}
+
+  sendMessageToParent(message: Serializable) {
+    sendMessage(this.socket, { type: 'TO_PARENT_FROM_CHILDREN', message });
+  }
+
+  notifyChildIsReady(id: string) {
+    sendMessage(this.socket, {
+      type: 'CHILD_READY',
+      message: id,
+    } as PseudoIPCMessage);
+  }
+
+  onMessageFromParent(
+    forkId: string,
+    onMessage: (message: Serializable) => void,
+    onClose: () => void = () => {},
+    onError: (err: Error) => void = (err) => {}
+  ) {
+    this.socket.on(
+      'data',
+      consumeMessagesFromSocket(async (rawMessage) => {
+        const { id, type, message } =
+          parseMessage<PseudoIPCMessage>(rawMessage);
+        if (type === 'TO_CHILDREN_FROM_PARENT') {
+          if (id && id === forkId) {
+            onMessage(message);
+          } else if (id === undefined) {
+            onMessage(message);
+          }
+        }
+      }, onError)
+    );
+
+    this.socket.on('close', onClose);
+    this.socket.on('error', onError);
+
+    return this;
+  }
+
+  unref() {
+    this.socket?.unref();
+    return this;
+  }
+
+  close() {
+    this.socket?.destroy();
+  }
+}

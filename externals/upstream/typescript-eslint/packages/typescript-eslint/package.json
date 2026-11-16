@@ -1,0 +1,104 @@
+{
+  "name": "typescript-eslint",
+  "version": "8.72.1",
+  "description": "Tooling which enables you to use TypeScript with ESLint",
+  "files": [
+    "dist",
+    "!**/*.js.map",
+    "!**/*.tsbuildinfo"
+  ],
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/typescript-eslint"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "homepage": "https://typescript-eslint.io/packages/typescript-eslint",
+  "license": "MIT",
+  "keywords": [
+    "ast",
+    "ecmascript",
+    "javascript",
+    "typescript",
+    "parser",
+    "syntax",
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin"
+  ],
+  "scripts": {
+    "build": "pnpm exec nx build",
+    "clean": "rimraf dist/ coverage/",
+    "format": "pnpm -w run format",
+    "lint": "pnpm -w exec nx lint",
+    "test": "pnpm -w exec nx test",
+    "typecheck": "pnpm -w exec nx typecheck",
+    "typecheck:tsc6": "pnpm -w exec nx typecheck:tsc6",
+    "attw-check": "pnpm -w exec nx attw-check"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "workspace:*",
+    "@typescript-eslint/parser": "workspace:*",
+    "@typescript-eslint/typescript-estree": "workspace:*",
+    "@typescript-eslint/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
+    "typescript": ">=4.8.4 <6.1.0"
+  },
+  "devDependencies": {
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "minimatch": "*",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typescript-eslint"
+  },
+  "nx": {
+    "name": "typescript-eslint",
+    "includedScripts": [
+      "clean"
+    ],
+    "targets": {
+      "lint": {
+        "command": "eslint"
+      },
+      "typecheck:tsc6": {},
+      "test": {
+        "dependsOn": [
+          "^build",
+          "typecheck"
+        ]
+      },
+      "attw-check": {
+        "cache": false,
+        "command": "pnpm pack --out attw-check.tgz && attw attw-check.tgz --profile node16 --ignore-rules cjs-only-exports-default",
+        "options": {
+          "cwd": "{projectRoot}"
+        },
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+
+# SCHEMA:
+
+[
+  {
+    "additionalProperties": false,
+    "properties": {
+      "allowShortCircuit": {
+        "type": "boolean"
+      },
+      "allowTaggedTemplates": {
+        "type": "boolean"
+      },
+      "allowTernary": {
+        "type": "boolean"
+      },
+      "enforceForJSX": {
+        "type": "boolean"
+      },
+      "ignoreDirectives": {
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  }
+]
+
+
+# TYPES:
+
+type Options = [
+  {
+    allowShortCircuit?: boolean;
+    allowTaggedTemplates?: boolean;
+    allowTernary?: boolean;
+    enforceForJSX?: boolean;
+    ignoreDirectives?: boolean;
+  },
+];

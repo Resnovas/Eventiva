@@ -1,0 +1,163 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        FunctionNameDefinition$1 {
+          name: Identifier<"foo">,
+          node: FunctionDeclaration$1,
+        },
+      ],
+      name: "foo",
+      references: [
+        Reference$3 {
+          identifier: Identifier<"foo">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$2,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$3 {
+      defs: [],
+      name: "arguments",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+    Variable$4 {
+      defs: [
+        ParameterDefinition$2 {
+          name: Identifier<"y">,
+          node: FunctionDeclaration$1,
+        },
+      ],
+      name: "y",
+      references: [
+        Reference$2 {
+          identifier: Identifier<"y">,
+          isRead: true,
+          isTypeReference: false,
+          isValueReference: true,
+          isWrite: false,
+          resolved: Variable$4,
+        },
+      ],
+      isValueVariable: true,
+      isTypeVariable: false,
+    },
+    Variable$5 {
+      defs: [
+        TypeDefinition$3 {
+          name: Identifier<"T">,
+          node: TSTypeParameter$2,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$1 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$5,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$6 {
+      defs: [
+        TypeDefinition$4 {
+          name: Identifier<"Foo">,
+          node: TSTypeAliasDeclaration$3,
+        },
+      ],
+      name: "Foo",
+      references: [],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+    Variable$7 {
+      defs: [
+        TypeDefinition$5 {
+          name: Identifier<"T">,
+          node: TSTypeParameter$4,
+        },
+      ],
+      name: "T",
+      references: [
+        Reference$4 {
+          identifier: Identifier<"T">,
+          isRead: true,
+          isTypeReference: true,
+          isValueReference: false,
+          isWrite: false,
+          resolved: Variable$7,
+        },
+      ],
+      isValueVariable: false,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$5,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+        "foo" => Variable$2,
+        "Foo" => Variable$6,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+        Variable$2,
+        Variable$6,
+      ],
+    },
+    FunctionScope$2 {
+      block: FunctionDeclaration$1,
+      isStrict: false,
+      references: [
+        Reference$1,
+        Reference$2,
+      ],
+      set: Map {
+        "arguments" => Variable$3,
+        "y" => Variable$4,
+        "T" => Variable$5,
+      },
+      type: "function",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$3,
+        Variable$4,
+        Variable$5,
+      ],
+    },
+    TypeScope$3 {
+      block: TSTypeAliasDeclaration$3,
+      isStrict: true,
+      references: [
+        Reference$3,
+        Reference$4,
+      ],
+      set: Map {
+        "T" => Variable$7,
+      },
+      type: "type",
+      upper: GlobalScope$1,
+      variables: [
+        Variable$7,
+      ],
+    },
+  ],
+}

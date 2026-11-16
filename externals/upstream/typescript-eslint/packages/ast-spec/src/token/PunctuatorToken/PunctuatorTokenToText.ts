@@ -1,0 +1,51 @@
+import type { SyntaxKind } from 'typescript';
+
+import type { AssignmentOperatorToText } from '../../expression/AssignmentExpression/AssignmentOperatorToText';
+
+export interface PunctuatorTokenToText extends AssignmentOperatorToText {
+  [SyntaxKind.AmpersandAmpersandToken]: '&&';
+  [SyntaxKind.AmpersandToken]: '&';
+  [SyntaxKind.AsteriskAsteriskToken]: '**';
+  [SyntaxKind.AsteriskToken]: '*';
+  [SyntaxKind.AtToken]: '@';
+  [SyntaxKind.BacktickToken]: '`';
+  [SyntaxKind.BarBarToken]: '||';
+  [SyntaxKind.BarToken]: '|';
+  [SyntaxKind.CaretToken]: '^';
+  [SyntaxKind.CloseBraceToken]: '}';
+  [SyntaxKind.CloseBracketToken]: ']';
+  [SyntaxKind.CloseParenToken]: ')';
+  [SyntaxKind.ColonToken]: ':';
+  [SyntaxKind.CommaToken]: ',';
+  [SyntaxKind.DotDotDotToken]: '...';
+  [SyntaxKind.DotToken]: '.';
+  [SyntaxKind.EqualsEqualsEqualsToken]: '===';
+  [SyntaxKind.EqualsEqualsToken]: '==';
+  [SyntaxKind.EqualsGreaterThanToken]: '=>';
+  [SyntaxKind.ExclamationEqualsEqualsToken]: '!==';
+  [SyntaxKind.ExclamationEqualsToken]: '!=';
+  [SyntaxKind.ExclamationToken]: '!';
+  [SyntaxKind.GreaterThanEqualsToken]: '>=';
+  [SyntaxKind.GreaterThanGreaterThanGreaterThanToken]: '>>>';
+  [SyntaxKind.GreaterThanGreaterThanToken]: '>>';
+  [SyntaxKind.GreaterThanToken]: '>';
+  [SyntaxKind.HashToken]: '#';
+  [SyntaxKind.LessThanEqualsToken]: '<=';
+  [SyntaxKind.LessThanLessThanToken]: '<<';
+  [SyntaxKind.LessThanSlashToken]: '</';
+  [SyntaxKind.LessThanToken]: '<';
+  [SyntaxKind.MinusMinusToken]: '--';
+  [SyntaxKind.MinusToken]: '-';
+  [SyntaxKind.OpenBraceToken]: '{';
+  [SyntaxKind.OpenBracketToken]: '[';
+  [SyntaxKind.OpenParenToken]: '(';
+  [SyntaxKind.PercentToken]: '%';
+  [SyntaxKind.PlusPlusToken]: '++';
+  [SyntaxKind.PlusToken]: '+';
+  [SyntaxKind.QuestionDotToken]: '?.';
+  [SyntaxKind.QuestionQuestionToken]: '??';
+  [SyntaxKind.QuestionToken]: '?';
+  [SyntaxKind.SemicolonToken]: ';';
+  [SyntaxKind.SlashToken]: '/';
+  [SyntaxKind.TildeToken]: '~';
+}

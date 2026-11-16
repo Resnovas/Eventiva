@@ -1,0 +1,58 @@
+Program {
+  type: "Program",
+  body: [
+    ImportDeclaration {
+      type: "ImportDeclaration",
+      attributes: [],
+      importKind: "type",
+      phase: null,
+      source: Literal {
+        type: "Literal",
+        raw: "'bar'",
+        value: "bar",
+
+        range: [94, 99],
+        loc: {
+          start: { column: 21, line: 3 },
+          end: { column: 26, line: 3 },
+        },
+      },
+      specifiers: [
+        ImportDefaultSpecifier {
+          type: "ImportDefaultSpecifier",
+          local: Identifier {
+            type: "Identifier",
+            decorators: [],
+            name: "foo",
+            optional: false,
+
+            range: [85, 88],
+            loc: {
+              start: { column: 12, line: 3 },
+              end: { column: 15, line: 3 },
+            },
+          },
+
+          range: [85, 88],
+          loc: {
+            start: { column: 12, line: 3 },
+            end: { column: 15, line: 3 },
+          },
+        },
+      ],
+
+      range: [73, 100],
+      loc: {
+        start: { column: 0, line: 3 },
+        end: { column: 27, line: 3 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 101],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 4 },
+  },
+}

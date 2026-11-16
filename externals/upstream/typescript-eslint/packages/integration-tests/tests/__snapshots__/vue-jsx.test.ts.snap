@@ -1,0 +1,79 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`vue-jsx > eslint > should work successfully 1`] = `
+[
+  {
+    "errorCount": 1,
+    "fatalErrorCount": 0,
+    "filePath": "<root>/Jsx.vue",
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [
+      {
+        "column": 32,
+        "endColumn": 35,
+        "endLine": 10,
+        "line": 10,
+        "message": "Unexpected any. Specify a different type.",
+        "messageId": "unexpectedAny",
+        "ruleId": "@typescript-eslint/no-explicit-any",
+        "severity": 2,
+        "suggestions": [
+          {
+            "desc": "Use \`unknown\` instead, this will force you to explicitly, and safely assert the type is correct.",
+            "fix": {
+              "range": [
+                223,
+                226,
+              ],
+              "text": "unknown",
+            },
+            "messageId": "suggestUnknown",
+          },
+          {
+            "desc": "Use \`never\` instead, this is useful when instantiating generic type parameters that you don't need to know the type of.",
+            "fix": {
+              "range": [
+                223,
+                226,
+              ],
+              "text": "never",
+            },
+            "messageId": "suggestNever",
+          },
+        ],
+      },
+    ],
+    "source": "<script lang="tsx">
+import { defineComponent, ref } from 'vue';
+
+export default defineComponent({
+  name: 'Jsx',
+  setup() {
+    const count = ref(0);
+
+    // expected error - no-explicit-any
+    const increment = (amount: any): void => {
+      count.value += amount;
+    };
+
+    return () => (
+      <div class="counter">
+        <p class="counter-value">
+          Count: <strong>{count.value}</strong>
+        </p>
+        <button type="button" onClick={() => increment(1)}>
+          Increment
+        </button>
+      </div>
+    );
+  },
+});
+</script>
+",
+    "suppressedMessages": [],
+    "usedDeprecatedRules": [],
+    "warningCount": 0,
+  },
+]
+`;

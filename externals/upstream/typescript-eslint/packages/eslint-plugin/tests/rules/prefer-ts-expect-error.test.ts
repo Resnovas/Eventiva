@@ -1,0 +1,239 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
+import rule from '../../src/rules/prefer-ts-expect-error';
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('prefer-ts-expect-error', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    '// @ts-nocheck',
+    '// @ts-check',
+    '// just a comment containing @ts-ignore somewhere',
+    `
+{
+  /*
+        just a comment containing @ts-ignore somewhere in a block
+      */
+}
+    `,
+    '// @ts-expect-error',
+    `
+if (false) {
+  // @ts-expect-error: Unreachable code error
+  console.log('hello');
+}
+    `,
+    `
+/**
+ * Explaining comment
+ *
+ * @ts-expect-error
+ *
+ * Not last line
+ * */
+    `,
+  ],
+  invalid: [
+    {
+      code: '// @ts-ignore',
+      errors: [
+        {
+          column: 1,
+          endColumn: 14,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '// @ts-expect-error',
+    },
+    {
+      code: '// @ts-ignore: Suppress next line',
+      errors: [
+        {
+          column: 1,
+          endColumn: 34,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+
+      output: '// @ts-expect-error: Suppress next line',
+    },
+    {
+      code: '///@ts-ignore: Suppress next line',
+      errors: [
+        {
+          column: 1,
+          endColumn: 34,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '///@ts-expect-error: Suppress next line',
+    },
+    {
+      code: `
+if (false) {
+  // @ts-ignore: Unreachable code error
+  console.log('hello');
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 40,
+          endLine: 3,
+          line: 3,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: `
+if (false) {
+  // @ts-expect-error: Unreachable code error
+  console.log('hello');
+}
+      `,
+    },
+    {
+      code: '/* @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* @ts-expect-error */',
+    },
+    {
+      // eslint-disable-next-line @typescript-eslint/internal/plugin-test-formatting -- intentionally testing a CRLF(`\r\n`) in the comment
+      code: '/* not on the last line\r\n * @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 2,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* not on the last line\r\n * @ts-expect-error */',
+    },
+    {
+      // eslint-disable-next-line @typescript-eslint/internal/plugin-test-formatting -- intentionally testing a CR(`\r`) in the comment
+      code: '/* not on the last line\r * @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 2,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* not on the last line\r * @ts-expect-error */',
+    },
+    {
+      code: '/* not on the last line\n * @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 2,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* not on the last line\n * @ts-expect-error */',
+    },
+    {
+      code: '/* not on the last line\u2028 * @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 2,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* not on the last line\u2028 * @ts-expect-error */',
+    },
+    {
+      code: '/* not on the last line\u2029 * @ts-ignore */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 2,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* not on the last line\u2029 * @ts-expect-error */',
+    },
+    {
+      code: `
+/**
+ * Explaining comment
+ *
+ * @ts-ignore */
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 17,
+          endLine: 5,
+          line: 2,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: `
+/**
+ * Explaining comment
+ *
+ * @ts-expect-error */
+      `,
+    },
+    {
+      code: '/* @ts-ignore in a single block */',
+      errors: [
+        {
+          column: 1,
+          endColumn: 35,
+          endLine: 1,
+          line: 1,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: '/* @ts-expect-error in a single block */',
+    },
+    {
+      code: `
+/*
+// @ts-ignore in a block with single line comments */
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 54,
+          endLine: 3,
+          line: 2,
+          messageId: 'preferExpectErrorComment',
+        },
+      ],
+      output: `
+/*
+// @ts-expect-error in a block with single line comments */
+      `,
+    },
+  ],
+});

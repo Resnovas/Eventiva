@@ -1,0 +1,4173 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .js file - with JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .js file - with JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .js file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .js file - without JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .json file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "directive": undefined,
+        "expression": {
+          "loc": {
+            "end": {
+              "column": 10,
+              "line": 1,
+            },
+            "start": {
+              "column": 0,
+              "line": 1,
+            },
+          },
+          "properties": [
+            {
+              "computed": false,
+              "key": {
+                "loc": {
+                  "end": {
+                    "column": 5,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 2,
+                    "line": 1,
+                  },
+                },
+                "range": [
+                  2,
+                  5,
+                ],
+                "raw": ""x"",
+                "type": "Literal",
+                "value": "x",
+              },
+              "kind": "init",
+              "loc": {
+                "end": {
+                  "column": 8,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 2,
+                  "line": 1,
+                },
+              },
+              "method": false,
+              "optional": false,
+              "range": [
+                2,
+                8,
+              ],
+              "shorthand": false,
+              "type": "Property",
+              "value": {
+                "loc": {
+                  "end": {
+                    "column": 8,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 7,
+                    "line": 1,
+                  },
+                },
+                "range": [
+                  7,
+                  8,
+                ],
+                "raw": "1",
+                "type": "Literal",
+                "value": 1,
+              },
+            },
+          ],
+          "range": [
+            0,
+            10,
+          ],
+          "type": "ObjectExpression",
+        },
+        "loc": {
+          "end": {
+            "column": 10,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          10,
+        ],
+        "type": "ExpressionStatement",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 10,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      10,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 1,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          1,
+        ],
+        "type": "Punctuator",
+        "value": "{",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 2,
+            "line": 1,
+          },
+        },
+        "range": [
+          2,
+          5,
+        ],
+        "type": "String",
+        "value": ""x"",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 6,
+            "line": 1,
+          },
+          "start": {
+            "column": 5,
+            "line": 1,
+          },
+        },
+        "range": [
+          5,
+          6,
+        ],
+        "type": "Punctuator",
+        "value": ":",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 8,
+            "line": 1,
+          },
+          "start": {
+            "column": 7,
+            "line": 1,
+          },
+        },
+        "range": [
+          7,
+          8,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 10,
+            "line": 1,
+          },
+          "start": {
+            "column": 9,
+            "line": 1,
+          },
+        },
+        "range": [
+          9,
+          10,
+        ],
+        "type": "Punctuator",
+        "value": "}",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .jsx file - with JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .jsx file - with JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .jsx file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .jsx file - without JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .ts file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .ts file - without JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .tsx file - with JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .tsx file - with JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .tsx file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .tsx file - without JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .vue file - with JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "children": [],
+              "closingElement": null,
+              "loc": {
+                "end": {
+                  "column": 17,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "openingElement": {
+                "attributes": [],
+                "loc": {
+                  "end": {
+                    "column": 17,
+                    "line": 1,
+                  },
+                  "start": {
+                    "column": 10,
+                    "line": 1,
+                  },
+                },
+                "name": {
+                  "loc": {
+                    "end": {
+                      "column": 14,
+                      "line": 1,
+                    },
+                    "start": {
+                      "column": 11,
+                      "line": 1,
+                    },
+                  },
+                  "name": "div",
+                  "range": [
+                    11,
+                    14,
+                  ],
+                  "type": "JSXIdentifier",
+                },
+                "range": [
+                  10,
+                  17,
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement",
+                "typeArguments": undefined,
+              },
+              "range": [
+                10,
+                17,
+              ],
+              "type": "JSXElement",
+            },
+            "loc": {
+              "end": {
+                "column": 17,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              17,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          18,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 18,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      18,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Punctuator",
+        "value": "<",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 14,
+            "line": 1,
+          },
+          "start": {
+            "column": 11,
+            "line": 1,
+          },
+        },
+        "range": [
+          11,
+          14,
+        ],
+        "type": "JSXIdentifier",
+        "value": "div",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 16,
+            "line": 1,
+          },
+          "start": {
+            "column": 15,
+            "line": 1,
+          },
+        },
+        "range": [
+          15,
+          16,
+        ],
+        "type": "Punctuator",
+        "value": "/",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 17,
+            "line": 1,
+          },
+          "start": {
+            "column": 16,
+            "line": 1,
+          },
+        },
+        "range": [
+          16,
+          17,
+        ],
+        "type": "Punctuator",
+        "value": ">",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 18,
+            "line": 1,
+          },
+          "start": {
+            "column": 17,
+            "line": 1,
+          },
+        },
+        "range": [
+          17,
+          18,
+        ],
+        "type": "Punctuator",
+        "value": ";",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .vue file - without JSX content - parserOptions.jsx = false 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;
+
+exports[`parseAndGenerateServices > isolated parsing > should parse .vue file - without JSX content - parserOptions.jsx = true 1`] = `
+{
+  "ast": {
+    "body": [
+      {
+        "declarations": [
+          {
+            "definite": false,
+            "id": {
+              "decorators": [],
+              "loc": {
+                "end": {
+                  "column": 7,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 6,
+                  "line": 1,
+                },
+              },
+              "name": "x",
+              "optional": false,
+              "range": [
+                6,
+                7,
+              ],
+              "type": "Identifier",
+              "typeAnnotation": undefined,
+            },
+            "init": {
+              "loc": {
+                "end": {
+                  "column": 11,
+                  "line": 1,
+                },
+                "start": {
+                  "column": 10,
+                  "line": 1,
+                },
+              },
+              "range": [
+                10,
+                11,
+              ],
+              "raw": "1",
+              "type": "Literal",
+              "value": 1,
+            },
+            "loc": {
+              "end": {
+                "column": 11,
+                "line": 1,
+              },
+              "start": {
+                "column": 6,
+                "line": 1,
+              },
+            },
+            "range": [
+              6,
+              11,
+            ],
+            "type": "VariableDeclarator",
+          },
+        ],
+        "declare": false,
+        "kind": "const",
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          11,
+        ],
+        "type": "VariableDeclaration",
+      },
+    ],
+    "comments": [],
+    "loc": {
+      "end": {
+        "column": 11,
+        "line": 1,
+      },
+      "start": {
+        "column": 0,
+        "line": 1,
+      },
+    },
+    "range": [
+      0,
+      11,
+    ],
+    "sourceType": "script",
+    "tokens": [
+      {
+        "loc": {
+          "end": {
+            "column": 5,
+            "line": 1,
+          },
+          "start": {
+            "column": 0,
+            "line": 1,
+          },
+        },
+        "range": [
+          0,
+          5,
+        ],
+        "type": "Keyword",
+        "value": "const",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 7,
+            "line": 1,
+          },
+          "start": {
+            "column": 6,
+            "line": 1,
+          },
+        },
+        "range": [
+          6,
+          7,
+        ],
+        "type": "Identifier",
+        "value": "x",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 9,
+            "line": 1,
+          },
+          "start": {
+            "column": 8,
+            "line": 1,
+          },
+        },
+        "range": [
+          8,
+          9,
+        ],
+        "type": "Punctuator",
+        "value": "=",
+      },
+      {
+        "loc": {
+          "end": {
+            "column": 11,
+            "line": 1,
+          },
+          "start": {
+            "column": 10,
+            "line": 1,
+          },
+        },
+        "range": [
+          10,
+          11,
+        ],
+        "type": "Numeric",
+        "value": "1",
+      },
+    ],
+    "type": "Program",
+  },
+  "services": {
+    "emitDecoratorMetadata": undefined,
+    "esTreeNodeToTSNodeMap": WeakMap {},
+    "experimentalDecorators": undefined,
+    "isolatedDeclarations": undefined,
+    "program": "No Program",
+    "tsNodeToESTreeNodeMap": WeakMap {},
+  },
+}
+`;

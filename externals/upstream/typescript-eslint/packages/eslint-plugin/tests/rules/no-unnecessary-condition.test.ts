@@ -1,0 +1,5738 @@
+import { noFormat } from '@typescript-eslint/rule-tester';
+import * as path from 'node:path';
+
+import rule from '../../src/rules/no-unnecessary-condition';
+import { createRuleTesterWithTypes, getFixturesRootDir } from '../RuleTester';
+
+const rootDir = getFixturesRootDir();
+const ruleTester = createRuleTesterWithTypes();
+
+const optionsWithExactOptionalPropertyTypes = {
+  project: './tsconfig.exactOptionalPropertyTypes.json',
+  projectService: false,
+  tsconfigRootDir: rootDir,
+};
+
+const optionsWithNoUncheckedIndexedAccess = {
+  project: './tsconfig.noUncheckedIndexedAccess.json',
+  projectService: false,
+  tsconfigRootDir: rootDir,
+};
+
+ruleTester.run('no-unnecessary-condition', rule, {
+  assertionOptions: {
+    requireData: true,
+  },
+  valid: [
+    `
+declare const b1: boolean;
+declare const b2: boolean;
+const t1 = b1 && b2;
+const t2 = b1 || b2;
+if (b1 && b2) {
+}
+while (b1 && b2) {}
+for (let i = 0; b1 && b2; i++) {
+  break;
+}
+const t1 = b1 && b2 ? 'yes' : 'no';
+if (b1 && b2) {
+}
+while (b1 && b2) {}
+for (let i = 0; b1 && b2; i++) {
+  break;
+}
+const t1 = b1 && b2 ? 'yes' : 'no';
+for (;;) {}
+switch (b1) {
+  case true:
+  default:
+}
+    `,
+    `
+declare function foo(): number | void;
+const result1 = foo() === undefined;
+const result2 = foo() == null;
+    `,
+    `
+declare function foo(): number | void;
+foo() ?? 1;
+    `,
+    `
+declare const bigInt: 0n | 1n;
+if (bigInt) {
+}
+    `,
+    // Truthy literal and falsy literal
+    `
+declare const b1: false | 5;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // boolean and truthy literal
+    `
+declare const b1: boolean | 'foo';
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // boolean and falsy literal
+    `
+declare const b1: 0 | boolean;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // boolean and always-truthy type
+    `
+declare const b1: boolean | object;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // always truthy type and falsy literal
+    `
+declare const b1: false | object;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // always falsy type and always truthy type
+    `
+declare const b1: null | object;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: undefined | true;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: void | true;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // "branded" type
+    `
+declare const b1: string & {};
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: string & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: number & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: boolean & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: bigint & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: string & {} & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: string & { __brandA: string } & { __brandB: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: (string & { __brand: string }) | number;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: (string | number) & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: string & ({ __brand: string } | number);
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: ('' | 'foo') & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1:
+  (string & { __brandA: string }) | (number & { __brandB: string });
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1:
+  | (string & { __brandA: string })
+  | ((number & { __brandB: string }) & ('' | 'foo'));
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: { __brandA: string } & (
+  ({ __brandB: string } & string) | ({ __brandC: string } & number)
+);
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    `
+declare const b1: (string | number) & ('foo' | 123 | { __brandA: string });
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+
+    `
+declare const b1: string & string;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+
+    // any
+    `
+declare const b1: any;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+    // unknown
+    `
+declare const b1: unknown;
+declare const b2: boolean;
+const t1 = b1 && b2;
+    `,
+
+    // Generic type params
+    `
+function test<T extends string>(t: T) {
+  return t ? 'yes' : 'no';
+}
+    `,
+    `
+// Naked type param
+function test<T>(t: T) {
+  return t ? 'yes' : 'no';
+}
+    `,
+    `
+// Naked type param in union
+function test<T>(t: T | []) {
+  return t ? 'yes' : 'no';
+}
+    `,
+    `
+const truthy = <T,>(value: Awaited<T>) => (value ? 1 : 2);
+    `,
+    `
+const nullish = <T,>(value: Awaited<T>) => value ?? 1;
+    `,
+    `
+const fromPromise = async <T,>(promise: Promise<T>) => {
+  const value = await promise;
+  return value ? 1 : 2;
+};
+    `,
+    `
+type Id<T> = T extends unknown ? T : never;
+function test<T>(t: Id<T>) {
+  return t ? 'yes' : 'no';
+}
+    `,
+    `
+const truthyUnion = <T,>(value: Awaited<T> | string) => (value ? 1 : 2);
+    `,
+    `
+const truthy = <T extends string>(value: Awaited<T>) => (value ? 1 : 2);
+    `,
+    `
+const nullish = <T extends Promise<string | null>>(value: Awaited<T>) =>
+  value ?? 1;
+    `,
+    `
+const isUndefined = <T,>(value: Awaited<T>) => value === undefined;
+    `,
+    `
+const isNull = <T,>(value: Awaited<T>) => value === null;
+    `,
+    `
+function test<T, K extends keyof T>(value: Awaited<T[K]>) {
+  return value ?? 1;
+}
+    `,
+    `
+function test<T>(arg: T, key: keyof T) {
+  if (arg[key]?.toString()) {
+  }
+}
+    `,
+    `
+function test<T>(arg: T, key: keyof T) {
+  if (arg?.toString()) {
+  }
+}
+    `,
+    `
+function test<T>(arg: T | { value: string }) {
+  if (arg?.value) {
+  }
+}
+    `,
+
+    // Boolean expressions
+    `
+function test(a: string) {
+  const t1 = a === 'a';
+  const t2 = 'a' === a;
+}
+    `,
+    `
+function test(a?: string) {
+  const t1 = a === undefined;
+  const t2 = undefined === a;
+  const t1 = a !== undefined;
+  const t2 = undefined !== a;
+}
+    `,
+    `
+function test(a: null | string) {
+  const t1 = a === null;
+  const t2 = null === a;
+  const t1 = a !== null;
+  const t2 = null !== a;
+}
+    `,
+    `
+function test(a?: null | string) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+}
+    `,
+    `
+function test(a?: string) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+}
+    `,
+    `
+function test(a: null | string) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+}
+    `,
+    `
+function test(a: any) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+  const t9 = a === null;
+  const t10 = null === a;
+  const t11 = a !== null;
+  const t12 = null !== a;
+  const t13 = a === undefined;
+  const t14 = undefined === a;
+  const t15 = a !== undefined;
+  const t16 = undefined !== a;
+}
+    `,
+    `
+function test(a: unknown) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+  const t9 = a === null;
+  const t10 = null === a;
+  const t11 = a !== null;
+  const t12 = null !== a;
+  const t13 = a === undefined;
+  const t14 = undefined === a;
+  const t15 = a !== undefined;
+  const t16 = undefined !== a;
+}
+    `,
+    `
+function test<T>(a: T) {
+  const t1 = a == null;
+  const t2 = null == a;
+  const t3 = a != null;
+  const t4 = null != a;
+  const t5 = a == undefined;
+  const t6 = undefined == a;
+  const t7 = a != undefined;
+  const t8 = undefined != a;
+  const t9 = a === null;
+  const t10 = null === a;
+  const t11 = a !== null;
+  const t12 = null !== a;
+  const t13 = a === undefined;
+  const t14 = undefined === a;
+  const t15 = a !== undefined;
+  const t16 = undefined !== a;
+}
+    `,
+    `
+function foo<T extends object>(arg: T, key: keyof T): void {
+  arg[key] == null;
+}
+    `,
+
+    // Predicate functions
+    `
+// with literal arrow function
+[0, 1, 2].filter(x => x);
+
+// filter with named function
+function length(x: string) {
+  return x.length;
+}
+['a', 'b', ''].filter(length);
+
+// with non-literal array
+function nonEmptyStrings(x: string[]) {
+  return x.filter(length);
+}
+
+// filter-like predicate
+function count(
+  list: string[],
+  predicate: (value: string, index: number, array: string[]) => unknown,
+) {
+  return list.filter(predicate).length;
+}
+    `,
+    `
+declare const test: <T>() => T;
+
+[1, null].filter(test);
+    `,
+    `
+declare const test: <T extends boolean>() => T;
+
+[1, null].filter(test);
+    `,
+    `
+[1, null].filter(1 as any);
+    `,
+    `
+[1, null].filter(1 as never);
+    `,
+    // Ignores non-array methods of the same name
+    `
+const notArray = {
+  filter: (func: () => boolean) => func(),
+  find: (func: () => boolean) => func(),
+};
+notArray.filter(() => true);
+notArray.find(() => true);
+    `,
+
+    // Nullish coalescing operator
+    `
+function test(a: string | null) {
+  return a ?? 'default';
+}
+    `,
+    `
+function test(a: string | undefined) {
+  return a ?? 'default';
+}
+    `,
+    `
+function test(a: string | null | undefined) {
+  return a ?? 'default';
+}
+    `,
+    `
+function test(a: unknown) {
+  return a ?? 'default';
+}
+    `,
+    `
+function test<T>(a: T) {
+  return a ?? 'default';
+}
+    `,
+    `
+function test<T extends string | null>(a: T) {
+  return a ?? 'default';
+}
+    `,
+    `
+function foo<T extends object>(arg: T, key: keyof T): void {
+  arg[key] ?? 'default';
+}
+    `,
+    // Indexing cases
+    `
+declare const arr: object[];
+if (arr[42]) {
+} // looks unnecessary from the types, but isn't
+
+const tuple = [{}] as [object];
+declare const n: number;
+if (tuple[n]) {
+}
+    `,
+    // Optional-chaining indexing
+    `
+declare const arr: Array<{ value: string } & (() => void)>;
+if (arr[42]?.value) {
+}
+arr[41]?.();
+
+// An array access can "infect" deeper into the chain
+declare const arr2: Array<{ x: { y: { z: object } } }>;
+arr2[42]?.x?.y?.z;
+
+const tuple = ['foo'] as const;
+declare const n: number;
+tuple[n]?.toUpperCase();
+    `,
+    {
+      code: `
+declare const arr: Array<{ value: string } & (() => void)>;
+if (arr[42]?.value) {
+}
+arr[41]?.();
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    `
+if (arr?.[42]) {
+}
+    `,
+    `
+type ItemA = { bar: string; baz: string };
+type ItemB = { bar: string; qux: string };
+declare const foo: ItemA[] | ItemB[];
+foo[0]?.bar;
+    `,
+    `
+type TupleA = [string, number];
+type TupleB = [string, number];
+
+declare const foo: TupleA | TupleB;
+declare const index: number;
+foo[index]?.toString();
+    `,
+    {
+      code: `
+type TupleA = [string, number];
+type TupleB = [string, number];
+
+declare const foo: TupleA | TupleB;
+declare const index: number;
+foo[index]?.toString();
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    `
+declare const returnsArr: undefined | (() => string[]);
+if (returnsArr?.()[42]) {
+}
+returnsArr?.()[42]?.toUpperCase();
+    `,
+    // nullish + array index
+    `
+declare const arr: string[][];
+arr[x] ?? [];
+    `,
+    // nullish + optional array index
+    `
+declare const arr: { foo: number }[];
+const bar = arr[42]?.foo ?? 0;
+    `,
+    // Doesn't check the right-hand side of a logical expression
+    //  in a non-conditional context
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: true;
+const x = b1 && b2;
+      `,
+    },
+    `
+function test(foo?: boolean, bar?: boolean) {
+  return (foo && 'foo') || (bar && 'bar');
+}
+    `,
+    `
+declare const b1: boolean;
+declare const b2: boolean;
+const x = (b1 && 'b1') || b2;
+    `,
+    {
+      code: `
+while (true) {}
+      `,
+      options: [{ allowConstantLoopConditions: true }],
+    },
+    {
+      code: `
+for (; true;) {}
+      `,
+      options: [{ allowConstantLoopConditions: true }],
+    },
+    {
+      code: `
+do {} while (true);
+      `,
+      options: [{ allowConstantLoopConditions: true }],
+    },
+    {
+      code: `
+while (true) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'always' }],
+    },
+    {
+      code: `
+for (; true;) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'always' }],
+    },
+    {
+      code: `
+for (; true;) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+for (; 0;) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+do {} while (0);
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+do {} while (true);
+      `,
+      options: [{ allowConstantLoopConditions: 'always' }],
+    },
+    {
+      code: `
+while (true) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+while (1) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+while (false) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+while (0) {}
+      `,
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    `
+let variable = 'abc' as string | void;
+variable?.[0];
+    `,
+    `
+let foo: undefined | { bar: true };
+foo?.bar;
+    `,
+    `
+let foo: null | { bar: true };
+foo?.bar;
+    `,
+    `
+let foo: undefined;
+foo?.bar;
+    `,
+    `
+let foo: undefined;
+foo?.bar.baz;
+    `,
+    `
+let foo: null;
+foo?.bar;
+    `,
+    `
+let anyValue: any;
+anyValue?.foo;
+    `,
+    `
+let unknownValue: unknown;
+unknownValue?.foo;
+    `,
+    `
+let foo: undefined | (() => {});
+foo?.();
+    `,
+    `
+let foo: null | (() => {});
+foo?.();
+    `,
+    `
+let foo: undefined;
+foo?.();
+    `,
+    `
+let foo: undefined;
+foo?.().bar;
+    `,
+    `
+let foo: null;
+foo?.();
+    `,
+    `
+let anyValue: any;
+anyValue?.();
+    `,
+    `
+let unknownValue: unknown;
+unknownValue?.();
+    `,
+    'const foo = [1, 2, 3][0];',
+    `
+declare const foo: { bar?: { baz: { c: string } } } | null;
+foo?.bar?.baz;
+    `,
+    `
+foo?.bar?.baz?.qux;
+    `,
+    `
+declare const foo: { bar: { baz: string } };
+foo.bar.qux?.();
+    `,
+    `
+type Foo = { baz: number } | null;
+type Bar = { baz: null | string | { qux: string } };
+declare const foo: { fooOrBar: Foo | Bar } | null;
+foo?.fooOrBar?.baz?.qux;
+    `,
+    `
+type Foo = { [key: string]: string } | null;
+declare const foo: Foo;
+
+const key = '1';
+foo?.[key]?.trim();
+    `,
+    `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = 'bar' | 'foo';
+declare const foo: Foo;
+declare const key: Key;
+
+foo?.[key].trim();
+    `,
+    `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+  };
+}
+
+function Foo(outer: Outer, key: string): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+    `,
+    `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+    bar: 'bar';
+  };
+}
+type Foo = 'foo';
+
+function Foo(outer: Outer, key: Foo): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+    `,
+    `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = 'bar' | 'foo' | 'baz';
+declare const foo: Foo;
+declare const key: Key;
+
+foo?.[key]?.trim();
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/7700
+    `
+type BrandedKey = string & { __brand: string };
+type Foo = { [key: BrandedKey]: string } | null;
+declare const foo: Foo;
+const key = '1' as BrandedKey;
+foo?.[key]?.trim();
+    `,
+    `
+type BrandedKey<S extends string> = S & { __brand: string };
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = BrandedKey<'bar'> | BrandedKey<'foo'>;
+declare const foo: Foo;
+declare const key: Key;
+foo?.[key].trim();
+    `,
+    `
+type BrandedKey = string & { __brand: string };
+interface Outer {
+  inner?: {
+    [key: BrandedKey]: string | undefined;
+  };
+}
+function Foo(outer: Outer, key: BrandedKey): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+    `,
+    `
+interface Outer {
+  inner?: {
+    [key: string & { __brand: string }]: string | undefined;
+    bar: 'bar';
+  };
+}
+type Foo = 'foo' & { __brand: string };
+function Foo(outer: Outer, key: Foo): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+    `,
+    `
+type BrandedKey<S extends string> = S & { __brand: string };
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = BrandedKey<'bar'> | BrandedKey<'foo'> | BrandedKey<'baz'>;
+declare const foo: Foo;
+declare const key: Key;
+foo?.[key]?.trim();
+    `,
+    {
+      code: `
+type BrandedKey = string & { __brand: string };
+type Foo = { [key: BrandedKey]: string } | null;
+declare const foo: Foo;
+const key = '1' as BrandedKey;
+foo?.[key]?.trim();
+      `,
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    {
+      code: `
+type BrandedKey<S extends string> = S & { __brand: string };
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = BrandedKey<'bar'> | BrandedKey<'foo'>;
+declare const foo: Foo;
+declare const key: Key;
+foo?.[key].trim();
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    {
+      code: `
+type BrandedKey = string & { __brand: string };
+interface Outer {
+  inner?: {
+    [key: BrandedKey]: string | undefined;
+  };
+}
+function Foo(outer: Outer, key: BrandedKey): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    {
+      code: `
+interface Outer {
+  inner?: {
+    [key: string & { __brand: string }]: string | undefined;
+    bar: 'bar';
+  };
+}
+type Foo = 'foo' & { __brand: string };
+function Foo(outer: Outer, key: Foo): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+      `,
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    {
+      code: `
+type BrandedKey<S extends string> = S & { __brand: string };
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = BrandedKey<'bar'> | BrandedKey<'foo'> | BrandedKey<'baz'>;
+declare const foo: Foo;
+declare const key: Key;
+foo?.[key]?.trim();
+      `,
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    {
+      code: `
+type Foo = {
+  key?: Record<string, { key: string }>;
+};
+declare const foo: Foo;
+foo.key?.someKey?.key;
+      `,
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    {
+      code: `
+type Foo = {
+  key?: {
+    [key: string]: () => void;
+  };
+};
+declare const foo: Foo;
+foo.key?.value?.();
+      `,
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    {
+      code: `
+type A = {
+  [name in Lowercase<string>]?: {
+    [name in Lowercase<string>]: {
+      a: 1;
+    };
+  };
+};
+
+declare const a: A;
+
+a.a?.a?.a;
+      `,
+      // `Lowercase<string>` and `Uppercase<string>` index signatures require TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+      languageOptions: {
+        parserOptions: optionsWithNoUncheckedIndexedAccess,
+      },
+    },
+    `
+let latencies: number[][] = [];
+
+function recordData(): void {
+  if (!latencies[0]) latencies[0] = [];
+  latencies[0].push(4);
+}
+
+recordData();
+    `,
+    `
+let latencies: number[][] = [];
+
+function recordData(): void {
+  if (latencies[0]) latencies[0] = [];
+  latencies[0].push(4);
+}
+
+recordData();
+    `,
+    `
+function test(testVal?: boolean) {
+  if (testVal ?? true) {
+    console.log('test');
+  }
+}
+    `,
+    `
+declare const x: string[];
+if (!x[0]) {
+}
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/2421
+    `
+const isEven = (val: number) => val % 2 === 0;
+if (!isEven(1)) {
+}
+    `,
+    `
+declare const booleanTyped: boolean;
+declare const unknownTyped: unknown;
+
+if (!(booleanTyped || unknownTyped)) {
+}
+    `,
+    {
+      code: `
+declare const x: string[] | null;
+// eslint-disable-next-line
+if (x) {
+}
+      `,
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: path.join(rootDir, 'unstrict'),
+        },
+      },
+      options: [
+        {
+          allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: true,
+        },
+      ],
+    },
+    `
+interface Foo {
+  [key: string]: [string] | undefined;
+}
+
+type OptionalFoo = Foo | undefined;
+declare const foo: OptionalFoo;
+foo?.test?.length;
+    `,
+    `
+interface Foo {
+  [key: number]: [string] | undefined;
+}
+
+type OptionalFoo = Foo | undefined;
+declare const foo: OptionalFoo;
+foo?.[1]?.length;
+    `,
+    `
+declare let foo: number | null;
+foo ??= 1;
+    `,
+    `
+declare let foo: number;
+foo ||= 1;
+    `,
+    `
+declare const foo: { bar: { baz?: number; qux: number } };
+type Key = 'baz' | 'qux';
+declare const key: Key;
+foo.bar[key] ??= 1;
+    `,
+    `
+type Fields = {
+  hello?: number;
+  world?: boolean;
+};
+
+let fields: Fields = {};
+
+for (const key of ['hello', 'world'] as const) {
+  fields[key] ??= undefined;
+}
+    `,
+    `
+type Fields = {
+  hello?: boolean | number;
+  world?: boolean;
+};
+
+let fields: Fields = {};
+
+for (const key of ['hello', 'world'] as const) {
+  fields[key] ??= undefined;
+}
+    `,
+    `
+type Fields = {
+  hello?: number;
+  world?: 1 | 2 | 3;
+};
+
+let fields: Fields = {};
+
+for (const key of ['hello', 'world'] as const) {
+  fields[key] ??= undefined;
+}
+    `,
+    `
+type Fields = {
+  hello?: 1 | 2 | 4;
+  world?: 1 | 3 | 5;
+};
+
+let fields: Fields = {};
+
+for (const key of ['hello', 'world'] as const) {
+  fields[key] ??= undefined;
+}
+    `,
+    `
+interface Foo {
+  bizz?: number;
+  buzz?: boolean;
+}
+
+let fields: Fields = {};
+
+for (const key of ['bizz', 'buzz'] as const) {
+  fields[key] ??= undefined;
+}
+    `,
+    `
+enum Keys {
+  A = 'A',
+  B = 'B',
+}
+type Foo = {
+  [Keys.A]: number | null;
+  [Keys.B]: number;
+};
+declare const foo: Foo;
+declare const key: Keys;
+foo[key] ??= 1;
+    `,
+    {
+      code: `
+declare const foo: { bar?: number };
+foo.bar ??= 1;
+      `,
+      languageOptions: { parserOptions: optionsWithExactOptionalPropertyTypes },
+    },
+    {
+      code: `
+declare const foo: { bar: { baz?: number } };
+foo['bar'].baz ??= 1;
+      `,
+      languageOptions: { parserOptions: optionsWithExactOptionalPropertyTypes },
+    },
+    {
+      code: `
+declare const foo: { bar: { baz?: number; qux: number } };
+type Key = 'baz' | 'qux';
+declare const key: Key;
+foo.bar[key] ??= 1;
+      `,
+      languageOptions: { parserOptions: optionsWithExactOptionalPropertyTypes },
+    },
+    `
+declare let foo: number;
+foo &&= 1;
+    `,
+    `
+function foo<T extends object>(arg: T, key: keyof T): void {
+  arg[key] ??= 'default';
+}
+    `,
+    // https://github.com/typescript-eslint/typescript-eslint/issues/6264
+    `
+function get<Obj, Key extends keyof Obj>(obj: Obj, key: Key) {
+  const value = obj[key];
+  if (value) {
+    return value;
+  }
+  throw new Error('BOOM!');
+}
+
+get({ foo: null }, 'foo');
+    `,
+    {
+      code: `
+function getElem(dict: Record<string, { foo: string }>, key: string) {
+  if (dict[key]) {
+    return dict[key].foo;
+  } else {
+    return '';
+  }
+}
+      `,
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    `
+type Foo = { bar: () => number | undefined } | null;
+declare const foo: Foo;
+foo?.bar()?.toExponential();
+    `,
+    `
+type Foo = (() => number | undefined) | null;
+declare const foo: Foo;
+foo?.()?.toExponential();
+    `,
+    `
+type FooUndef = () => undefined;
+type FooNum = () => number;
+type Foo = FooUndef | FooNum | null;
+declare const foo: Foo;
+foo?.()?.toExponential();
+    `,
+    `
+type Foo = { [key: string]: () => number | undefined } | null;
+declare const foo: Foo;
+foo?.['bar']()?.toExponential();
+    `,
+    `
+declare function foo(): void | { key: string };
+const bar = foo()?.key;
+    `,
+    `
+type fn = () => void;
+declare function foo(): void | fn;
+const bar = foo()?.();
+    `,
+    `
+declare function maybe<T>(v: T): T | void;
+const a = maybe({ key1: { key2: maybe({ i: 1 }) } })?.key1.key2?.i;
+    `,
+    `
+type Foo = { bar: { baz: number } | void } | null;
+declare const foo: Foo;
+foo?.bar?.baz;
+    `,
+    `
+declare function maybeFn(): { fn: (() => number) | void } | undefined;
+maybeFn()?.fn?.();
+    `,
+    {
+      code: `
+class ConsistentRand {
+  #rand?: number;
+
+  getCachedRand() {
+    this.#rand ??= Math.random();
+    return this.#rand;
+  }
+}
+      `,
+      languageOptions: { parserOptions: optionsWithExactOptionalPropertyTypes },
+    },
+    {
+      code: `
+declare function assert(x: unknown): asserts x;
+
+assert(Math.random() > 0.5);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assert(x: unknown, y: unknown): asserts x;
+
+assert(Math.random() > 0.5, true);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // should not report because option is disabled.
+      code: `
+declare function assert(x: unknown): asserts x;
+assert(true);
+      `,
+      options: [{ checkTypePredicates: false }],
+    },
+    {
+      // could be argued that this should report since `thisAsserter` is truthy.
+      code: `
+class ThisAsserter {
+  assertThis(this: unknown, arg2: unknown): asserts this {}
+}
+
+const thisAsserter: ThisAsserter = new ThisAsserter();
+thisAsserter.assertThis(true);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // could be argued that this should report since `thisAsserter` is truthy.
+      code: `
+class ThisAsserter {
+  assertThis(this: unknown, arg2: unknown): asserts this {}
+}
+
+const thisAsserter: ThisAsserter = new ThisAsserter();
+thisAsserter.assertThis(Math.random());
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assert(x: unknown): asserts x;
+assert(...[]);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // ok to report if we start unpacking spread params one day.
+      code: `
+declare function assert(x: unknown): asserts x;
+assert(...[], {});
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assertString(x: unknown): asserts x is string;
+declare const a: string;
+assertString(a);
+      `,
+      options: [{ checkTypePredicates: false }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const a: string;
+isString(a);
+      `,
+      options: [{ checkTypePredicates: false }],
+    },
+    {
+      // Technically, this has type 'falafel' and not string.
+      code: `
+declare function assertString(x: unknown): asserts x is string;
+assertString('falafel');
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // Technically, this has type 'falafel' and not string.
+      code: `
+declare function isString(x: unknown): x is string;
+isString('falafel');
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // string | number | bigint is not a subtype of string | number
+      code: `
+declare function isStringOrNumber(x: unknown): x is string | number;
+declare const s: string | number | bigint;
+if (isStringOrNumber(s)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // Narrower is not a subtype of Wider
+      code: `
+interface Wider {
+  a: string;
+}
+interface Narrower {
+  a: string;
+  b: number;
+}
+declare function isNarrower(x: unknown): x is Narrower;
+declare const w: Wider;
+if (isNarrower(w)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+type A = { [name in Lowercase<string>]?: A };
+declare const a: A;
+a.a?.a?.a;
+      `,
+      // `Lowercase<string>` and `Uppercase<string>` index signatures require TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+    },
+    {
+      code: `
+interface T {
+  [name: Lowercase<string>]: {
+    [name: Lowercase<string>]: {
+      [name: Lowercase<string>]: {
+        value: 'value';
+      };
+    };
+  };
+  [name: Uppercase<string>]: null | {
+    [name: Uppercase<string>]: null | {
+      [name: Uppercase<string>]: null | {
+        VALUE: 'VALUE';
+      };
+    };
+  };
+}
+
+declare const t: T;
+
+t.a.a.a.value;
+t.A?.A?.A?.VALUE;
+      `,
+      // `Lowercase<string>` and `Uppercase<string>` index signatures require TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+    },
+  ],
+
+  invalid: [
+    // Ensure that it's checking in all the right places
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+const t2 = b1 || b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+if (b1 && b2) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+if (b2 && b1) {
+}
+      `,
+      errors: [
+        {
+          column: 11,
+          endColumn: 13,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+while (b1 && b2) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 10,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+while (b2 && b1) {}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+for (let i = 0; b1 && b2; i++) {
+  break;
+}
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 19,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+const t1 = b1 && b2 ? 'yes' : 'no';
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+declare const b2: boolean;
+const t1 = b2 && b1 ? 'yes' : 'no';
+      `,
+      errors: [
+        {
+          column: 18,
+          endColumn: 20,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const b1 = true;
+switch (b1) {
+  case true:
+  default:
+}
+      `,
+      errors: [
+        {
+          column: 8,
+          data: {
+            left: 'true',
+            operator: '===',
+            right: 'true',
+            trueOrFalse: 'true',
+          },
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    // Ensure that it's complaining about the right things
+    {
+      code: `
+declare const b1: object;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: object | true;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    // Two falsy literals
+    {
+      code: `
+declare const b1: '' | false;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+
+    {
+      code: `
+declare const b1: 'always truthy';
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: undefined;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: null;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: void;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: never;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'never',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: string & number;
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'never',
+        },
+      ],
+      output: null,
+    },
+    // More complex logical expressions
+    {
+      code: `
+declare const falseyBigInt: 0n;
+if (falseyBigInt) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 17,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const posbigInt: 1n;
+if (posbigInt) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const negBigInt: -2n;
+if (negBigInt) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+if (true && b1 && b2) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 9,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+if (b1 && false && b2) {
+}
+      `,
+      errors: [
+        {
+          column: 11,
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+if (b1 || b2 || true) {
+}
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 21,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+if ((b1 && 'b1') || b2) {
+}
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+do {} while ((b1 && 'b1') || b2);
+      `,
+      errors: [
+        {
+          column: 21,
+          endColumn: 25,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+for (; (b1 && 'b1') || b2;) {}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 19,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+if (!((b1 && 'b1') || b2)) {
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 18,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const b1: boolean;
+declare const b2: boolean;
+const t1 = b1 && 'b1' && b2;
+      `,
+      errors: [
+        {
+          column: 18,
+          endColumn: 22,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+
+    // Generic type params
+    {
+      code: `
+function test<T extends object>(t: T) {
+  return t ? 'yes' : 'no';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends false>(t: T) {
+  return t ? 'yes' : 'no';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends 'a' | 'b'>(t: T) {
+  return t ? 'yes' : 'no';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+
+    // Boolean expressions
+    {
+      code: `
+function test(a: 'a') {
+  return a === 'a';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          data: {
+            left: '"a"',
+            operator: '===',
+            right: '"a"',
+            trueOrFalse: 'true',
+          },
+          endColumn: 19,
+          endLine: 3,
+          line: 3,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+declare const a: '34';
+declare const b: '56';
+a > b;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '"34"',
+            operator: '>',
+            right: '"56"',
+            trueOrFalse: 'false',
+          },
+          endColumn: 6,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+const y = 1;
+if (y === 0) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: '1',
+            operator: '===',
+            right: '0',
+            trueOrFalse: 'false',
+          },
+          endColumn: 12,
+          endLine: 3,
+          line: 3,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+// @ts-expect-error
+if (1 == '1') {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: '1',
+            operator: '==',
+            right: '"1"',
+            trueOrFalse: 'true',
+          },
+          endColumn: 13,
+          endLine: 3,
+          line: 3,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+2.3 > 2.3;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '2.3',
+            operator: '>',
+            right: '2.3',
+            trueOrFalse: 'false',
+          },
+          endColumn: 10,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+2.3 >= 2.3;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '2.3',
+            operator: '>=',
+            right: '2.3',
+            trueOrFalse: 'true',
+          },
+          endColumn: 11,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+2n < 2n;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '2n',
+            operator: '<',
+            right: '2n',
+            trueOrFalse: 'false',
+          },
+          endColumn: 8,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+2n <= 2n;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '2n',
+            operator: '<=',
+            right: '2n',
+            trueOrFalse: 'true',
+          },
+          endColumn: 9,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+-2n !== 2n;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: '-2n',
+            operator: '!==',
+            right: '2n',
+            trueOrFalse: 'true',
+          },
+          endColumn: 11,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+// @ts-expect-error
+if (1 == '2') {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: '1',
+            operator: '==',
+            right: '"2"',
+            trueOrFalse: 'false',
+          },
+          endColumn: 13,
+          endLine: 3,
+          line: 3,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+// @ts-expect-error
+if (1 != '2') {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: '1',
+            operator: '!=',
+            right: '"2"',
+            trueOrFalse: 'true',
+          },
+          endColumn: 13,
+          endLine: 3,
+          line: 3,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+enum Foo {
+  a = 1,
+  b = 2,
+}
+
+const x = Foo.a;
+if (x === Foo.a) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: 'Foo.a',
+            operator: '===',
+            right: 'Foo.a',
+            trueOrFalse: 'true',
+          },
+          endColumn: 16,
+          endLine: 8,
+          line: 8,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+enum Foo {
+  a = 1,
+  b = 2,
+}
+
+const x = Foo.a;
+if (x === 1) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            left: 'Foo.a',
+            operator: '===',
+            right: 1,
+            trueOrFalse: 'true',
+          },
+          endColumn: 12,
+          endLine: 8,
+          line: 8,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      // narrowed to null. always-true because of loose nullish equality
+      code: `
+function takesMaybeValue(a: null | object) {
+  if (a) {
+  } else if (a == undefined) {
+  }
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: {
+            left: 'null',
+            operator: '==',
+            right: 'undefined',
+            trueOrFalse: 'true',
+          },
+          endColumn: 28,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      // narrowed to null. always-false because of strict undefined equality
+      code: `
+function takesMaybeValue(a: null | object) {
+  if (a) {
+  } else if (a === undefined) {
+  }
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: {
+            left: 'null',
+            operator: '===',
+            right: 'undefined',
+            trueOrFalse: 'false',
+          },
+          endColumn: 29,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      // narrowed to null. always-false because of loose nullish equality
+      code: `
+function takesMaybeValue(a: null | object) {
+  if (a) {
+  } else if (a != undefined) {
+  }
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: {
+            left: 'null',
+            operator: '!=',
+            right: 'undefined',
+            trueOrFalse: 'false',
+          },
+          endColumn: 28,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      // narrowed to null. always-true because of strict undefined equality
+      code: `
+function takesMaybeValue(a: null | object) {
+  if (a) {
+  } else if (a !== undefined) {
+  }
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: {
+            left: 'null',
+            operator: '!==',
+            right: 'undefined',
+            trueOrFalse: 'true',
+          },
+          endColumn: 29,
+          endLine: 4,
+          line: 4,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+true === false;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: 'true',
+            operator: '===',
+            right: 'false',
+            trueOrFalse: 'false',
+          },
+          endColumn: 15,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+true === true;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: 'true',
+            operator: '===',
+            right: 'true',
+            trueOrFalse: 'true',
+          },
+          endColumn: 14,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    {
+      code: `
+true === undefined;
+      `,
+      errors: [
+        {
+          column: 1,
+          data: {
+            left: 'true',
+            operator: '===',
+            right: 'undefined',
+            trueOrFalse: 'false',
+          },
+          endColumn: 19,
+          endLine: 2,
+          line: 2,
+          messageId: 'comparisonBetweenLiteralTypes',
+        },
+      ],
+    },
+    // Workaround https://github.com/microsoft/TypeScript/issues/37160
+    {
+      code: `
+function test(a: string) {
+  const t1 = a === undefined;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t2 = undefined === a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t3 = a !== undefined;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t4 = undefined !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t5 = a === null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t6 = null === a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t7 = a !== null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string) {
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a?: string) {
+  const t1 = a === undefined;
+  const t2 = undefined === a;
+  const t3 = a !== undefined;
+  const t4 = undefined !== a;
+  const t5 = a === null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 7,
+          line: 7,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a?: string) {
+  const t1 = a === undefined;
+  const t2 = undefined === a;
+  const t3 = a !== undefined;
+  const t4 = undefined !== a;
+  const t6 = null === a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 7,
+          line: 7,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a?: string) {
+  const t1 = a === undefined;
+  const t2 = undefined === a;
+  const t3 = a !== undefined;
+  const t4 = undefined !== a;
+  const t7 = a !== null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 7,
+          line: 7,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a?: string) {
+  const t1 = a === undefined;
+  const t2 = undefined === a;
+  const t3 = a !== undefined;
+  const t4 = undefined !== a;
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 7,
+          line: 7,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null | string) {
+  const t1 = a === undefined;
+  const t5 = a === null;
+  const t6 = null === a;
+  const t7 = a !== null;
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null | string) {
+  const t2 = undefined === a;
+  const t5 = a === null;
+  const t6 = null === a;
+  const t7 = a !== null;
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null | string) {
+  const t3 = a !== undefined;
+  const t5 = a === null;
+  const t6 = null === a;
+  const t7 = a !== null;
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null | string) {
+  const t4 = undefined !== a;
+  const t5 = a === null;
+  const t6 = null === a;
+  const t7 = a !== null;
+  const t8 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 29,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t1 = a == null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 23,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t2 = null == a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 23,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t3 = a != null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 23,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t4 = null != a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 23,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t5 = a == undefined;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 28,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t6 = undefined == a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 28,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t7 = a != undefined;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 28,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t8 = undefined != a;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 28,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t9 = a === null;
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 24,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t10 = null === a;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 25,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t11 = a !== null;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 25,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t12 = null !== a;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 25,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t13 = a === undefined;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t14 = undefined === a;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t15 = a !== undefined;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends object>(a: T) {
+  const t16 = undefined !== a;
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'noOverlapBooleanExpression',
+        },
+      ],
+    },
+    // Nullish coalescing operator
+    {
+      code: `
+function test(a: string) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: string | false) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends string>(a: T) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends string>(a: Awaited<T>) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends Promise<object>>(a: Awaited<T>) {
+  return a ? 'yes' : 'no';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T>(a: T extends string ? 'a' : 'b') {
+  return a ? 'yes' : 'no';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T>(a: T extends string ? 'a' : 'b') {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    // nullish + array index without optional chaining
+    {
+      code: `
+function test(a: { foo: string }[]) {
+  return a[0].foo ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 18,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: null[]) {
+  return a[0] ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends null>(a: T) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+function test(a: never) {
+  return a ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'never',
+        },
+      ],
+    },
+    {
+      code: `
+function test<T extends { foo: number }, K extends 'foo'>(num: T[K]) {
+  num ?? 'default';
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    // Predicate functions
+    {
+      code: `
+[1, 3, 5].filter(() => true);
+      `,
+      errors: [
+        {
+          column: 24,
+          endColumn: 28,
+          endLine: 2,
+          line: 2,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+[1, 2, 3].find(() => {
+  return false;
+});
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 15,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+// with non-literal array
+function nothing(x: string[]) {
+  return x.filter(() => false);
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 30,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+// with readonly array
+function nothing2(x: readonly string[]) {
+  return x.filter(() => false);
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 30,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+// with tuple
+function nothing3(x: [string, string]) {
+  return x.filter(() => false);
+}
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 30,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const test: <T extends true>() => T;
+
+[1, null].filter(test);
+      `,
+      errors: [
+        {
+          column: 18,
+          endColumn: 22,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthyFunc',
+        },
+      ],
+    },
+    // Indexing cases
+    {
+      // This is an error because 'dict' doesn't represent
+      //  the potential for undefined in its types
+      code: `
+declare const dict: Record<string, object>;
+if (dict['mightNotExist']) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 26,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    // Should still check tuples when accessed with literal numbers, since they don't have
+    //   unsound index signatures
+    {
+      code: `
+const x = [{}] as [{ foo: string }];
+if (x[0]) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 9,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const x = [{}] as [{ foo: string }];
+if (x[0]?.foo) {
+}
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+const x = [{}] as [{ foo: string }];
+if (x[0].foo) {
+}
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      // Shouldn't mistake this for an array indexing case
+      code: `
+declare const arr: object[];
+if (arr.filter) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 15,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+function truthy() {
+  return [];
+}
+[1, 3, 5].filter(truthy);
+      `,
+      errors: [
+        {
+          column: 18,
+          endColumn: 24,
+          endLine: 5,
+          line: 5,
+          messageId: 'alwaysTruthyFunc',
+        },
+      ],
+    },
+    {
+      code: `
+function falsy() {}
+[1, 2, 3].find(falsy);
+      `,
+      errors: [
+        {
+          column: 16,
+          endColumn: 21,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsyFunc',
+        },
+      ],
+    },
+    {
+      code: `
+function falsy() {}
+[1, 2, 3].findLastIndex(falsy);
+      `,
+      errors: [
+        {
+          column: 25,
+          endColumn: 30,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsyFunc',
+        },
+      ],
+    },
+    // Supports generics
+    // TODO: fix this
+    //     {
+    //       code: `
+    // const isTruthy = <T>(t: T) => T;
+    // // Valid: numbers can be truthy or falsy (0).
+    // [0,1,2,3].filter(isTruthy);
+    // // Invalid: arrays are always falsy.
+    // [[1,2], [3,4]].filter(isTruthy);
+    // `,
+    //       errors: [({ line: 6, column: 23, messageId: 'alwaysTruthyFunc' })],
+    //     },
+    {
+      code: `
+declare const test: true;
+
+while (test) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: false }],
+    },
+    {
+      code: `
+declare const test: true;
+
+for (; test;) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: false }],
+    },
+    {
+      code: `
+declare const test: true;
+
+do {} while (test);
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 18,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: false }],
+    },
+    {
+      code: `
+declare const test: true;
+
+while (test) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'never' }],
+    },
+    {
+      code: `
+declare const test: true;
+
+for (; test;) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'never' }],
+    },
+    {
+      code: `
+declare const test: true;
+
+do {} while (test);
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 18,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'never' }],
+    },
+    {
+      code: `
+declare const test: true;
+
+while (test) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+declare const test: 1;
+
+while (test) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+declare const test: true;
+
+for (; test;) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+declare const test: true;
+
+do {} while (test);
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 18,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+let shouldRun = true;
+
+while ((shouldRun = true)) {}
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 25,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+while (2) {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 9,
+          endLine: 2,
+          line: 2,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+while ('truthy') {}
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 16,
+          endLine: 2,
+          line: 2,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ allowConstantLoopConditions: 'only-allowed-literals' }],
+    },
+    {
+      code: `
+let foo = { bar: true };
+foo?.bar;
+      `,
+      errors: [
+        {
+          column: 4,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = { bar: true };
+foo.bar;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = { bar: true };
+foo ?. bar;
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = { bar: true };
+foo . bar;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = { bar: true };
+foo ?.
+  bar;
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = { bar: true };
+foo .
+  bar;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = { bar: true };
+foo
+  ?. bar;
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 5,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = { bar: true };
+foo
+  . bar;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+let foo = () => {};
+foo?.();
+      `,
+      errors: [
+        {
+          column: 4,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo ?. ();
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo  ();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo ?.
+  ();
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo\u0020
+  ();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo
+  ?. ();
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 5,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo
+   ();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+let foo = () => {};
+foo?.(bar);
+      `,
+      errors: [
+        {
+          column: 4,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo(bar);
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo ?. (bar);
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo  (bar);
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo ?.
+  (bar);
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo\u0020
+  (bar);
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: noFormat`
+let foo = () => {};
+foo
+  ?. (bar);
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 5,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let foo = () => {};
+foo
+   (bar);
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'const foo = [1, 2, 3]?.[0];',
+      errors: [
+        {
+          column: 22,
+          endColumn: 24,
+          endLine: 1,
+          line: 1,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: 'const foo = [1, 2, 3][0];',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const x: { a?: { b: string } };
+x?.a?.b;
+      `,
+      errors: [
+        {
+          column: 2,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const x: { a?: { b: string } };
+x.a?.b;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const x: { a: { b?: { c: string } } };
+x.a?.b?.c;
+      `,
+      errors: [
+        {
+          column: 4,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const x: { a: { b?: { c: string } } };
+x.a.b?.c;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+let x: { a?: string };
+x?.a;
+      `,
+      errors: [
+        {
+          column: 2,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+let x: { a?: string };
+x.a;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar: { baz: { c: string } } } | null;
+foo?.bar?.baz;
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { c: string } } } | null;
+foo?.bar.baz;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar?: { baz: { qux: string } } } | null;
+foo?.bar?.baz?.qux;
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar?: { baz: { qux: string } } } | null;
+foo?.bar?.baz.qux;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar: { baz: { qux?: () => {} } } } | null;
+foo?.bar?.baz?.qux?.();
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { qux?: () => {} } } } | null;
+foo?.bar.baz?.qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { qux?: () => {} } } } | null;
+foo?.bar?.baz.qux?.();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar: { baz: { qux: () => {} } } } | null;
+foo?.bar?.baz?.qux?.();
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { qux: () => {} } } } | null;
+foo?.bar.baz?.qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { qux: () => {} } } } | null;
+foo?.bar?.baz.qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 19,
+          endColumn: 21,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const foo: { bar: { baz: { qux: () => {} } } } | null;
+foo?.bar?.baz?.qux();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type baz = () => { qux: () => {} };
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.().qux?.();
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = () => { qux: () => {} };
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar.baz?.().qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = () => { qux: () => {} };
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz().qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 22,
+          endColumn: 24,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = () => { qux: () => {} };
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.().qux();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type baz = null | (() => { qux: () => {} });
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.().qux?.();
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = null | (() => { qux: () => {} });
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar.baz?.().qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 22,
+          endColumn: 24,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = null | (() => { qux: () => {} });
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.().qux();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type baz = null | (() => { qux: () => {} } | null);
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.()?.qux?.();
+      `,
+      errors: [
+        {
+          column: 9,
+          endColumn: 11,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = null | (() => { qux: () => {} } | null);
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar.baz?.()?.qux?.();
+      `,
+            },
+          ],
+        },
+        {
+          column: 23,
+          endColumn: 25,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type baz = null | (() => { qux: () => {} } | null);
+declare const foo: { bar: { baz: baz } } | null;
+foo?.bar?.baz?.()?.qux();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { baz: number };
+type Bar = { baz: null | string | { qux: string } };
+declare const foo: { fooOrBar: Foo | Bar } | null;
+foo?.fooOrBar?.baz?.qux;
+      `,
+      errors: [
+        {
+          column: 14,
+          endColumn: 16,
+          endLine: 5,
+          line: 5,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { baz: number };
+type Bar = { baz: null | string | { qux: string } };
+declare const foo: { fooOrBar: Foo | Bar } | null;
+foo?.fooOrBar.baz?.qux;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const x: { a: { b: number } }[];
+x[0].a?.b;
+      `,
+      errors: [
+        {
+          column: 7,
+          endColumn: 9,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const x: { a: { b: number } }[];
+x[0].a.b;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = 'bar' | 'foo';
+declare const foo: Foo;
+declare const key: Key;
+
+foo?.[key]?.trim();
+      `,
+      errors: [
+        {
+          column: 11,
+          endColumn: 13,
+          endLine: 7,
+          line: 7,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+type Key = 'bar' | 'foo';
+declare const foo: Foo;
+declare const key: Key;
+
+foo?.[key].trim();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+declare const foo: Foo;
+const key = 'bar';
+foo?.[key]?.trim();
+      `,
+      errors: [
+        {
+          column: 11,
+          endColumn: 13,
+          endLine: 5,
+          line: 5,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { [key: string]: string; foo: 'foo'; bar: 'bar' } | null;
+declare const foo: Foo;
+const key = 'bar';
+foo?.[key].trim();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+    bar: 'bar';
+  };
+}
+
+export function test(outer: Outer): number | undefined {
+  const key = 'bar';
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+      `,
+      errors: [
+        {
+          column: 28,
+          endColumn: 30,
+          endLine: 11,
+          line: 11,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+    bar: 'bar';
+  };
+}
+
+export function test(outer: Outer): number | undefined {
+  const key = 'bar';
+  return outer.inner?.[key].charCodeAt(0);
+}
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+    bar: 'bar';
+  };
+}
+type Bar = 'bar';
+
+function Foo(outer: Outer, key: Bar): number | undefined {
+  return outer.inner?.[key]?.charCodeAt(0);
+}
+      `,
+      errors: [
+        {
+          column: 28,
+          endColumn: 30,
+          endLine: 11,
+          line: 11,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface Outer {
+  inner?: {
+    [key: string]: string | undefined;
+    bar: 'bar';
+  };
+}
+type Bar = 'bar';
+
+function Foo(outer: Outer, key: Bar): number | undefined {
+  return outer.inner?.[key].charCodeAt(0);
+}
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/2384
+    {
+      code: `
+function test(testVal?: true) {
+  if (testVal ?? true) {
+    console.log('test');
+  }
+}
+      `,
+      errors: [
+        {
+          column: 7,
+          endColumn: 22,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    // https://github.com/typescript-eslint/typescript-eslint/issues/2255
+    {
+      code: `
+const a = null;
+if (!a) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+const a = true;
+if (!a) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 7,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+function sayHi(): void {
+  console.log('Hi!');
+}
+
+let speech: never = sayHi();
+if (!speech) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 12,
+          endLine: 7,
+          line: 7,
+          messageId: 'never',
+        },
+      ],
+    },
+    // Unstrict
+    /* eslint-disable @typescript-eslint/internal/no-multiple-lines-of-errors */
+    {
+      code: `
+declare const x: string[] | null;
+if (x) {
+}
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 1,
+          endLine: 0,
+          line: 0,
+          messageId: 'noStrictNullCheck',
+        },
+        {
+          column: 5,
+          endColumn: 6,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: path.join(rootDir, 'unstrict'),
+        },
+      },
+    },
+    /* eslint-enable @typescript-eslint/internal/no-multiple-lines-of-errors */
+    {
+      code: `
+interface Foo {
+  test: string;
+  [key: string]: [string] | undefined;
+}
+
+type OptionalFoo = Foo | undefined;
+declare const foo: OptionalFoo;
+foo?.test?.length;
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 12,
+          endLine: 9,
+          line: 9,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface Foo {
+  test: string;
+  [key: string]: [string] | undefined;
+}
+
+type OptionalFoo = Foo | undefined;
+declare const foo: OptionalFoo;
+foo?.test.length;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+function pick<Obj extends Record<string, 1 | 2 | 3>, Key extends keyof Obj>(
+  obj: Obj,
+  key: Key,
+): Obj[Key] {
+  const k = obj[key];
+  if (obj[key]) {
+    return obj[key];
+  }
+  throw new Error('Boom!');
+}
+
+pick({ foo: 1, bar: 2 }, 'bar');
+      `,
+      errors: [
+        {
+          column: 7,
+          endColumn: 15,
+          endLine: 7,
+          line: 7,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+function getElem(dict: Record<string, { foo: string }>, key: string) {
+  if (dict[key]) {
+    return dict[key].foo;
+  } else {
+    return '';
+  }
+}
+      `,
+      errors: [
+        {
+          column: 7,
+          endColumn: 16,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: {};
+foo ??= 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: number;
+foo ??= 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: null;
+foo ??= null;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar: null };
+foo.bar ??= null;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 8,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: Record<string, undefined>;
+declare const key: string;
+foo[key] ??= undefined;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 9,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+type Fields = {
+  hello?: undefined;
+  world?: null;
+};
+
+let fields: Fields = {};
+
+for (const key of ['hello', 'world'] as const) {
+  fields[key] ??= undefined;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 14,
+          endLine: 10,
+          line: 10,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+interface Foo {
+  bizz?: undefined;
+  buzz?: null;
+}
+
+let fields: Foo = {};
+
+for (const key of ['buzz', 'bizz'] as const) {
+  fields[key] ??= undefined;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 14,
+          endLine: 10,
+          line: 10,
+          messageId: 'alwaysNullish',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: {};
+foo ||= 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: null;
+foo ||= null;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: {};
+foo &&= 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare let foo: null;
+foo &&= null;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 4,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+    },
+    {
+      code: `
+declare const foo: { bar: number };
+foo.bar ??= 1;
+      `,
+      errors: [
+        {
+          column: 1,
+          endColumn: 8,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverNullish',
+        },
+      ],
+      languageOptions: { parserOptions: optionsWithExactOptionalPropertyTypes },
+    },
+    {
+      code: `
+type Foo = { bar: () => number } | null;
+declare const foo: Foo;
+foo?.bar()?.toExponential();
+      `,
+      errors: [
+        {
+          column: 11,
+          endColumn: 13,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { bar: () => number } | null;
+declare const foo: Foo;
+foo?.bar().toExponential();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { bar: null | { baz: () => { qux: number } } } | null;
+declare const foo: Foo;
+foo?.bar?.baz()?.qux?.toExponential();
+      `,
+      errors: [
+        {
+          column: 16,
+          endColumn: 18,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { bar: null | { baz: () => { qux: number } } } | null;
+declare const foo: Foo;
+foo?.bar?.baz().qux?.toExponential();
+      `,
+            },
+          ],
+        },
+        {
+          column: 21,
+          endColumn: 23,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { bar: null | { baz: () => { qux: number } } } | null;
+declare const foo: Foo;
+foo?.bar?.baz()?.qux.toExponential();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = (() => number) | null;
+declare const foo: Foo;
+foo?.()?.toExponential();
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 10,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = (() => number) | null;
+declare const foo: Foo;
+foo?.().toExponential();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { [key: string]: () => number } | null;
+declare const foo: Foo;
+foo?.['bar']()?.toExponential();
+      `,
+      errors: [
+        {
+          column: 15,
+          endColumn: 17,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { [key: string]: () => number } | null;
+declare const foo: Foo;
+foo?.['bar']().toExponential();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+type Foo = { [key: string]: () => number } | null;
+declare const foo: Foo;
+foo?.['bar']?.()?.toExponential();
+      `,
+      errors: [
+        {
+          column: 17,
+          endColumn: 19,
+          endLine: 4,
+          line: 4,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type Foo = { [key: string]: () => number } | null;
+declare const foo: Foo;
+foo?.['bar']?.().toExponential();
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+const a = true;
+if (!!a) {
+}
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 8,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+    },
+    {
+      code: `
+declare function assert(x: unknown): asserts x;
+assert(true);
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assert(x: unknown): asserts x;
+assert(false);
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 13,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assert(x: unknown, y: unknown): asserts x;
+
+assert(true, Math.random() > 0.5);
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assert(x: unknown): asserts x;
+assert({});
+      `,
+      errors: [
+        {
+          column: 8,
+          endColumn: 10,
+          endLine: 3,
+          line: 3,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assertsString(x: unknown): asserts x is string;
+declare const a: string;
+assertsString(a);
+      `,
+      errors: [
+        {
+          column: 15,
+          data: { typeGuardOrAssertionFunction: 'assertion function' },
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const a: string;
+isString(a);
+      `,
+      errors: [
+        {
+          column: 10,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 11,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const a: string;
+isString('fa' + 'lafel');
+      `,
+      errors: [
+        {
+          column: 10,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 24,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // string is a strict subtype of string | number.
+      code: `
+declare function isStringOrNumber(x: unknown): x is string | number;
+declare const s: string;
+if (isStringOrNumber(s)) {
+}
+      `,
+      errors: [
+        {
+          column: 22,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 23,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+interface Wider {
+  a: string;
+}
+interface Narrower {
+  a: string;
+  b?: number;
+}
+declare function isWider(x: unknown): x is Wider;
+declare const n: Narrower;
+if (isWider(n)) {
+}
+      `,
+      errors: [
+        {
+          column: 13,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 14,
+          endLine: 11,
+          line: 11,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      // Mutually assignable types: Wider is assignable to Narrower (b is
+      // optional), so the type guard condition is always true.
+      code: `
+interface Wider {
+  a: string;
+}
+interface Narrower {
+  a: string;
+  b?: number;
+}
+declare function isNarrower(x: unknown): x is Narrower;
+declare const w: Wider;
+if (isNarrower(w)) {
+}
+      `,
+      errors: [
+        {
+          column: 16,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 17,
+          endLine: 11,
+          line: 11,
+          messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+
+    // "branded" types
+    {
+      code: `
+declare const b1: '' & {};
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: '' & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: ('' | false) & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: (
+  (string & { __brandA: string }) | (number & { __brandB: string })
+) &
+  '';
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 7,
+          line: 7,
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: ('foo' | 'bar') & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: (123 | true) & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: (string | number) & ('foo' | 123) & { __brand: string };
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: (
+  (string & { __brandA: string }) | (number & { __brandB: string })
+) &
+  'foo';
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 7,
+          line: 7,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+declare const b1: (
+  (string & { __brandA: string }) | (number & { __brandB: string })
+) &
+  ('foo' | 123);
+declare const b2: boolean;
+const t1 = b1 && b2;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 7,
+          line: 7,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      output: null,
+    },
+    {
+      code: `
+type A = {
+  [name in Lowercase<string>]?: {
+    [name in Lowercase<string>]: {
+      a: 1;
+    };
+  };
+};
+
+declare const a: A;
+
+a.a?.a?.a;
+      `,
+      // `Lowercase<string>` and `Uppercase<string>` index signatures require TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+      errors: [
+        {
+          column: 7,
+          endColumn: 9,
+          endLine: 12,
+          line: 12,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+type A = {
+  [name in Lowercase<string>]?: {
+    [name in Lowercase<string>]: {
+      a: 1;
+    };
+  };
+};
+
+declare const a: A;
+
+a.a?.a.a;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+interface T {
+  [name: Lowercase<string>]: {
+    [name: Lowercase<string>]: {
+      [name: Lowercase<string>]: {
+        value: 'value';
+      };
+    };
+  };
+  [name: Uppercase<string>]: null | {
+    [name: Uppercase<string>]: null | {
+      [name: Uppercase<string>]: null | {
+        VALUE: 'VALUE';
+      };
+    };
+  };
+}
+
+declare const t: T;
+
+t.a?.a?.a?.value;
+      `,
+      // `Lowercase<string>` and `Uppercase<string>` index signatures require TS 4.9
+      dependencyConstraints: { typescript: '4.9' },
+      errors: [
+        {
+          column: 4,
+          endColumn: 6,
+          endLine: 21,
+          line: 21,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface T {
+  [name: Lowercase<string>]: {
+    [name: Lowercase<string>]: {
+      [name: Lowercase<string>]: {
+        value: 'value';
+      };
+    };
+  };
+  [name: Uppercase<string>]: null | {
+    [name: Uppercase<string>]: null | {
+      [name: Uppercase<string>]: null | {
+        VALUE: 'VALUE';
+      };
+    };
+  };
+}
+
+declare const t: T;
+
+t.a.a?.a?.value;
+      `,
+            },
+          ],
+        },
+        {
+          column: 7,
+          endColumn: 9,
+          endLine: 21,
+          line: 21,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface T {
+  [name: Lowercase<string>]: {
+    [name: Lowercase<string>]: {
+      [name: Lowercase<string>]: {
+        value: 'value';
+      };
+    };
+  };
+  [name: Uppercase<string>]: null | {
+    [name: Uppercase<string>]: null | {
+      [name: Uppercase<string>]: null | {
+        VALUE: 'VALUE';
+      };
+    };
+  };
+}
+
+declare const t: T;
+
+t.a?.a.a?.value;
+      `,
+            },
+          ],
+        },
+        {
+          column: 10,
+          endColumn: 12,
+          endLine: 21,
+          line: 21,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+interface T {
+  [name: Lowercase<string>]: {
+    [name: Lowercase<string>]: {
+      [name: Lowercase<string>]: {
+        value: 'value';
+      };
+    };
+  };
+  [name: Uppercase<string>]: null | {
+    [name: Uppercase<string>]: null | {
+      [name: Uppercase<string>]: null | {
+        VALUE: 'VALUE';
+      };
+    };
+  };
+}
+
+declare const t: T;
+
+t.a?.a?.a.value;
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+declare const test: Array<{ a?: string }>;
+
+if (test[0]?.a) {
+  test[0]?.a;
+}
+      `,
+      errors: [
+        {
+          column: 10,
+          endColumn: 12,
+          endLine: 5,
+          line: 5,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const test: Array<{ a?: string }>;
+
+if (test[0]?.a) {
+  test[0].a;
+}
+      `,
+            },
+          ],
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    {
+      code: `
+declare const arr2: Array<{ x: { y: { z: object } } }>;
+arr2[42]?.x?.y?.z;
+      `,
+      errors: [
+        {
+          column: 12,
+          endColumn: 14,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const arr2: Array<{ x: { y: { z: object } } }>;
+arr2[42]?.x.y?.z;
+      `,
+            },
+          ],
+        },
+        {
+          column: 15,
+          endColumn: 17,
+          endLine: 3,
+          line: 3,
+          messageId: 'neverOptionalChain',
+          suggestions: [
+            {
+              messageId: 'suggestRemoveOptionalChain',
+              output: `
+declare const arr2: Array<{ x: { y: { z: object } } }>;
+arr2[42]?.x?.y.z;
+      `,
+            },
+          ],
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    {
+      code: `
+declare const arr: string[];
+
+if (arr[0]) {
+  arr[0] ?? 'foo';
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          endColumn: 9,
+          endLine: 5,
+          line: 5,
+          messageId: 'neverNullish',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+    {
+      code: `
+declare const arr: object[];
+
+if (arr[42] && arr[42]) {
+}
+      `,
+      errors: [
+        {
+          column: 16,
+          endColumn: 23,
+          endLine: 4,
+          line: 4,
+          messageId: 'alwaysTruthy',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          project: './tsconfig.noUncheckedIndexedAccess.json',
+          projectService: false,
+          tsconfigRootDir: getFixturesRootDir(),
+        },
+      },
+    },
+  ],
+});

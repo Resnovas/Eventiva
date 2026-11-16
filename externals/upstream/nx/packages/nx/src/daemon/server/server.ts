@@ -1,0 +1,867 @@
+import { chmodSync, existsSync } from 'fs';
+import { isPermissionDenied } from '../../utils/permission-errors';
+import { SOCKET_REFUSED_EXIT_CODE } from '../../utils/socket-refused-exit-code';
+import { createServer, Server, Socket } from 'net';
+import { join } from 'path';
+import { startAnalytics } from '../../analytics';
+import { hashArray } from '../../hasher/file-hasher';
+import { hashFile } from '../../native';
+import {
+  consumeMessagesFromSocket,
+  describeMessage,
+  isJsonMessage,
+  parseMessage,
+} from '../../utils/consume-messages-from-socket';
+import '../../utils/perf-logging';
+import { nxVersion } from '../../utils/versions';
+import { workspaceRoot } from '../../utils/workspace-root';
+import { getDaemonProcessIdSync, writeDaemonJsonProcessCache } from '../cache';
+import { isNxVersionMismatch } from '../is-nx-version-mismatch';
+import { getInstalledNxVersion } from '../../utils/installed-nx-version';
+import { serverLogger } from '../logger';
+import {
+  GET_CONFIGURE_AI_AGENTS_STATUS,
+  isHandleGetConfigureAiAgentsStatusMessage,
+  isHandleResetConfigureAiAgentsStatusMessage,
+  RESET_CONFIGURE_AI_AGENTS_STATUS,
+} from '../message-types/configure-ai-agents';
+import {
+  assertNotForeignWorkspaceMessage,
+  isDaemonMessage,
+} from '../message-types/daemon-message';
+import {
+  FLUSH_SYNC_GENERATOR_CHANGES_TO_DISK,
+  isHandleFlushSyncGeneratorChangesToDiskMessage,
+} from '../message-types/flush-sync-generator-changes-to-disk';
+import { isHandleForceShutdownMessage } from '../message-types/force-shutdown';
+import {
+  GET_CONTEXT_FILE_DATA,
+  isHandleContextFileDataMessage,
+} from '../message-types/get-context-file-data';
+import {
+  GET_FILES_IN_DIRECTORY,
+  isHandleGetFilesInDirectoryMessage,
+} from '../message-types/get-files-in-directory';
+import {
+  GET_NX_WORKSPACE_FILES,
+  isHandleNxWorkspaceFilesMessage,
+} from '../message-types/get-nx-workspace-files';
+import {
+  GET_REGISTERED_SYNC_GENERATORS,
+  isHandleGetRegisteredSyncGeneratorsMessage,
+} from '../message-types/get-registered-sync-generators';
+import {
+  GET_PLUGIN_CAPABILITIES,
+  isHandleGetPluginCapabilitiesMessage,
+} from '../message-types/get-plugin-capabilities';
+import {
+  SELECT_AFFECTED_TASKS,
+  isHandleSelectAffectedTasksMessage,
+} from '../message-types/select-affected-tasks';
+import {
+  GET_SYNC_GENERATOR_CHANGES,
+  isHandleGetSyncGeneratorChangesMessage,
+} from '../message-types/get-sync-generator-changes';
+import {
+  GLOB,
+  isHandleGlobMessage,
+  isHandleMultiGlobMessage,
+  MULTI_GLOB,
+} from '../message-types/glob';
+import {
+  HASH_GLOB,
+  isHandleHashGlobMessage,
+  isHandleHashMultiGlobMessage,
+} from '../message-types/hash-glob';
+import {
+  GET_NX_CONSOLE_STATUS,
+  isHandleGetNxConsoleStatusMessage,
+  isHandleSetNxConsolePreferenceAndInstallMessage,
+  SET_NX_CONSOLE_PREFERENCE_AND_INSTALL,
+} from '../message-types/nx-console';
+import { isRegisterProjectGraphListenerMessage } from '../message-types/register-project-graph-listener';
+import {
+  isHandlePostTasksExecutionMessage,
+  isHandlePreTasksExecutionMessage,
+  POST_TASKS_EXECUTION,
+  PRE_TASKS_EXECUTION,
+} from '../message-types/run-tasks-execution-hooks';
+import {
+  GET_ESTIMATED_TASK_TIMINGS,
+  GET_FLAKY_TASKS,
+  isHandleGetEstimatedTaskTimings,
+  isHandleGetFlakyTasksMessage,
+  isHandleWriteTaskRunsToHistoryMessage,
+  RECORD_TASK_RUNS,
+} from '../message-types/task-history';
+import {
+  isHandleUpdateWorkspaceContextMessage,
+  UPDATE_WORKSPACE_CONTEXT,
+} from '../message-types/update-workspace-context';
+import {
+  getFullOsSocketPath,
+  isWindows,
+  killSocketOrPath,
+  serializeWithFallback,
+} from '../socket-utils';
+import { registerFileChangeListener } from './file-watching/file-change-events';
+import {
+  hasRegisteredFileWatcherSockets,
+  notifyFileWatcherSocketsOfError,
+  registeredFileWatcherSockets,
+  removeRegisteredFileWatcherSocket,
+} from './file-watching/file-watcher-sockets';
+import {
+  handleGetConfigureAiAgentsStatus,
+  handleResetConfigureAiAgentsStatus,
+} from './handle-configure-ai-agents';
+import { handleContextFileData } from './handle-context-file-data';
+import { handleFlushSyncGeneratorChangesToDisk } from './handle-flush-sync-generator-changes-to-disk';
+import { handleForceShutdown } from './handle-force-shutdown';
+import { handleClientEnv } from './handle-client-env';
+import { handleGetFilesInDirectory } from './handle-get-files-in-directory';
+import { handleGetRegisteredSyncGenerators } from './handle-get-registered-sync-generators';
+import { handleGetPluginCapabilities } from './handle-get-plugin-capabilities';
+import { handleSelectAffectedTasks } from './handle-select-affected-tasks';
+import { handleGetSyncGeneratorChanges } from './handle-get-sync-generator-changes';
+import { handleGlob, handleMultiGlob } from './handle-glob';
+import { handleHashGlob, handleHashMultiGlob } from './handle-hash-glob';
+import { handleHashTasks, handleHashTasksUpfront } from './handle-hash-tasks';
+import {
+  handleGetNxConsoleStatus,
+  handleSetNxConsolePreferenceAndInstall,
+} from './handle-nx-console';
+import { handleNxWorkspaceFiles } from './handle-nx-workspace-files';
+import {
+  handleOutputsHashesMatchBatch,
+  handleRecordOutputsHashBatch,
+} from './handle-outputs-tracking';
+import { handleProcessInBackground } from './handle-process-in-background';
+import { handleRequestProjectGraph } from './handle-request-project-graph';
+import { handleRequestShutdown } from './handle-request-shutdown';
+import {
+  handleGetEstimatedTaskTimings,
+  handleGetFlakyTasks,
+  handleRecordTaskRuns,
+} from './handle-task-history';
+import {
+  handleRunPostTasksExecution,
+  handleRunPreTasksExecution,
+} from './handle-tasks-execution-hooks';
+import { handleUpdateWorkspaceContext } from './handle-update-workspace-context';
+import {
+  getWatchTerminalError,
+  handleWatchEvents,
+} from './handle-watch-events';
+import {
+  registerProjectGraphRecomputationListener,
+  routeAppliedChanges,
+  scheduleInitialProjectGraphComputation,
+} from './project-graph-incremental-recomputation';
+import {
+  registerDaemonForRestartChecks,
+  relativeServerProcess,
+  stopDaemonIfReplaced,
+} from './restart-checks';
+import {
+  hasRegisteredProjectGraphListenerSockets,
+  registeredProjectGraphListenerSockets,
+  removeRegisteredProjectGraphListenerSocket,
+} from './project-graph-listener-sockets';
+import {
+  handleServerProcessTermination,
+  handleServerProcessTerminationWithRestart,
+  resetInactivityTimeout,
+  respondToClient,
+  respondWithError,
+  respondWithErrorAndExit,
+  SERVER_INACTIVITY_TIMEOUT_MS,
+} from './shutdown-utils';
+import {
+  clearSyncGeneratorsCache,
+  collectAndScheduleSyncGenerators,
+} from './sync-generators';
+
+import {
+  isWatchingWorkspaceContext,
+  setupWorkspaceContext,
+  subscribeToWatchEvents,
+  subscribeToWorkspaceChanges,
+  type WorkspaceChangesListener,
+} from '../../utils/workspace-context';
+import { isCI } from '../../utils/is-ci';
+
+let workspaceWatcherError: Error | undefined;
+
+global.NX_DAEMON = true;
+process.env.NX_DAEMON_PROCESS = 'true';
+
+export type HandlerResult = {
+  description: string;
+  error?: any;
+  response?: string | object | boolean;
+};
+
+let numberOfOpenConnections = 0;
+export const openSockets: Set<Socket> = new Set();
+
+const server = createServer(async (socket) => {
+  numberOfOpenConnections += 1;
+  openSockets.add(socket);
+  serverLogger.log(
+    `Established a connection. Number of open connections: ${numberOfOpenConnections}`
+  );
+  resetInactivityTimeout(handleInactivityTimeout);
+
+  socket.on(
+    'data',
+    consumeMessagesFromSocket(
+      async (message) => {
+        // A rejection here would otherwise be unhandled and take the daemon
+        // down with it, failing every other client's request too.
+        await handleMessage(socket, message).catch(async (e) => {
+          await respondWithError(socket, 'Error handling message', e);
+        });
+      },
+      (err) => {
+        serverLogger.log(`Framing error: ${err.message}`);
+        // The stream cannot resynchronize, so close it and let the client
+        // observe the disconnect instead of waiting on a reply.
+        respondWithError(socket, 'Malformed message', err).finally(() =>
+          socket.destroy()
+        );
+      }
+    )
+  );
+
+  socket.on('error', (e) => {
+    serverLogger.log(`Socket error: ${e.message}`);
+    removeRegisteredFileWatcherSocket(socket);
+    removeRegisteredProjectGraphListenerSocket(socket);
+  });
+
+  socket.on('close', () => {
+    numberOfOpenConnections -= 1;
+    openSockets.delete(socket);
+    serverLogger.log(
+      `Closed a connection. Number of open connections: ${numberOfOpenConnections}`
+    );
+
+    removeRegisteredFileWatcherSocket(socket);
+    removeRegisteredProjectGraphListenerSocket(socket);
+  });
+});
+registerProcessTerminationListeners();
+
+export async function handleMessage(socket: Socket, data: Buffer) {
+  if (workspaceWatcherError) {
+    await respondWithErrorAndExit(
+      socket,
+      `File watcher error in the workspace '${workspaceRoot}'.`,
+      workspaceWatcherError
+    );
+  }
+  const watchTerminalError = getWatchTerminalError();
+  if (watchTerminalError) {
+    await respondWithErrorAndExit(
+      socket,
+      `File watcher error in the workspace '${workspaceRoot}'.`,
+      watchTerminalError
+    );
+  }
+
+  resetInactivityTimeout(handleInactivityTimeout);
+
+  const unparsedPayload = data;
+  let payload;
+  // Reply in the format the client used.
+  const mode: 'json' | 'v8' = isJsonMessage(unparsedPayload) ? 'json' : 'v8';
+
+  serverLogger.log(`Received raw message of length ${unparsedPayload.length}`);
+
+  try {
+    payload = parseMessage<any>(unparsedPayload);
+  } catch (e) {
+    await respondWithErrorAndExit(
+      socket,
+      `Invalid payload from the client`,
+      new Error(
+        `Unsupported payload sent to daemon server: ${describeMessage(
+          unparsedPayload,
+          { maxBytes: 200 }
+        )}`
+      )
+    );
+  }
+  serverLogger.log(`Received ${mode} message of type ${payload.type}`);
+
+  // A mismatch means the client reached the wrong daemon (e.g. a shared
+  // NX_SOCKET_DIR). Respond, but stay alive for our own workspace.
+  if (isDaemonMessage(payload)) {
+    try {
+      assertNotForeignWorkspaceMessage(payload, workspaceRoot);
+    } catch (e) {
+      await respondWithError(socket, `Workspace root mismatch`, e);
+      return;
+    }
+  }
+
+  if (isDaemonMessage(payload) && payload.env) {
+    await handleClientEnv(payload.env, socket);
+  }
+
+  if (payload.type === 'PING') {
+    await handleResult(
+      socket,
+      'PING',
+      () => Promise.resolve({ response: true, description: 'ping' }),
+      mode
+    );
+  } else if (payload.type === 'REQUEST_PROJECT_GRAPH') {
+    await handleResult(
+      socket,
+      'REQUEST_PROJECT_GRAPH',
+      () => handleRequestProjectGraph(socket),
+      mode
+    );
+  } else if (payload.type === 'HASH_TASKS') {
+    await handleResult(
+      socket,
+      'HASH_TASKS',
+      () => handleHashTasks(payload),
+      mode
+    );
+  } else if (payload.type === 'HASH_TASKS_UPFRONT') {
+    await handleResult(
+      socket,
+      'HASH_TASKS_UPFRONT',
+      () => handleHashTasksUpfront(payload),
+      mode
+    );
+  } else if (payload.type === 'PROCESS_IN_BACKGROUND') {
+    // The client names the module to run, so its failure says nothing about
+    // the daemon's health. Respond, but stay alive for other clients.
+    await handleResult(
+      socket,
+      'PROCESS_IN_BACKGROUND',
+      () => handleProcessInBackground(payload),
+      mode,
+      respondWithError
+    );
+  } else if (payload.type === 'RECORD_OUTPUTS_HASH_BATCH') {
+    await handleResult(
+      socket,
+      'RECORD_OUTPUTS_HASH_BATCH',
+      () => handleRecordOutputsHashBatch(payload),
+      mode
+    );
+  } else if (payload.type === 'OUTPUTS_HASHES_MATCH_BATCH') {
+    await handleResult(
+      socket,
+      'OUTPUTS_HASHES_MATCH_BATCH',
+      () => handleOutputsHashesMatchBatch(payload),
+      mode
+    );
+  } else if (payload.type === 'REQUEST_SHUTDOWN') {
+    await handleResult(
+      socket,
+      'REQUEST_SHUTDOWN',
+      () => handleRequestShutdown(server, numberOfOpenConnections),
+      mode
+    );
+  } else if (payload.type === 'REGISTER_FILE_WATCHER') {
+    registeredFileWatcherSockets.push({ socket, config: payload.config });
+    // A client must not announce readiness until this socket is subscribed.
+    // Older clients do not request an acknowledgement and expect only changes.
+    if (payload.registrationId) {
+      await handleResult(
+        socket,
+        'REGISTER_FILE_WATCHER',
+        async () => ({
+          description: 'File watcher registered',
+          response: {
+            type: 'FILE_WATCHER_REGISTERED',
+            registrationId: payload.registrationId,
+          },
+        }),
+        mode
+      );
+    }
+  } else if (isRegisterProjectGraphListenerMessage(payload)) {
+    registeredProjectGraphListenerSockets.push(socket);
+  } else if (isHandleGlobMessage(payload)) {
+    await handleResult(
+      socket,
+      GLOB,
+      () => handleGlob(payload.globs, payload.exclude),
+      mode
+    );
+  } else if (isHandleMultiGlobMessage(payload)) {
+    await handleResult(
+      socket,
+      MULTI_GLOB,
+      () => handleMultiGlob(payload.globs, payload.exclude),
+      mode
+    );
+  } else if (isHandleNxWorkspaceFilesMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_NX_WORKSPACE_FILES,
+      () => handleNxWorkspaceFiles(payload.projectRootMap),
+      mode
+    );
+  } else if (isHandleGetFilesInDirectoryMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_FILES_IN_DIRECTORY,
+      () => handleGetFilesInDirectory(payload.dir),
+      mode
+    );
+  } else if (isHandleContextFileDataMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_CONTEXT_FILE_DATA,
+      () => handleContextFileData(),
+      mode
+    );
+  } else if (isHandleHashGlobMessage(payload)) {
+    await handleResult(
+      socket,
+      HASH_GLOB,
+      () => handleHashGlob(payload.globs, payload.exclude),
+      mode
+    );
+  } else if (isHandleHashMultiGlobMessage(payload)) {
+    await handleResult(
+      socket,
+      HASH_GLOB,
+      () => handleHashMultiGlob(payload.globGroups),
+      mode
+    );
+  } else if (isHandleGetFlakyTasksMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_FLAKY_TASKS,
+      () => handleGetFlakyTasks(payload.hashes),
+      mode
+    );
+  } else if (isHandleGetEstimatedTaskTimings(payload)) {
+    await handleResult(
+      socket,
+      GET_ESTIMATED_TASK_TIMINGS,
+      () => handleGetEstimatedTaskTimings(payload.targets),
+      mode
+    );
+  } else if (isHandleWriteTaskRunsToHistoryMessage(payload)) {
+    await handleResult(
+      socket,
+      RECORD_TASK_RUNS,
+      () => handleRecordTaskRuns(payload.taskRuns),
+      mode
+    );
+  } else if (isHandleForceShutdownMessage(payload)) {
+    await handleResult(
+      socket,
+      'FORCE_SHUTDOWN',
+      () => handleForceShutdown(server),
+      mode
+    );
+  } else if (isHandleGetSyncGeneratorChangesMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_SYNC_GENERATOR_CHANGES,
+      () => handleGetSyncGeneratorChanges(payload.generators),
+      mode
+    );
+  } else if (isHandleFlushSyncGeneratorChangesToDiskMessage(payload)) {
+    await handleResult(
+      socket,
+      FLUSH_SYNC_GENERATOR_CHANGES_TO_DISK,
+      () => handleFlushSyncGeneratorChangesToDisk(payload.generators),
+      mode
+    );
+  } else if (isHandleGetRegisteredSyncGeneratorsMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_REGISTERED_SYNC_GENERATORS,
+      () => handleGetRegisteredSyncGenerators(),
+      mode
+    );
+  } else if (isHandleGetPluginCapabilitiesMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_PLUGIN_CAPABILITIES,
+      () => handleGetPluginCapabilities(),
+      mode
+    );
+  } else if (isHandleSelectAffectedTasksMessage(payload)) {
+    await handleResult(
+      socket,
+      SELECT_AFFECTED_TASKS,
+      () => handleSelectAffectedTasks(payload.request, socket),
+      mode
+    );
+  } else if (isHandleUpdateWorkspaceContextMessage(payload)) {
+    await handleResult(
+      socket,
+      UPDATE_WORKSPACE_CONTEXT,
+      () =>
+        handleUpdateWorkspaceContext(
+          payload.createdFiles,
+          payload.updatedFiles,
+          payload.deletedFiles
+        ),
+      mode
+    );
+  } else if (isHandlePreTasksExecutionMessage(payload)) {
+    await handleResult(
+      socket,
+      PRE_TASKS_EXECUTION,
+      () => handleRunPreTasksExecution(payload.context),
+      mode
+    );
+  } else if (isHandlePostTasksExecutionMessage(payload)) {
+    await handleResult(
+      socket,
+      POST_TASKS_EXECUTION,
+      () => handleRunPostTasksExecution(payload.context),
+      mode
+    );
+  } else if (isHandleGetNxConsoleStatusMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_NX_CONSOLE_STATUS,
+      () => handleGetNxConsoleStatus(),
+      mode
+    );
+  } else if (isHandleSetNxConsolePreferenceAndInstallMessage(payload)) {
+    await handleResult(
+      socket,
+      SET_NX_CONSOLE_PREFERENCE_AND_INSTALL,
+      () => handleSetNxConsolePreferenceAndInstall(payload.preference),
+      mode
+    );
+  } else if (isHandleGetConfigureAiAgentsStatusMessage(payload)) {
+    await handleResult(
+      socket,
+      GET_CONFIGURE_AI_AGENTS_STATUS,
+      () => handleGetConfigureAiAgentsStatus(),
+      mode
+    );
+  } else if (isHandleResetConfigureAiAgentsStatusMessage(payload)) {
+    await handleResult(
+      socket,
+      RESET_CONFIGURE_AI_AGENTS_STATUS,
+      () => handleResetConfigureAiAgentsStatus(),
+      mode
+    );
+  } else {
+    await respondWithErrorAndExit(
+      socket,
+      `Invalid payload from the client`,
+      new Error(
+        `Unsupported payload sent to daemon server: ${describeMessage(
+          unparsedPayload,
+          { maxBytes: 200 }
+        )}`
+      )
+    );
+  }
+}
+
+export async function handleResult(
+  socket: Socket,
+  type: string,
+  hrFn: () => Promise<HandlerResult>,
+  mode: 'json' | 'v8',
+  respondToError = respondWithErrorAndExit
+) {
+  let hr: HandlerResult;
+  const startMark = new Date();
+  try {
+    hr = await hrFn();
+  } catch (error) {
+    hr = { description: `[${type}]`, error };
+  }
+  const doneHandlingMark = new Date();
+  if (hr.error) {
+    await respondToError(socket, hr.description, hr.error);
+  } else {
+    serverLogger.log(
+      `Serializing response for ${type} message in ${mode} mode`
+    );
+    const response =
+      typeof hr.response === 'string'
+        ? Buffer.from(hr.response, 'utf8')
+        : serializeWithFallback(hr.response, mode);
+    serverLogger.log(`Responding to ${type} message`);
+    await respondToClient(socket, response, hr.description);
+  }
+  const endMark = new Date();
+  serverLogger.log(
+    `Handled ${mode} message ${type}. Handling time: ${
+      doneHandlingMark.getTime() - startMark.getTime()
+    }. Response time: ${endMark.getTime() - doneHandlingMark.getTime()}.`
+  );
+}
+
+function handleInactivityTimeout() {
+  if (
+    hasRegisteredFileWatcherSockets() ||
+    hasRegisteredProjectGraphListenerSockets()
+  ) {
+    serverLogger.log(
+      `There are open file watchers or project graph listeners. Resetting inactivity timer.`
+    );
+    resetInactivityTimeout(handleInactivityTimeout);
+  } else {
+    handleServerProcessTermination({
+      server,
+      reason: `${SERVER_INACTIVITY_TIMEOUT_MS}ms of inactivity`,
+      sockets: openSockets,
+    });
+  }
+}
+
+function registerProcessTerminationListeners() {
+  process
+    .on('SIGINT', () =>
+      handleServerProcessTermination({
+        server,
+        reason: 'received process SIGINT',
+        sockets: openSockets,
+      })
+    )
+    .on('SIGTERM', () =>
+      handleServerProcessTermination({
+        server,
+        reason: 'received process SIGTERM',
+        sockets: openSockets,
+      })
+    )
+    .on('SIGHUP', () =>
+      handleServerProcessTermination({
+        server,
+        reason: 'received process SIGHUP',
+        sockets: openSockets,
+      })
+    );
+}
+
+let existingLockHash: string | undefined;
+
+function daemonIsOutdated(): string | null {
+  if (isNxVersionMismatch()) {
+    return 'NX_VERSION_CHANGED';
+  } else if (lockFileHashChanged()) {
+    return 'LOCK_FILES_CHANGED';
+  }
+  return null;
+}
+
+function lockFileHashChanged(): boolean {
+  const lockFiles = [
+    join(workspaceRoot, 'package-lock.json'),
+    join(workspaceRoot, 'yarn.lock'),
+    join(workspaceRoot, 'pnpm-lock.yaml'),
+    join(workspaceRoot, 'bun.lockb'),
+    join(workspaceRoot, 'bun.lock'),
+  ];
+
+  const existingFiles = lockFiles.filter((file) => existsSync(file));
+  const lockHashes = existingFiles.map((file) => hashFile(file));
+  const newHash = hashArray(lockHashes);
+
+  if (existingLockHash && newHash != existingLockHash) {
+    serverLogger.log(
+      `[Server] lock file hash changed! old=${existingLockHash}, new=${newHash}`
+    );
+    existingLockHash = newHash;
+    return true;
+  } else {
+    existingLockHash = newHash;
+    return false;
+  }
+}
+
+/**
+ * When applicable files in the workspaces are changed (created, updated, deleted),
+ * we need to recompute the cached serialized project graph so that it is readily
+ * available for the next client request to the server.
+ */
+const handleWorkspaceChanges: WorkspaceChangesListener = (err, batch) => {
+  if (workspaceWatcherError) {
+    serverLogger.watcherLog(
+      'Skipping handleWorkspaceChanges because of a previously recorded watcher error.'
+    );
+    return;
+  }
+
+  try {
+    resetInactivityTimeout(handleInactivityTimeout);
+
+    if (err) {
+      let error = typeof err === 'string' ? new Error(err) : err;
+      serverLogger.watcherLog(
+        'Unexpected workspace watcher error',
+        error.message
+      );
+      console.error(error);
+      workspaceWatcherError = error;
+      notifyFileWatcherSocketsOfError(error);
+      return;
+    }
+
+    routeAppliedChanges(batch);
+  } catch (err) {
+    serverLogger.watcherLog(`Unexpected workspace error`, err.message);
+    console.error(err);
+    workspaceWatcherError = err;
+    notifyFileWatcherSocketsOfError(err);
+  }
+};
+
+export async function startServer(): Promise<Server> {
+  // The workspace context owns the daemon's one watch and starts it before
+  // it scans, so a file written during boot is visible to one or the other.
+  if (!isWatchingWorkspaceContext()) {
+    registerDaemonForRestartChecks(server, openSockets);
+    setupWorkspaceContext(workspaceRoot, {
+      watch: true,
+      alwaysWatch: [relativeServerProcess],
+    });
+    subscribeToWorkspaceChanges(workspaceRoot, handleWorkspaceChanges);
+    serverLogger.watcherLog(
+      `Subscribed to changes within: ${workspaceRoot} (native)`
+    );
+  }
+
+  // Initialize analytics for daemon process
+  await startAnalytics();
+
+  const socketPath = getFullOsSocketPath();
+
+  // Log daemon startup information for debugging
+  serverLogger.log(`New daemon starting from: ${__filename}`);
+  serverLogger.log(`New daemon __dirname: ${__dirname}`);
+  serverLogger.log(`New daemon nxVersion: ${nxVersion}`);
+  serverLogger.log(
+    `New daemon getInstalledNxVersion(): ${getInstalledNxVersion()}`
+  );
+
+  // Persist metadata about the background process so that it can be cleaned up later if needed
+  await writeDaemonJsonProcessCache({
+    processId: process.pid,
+    socketPath,
+    nxVersion,
+  });
+
+  // See notes in socket-command-line-utils.ts on OS differences regarding clean up of existings connections.
+  if (!isWindows) {
+    killSocketOrPath();
+  }
+
+  serverLogger.log(`[Server] Starting outdated check interval (20ms)`);
+
+  setInterval(() => {
+    if (getDaemonProcessIdSync() !== process.pid) {
+      return handleServerProcessTermination({
+        server,
+        reason: 'this process is no longer the current daemon (native)',
+        sockets: openSockets,
+      });
+    }
+
+    const outdated = daemonIsOutdated();
+    if (outdated) {
+      serverLogger.log(`[Server] Daemon outdated: ${outdated}`);
+      if (outdated === 'LOCK_FILES_CHANGED') {
+        // Lock file changes - restart daemon, clients will reconnect
+        serverLogger.log('[Server] Restarting daemon...');
+        handleServerProcessTerminationWithRestart({
+          server,
+          reason: outdated,
+          sockets: openSockets,
+        });
+      } else {
+        // Version changes or other reasons - just shut down, don't restart
+        serverLogger.log('[Server] Shutting down daemon (no restart)...');
+        handleServerProcessTermination({
+          server,
+          reason: outdated,
+          sockets: openSockets,
+        });
+      }
+    }
+  }, 20).unref();
+
+  return new Promise(async (resolve, reject) => {
+    // `listen` reports a failed bind asynchronously on the server, which the
+    // try below cannot catch — without this an EACCES became an uncaught
+    // exception whose only trace was the daemon log the client never reads.
+    // The exit code is what carries the errno to the client, which otherwise
+    // sees only a missing socket and cannot tell a refusal from a cold start.
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      serverLogger.log(`Failed to listen on: ${socketPath} (${error.message})`);
+      process.exit(isPermissionDenied(error) ? SOCKET_REFUSED_EXIT_CODE : 1);
+    });
+
+    try {
+      server.listen(socketPath, async () => {
+        try {
+          serverLogger.log(`Started listening on: ${socketPath}`);
+
+          // Linux gates connect() on write permission to the socket file; macOS/BSD gate
+          // on the directory, which is already 0700. Done after listen because
+          // net.Server.listen takes no mode and umask is process-global.
+          if (!isWindows) {
+            try {
+              chmodSync(socketPath, 0o600);
+            } catch {
+              // Best effort; the 0700 socket directory is the primary control.
+            }
+          }
+
+          // this triggers the storage of the lock file hash
+          daemonIsOutdated();
+
+          // Every event the watch delivers, gitignored outputs and dotenv
+          // files included.
+          subscribeToWatchEvents(workspaceRoot, (err, events) => {
+            if (!err && events && stopDaemonIfReplaced(events)) {
+              return;
+            }
+            if (err || events?.length) {
+              handleWatchEvents(err, events);
+            }
+          });
+
+          // listen for project graph recomputation events to collect and schedule sync generators
+          registerProjectGraphRecomputationListener(
+            collectAndScheduleSyncGenerators
+          );
+          // register file change listener to invalidate sync generator cache
+          registerFileChangeListener(clearSyncGeneratorsCache);
+          scheduleInitialProjectGraphComputation();
+
+          // Prime the Nx Console and AI agents caches in the background. Both
+          // pull nx@latest, and the CLI never shows their results in CI.
+          if (!isCI()) {
+            handleGetNxConsoleStatus().catch(() => {
+              // Ignore errors, this is a background operation
+            });
+            handleGetConfigureAiAgentsStatus().catch(() => {
+              // Ignore errors, this is a background operation
+            });
+          }
+
+          return resolve(server);
+        } catch (err) {
+          await handleWorkspaceChanges(err, null);
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}

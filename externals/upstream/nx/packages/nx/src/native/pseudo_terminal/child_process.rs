@@ -1,0 +1,162 @@
+use super::process_killer::{ProcessKiller, normalize_signal};
+use crate::native::pseudo_terminal::pseudo_terminal::{MasterArc, ParserArc, PtyOutput, WriterArc};
+use crossbeam_channel::Sender;
+use crossbeam_channel::{Receiver, bounded, select};
+use napi::Either;
+use napi::bindgen_prelude::{External, FnArgs};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode::NonBlocking};
+use napi::{Status, bindgen_prelude::Unknown};
+use parking_lot::{Mutex, RwLock};
+use std::io::Write;
+use std::sync::Arc;
+use tracing::warn;
+use vt100_ctt::Parser;
+
+pub enum ChildProcessMessage {
+    Kill,
+}
+
+#[napi]
+pub struct ChildProcess {
+    parser: Arc<RwLock<Parser>>,
+    pid: i32,
+    process_killer: ProcessKiller,
+    message_receiver: Receiver<PtyOutput>,
+    pub(crate) wait_receiver: Receiver<String>,
+    thread_handles: Vec<Sender<()>>,
+    writer_arc: Arc<Mutex<Box<dyn Write + Send>>>,
+    master_arc: MasterArc,
+}
+#[napi]
+impl ChildProcess {
+    pub fn new(
+        parser: Arc<RwLock<Parser>>,
+        writer_arc: Arc<Mutex<Box<dyn Write + Send>>>,
+        master_arc: MasterArc,
+        pid: i32,
+        process_killer: ProcessKiller,
+        message_receiver: Receiver<PtyOutput>,
+        exit_receiver: Receiver<String>,
+    ) -> Self {
+        Self {
+            parser,
+            writer_arc,
+            master_arc,
+            pid,
+            process_killer,
+            message_receiver,
+            wait_receiver: exit_receiver,
+            thread_handles: vec![],
+        }
+    }
+
+    #[napi]
+    pub fn get_pty_handles(&mut self) -> External<(ParserArc, WriterArc, MasterArc)> {
+        External::new((
+            self.parser.clone(),
+            self.writer_arc.clone(),
+            self.master_arc.clone(),
+        ))
+    }
+
+    #[napi]
+    pub fn get_pid(&self) -> i32 {
+        self.pid
+    }
+
+    #[napi(ts_args_type = "signal?: NodeJS.Signals | number")]
+    pub fn kill(&mut self, signal: Option<Either<String, i32>>) -> anyhow::Result<()> {
+        let signal_str = normalize_signal(signal.as_ref());
+        self.process_killer.kill(signal_str);
+        Ok(())
+    }
+
+    #[napi]
+    pub fn on_exit(
+        &mut self,
+        #[napi(ts_arg_type = "(message: string) => void")] callback: ThreadsafeFunction<
+            String,
+            Unknown<'static>,
+            String,
+            Status,
+            false,
+        >,
+    ) -> napi::Result<()> {
+        let wait = self.wait_receiver.clone();
+
+        std::thread::spawn(move || {
+            // we will only get one exit_code here, so we dont need to do a while loop
+            if let Ok(exit_code) = wait.recv() {
+                callback.call(exit_code, NonBlocking);
+            }
+        });
+
+        Ok(())
+    }
+
+    #[napi]
+    pub fn on_output(
+        &mut self,
+        #[napi(ts_arg_type = "(message: string, isCommandHeader: boolean) => void")]
+        callback: ThreadsafeFunction<
+            FnArgs<(String, bool)>,
+            Unknown<'static>,
+            FnArgs<(String, bool)>,
+            Status,
+            false,
+        >,
+    ) -> napi::Result<()> {
+        let rx = self.message_receiver.clone();
+
+        let (kill_tx, kill_rx) = bounded::<()>(1);
+
+        std::thread::spawn(move || {
+            loop {
+                select! {
+                    recv(kill_rx) -> _ => {
+                        break;
+                    },
+                    recv(rx) -> msg => {
+                        match msg {
+                            Ok(output) => {
+                                let (content, is_command_header) = match output {
+                                    PtyOutput::CommandHeader(content) => (content, true),
+                                    PtyOutput::Process(content) => (content, false),
+                                };
+                                // windows will add `ESC[6n` to the beginning of the output,
+                                // we dont want to store this ANSI code in cache, because replays will cause issues
+                                // remove it before sending it to js
+                                #[cfg(windows)]
+                                let content = content.replace("\x1B[6n", "");
+                                callback.call((content, is_command_header).into(), NonBlocking);
+                            },
+                            Err(_) => {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        self.thread_handles.push(kill_tx);
+
+        Ok(())
+    }
+
+    #[napi]
+    pub fn cleanup(&mut self) {
+        let handles = std::mem::take(&mut self.thread_handles);
+        for handle in handles {
+            if let Err(e) = handle.send(()) {
+                warn!(error = ?e, "Failed to send kill signal to thread");
+            }
+        }
+    }
+}
+
+impl Drop for ChildProcess {
+    fn drop(&mut self) {
+        self.cleanup();
+    }
+}

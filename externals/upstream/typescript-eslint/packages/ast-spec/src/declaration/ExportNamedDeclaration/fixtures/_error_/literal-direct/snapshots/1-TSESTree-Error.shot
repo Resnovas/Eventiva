@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportNamedDeclaration > _error_ > literal-direct > TSESTree - Error`]
+TSError
+> 1 | export 'a';
+    | ^ Declaration or statement expected.
+  2 |

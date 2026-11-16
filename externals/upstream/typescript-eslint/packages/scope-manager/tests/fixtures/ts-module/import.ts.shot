@@ -1,0 +1,54 @@
+ScopeManager {
+  variables: [
+    ImplicitGlobalConstTypeVariable,
+    Variable$2 {
+      defs: [
+        ImportBindingDefinition$1 {
+          name: Identifier<"bar">,
+          node: ImportSpecifier$1,
+        },
+      ],
+      name: "bar",
+      references: [],
+      isValueVariable: true,
+      isTypeVariable: true,
+    },
+  ],
+  scopes: [
+    GlobalScope$1 {
+      block: Program$2,
+      isStrict: false,
+      references: [],
+      set: Map {
+        "const" => ImplicitGlobalConstTypeVariable,
+      },
+      type: "global",
+      upper: null,
+      variables: [
+        ImplicitGlobalConstTypeVariable,
+      ],
+    },
+    ModuleScope$2 {
+      block: Program$2,
+      isStrict: true,
+      references: [],
+      set: Map {},
+      type: "module",
+      upper: GlobalScope$1,
+      variables: [],
+    },
+    TSModuleScope$3 {
+      block: TSModuleDeclaration$3,
+      isStrict: true,
+      references: [],
+      set: Map {
+        "bar" => Variable$2,
+      },
+      type: "tsModule",
+      upper: ModuleScope$2,
+      variables: [
+        Variable$2,
+      ],
+    },
+  ],
+}

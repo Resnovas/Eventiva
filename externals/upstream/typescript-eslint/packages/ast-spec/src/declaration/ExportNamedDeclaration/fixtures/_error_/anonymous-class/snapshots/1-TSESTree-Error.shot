@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AST Fixtures > declaration > ExportNamedDeclaration > _error_ > anonymous-class > TSESTree - Error`]
+TSError
+> 1 | export class {}
+    | ^^^^^^^^^^^^^^^ A class declaration without the 'default' modifier must have a name.
+  2 |

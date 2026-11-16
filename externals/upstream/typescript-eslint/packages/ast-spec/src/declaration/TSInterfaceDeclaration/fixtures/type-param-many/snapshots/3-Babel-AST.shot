@@ -1,0 +1,128 @@
+Program {
+  type: "Program",
+  body: [
+    TSInterfaceDeclaration {
+      type: "TSInterfaceDeclaration",
+      body: TSInterfaceBody {
+        type: "TSInterfaceBody",
+        body: [],
+
+        range: [21, 23],
+        loc: {
+          start: { column: 21, line: 1 },
+          end: { column: 23, line: 1 },
+        },
+      },
+      declare: false,
+      extends: [],
+      id: Identifier {
+        type: "Identifier",
+        decorators: [],
+        name: "F",
+        optional: false,
+
+        range: [10, 11],
+        loc: {
+          start: { column: 10, line: 1 },
+          end: { column: 11, line: 1 },
+        },
+      },
+      typeParameters: TSTypeParameterDeclaration {
+        type: "TSTypeParameterDeclaration",
+        params: [
+          TSTypeParameter {
+            type: "TSTypeParameter",
+            const: false,
+            in: false,
+            name: Identifier {
+              type: "Identifier",
+              decorators: [],
+              name: "T",
+              optional: false,
+
+              range: [12, 13],
+              loc: {
+                start: { column: 12, line: 1 },
+                end: { column: 13, line: 1 },
+              },
+            },
+            out: false,
+
+            range: [12, 13],
+            loc: {
+              start: { column: 12, line: 1 },
+              end: { column: 13, line: 1 },
+            },
+          },
+          TSTypeParameter {
+            type: "TSTypeParameter",
+            const: false,
+            in: false,
+            name: Identifier {
+              type: "Identifier",
+              decorators: [],
+              name: "U",
+              optional: false,
+
+              range: [15, 16],
+              loc: {
+                start: { column: 15, line: 1 },
+                end: { column: 16, line: 1 },
+              },
+            },
+            out: false,
+
+            range: [15, 16],
+            loc: {
+              start: { column: 15, line: 1 },
+              end: { column: 16, line: 1 },
+            },
+          },
+          TSTypeParameter {
+            type: "TSTypeParameter",
+            const: false,
+            in: false,
+            name: Identifier {
+              type: "Identifier",
+              decorators: [],
+              name: "V",
+              optional: false,
+
+              range: [18, 19],
+              loc: {
+                start: { column: 18, line: 1 },
+                end: { column: 19, line: 1 },
+              },
+            },
+            out: false,
+
+            range: [18, 19],
+            loc: {
+              start: { column: 18, line: 1 },
+              end: { column: 19, line: 1 },
+            },
+          },
+        ],
+
+        range: [11, 20],
+        loc: {
+          start: { column: 11, line: 1 },
+          end: { column: 20, line: 1 },
+        },
+      },
+
+      range: [0, 23],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 23, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 24],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}
