@@ -16,7 +16,9 @@
 
 import {
     HookChangeFeed,
+    HookOperatorDeny,
     HookOutbox,
+    HookRecovery,
     HookReleaseDeny,
     type HookDeclaration,
     type HookEvent,
@@ -50,3 +52,17 @@ export const resume = (savedCursor: number) =>
         // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
         return yield* feed.read(savedCursor, 50);
     });
+
+/** Inspection releases metadata too; this example remains deliberately denied. */
+export const inspectDeadLetters = (declaration: HookDeclaration) =>
+    Effect.gen(function* () {
+        const recovery = yield* HookRecovery;
+        return yield* recovery.deadLetters(declaration, null, 25);
+    }).pipe(Effect.provide(HookOperatorDeny));
+
+/** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
+export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
+    Effect.gen(function* () {
+        const recovery = yield* HookRecovery;
+        return yield* recovery.replay(declaration, key, requestId);
+    }).pipe(Effect.provide(HookOperatorDeny));

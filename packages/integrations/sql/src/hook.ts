@@ -20,9 +20,12 @@ import {
     HookChangeFeed,
     HookClaim,
     HookDeclaration,
+    HookDeadLetter,
     HookEvent,
+    HookOperatorPolicy,
     HookOutbox,
     HookOutboxFailure,
+    HookRecovery,
     HookSettlement,
     type HookPin,
 } from '@eventiva/contracts/hook';
@@ -70,10 +73,13 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
         const sql = yield* SqlClient.SqlClient;
         const tenant = (yield* CurrentTenant).id;
         if (owner.client !== sql) return yield* new HookOutboxFailure({ reason: 'transaction-required' });
+        const noTransaction = Effect.gen(function* () {
+            if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
+                return yield* new HookOutboxFailure({ reason: 'transaction-active' });
+        });
         const outside = <A>(effect: Effect.Effect<A, HookOutboxFailure | SqlError>) =>
             Effect.gen(function* () {
-                if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
-                    return yield* new HookOutboxFailure({ reason: 'transaction-active' });
+                yield* noTransaction;
                 return yield* sql.withTransaction(effect);
             }).pipe(Effect.catchTag('SqlError', () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))));
         const declaration = (input: HookDeclaration) =>
@@ -251,6 +257,87 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     })
                 ),
         });
+        const recovery = HookRecovery.of({
+            deadLetters: (input, after, limit) =>
+                Effect.gen(function* () {
+                    yield* noTransaction;
+                    const d = yield* declaration(input);
+                    yield* decode(Schema.NullOr(Schema.UUID), after);
+                    yield* decode(Schema.Int.pipe(Schema.between(1, 100)), limit);
+                    yield* (yield* HookOperatorPolicy).authorize(d.pin, 'inspect');
+                    return yield* outside(
+                        Effect.gen(function* () {
+                            if (!(yield* lock(d))) return [];
+                            const rows = yield* sql<{
+                                idempotency_key: string;
+                                event_id: string;
+                                attempt: string | number;
+                                settlement: string;
+                            }>`SELECT idempotency_key, event_id, attempt, settlement FROM hook_delivery WHERE subscription = ${keyOf(d.pin)} AND state = 'dead-letter' AND idempotency_key > ${after ?? ''} ORDER BY idempotency_key LIMIT ${limit}`;
+                            return yield* Effect.forEach(rows, (row) =>
+                                Effect.gen(function* () {
+                                    const settlement = yield* decode(Schema.parseJson(HookSettlement), row.settlement);
+                                    if (settlement.state !== 'dead-letter')
+                                        return yield* new HookOutboxFailure({ reason: 'invalid' });
+                                    return yield* decode(HookDeadLetter, {
+                                        idempotencyKey: row.idempotency_key,
+                                        eventId: row.event_id,
+                                        attempt: yield* decode(Integer, row.attempt),
+                                        reason: settlement.reason,
+                                    });
+                                })
+                            );
+                        })
+                    );
+                }),
+            replay: (input, idempotencyKey, requestId) =>
+                Effect.gen(function* () {
+                    yield* noTransaction;
+                    const d = yield* declaration(input);
+                    yield* decode(Schema.UUID, idempotencyKey);
+                    yield* decode(Schema.UUID, requestId);
+                    yield* (yield* HookOperatorPolicy).authorize(d.pin, 'replay');
+                    return yield* outside(
+                        Effect.gen(function* () {
+                            const pin = keyOf(d.pin);
+                            if (!(yield* lock(d))) return yield* new HookOutboxFailure({ reason: 'invalid' });
+                            const [prior] = yield* sql<{
+                                subscription: string;
+                                idempotency_key: string;
+                            }>`SELECT subscription, idempotency_key FROM hook_redrive WHERE tenant = ${tenant} AND request_id = ${requestId}`;
+                            if (prior !== undefined) {
+                                if (prior.subscription !== pin || prior.idempotency_key !== idempotencyKey)
+                                    return yield* new HookOutboxFailure({ reason: 'conflict' });
+                                return false;
+                            }
+                            const [raw] = yield* sql<
+                                typeof Row.Encoded
+                            >`SELECT idempotency_key, event_id, resource, sequence, event, state, attempt, lease, lease_until, settlement FROM hook_delivery WHERE subscription = ${pin} AND idempotency_key = ${idempotencyKey}`;
+                            if (raw === undefined) return yield* new HookOutboxFailure({ reason: 'invalid' });
+                            const row = yield* decode(Row, raw);
+                            if (row.state !== 'dead-letter' || row.settlement === null)
+                                return yield* new HookOutboxFailure({ reason: 'conflict' });
+                            const settlement = yield* decode(Schema.parseJson(HookSettlement), row.settlement);
+                            if (settlement.state !== 'dead-letter')
+                                return yield* new HookOutboxFailure({ reason: 'invalid' });
+                            const active =
+                                yield* sql`SELECT idempotency_key FROM hook_delivery WHERE subscription = ${pin} AND resource = ${row.resource} AND state = 'running' LIMIT 1`;
+                            if (active.length !== 0) return yield* new HookOutboxFailure({ reason: 'conflict' });
+                            const [count] = yield* sql<{
+                                total: string | number;
+                            }>`SELECT COUNT(*) AS total FROM hook_delivery WHERE subscription = ${pin} AND state NOT IN ('delivered', 'dead-letter')`;
+                            if (count === undefined) return yield* new HookOutboxFailure({ reason: 'invalid' });
+                            if ((yield* decode(Integer, count.total)) >= d.capacity)
+                                return yield* new HookOutboxFailure({ reason: 'capacity' });
+                            // Record the old terminal attempt before granting a fresh bounded retry budget.
+                            // The stable sink key never changes, and clearing the lease fences every old worker.
+                            yield* sql`INSERT INTO hook_redrive (tenant, request_id, subscription, idempotency_key, attempt, reason, occurred_at) VALUES (${tenant}, ${requestId}, ${pin}, ${idempotencyKey}, ${row.attempt}, ${settlement.reason}, ${yield* time})`;
+                            yield* sql`UPDATE hook_delivery SET state = 'pending', attempt = 0, due = 0, lease = NULL, lease_until = 0, settlement = NULL WHERE idempotency_key = ${idempotencyKey} AND subscription = ${pin}`;
+                            return true;
+                        })
+                    );
+                }),
+        });
         const feed = HookChangeFeed.of({
             read: (after, limit) =>
                 Effect.gen(function* () {
@@ -281,6 +368,7 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
         });
         return Context.make(Storage, owner.storage).pipe(
             Context.add(HookOutbox, outbox),
-            Context.add(HookChangeFeed, feed)
+            Context.add(HookChangeFeed, feed),
+            Context.add(HookRecovery, recovery)
         );
     });

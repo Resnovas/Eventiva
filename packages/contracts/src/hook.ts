@@ -232,6 +232,47 @@ export const HookOutboxUnavailable = Layer.succeed(HookOutbox, {
     settle: () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })),
 });
 
+/** Host-only operator authority. Inspection itself releases metadata and requires fresh authorization.
+ * Redrive grants no delivery authority: every attempt still passes the live release policy.
+ */
+export class HookOperatorPolicy extends Context.Tag('@eventiva/contracts/HookOperatorPolicy')<
+    HookOperatorPolicy,
+    {
+        readonly authorize: (pin: HookPin, operation: 'inspect' | 'replay') => Effect.Effect<void, HookDenied>;
+    }
+>() {}
+export const HookOperatorDeny = Layer.succeed(HookOperatorPolicy, {
+    authorize: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
+});
+
+/** No payload/error projection. Full retained facts remain behind the separate release boundary. */
+export const HookDeadLetter = Schema.Struct({
+    idempotencyKey: Schema.UUID,
+    eventId: Schema.UUID,
+    attempt: Version,
+    reason: Schema.Literal('denied', 'invalid', 'exhausted'),
+}).annotations(strict);
+export type HookDeadLetter = typeof HookDeadLetter.Type;
+
+export class HookRecovery extends Context.Tag('@eventiva/contracts/HookRecovery')<
+    HookRecovery,
+    {
+        readonly deadLetters: (
+            declaration: HookDeclaration,
+            after: string | null,
+            limit: number
+        ) => Effect.Effect<ReadonlyArray<HookDeadLetter>, HookOutboxFailure | HookDenied, HookOperatorPolicy>;
+        /** Fresh request UUID provides idempotent operator retry. Same delivery key/pin survives redrive.
+         * Returns false for an already accepted request; only terminal dead letters may be redriven.
+         */
+        readonly replay: (
+            declaration: HookDeclaration,
+            idempotencyKey: string,
+            requestId: string
+        ) => Effect.Effect<boolean, HookOutboxFailure | HookDenied, HookOperatorPolicy>;
+    }
+>() {}
+
 /** Trusted host capability, NOT a client/plugin subscription or authorization grant.
  * Reads committed minimized facts for the captured authenticated tenant, independent of observers.
  * A transport must apply live resource/purpose/profile policy before releasing even event existence.

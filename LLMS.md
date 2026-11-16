@@ -488,7 +488,7 @@ must come from an actual trusted receipt/lease or future lifecycle envelope, not
 nonexistent kernel snapshot generation property or a positive integer alone.
 
 Migration 0003 is forward-only and additive in both dialects. Preserve 0001/0002
-checksums. Do not supply destructive rollback, retention, redrive, provider selection
+checksums. Do not supply destructive rollback, retention, provider selection
 or remote database writes as part of integration.
 
 Migration 0004 adds hook_feed_head and hook_event. HookOutbox.stage persists a
@@ -512,12 +512,41 @@ resource/purpose/profile policy before exposing metadata or even its existence.
 No feed transport/consumer, production policy/sink or new flag enablement is supplied.
 The existing hook flag stays default-off. Keep EVE-45/260/261 broader acceptance open.
 
+Migration 0005 adds hook_redrive plus indexed foreign keys, retaining each accepted
+operator request UUID, exact pin/key and previous terminal attempt/reason. Existing
+facts/deliveries/receipts/checksums are unchanged. Apply before replay; retain tables
+on rollback. No migration is run remotely by this increment.
+HookRecovery is returned by hookStorage and resourceHookProvider.recovery. Its
+deadLetters(declaration, after, limit) and replay(declaration, idempotencyKey, requestId)
+effects explicitly require HookOperatorPolicy, with HookOperatorDeny as the safe
+composition. Fresh host authorization applies to inspection and every replay retry.
+Do not export the capability to plugins or treat it as HookReleasePolicy authority.
+deadLetters returns only stable delivery/event IDs, attempt and sealed reason, paged
+by strictly increasing UUID key; after is null or a UUID, limit is 1-100, no defaults.
+replay returns true on accepted redrive, false for the identical retained request;
+changed pin/key conflicts. Only dead letters qualify. Capacity and stream-running
+checks run under the existing pin lock. Preserve key/event/generation, clear the old
+fence, grant a fresh bounded attempt budget and retain history atomically. New
+deliveries still pass current flag/release checks. Previously delivered later events
+are not rewound; consumers must handle historical redelivery idempotently. No history
+update/delete API is exposed; grant only INSERT/SELECT to runtime, not owner rights.
+This history is not the platform's mandatory tamper-evident audit.
+
+Do not synthesize automatic receipt/lifecycle events from snapshots: the action
+host has no trusted generation/classification binding, and local Kernel ReadyReceipt
+uses a named runtime while hook readiness requires durable UUID provenance. Owner
+incarnation/recovery and interrupted-callback reconciliation contracts are pending.
+No native/UI consumer, production sink/release policy or exactly-once lifecycle
+publication is claimed by operator recovery or a synthetic process fixture.
+
 ### composition
 
 ```ts
 import {
     HookChangeFeed,
+    HookOperatorDeny,
     HookOutbox,
+    HookRecovery,
     HookReleaseDeny,
     type HookDeclaration,
     type HookEvent,
@@ -551,6 +580,20 @@ export const resume = (savedCursor: number) =>
         // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
         return yield* feed.read(savedCursor, 50);
     });
+
+/** Inspection releases metadata too; this example remains deliberately denied. */
+export const inspectDeadLetters = (declaration: HookDeclaration) =>
+    Effect.gen(function* () {
+        const recovery = yield* HookRecovery;
+        return yield* recovery.deadLetters(declaration, null, 25);
+    }).pipe(Effect.provide(HookOperatorDeny));
+
+/** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
+export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
+    Effect.gen(function* () {
+        const recovery = yield* HookRecovery;
+        return yield* recovery.replay(declaration, key, requestId);
+    }).pipe(Effect.provide(HookOperatorDeny));
 ```
 
 ---

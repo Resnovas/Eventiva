@@ -30,6 +30,10 @@ import {
     HookOutbox,
     HookOutboxFailure,
     HookObserverFailure,
+    HookOperatorPolicy,
+    HookOperatorDeny,
+    HookDenied,
+    HookRecovery,
     HookReleasePolicy,
     HookReleaseDeny,
 } from '@eventiva/contracts/hook';
@@ -154,6 +158,7 @@ const fixture = (dialect: Dialect, beforeFeed = false) =>
             store: Context.get(context, Storage),
             outbox: Context.get(context, HookOutbox),
             feed: Context.get(context, HookChangeFeed),
+            recovery: Context.get(context, HookRecovery),
         };
     });
 
@@ -366,6 +371,135 @@ const additive = (f: Effect.Effect.Success<ReturnType<typeof fixture>>) =>
 
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} durable hook outbox`, () => {
+        it.scoped('authorizes minimized dead-letter inspection and fences idempotent operator redrive', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const d = declaration();
+                const allowed = Layer.succeed(HookOperatorPolicy, { authorize: () => Effect.void });
+                yield* f.store.transaction(f.outbox.stage(event(), [d]));
+                const first = yield* required(yield* f.outbox.claim(d, 0));
+                yield* f.outbox.settle(first, { state: 'dead-letter', reason: 'exhausted' });
+                const policyCalls = yield* Ref.make(0);
+                const guarded = Layer.succeed(HookOperatorPolicy, {
+                    authorize: () => Ref.update(policyCalls, (n) => n + 1),
+                });
+                for (const operation of [
+                    f.recovery.deadLetters(d, null, 1).pipe(Effect.asVoid),
+                    f.recovery.replay(d, first.idempotencyKey, id(90)).pipe(Effect.asVoid),
+                ])
+                    expect(
+                        yield* Effect.flip(f.store.transaction(operation).pipe(Effect.provide(guarded)))
+                    ).toMatchObject({ reason: 'transaction-active' });
+                expect(yield* Ref.get(policyCalls)).toBe(0);
+                expect(
+                    yield* Effect.flip(f.recovery.deadLetters(d, null, 5).pipe(Effect.provide(HookOperatorDeny)))
+                ).toMatchObject({ _tag: 'HookDenied', reason: 'policy-denied' });
+                expect(
+                    yield* Effect.flip(
+                        f.recovery.replay(d, first.idempotencyKey, id(90)).pipe(Effect.provide(HookOperatorDeny))
+                    )
+                ).toBeInstanceOf(HookDenied);
+                expect(yield* f.recovery.deadLetters(d, null, 1).pipe(Effect.provide(allowed))).toEqual([
+                    { idempotencyKey: first.idempotencyKey, eventId: event().id, attempt: 1, reason: 'exhausted' },
+                ]);
+                expect(yield* f.recovery.deadLetters(d, first.idempotencyKey, 1).pipe(Effect.provide(allowed))).toEqual(
+                    []
+                );
+                for (const limit of [0, 101, 1.5])
+                    expect(
+                        yield* Effect.flip(f.recovery.deadLetters(d, null, limit).pipe(Effect.provide(allowed)))
+                    ).toMatchObject({ reason: 'invalid' });
+                expect(yield* f.recovery.replay(d, first.idempotencyKey, id(90)).pipe(Effect.provide(allowed))).toBe(
+                    true
+                );
+                const next = yield* required(yield* f.outbox.claim(d, 0));
+                expect(next.idempotencyKey).toBe(first.idempotencyKey);
+                expect(next.event).toEqual(first.event);
+                expect(next.attempt).toBe(1);
+                expect(next.lease).not.toBe(first.lease);
+                // A repeated operator request cannot reset the new worker, even before its acknowledgement.
+                expect(yield* f.recovery.replay(d, first.idempotencyKey, id(90)).pipe(Effect.provide(allowed))).toBe(
+                    false
+                );
+                expect((yield* Effect.flip(f.outbox.settle(first, { state: 'delivered' }))).reason).toBe('lease-lost');
+                yield* f.outbox.settle(next, { state: 'delivered' });
+                expect(
+                    yield* Effect.flip(f.recovery.replay(d, first.idempotencyKey, id(91)).pipe(Effect.provide(allowed)))
+                ).toMatchObject({ reason: 'conflict' });
+                expect(yield* f.sql`SELECT request_id, attempt, reason FROM hook_redrive`).toEqual([
+                    { request_id: id(90), attempt: 1, reason: 'exhausted' },
+                ]);
+                expect((yield* f.feed.read(0, 100)).events).toHaveLength(1);
+            })
+        );
+
+        it.scoped('redrive obeys capacity, exact pins, live operator revocation and stream quiescence', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const d = declaration('fixture.observe', 1);
+                const allowed = Layer.succeed(HookOperatorPolicy, { authorize: () => Effect.void });
+                const replay = (key: string) => f.recovery.replay(d, key, id(90)).pipe(Effect.provide(allowed));
+                yield* f.store.transaction(f.outbox.stage(event(), [d]));
+                const dead = yield* required(yield* f.outbox.claim(d, 0));
+                yield* f.outbox.settle(dead, { state: 'dead-letter', reason: 'denied' });
+                yield* f.store.transaction(f.outbox.stage(event(2), [d]));
+                expect((yield* Effect.flip(replay(dead.idempotencyKey))).reason).toBe('capacity');
+                expect(yield* f.sql`SELECT * FROM hook_redrive`).toHaveLength(0);
+                const later = yield* required(yield* f.outbox.claim(d, 0));
+                expect((yield* Effect.flip(replay(dead.idempotencyKey))).reason).toBe('conflict');
+                yield* f.outbox.settle(later, { state: 'delivered' });
+                expect(
+                    yield* Effect.flip(
+                        f.recovery
+                            .replay({ ...d, maxAttempts: 4 }, dead.idempotencyKey, id(90))
+                            .pipe(Effect.provide(allowed))
+                    )
+                ).toMatchObject({ reason: 'conflict' });
+                const foreign = yield* f.services(f.sql, TenantId.make(id(99)));
+                expect(
+                    yield* Effect.flip(
+                        Context.get(foreign, HookRecovery)
+                            .replay(d, dead.idempotencyKey, id(90))
+                            .pipe(Effect.provide(allowed))
+                    )
+                ).toMatchObject({ reason: 'invalid' });
+                expect(yield* replay(dead.idempotencyKey)).toBe(true);
+                expect(
+                    yield* Effect.flip(
+                        f.recovery.replay(d, dead.idempotencyKey, id(90)).pipe(Effect.provide(HookOperatorDeny))
+                    )
+                ).toBeInstanceOf(HookDenied);
+                expect(
+                    yield* Effect.flip(f.recovery.replay(d, later.idempotencyKey, id(90)).pipe(Effect.provide(allowed)))
+                ).toMatchObject({ reason: 'conflict' });
+                const retried = yield* required(yield* f.outbox.claim(d, 0));
+                expect(retried.idempotencyKey).toBe(dead.idempotencyKey);
+                expect(yield* f.sql`SELECT * FROM hook_redrive`).toHaveLength(1);
+                yield* f.outbox.settle(retried, { state: 'dead-letter', reason: 'denied' });
+                yield* f.recovery.replay(d, retried.idempotencyKey, id(92)).pipe(Effect.provide(allowed));
+                const accepted = yield* Ref.make(0);
+                const context = yield* Layer.build(
+                    HookDispatcherLive.pipe(
+                        Layer.provide(Layer.succeed(HookOutbox, f.outbox)),
+                        Layer.provide(HookReleaseDeny),
+                        Layer.provide(Layer.succeed(HookSink, { deliver: () => Ref.update(accepted, (n) => n + 1) })),
+                        Layer.provide(
+                            Layer.succeed(Flags, {
+                                evaluate: (flag) =>
+                                    Effect.succeed({ flag: flag.key, value: true, reason: 'TEST', fallback: false }),
+                            })
+                        )
+                    )
+                );
+                const handle = yield* Context.get(context, HookDispatcher).register(d);
+                expect(yield* handle.dispatch).toBe('dead-letter');
+                expect(yield* Ref.get(accepted)).toBe(0);
+                expect(yield* f.recovery.deadLetters(d, null, 1).pipe(Effect.provide(allowed))).toEqual([
+                    { idempotencyKey: dead.idempotencyKey, eventId: event().id, attempt: 1, reason: 'denied' },
+                ]);
+            })
+        );
+
         it.scoped('upgrades without rewriting existing deliveries or inventing historical commit order', () =>
             Effect.gen(function* () {
                 const f = yield* fixture(dialect, true);

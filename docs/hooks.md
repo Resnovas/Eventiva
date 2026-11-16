@@ -202,13 +202,84 @@ substitutes for deliberate emergency authorization.
   but before settlement. No callback or external service participates in SQL commit.
 - Unload/drain and registration concurrency are process-local. Pending work and
   pins survive worker loss; database claims fence cross-process ownership. Fleet-wide
-  active-worker quotas, polling supervision, authorized redrive/retention and lifecycle
+  active-worker quotas, polling supervision, retention and lifecycle
   publication are integration work, not provided management services.
 - Database credentials and the raw SQL client remain trusted host capabilities,
   never plugin capabilities. Tenant isolation here is enforced by the captured
   tenant and pin predicates, not a new database RLS/provider policy. Production
   composition must bound database lock/I/O waits and verify its least-privilege
   database policy; this checkpoint does not provision either.
+
+## Inspect and replay a dead letter
+
+Apply additive `0005.sql` before using operator replay. It adds `hook_redrive` and
+indexes, retaining previous terminal attempt/reason and the operator's request UUID.
+It changes no existing migration, event, receipt or delivery key. Old dispatchers
+remain compatible, but pause dispatchers while an authorized operator redrives a
+stream. Application rollback retains this table and history; do not delete facts or
+reset the database. No production migration or management endpoint is supplied.
+
+Obtain `HookRecovery` from `hookStorage` or `resourceHookProvider(...).recovery`.
+Both operations require an explicit `HookOperatorPolicy` in their Effect environment.
+Use `HookOperatorDeny` until the host supplies fresh operator identity/tenant/pin
+authorization and its mandatory audit boundary. This capability is not exposed to
+plugins, transports or arbitrary subscribers. Inspecting event existence is itself
+a metadata release; operator permission is separate from delivery release policy.
+
+```ts
+import { HookOperatorDeny, HookRecovery, type HookDeclaration } from '@eventiva/contracts/hook';
+import { Effect } from 'effect';
+
+const inspectDeadLetters = (declaration: HookDeclaration) =>
+    Effect.gen(function* () {
+        const recovery = yield* HookRecovery;
+        return yield* recovery.deadLetters(declaration, null, 25);
+    }).pipe(Effect.provide(HookOperatorDeny)); // Deliberately denies until authorized composition exists.
+```
+
+`deadLetters(declaration, after, limit)` requires the exact immutable declaration,
+a previous delivery-key UUID or `null`, and an integer limit from 1 through 100.
+There are no argument defaults. It returns terminal rows ordered strictly after
+the key, with only `idempotencyKey`, `eventId`, `attempt` and the sealed reason
+`denied`, `invalid` or `exhausted`. No fact, raw exception or payload is returned.
+Use the final key to page; an empty result ends that inspection, not a durable
+change-feed checkpoint.
+
+`replay(declaration, idempotencyKey, requestId)` requires a fresh UUID for each
+deliberate operator redrive. Repeat the same request UUID after an ambiguous reply:
+the first accepted call returns `true`; subsequent identical calls return `false`
+without resetting an active worker or another attempt budget. Reusing a request
+for a different pin/key conflicts. Authorization is rechecked even for retries.
+Only a dead letter can be redriven; nonterminal or delivered rows conflict.
+
+Replay atomically reserves normal pin capacity, retains the terminal attempt/reason
+in history, resets the bounded attempt budget and clears the old lease. Event,
+observer generation, revision and sink idempotency key never change. Any running
+delivery in that pin/resource-name stream prevents redrive until it is quiescent;
+already delivered later events are not undone. Redrive deliberately revisits an old
+event, so consumers must not interpret it as new chronological domain state.
+Repeated delivery still requires durable sink deduplication. Dispatch rechecks the
+existing default-off flag and live release policy; operator permission cannot bypass
+revocation, protected-data denial or separately authorized additive actions.
+
+Keep database ownership/migration roles separate. The operator adapter inserts
+history but supplies no history-update/delete API; grant runtime INSERT/SELECT only
+on `hook_redrive`. This is not a tamper-evident audit or protection against the SQL
+owner. Inspect/replay reject ambient SQL transactions and sanitize storage errors.
+
+## Producer acceptance is still blocked
+
+Automatic action-receipt and lifecycle production are not supplied by manually
+staging synthetic facts. The action host lacks an authoritative module/version/
+generation and event classification binding. Kernel `ReadyReceipt.runtimeId` is a
+named `ModuleId`, while the hook event requires a UUID; generations are currently
+process-local. Snapshot differences cannot establish durable publication provenance.
+The owner must define whether restart starts a new durable runtime incarnation or
+resumes fenced ownership, and how to reconcile callback success followed by a crash
+before journal commit. Nontransactional callbacks must not be blindly rerun.
+Until that contract exists, do not claim durable lifecycle production or exactly
+one `platform.ready` event per durable generation. Native/UI consumer and production
+release/sink acceptance also remain separate from these host-only recovery APIs.
 
 ## Diagnose failures
 
