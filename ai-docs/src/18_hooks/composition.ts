@@ -14,7 +14,13 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { HookOutbox, HookReleaseDeny, type HookDeclaration, type HookEvent } from '@eventiva/contracts/hook';
+import {
+    HookChangeFeed,
+    HookOutbox,
+    HookReleaseDeny,
+    type HookDeclaration,
+    type HookEvent,
+} from '@eventiva/contracts/hook';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { Storage } from '@eventiva/contracts/storage';
 import { hookStorage } from '@eventiva/integrations.sql/hook';
@@ -35,4 +41,12 @@ export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDec
         const outbox = yield* HookOutbox;
         // Include the real domain write in this transaction before staging.
         yield* store.transaction(outbox.stage(event, observers));
+    });
+
+/** Trusted host only; release policy is still required before exposing facts to a consumer. */
+export const resume = (savedCursor: number) =>
+    Effect.gen(function* () {
+        const feed = yield* HookChangeFeed;
+        // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
+        return yield* feed.read(savedCursor, 50);
     });

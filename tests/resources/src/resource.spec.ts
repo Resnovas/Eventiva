@@ -375,10 +375,15 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                         expect(yield* api.get(resource, observation.resourceId)).toBeUndefined();
                         expect(yield* api.history(resource, observation.resourceId)).toEqual([]);
                         expect(yield* provider.outbox.claim(observer, 0)).toBeUndefined();
+                        expect(yield* provider.feed.read(0, 100)).toEqual({ cursor: 0, events: [] });
                         const request = { key: 'created', inputHash: 'one' };
                         expect((yield* provider.storage.commit(request, write)).replayed).toBe(false);
                         expect((yield* provider.storage.commit(request, write)).replayed).toBe(true);
                         expect(yield* api.history(resource, observation.resourceId)).toHaveLength(1);
+                        expect(yield* provider.feed.read(0, 100)).toEqual({
+                            cursor: 1,
+                            events: [{ cursor: 1, event: observation }],
+                        });
                         expect(
                             yield* provider.storage
                                 .commit({ ...request, inputHash: 'changed' }, write)

@@ -65,13 +65,73 @@ example deliberately supplies neither a production release policy nor a sink.
 For a resource write plus observation, use `resourceHookProvider(dialect, tenant,
 identity, definitions)` from `@eventiva/integrations.sql/resource` instead of
 nesting independent resource/hook roots. It returns the resource provider with
-its paired `outbox`; use its exact `storage` for durable Integrity. The authenticated
+its paired `outbox` and committed `feed`; use its exact `storage` for durable Integrity. The authenticated
 tenant must match the requested resource tenant. Both SQL adapters share one private
 root and actual connection identity, so rollback and replay cover the resource,
 immutable history, receipt and staged fact together. Independently created roots
 remain foreign even on the same client. See [Resource composition](resources.md#share-a-resource-and-hook-transaction)
 and its compiling `writeAndStage` example. This does not supply production release,
 principal, approval, sink or lifecycle provenance policy, and enables no flag.
+
+## Resume a committed tenant change feed
+
+Apply additive `0004.sql` before deploying the new producer. It adds `hook_feed_head`
+and `hook_event` without changing existing deliveries, receipts or migration checksums.
+Open new application clients after migration; reopen a SQLite client that queried
+the missing feed table before migration, because its driver caches failed prepares.
+Quiesce old producers before enabling feed consumers: old binaries can still write
+deliveries but cannot populate the new feed. There is no historical backfill because
+the previous delivery table cannot establish cross-subscription commit order. Cursor
+zero starts the facts admitted by the new producer, not the tenant's entire history.
+Rolling application code back retains both new tables; suspend feed consumers until
+all producers support the feed again. No down migration or production migration is run
+by this increment.
+
+Obtain `HookChangeFeed` from the same authenticated `hookStorage(dialect)` context,
+or use `resourceHookProvider(...).feed`. `HookOutbox.stage` now stores one minimized
+fact per tenant/event ID even with an empty observer array. Repeating identical
+content does not add a cursor; changed content conflicts across all observer pins.
+Fact admission and every observer delivery share the originating transaction and
+savepoint, so failed admission or rollback publishes neither a fact nor a cursor.
+
+```ts
+import { HookChangeFeed } from '@eventiva/contracts/hook';
+import { Effect } from 'effect';
+
+const resume = (savedCursor: number) =>
+    Effect.gen(function* () {
+        const feed = yield* HookChangeFeed;
+        const page = yield* feed.read(savedCursor, 50);
+        // Apply live release policy before exposing even event existence to a caller.
+        // Persist page.cursor only after the consumer durably accepts the page.
+        return page;
+    });
+```
+
+`read(after, limit)` requires both arguments. `after` is a nonnegative safe integer
+(use `0` initially); `limit` is an integer from `1` through `100`, with no default.
+It returns `{ cursor, events: [{ cursor, event }] }` in increasing tenant-local
+commit order, strictly after `after`. An empty page retains `after`. Cursors are
+not source sequence numbers, timestamps or delivery acknowledgements. A tenant
+head lock lasts through commit, preventing a later committed cursor from hiding an
+earlier uncommitted one. This serializes concurrent fact writers within a tenant;
+keep originating transactions short and do not perform network IO inside them.
+Independent tenants retain independent heads.
+
+Read outside SQL transactions. A plain committed SELECT does not acquire SQLite's
+writer lock; ambient transactions are rejected with `transaction-active` to prevent
+uncommitted reads. Reopening a client resumes from the saved cursor, independently
+of observer retries or acknowledgements. Retention/redrive remain separately authorized
+operations; this API cannot update or delete facts.
+
+This is a **trusted host capability**, not a public transport or subscription grant.
+The captured authenticated tenant bounds every query, but metadata can itself be
+protected. Apply fresh resource/purpose/profile release policy before releasing
+facts or their existence to UI, agents, sync or third parties. No endpoint or consumer
+is wired here; the existing hook flag remains default-off, release remains default-deny,
+and production readiness is not claimed. Missing migration/database returns a bounded
+`unavailable` failure; malformed or inconsistent persisted data returns `invalid`,
+without attaching SQL, parser details or rejected content.
 
 ## Declare observations
 

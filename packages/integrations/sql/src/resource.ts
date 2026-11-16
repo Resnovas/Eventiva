@@ -16,7 +16,7 @@
 
 import { createHash } from 'node:crypto';
 import { SqlClient } from '@effect/sql';
-import { HookOutbox } from '@eventiva/contracts/hook';
+import { HookChangeFeed, HookOutbox } from '@eventiva/contracts/hook';
 import type { TenantId } from '@eventiva/contracts/ids';
 import {
     canonicalDefinition,
@@ -363,5 +363,5 @@ export const resourceHookProvider = (
         const owner = yield* transactionScope(dialect, 'resource-provider-boundary');
         const provider = yield* bindResourceProvider(dialect, tenant, identity, definitions, owner);
         const context = yield* hookContext(dialect, owner);
-        return { ...provider, outbox: Context.get(context, HookOutbox) };
+        return { ...provider, outbox: Context.get(context, HookOutbox), feed: Context.get(context, HookChangeFeed) };
     });

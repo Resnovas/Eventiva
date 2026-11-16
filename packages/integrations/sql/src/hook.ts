@@ -17,6 +17,7 @@
 import { SqlClient } from '@effect/sql';
 import type { SqlError } from '@effect/sql/SqlError';
 import {
+    HookChangeFeed,
     HookClaim,
     HookDeclaration,
     HookEvent,
@@ -119,6 +120,24 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     // Savepoint makes staging all-or-nothing even when a caller handles a capacity/conflict failure.
                     yield* sql.withTransaction(
                         Effect.gen(function* () {
+                            // Hold the tenant head lock THROUGH the originating commit. A database sequence
+                            // alone could publish cursor 2 before 1 commits, permanently skipping 1 on resume.
+                            yield* sql`INSERT INTO hook_feed_head (tenant, cursor) VALUES (${tenant}, 0) ON CONFLICT (tenant) DO NOTHING`;
+                            yield* sql`UPDATE hook_feed_head SET cursor = cursor WHERE tenant = ${tenant}`;
+                            const [existing] = yield* sql<{
+                                event: string;
+                            }>`SELECT event FROM hook_event WHERE tenant = ${tenant} AND event_id = ${event.id}`;
+                            if (existing !== undefined) {
+                                if (existing.event !== JSON.stringify(event))
+                                    return yield* new HookOutboxFailure({ reason: 'conflict' });
+                            } else {
+                                const [head] = yield* sql<{
+                                    cursor: string | number;
+                                }>`UPDATE hook_feed_head SET cursor = cursor + 1 WHERE tenant = ${tenant} RETURNING cursor`;
+                                if (head === undefined) return yield* new HookOutboxFailure({ reason: 'invalid' });
+                                const cursor = yield* decode(Integer, head.cursor);
+                                yield* sql`INSERT INTO hook_event (tenant, cursor, event_id, event) VALUES (${tenant}, ${cursor}, ${event.id}, ${JSON.stringify(event)})`;
+                            }
                             for (const d of [...declarations].sort((a, b) =>
                                 keyOf(a.pin).localeCompare(keyOf(b.pin))
                             )) {
@@ -232,5 +251,36 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     })
                 ),
         });
-        return Context.make(Storage, owner.storage).pipe(Context.add(HookOutbox, outbox));
+        const feed = HookChangeFeed.of({
+            read: (after, limit) =>
+                Effect.gen(function* () {
+                    // A plain committed SELECT must not acquire SQLite's BEGIN IMMEDIATE writer lock.
+                    // An ambient transaction could expose the caller's uncommitted facts, so reject it.
+                    if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
+                        return yield* new HookOutboxFailure({ reason: 'transaction-active' });
+                    yield* decode(Integer, after);
+                    yield* decode(Schema.Int.pipe(Schema.between(1, 100)), limit);
+                    const rows = yield* sql<{
+                        cursor: string | number;
+                        event_id: string;
+                        event: string;
+                    }>`SELECT cursor, event_id, event FROM hook_event WHERE tenant = ${tenant} AND cursor > ${after} ORDER BY cursor LIMIT ${limit}`;
+                    const events = yield* Effect.forEach(rows, (row) =>
+                        Effect.gen(function* () {
+                            const cursor = yield* decode(Integer, row.cursor);
+                            const event = yield* decode(Schema.parseJson(HookEvent), row.event);
+                            if (event.tenant !== tenant || event.id !== row.event_id)
+                                return yield* new HookOutboxFailure({ reason: 'invalid' });
+                            return { cursor, event };
+                        })
+                    );
+                    return { cursor: events.at(-1)?.cursor ?? after, events };
+                }).pipe(
+                    Effect.catchTag('SqlError', () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })))
+                ),
+        });
+        return Context.make(Storage, owner.storage).pipe(
+            Context.add(HookOutbox, outbox),
+            Context.add(HookChangeFeed, feed)
+        );
     });

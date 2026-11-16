@@ -491,10 +491,37 @@ Migration 0003 is forward-only and additive in both dialects. Preserve 0001/0002
 checksums. Do not supply destructive rollback, retention, redrive, provider selection
 or remote database writes as part of integration.
 
+Migration 0004 adds hook_feed_head and hook_event. HookOutbox.stage persists a
+tenant/event-ID-deduplicated minimized fact even without observers, in the same
+transaction/savepoint as all deliveries. HookChangeFeed from hookStorage, or feed
+from resourceHookProvider, reads committed tenant-local cursors independently of
+subscription/delivery lifetime. read(after, limit) requires a nonnegative safe-integer
+cursor and integer limit 1-100; start at 0. Returns cursor plus ordered {cursor,event}
+entries strictly after the input, retaining that cursor on an empty page. Never use
+source sequence/time as a cursor. The tenant head lock lasts through originating
+commit; this deliberately serializes same-tenant fact writers. Reads use committed
+SELECT without a write transaction and reject every ambient SQL transaction.
+
+Apply 0004 before new producers, quiesce old binaries before enabling consumers,
+and retain tables/data on application rollback while suspending consumers. There
+is no inferred historical backfill: old deliveries cannot prove commit order.
+Open clients after migration; reopen SQLite clients after a missing-table prepare
+failure because the driver's statement cache retains failures.
+This trusted host capability is NOT a transport or release grant; apply fresh
+resource/purpose/profile policy before exposing metadata or even its existence.
+No feed transport/consumer, production policy/sink or new flag enablement is supplied.
+The existing hook flag stays default-off. Keep EVE-45/260/261 broader acceptance open.
+
 ### composition
 
 ```ts
-import { HookOutbox, HookReleaseDeny, type HookDeclaration, type HookEvent } from '@eventiva/contracts/hook';
+import {
+    HookChangeFeed,
+    HookOutbox,
+    HookReleaseDeny,
+    type HookDeclaration,
+    type HookEvent,
+} from '@eventiva/contracts/hook';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { Storage } from '@eventiva/contracts/storage';
 import { hookStorage } from '@eventiva/integrations.sql/hook';
@@ -515,6 +542,14 @@ export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDec
         const outbox = yield* HookOutbox;
         // Include the real domain write in this transaction before staging.
         yield* store.transaction(outbox.stage(event, observers));
+    });
+
+/** Trusted host only; release policy is still required before exposing facts to a consumer. */
+export const resume = (savedCursor: number) =>
+    Effect.gen(function* () {
+        const feed = yield* HookChangeFeed;
+        // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
+        return yield* feed.read(savedCursor, 50);
     });
 ```
 

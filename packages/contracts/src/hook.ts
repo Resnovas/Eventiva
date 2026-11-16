@@ -232,6 +232,27 @@ export const HookOutboxUnavailable = Layer.succeed(HookOutbox, {
     settle: () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })),
 });
 
+/** Trusted host capability, NOT a client/plugin subscription or authorization grant.
+ * Reads committed minimized facts for the captured authenticated tenant, independent of observers.
+ * A transport must apply live resource/purpose/profile policy before releasing even event existence.
+ * Cursors are tenant-local commit order, not source sequence, time or delivery acknowledgement.
+ */
+export class HookChangeFeed extends Context.Tag('@eventiva/contracts/HookChangeFeed')<
+    HookChangeFeed,
+    {
+        readonly read: (
+            after: number,
+            limit: number
+        ) => Effect.Effect<
+            {
+                readonly cursor: number;
+                readonly events: ReadonlyArray<{ readonly cursor: number; readonly event: HookEvent }>;
+            },
+            HookOutboxFailure
+        >;
+    }
+>() {}
+
 export const hookFlag = {
     key: 'hooks.foundation-enabled',
     owner: 'runtime',

@@ -23,6 +23,7 @@ import { SqlClient } from '@effect/sql';
 import { SqliteClient } from '@effect/sql-sqlite-node';
 import { describe, expect, expectTypeOf, it } from '@effect/vitest';
 import {
+    HookChangeFeed,
     HookClaim,
     HookDeclaration,
     HookEvent,
@@ -110,7 +111,7 @@ const local = process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@1
 const target = new URL(local);
 if (!['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname) || target.pathname !== '/eventiva_test')
     throw new Error('Hook conformance requires disposable loopback eventiva_test');
-const fixture = (dialect: Dialect) =>
+const fixture = (dialect: Dialect, beforeFeed = false) =>
     Effect.gen(function* () {
         yield* TestClock.setTime(1000);
         const directory = yield* Effect.acquireRelease(
@@ -134,7 +135,9 @@ const fixture = (dialect: Dialect) =>
         const sql = Context.get(yield* connect(), SqlClient.SqlClient);
         yield* migrate(
             dialect,
-            yield* load(fileURLToPath(new URL(`../../../storage/migrations/${dialect}`, import.meta.url)))
+            (yield* load(fileURLToPath(new URL(`../../../storage/migrations/${dialect}`, import.meta.url)))).filter(
+                (entry) => !beforeFeed || entry.name < '0004.sql'
+            )
         ).pipe(Effect.provideService(SqlClient.SqlClient, sql));
         const services = (connection: SqlClient.SqlClient, owner = tenant) =>
             Layer.build(
@@ -150,6 +153,7 @@ const fixture = (dialect: Dialect) =>
             services,
             store: Context.get(context, Storage),
             outbox: Context.get(context, HookOutbox),
+            feed: Context.get(context, HookChangeFeed),
         };
     });
 
@@ -362,6 +366,164 @@ const additive = (f: Effect.Effect.Success<ReturnType<typeof fixture>>) =>
 
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} durable hook outbox`, () => {
+        it.scoped('upgrades without rewriting existing deliveries or inventing historical commit order', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect, true);
+                expect(yield* Effect.flip(f.feed.read(0, 1))).toMatchObject({ reason: 'unavailable' });
+                const pin = JSON.stringify([
+                    tenant,
+                    identity.module,
+                    identity.version,
+                    identity.generation,
+                    'fixture.observe',
+                    1,
+                ]);
+                // An existing 0003 producer stored only deliveries; it had no global event/cursor table.
+                yield* f.sql`INSERT INTO hook_subscription (pin, tenant, declaration) VALUES (${pin}, ${tenant}, ${JSON.stringify(declaration())})`;
+                yield* f.sql`INSERT INTO hook_delivery (idempotency_key, subscription, event_id, resource, sequence, event, state) VALUES (${id(80)}, ${pin}, ${event().id}, ${event().resource}, 1, ${JSON.stringify(event())}, 'pending')`;
+                const apply = migrate(
+                    dialect,
+                    yield* load(fileURLToPath(new URL(`../../../storage/migrations/${dialect}`, import.meta.url)))
+                ).pipe(Effect.provideService(SqlClient.SqlClient, f.sql));
+                yield* apply;
+                yield* apply;
+                // New binaries open their client AFTER migration; SQLite caches failed pre-DDL prepares.
+                const upgraded = yield* f.services(Context.get(yield* f.connect(), SqlClient.SqlClient));
+                const feed = Context.get(upgraded, HookChangeFeed);
+                const outbox = Context.get(upgraded, HookOutbox);
+                expect(yield* feed.read(0, 100)).toEqual({ cursor: 0, events: [] });
+                const oldClaim = yield* required(yield* outbox.claim(declaration(), 0));
+                expect(oldClaim.idempotencyKey).toBe(id(80));
+                expect(oldClaim.event).toEqual(event());
+                yield* outbox.settle(oldClaim, { state: 'delivered' });
+                yield* Context.get(upgraded, Storage).transaction(outbox.stage(event(2), []));
+                expect(yield* feed.read(0, 100)).toEqual({ cursor: 1, events: [{ cursor: 1, event: event(2) }] });
+            })
+        );
+
+        it.scoped('pages committed facts once per tenant without requiring observers and resumes after reconnect', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const first = event(7);
+                const second = event(2, 'fixture.other');
+                expect(yield* f.feed.read(0, 1)).toEqual({ cursor: 0, events: [] });
+                yield* f.store.transaction(f.outbox.stage(first, [declaration(), declaration('fixture.second')]));
+                yield* f.store.transaction(f.outbox.stage(first, []));
+                yield* f.store.transaction(f.outbox.stage(second, []));
+                const foreignTenant = TenantId.make(id(90));
+                const foreign = yield* f.services(f.sql, foreignTenant);
+                const foreignEvent = { ...first, tenant: foreignTenant };
+                yield* Context.get(foreign, Storage).transaction(
+                    Context.get(foreign, HookOutbox).stage(foreignEvent, [])
+                );
+                expect(yield* Context.get(foreign, HookChangeFeed).read(0, 100)).toEqual({
+                    cursor: 1,
+                    events: [{ cursor: 1, event: foreignEvent }],
+                });
+                expect(yield* f.feed.read(0, 1)).toEqual({ cursor: 1, events: [{ cursor: 1, event: first }] });
+                const connection = Context.get(yield* f.connect(), SqlClient.SqlClient);
+                const resumed = Context.get(yield* f.services(connection), HookChangeFeed);
+                expect(yield* resumed.read(1, 100)).toEqual({
+                    cursor: 2,
+                    events: [{ cursor: 2, event: second }],
+                });
+                expect(yield* resumed.read(2, 100)).toEqual({ cursor: 2, events: [] });
+                // Delivery/acknowledgement is independent of feed retention and cursor order.
+                yield* f.outbox.settle(yield* required(yield* f.outbox.claim(declaration(), 0)), {
+                    state: 'delivered',
+                });
+                expect((yield* resumed.read(0, 100)).events.map(({ event }) => event.id)).toEqual([
+                    first.id,
+                    second.id,
+                ]);
+            })
+        );
+
+        it.scoped('rolls back feed admission with the origin and pins, rejects changed facts and invalid reads', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const d = declaration('fixture.limited', 1);
+                yield* f.store.transaction(f.outbox.stage(event(), [d]));
+                yield* f.store.transaction(f.outbox.stage(event(2), [d]).pipe(Effect.either));
+                expect((yield* f.feed.read(0, 100)).events).toHaveLength(1);
+                yield* f.store.transaction(
+                    f.outbox.stage({ ...event(), purpose: 'fixture.changed' }, []).pipe(Effect.either)
+                );
+                expect((yield* f.feed.read(0, 100)).events[0]?.event).toEqual(event());
+                yield* f.store
+                    .transaction(f.outbox.stage(event(2), []).pipe(Effect.zipRight(Effect.fail('abort'))))
+                    .pipe(Effect.either);
+                expect(yield* f.feed.read(1, 100)).toEqual({ cursor: 1, events: [] });
+                yield* f.store.transaction(f.outbox.stage(event(3), []));
+                expect(yield* f.feed.read(1, 100)).toEqual({ cursor: 2, events: [{ cursor: 2, event: event(3) }] });
+                for (const [after, limit] of [
+                    [-1, 1],
+                    [0.5, 1],
+                    [Number.NaN, 1],
+                    [0, 0],
+                    [0, 101],
+                    [0, 1.5],
+                ])
+                    expect(yield* Effect.flip(f.feed.read(after ?? 0, limit ?? 0))).toMatchObject({
+                        reason: 'invalid',
+                    });
+                expect(yield* Effect.flip(f.store.transaction(f.feed.read(0, 1)))).toMatchObject({
+                    reason: 'transaction-active',
+                });
+                yield* f.sql`UPDATE hook_event SET event = ${JSON.stringify({ ...event(), tenant: TenantId.make(id(90)) })} WHERE tenant = ${tenant} AND cursor = 1`;
+                expect(yield* Effect.flip(f.feed.read(0, 100))).toMatchObject({ reason: 'invalid' });
+                yield* f.sql`UPDATE hook_event SET event = ${JSON.stringify({ ...event(), id: id(99) })} WHERE tenant = ${tenant} AND cursor = 1`;
+                expect(yield* Effect.flip(f.feed.read(0, 100))).toMatchObject({ reason: 'invalid' });
+                yield* f.sql`UPDATE hook_event SET event = ${JSON.stringify({ ...event(), plaintext: 'NEVER-RELEASE' })} WHERE tenant = ${tenant} AND cursor = 1`;
+                expect(yield* Effect.flip(f.feed.read(0, 100))).toMatchObject({ reason: 'invalid' });
+            })
+        );
+
+        it.scoped('does not expose an uncommitted cursor or let a later writer overtake it', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const staged = yield* Deferred.make<void>();
+                const release = yield* Deferred.make<void>();
+                const first = yield* f.store
+                    .transaction(
+                        f.outbox
+                            .stage(event(7), [])
+                            .pipe(
+                                Effect.zipRight(Deferred.succeed(staged, undefined)),
+                                Effect.zipRight(Deferred.await(release))
+                            )
+                    )
+                    .pipe(Effect.fork);
+                yield* Deferred.await(staged);
+                const readerSql = Context.get(yield* f.connect(), SqlClient.SqlClient);
+                const reader = Context.get(yield* f.services(readerSql), HookChangeFeed);
+                expect(yield* reader.read(0, 100)).toEqual({ cursor: 0, events: [] });
+                // PostgreSQL uses an independent connection to exercise the database head lock.
+                // SQLite's synchronous driver serializes writers on its captured client.
+                const writer = dialect === 'postgres' ? yield* f.services(readerSql) : yield* f.services(f.sql);
+                const started = yield* Deferred.make<void>();
+                const second = yield* Deferred.succeed(started, undefined).pipe(
+                    Effect.zipRight(
+                        Context.get(writer, Storage).transaction(Context.get(writer, HookOutbox).stage(event(2), []))
+                    ),
+                    Effect.fork
+                );
+                yield* Deferred.await(started);
+                yield* Effect.yieldNow();
+                expect(Option.isNone(yield* Fiber.poll(second))).toBe(true);
+                yield* Deferred.succeed(release, undefined);
+                yield* Fiber.join(first);
+                yield* Fiber.join(second);
+                expect(yield* reader.read(0, 100)).toEqual({
+                    cursor: 2,
+                    events: [
+                        { cursor: 1, event: event(7) },
+                        { cursor: 2, event: event(2) },
+                    ],
+                });
+            })
+        );
+
         it.scoped(
             'pins the captured canonical action version before preparation, independent of resource version',
             () =>
