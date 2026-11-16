@@ -251,6 +251,10 @@ the first accepted call returns `true`; subsequent identical calls return `false
 without resetting an active worker or another attempt budget. Reusing a request
 for a different pin/key conflicts. Authorization is rechecked even for retries.
 Only a dead letter can be redriven; nonterminal or delivered rows conflict.
+Request UUIDs are unique per tenant, not per subscription. Concurrent requests
+against different pins are arbitrated by the retained history's unique key: one
+can commit and the other reports `conflict`, not a storage outage. The losing
+delivery stays dead-lettered and receives no new retry budget.
 
 Replay atomically reserves normal pin capacity, retains the terminal attempt/reason
 in history, resets the bounded attempt budget and clears the old lease. Event,

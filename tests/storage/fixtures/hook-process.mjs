@@ -25,7 +25,14 @@ import { fileURLToPath } from 'node:url';
 import { SqlClient } from '@effect/sql';
 import { SqliteClient } from '@effect/sql-sqlite-node';
 import { Flags } from '@eventiva/contracts/flags';
-import { HookDeclaration, HookEvent, HookOutbox, HookReleasePolicy } from '@eventiva/contracts/hook';
+import {
+    HookDeclaration,
+    HookEvent,
+    HookOperatorPolicy,
+    HookOutbox,
+    HookRecovery,
+    HookReleasePolicy,
+} from '@eventiva/contracts/hook';
 import { TenantId } from '@eventiva/contracts/ids';
 import { CurrentTenant, Storage } from '@eventiva/contracts/storage';
 import { hookStorage } from '@eventiva/integrations.sql/hook';
@@ -36,6 +43,7 @@ import { Cause, ConfigProvider, Context, Deferred, Effect, Exit, FiberSet, Layer
 
 // Reviewed synthetic SQL sink only. This is not a production accepting sink,
 // principal registry, or substitute for canonical ActionHost authorization.
+// Its deduplication is not a general exactly-once delivery guarantee.
 const id = (n) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const tenant = TenantId.make(id(1));
 const identity = { module: 'fixture', version: '1.0.0', generation: 1 };
@@ -103,6 +111,7 @@ if (role === 'worker') {
     const sql = Context.get(await run(connect(dialect, target)), SqlClient.SqlClient);
     const context = await run(services(dialect, sql));
     const outbox = Context.get(context, HookOutbox);
+    const recovery = Context.get(context, HookRecovery);
     const tasks = await run(FiberSet.make());
     const runFork = await run(FiberSet.runtime(tasks)());
     const barrier = (name, value) =>
@@ -179,11 +188,30 @@ if (role === 'worker') {
         const operation =
             message.command === 'dispatch'
                 ? dispatch(message.phase)
-                : message.command === 'settle'
-                  ? outbox
-                        .settle(message.claim, { state: 'delivered' })
-                        .pipe(Effect.match({ onFailure: (error) => error.reason, onSuccess: () => 'settled' }))
-                  : Effect.die('Unknown process proof command');
+                : message.command === 'claim'
+                  ? outbox.claim(declaration, 0)
+                  : message.command === 'replay'
+                    ? recovery.replay(message.declaration ?? declaration, message.key, message.requestId).pipe(
+                          Effect.provideService(HookOperatorPolicy, {
+                              // Synthetic trusted operator authority, not a production principal registry.
+                              authorize: (pin, operation) =>
+                                  Effect.sync(() => {
+                                      assert.deepEqual(pin, declaration.pin);
+                                      assert.equal(operation, 'replay');
+                                  }),
+                          }),
+                          // Public replay has returned only after its transaction committed.
+                          // Hold the IPC acknowledgement until the coordinator kills this worker.
+                          Effect.tap((accepted) =>
+                              message.phase === 'commit' ? barrier('replayed', { accepted }) : Effect.void
+                          ),
+                          Effect.catchAll((error) => Effect.succeed(error.reason))
+                      )
+                    : message.command === 'settle'
+                      ? outbox
+                            .settle(message.claim, message.settlement ?? { state: 'delivered' })
+                            .pipe(Effect.match({ onFailure: (error) => error.reason, onSuccess: () => 'settled' }))
+                      : Effect.die('Unknown process proof command');
         runFork(
             operation.pipe(
                 Effect.matchCause({
@@ -381,6 +409,112 @@ if (role === 'worker') {
             })),
             [{ state: 'delivered', attempt: 3 }]
         );
+
+        // Exhaust a second staged event through public claims/settlements only.
+        // No lease, attempt, due time or terminal state is rewritten by the proof.
+        const replayEvent = { ...event, id: id(12), commit: id(22), sequence: 2 };
+        await run(store.transaction(outbox.stage(replayEvent, [declaration])));
+        let terminalClaim;
+        for (let attempt = 1; attempt <= declaration.maxAttempts; attempt++) {
+            terminalClaim = await request(replacement, { command: 'claim' });
+            assert.ok(terminalClaim);
+            assert.equal(terminalClaim.attempt, attempt);
+            assert.equal(terminalClaim.event.id, replayEvent.id);
+            assert.equal(
+                await request(replacement, {
+                    command: 'settle',
+                    claim: terminalClaim,
+                    settlement:
+                        attempt === declaration.maxAttempts
+                            ? { state: 'dead-letter', reason: 'exhausted' }
+                            : { state: 'retry', availableAt: 0 },
+                }),
+                'settled'
+            );
+        }
+        const delivery = () =>
+            run(sql`SELECT * FROM hook_delivery WHERE idempotency_key = ${terminalClaim.idempotencyKey}`);
+        const history = () => run(sql`SELECT * FROM hook_redrive`);
+        assert.equal((await delivery())[0].state, 'dead-letter');
+        assert.deepEqual(await history(), []);
+        const operator = await launch(database);
+        assert.notEqual(operator.pid, replacement.pid);
+        const replayRequest = { command: 'replay', key: terminalClaim.idempotencyKey, requestId: id(90) };
+        const lostAcknowledgement = request(operator, { ...replayRequest, phase: 'commit' }).catch((error) => ({
+            error,
+        }));
+        const replayMessageId = sequence;
+        assert.deepEqual((await waitFor(operator, (value) => value.barrier === 'replayed')).value, {
+            accepted: true,
+        });
+        const [pending] = await delivery();
+        assert.equal(pending.state, 'pending');
+        assert.equal(Number(pending.attempt), 0);
+        assert.equal(pending.lease, null);
+        const committedHistory = await history();
+        assert.equal(committedHistory.length, 1);
+        assert.equal(committedHistory[0].request_id, replayRequest.requestId);
+        assert.equal(committedHistory[0].idempotency_key, terminalClaim.idempotencyKey);
+        assert.equal(Number(committedHistory[0].attempt), declaration.maxAttempts);
+        assert.equal(committedHistory[0].reason, 'exhausted');
+        assert.equal(
+            messages.some((entry) => entry.child === operator && entry.value.id === replayMessageId),
+            false
+        );
+        await stop(operator);
+        assert.match((await lostAcknowledgement).error.message, /Worker exited at IPC barrier: null\/SIGKILL/);
+        assert.equal(
+            messages.some((entry) => entry.child === operator && entry.value.id === replayMessageId),
+            false
+        );
+
+        const operatorReplacement = await launch(database);
+        assert.notEqual(operatorReplacement.pid, operator.pid);
+        assert.notEqual(operatorReplacement.pid, replacement.pid);
+        const freshFirst = await request(replacement, { command: 'claim' });
+        assert.equal(freshFirst.idempotencyKey, terminalClaim.idempotencyKey);
+        assert.deepEqual(freshFirst.event, terminalClaim.event);
+        assert.equal(freshFirst.attempt, 1);
+        assert.notEqual(freshFirst.lease, terminalClaim.lease);
+        assert.equal(
+            await request(replacement, {
+                command: 'settle',
+                claim: freshFirst,
+                settlement: { state: 'retry', availableAt: 0 },
+            }),
+            'settled'
+        );
+        const fresh = await request(replacement, { command: 'claim' });
+        assert.equal(fresh.attempt, 2);
+        assert.notEqual(fresh.lease, freshFirst.lease);
+        const runningReplay = await delivery();
+        assert.equal(runningReplay[0].state, 'running');
+        assert.equal(runningReplay[0].lease, fresh.lease);
+        assert.equal(Number(runningReplay[0].attempt), 2);
+        const retryAccepted = await request(operatorReplacement, replayRequest);
+        assert.equal(retryAccepted, false);
+        // Same UUID with changed delivery or declaration must conflict, not alias the accepted request.
+        assert.equal(await request(operatorReplacement, { ...replayRequest, key: claim1.idempotencyKey }), 'conflict');
+        assert.equal(
+            await request(operatorReplacement, {
+                ...replayRequest,
+                declaration: { ...declaration, maxAttempts: declaration.maxAttempts + 1 },
+            }),
+            'conflict'
+        );
+        assert.equal(await request(operatorReplacement, { ...replayRequest, requestId: id(91) }), 'conflict');
+        for (const claim of [terminalClaim, freshFirst])
+            assert.equal(await request(operatorReplacement, { command: 'settle', claim }), 'lease-lost');
+        // Byte-for-byte row equality includes the live lease deadline and remaining attempt budget.
+        assert.deepEqual(await delivery(), runningReplay);
+        assert.deepEqual(await history(), committedHistory);
+        assert.equal(await request(replacement, { command: 'settle', claim: fresh }), 'settled');
+        assert.equal(await request(operatorReplacement, replayRequest), false);
+        assert.equal((await delivery())[0].state, 'delivered');
+        assert.deepEqual(await history(), committedHistory);
+        // This direct outbox/recovery scenario never calls the synthetic accepting sink.
+        assert.equal((await run(sql`SELECT * FROM hook_process_sink`)).length, 1);
+        assert.equal((await run(sql`SELECT * FROM hook_process_attempt`)).length, 2);
         console.log(
             JSON.stringify({
                 event: 'hook-process-recovery-passed',
@@ -389,6 +523,14 @@ if (role === 'worker') {
                 attempts: 3,
                 applied: 1,
                 originRuns: 1,
+                operatorReplay: {
+                    pids: [operator.pid, operatorReplacement.pid],
+                    acknowledgementLost: true,
+                    retryAccepted,
+                    historyRecords: committedHistory.length,
+                    terminalAttempts: terminalClaim.attempt,
+                    preservedAttempt: fresh.attempt,
+                },
             })
         );
     } finally {

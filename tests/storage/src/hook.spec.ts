@@ -433,6 +433,80 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             })
         );
 
+        it.scoped('arbitrates simultaneous operator request IDs across independent subscription connections', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const allowed = Layer.succeed(HookOperatorPolicy, { authorize: () => Effect.void });
+                const declarations = [declaration('fixture.first'), declaration('fixture.second')];
+                yield* f.store.transaction(f.outbox.stage(event(), declarations));
+                const targets = yield* Effect.forEach(declarations, (d) =>
+                    Effect.gen(function* () {
+                        const claim = yield* required(yield* f.outbox.claim(d, 0));
+                        yield* f.outbox.settle(claim, { state: 'dead-letter', reason: 'exhausted' });
+                        const connection = Context.get(yield* f.connect(), SqlClient.SqlClient);
+                        const recovery = Context.get(yield* f.services(connection), HookRecovery);
+                        return { declaration: d, claim, recovery };
+                    })
+                );
+                const outcomes = yield* Effect.forEach(
+                    targets,
+                    (target) =>
+                        target.recovery.replay(target.declaration, target.claim.idempotencyKey, id(90)).pipe(
+                            Effect.provide(allowed),
+                            Effect.either,
+                            Effect.map((result) => ({ target, result }))
+                        ),
+                    { concurrency: 'unbounded' }
+                );
+                const results = outcomes.map((outcome) => outcome.result);
+                expect(results.filter(Either.isRight).map((result) => result.right)).toEqual([true]);
+                expect(results.filter(Either.isLeft).map((result) => result.left)).toMatchObject([
+                    { _tag: 'HookOutboxFailure', reason: 'conflict' },
+                ]);
+                expect(yield* f.sql`SELECT request_id FROM hook_redrive`).toEqual([{ request_id: id(90) }]);
+                for (const { target, result } of outcomes) {
+                    const won = Either.isRight(result);
+                    expect(
+                        yield* target.recovery
+                            .replay(target.declaration, target.claim.idempotencyKey, id(90))
+                            .pipe(Effect.provide(allowed), Effect.either)
+                    ).toMatchObject(won ? Either.right(false) : Either.left({ reason: 'conflict' }));
+                    const claim = yield* f.outbox.claim(target.declaration, 0);
+                    if (won) expect(claim?.idempotencyKey).toBe(target.claim.idempotencyKey);
+                    else expect(claim).toBeUndefined();
+                }
+            })
+        );
+
+        it.scoped('rolls back replay history if the delivery reset fails before commit', () =>
+            Effect.gen(function* () {
+                const f = yield* fixture(dialect);
+                const d = declaration();
+                const allowed = Layer.succeed(HookOperatorPolicy, { authorize: () => Effect.void });
+                yield* f.store.transaction(f.outbox.stage(event(), [d]));
+                const dead = yield* required(yield* f.outbox.claim(d, 0));
+                yield* f.outbox.settle(dead, { state: 'dead-letter', reason: 'exhausted' });
+                if (dialect === 'postgres') {
+                    yield* f.sql`CREATE FUNCTION reject_hook_reset() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''fixture reset failure''; END'`;
+                    yield* f.sql`CREATE TRIGGER reject_hook_reset BEFORE UPDATE ON hook_delivery FOR EACH ROW EXECUTE FUNCTION reject_hook_reset()`;
+                } else {
+                    yield* f.sql`CREATE TRIGGER reject_hook_reset BEFORE UPDATE ON hook_delivery BEGIN SELECT RAISE(ABORT, 'fixture reset failure'); END`;
+                }
+                const replay = f.recovery.replay(d, dead.idempotencyKey, id(90)).pipe(Effect.provide(allowed));
+                expect(yield* Effect.flip(replay)).toMatchObject({ reason: 'unavailable' });
+                expect(yield* f.sql`SELECT request_id FROM hook_redrive`).toEqual([]);
+                expect(yield* f.recovery.deadLetters(d, null, 1).pipe(Effect.provide(allowed))).toEqual([
+                    { idempotencyKey: dead.idempotencyKey, eventId: event().id, attempt: 1, reason: 'exhausted' },
+                ]);
+                if (dialect === 'postgres') yield* f.sql`DROP TRIGGER reject_hook_reset ON hook_delivery`;
+                else yield* f.sql`DROP TRIGGER reject_hook_reset`;
+                expect(yield* replay).toBe(true);
+                expect(yield* replay).toBe(false);
+                expect(yield* f.sql`SELECT request_id FROM hook_redrive`).toEqual([{ request_id: id(90) }]);
+                expect((yield* required(yield* f.outbox.claim(d, 0))).attempt).toBe(1);
+            })
+        );
+
         it.scoped('redrive obeys capacity, exact pins, live operator revocation and stream quiescence', () =>
             Effect.gen(function* () {
                 const f = yield* fixture(dialect);

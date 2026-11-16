@@ -22,7 +22,7 @@ import { describe, expect, it } from '@effect/vitest';
 // condition. The normal verify pipeline builds workspace dependencies first.
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} hook process recovery`, () => {
-        it('survives SIGKILL before delivery and after durable acceptance with real expiry and stale fencing', async () => {
+        it('survives SIGKILL before delivery, after sink acceptance and after operator replay commit with stale fencing', async () => {
             const stdout = await new Promise<string>((resolve, reject) => {
                 execFile(
                     process.execPath,
@@ -40,6 +40,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                 attempts: 3,
                 applied: 1,
                 originRuns: 1,
+                operatorReplay: {
+                    acknowledgementLost: true,
+                    retryAccepted: false,
+                    historyRecords: 1,
+                    terminalAttempts: 4,
+                    preservedAttempt: 2,
+                },
             });
         }, 65000);
     });

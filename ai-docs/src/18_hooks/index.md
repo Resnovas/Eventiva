@@ -71,7 +71,10 @@ Do not export the capability to plugins or treat it as HookReleasePolicy authori
 deadLetters returns only stable delivery/event IDs, attempt and sealed reason, paged
 by strictly increasing UUID key; after is null or a UUID, limit is 1-100, no defaults.
 replay returns true on accepted redrive, false for the identical retained request;
-changed pin/key conflicts. Only dead letters qualify. Capacity and stream-running
+changed pin/key conflicts, including simultaneous requests on separately locked
+pins. The tenant/request UUID unique constraint arbitrates that race without
+resetting the losing delivery or translating a conflict into unavailability.
+Only dead letters qualify. Capacity and stream-running
 checks run under the existing pin lock. Preserve key/event/generation, clear the old
 fence, grant a fresh bounded attempt budget and retain history atomically. New
 deliveries still pass current flag/release checks. Previously delivered later events

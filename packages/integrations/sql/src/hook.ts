@@ -331,7 +331,10 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                                 return yield* new HookOutboxFailure({ reason: 'capacity' });
                             // Record the old terminal attempt before granting a fresh bounded retry budget.
                             // The stable sink key never changes, and clearing the lease fences every old worker.
-                            yield* sql`INSERT INTO hook_redrive (tenant, request_id, subscription, idempotency_key, attempt, reason, occurred_at) VALUES (${tenant}, ${requestId}, ${pin}, ${idempotencyKey}, ${row.attempt}, ${settlement.reason}, ${yield* time})`;
+                            // Different pins hold different locks: arbitrate their shared request UUID in SQL.
+                            const accepted =
+                                yield* sql`INSERT INTO hook_redrive (tenant, request_id, subscription, idempotency_key, attempt, reason, occurred_at) VALUES (${tenant}, ${requestId}, ${pin}, ${idempotencyKey}, ${row.attempt}, ${settlement.reason}, ${yield* time}) ON CONFLICT (tenant, request_id) DO NOTHING RETURNING request_id`;
+                            if (accepted.length === 0) return yield* new HookOutboxFailure({ reason: 'conflict' });
                             yield* sql`UPDATE hook_delivery SET state = 'pending', attempt = 0, due = 0, lease = NULL, lease_until = 0, settlement = NULL WHERE idempotency_key = ${idempotencyKey} AND subscription = ${pin}`;
                             return true;
                         })
