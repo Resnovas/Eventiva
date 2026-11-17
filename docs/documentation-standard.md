@@ -36,12 +36,12 @@ The ledger records mechanical missing attachments and a distinct heuristic revie
 
 ## Mechanical checks versus review candidates
 
-| Rule                        | What it establishes                                                                                                                                                                                                                                                                               | What it does not establish                                                                                                                                     |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `missing-jsdoc`             | A covered AST declaration has no immediately attached non-file JSDoc. Class/enclosing/sibling docs do not cover a nested callable.                                                                                                                                                                | Whether missing documentation describes a complex operation; even a pure callback has a contract under the owner's rule.                                       |
-| `review-jsdoc`              | Attached prose is name-only/repetitive, tag-only or contains a placeholder. The calibrated check accepts short prose: two distinct words including one non-name/non-generic word. Modifier tags such as `@internal` may introduce useful prose; parameter tags alone do not replace the contract. | Semantic usefulness, truth, complete constraints or accurate error/security promises. A long wrong comment can pass; review it, do not pad it.                 |
-| `review-internal-rationale` | A block body has control flow, or multiple statements with multiple calls, but no qualifying own-body non-JSDoc rationale. A single return guard is explicitly not flagged. Nested functions' comments, comment-looking strings and obvious two-word syntax narration do not count.               | That every branch needs narration, or that one comment covers every meaningful phase. Review false positives and missing security/phase explanations manually. |
-| `parse-error`               | TypeScript could not parse the source; the file is not silently skipped.                                                                                                                                                                                                                          | Compiler/type correctness, which remains the existing typecheck's responsibility.                                                                              |
+| Rule                        | What it establishes                                                                                                                                                                                                                                                                                                            | What it does not establish                                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missing-jsdoc`             | A covered AST declaration has no immediately attached non-file JSDoc. Class/enclosing/sibling docs do not cover a nested callable.                                                                                                                                                                                             | Whether missing documentation describes a complex operation; even a pure callback has a contract under the owner's rule.                                       |
+| `review-jsdoc`              | Attached prose is name-only/repetitive, tag-only or contains a placeholder. The calibrated check accepts short prose: two distinct words including one non-name/non-generic word. Modifier tags such as `@internal` may introduce useful prose; parameter tags alone do not replace the contract.                              | Semantic usefulness, truth, complete constraints or accurate error/security promises. A long wrong comment can pass; review it, do not pad it.                 |
+| `review-internal-rationale` | A block body has control flow, or multiple statements with multiple calls, but no qualifying own-body rationale. Standalone internal JSDoc can explain a phase; attached callable contracts cannot. Value-only selectors and single return guards are not flagged. Nested comments, strings and syntax narration do not count. | That every branch needs narration, or that one comment covers every meaningful phase. Review false positives and missing security/phase explanations manually. |
+| `parse-error`               | TypeScript could not parse the source; the file is not silently skipped.                                                                                                                                                                                                                                                       | Compiler/type correctness, which remains the existing typecheck's responsibility.                                                                              |
 
 The owner approved the ratchet policy, not a claim that a heuristic proves semantic quality. Calibration fixtures distinguish callbacks that need contracts from pure expressions/trivial bodies that need no internal narration, accept concise accurate prose and required vendor-boundary markers, and reject placeholders/name-only repetition. Do not count heuristic candidates as confirmed owner-policy violations or add filler to satisfy a word count. If useful prose or a trivial guard is flagged, propose a narrowly tested general checker improvement instead of a suppression. Neither TypeScript's AST nor a maintained JSDoc plugin can prove that prose is true or explains every meaningful security decision; human review remains required. The standalone repository checker reuses the already pinned TypeScript AST rather than adding a second parser/plugin dependency; ESLint's existing rules remain unchanged.
 
@@ -78,7 +78,31 @@ const ids = records.map(
 
 `const ids = records.map(record => record.id)` lacks the callback contract. `/** Map records. */` can pass a shallow prose heuristic but adds little useful information: review must still reject syntax narration. Conversely, `/** Normalize locale tags. */` is concise and accepted; the gate does not require five-word padding. The declaration name and context determine whether its description is useful.
 
-For a body that validates then authorizes, an internal explanation such as `// Authorize only the decoded tenant reference so encoded aliases cannot bypass scope checks.` explains the security boundary. `// Set value` does not. Trivial `return 1`, object-literal expression bodies and `const value = 1; return value` are explicitly tested not to require internal comments. The classifier cannot identify every meaningful phase and intentionally does not manufacture rationale for those cases.
+For a body that validates then authorizes, an internal explanation such as `// Authorize only the decoded tenant reference so encoded aliases cannot bypass scope checks.` explains the security boundary. `// Set value` does not. Trivial `return 1`, object-literal expression bodies and `const value = 1; return value` are explicitly tested not to require internal comments. Branches selecting only existing values also need no invented execution-phase narration. Calls, callbacks, constructors, assignments and destructuring defaults/computed keys that execute work remain review candidates; this is syntax classification, not a proof of purity. The classifier cannot identify every meaningful phase and intentionally does not manufacture rationale for those cases.
+
+### Reviewed calibration boundaries - 2026-11-17
+
+Three delivered-source cases were read alongside the checker output and remain
+adequately explained semantic-review candidates, not confirmed documentation
+violations:
+
+- `packages/runtime/src/identity.ts`, `target`: the adjacent contract explains
+  the closed resource-grammar/schema dispatch and explicit-policy fallback.
+  Exempting arbitrary predicate calls would also hide authorization/delegation
+  phases in the enclosing identity implementation.
+- `packages/runtime/src/telemetry-export.ts`, `flush`: the contract explains
+  reauthorization of the payload-free barrier. Exempting any two-call generator
+  would also hide distinct validation and security-release phases.
+- `packages/integrations/posthog-server/src/telemetry.ts`, SDK `try` callback:
+  the contract and nested cleanup explain ownership until SDK settlement after
+  interruption. Promoting every nested comment would incorrectly cover separate
+  unexplained outer work.
+
+No file/name allowlist, blanket nested-comment acceptance or suppression clears
+these cases. The bounded selector/standalone-JSDoc refinement keeps negative
+execution, binding-default, outer-phase and security-phase fixtures. A broader
+safe classifier for these three shapes remains unresolved; strict repo-wide
+rationale activation stays held while semantic remediation proceeds separately.
 
 ## Maintain the rule
 

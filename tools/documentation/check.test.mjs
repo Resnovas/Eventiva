@@ -160,6 +160,87 @@ test('pure expressions and trivial straight-line bodies need contracts but no in
     }
 });
 
+test('value-only selectors do not need invented phase narration', () => {
+    for (const body of [
+        'if (value === null) return false; return value.enabled;',
+        'if (value === null) { return false; } else { return value.enabled; }',
+        'const key = value.kind; if (key === "public") return { readable: true }; return { readable: false };',
+        'const { kind = "private" } = value; if (kind === "public") return true; return false;',
+        'switch (value.kind) { case "public": return true; case "private": return false; }',
+        'switch (value.kind) { case "public": case "shared": return true; default: return false; }',
+    ])
+        assert.deepEqual(findings(`${contract} function select(value) { ${body} }`), [], body);
+});
+
+test('destructuring selectors inspect defaults and computed binding keys for execution', () => {
+    for (const binding of [
+        '{ kind = decode() }',
+        '[kind = decode()]',
+        '{ nested: { kind = decode() } }',
+        '{ [decode()]: kind }',
+        '{ kind = new Receipt() }',
+        '{ kind = (value.enabled = true) }',
+        '{ kind = () => true }',
+    ])
+        assert.ok(
+            findings(
+                `${contract} function select(value) { const ${binding} = value; if (kind === "public") return true; return false; }`
+            ).some((finding) => finding.rule === 'review-internal-rationale'),
+            binding
+        );
+});
+
+test('selector-shaped bodies with execution or mutation still request rationale', () => {
+    for (const body of [
+        'if (denied) return 0; return read();',
+        'if (authorize(value)) return true; return false;',
+        'if (value.kind === "public") return new Receipt(); return false;',
+        'if (value.kind === "public") return tag`value`; return false;',
+        'if (value.kind === "public") return value.count++; return false;',
+        'if (value.kind === "public") return delete value.private; return false;',
+        'if (value.kind === "public") return (value.enabled = true); return false;',
+        'if (value.kind === "public") return () => read(); return false;',
+        'const key = decode(value); if (key === "public") return true; return false;',
+        'switch (value.kind) { case "public": publish(value); return true; default: return false; }',
+        'if (value.kind === "public") return yield* read(); return false;',
+        'if (value.kind === "public") return await read(); return false;',
+    ])
+        assert.ok(
+            findings(`${contract} function* select(value) { ${body} }`).some(
+                (finding) => finding.rule === 'review-internal-rationale'
+            ),
+            body
+        );
+});
+
+test('own-body JSDoc can explain a phase without documenting another callable', () => {
+    for (const comment of [
+        '/** Decode the tenant reference before authorizing it so encoded aliases cannot escape scope. */',
+        '/**\n * Decode the tenant reference before authorizing it so encoded aliases cannot escape scope.\n */',
+    ])
+        assert.deepEqual(
+            findings(`${contract} function read() { ${comment}\nconst value = decode(); return authorize(value); }`),
+            []
+        );
+});
+
+test('callable contracts and JSDoc placeholders never substitute for own-body rationale', () => {
+    for (const body of [
+        `${contract} const nested = () => 1; return finish(nested());`,
+        `${contract} function nested() { return 1; } return finish(nested());`,
+        'const nested = /** Decode the tenant reference before authorizing its scope. */ () => 1; return finish(nested());',
+        '/** TODO Decode before authorization so aliases cannot escape scope. */ const value = decode(); return authorize(value);',
+        '/** Set value */ const value = decode(); return authorize(value);',
+        '/** @file Decode before authorization so aliases cannot escape scope. */ const value = decode(); return authorize(value);',
+    ])
+        assert.ok(
+            findings(`${contract} function read() { ${body} }`).some(
+                (finding) => finding.rule === 'review-internal-rationale'
+            ),
+            body
+        );
+});
+
 test('exact finding identity survives prose/line shifts but not changed code, names or duplicate additions', () => {
     const first = findings('const read = (value: string) => value;');
     const shifted = findings('\n// Existing surrounding context.\nconst read = (value: string) => value;');

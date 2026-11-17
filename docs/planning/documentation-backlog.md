@@ -81,10 +81,18 @@ The exact prune is 3,884 to 3,799 retained identities across 111 files: 3,011 mi
 
 Executed before final D01 delivery: `DOCUMENTATION_BASE=12dff4c8ba8001ed2071b2f543456f75b1aacb84 node --run verify` exited zero under the approved disposable PostgreSQL 17 fixture. Root checks passed; all 85 Nx lint/typecheck/test/build/parity tasks passed (16 cache hits); source and emitted declaration boundaries reported zero violations/cycles; all three smoke targets and 12 dependencies passed. The fixture/network were removed. Exact assertions confirm only this packet's 85 ledger identities were removed, every other identity is unchanged, and the entire contracts/schema scanner scope has zero findings. Clean-source graph generation and its separate signed commit follow source commitment; the delivered head and CI follow-up are recorded on EVE-13/EVE-261. D02's next source-only reservation is runtime `action.ts`, `execution.ts`, `host.ts`, `invocation.ts`; its shared evidence/prune/delivery waits for the coordinator's next handback. Strict global rationale remains held because adequate adjacent-contract/barrier/nested-cleanup cases still need a safe tested general classifier rule.
 
+## Kernel integration and classifier checkpoint - 2026-11-17
+
+The kernel producer integration compares against delivered immutable main `9af03961801dc6e6376da030332d92e11684f178`, after all D01 packets. Its useful contracts and phase/ownership comments remove exactly 202 retained kernel identities: 176 missing attachments and 26 rationale candidates. Other ledger identities remain unchanged. This is a behavioral kernel increment with documentation, not a claim of comment-only token equivalence. The retained ledger is 3,597 identities: 2,835 attachments and 762 rationale candidates; all touched new source satisfies the blocking documentation gate. Kernel rationale still requires semantic review rather than filler.
+
+The bounded classifier refinement accepts standalone own-body JSDoc and value-only selection, while negative fixtures preserve callable/nested/file-contract boundaries, meaningful outer/security phases and execution hidden in destructuring defaults/computed keys. All 52 checker fixtures pass. Running the old and new classifiers against the same combined tree gives exactly the same 3,684 live findings and identities: none of the ledger reduction is attributed to calibration. The three reported identity/barrier/SDK-cleanup examples remain adequate review-only candidates; strict rationale activation is still held. Full combined verification and exact delivery evidence belong on EVE-45/EVE-21/EVE-261, not inferred from these inventory counts.
+
+Executed combined verification above immutable base `9af03961801dc6e6376da030332d92e11684f178`: `node --run verify` exited zero under the approved disposable PostgreSQL fixture, with cache disabled. Root checks and all 89 documentation fixtures passed; all 85 Nx tasks, source/declaration boundary audits and all three smoke targets plus 12 dependencies passed. Both boundary graphs have zero violations/cycles. The fixture/network were removed. Exact-head CI and signed source/graph revisions are separate asynchronous delivery evidence on the owning issues; this passing ratchet is not global documentation compliance.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3799 remaining findings across 111 files: 3011 mechanically missing JSDoc; 0 prose-review candidates; 788 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3597 remaining findings across 111 files: 2835 mechanically missing JSDoc; 0 prose-review candidates; 762 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -133,7 +141,7 @@ Executed before final D01 delivery: `DOCUMENTATION_BASE=12dff4c8ba8001ed2071b2f5
 | D02 | [packages/runtime/src/host.ts](../../packages/runtime/src/host.ts) | 66 | 0 | 7 |
 | D02 | [packages/runtime/src/identity.ts](../../packages/runtime/src/identity.ts) | 53 | 0 | 12 |
 | D02 | [packages/runtime/src/invocation.ts](../../packages/runtime/src/invocation.ts) | 25 | 0 | 1 |
-| D02 | [packages/runtime/src/kernel-runtime.ts](../../packages/runtime/src/kernel-runtime.ts) | 176 | 0 | 28 |
+| D02 | [packages/runtime/src/kernel-runtime.ts](../../packages/runtime/src/kernel-runtime.ts) | 0 | 0 | 2 |
 | D02 | [packages/runtime/src/marketplace.ts](../../packages/runtime/src/marketplace.ts) | 15 | 0 | 5 |
 | D02 | [packages/runtime/src/resource.ts](../../packages/runtime/src/resource.ts) | 29 | 0 | 10 |
 | D02 | [packages/runtime/src/storage.ts](../../packages/runtime/src/storage.ts) | 16 | 0 | 4 |

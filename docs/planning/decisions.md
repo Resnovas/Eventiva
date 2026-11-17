@@ -17,7 +17,31 @@ Last checked: 2026-11-17. This is an index, not a new approval register. The own
 | Security profiles/assurance, independent decryption gates, regional marketplace exchange                                                     | [Existing approval-linked register](../architecture/eventiva-platform-and-marketplace.md#decision-register) cites EVE-13/250/251 comments                                                                                         | Keep that register's approved/proposed distinctions; this index does not select vendors, algorithms, regions or key providers.                                                                                                                                                                                                                               |
 | Useful JSDoc on every editable TypeScript function/method/class/interface; meaningful internal rationale                                     | Owner documentation requirement; Jonathan approved the reviewed exact debt ratchet on 2026-11-17 through this governance task                                                                                                     | New/changed code must comply; existing validated exact entries cannot grow; touched indebted files improve; tracked remediation reaches strict zero. Enforcing presence is mechanical; usefulness and meaningful-phase coverage need review. Checker/ledger validation and coordinator-owned root activation are a separate delivery, not global compliance. |
 
-## Open and superseded information
+## Later owner decisions - 2026-11-17
+
+These updates postdate the frozen issue/comment capture. Their distinct owner
+selection and agent relay timestamps must not be substituted for capture dates.
+
+- **Mandatory disposal (EVE-45):** Jonathan selected option A at
+  11:38:55.329Z in the authenticated choice recorded in the
+  [Puck coordination thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+  Run resource finalizers even when durable admission is unavailable, expose
+  degraded/recovery-required, and never fabricate a durable lifecycle fact.
+  Ordinary requested mutations fail closed before callbacks, without replay.
+  [EVE-45's Amp relay](https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change#comment-2ef327d5)
+  was created at 11:41:17.721Z. The [kernel contract](../kernel.md#opt-into-durable-lifecycle-production)
+  implements this narrow decision; no production recovery/release is approved.
+- **Original OTLP scope (EVE-21):** Jonathan selected adding
+  `@effect/opentelemetry` plus a configurable endpoint and headers at
+  11:40:29.023Z in the same authenticated Puck thread. Compatible exact versions,
+  redacted configuration, default-off/local routing, no retained retry queue and
+  tests are implementation constraints, not additional quoted human selections.
+  [The source lane's report](https://linear.app/resnovas/issue/EVE-21/remove-sentry-from-core-and-make-telemetry-export-vendor-neutral#comment-bbcf9d9f)
+  was created at 11:53:50.388Z. The [telemetry guide](../telemetry.md) keeps
+  production ingestion separate from dependency and fixture approval. Live EVE-21
+  remains Backlog and EVE-45 In Progress; neither approval closes EVE-261.
+
+## Historical open and superseded information
 
 - The 2026-11-15 modular-platform spec and EVE-261 description preserve historical main-integration holds and isolated lane findings. Current coordination owns delivery; this docs lane neither cancels a hold nor pushes independently.
 - Proposed algorithms/providers, native federation/OTA combinations, production trust/ingestion and complete multi-runner acceptance remain governed by their owning issues. Their presence in an architecture diagram is not approval or proof.

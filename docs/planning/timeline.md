@@ -56,6 +56,79 @@ Independent documentation review confirmed all 62 new production callable attach
 
 Next, connect actual lifecycle mutation owners, dependent cascades and disposal to stable callback keys and authoritative provenance. Public-method success or snapshot differences cannot establish these transitions. EVE-45/EVE-261 remain In Progress, EVE-260 remains gated by verified readiness, and EVE-43 component adoption remains blocked. No new product decision is required for this bounded prerequisite; full native/UI/security/distributed/production acceptance is unproved.
 
+## Kernel mutation-owner and OTLP checkpoint - 2026-11-17
+
+The next dependency-ordered increment connects the existing journal to the actual
+kernel mutation owners, not method-return wrappers or snapshot differences.
+EVE-243/244 remain Done; live EVE-45/261 remain In Progress. EVE-260 is Backlog
+with six open implementation prerequisites and is not the next unblocked slice.
+
+| Stage | State in this increment | Evidence and remaining boundary |
+| --- | --- | --- |
+| Actual kernel producer, cascades and disposal | Implemented and aggregate-verified | 38 real SQLite/PostgreSQL producer tests passed; persisted intent precedes callbacks, confirmation follows actual publication, mandatory teardown survives denied intent and self-interrupting dependent cleanup without fabricated facts. |
+| Kernel lifecycle/telemetry regression | Focused verification executed | 60 tests passed across kernel-runtime and kernel-telemetry; local-only host behavior remains supported. |
+| Approved original EVE-21 OTLP scope | Implemented and aggregate-verified, default off | 43 telemetry tests passed; 96.66% lines/94.88% branches. Exact compatible dependencies, redacted endpoint/headers and bounded one-shot HTTP; no ingestion activation. |
+| Rationale classifier calibration | Bounded improvement, global enforcement held | 52 fixtures passed, including execution hidden in destructuring and nested/outer security phases. Three reviewed adequate security/ownership bodies remain unresolved heuristic candidates; no broad exception or gate weakening. |
+| EVE-22 house boundary reference | Human house merge verified; downstream aggregate-verified | [House PR 47](https://github.com/Resnovas/.github/pull/47) merged at 12:14:25Z. The downstream five-file patch is applied and all 16 workspace rows independently match ESLint; Eventiva delivery and asynchronous CI remain separate evidence. |
+| Next implementation | Durable governed consumer integration | Combine actual kernel facts with persisted consumer dedup/drain and live release authority before the EVE-260 reference extension. Full G01-G15, native, protected security and distributed evidence remain open. |
+
+Jonathan's two later owner choices are recorded separately in the
+[decision index](decisions.md#later-owner-decisions---2026-11-17), with authenticated
+selection times and agent-relay provenance. Mandatory finalization is not
+permission to fabricate an event; OTLP dependency approval is not remote release
+authorization. Final combined gates and exact delivered commits are recorded on
+EVE-45/EVE-21/EVE-261; pending verification is never counted as passed.
+
+Executed on the combined tree above immutable delivered base
+`9af03961801dc6e6376da030332d92e11684f178`:
+`NX_DAEMON=false NX_SKIP_NX_CACHE=true DOCUMENTATION_BASE=9af03961801dc6e6376da030332d92e11684f178 bash .amp/in/orb-backup/run-storage.sh node --run verify`
+exited zero. Root checks passed, including 89 documentation fixtures; all 85 Nx
+lint/typecheck/test/build/parity tasks passed without cache, followed by all three
+smoke targets and 12 dependencies without cache. Source boundaries cover 169 files,
+596 edges and 28 packages; emitted boundaries cover 68 files and 259 edges. Both
+report zero violations/cycles. The approved disposable PostgreSQL fixture/network
+were removed. Web/Android export is not native-device execution or production release.
+
+The existing Effect compiler patch was restored after an installation omitted it;
+the original diagnostic regression and the complete runtime suite then passed.
+Temporary source backups were renamed as text after the licence guard correctly
+rejected their copied file headers. No gate, test or threshold was weakened.
+`NX_DAEMON=false pnpm nx sync:check`, scoped formatting and whitespace checks pass.
+Planning remains 258 captured issues/692 edges with three explicit unresolved
+decision sources and zero stale outputs, not exhaustive live semantic clearance.
+Signed delivery revisions, clean-source Graphify and pending exact-head CI are
+recorded on the owning issues; none of these local results approves ingestion,
+production migrations, security-component adoption or full EVE-261 acceptance.
+
+### House boundary reference delivery
+
+Human TGTGamer merged [house PR47](https://github.com/Resnovas/.github/pull/47)
+at 2026-11-17T12:14:25Z as
+[983ce559](https://github.com/Resnovas/.github/commit/983ce5595b75f1d485446b320fdc85b322c80dd4).
+GitHub merge state and the owning EVE-22 discussion were independently read.
+The held downstream patch is now integrated: both architecture reference copies
+and their changelogs, plus the house-standards summary, describe the same 16
+intersecting boundary rows as Eventiva's ESLint. No boundary rule changed.
+EVE-22 remains In Progress pending Eventiva delivery evidence; a house merge
+does not claim that asynchronous aggregate CI finished or approve production.
+
+### Parallel EVE-34 checkpoint allocation
+
+The [2026-11-17 EVE-34 packet](https://linear.app/resnovas/issue/EVE-34#comment-01bffbbf-3f7b-433e-9397-e964b555037c)
+was read in full after publication. It is explicitly agent-authored analysis,
+not owner acceptance. Coordination reserved a bounded source-only implementation
+of the server-local run/step checkpoint as part of EVE-54, reusing the existing
+Cluster Workflow engine and authorized action path. Both live issues remain
+Backlog; reservation does not rewrite that captured or live state.
+
+Require raw executor counts across acknowledged steps 2/3 and automatic takeover,
+not only business dedup after an interrupted Activity. Stable tenant/run/step keys
+and live access checks are part of the checkpoint. EVE-35/36 consume the same run
+model later; EVE-54 keeps full lifecycle/control and persisted module/provider/schema
+pinning/fencing, and EVE-47 still needs the real EVE-52 agent loop. No production
+module-bound run or complete agent acceptance is authorized by this allocation.
+Root/planning/LLMS/Graphify delivery remains coordinated after the current increment.
+
 ## Dependency roadmap
 
 Solid arrows indicate implementation prerequisites from the modular specification/current EVE-45 plan, not new Linear blocking relations. Dotted arrows indicate broader target evidence required for complete integration. The text above is the accessible equivalent of this graph. Every issue node links to Linear.
@@ -100,7 +173,7 @@ The authoritative detailed matrix remains [specification G01-G15](../architectur
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
-Snapshot enumeration: 2026-11-17T07:42:41.684Z; 258 issues, 692 prerequisite edges. Planning counts after explicitly cited annotations: completed 20; current 16; upcoming 220; closed without implementation 2; additionally blocked 175. Captured Linear status is retained in every detail table and accessible SVG node; later evidence is never a silent source refresh.
+Snapshot enumeration: 2026-11-17T07:42:41.684Z; 258 issues, 692 prerequisite edges. Planning counts after explicitly cited annotations: completed 20; current 17; upcoming 219; closed without implementation 2; additionally blocked 175. Captured Linear status is retained in every detail table and accessible SVG node; later evidence is never a silent source refresh.
 
 Layers use longest prerequisite distance, not a newly approved delivery order, deadline or priority. P/F prefixes are preserved as recorded phase labels; unnumbered work is not assigned an invented phase. Only completed prerequisites satisfy recorded edges; canceled/duplicate closure alone does not. Completed status is not independent acceptance proof. No structured blocker does not establish readiness: prose/security/native/device gates still apply. See each complete issue's acceptance criteria and comments before choosing work.
 
@@ -108,6 +181,10 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 
 ### Curated evidence separate from capture
 
+- EVE-22, 2026-11-17T12:15:01.148Z, later-status: Live MCP recheck retains In Progress. Human TGTGamer merged house PR 47 at 12:14:25Z as squash commit 983ce5595b75f1d485446b320fdc85b322c80dd4; GitHub state was independently checked. The tested downstream architecture references and house summary now align with Eventiva's 16 intersecting ESLint rows, without changing lint/runtime behavior. Eventiva combined verification/delivery and exact-head CI remain separate evidence; the historical mirror is not silently refreshed and whole-issue acceptance is not inferred from the house merge. [evidence](https://github.com/Resnovas/.github/pull/47), [evidence](https://github.com/Resnovas/.github/commit/983ce5595b75f1d485446b320fdc85b322c80dd4), [evidence](https://linear.app/resnovas/issue/EVE-22#comment-9b58885c-134f-49a6-aed2-59bfb9a1ef60).
+- EVE-34, 2026-11-17T12:03:57.576Z, later-status: Live MCP recheck retains Backlog. The later agent-authored packet scopes EVE-34 as EVE-54's first server-local durable run/step checkpoint, not a competing run manager or complete production-agent acceptance. It requires completed-Activity entry counts across between-step SIGKILL/drain/restart, current access checks and stable tenant/run/step keys. EVE-35/36 consume the settled run model; EVE-52 loop and EVE-54 persisted module pins/fencing remain separate. Source-only implementation paths were reserved through current coordination; no tests or delivery are claimed for this new lane. Historical capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-34#comment-01bffbbf-3f7b-433e-9397-e964b555037c), [evidence](https://ampcode.com/threads/T-5a85c8b5-cf76-429d-b85e-30bc35c680a4).
+- EVE-45, 2026-11-17T11:41:17.706Z, later-status: Live MCP recheck retains In Progress. Jonathan's authenticated option-A selection at 2026-11-17T11:38:55.329Z in the cited Puck thread requires mandatory finalizers despite failed durable admission, visible recovery-required and no fabricated fact. The Amp relay was recorded separately at 11:41:17.721Z on EVE-45. Ordinary mutations fail closed before callbacks with no replay. Kernel implementation and focused SQL acceptance are a bounded checkpoint, not full EVE-45/EVE-261 acceptance or production authorization. Historical capture is unchanged. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), [evidence](https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change#comment-2ef327d5).
+- EVE-21, 2026-11-17T11:53:50.319Z, later-status: Live MCP recheck retains Backlog, not accepted. Jonathan's authenticated selection at 2026-11-17T11:40:29.023Z approved adding @effect/opentelemetry and configurable OTLP endpoint/headers. Redaction, compatible 0.64.2/API1.9.0 pins, default-off/local behavior and one-shot no-backlog transport are scoped implementation constraints, not verbatim human wording or production-ingestion approval. Lane reports43 fixture tests; combined delivery remains separately verified. Later evidence is cited without changing the captured description/comments. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), [evidence](https://linear.app/resnovas/issue/EVE-21/remove-sentry-from-core-and-make-telemetry-export-vendor-neutral#comment-bbcf9d9f).
 - EVE-43, 2026-11-17T07:22:23.589Z, blocker: Exact-component adoption remains technically blocked: unresolved security, producer-provenance and inventory/licence evidence must close. Candidate readiness is denied; no risk acceptance or architecture change is established. [evidence](https://linear.app/resnovas/issue/EVE-43#comment-f95261be-6166-4781-8e5d-f8cbe2a9ec96).
 - EVE-264, 2026-11-17, later-status: Central independently rechecked the live issue via MCP: Done/completed, source updatedAt 2026-11-17T08:24:52.805Z. Acceptance comment and delivered rename commit are cited. Captured Linear remains In Progress; this verified newer state is not full live reacquisition or an acceptance-test rerun. [evidence](https://linear.app/resnovas/issue/EVE-264), [evidence](https://linear.app/resnovas/issue/EVE-264/rename-the-top-level-examples-directory-to-lowercase-examples#comment-9e3bcf9c), [evidence](https://github.com/Resnovas/Eventiva/commit/980cac6f682336e97da5d72dea72650570dab6c7).
 

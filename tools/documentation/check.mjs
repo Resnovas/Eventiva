@@ -94,6 +94,75 @@ const documentationOwner = (node) => {
     return owner;
 };
 
+/** Select only the adjacent contract, allowing the required vendor-boundary marker between it and its owner. */
+const documentationRange = (node, source, text) => {
+    const owner = documentationOwner(node);
+    const ranges = [
+        ...(ts.getLeadingCommentRanges(text, owner.pos) ?? []),
+        ...(ts.getTrailingCommentRanges(text, owner.pos) ?? []),
+    ].sort((a, b) => a.pos - b.pos);
+    const last = ranges.findLast((range) => !/^\/\/\s*effect-boundary:/.test(text.slice(range.pos, range.end)));
+    return last &&
+        text.slice(last.pos, last.end).startsWith('/**') &&
+        text
+            .slice(last.end, owner.getStart(source))
+            .replace(/\/\/\s*effect-boundary:[^\r\n]*/g, '')
+            .trim() === ''
+        ? last
+        : undefined;
+};
+
+/** Recognize value selection syntax, not purity: explicit execution, callbacks and writes still require review. */
+const valueOnly = (node) => {
+    if (
+        ts.isCallExpression(node) ||
+        ts.isNewExpression(node) ||
+        ts.isTaggedTemplateExpression(node) ||
+        ts.isYieldExpression(node) ||
+        ts.isAwaitExpression(node) ||
+        ts.isDeleteExpression(node) ||
+        ts.isPostfixUnaryExpression(node) ||
+        needsDocumentation(node) ||
+        (ts.isPrefixUnaryExpression(node) &&
+            [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator)) ||
+        (ts.isBinaryExpression(node) &&
+            node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+            node.operatorToken.kind <= ts.SyntaxKind.LastAssignment)
+    )
+        return false;
+    return !ts.forEachChild(node, (child) => !valueOnly(child));
+};
+
+/** Branches returning only values have no separate execution phase to narrate; retain callable contract checks. */
+const valueSelector = (node) => {
+    if (ts.isBlock(node)) return node.statements.every(valueSelector);
+    if (ts.isReturnStatement(node)) return !node.expression || valueOnly(node.expression);
+    if (ts.isIfStatement(node))
+        return (
+            valueOnly(node.expression) &&
+            valueSelector(node.thenStatement) &&
+            (!node.elseStatement || valueSelector(node.elseStatement))
+        );
+    if (ts.isSwitchStatement(node))
+        return (
+            valueOnly(node.expression) &&
+            node.caseBlock.clauses.every(
+                (clause) =>
+                    (!clause.expression || valueOnly(clause.expression)) && clause.statements.every(valueSelector)
+            )
+        );
+    if (ts.isVariableStatement(node))
+        return (
+            (node.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+            node.declarationList.declarations.every(
+                // Binding defaults and computed keys can execute even when the source is only a value.
+                (declaration) =>
+                    valueOnly(declaration.name) && declaration.initializer && valueOnly(declaration.initializer)
+            )
+        );
+    return false;
+};
+
 /** Parse one source independently of compilation so malformed code and anonymous syntax cannot escape the gate. */
 export const inspectSource = (file, text) => {
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -115,6 +184,8 @@ export const inspectSource = (file, text) => {
         ts.forEachChild(node, collect);
     };
     collect(source);
+    const contracts = new Map(declarations.map((node) => [node, documentationRange(node, source, text)]));
+    const contractComments = new Set([...contracts.values()].filter(Boolean).map((range) => range.pos));
     const occurrences = new Map();
     const report = (node, rule, name) => {
         // Token identity survives line shifts and added prose, but never a changed implementation.
@@ -157,26 +228,15 @@ export const inspectSource = (file, text) => {
             namingOwner.name?.getText(source) ??
             namingOwner.declarationList?.declarations[0]?.name.getText(source) ??
             '<anonymous>';
-        // Only immediately attached JSDoc counts. A file licence or a sibling's prose is not a contract.
-        const ranges = [
-            ...(ts.getLeadingCommentRanges(text, owner.pos) ?? []),
-            ...(ts.getTrailingCommentRanges(text, owner.pos) ?? []),
-        ].sort((a, b) => a.pos - b.pos);
-        const last = ranges.findLast((range) => !/^\/\/\s*effect-boundary:/.test(text.slice(range.pos, range.end)));
-        const doc =
-            last &&
-            text.slice(last.pos, last.end).startsWith('/**') &&
-            text
-                .slice(last.end, owner.getStart(source))
-                .replace(/\/\/\s*effect-boundary:[^\r\n]*/g, '')
-                .trim() === ''
-                ? text.slice(last.pos + 3, last.end - 2)
-                : '';
+        // A callable's contract cannot double as rationale for an enclosing implementation.
+        const attached = contracts.get(node);
+        const doc = attached ? text.slice(attached.pos + 3, attached.end - 2) : '';
         if (!doc || /@file\b/.test(doc)) report(node, 'missing-jsdoc', name);
         else if (!usefulDescription(doc, name)) report(node, 'review-jsdoc', name);
 
         if (!node.body || !ts.isBlock(node.body)) continue;
         const body = node.body;
+        if (valueSelector(body)) continue;
         // A one-guard body is not evidence of a meaningful phase boundary.
         if (body.statements.length === 1 && ts.isIfStatement(body.statements[0]) && !body.statements[0].elseStatement) {
             const branch = body.statements[0].thenStatement;
@@ -206,20 +266,24 @@ export const inspectSource = (file, text) => {
         const nested = declarations.filter(
             (child) => child !== node && child.pos >= body.pos && child.end <= body.end && child.body
         );
-        const internal = [...comments.values()].some(
-            (range) =>
+        const internal = [...comments.values()].some((range) => {
+            const prose = text
+                .slice(range.pos + (text.slice(range.pos, range.pos + 3) === '/**' ? 3 : 2), range.end)
+                .replace(/\*\/$/, '')
+                .replace(/^\s*\*\s?/gm, '')
+                .trim();
+            return (
                 range.pos > body.getStart(source) &&
                 range.end < body.end &&
-                !text.slice(range.pos, range.end).startsWith('/**') &&
+                !contractComments.has(range.pos) &&
+                !/@file\b/.test(prose) &&
                 !nested.some((child) => range.pos >= child.pos && range.end <= child.end) &&
                 !/^(?:set|assign|return|call|increment|decrement|create|get|read|write|run)\s+(?:the\s+)?\w+[.!]?\s*$/i.test(
-                    text
-                        .slice(range.pos + 2, range.end)
-                        .replace(/\*\/$/, '')
-                        .trim()
+                    prose
                 ) &&
-                usefulDescription(text.slice(range.pos + 2, range.end).replace(/\*\/$/, ''))
-        );
+                usefulDescription(prose)
+            );
+        });
         if (!internal) report(node, 'review-internal-rationale', name);
     }
     return findings;
