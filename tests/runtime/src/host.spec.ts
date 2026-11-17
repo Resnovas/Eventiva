@@ -27,7 +27,7 @@ import { contribute } from '@eventiva/schema/compose';
 import * as Field from '@eventiva/schema/field';
 import * as Resource from '@eventiva/schema/resource';
 import { describe, expect, it } from '@effect/vitest';
-import { Cause, Context, Effect, Exit, Layer, Option, Ref, Schema } from 'effect';
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Ref, Schema, Scope } from 'effect';
 
 /** Declare a schema-backed handler failure so encoding can be distinguished from undeclared defects. */
 class LimitReached extends Schema.TaggedError<LimitReached>()('LimitReached', { limit: Schema.Int }) {}
@@ -896,6 +896,245 @@ describe('module schema', /** Register resource/contribution ownership, conflict
                         `${field.module}:${field.name}`
                 )
         );
+
+    it.scoped(
+        'isolates admitted declarations and returned views until their own scopes close',
+        /** Mutate ordinary typed fixture inputs and public views without casting away readonly contracts. */ () =>
+            Effect.gen(
+                /** Preserve ownership, protection and exact value schemas despite unscoped caller mutations. */ function* () {
+                    // Independent scopes distinguish real unregistering from accidental declaration aliasing.
+                    const actions = yield* ActionHost;
+                    const baseScope = yield* Scope.make();
+                    const addonScope = yield* Scope.make();
+                    yield* Effect.addFinalizer(
+                        /** Close both fixture scopes even if a regression assertion fails. */ () =>
+                            Scope.close(addonScope, Exit.void).pipe(Effect.zipRight(Scope.close(baseScope, Exit.void)))
+                    );
+                    const title = { ...Field.text().pipe(Field.classify('sensitive'), Field.label('probe.title')) };
+                    const ownFields: Record<string, Field.Field> = { title };
+                    const resource = {
+                        ...Resource.make('probe.record', {
+                            module: 'probe',
+                            version: 1,
+                            plane: 'tenant',
+                            consistency: 'record',
+                            security: 'sensitive',
+                            fields: ownFields,
+                        }),
+                        name: 'probe.record',
+                    };
+                    const resources = [resource];
+                    const limit = { ...Field.integer().pipe(Field.classify('sensitive')) };
+                    const addedFields: Record<string, Field.Field> = { limit };
+                    const contribution = { ...contribute(resource, 'addon', addedFields) };
+                    const contributions = [contribution];
+                    yield* actions
+                        .register({
+                            manifest: manifest('probe', [], { resources: ['probe.record'] }),
+                            actions: [],
+                            resources,
+                        })
+                        .pipe(Scope.extend(baseScope));
+                    yield* actions
+                        .register({ manifest: manifest('addon', []), actions: [], contributions })
+                        .pipe(Scope.extend(addonScope));
+                    const control = yield* actions.schema;
+                    expect(fieldsOf(control)).toEqual(['addon:limit', 'probe:title']);
+
+                    contributions.length = 0;
+                    expect(fieldsOf(yield* actions.schema)).toEqual(['addon:limit', 'probe:title']);
+                    // Reflection attempts writes through the public readonly view without manufacturing a mutable host type.
+                    for (const view of control.resources) {
+                        Reflect.set(view.resource, 'security', 'baseline');
+                        Reflect.set(view.resource, 'module', 'intruder');
+                        Reflect.set(view.resource.fields, 'injected', Field.text());
+                        for (const field of view.fields) {
+                            Reflect.set(field.field, 'security', 'baseline');
+                            Reflect.set(field.field.label, 'value', 'probe.corrupted');
+                            Reflect.set(field.field.target, '_tag', 'Some');
+                            Reflect.set(field.field.target, 'value', 'probe.missing');
+                            Reflect.set(field, 'module', 'intruder');
+                        }
+                    }
+                    resources.length = 0;
+                    resource.name = 'probe.changed';
+                    resource.module = 'intruder';
+                    resource.security = 'vault';
+                    resource.version = 9;
+                    title.security = 'baseline';
+                    Reflect.set(title.label, 'value', 'probe.changed');
+                    limit.security = 'baseline';
+                    contribution.module = 'intruder';
+                    contribution.target = 'probe.missing';
+                    delete ownFields.title;
+                    ownFields.injected = Field.text();
+                    delete addedFields.limit;
+                    addedFields.injected = Field.text();
+                    const stable = yield* actions.schema;
+                    expect(fieldsOf(stable)).toEqual(['addon:limit', 'probe:title']);
+                    expect(stable.resources[0]?.resource).toMatchObject({
+                        name: 'probe.record',
+                        module: 'probe',
+                        security: 'sensitive',
+                        version: 1,
+                    });
+                    for (const view of stable.resources) {
+                        expect(Object.keys(view.resource.fields)).toEqual(['title']);
+                        for (const field of view.fields) {
+                            expect(field.field.security).toBe('sensitive');
+                            expect(field.field.target.pipe(Option.isNone)).toBe(true);
+                            expect(field.field.label.pipe(Option.getOrUndefined)).toBe(
+                                field.name === 'title' ? 'probe.title' : undefined
+                            );
+                            const original = field.name === 'title' ? title : limit;
+                            expect(field.field.schema).toBe(original.schema);
+                            expect(field.field.schema.ast).toBe(original.schema.ast);
+                            expect(Reflect.get(field.field, 'ast')).toBe(original.ast);
+                        }
+                    }
+                    yield* actions
+                        .register({
+                            manifest: manifest('later', []),
+                            actions: [],
+                            contributions: [
+                                contribute('probe.record', 'later', {
+                                    extra: Field.integer().pipe(Field.classify('sensitive')),
+                                }),
+                            ],
+                        })
+                        .pipe(Scope.extend(addonScope));
+                    const weakened = yield* Effect.flip(
+                        actions.register({
+                            manifest: manifest('weak', []),
+                            actions: [],
+                            contributions: [contribute('probe.record', 'weak', { weak: Field.text() })],
+                        })
+                    );
+                    expect(weakened._tag).toBe('WeakerClassification');
+                    yield* Scope.close(addonScope, Exit.void);
+                    expect(fieldsOf(yield* actions.schema)).toEqual(['probe:title']);
+                    yield* Scope.close(baseScope, Exit.void);
+                    expect((yield* actions.schema).resources).toEqual([]);
+                }
+            ).pipe(Effect.provide(host))
+    );
+
+    it.scoped(
+        'publishes the preflight schema snapshot after activation waits and rechecks concurrent conflicts',
+        /** Use a deterministic layer barrier to mutate declarations between preflight and atomic publication. */ () =>
+            Effect.gen(
+                /** Keep activation cleanup and latest-state composition authoritative without rereading caller declarations. */ function* () {
+                    const actions = yield* ActionHost;
+                    yield* actions.register(events);
+                    const entered = yield* Deferred.make<void>();
+                    const resume = yield* Deferred.make<void>();
+                    const releases = yield* Ref.make(0);
+                    const fields: Record<string, Field.Field> = { limit: Field.integer() };
+                    const contribution = { ...contribute(Event, 'waiting', fields) };
+                    const contributions = [contribution];
+                    const resource = {
+                        ...Resource.make('waiting.record', {
+                            module: 'waiting',
+                            version: 1,
+                            plane: 'tenant',
+                            consistency: 'record',
+                            fields: { title: Field.text() },
+                        }),
+                    };
+                    const resources = [resource];
+                    const layer = Layer.scoped(
+                        Store,
+                        Effect.acquireRelease(
+                            Deferred.succeed(entered, undefined).pipe(
+                                Effect.zipRight(Deferred.await(resume)),
+                                Effect.as({ label: 'waiting' })
+                            ),
+                            /** Count each acquired module dependency release, including failed atomic publication. */ () =>
+                                Ref.update(
+                                    releases,
+                                    /** Increment the cleanup count once per acquired layer. */ (n) => n + 1
+                                )
+                        )
+                    );
+                    const scope = yield* Scope.make();
+                    yield* Effect.addFinalizer(
+                        /** Close the independent registration scope on assertion failure too. */ () =>
+                            Scope.close(scope, Exit.void)
+                    );
+                    const candidate = {
+                        manifest: manifest('waiting', [], { resources: ['waiting.record'] }),
+                        actions: [],
+                        resources,
+                        contributions,
+                        layer,
+                    };
+                    const pending = yield* actions.register(candidate).pipe(Scope.extend(scope), Effect.fork);
+                    yield* Deferred.await(entered);
+                    contributions.length = 0;
+                    fields.injected = Field.text();
+                    contribution.module = 'intruder';
+                    resources.length = 0;
+                    resource.module = 'intruder';
+                    yield* Deferred.succeed(resume, undefined);
+                    yield* Fiber.join(pending);
+                    expect(fieldsOf(yield* actions.schema)).toEqual([
+                        'events:id',
+                        'waiting:limit',
+                        'events:title',
+                        'waiting:title',
+                    ]);
+                    yield* Scope.close(scope, Exit.void);
+                    expect(yield* Ref.get(releases)).toBe(1);
+                    expect(fieldsOf(yield* actions.schema)).toEqual(['events:id', 'events:title']);
+
+                    // A valid preflight must still lose atomically if another registration takes its field while activation waits.
+                    const conflictEntered = yield* Deferred.make<void>();
+                    const conflictResume = yield* Deferred.make<void>();
+                    const conflictLayer = Layer.scoped(
+                        Store,
+                        Effect.acquireRelease(
+                            Deferred.succeed(conflictEntered, undefined).pipe(
+                                Effect.zipRight(Deferred.await(conflictResume)),
+                                Effect.as({ label: 'conflict' })
+                            ),
+                            /** Release the losing candidate's acquired dependency on commit rejection. */ () =>
+                                Ref.update(releases, /** Count the failed candidate's single release. */ (n) => n + 1)
+                        )
+                    );
+                    const conflict = yield* actions
+                        .register({
+                            manifest: manifest('loser', [], { resources: ['loser.record'] }),
+                            actions: [],
+                            resources: [
+                                Resource.make('loser.record', {
+                                    module: 'loser',
+                                    version: 1,
+                                    plane: 'tenant',
+                                    consistency: 'record',
+                                    fields: {},
+                                }),
+                            ],
+                            contributions: [contribute(Event, 'loser', { limit: Field.integer() })],
+                            layer: conflictLayer,
+                        })
+                        .pipe(Effect.either, Effect.fork);
+                    yield* Deferred.await(conflictEntered);
+                    yield* actions.register({
+                        manifest: manifest('winner', []),
+                        actions: [],
+                        contributions: [contribute(Event, 'winner', { limit: Field.integer() })],
+                    });
+                    yield* Deferred.succeed(conflictResume, undefined);
+                    expect(yield* Fiber.join(conflict)).toMatchObject({
+                        _tag: 'Left',
+                        left: { _tag: 'DuplicateField' },
+                    });
+                    expect(fieldsOf(yield* actions.schema)).toEqual(['events:id', 'winner:limit', 'events:title']);
+                    expect((yield* actions.schema).resources).toHaveLength(1);
+                    expect(yield* Ref.get(releases)).toBe(2);
+                }
+            ).pipe(Effect.provide(host))
+    );
 
     it.effect(
         'adds resources and contributions with their module and removes them with it',

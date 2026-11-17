@@ -58,6 +58,16 @@ export const platformModule = (actions: Effect.Effect<ReadonlyArray<string>>): S
 
 Register with `host.register(platformModule(host.actions))` inside `Effect.scoped`. EVE-40 additionally requires the invocation services below. The current server shell has no durable audit adapter and explicitly reports execution disabled rather than returning an unaudited successful status.
 
+### Host declaration isolation (EVE-258 / EVE-23)
+
+`register` snapshots resource/contribution arrays, declaration scalars, field maps and field metadata before preflight. It reuses that admitted snapshot across layer activation and replans against current registry state at atomic publication. Caller mutations during the wait cannot bypass ownership, manifest matching, reference validation, conflicts or classification floors. A concurrent conflicting winner still rejects the entire candidate and releases its acquired layer once; failed activation publishes nothing.
+
+`schema` composes detached resource/contribution metadata, including optional label/reference wrappers. Writes through a retained view cannot alter later views or subsequent admission. Example: `contributions.length = 0` on the caller's original array leaves admitted fields present; attempting to lower a returned field's `security` leaves the next view and registration floor unchanged. Remove fields only by closing the contributor's scope; remove the base resource by closing its owner's scope after contributors. No additional registry or public API is introduced.
+
+Preserve exact Effect value-schema and AST identities, schema-compatible field operations and field inference. Do not recursively clone/freeze caller schemas or modify pure `compose` identity/order behavior. Schema constructors and library prototypes remain opaque, not mutation targets. This is an existing-invariant correction, with no runtime option, feature flag, SQL change or production activation.
+
+Public regression command: `pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/host.spec.ts --coverage.enabled=false`. It covers independent base/contributor scopes, original array/map/scalar writes, returned-view writes, deterministic activation suspension, subsequent valid and weaker-profile admission, concurrent conflict rollback and cleanup. Run full `node --run verify` for compatibility/type/lint/coverage gates. See [the people guide](../../../docs/foundation.md#registered-declaration-isolation-eve-258--eve-23). Narrow in-process isolation does not close EVE-258's canonical storage integration or G01-G15 acceptance, nor change EVE-23's existing completed status.
+
 Boundary tests (`tests/boundaries`): ESLint rule cases against fixtures and real packages, package hygiene, and a portable bundle check: every contracts and schema subpath bundled for the browser contains only those packages and `effect` with its dependency closure, no Node import; a one-subpath bundle drops the rest; React Native's `hermes-compiler` compiles the full bundle.
 
 Feature flags: this foundation adds the flag plumbing and one client flag, `client.shell.offline-banner` (safe default `false`). It adds no product behaviour to gate.

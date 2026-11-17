@@ -70,6 +70,16 @@ Every field defaults to profile `baseline` and conflict rule `field-lww`; pipe i
 
 Registration lasts until the scope that called `register` closes. Then the host removes the module's actions, resources and contributions first, so no new call can reach them, and releases its layer second, exactly once. The module can then register again, for example after an update. `ActionHost.schema` returns the composed schema of every module currently registered.
 
+### Registered declaration isolation (EVE-258 / EVE-23)
+
+Treat a successful registration as admitting a snapshot, not a live link to a module's resource declarations. Before preflight, the host copies resource and contribution arrays, declaration metadata, field maps and field metadata (including optional label/reference values). That same snapshot is rechecked against the latest registry after layer activation. Editing the original arrays, ownership, names, protection profiles or field maps during activation or after registration cannot change the admitted schema. Another module can still win a conflicting registration while activation waits; the losing registration publishes nothing and releases its acquired layer once.
+
+Read `host.schema` for a detached view. Changing its resource or field metadata cannot change later views or the checks for a subsequent registration. For example, clearing a registered contributor's original array does not remove its fields, and changing a returned field's `security` does not lower the registered resource's protection floor. Close that contributor's registration scope to remove its admitted fields; close the resource owner's scope after its contributors to remove the resource.
+
+Effect value schemas and their ASTs retain their exact identities and are not recursively copied or frozen. Do not mutate schema constructors or library prototypes. Pure `compose` retains its existing identity and ordering contract; this isolation belongs only to the host registry. No public signature, schema format, SQL behavior, option, feature flag or production activation changes.
+
+Run `pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/host.spec.ts --coverage.enabled=false` for the public declaration/view-mutation regressions, deterministic activation barrier, concurrent conflict cleanup and ordinary scoped-removal controls. Run `node --run verify` for schema/resource compatibility, types, lint, coverage and the complete workspace gate. This in-process registry evidence does not establish canonical storage integration, durable migration or G01-G15 acceptance.
+
 `ActionHostLive` needs a `Flags` and an `Authorizer` service; `invoke` needs a `Caller`. The server shell in `apps/server` provides a deny-by-default `Authorizer` that grants its own service identity `platform.status` and nothing else, until the authorisation issue brings real policy.
 
 ## Boundaries

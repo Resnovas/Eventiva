@@ -23,7 +23,7 @@ import type { JsonValue } from '@eventiva/contracts/storage';
 import { Attributes, type Outcome, actionSpan } from '@eventiva/contracts/telemetry';
 import { type ComposeError, type Composed, type Contribution, compose } from '@eventiva/schema/compose';
 import { ModuleManifest } from '@eventiva/schema/manifest';
-import type { Resource } from '@eventiva/schema/resource';
+import type { Fields, Resource } from '@eventiva/schema/resource';
 import {
     Cause,
     Context,
@@ -213,18 +213,53 @@ const mismatch = (
     return Option.none();
 };
 
-/** Validate the combined schema of a snapshot and optional registration candidate without publishing that candidate. */
+/** Detach optional scalar metadata, including the shared None instance, while retaining Effect's Option protocols. */
+const snapshotOption = <A>(option: Option.Option<A>): Option.Option<A> => {
+    // A constructor round-trip reuses None; copy instance properties and retain only the library prototype instead.
+    const snapshot = { ...option };
+    Object.setPrototypeOf(snapshot, Object.getPrototypeOf(option));
+    return snapshot;
+};
+
+/** Detach field metadata while preserving opaque Effect value schemas, ASTs and schema-compatible field operations. */
+const snapshotFields = (fields: Fields): Fields =>
+    Object.fromEntries(
+        Object.entries(fields).map(
+            /** Copy each declaration and its optional scalar metadata, never recursively cloning schema constructors. */ ([
+                name,
+                field,
+            ]): readonly [string, Fields[string]] => [
+                name,
+                {
+                    ...field,
+                    label: snapshotOption(field.label),
+                    target: snapshotOption(field.target),
+                },
+            ]
+        )
+    );
+
+/** Capture a resource's admission metadata and field map without retaining caller-owned declaration objects. */
+const snapshotResource = (resource: Resource): Resource => ({ ...resource, fields: snapshotFields(resource.fields) });
+
+/** Capture contributor ownership, target and fields independently of the caller's array and map lifetime. */
+const snapshotContribution = (contribution: Contribution): Contribution => ({
+    ...contribution,
+    fields: snapshotFields(contribution.fields),
+});
+
+/** Validate combined schema on detached declarations so even a successful composed view cannot mutate registry metadata. */
 const composeState = (state: State, extra: ReadonlyArray<Registered> = []) => {
     // Include existing and candidate contributions together so cross-module conflicts cannot pass isolated validation.
     const all = [...HashMap.values(state.modules), ...extra];
     return compose(
         all.flatMap(
             /** Collect owned resource definitions from every participating module. */ (registered) =>
-                registered.resources
+                registered.resources.map(snapshotResource)
         ),
         all.flatMap(
             /** Include extensions from other modules in the same composition validation. */ (registered) =>
-                registered.contributions
+                registered.contributions.map(snapshotContribution)
         )
     );
 };
@@ -371,8 +406,9 @@ export const ActionHostLive: Layer.Layer<
                         );
                         const parts: Parts<R> = {
                             actions: module.actions,
-                            resources: module.resources ?? [],
-                            contributions: module.contributions ?? [],
+                            // One admitted declaration snapshot governs preflight, activation waits and atomic publication.
+                            resources: (module.resources ?? []).map(snapshotResource),
+                            contributions: (module.contributions ?? []).map(snapshotContribution),
                         };
                         // Check first, so an invalid module never starts its layer.
                         yield* plan(yield* Ref.get(state), manifest, parts);

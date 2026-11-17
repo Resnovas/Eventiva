@@ -353,7 +353,7 @@ Repeated `DOCUMENTATION_BASE=c7a27fdb369f1590ac38bb4a1dd0174e9e5290fa NX_SKIP_NX
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-166 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 166 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+165 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 165 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -371,7 +371,7 @@ Repeated `DOCUMENTATION_BASE=c7a27fdb369f1590ac38bb4a1dd0174e9e5290fa NX_SKIP_NX
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
 | D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 8 |
 | D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 24 |
+| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 23 |
 | D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 10 |
 | D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
