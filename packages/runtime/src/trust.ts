@@ -136,14 +136,34 @@ export const trustPreflight = (
                 Effect.mapError(
                     /** Reject malformed requests without exposing their scope or key material in diagnostics. */ () =>
                         new TrustFailure({ gate: 'preflight', reason: 'invalid' })
+                ),
+                Effect.map(
+                    /** Detach every admitted record from caller aliases and prevent adapters from substituting the binding. */ (
+                        value
+                    ) =>
+                        Object.freeze({
+                            ...value,
+                            scope: Object.freeze({ ...value.scope }),
+                            keys: Object.freeze({ ...value.keys }),
+                        })
                 )
             );
             const policy = yield* Schema.decodeUnknown(TrustPolicy)(trustedPolicy).pipe(
                 Effect.mapError(
                     /** Treat malformed trusted policy as preflight failure, not permission to use weaker defaults. */ () =>
                         new TrustFailure({ gate: 'preflight', reason: 'invalid' })
+                ),
+                Effect.map(
+                    /** Keep assurance and freshness host-owned even across suspended or reference-retaining adapters. */ (
+                        value
+                    ) =>
+                        Object.freeze({
+                            ...value,
+                            freshAfter: Object.freeze({ ...value.freshAfter }),
+                        })
                 )
             );
+            // Decoding may preserve input identity; only detached, immutable records may cross an adapter boundary.
             if (
                 Object.values(policy.freshAfter).some(
                     /** Reject gate freshness floors that lie beyond the trusted evaluation instant. */ (time) =>

@@ -10096,13 +10096,15 @@
         {
             "issue": "EVE-251",
             "kind": "later-status",
-            "date": "2026-11-17T14:28:01.568Z",
+            "date": "2026-11-17T15:44:16.936Z",
             "status": "In Progress",
             "statusType": "started",
-            "summary": "Slice 4 adds independent-process consume-once evidence to the existing default trust fixture: identical and case-equivalent UUID races, one retained matching winner, sanitized fail-closed losers, deterministic replay after all racing clients close, and a distinct-nonce positive control. Both standalone dialect proofs passed; an isolated lowercasing-removal mutation was rejected. Aggregate verification and signed delivery are separately recorded on the issue, not inferred from this checkpoint. The captured issue prose remains historical. No concrete crypto/provider/custody/retention choice, release grant, production activation or whole-issue completion is established.",
+            "summary": "The 14:28:01.568Z slice 4 checkpoint adds independent-process consume-once evidence to the existing default trust fixture: identical and case-equivalent UUID races, one retained matching winner, sanitized fail-closed losers, deterministic replay after all racing clients close, and a distinct-nonce positive control. Both standalone dialect proofs passed; an isolated lowercasing-removal mutation was rejected. The 15:44:16.936Z next-batch slice 2 checkpoint independently read the live description and terminal 16-comment page; EVE-251 remains In Progress. Its A5-policy/A4-evidence adapter-mutation regression reproduced metadata success and nonce consumption before the fix; detached immutable admitted request/policy snapshots passed the initial 170-case checkpoint. The maintained timeline records the final separate suspension barriers, checks and delivery. Aggregate verification and signed delivery are separately recorded on the issue, not inferred from either checkpoint. The captured issue prose remains historical; this is not a full live mirror refresh. No concrete crypto/provider/custody/timing/retention choice, key/plaintext release, production activation or whole-issue completion is established.",
             "sources": [
                 "https://linear.app/resnovas/issue/EVE-251#comment-eaf4d8a6-1612-4ae7-9bde-97244b878250",
-                "https://ampcode.com/threads/T-01a1e9e1-bcd6-7217-97ea-fd5de5a09a96"
+                "https://ampcode.com/threads/T-01a1e9e1-bcd6-7217-97ea-fd5de5a09a96",
+                "https://linear.app/resnovas/issue/EVE-251#comment-b5a4e484-a21b-4b81-8292-566b8b76ba9d",
+                "https://ampcode.com/threads/T-01a1ea29-5659-70f4-acdb-3856f1dc28ae"
             ]
         },
         {

@@ -210,7 +210,7 @@ Executed `DOCUMENTATION_BASE=b5837844e68a28e5031f76d60006b1d4728f20ba NX_SKIP_NX
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-251 remaining findings across 56 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 251 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+246 remaining findings across 56 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 246 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -251,7 +251,7 @@ Executed `DOCUMENTATION_BASE=b5837844e68a28e5031f76d60006b1d4728f20ba NX_SKIP_NX
 | D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 12 |
+| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 7 |
 | D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 7 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 7 |

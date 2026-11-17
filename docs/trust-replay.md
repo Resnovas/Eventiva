@@ -34,6 +34,45 @@ One row stores the complete decoded secret-free request metadata as JSON, explic
 
 Treat stored metadata as access-controlled data. Do not place secrets in requests, expose the table to clients or log full requests. The audit UUID is a lookup reference, not a signature, authorization or cryptographic proof.
 
+## Preserve admitted preflight inputs
+
+Use `trustPreflight` from `@eventiva/runtime/trust` when composing the four
+independent verifier ports with replay consumption. It strictly decodes the
+request and trusted policy, then takes detached immutable snapshots before any
+adapter runs. The snapshots include the nested scope, key references/versions
+and all four freshness floors. Schema decoding alone is not an ownership
+boundary: it can preserve references to caller-owned objects.
+
+Every verifier and the final replay port receives the admitted original binding
+and policy. Caller writes during a suspended verifier, or writes through an
+earlier adapter's retained reference during a later gate, cannot substitute the
+tenant, purpose, nonce, key versions, evaluation time, freshness or assurance
+floor. Caller-owned objects are not frozen or modified by preflight. Changes
+made before execution/admission are still input, not a live policy refresh; to
+evaluate newly authorized values, start a new preflight.
+
+For example, with an explicit trusted `minimumAssurance: 'A5'` and A4 workload
+evidence, an identity adapter's attempted downgrade to A1 cannot turn denial
+into success or consume the nonce. Genuine A5 evidence can pass the metadata
+checks, but the result still says `release: 'denied'`. A nonthrowing rejected
+write does not itself deny otherwise valid original-bound evidence. A throwing
+write is sanitized by the existing adapter boundary to that gate's
+`TrustFailure` with reason `unavailable`; pure interruption stays interruption.
+No raw mutation error, request value or private canary is exposed.
+
+Run the focused isolation and existing failure/binding controls:
+
+```sh
+pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/trust.spec.ts --coverage.enabled=false
+```
+
+These are public preflight tests with volatile replay fixtures, not a new SQL
+durability claim. Direct calls to `TrustReplay.consume` still require trusted
+composition and do not gain four-gate verification from input immutability.
+This mandatory binding fix adds no rollout switch, policy defaults,
+cryptography, key/plaintext release or production composition. See the
+[agent boundary note](../ai-docs/src/24_trust/03_preflight-isolation.md).
+
 ## Handle failures
 
 All failures expose only `TrustFailure` with `gate: 'replay'` and one of these reasons:
