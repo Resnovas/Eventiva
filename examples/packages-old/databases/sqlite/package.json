@@ -9,7 +9,7 @@
         "@eventiva/core": "workspace:*",
         "@eventiva/databases.shared": "workspace:*",
         "better-sqlite3": "^11.10.0",
-        "drizzle-orm": "1.0.0-beta.18-dc9676b",
+        "drizzle-orm": "1.0.0-rc.5",
         "effect": "^3.19.17"
     },
     "devDependencies": {
