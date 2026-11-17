@@ -93,6 +93,7 @@ export const storage = (dialect: Dialect) =>
                 const record = (row: Row) =>
                     Effect.gen(
                         /** Reject corrupted retained records instead of returning unchecked driver data. */ function* () {
+                            // The JSON codec and record codec enforce separate boundaries: valid JSON need not be a valid stored record.
                             const payload = yield* decode(Json, row.payload);
                             return yield* decode(StoredRecord, {
                                 id: row.id,

@@ -4,38 +4,6 @@
   "authority": "Jonathan, 2026-11-17: reviewed documentation debt ratchet; tracked under EVE-13/EVE-261",
   "entries": [
     {
-      "id": "055e4dcee495146570b5eb18dcd903038092ceb1209fe9cd889ae0234aebaf1e:0",
-      "file": "ai-docs/src/21_kernel/01_kernel.ts",
-      "line": 62,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "a2a194217a6c8845e2a29b658b1777184e63e6fd7eed89fa440b2f7ffb8ba163:0",
-      "file": "apps/client-e2e/src/shell.spec.ts",
-      "line": 29,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "24f2c516802300bce188b11183e6e61887cde2f59673d84b3892057b7d4993bf:0",
-      "file": "apps/client/src/App.tsx",
-      "line": 69,
-      "kind": "ArrowFunction",
-      "name": "App",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "73d87f1c70aa32b203ad7464f50c447a82466ff9ae9701315cf7437ccca5f0bb:0",
-      "file": "apps/server/src/cluster.ts",
-      "line": 57,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "c456fc6b1282808045f484a9ba5c59fe715da4e1eead340ef11622916fa3dd8c:0",
       "file": "apps/server/tests/cluster.spec.ts",
       "line": 62,
@@ -96,142 +64,6 @@
       "file": "apps/server/tests/cluster.spec.ts",
       "line": 450,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "946666074885622473d9b23bf57f1e597de48d00763851335b01d5018bd2a83d:0",
-      "file": "packages/integrations/sql/src/hook.ts",
-      "line": 76,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "6065d83d1f613840572cc3b6b3fc49f2fd802326fa32084fb093527ba4d52c46:0",
-      "file": "packages/integrations/sql/src/marketplace.ts",
-      "line": 93,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "cd97e121bc7e3b648ab65107cec227b7daea25d8f73d5505a9bfc622b6306654:0",
-      "file": "packages/integrations/sql/src/resource.ts",
-      "line": 52,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "ae0d3d9a2c2a2fd09d853495d69f81781e1ceffc79c1db109e6f214525dc5a1c:0",
-      "file": "packages/integrations/sql/src/resource.ts",
-      "line": 448,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "e3372c870303e87b8ade37700830c3629b7a8192ac7f87445ed3dfded2f5fb90:0",
-      "file": "packages/integrations/sql/src/storage.ts",
-      "line": 95,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "beddcb58312abad243f7bf632fa6e2d48bd7d666f15e4cc284398ae6c903b28f:0",
-      "file": "packages/integrations/sql/src/transaction.ts",
-      "line": 57,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "9f754504812c1f00e940e888621a5ea82737a86014b323a02b5db5f6b8ae7c45:0",
-      "file": "packages/runtime/src/identity.ts",
-      "line": 61,
-      "kind": "ArrowFunction",
-      "name": "target",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "175d8c69497c6029768732153087733a0c4eb4575472df8cfcd07a07dbb5bff7:0",
-      "file": "packages/runtime/src/identity.ts",
-      "line": 212,
-      "kind": "ArrowFunction",
-      "name": "check",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "303d87d8e803798cea07c63c408b8c437e18af62060f8923d266a6b6554f28ee:0",
-      "file": "packages/runtime/src/identity.ts",
-      "line": 441,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "f4e690879e032f9f8889f6b14089ab850364e8874e65e4baa6b6b0cce6989d5f:0",
-      "file": "packages/runtime/src/kernel-runtime.ts",
-      "line": 467,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "dad8797964f753af3edc74630d11439a97e4aa87c520a8e0cbe531f31816bf6f:0",
-      "file": "packages/runtime/src/kernel-runtime.ts",
-      "line": 1385,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "81764f2fb232ccc07c7b4fa759856052148d2b1d0af63117b6720df6967b64e8:0",
-      "file": "packages/runtime/src/marketplace.ts",
-      "line": 122,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "fe81c8d8aac332d779cb2827b01886d8ae13f8f0f1f2985cf5d160f0e8abbc45:0",
-      "file": "packages/runtime/src/resource.ts",
-      "line": 244,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "9094bd2f5cc83251a03151832bbede24b86115cb4d74b5df7dc5542ff02f1946:0",
-      "file": "packages/runtime/src/telemetry.ts",
-      "line": 401,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "4d8994675eed8e0335ed497c33746d22a07e36b52a1b8ed5169f00bd3c0bd653:0",
-      "file": "packages/runtime/src/testing.ts",
-      "line": 264,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "1ec40af0b76555c36c9b0364d5d29ce32524fdff322ade127316d0c9e3c66aa6:0",
-      "file": "packages/ui-modules/src/declarative-registry.ts",
-      "line": 109,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "075572dfd5cf2428cd7960e89e06aa778ea9f7dc1cd1e4c250ab50ee10febc7f:0",
-      "file": "packages/ui-modules/src/declarative-registry.ts",
-      "line": 484,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -1382,7 +1214,7 @@
     {
       "id": "dee21eacd3b4df6da71e6d35d903b159b246429ac4b7244206e1f93145c2bf07:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 743,
+      "line": 745,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"

@@ -91,6 +91,7 @@ export const marketplace = (
     Layer.unwrapEffect(
         Effect.gen(
             /** Capture the trusted marketplace client and compose administration, staging and local delivery capabilities. */ function* () {
+                // Every local capability closes over this trusted database; requests cannot substitute a tenant-selected client.
                 const sql = yield* SqlClient.SqlClient;
                 const now = safe(
                     Effect.gen(

@@ -27,6 +27,7 @@ test('the exported web client renders the localised shell with safe flag default
     page.on(
         'console',
         /** Treat error-level console output as a shell regression, ignoring routine diagnostics. */ (message) => {
+            // Uncaught exceptions are captured separately; console diagnostics fail this proof only at error level.
             if (message.type() === 'error') errors.push(message.text());
         }
     );

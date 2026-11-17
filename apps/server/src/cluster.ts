@@ -55,6 +55,7 @@ export const clusterStatus = (profile: DeploymentProfile) =>
         ClusterStatus,
         Effect.gen(
             /** Capture storage, transport health and local shard ownership services for repeated snapshots. */ function* () {
+                // Retain service handles, not membership results: each snapshot must observe current cluster health.
                 const storage = yield* RunnerStorage;
                 const health = yield* RunnerHealth.RunnerHealth;
                 const sharding = yield* Sharding;

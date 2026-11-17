@@ -60,6 +60,7 @@ const provider = (id: string): ModuleDefinition => ({
         KernelModule,
         Effect.gen(
             /** Wrap the trusted service instance for kernel admission and publish it under the manifest's instance name. */ function* () {
+                // Admission uses the schema-wrapped capability; publishing the raw instance would bypass that boundary.
                 const service = yield* kernelProvider(MessagesSchema, new Messages(id));
                 return KernelModule.of({
                     providers: new Map([['Tenant A', service]]),

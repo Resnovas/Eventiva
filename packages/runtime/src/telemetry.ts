@@ -399,6 +399,7 @@ export const telemetryLayer = (
                     Layer.scopedDiscard(
                         Effect.gen(
                             /** Replace scoped tracer/logger together so all signals in this scope pass the same minimizing policy. */ function* () {
+                                // Both FiberRefs share this scope; restoring only one would leave a different policy on another signal path.
                                 yield* Effect.withTracerScoped(tracer);
                                 yield* Effect.locallyScoped(FiberRef.currentLoggers, HashSet.make(logger));
                             }

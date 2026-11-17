@@ -117,6 +117,7 @@ export const governedTelemetrySinkLayer = (
                         ),
                     flush: Effect.gen(
                         /** Reauthorize the payload-free provider barrier instead of replaying queued metadata. */ function* () {
+                            // Flush still reaches the retained provider, so a revoked export grant must stop even this payload-free call.
                             yield* authorize('flush');
                             yield* provider.flush(trusted);
                         }

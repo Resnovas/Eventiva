@@ -67,6 +67,7 @@ const Shell = () => {
 
 /** Bind the device catalogue and shared flag domain, starting the module-owned runtime after mount. */
 export const App = () => {
+    // Locale selection belongs to rendering, but acquiring the shared runtime must wait until React commits.
     const locale = deviceLocale();
     useEffect(
         /** Acquire flag services lazily after React commits; runtime lifetime is the app module's, not this mount's. */ () => {

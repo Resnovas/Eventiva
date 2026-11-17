@@ -157,6 +157,7 @@ export const postHogTelemetryLayer = (
                                             /** Bind this capture to its interruption signal until the SDK promise settles. */
                                             // effect-boundary: immediate SDK delivery has no offline queue or automatic retry.
                                             try: (signal) => {
+                                                // Keep cancellation associated with this request, not a later SDK call on the retained client.
                                                 requestSignal = signal;
                                                 sending = true;
                                                 return client

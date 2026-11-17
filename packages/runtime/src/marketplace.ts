@@ -120,6 +120,7 @@ const authorize = (tx: MarketplaceTransaction, request: typeof ReadSnapshot.Type
 
 const enabled = Effect.gen(
     /** Deny marketplace metadata operations until the trusted feature evaluation enables the declared gate. */ function* () {
+        // Resolve the flag service on execution so retained operations do not preserve an earlier enablement decision.
         const flags = yield* Flags;
         if (!(yield* flags.evaluate(marketplaceFlag)).value) return yield* fail('disabled');
     }

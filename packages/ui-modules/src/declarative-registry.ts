@@ -107,6 +107,7 @@ export const declarativeRegistry = (
                 const enabled = (definition: UiModuleDefinition) =>
                     Effect.gen(
                         /** Evaluate both gates with their declared ownership rather than caching registration-time values. */ function* () {
+                            // Foundation enablement alone cannot activate a module whose own owner has left its gate disabled.
                             const foundation = yield* flags.evaluate(declarativeUiFlag);
                             const module = yield* flags.evaluate({
                                 key: definition.flag,
@@ -482,6 +483,7 @@ export const declarativeRegistry = (
                                         mutex.withPermits(1)(
                                             Effect.sync(
                                                 /** A stale scope cannot unregister a newer publication with the same tenant/module key. */ () => {
+                                                    // Keys are reusable; only this scope's unique publication token proves disposal ownership.
                                                     if (entries.get(key)?.token === token) entries.delete(key);
                                                 }
                                             )

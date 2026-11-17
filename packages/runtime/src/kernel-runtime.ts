@@ -320,11 +320,13 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 function begin(fact: HookProducerBinding['projection'], mandatory = false) {
                     return Effect.gen(
                         /** Bind policy to core state, then require fresh admission rather than replaying any duplicate. */ function* () {
+                            // Journal opt-out is distinct from failed admission; only the former may omit intent during ordinary work.
                             let mutation: typeof KernelMutation.Service = { request: null, projection: fact };
                             if (Option.isNone(journal)) return mutation;
                             const configured = journal.value;
                             const admitted = Effect.gen(
                                 /** Validate retained projection before granting first callback execution. */ function* () {
+                                    // Once outcome is ambiguous, ordinary callbacks stay fenced until reconciliation instead of retrying admission.
                                     if (degraded && !mandatory) return yield* error('<platform>', 'recovery-required');
                                     const request = yield* configured.requestId;
                                     mutation = { request, projection: fact };
@@ -365,6 +367,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             return yield* admitted.pipe(
                                 Effect.catchAllCause(
                                     /** A failed admission can have lost its acknowledgement; never infer absence or replay. */ () => {
+                                        // Mandatory cleanup still runs, but its null request prevents later confirmation from fabricating evidence.
                                         degraded = true;
                                         if (mutation.request !== null) unconfirmed.add(mutation.request);
                                         return mandatory
@@ -388,6 +391,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             /** Callback failure does not prove absence of external side effects. */ () =>
                                 Effect.sync(
                                     /** Make callback ambiguity sticky for the lifetime of this kernel incarnation. */ () => {
+                                        // A callback failure cannot establish that its external side effects were rolled back.
                                         if (mutation.request !== null) degraded = true;
                                     }
                                 )
@@ -397,12 +401,14 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 const confirm = (mutation: typeof KernelMutation.Service): Effect.Effect<void, KernelError> =>
                     Effect.gen(
                         /** Never fabricate a fact for mandatory teardown that lacked durable admission. */ function* () {
+                            // Neither journal opt-out nor the mandatory-cleanup fallback grants durable intent that may be confirmed.
                             if (mutation.request === null || Option.isNone(journal)) return;
                             const status = yield* journal.value.producer.confirm(mutation.request).pipe(
                                 Effect.provideService(HookProducerPolicy, journal.value.policy),
                                 Effect.provideService(KernelMutation, mutation),
                                 Effect.catchAllCause(
                                     /** Commit acknowledgement loss requires reconciliation, not callback replay. */ () => {
+                                        // Preserve the recovery fence even when the caller handles this typed failure.
                                         degraded = true;
                                         return Effect.fail(error('<platform>', 'recovery-required'));
                                     }
@@ -419,6 +425,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 const changed = (): Effect.Effect<void> =>
                     Effect.gen(
                         /** Internal invalidation cannot undo the mutation that made readiness stale. */ function* () {
+                            // Readiness describes the whole composition; one committed mutation invalidates every ready entry.
                             generation += 1;
                             readyGeneration = -1;
                             for (const entry of entries.values()) {
@@ -441,6 +448,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 ): Effect.Effect<void, KernelError> =>
                     Effect.gen(
                         /** Always invalidate readiness, including when confirmation fails after the state write. */ function* () {
+                            // Capture failure as data so invalidation runs before the confirmation failure is propagated.
                             const result = yield* Effect.exit(confirm(mutation));
                             if (advance) yield* changed();
                             if (Exit.isFailure(result)) return yield* result;
@@ -455,6 +463,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                                 /** Unsettled intent is never permission to repeat an interrupted public operation. */ () =>
                                     Effect.sync(
                                         /** Preserve ambiguity even for a later phase that failed before its own callback. */ () => {
+                                            // The public operation can fail after another phase created intent; fence on outstanding work, not only this error.
                                             if (unconfirmed.size > 0) degraded = true;
                                         }
                                     )
@@ -465,6 +474,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 const lookup = (id: string, registry: ReadonlyMap<string, Entry> = entries) =>
                     Effect.suspend(
                         /** Avoid capturing an entry before its serialized operation executes. */ () => {
+                            // Registry replacement may happen before this suspended lookup runs; resolve from the execution-time view.
                             const entry = registry.get(id);
                             return entry === undefined ? Effect.fail(error(id, 'missing')) : Effect.succeed(entry);
                         }
@@ -1383,6 +1393,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         mutex.withPermits(1)(
                             Effect.gen(
                                 /** Authorize the consumer before exposing provider selection. */ function* () {
+                                    // Provider selection can reveal composition metadata, so even a nonmutating resolve needs current consumer authority.
                                     const entry = yield* lookup(consumer);
                                     yield* authorize(entry, 'validate');
                                     return (yield* selected(consumer, requirement)).binding;

@@ -55,6 +55,7 @@ export const transactionScope = (
             );
             const required = Effect.gen(
                 /** Require an owned live transaction before transaction-only adapters perform SQL. */ function* () {
+                    // Ownership validation alone also permits no transaction; transaction-only methods need the stronger presence check.
                     yield* check;
                     if (Option.isNone(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
                         return yield* new StorageFailure({ operation: 'hook-transaction-required' });

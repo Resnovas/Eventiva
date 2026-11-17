@@ -59,6 +59,7 @@ const permits = (grants: ReadonlyArray<typeof Grant.Type>, permission: string, r
 
 /** Only this module's resource grammar is known here. Other modules need their own explicit target policy. */
 const target = <Input>(spec: ActionSpec, input: Input): string | undefined => {
+    // Action names select the grammar, but only a matching schema permits reading a caller-supplied target field.
     if (spec.name === organizationGet.name || spec.name === organizationSet.name) return 'organization';
     if (spec.name === auditList.name) return 'audit';
     if (spec.name === profileGet.name && Schema.is(profileGet.input)(input)) return input.subject;
@@ -210,6 +211,7 @@ export const identitySecurity = Layer.unwrapEffect(
                     canInvoke: (caller, spec) => authorize(caller, spec),
                     /** Require this module's explicit decoded-target grammar; unknown module actions need a separate target policy. */
                     check: (caller, spec, input) => {
+                        // Discovery permission is insufficient when no module-owned resource target can be established.
                         const resource = target(spec, input);
                         return resource === undefined
                             ? Effect.fail(new Forbidden({ action: spec.name, reason: 'resource-policy-required' }))
@@ -439,6 +441,7 @@ export const identityModule = Effect.gen(
                     }) =>
                         Effect.gen(
                             /** Check profile ownership has a membership record before storing the public profile value. */ function* () {
+                                // A profile cannot introduce a new tenant principal through an otherwise authorized profile write.
                                 yield* requireRecord('membership', value.id);
                                 return yield* put('profile', value, expectedVersion);
                             }

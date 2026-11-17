@@ -50,6 +50,7 @@ const sqlFailure = (cause: Error) =>
 const checkTransaction = () =>
     Effect.gen(
         /** Reject an inherited transaction instead of allowing Effect SQL to reuse a foreign connection. */ function* () {
+            // Even a trusted caller's ambient transaction would bypass this provider's acquisition boundary.
             const transaction = yield* Effect.serviceOption(SqlClient.TransactionConnection);
             if (Option.isNone(transaction)) return;
             return yield* fail(
@@ -446,6 +447,7 @@ export const resourceProvider = (
 ) =>
     Effect.gen(
         /** Acquire a private transaction root, then bind only this tenant's applied active resource definitions. */ function* () {
+            // Definitions must be bound to the newly acquired owner; a shared client alone is not transaction authority.
             const owner = yield* transactionScope(dialect, 'resource-provider-boundary');
             return yield* bindResourceProvider(dialect, tenant, identity, definitions, owner);
         }

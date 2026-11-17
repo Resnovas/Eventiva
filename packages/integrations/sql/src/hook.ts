@@ -74,6 +74,7 @@ export const hookStorage = (dialect: Dialect) =>
     Layer.scopedContext(
         Effect.gen(
             /** Acquire one transaction owner and compose hook capabilities over that exact storage owner. */ function* () {
+                // The paired storage and outbox must share a private root, not merely the same SQL connection.
                 const owner = yield* transactionScope(dialect, 'hook-foreign-transaction');
                 return yield* hookContext(dialect, owner);
             }

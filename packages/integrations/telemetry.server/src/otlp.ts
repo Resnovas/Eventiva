@@ -46,6 +46,7 @@ const HeaderValues = Schema.Record({
 }).pipe(
     Schema.filter(
         /** Reject ambiguous casing and transport overrides before creating an HTTP request. */ (headers) => {
+            // Normalize before checking uniqueness so differently cased keys cannot smuggle duplicate HTTP headers.
             const names = Object.keys(headers).map(
                 /** HTTP names are case-insensitive, including reserved framing headers. */ (name) => name.toLowerCase()
             );
@@ -164,6 +165,7 @@ export const otlpTelemetryLayer = (
                 const check = (candidate: TelemetryExportBinding) =>
                     Effect.gen(
                         /** Reject cross-tenant, stale-generation and protected reuse before serialization. */ function* () {
+                            // Decoding establishes shape only; retained provider authority still has to match every bound field.
                             const decoded = yield* Schema.decode(TelemetryExportBinding)(candidate).pipe(
                                 Effect.mapError(
                                     /** Invalid binding details cannot escape through a provider handle. */ () =>
@@ -275,6 +277,7 @@ export const otlpTelemetryLayer = (
                                                             /** Reject oversized acknowledgements without retaining the collector's error body. */ (
                                                                 chunk
                                                             ) => {
+                                                                // Enforce the cumulative byte budget before text decoding can retain an oversized response.
                                                                 received += chunk.byteLength;
                                                                 return received > 16384
                                                                     ? Effect.fail(

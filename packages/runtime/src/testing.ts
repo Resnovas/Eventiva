@@ -264,6 +264,7 @@ export const makeTestOnlyHarness = (initialIdentity: CallerIdentity) =>
                                 /** Treat missing approval evidence as denial rather than reusing a stale previously returned object. */ (
                                     all
                                 ) => {
+                                    // Consult the current map each time so removing a fixture approval really models revocation.
                                     const approval = all.get(id);
                                     return approval === undefined
                                         ? Effect.fail(

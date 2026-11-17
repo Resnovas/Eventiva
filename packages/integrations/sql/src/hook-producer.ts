@@ -255,6 +255,7 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                                         return yield* atomic(
                                             Effect.gen(
                                                 /** Resolve competing admissions under the tenant lock before inserting intent. */ function* () {
+                                                    // Another admission can win after the preflight read; only the locked recheck decides freshness.
                                                     const raced = yield* read(id);
                                                     if (raced !== undefined) {
                                                         if (JSON.stringify(raced.attempt) !== JSON.stringify(attempt))

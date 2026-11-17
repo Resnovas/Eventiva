@@ -242,6 +242,7 @@ export const resourceRuntime = (
                     transaction: (effect) =>
                         Effect.gen(
                             /** Require transaction authority before entering the provider's storage transaction. */ function* () {
+                                // Check the wildcard transaction capability before the driver can reuse or acquire a transaction.
                                 yield* check('*', 'transaction');
                                 return yield* transaction(effect);
                             }
