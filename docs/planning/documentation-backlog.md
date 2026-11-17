@@ -177,7 +177,7 @@ Executed combined `DOCUMENTATION_BASE=17631eaf5712d422376e5d3d2f0bbfd939773959 N
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3062 remaining findings across 97 files: 2368 mechanically missing JSDoc; 0 prose-review candidates; 694 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3049 remaining findings across 96 files: 2356 mechanically missing JSDoc; 0 prose-review candidates; 693 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -198,7 +198,6 @@ Executed combined `DOCUMENTATION_BASE=17631eaf5712d422376e5d3d2f0bbfd939773959 N
 | D04 | [apps/server/src/cluster-actions.ts](../../apps/server/src/cluster-actions.ts) | 12 | 0 | 2 |
 | D04 | [apps/server/src/cluster-profile.ts](../../apps/server/src/cluster-profile.ts) | 3 | 0 | 0 |
 | D04 | [apps/server/src/cluster.ts](../../apps/server/src/cluster.ts) | 14 | 0 | 4 |
-| D04 | [apps/server/src/main.ts](../../apps/server/src/main.ts) | 12 | 0 | 1 |
 | D04 | [apps/server/src/status.ts](../../apps/server/src/status.ts) | 3 | 0 | 0 |
 | D04 | [apps/server/tests/backend.spec.ts](../../apps/server/tests/backend.spec.ts) | 12 | 0 | 1 |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 37 | 0 | 16 |

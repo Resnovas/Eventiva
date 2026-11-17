@@ -748,110 +748,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "9b5484cc952b59c8e5d78265e12a926285f1cfb2a12ed91326f37346c5b19fe9:0",
-      "file": "apps/server/src/main.ts",
-      "line": 63,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "26265ade33ca36a2de6b9b6c7c0be57a363d59ec2d3422eb51590afdfbc06d84:0",
-      "file": "apps/server/src/main.ts",
-      "line": 66,
-      "kind": "ArrowFunction",
-      "name": "onNone",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "dcb52690a140f88df428f047557ccbaeaabe2d3d55567ae74f7183b27cb92beb:0",
-      "file": "apps/server/src/main.ts",
-      "line": 67,
-      "kind": "ArrowFunction",
-      "name": "onSome",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "a3aac214b8e5f9a05ef802e3a7409d43f87f8b87fc6a30c075c7e2243abbc9d7:0",
-      "file": "apps/server/src/main.ts",
-      "line": 76,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "7773de15cd54a9f32c51142794601ed1b6d92014c0a77f788240ac49a27a8787:0",
-      "file": "apps/server/src/main.ts",
-      "line": 80,
-      "kind": "ArrowFunction",
-      "name": "onNone",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "113b03f6fbefbc445e33a95d86c7d016ae687b1a24c31dd8eb45a0d172c84250:0",
-      "file": "apps/server/src/main.ts",
-      "line": 81,
-      "kind": "ArrowFunction",
-      "name": "onSome",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "d76f0f60ff5016d496708488bb4a3bf76789e978058a7c071dca6edbcc0f516b:0",
-      "file": "apps/server/src/main.ts",
-      "line": 87,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "a5fba9232cd1620d0938fc99d26efcacb35c9b0902e422e43519affce39c3dc4:0",
-      "file": "apps/server/src/main.ts",
-      "line": 87,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "33ac9c0b85dd53a59cb8d96bdda851a76c61bd26b870848d9afcc0369b3d696b:0",
-      "file": "apps/server/src/main.ts",
-      "line": 95,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "5119e58d5812616bb7a9cc8a936d9145555c5bf81d3c80cda3a604db3c220c32:0",
-      "file": "apps/server/src/main.ts",
-      "line": 96,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "4577f9718f1a400a3dab9dd1506caeec0d48ee6f6bbf7b0a6af774790615b754:0",
-      "file": "apps/server/src/main.ts",
-      "line": 108,
-      "kind": "ArrowFunction",
-      "name": "digest",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "8d994f018bbee8c3af7869e54eb87a49e64350ba3dfd965712d2c2c2e5e0b2de:0",
-      "file": "apps/server/src/main.ts",
-      "line": 108,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "67afffa27e26efee98bf5de54cdec92075117869a80192c619b9d40af189e8f7:0",
-      "file": "apps/server/src/main.ts",
-      "line": 125,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
       "id": "fb0e0a939c499d38413417ba0ce50aded7bb6b2e64f4e455a75167870dc06700:0",
       "file": "apps/server/src/status.ts",
       "line": 37,
@@ -20302,7 +20198,7 @@
     {
       "id": "7b93b2807c20d76ff0599e9bd903beddef8ac629b76f4c1bc1117759ad2f2607:0",
       "file": "tests/telemetry/src/server.spec.ts",
-      "line": 93,
+      "line": 188,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"

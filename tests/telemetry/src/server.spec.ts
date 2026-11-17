@@ -27,21 +27,40 @@ import { Cause, Config, Effect, Exit, Layer, Option, Schema } from 'effect';
 
 const workspace = fileURLToPath(new URL('../../../', import.meta.url));
 
+/** A launch result retains parent timing independently of child diagnostics or application output. */
+type LaunchResult = SpawnSyncReturns<string> & {
+    readonly spawnedAtMs: number;
+    readonly elapsedMs: number;
+};
+
 /** Run the actual server entry point with isolated configuration and a ten-second child lifetime bound. */
 const launch = (
     environment: Readonly<Record<string, string>> = {}
-): Effect.Effect<SpawnSyncReturns<string>, TelemetrySinkFailure> =>
+): Effect.Effect<LaunchResult, TelemetrySinkFailure> =>
     Effect.try({
         /** Capture child output without inheriting the host environment; subprocess failures remain in the result. */
         try: () => {
-            return spawnSync(process.execPath, ['--conditions=@eventiva/source', 'apps/server/src/main.ts'], {
-                cwd: workspace,
-                encoding: 'utf8',
-                timeout: 10000,
-                maxBuffer: 65536,
-                // Do not inherit keys, endpoints, NODE_OPTIONS or local secrets.
-                env: { NODE_NO_WARNINGS: '1', ...environment },
-            });
+            const spawnedAtMs = Math.round(performance.timeOrigin + performance.now());
+            const started = performance.now();
+            const result = spawnSync(
+                process.execPath,
+                [
+                    '--conditions=@eventiva/source',
+                    '--import',
+                    './tests/telemetry/fixtures/bootstrap-diagnostics.mjs',
+                    'apps/server/src/main.ts',
+                ],
+                {
+                    cwd: workspace,
+                    encoding: 'utf8',
+                    timeout: 10000,
+                    maxBuffer: 65536,
+                    stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
+                    // Do not inherit keys, endpoints, NODE_OPTIONS or local secrets.
+                    env: { NODE_NO_WARNINGS: '1', ...environment },
+                }
+            );
+            return { ...result, spawnedAtMs, elapsedMs: Math.round(performance.now() - started) };
         },
         /** Translate only a synchronous spawn invocation failure, never its raw error or arguments. */
         catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
@@ -56,8 +75,30 @@ const headers = (output: string): ReadonlyArray<string> =>
                 /^\d{4}-\d\d-\d\dT/.test(line)
         );
 
+const Journal = Schema.parseJson(
+    Schema.Array(
+        Schema.Tuple(
+            Schema.String.pipe(
+                Schema.pattern(
+                    /^(?:child-start|module-first|module-64|module-256|module-1024|entry-source-loaded|effect-source-loaded|root-start|bootstrap-failure-logged|process-before-exit|process-exit-success|process-exit-failure|(?:main-use-exit|main-services-released|main-telemetry-released|bootstrap-use-exit|root-exit):(?:success|failure|interrupted))(?![\s\S])/
+                )
+            ),
+            Schema.Int.pipe(Schema.nonNegative(), Schema.lessThanOrEqualTo(Number.MAX_SAFE_INTEGER))
+        )
+    ).pipe(Schema.maxItems(32))
+);
+
+/** Reject the entire untrusted journal before it can contribute text to assertion messages. */
+const journalSummary = (input: string | null | undefined) => {
+    if (typeof input !== 'string' || input.length === 0) return { state: 'absent' };
+    // Validate size before parsing: neither malformed text nor a forged phase can become CI output.
+    if (Buffer.byteLength(input) > 4096) return { state: 'oversized' };
+    const decoded = Schema.decodeUnknownOption(Journal)(`[${input.trimEnd().split('\n').join(',')}]`);
+    return Option.isSome(decoded) ? { state: 'captured', phases: decoded.value } : { state: 'invalid' };
+};
+
 /** Describe child termination without retaining configuration values, raw errors or arbitrary process output. */
-const launchFailureContext = (result: SpawnSyncReturns<string>): string => {
+const launchFailureContext = (result: LaunchResult): string => {
     // Keep only closed diagnostic event names: even an unexpected secret format must never reach CI logs.
     /** Bound each output summary to its length and eight recognized diagnostic events, excluding all other text. */
     const summarize = (output: string | null) => ({
@@ -72,13 +113,67 @@ const launchFailureContext = (result: SpawnSyncReturns<string>): string => {
               'unrecognized')
             : null;
     return JSON.stringify({
+        spawnedAtMs: result.spawnedAtMs,
+        elapsedMs: result.elapsedMs,
         status: result.status,
         signal: result.signal,
         errorCode,
         stdout: summarize(result.stdout),
         stderr: summarize(result.stderr),
+        journal: journalSummary(result.output[3]),
     });
 };
+
+describe('bounded bootstrap journal validation', /** Reject diagnostic data independently of bootstrap success or failure. */ () => {
+    it('accepts only closed phases and integer timestamps', /** Preserve safe timing while excluding arbitrary child data. */ () => {
+        expect(journalSummary('["child-start",100]\n["root-exit:failure",251]\n')).toEqual({
+            state: 'captured',
+            phases: [
+                ['child-start', 100],
+                ['root-exit:failure', 251],
+            ],
+        });
+        for (const input of [
+            'SECRET_BAD_JSON',
+            '["SECRET_CANARY",123]\n',
+            '["child-start",1.5]\n',
+            '["child-start",-1]\n',
+            '["child-start",1,"SECRET_CANARY"]\n',
+            '["root-exit:failure",1e99]\n',
+            '["child-start",1]\n'.repeat(33),
+            JSON.stringify(['root-start\n', 123]),
+        ]) {
+            expect(journalSummary(input)).toEqual({ state: 'invalid' });
+        }
+        expect(journalSummary(null)).toEqual({ state: 'absent' });
+        expect(journalSummary('')).toEqual({ state: 'absent' });
+        expect(journalSummary('SECRET'.repeat(1000))).toEqual({ state: 'oversized' });
+    });
+    it('reports termination and timing without raw errors or output', /** Assertion context retains closed evidence even when every raw channel contains a canary. */ () => {
+        const stdout = 'SECRET_STDOUT bootstrap.failure '.repeat(20);
+        const stderr = 'SECRET_STDERR';
+        const result: LaunchResult = {
+            pid: 1,
+            status: null,
+            signal: 'SIGTERM',
+            error: Object.assign(new Error('SECRET_ERROR'), { code: 'ETIMEDOUT' }),
+            stdout,
+            stderr,
+            output: [null, stdout, stderr, '["SECRET_JOURNAL",123]\n'],
+            spawnedAtMs: 100,
+            elapsedMs: 10000,
+        };
+        // Error messages and process text must never be serialized alongside safe phase timing.
+        const context = launchFailureContext(result);
+        expect(context).toContain('"spawnedAtMs":100');
+        expect(context).toContain('"elapsedMs":10000');
+        expect(context).toContain('"status":null,"signal":"SIGTERM","errorCode":"ETIMEDOUT"');
+        expect(context).toContain('"journal":{"state":"invalid"}');
+        expect(context.match(/bootstrap.failure/g)).toHaveLength(8);
+        expect(context).not.toMatch(/SECRET/);
+        expect(context.length).toBeLessThan(5000);
+    });
+});
 
 describe('real diagnostic server telemetry composition', /** Cover real process exit and scoped sinks independently of in-process service checks. */ () => {
     // Child launches use isolated configuration so these checks exercise bootstrap and finalization, not host credentials.
@@ -130,6 +225,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                 /** Require one correlated startup trace and registration diagnostics, never a readiness claim. */ function* () {
                     const result = yield* launch();
                     expect(result.error, launchFailureContext(result)).toBeUndefined();
+                    expect(launchFailureContext(result)).toContain('"state":"captured"');
                     expect(result.status).toBe(0);
                     expect(result.stderr).toBe('');
                     expect(headers(result.stdout)).toHaveLength(3);
@@ -176,11 +272,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                             /** Preserve emission order when checking which diagnostics reached disk. */ ({ code }) =>
                                 code
                         )
-                    ).toEqual([
-                        'diagnostic.unavailable',
-                        'diagnostic.registered',
-                        'diagnostic.startup',
-                    ]);
+                    ).toEqual(['diagnostic.unavailable', 'diagnostic.registered', 'diagnostic.startup']);
                     expect(
                         records.map(
                             /** Distinguish log diagnostics from the completed startup span. */ ({ signal }) => signal
@@ -189,7 +281,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     expect(
                         records.map(
                             /** Compare completion states independently from record codes and signal kinds. */ ({
-                                outcome
+                                outcome,
                             }) => outcome
                         )
                     ).toEqual(['none', 'none', 'succeeded']);
@@ -206,7 +298,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     expect(
                         records.every(
                             /** Reject unexpected diagnostic attributes rather than snapshotting arbitrary payloads. */ ({
-                                attributes
+                                attributes,
                             }) => Object.keys(attributes).length === 0
                         )
                     ).toBe(true);
@@ -221,7 +313,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             Effect.gen(
                 /** Require sanitized failure and startup-span output without configuration or raw Effect errors. */ function* () {
                     const result = yield* launch({
-                        EVENTIVA_CLUSTER_PROFILE: '{"edition":"SECRET_PROFILE_CANARY\\nFORGED"}'
+                        EVENTIVA_CLUSTER_PROFILE: '{"edition":"SECRET_PROFILE_CANARY\\nFORGED"}',
                     });
                     expect(result.error, launchFailureContext(result)).toBeUndefined();
                     expect(result.status).toBe(1);
@@ -280,7 +372,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     expect(disabled.stderr).toBe('');
                     const failed = yield* launch({
                         telemetry_enabled: 'false',
-                        EVENTIVA_CLUSTER_PROFILE: 'SECRET_BAD_JSON'
+                        EVENTIVA_CLUSTER_PROFILE: 'SECRET_BAD_JSON',
                     });
                     expect(failed.error, launchFailureContext(failed)).toBeUndefined();
                     expect(failed.status).toBe(1);

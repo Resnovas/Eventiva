@@ -15,6 +15,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { channel } from 'node:diagnostics_channel';
 import { NodeRuntime } from '@effect/platform-node';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { canonicalLocale } from '@eventiva/contracts/i18n';
@@ -31,7 +32,7 @@ import {
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { FailClosed, InputDigest } from '@eventiva/runtime/invocation';
 import { bootstrapTelemetryLayer, telemetryLayer, type TelemetryPolicy } from '@eventiva/runtime/telemetry';
-import { Cause, Config, Effect, Fiber, Layer, Option } from 'effect';
+import { Cause, Config, Effect, Exit, Fiber, Layer, Option } from 'effect';
 import { ShellCaller, ShellIdentity, shellCaller, staticGrants } from './access.ts';
 import { deploymentProfile } from './cluster-profile.ts';
 import { platformModule, Status } from './status.ts';
@@ -60,10 +61,15 @@ const diagnosticPolicy: TelemetryPolicy = {
 const Bootstrap = bootstrapTelemetryLayer().pipe(Layer.provide(consoleLoggerLayer()));
 const SinkLive = Layer.unwrapScoped(
     Config.option(serverLoggerConfig).pipe(
-        Effect.mapError(() => new TelemetrySinkFailure({ reason: 'configuration' })),
+        Effect.mapError(
+            /** Hide invalid configuration contents from bootstrap output. */ () =>
+                new TelemetrySinkFailure({ reason: 'configuration' })
+        ),
         Effect.map(
             Option.match({
+                /** Use console-only telemetry when no file sink was configured. */
                 onNone: () => consoleLoggerLayer(),
+                /** Give the configured file sink scoped filesystem ownership. */
                 onSome: (options) =>
                     serverLoggerLayer(Config.succeed(options)).pipe(Layer.provide(NodeFileSystem.layer)),
             })
@@ -72,40 +78,98 @@ const SinkLive = Layer.unwrapScoped(
 );
 const MainTelemetry = telemetryLayer(diagnosticPolicy).pipe(Layer.provide(SinkLive));
 
+// Test observers receive phase names only, never a Cause, configuration or telemetry payload.
+const lifecycle = channel('eventiva.bootstrap.lifecycle');
+
+/** Publish a closed lifecycle phase only when an observer was installed before entry evaluation. */
+const phase = (name: 'root-start' | 'bootstrap-failure-logged'): Effect.Effect<void> =>
+    lifecycle.hasSubscribers
+        ? Effect.sync(/** Send no business data across the observational channel. */ () => lifecycle.publish(name))
+        : Effect.void;
+
+/** Observe an existing effect boundary without changing its Exit, scope or child-fiber ownership. */
+const observeExit =
+    <A, E, R>(
+        name:
+            'main-use-exit' | 'main-services-released' | 'main-telemetry-released' | 'bootstrap-use-exit' | 'root-exit'
+    ) =>
+    /** Return the original effect unchanged when diagnostics have no subscriber. */
+    (effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+        lifecycle.hasSubscribers
+            ? Effect.onExit(
+                  effect,
+                  /** Classify completion without publishing the error or inheriting another fiber's references. */
+                  (exit) =>
+                      Effect.sync(
+                          /** Report only the closed outcome after this boundary settles. */ () => {
+                              // An observed Exit identifies a boundary, not the runtime observer's subsequent teardown.
+                              const outcome = Exit.isSuccess(exit)
+                                  ? 'success'
+                                  : Cause.isInterruptedOnly(exit.cause)
+                                    ? 'interrupted'
+                                    : 'failure';
+                              lifecycle.publish(`${name}:${outcome}`);
+                          }
+                      )
+              )
+            : effect;
+
 const FlagsLive = Layer.unwrapScoped(
-    Effect.map(postHog, (remote) =>
-        flags([
-            { source: 'git-baseline', provider: staticValues({}) },
-            ...Option.match(remote, {
-                onNone: () => [],
-                onSome: (provider): ReadonlyArray<SourcedProvider> => [{ source: 'remote', provider }],
-            }),
-        ])
+    Effect.map(
+        postHog,
+        /** Compose the baseline before an optional remote flag provider. */ (remote) =>
+            flags([
+                { source: 'git-baseline', provider: staticValues({}) },
+                ...Option.match(remote, {
+                    /** Keep startup local when remote credentials are absent. */
+                    onNone: () => [],
+                    /** Preserve source attribution for the configured remote provider. */
+                    onSome: (provider): ReadonlyArray<SourcedProvider> => [{ source: 'remote', provider }],
+                }),
+            ])
     )
 );
 
-const program = Effect.gen(function* () {
-    yield* deploymentProfile;
-    const host = yield* ActionHost;
-    const inventory = yield* ActionInventory;
-    const module = platformModule(host.actions);
-    yield* host.register(module);
-    const listed = yield* inventory.list(shellCaller);
-    yield* validateParity(
-        yield* validateInventory(module.actions.map(({ spec }) => spec)),
-        { server: listed.map(({ id, version, permission }) => ({ id, version, permission })) },
-        ['server']
-    );
-    yield* Effect.logWarning('diagnostic.unavailable');
-    yield* Effect.logInfo('diagnostic.registered');
-}).pipe(Effect.scoped);
+const program = Effect.gen(
+    /** Validate and register the diagnostic shell without claiming readiness or executing business actions. */ function* () {
+        // Validate deployment before registration so invalid profiles cannot advertise usable modules.
+        yield* deploymentProfile;
+        const host = yield* ActionHost;
+        const inventory = yield* ActionInventory;
+        const module = platformModule(host.actions);
+        yield* host.register(module);
+        const listed = yield* inventory.list(shellCaller);
+        yield* validateParity(
+            yield* validateInventory(
+                module.actions.map(/** Extract portable specs without registered handlers. */ ({ spec }) => spec)
+            ),
+            {
+                server: listed.map(
+                    /** Compare public identity and permission rather than runtime handler details. */ ({
+                        id,
+                        version,
+                        permission,
+                    }) => ({ id, version, permission })
+                ),
+            },
+            ['server']
+        );
+        yield* Effect.logWarning('diagnostic.unavailable');
+        yield* Effect.logInfo('diagnostic.registered');
+    }
+).pipe(Effect.scoped);
 
 const MainLive = ActionHostLive.pipe(
     Layer.provide(FlagsLive),
     Layer.provide(staticGrants(new Map([[shellCaller.subject, [Status.permission]]]))),
     Layer.provide(
         Layer.succeed(InputDigest, {
-            digest: (canonical) => Effect.sync(() => createHash('sha256').update(canonical).digest('hex')),
+            /** Hash already-canonical invocation input for the audit contract. */
+            digest: (canonical) =>
+                Effect.sync(
+                    /** Encode the digest without retaining input in telemetry. */ () =>
+                        createHash('sha256').update(canonical).digest('hex')
+                ),
         })
     ),
     Layer.provide(ShellIdentity),
@@ -115,22 +179,35 @@ const MainLive = ActionHostLive.pipe(
 );
 
 const diagnostic: Effect.Effect<void, TelemetrySinkFailure> = program.pipe(
+    observeExit('main-use-exit'),
     Effect.provide(MainLive),
+    observeExit('main-services-released'),
     Effect.withSpan('diagnostic.startup'),
     Effect.provide(MainTelemetry),
+    observeExit('main-telemetry-released'),
     // Await, not join: do not inherit the child's closed logger/tracer FiberRefs.
     Effect.fork,
     Effect.flatMap(Fiber.await),
     Effect.flatten,
-    Effect.catchAllCause((cause) =>
-        Cause.isInterruptedOnly(cause)
-            ? Effect.interrupt
-            : Effect.logError('bootstrap.failure').pipe(
-                  Effect.zipRight(Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })))
-              )
+    Effect.catchAllCause(
+        /** Preserve interruption and report other failures only through the independent sanitized bootstrap sink. */ (
+            cause
+        ) => {
+            if (Cause.isInterruptedOnly(cause)) return Effect.interrupt;
+            // Keep the unobserved logging effect unchanged; an observer must not become a new failure prerequisite.
+            const log = Effect.logError('bootstrap.failure');
+            return (lifecycle.hasSubscribers ? log.pipe(Effect.zipRight(phase('bootstrap-failure-logged'))) : log).pipe(
+                Effect.zipRight(Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })))
+            );
+        }
     ),
-    Effect.provide(Bootstrap)
+    observeExit('bootstrap-use-exit'),
+    Effect.provide(Bootstrap),
+    observeExit('root-exit')
 );
 
 // The default reporter runs after logger scopes close and would print a raw Cause.
-NodeRuntime.runMain(diagnostic, { disableErrorReporting: true, disablePrettyLogger: true });
+NodeRuntime.runMain(lifecycle.hasSubscribers ? Effect.zipRight(phase('root-start'), diagnostic) : diagnostic, {
+    disableErrorReporting: true,
+    disablePrettyLogger: true,
+});

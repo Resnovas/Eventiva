@@ -181,6 +181,24 @@ With no `telemetryFile.directory`, the executable uses console only and provisio
 
 Optional telemetry opt-out silences main log/span output, not bootstrap failure diagnostics or mandatory audit. A clean exit waits for the scoped drain and file lock release. Optional sink/drain failure remains lossy and does not certify delivery; this diagnostic exit code is not a telemetry acknowledgement or platform-ready signal. The executable tests launch the actual main in fresh processes with a minimal environment, verify exit codes/output/closed-file records, and check the real fail-closed Audit service separately. They never inherit production keys or connect a telemetry provider.
 
+## Diagnose bounded bootstrap subprocess failures
+
+The server process tests keep their 10000 ms child timeout, default SIGTERM behavior, 65536-byte output bound, isolated environment and existing output/redaction assertions. They preload `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` only for testing. The preload writes a deduplicated, closed phase journal of at most 4096 bytes to descriptor 3, never to stdout or stderr. Parent assertion context adds the spawn timestamp and elapsed duration. It validates the entire journal before including it in a failing assertion message; missing, malformed and oversized journals become fixed states with no raw content. Expected exit 1 is not itself a reason to print diagnostics. Successful tests remain silent.
+
+Run the complete telemetry suite from the repository root:
+
+```sh
+pnpm exec vitest run --config tests/telemetry/vitest.config.mts
+```
+
+For example, an opted-out invalid-profile assertion failure can report a parent `spawnedAtMs` and `elapsedMs`, status null, signal SIGTERM, errorCode ETIMEDOUT, stdout length and recognized event names, and a validated journal containing `child-start`, module milestones, `root-start` and `bootstrap-failure-logged`. Journal timestamps are integer Unix-epoch milliseconds derived from each process's monotonic performance clock. Subtract the parent spawn timestamp to estimate when each child phase occurred within the ten-second budget. This is phase evidence, not a CPU profile or a proof of a leaked handle.
+
+`module-first`, `module-64`, `module-256` and `module-1024` are completed source-load counts. `entry-source-loaded` and `effect-source-loaded` mean source became available, not that module evaluation completed. `root-start` occurs when the executable Effect starts, before bootstrap layer acquisition. On failure, `main-use-exit:failure` is before main-service release, `main-services-released:failure` is after that release and before main telemetry release, and `main-telemetry-released:failure` is after the nested telemetry scope. Acquisition failures can skip inner markers. `bootstrap-failure-logged` means the sanitized log Effect returned; the asynchronous sink may not yet have written stdout. `bootstrap-use-exit:failure` precedes outer bootstrap release. `root-exit:failure` follows that release but precedes runMain's root observer and exit selection. Success and interruption use the corresponding closed outcome suffixes. `process-before-exit` observes natural event-loop drain; `process-exit-success` or `process-exit-failure` observes Node's exit event. Default SIGTERM does not emit those exit events; the parent result supplies the signal. A missing marker means unobserved, not completed, and cannot by itself identify which finalizer or scheduler operation stalled.
+
+No subscribers means no lifecycle publication and unchanged effect boundaries from the exit observers. The test preload installs no timers, workers, signal handlers, forced exit, retry or exporter. Descriptor write failure disables capture without failing bootstrap. The channel carries phase strings only, never Cause, configuration, paths, raw errors, telemetry payloads or process handles. This diagnostic-only observation adds no application setting, production telemetry export or release authorization.
+
+EVE-261 remains an investigation, not a verified timeout fix. Historical output alone does not distinguish a late bootstrap record near the ten-second deadline from a long post-log shutdown stall. The bounded journal is intended to make that distinction on the next actual occurrence. Keep the original termination bound and assertions; do not rerun CI or weaken checks to hide a recurrence.
+
 ## Configure bounds
 
 Configuration is read through the injected Effect ConfigProvider, never direct environment reads. Dot-separated keys below describe provider paths; provider-specific environment naming/delimiters remain the composition's responsibility.
