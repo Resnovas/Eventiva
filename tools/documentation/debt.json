@@ -372,17 +372,9 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "c62686379379e00e6cb61dc74139fa87166dfc8b61ea7232e280d6e2f07190ae:0",
-      "file": "tests/runtime/src/hook.spec.ts",
-      "line": 317,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "a50b03f347e806276446b7646dec9926378810be9af8166bba38dec654a8e55f:0",
       "file": "tests/runtime/src/hook.spec.ts",
-      "line": 339,
+      "line": 341,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -390,7 +382,7 @@
     {
       "id": "7d2a02ec3ff7f1af0f0511de4596bbce9e35580f5636703ed1387a09cf949350:0",
       "file": "tests/runtime/src/hook.spec.ts",
-      "line": 478,
+      "line": 480,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -836,17 +828,9 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "aa2193a9092d50edb8802a74b6410558fabed82044e68b6dd9612504371c106c:0",
-      "file": "tests/runtime/src/trust.spec.ts",
-      "line": 177,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "ba7be22e5dfeb5dd516ce1bbdd4ed39c5bba41731f33cd1bf8624774de5d664f:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 190,
+      "line": 191,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -854,7 +838,7 @@
     {
       "id": "563b3e51e76f64502ee0a8ca6df77f3007740cde4e9c92fc16a346e8c116366b:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 201,
+      "line": 202,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -862,7 +846,7 @@
     {
       "id": "92fa78584b9d45ef54bb959ebb38c1fdd5efb4b6a66ae3706a948b14485149ef:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 213,
+      "line": 214,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -870,7 +854,7 @@
     {
       "id": "330c46ee6c32c9ebf22fbcb3055dacc87cf3e46b5dc4ada257bd7151b1a457e6:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 266,
+      "line": 267,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -878,15 +862,7 @@
     {
       "id": "788747e25444f3a991ab5f9753a0865c208bd34e6b9ae67727bc2a3c6185e1b7:0",
       "file": "tests/runtime/src/trust.spec.ts",
-      "line": 475,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "dee21eacd3b4df6da71e6d35d903b159b246429ac4b7244206e1f93145c2bf07:0",
-      "file": "tests/runtime/src/trust.spec.ts",
-      "line": 745,
+      "line": 476,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"

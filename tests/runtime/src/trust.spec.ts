@@ -177,6 +177,7 @@ for (const gate of gates) {
                 /** Verify bounded failure translation and exact early-stop gate ordering. */ function* () {
                     const f = yield* fixture({ defective: gate });
                     const result = yield* Effect.exit(f.run());
+                    // Sanitized failure alone does not prove short-circuiting; the completed gate prefix must also stop here.
                     expect(result).toEqual(Exit.fail(new TrustFailure({ gate, reason: 'unavailable' })));
                     expect(inspect(result)).not.toContain('PRIVATE-PROVIDER-CANARY');
                     expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
@@ -561,6 +562,7 @@ it.effect(
                         ),
                     beforeReplay: record,
                 });
+                // Both isolated writable views and rejected writes are safe; inspect detached observations as well as the result.
                 const result = yield* Effect.either(f.run(input, settings));
                 if (Either.isRight(result)) {
                     expect(result.right.release).toBe('denied');
@@ -585,6 +587,7 @@ it.effect(
     /** Attempt to admit stale broker evidence by rewriting its freshness floor. */ () =>
         Effect.gen(
             /** Verify freshness remains host-owned and replay stays untouched. */ function* () {
+                // Broker timestamps at 89 pass a forged floor of zero but fail the trusted floor of 90, isolating policy ownership.
                 const f = yield* fixture({
                     /** Lower only the later broker window through the identity adapter reference. */
                     beforeVerify: (gate, _input, settings) =>
@@ -707,6 +710,7 @@ it.effect(
                         ),
                 });
                 const result = yield* Effect.either(f.run());
+                // Rejected immutable writes and mismatched mutated bindings may refuse differently; neither may consume the nonce or leak the canary.
                 expect(Either.isLeft(result)).toBe(true);
                 if (Either.isLeft(result)) {
                     expect(result.left.gate).toBe('identity');
@@ -743,6 +747,7 @@ it.effect(
     /** Exercise version rotation and strict key metadata schemas. */ () =>
         Effect.gen(
             /** Verify metadata rotation grants no release and malformed or aliased authorities remain invalid. */ function* () {
+                // Accepted version metadata is not release authority or approval of a cryptographic algorithm/provider.
                 const f = yield* fixture();
                 const rotated = { ...request, keys: { ...request.keys, kekVersion: 300, dekVersion: 900 } };
                 expect((yield* f.run(rotated)).release).toBe('denied');
@@ -862,6 +867,7 @@ it.effect(
                 expect(yield* Effect.flip(f.run(request, { ...policy, now: -1 }))).toEqual(
                     new TrustFailure({ gate: 'preflight', reason: 'invalid' })
                 );
+                // Keep evidence bindings valid so refusal measures the forbidden payload field, not an unrelated binding failure.
                 const evidencePayload = yield* fixture({
                     /** Add a forbidden evidence payload field without changing its valid bindings. */ change: (e) => ({
                         ...e,

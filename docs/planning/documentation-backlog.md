@@ -286,10 +286,25 @@ The 36 adequate candidates above are retained, not waived or suppressed. No sour
 
 Executed `DOCUMENTATION_BASE=71ef9f65e5a24910942c65e57197f1272bd6e217 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The unchanged serial full gate passes 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (50 cached) and all 15 smoke/dependency tasks (12 cached), including PostgreSQL conformance. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. Disposable database/network cleanup completed. Strict reviewed planning also passes. Final immutable-base root and clean-source graph checks precede signed delivery; asynchronous exact-head CI remains separate evidence.
 
+## Seventh checkpoint: hook and trust runtime test rationale
+
+The sixth checkpoint is delivered as [source](https://github.com/Resnovas/Eventiva/commit/7b0149301ce3d60b0f4929fe411fe0767512b386) and [clean-source graph/head](https://github.com/Resnovas/Eventiva/commit/6989c0303732c66277079ef10a92c25308ee9e69). Exact-head CI is subscribed and separate from local verification. Semantic review against that immutable head covers all 26 candidates in four runtime test files. Eight internal comments in two sources resolve seven live candidates, three accepted and four never ledgered. All 12,349 executable/type terminals remain unchanged. No checker correction, behavior/type/assertion change, exception or exclusion is included. Exact pruning takes 176 to 173 accepted identities across 39 files; the complete live queue is 280 across 50 files, including 107 never ledgered.
+
+| Source and candidate lines at the immutable base | Documented rationale | Adequate candidates retained and reason |
+| --- | --- | --- |
+| `tests/runtime/src/identity.spec.ts`: 159, 229, 344 | None. | All three: current-version read/write discipline, fixture/host provisioning and default-off registered invocation already have precise contracts. The longer nested authorization scenario explains its own phases; these small wrappers introduce none. |
+| `tests/runtime/src/hook.spec.ts`: 317, 339, 478 | 317: a full queue distinguishes exact duplicates, changed-content conflict and capacity; later admission of a distinct event rules out permanent saturation. | 339, 478: callback snapshot checks already explain immutable metadata without mutation authority; failed settlement has a precise unavailable/running-row contract. Volatile fixtures do not prove SQL acknowledgement durability. |
+| `tests/runtime/src/parity.spec.ts`: 46, 226 | None. | Both: harness/context provisioning and missing/version-incompatible inventory matrices are already explained. The latter checks the common error tag, not distinct detailed reasons; do not claim otherwise. |
+| `tests/runtime/src/trust.spec.ts`: 177, 190, 201, 213, 266, 397, 419, 475, 501, 526, 548, 587, 592, 699, 745, 790, 821, 860 | 177: bounded/redacted failure alone cannot prove later gates stopped. 526: isolated writable views and rejected writes may both be safe; detached observations remain independent evidence. 587: broker timestamps 89 distinguish trusted freshness floor 90 from forged zero. 699: immutable-write rejection and binding mismatch may refuse differently without consuming a nonce or leaking private text. 745: accepted rotation metadata grants neither release nor algorithm/provider approval. 860: otherwise valid bindings isolate strict payload rejection/redaction. | 190, 201, 213, 266, 397, 419, 475, 501, 548, 592, 790, 821: existing contracts distinguish interruption, missing-service preflight, typed safe reasons, unavailable services, binding substitution, timestamp boundaries, tenant assurance floors, cooperative mutation attempts, record-before-mutation ownership, ignored rejected writes, structural/binding/policy invalidity and fresh-but-misordered revocation. No additional phase is hidden in these short guards/matrices. |
+
+All nineteen adequate candidates remain visible, not suppressed or grandfathered. No source-semantic unknown was established in this packet. Focused ESLint, exact-terminal/prune proof and the immutable-base ratchet pass. Full combined verification and clean-source graph checks precede publication. Kernel, declarative-module and marketplace paths remain outside this packet under their implementation reservations. Global review, safe classifier calibration and D07 strict zero remain unfinished.
+
+Executed `DOCUMENTATION_BASE=6989c0303732c66277079ef10a92c25308ee9e69 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The unchanged serial full gate passes 102 documentation fixtures, 116 boundary/type fixtures, all 86 aggregate Nx tasks (60 cached) and all 15 smoke/dependency tasks (12 cached), including PostgreSQL conformance. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. Disposable database/network cleanup completed. Strict reviewed planning passes; final immutable-base root and clean-source graph checks precede signed publication. Exact-head CI is separate, not inferred green from local evidence.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-176 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 176 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+173 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 173 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -306,14 +321,14 @@ Executed `DOCUMENTATION_BASE=71ef9f65e5a24910942c65e57197f1272bd6e217 NX_SKIP_NX
 | D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
 | D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 13 |
-| D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 24 |
 | D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 11 |
 | D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 5 |
 | D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 7 |

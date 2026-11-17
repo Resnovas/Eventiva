@@ -317,12 +317,14 @@ it.scoped(
             /** Require duplicate idempotence, changed-content rejection and capacity recovery after delivery. */ function* () {
                 const t = yield* setup();
                 const d = declaration('fixture.observe', { capacity: 1 });
+                // Saturate the queue so duplicate admission and changed-content conflict cannot hide behind spare capacity.
                 yield* t.outbox.stage(event(), [d]);
                 yield* t.outbox.stage(event(), [d]);
                 expect((yield* Effect.flip(t.outbox.stage(event(2), [d]))).reason).toBe('capacity');
                 expect((yield* Effect.flip(t.outbox.stage(event(1, { purpose: 'different' }), [d]))).reason).toBe(
                     'conflict'
                 );
+                // A distinct event must enter after delivery; permanent saturation could otherwise satisfy the refusals.
                 const h = yield* t.dispatcher.register(d);
                 expect(yield* h.dispatch).toBe('delivered');
                 yield* t.outbox.stage(event(2), [d]);
