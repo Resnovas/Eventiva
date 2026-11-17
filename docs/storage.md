@@ -147,6 +147,28 @@ unset STORAGE_TEST_POSTGRES_URL
 
 The same suite runs against that PostgreSQL database and fresh in-memory Node SQLite. It creates unique PostgreSQL fixture databases and removes them after scoped clients close. It deliberately rejects remote URLs and any admin database other than `eventiva_test`. Always set `STORAGE_TEST_POSTGRES_URL` to the generated disposable loopback fixture URL. The legacy passwordless default (`postgres://postgres@127.0.0.1:5432/eventiva_test`) is not an instruction to enable trust. Never point this destructive harness at Neon or real data. Provider tests require a separate approved synthetic target and secret path.
 
+Cleanup must not rely on `DROP DATABASE ... WITH (FORCE)`. On PostgreSQL 17,
+FORCE checks permission to terminate every attached backend, including roleless
+autovacuum workers, and can fail with SQLSTATE `42501` under this non-superuser
+role. After closing scoped clients, terminate only remaining sessions belonging
+to the fixture role in the exact generated database, then run plain DROP:
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = $1 AND usename = current_user AND pid <> pg_backend_pid();
+-- Bind $1 to the generated fixture database name above; quote that name as an identifier below.
+DROP DATABASE "generated_fixture_database";
+```
+
+Plain DROP handles autovacuum itself without the extra signal privilege. Keep
+the database name bound as a value in the session query and quoted as an
+identifier in DROP; do not terminate foreign-role sessions or grant
+`pg_signal_backend`. The marketplace fixture regression deliberately retains
+an independently scoped own-role session and checks that both its backend and
+database disappear. Process fixtures retain their existing scenario output,
+parsers and timeouts; this changes only PostgreSQL test cleanup.
+
 The package suite feeds Nx verify and CI verify; the required `application check` continues to aggregate verify and smoke. Root `check` never loads drivers or connects to a database. No provider infrastructure, telemetry ingestion, Nx Cloud, EAS or paid service is enabled.
 
 Common failures: a refused migration checksum means stop and investigate deployed history; do not edit its ledger. A stale/illegal/expired command is a user-visible conflict, not grounds for an unconditional write. Audit failure is fail-closed, not permission to drop evidence. A missing native prebuild is a platform blocker, not permission to relax pnpm policy. A missing local database fails conformance rather than skipping PostgreSQL.

@@ -187,7 +187,15 @@ if (role === 'worker') {
             const admin = Context.get(await run(Layer.build(pg(url.href))), SqlClient.SqlClient);
             const name = `trust_process_${randomUUID().replaceAll('-', '')}`;
             await run(admin`CREATE DATABASE ${admin(name)} TEMPLATE template0`);
-            await run(Effect.addFinalizer(() => admin`DROP DATABASE ${admin(name)} WITH (FORCE)`.pipe(Effect.orDie)));
+            // FORCE also checks roleless autovacuum workers; signal only sessions owned by this fixture role.
+            await run(
+                Effect.addFinalizer(() =>
+                    admin`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ${name} AND usename = current_user AND pid <> pg_backend_pid()`.pipe(
+                        Effect.zipRight(admin`DROP DATABASE ${admin(name)}`),
+                        Effect.orDie
+                    )
+                )
+            );
             url.pathname = `/${name}`;
             database = url.href;
         }

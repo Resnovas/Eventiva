@@ -44,7 +44,7 @@ import { memory } from '@eventiva/integrations.sql/sqlite';
 import { IdentityResolver, InvocationDenied } from '@eventiva/runtime/invocation';
 import { privateExchangeUnavailable, stageExchange } from '@eventiva/runtime/marketplace';
 import { describe, expect, it } from '@effect/vitest';
-import { ConfigProvider, Context, Deferred, Effect, Either, Exit, Fiber, Layer, Schema } from 'effect';
+import { ConfigProvider, Context, Deferred, Effect, Either, Exit, Fiber, Layer, Schema, Scope } from 'effect';
 
 /** Produce reproducible reference IDs for exact scope, request and lease comparisons. */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
@@ -112,8 +112,11 @@ const database = (dialect: Dialect) =>
                 const name = `marketplace_${randomUUID().replaceAll('-', '')}`;
                 yield* admin`CREATE DATABASE ${admin(name)} TEMPLATE template0`;
                 yield* Effect.addFinalizer(
-                    /** Remove the uniquely allocated database, including remaining fixture connections. */ () =>
-                        admin`DROP DATABASE ${admin(name)} WITH (FORCE)`.pipe(Effect.orDie)
+                    /** Terminate only our remaining sessions, leaving roleless autovacuum cleanup to plain DROP. */ () =>
+                        admin`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ${name} AND usename = current_user AND pid <> pg_backend_pid()`.pipe(
+                            Effect.zipRight(admin`DROP DATABASE ${admin(name)}`),
+                            Effect.orDie
+                        )
                 );
                 target.pathname = `/${name}`;
                 context = yield* Layer.build(pg(target.href));
@@ -177,6 +180,45 @@ const fixture = (dialect: Dialect) =>
             return { sql, services, context, state, admin, store, outbox, stage, claim, audit, revoke };
         }
     );
+
+it.scoped(
+    'removes a PostgreSQL fixture with a lingering own-role session',
+    /** Verify database cleanup closes an independently scoped session without a cluster-wide signal grant. */ () =>
+        Effect.gen(
+            /** Keep a second client alive beyond the database scope and inspect database and backend removal. */ function* () {
+                const outer = yield* Scope.Scope;
+                const target = new URL(
+                    process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test'
+                );
+                expect(['127.0.0.1', 'localhost', '[::1]']).toContain(target.hostname);
+                expect(target.pathname).toBe('/eventiva_test');
+                const admin = Context.get(yield* Layer.build(pg(target.href)), SqlClient.SqlClient);
+                const retained = yield* Effect.scoped(
+                    Effect.gen(
+                        /** Acquire the extra client in the outer scope so normal pool disposal cannot satisfy this check. */ function* () {
+                            const sql = yield* database('postgres');
+                            const rows = yield* sql<{ name: string }>`SELECT current_database() AS name`;
+                            const name = rows[0]?.name;
+                            if (name === undefined) return yield* Effect.die('Expected fixture database name');
+                            target.pathname = `/${name}`;
+                            // The fixture pool closes first; this independent pool deliberately survives its finalizer.
+                            const connection = yield* Layer.build(pg(target.href)).pipe(Scope.extend(outer));
+                            const lingering = Context.get(connection, SqlClient.SqlClient);
+                            const sessions = yield* lingering<{ pid: number }>`SELECT pg_backend_pid() AS pid`;
+                            const pid = sessions[0]?.pid;
+                            if (pid === undefined) return yield* Effect.die('Expected lingering backend PID');
+                            expect(
+                                yield* admin`SELECT pid FROM pg_stat_activity WHERE datname = ${name} AND pid = ${pid} AND usename = current_user`
+                            ).toHaveLength(1);
+                            return { name, pid };
+                        }
+                    )
+                );
+                expect(yield* admin`SELECT datname FROM pg_database WHERE datname = ${retained.name}`).toEqual([]);
+                expect(yield* admin`SELECT pid FROM pg_stat_activity WHERE pid = ${retained.pid}`).toEqual([]);
+            }
+        )
+);
 
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} durable marketplace`, /** Register local marketplace durability and authorization contracts for both dialects. */ () => {

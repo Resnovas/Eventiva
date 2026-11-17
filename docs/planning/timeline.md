@@ -2,6 +2,31 @@
 
 Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## PostgreSQL fixture cleanup checkpoint - 2026-11-17
+
+The [batch 6 slice 2 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-6-readiness-3f236807-623e-4880-84ac-3a3624072841)
+revision 3 covers test cleanup only, including the separately cleared server
+fixtures. [EVE-261](https://linear.app/resnovas/issue/EVE-261) and
+[EVE-42](https://linear.app/resnovas/issue/EVE-42) remain In Progress, independently
+read on this date. Detailed cleanup instructions stay in [storage](../storage.md).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| FORCE with a roleless autovacuum worker | Reproduced from unchanged main 954f8ec2 finalizer | Exact approved PG17.12 Bookworm fixture, generated SCRAM credentials, non-superuser CREATEDB role without pg_signal_backend. Both autovacuum-only and autovacuum-plus-own-session cases fail 42501 in TerminateOtherDBBackends; worker usesysid is NULL. |
+| Own-role termination then plain DROP | Implemented; real autovacuum proof passed | The actual replacement marketplace finalizer drops both databases while workers are attached; the second case also has a lingering own-role session. No databases remain. The permanent scoped regression separately retains an independent own-role pool and asserts backend/database removal. No grant, role, image, scenario output, parser or timeout change. |
+| Compatibility | Local verification completed above main 954f8ec2 | Three uncached storage runs each pass 202 tests plus both-dialect migration recovery; uncached server passes 25 tests plus PostgreSQL multi-process conformance. Root check, full verify (86 aggregate tasks, 12 cached; 15 smoke/dependency tasks, nine cached) and strict reviewed-source planning pass. No generated databases remain. |
+| Independent delivery | Current signed checkpoint; exact-head CI separate | Exact final revisions and commands/results are recorded on [EVE-261](https://linear.app/resnovas/issue/EVE-261#comment-6d9041a2) and [EVE-42](https://linear.app/resnovas/issue/EVE-42#comment-71f97c18) and in the [implementing thread](https://ampcode.com/threads/T-01a1eb07-4d9b-7261-ae91-ff657619305a). Rebase/regenerate/reverify any newer main before pushing; pending CI is not passed evidence. |
+| Broader storage/platform acceptance | Upcoming / open | Test-harness cleanup does not establish production least privilege, deferred Drizzle/device scope or G01-G15 acceptance. The fixture image exception still expires 2026-11-22 UTC or earlier on a recorded trigger; no extension or production authorization is supplied. |
+
+```mermaid
+flowchart LR
+    R["PG17 FORCE: autovacuum 42501"] --> F["Terminate own sessions; plain DROP"]
+    F --> V["Both-dialect storage and server compatibility"]
+    V --> O["EVE-42 / EVE-261 broader acceptance open"]
+    click R "https://linear.app/resnovas/issue/EVE-261"
+    click O "https://linear.app/resnovas/issue/EVE-42"
+```
+
 ## Declarative UI protection-floor checkpoint - 2026-11-17
 
 [EVE-259](https://linear.app/resnovas/issue/EVE-259) and

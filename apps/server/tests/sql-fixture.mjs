@@ -102,7 +102,13 @@ export const prepare = Effect.gen(function* () {
     for (const cell of ['c', 'a', 'b']) {
         const database = `cluster_test_${suffix}_${cell}`;
         yield* admin`CREATE DATABASE ${admin(database)} TEMPLATE template0`;
-        yield* Effect.addFinalizer(() => admin`DROP DATABASE ${admin(database)} WITH (FORCE)`.pipe(Effect.orDie));
+        // FORCE also checks roleless autovacuum workers; signal only sessions owned by this fixture role.
+        yield* Effect.addFinalizer(() =>
+            admin`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ${database} AND usename = current_user AND pid <> pg_backend_pid()`.pipe(
+                Effect.zipRight(admin`DROP DATABASE ${admin(database)}`),
+                Effect.orDie
+            )
+        );
         const target = new URL(url);
         target.pathname = `/${database}`;
         env[`CLUSTER_TEST_${cell.toUpperCase()}_URL`] = target.toString();

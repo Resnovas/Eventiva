@@ -22,4 +22,16 @@ Bounded Neon development validation passed 16 direct/pooled connectivity, verifi
 
 The owner accepted the exact pinned PG17.12 Bookworm image's residual scan findings for disposable synthetic local/CI tests only, expiring 2026-11-22 UTC or earlier on a relevant exploit/input/fix/rebuild trigger. The scan remains 4 critical/140 high/231 medium/190 low/11 unknown, with no suppression or production waiver. Follow `docs/storage.md`: dedicated bridge network, loopback only, SCRAM with generated per-run test credentials, non-superuser CREATEDB fixture login, bounded resources/time and complete teardown; no host networking, privileged mode, unrelated mounts, cloud credentials or unreviewed inputs. CI fails closed on expiry and PR/dispatch events rather than skipping conformance. Trixie is not approved; later image acceptance must address event coverage and the outstanding findings.
 
+PostgreSQL fixture finalizers must terminate only their own role's lingering
+sessions in the exact generated database before plain `DROP DATABASE`.
+Use `pg_stat_activity WHERE datname = $1 AND usename = current_user AND pid <>
+pg_backend_pid()` with a bound database value, then quote that name as an
+identifier in DROP. Do not use `WITH (FORCE)` or grant `pg_signal_backend`:
+PG17 FORCE can fail with 42501 when it checks a roleless autovacuum worker;
+plain DROP handles that worker without widening privileges. The scoped
+marketplace regression retains an independent own-role connection beyond
+fixture disposal and asserts backend/database removal. Keep process scenario
+JSON, stdout parsers and timeouts unchanged. This is test-harness cleanup,
+not runtime storage behavior or a new rollout toggle.
+
 Read `docs/planning/timeline.md` and `docs/planning/decisions.md` for the producer/export checkpoint and remaining acceptance boundaries. The trusted-host journal is tested on PostgreSQL/SQLite, including separate-process crash recovery, but does not automatically integrate kernel mutation owners. Fixture-intercepted diagnostic exports do not prove production ingestion. Keep EVE-45/EVE-261 open until their complete acceptance is demonstrated; EVE-260 still requires verified readiness. The full Linear mirror and documentation ratchet are separate held deliveries, not implied by these human planning records.
