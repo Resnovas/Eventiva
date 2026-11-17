@@ -7,6 +7,7 @@
         "@eventiva/contracts": "workspace:*",
         "@eventiva/runtime": "workspace:*",
         "@eventiva/schema": "workspace:*",
-        "@eventiva/integrations.sql": "workspace:*"
+        "@eventiva/integrations.sql": "workspace:*",
+        "@eventiva/ui-modules": "workspace:*"
     }
 }

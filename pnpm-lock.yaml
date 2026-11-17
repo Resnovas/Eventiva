@@ -262,6 +262,9 @@ importers:
       '@eventiva/schema':
         specifier: workspace:*
         version: link:../packages/schema
+      '@eventiva/ui-modules':
+        specifier: workspace:*
+        version: link:../packages/ui-modules
 
   apps/client:
     dependencies:

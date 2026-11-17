@@ -550,6 +550,15 @@ Public feed.read remains outside the sink transaction. Do not generalize this
 sequential fixture to concurrent consumers, native targets, release policy or
 arbitrary external effects; none is activated by the fixture.
 
+## Real worker spans
+
+`HookDispatcherLive` emits fixed dispatch/claim/release/deliver/settle spans with
+bounded outcome codes. See [the worker guide](02_worker-telemetry.md) and
+`tests/runtime/src/hook-telemetry.spec.ts` for real dispatcher/central collector
+proof. Allow-list static names and `eventiva.hook.outcome` values only; never pass
+claims, payloads or raw causes as attributes. No persisted producer handoff or
+restart trace continuity is supplied by this process-local instrumentation.
+
 ### composition
 
 ```ts
@@ -868,6 +877,57 @@ approved RN package/version/catalogue. The sample package
 has no installed Rambo package. Request exact release/digest, exports, supported
 components/targets, accessibility and source evidence; never substitute another
 vendor, adopt a historical template or create a private component library.
+
+## Portable current-screen state
+
+`@eventiva/ui-modules/screen-context` exports scoped `makeScreenContext`. Provide
+its `service` to `UiRegistration.mount`, and supply the current authenticated
+Caller separately on every `read`/`invoke`. Selection is isolated by tenant and
+session; lazy capabilities retain fresh masking and canonical action authority.
+Replacement/unmount invalidates pending reads without deleting newer entries.
+Unavailable projections and typed module failures become absence; defects and
+external interruption remain failures. See the compiling `02_screen-context.ts`
+example and [people guide](../../../docs/screen-context.md). No app entrypoint,
+navigation persistence, native execution or production security adapter is added.
+
+### screen-context
+
+```ts
+import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { UiScreenContext } from '@eventiva/contracts/ui-module';
+import type { UiRegistration } from '@eventiva/ui-modules/declarative-registry';
+import { makeScreenContext } from '@eventiva/ui-modules/screen-context';
+import { Effect, Exit, Scope } from 'effect';
+
+/**
+ * Portable state only. The trusted host has already authenticated both callers
+ * and admitted the registration. Keep its registration scope alive throughout.
+ * Callers sharing a tenant/session share selection, not field masking authority.
+ */
+export const inspectMountedScreen = (
+    registration: UiRegistration,
+    mountingCaller: CallerIdentity,
+    currentViewer: CallerIdentity
+) =>
+    Effect.scoped(
+        Effect.gen(function* () {
+            const context = yield* makeScreenContext;
+            const screenScope = yield* Scope.make();
+            yield* Effect.addFinalizer(() => Scope.close(screenScope, Exit.void));
+            yield* registration.mount.pipe(
+                Effect.provideService(UiScreenContext, context.service),
+                Effect.provideService(Scope.Scope, screenScope),
+                Effect.provideService(Caller, mountingCaller)
+            );
+            // These effects retain Caller as a requirement until each call.
+            const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+            const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
+            yield* Scope.close(screenScope, Exit.void);
+            const afterClose = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+            return { visible, invoked, afterClose };
+        })
+    );
+```
 
 ---
 

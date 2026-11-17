@@ -24,5 +24,5 @@ const shared = testProject(
 );
 export default defineConfig({
     ...shared,
-    test: { ...shared.test, include: ['src/**/*.spec.tsx'] },
+    test: { ...shared.test, include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx'] },
 });

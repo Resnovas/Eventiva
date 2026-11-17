@@ -153,3 +153,15 @@ approved RN package/version/catalogue. The sample package
 has no installed Rambo package. Request exact release/digest, exports, supported
 components/targets, accessibility and source evidence; never substitute another
 vendor, adopt a historical template or create a private component library.
+
+## Portable current-screen state
+
+`@eventiva/ui-modules/screen-context` exports scoped `makeScreenContext`. Provide
+its `service` to `UiRegistration.mount`, and supply the current authenticated
+Caller separately on every `read`/`invoke`. Selection is isolated by tenant and
+session; lazy capabilities retain fresh masking and canonical action authority.
+Replacement/unmount invalidates pending reads without deleting newer entries.
+Unavailable projections and typed module failures become absence; defects and
+external interruption remain failures. See the compiling `02_screen-context.ts`
+example and [people guide](../../../docs/screen-context.md). No app entrypoint,
+navigation persistence, native execution or production security adapter is added.

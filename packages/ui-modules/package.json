@@ -12,6 +12,11 @@
             "types": "./dist/declarative-registry.d.ts",
             "default": "./dist/declarative-registry.js"
         },
+        "./screen-context": {
+            "@eventiva/source": "./src/screen-context.ts",
+            "types": "./dist/screen-context.d.ts",
+            "default": "./dist/screen-context.js"
+        },
         "./DeclarativeModule": {
             "@eventiva/source": "./src/DeclarativeModule.tsx",
             "types": "./dist/DeclarativeModule.d.ts",

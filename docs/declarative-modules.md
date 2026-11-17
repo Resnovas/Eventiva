@@ -256,10 +256,10 @@ vendor or create an Eventiva-private component library.
 ## Remaining gates
 
 No approved Rambo/native renderer, real authorized-host/masking adapter, live
-tenant consent/revocation, kernel lease/route integration, screen-context service,
+tenant consent/revocation, kernel lease/route integration,
 central navigation/render-error telemetry or native accessibility proof is delivered
-by the injected tests. The screen-context port and Effect mount/unmount/failure
-instrumentation above are composition seams, not production services or exporter
-proof. External component approval, shared EVE-263 cycle/type CI and full EVE-261
-gates remain open. No package,
-dependency, entrypoint, generated docs or graph changes are authorized here.
+by the injected tests. The portable [screen-context adapter](screen-context.md)
+implements scoped per-session selection over fresh lazy capabilities; it does not
+activate a client screen or provide authentication. Effect mount/unmount/failure
+instrumentation remains a composition seam, not production exporter proof.
+External component approval and full EVE-261 target-specific gates remain open.
