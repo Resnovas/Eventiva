@@ -64,10 +64,27 @@ The exact prune is 4,009 to 3,884 identities: 3,087 missing attachments and 797 
 
 Executed before the second packet's delivery: `DOCUMENTATION_BASE=22c13a08a76ffc0efc2077c0404a37ab90950fc4 node --run verify` exited zero under the approved disposable PostgreSQL 17 fixture. Root checks passed; all 85 Nx lint/typecheck/test/build/parity tasks passed (18 cache hits); source and emitted declaration boundaries reported zero violations/cycles; all three smoke targets and 12 dependencies passed. The fixture/network were removed. Exact token and prune assertions passed. Clean-source Graphify generation and its separate signed commit follow source commitment; CI is asynchronous, not a local verification claim. The first delivered head's final CI rollup also completed successfully, including [Code Quality](https://github.com/Resnovas/Eventiva/actions/runs/44075216962); release jobs were skipped, not deployed.
 
+## Final D01 source packet semantic checkpoint - 2026-11-17
+
+The second packet was delivered at [12dff4c8](https://github.com/Resnovas/Eventiva/commit/12dff4c8ba8001ed2071b2f543456f75b1aacb84), comprising source/evidence commit [03033cee](https://github.com/Resnovas/Eventiva/commit/03033cee) and a separate clean-source graph commit. Its post-commit ratchet still used immutable pre-packet `22c13a08a76ffc0efc2077c0404a37ab90950fc4` with zero violations; Graphify matched committed code. Exact-head CI follow-up is active, not presumed passed.
+
+This final D01 source packet compares against actual delivered immutable main `12dff4c8ba8001ed2071b2f543456f75b1aacb84`, not candidate HEAD. Documentation resolves 76 missing attachments and nine retained rationale candidates, with zero checker corrections. All four files have zero live findings and exact parsed noncomment TypeScript terminal kind/text equivalence to that base. Source comments preserve behavior and explain ownership, validation and evolution constraints rather than inventing new guarantees.
+
+| Reviewed source | Semantic evidence and boundary | Ledger removals |
+| --- | --- | --- |
+| `packages/contracts/src/resource.ts` | Complete own field-owner maps; detached literal templates; stable contributor/version pins; contiguous additive optional-only evolution; historical values retain writing schemas. Full versus partial codecs differ only in required presence and both reject explicit undefined/excess keys. Driver persistence is distinct from caller-authorized resource operations. Revision zero is the creation precondition, not the stored first revision. | 48 attachments, 8 rationale |
+| `packages/schema/src/compose.ts` | Code-unit ordering selects deterministic diagnostics and output while retaining owner/contributor provenance; collision and protection-floor failures never pick an arbitrary winner. | 20 attachments |
+| `packages/schema/src/field.ts` | Annotation returns a schema rather than a field; metadata transforms copy without changing value validation. Decimal validation counts lexical whole/fraction digits without Number conversion and requires caller-supplied valid precision/scale options. | 6 attachments, 1 rationale |
+| `packages/schema/src/storage.ts` | Portable column projection keeps entry order and shape/conflict metadata only; executable codecs, security policy and driver types are deliberately not projected. | 2 attachments |
+
+The exact prune is 3,884 to 3,799 retained identities across 111 files: 3,011 missing attachments and 788 rationale candidates. All retained D01 ledger identities are removed and every contracts/schema source scans clean. Completed: per-file semantic review and source-only package/test/checker evidence above. Current: this packet's immutable-base full verification, canonical evidence and clean-source graph delivery. Upcoming: coordinated D02-D06 remediation and D07 strict-zero acceptance. This is D01 scope completion after delivery, not global compliance, rationale-gate activation, producer acceptance or deployment. No source-semantic unknown was established; no exclusions, suppressions or accepted identities were added. The coordinator retains runtime/checker/planning model ownership; its unrelated local kernel/OTLP work is absent from this tree.
+
+Executed before final D01 delivery: `DOCUMENTATION_BASE=12dff4c8ba8001ed2071b2f543456f75b1aacb84 node --run verify` exited zero under the approved disposable PostgreSQL 17 fixture. Root checks passed; all 85 Nx lint/typecheck/test/build/parity tasks passed (16 cache hits); source and emitted declaration boundaries reported zero violations/cycles; all three smoke targets and 12 dependencies passed. The fixture/network were removed. Exact assertions confirm only this packet's 85 ledger identities were removed, every other identity is unchanged, and the entire contracts/schema scanner scope has zero findings. Clean-source graph generation and its separate signed commit follow source commitment; the delivered head and CI follow-up are recorded on EVE-13/EVE-261. D02's next source-only reservation is runtime `action.ts`, `execution.ts`, `host.ts`, `invocation.ts`; its shared evidence/prune/delivery waits for the coordinator's next handback. Strict global rationale remains held because adequate adjacent-contract/barrier/nested-cleanup cases still need a safe tested general classifier rule.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3884 remaining findings across 115 files: 3087 mechanically missing JSDoc; 0 prose-review candidates; 797 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3799 remaining findings across 111 files: 3011 mechanically missing JSDoc; 0 prose-review candidates; 788 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -92,7 +109,6 @@ Executed before the second packet's delivery: `DOCUMENTATION_BASE=22c13a08a76ffc
 | D04 | [apps/server/src/status.ts](../../apps/server/src/status.ts) | 3 | 0 | 0 |
 | D04 | [apps/server/tests/backend.spec.ts](../../apps/server/tests/backend.spec.ts) | 12 | 0 | 1 |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 37 | 0 | 16 |
-| D01 | [packages/contracts/src/resource.ts](../../packages/contracts/src/resource.ts) | 48 | 0 | 8 |
 | D03 | [packages/integrations/formatjs/src/i18n.ts](../../packages/integrations/formatjs/src/i18n.ts) | 3 | 0 | 1 |
 | D03 | [packages/integrations/openfeature-client/src/flags.ts](../../packages/integrations/openfeature-client/src/flags.ts) | 14 | 0 | 0 |
 | D03 | [packages/integrations/openfeature-server/src/flags.ts](../../packages/integrations/openfeature-server/src/flags.ts) | 14 | 0 | 0 |
@@ -124,9 +140,6 @@ Executed before the second packet's delivery: `DOCUMENTATION_BASE=22c13a08a76ffc
 | D02 | [packages/runtime/src/telemetry.ts](../../packages/runtime/src/telemetry.ts) | 36 | 0 | 8 |
 | D02 | [packages/runtime/src/testing.ts](../../packages/runtime/src/testing.ts) | 30 | 0 | 7 |
 | D02 | [packages/runtime/src/trust.ts](../../packages/runtime/src/trust.ts) | 15 | 0 | 2 |
-| D01 | [packages/schema/src/compose.ts](../../packages/schema/src/compose.ts) | 20 | 0 | 0 |
-| D01 | [packages/schema/src/field.ts](../../packages/schema/src/field.ts) | 6 | 0 | 1 |
-| D01 | [packages/schema/src/storage.ts](../../packages/schema/src/storage.ts) | 2 | 0 | 0 |
 | D06 | [packages/ui-modules/src/DeclarativeModule.tsx](../../packages/ui-modules/src/DeclarativeModule.tsx) | 6 | 0 | 2 |
 | D06 | [packages/ui-modules/src/declarative-registry.ts](../../packages/ui-modules/src/declarative-registry.ts) | 51 | 0 | 10 |
 | D06 | [packages/ui-modules/src/screen-context.ts](../../packages/ui-modules/src/screen-context.ts) | 18 | 0 | 4 |

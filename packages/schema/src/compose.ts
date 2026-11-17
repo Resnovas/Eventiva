@@ -62,23 +62,27 @@ export interface Composed {
     readonly resources: ReadonlyArray<ComposedResource>;
 }
 
+/** Identify colliding resource owners in deterministic module-name order. */
 interface DuplicateResourceFields {
     readonly resource: string;
     readonly modules: ReadonlyArray<string>;
 }
 
+/** Identify a field collision and both declaring modules; composition never selects a winner. */
 interface DuplicateFieldFields {
     readonly resource: string;
     readonly field: string;
     readonly modules: ReadonlyArray<string>;
 }
 
+/** Identify the contributing module and unresolved contribution or reference target. */
 interface UnknownTargetFields {
     readonly resource: string;
     readonly module: string;
     readonly target: string;
 }
 
+/** Explain which field profile falls below its owning resource's protection floor. */
 interface WeakerClassificationFields {
     readonly resource: string;
     readonly field: string;
@@ -87,32 +91,38 @@ interface WeakerClassificationFields {
     readonly floor: SecurityProfile;
 }
 
+/** Identify a noncanonical resource or field name and the module that declared it. */
 interface InvalidNameFields {
     readonly module: string;
     readonly name: string;
 }
 
 // Concrete constructor annotations keep the vendor's open generic out of declarations.
+/** Construct an exact yieldable resource-collision diagnostic without exporting open vendor generics. */
 const duplicateResourceBase: new (
     fields: DuplicateResourceFields
 ) => Cause.YieldableError & DuplicateResourceFields & { readonly _tag: 'DuplicateResource' } = Data.TaggedError(
     'DuplicateResource'
 )<DuplicateResourceFields>;
+/** Construct a yieldable field-collision diagnostic retaining both module identities. */
 const duplicateFieldBase: new (
     fields: DuplicateFieldFields
 ) => Cause.YieldableError & DuplicateFieldFields & { readonly _tag: 'DuplicateField' } = Data.TaggedError(
     'DuplicateField'
 )<DuplicateFieldFields>;
+/** Construct a yieldable unresolved-target diagnostic for contribution and reference validation. */
 const unknownTargetBase: new (
     fields: UnknownTargetFields
 ) => Cause.YieldableError & UnknownTargetFields & { readonly _tag: 'UnknownTarget' } = Data.TaggedError(
     'UnknownTarget'
 )<UnknownTargetFields>;
+/** Construct a yieldable protection-floor violation without weakening the requested resource profile. */
 const weakerClassificationBase: new (
     fields: WeakerClassificationFields
 ) => Cause.YieldableError & WeakerClassificationFields & { readonly _tag: 'WeakerClassification' } = Data.TaggedError(
     'WeakerClassification'
 )<WeakerClassificationFields>;
+/** Construct an exact yieldable canonical-name failure for the declaring module. */
 const invalidNameBase: new (
     fields: InvalidNameFields
 ) => Cause.YieldableError & InvalidNameFields & { readonly _tag: 'InvalidName' } = Data.TaggedError(
@@ -136,11 +146,18 @@ export class InvalidName extends invalidNameBase {}
 
 export type ComposeError = DuplicateResource | DuplicateField | UnknownTarget | WeakerClassification | InvalidName;
 
+/** Compare projected keys by code-unit order, avoiding locale-dependent schema and diagnostic ordering. */
 const byName =
-    <A>(key: (a: A) => string) =>
+    <A>(
+        /** Project the deterministic resource, module or field ordering key without mutating the declaration. */ key: (
+            a: A
+        ) => string
+    ) =>
+    /** Preserve equal-key order while comparing without locale-specific collation. */
     (a: A, b: A) =>
         key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
 
+/** Return sorted diagnostic module names without reordering caller-owned arrays. */
 const sortedModules = (...modules: ReadonlyArray<string>) => [...modules].sort();
 
 /** Composes resources and contributions into one checked schema. */
@@ -149,7 +166,12 @@ export const compose = (
     contributions: ReadonlyArray<Contribution>
 ): Either.Either<Composed, ComposeError> => {
     // Sorting first makes every error, and the result, independent of input order.
-    const ordered = [...resources].sort(byName((resource) => `${resource.name}\u0000${resource.module}`));
+    const ordered = [...resources].sort(
+        byName(
+            /** Order resource identities before validating ownership collisions. */ (resource) =>
+                `${resource.name}\u0000${resource.module}`
+        )
+    );
     const declared = new Map<string, Resource>();
     for (const resource of ordered) {
         if (!Schema.is(ResourceName)(resource.name)) {
@@ -168,8 +190,17 @@ export const compose = (
     }
 
     const sources = [
-        ...ordered.map((resource) => ({ target: resource.name, module: resource.module, fields: resource.fields })),
-        ...[...contributions].sort(byName((contribution) => `${contribution.target}\u0000${contribution.module}`)),
+        ...ordered.map(
+            /** Treat owner fields as the first declaration source while retaining their original module provenance. */ (
+                resource
+            ) => ({ target: resource.name, module: resource.module, fields: resource.fields })
+        ),
+        ...[...contributions].sort(
+            byName(
+                /** Order contributions by target and module before checking field conflicts. */ (contribution) =>
+                    `${contribution.target}\u0000${contribution.module}`
+            )
+        ),
     ];
     const fields = new Map<string, Map<string, ComposedField>>();
     for (const source of sources) {
@@ -181,7 +212,14 @@ export const compose = (
         }
         const composed = fields.get(source.target) ?? new Map<string, ComposedField>();
         fields.set(source.target, composed);
-        for (const [name, field] of Object.entries(source.fields).sort(byName(([name]: [string, Field]) => name))) {
+        for (const [name, field] of Object.entries(source.fields).sort(
+            byName(
+                /** Use field identity, not object insertion order, to select validation order. */ ([name]: [
+                    string,
+                    Field
+                ]) => name
+            )
+        )) {
             if (!Schema.is(FieldName)(name)) return Either.left(new InvalidName({ module: source.module, name }));
             const existing = composed.get(name);
             if (existing !== undefined) {
@@ -214,9 +252,18 @@ export const compose = (
     }
 
     return Either.right({
-        resources: [...declared.values()].map((resource) => ({
-            resource,
-            fields: [...(fields.get(resource.name)?.values() ?? [])].sort(byName((field) => field.name)),
-        })),
+        resources: [...declared.values()].map(
+            /** Publish each checked resource with its owner/contributor provenance in field-name order. */ (
+                resource
+            ) => ({
+                resource,
+                fields: [...(fields.get(resource.name)?.values() ?? [])].sort(
+                    byName(
+                        /** Keep the composed field sequence independent of declaration insertion order. */ (field) =>
+                            field.name
+                    )
+                ),
+            })
+        ),
     });
 };

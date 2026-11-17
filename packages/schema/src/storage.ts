@@ -23,13 +23,19 @@ export interface Column {
     readonly nullable: boolean;
     readonly conflict: Field['conflict'];
 }
+/** Project portable column metadata in the declaration's entry order; omit codecs, security policy and driver-specific types. */
 export const columns = (fields: Readonly<Record<string, Field>>): ReadonlyArray<Column> =>
-    Object.entries(fields).map(([name, field]) => ({
-        name,
-        logical: field.logical,
-        nullable: field.nullable,
-        conflict: field.conflict,
-    }));
+    Object.entries(fields).map(
+        /** Retain only column shape and offline conflict metadata, not an executable field schema. */ ([
+            name,
+            field
+        ]) => ({
+            name,
+            logical: field.logical,
+            nullable: field.nullable,
+            conflict: field.conflict,
+        })
+    );
 export type SyncDeclaration =
     | {
           readonly kind: 'canonical';
