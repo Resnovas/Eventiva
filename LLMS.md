@@ -1239,6 +1239,24 @@ Schema-backed wire types, still strictly decoded at runtime. The private decoder
 accepts `NoInfer<I>` for `Schema<A, I>`. Decode untrusted transport inputs before
 calling these APIs; do not reintroduce erased inputs, assertions or suppressions.
 
+Keep the decoded registry manifest private. `register` returns detached wire
+metadata, and every authority `admit`/`authorize` invocation receives its own
+deeply detached view, including nested declarations. Neither immediate adapter
+writes nor retained views may change subsequent planning, provider selection,
+identity/version, trust/isolation or disposal. Recheck live authority at each
+existing boundary; do not cache authorization decisions to avoid aliasing.
+For example, deleting returned dependencies must leave an absent dependency
+rejected with `dependency-missing`, and renaming the returned ID must leave
+scope removal complete under the original key.
+
+Update candidates retain their privately decoded manifest through suspended
+preflight and publication. Caller edits and retained authority views cannot
+rewrite the replacement, its binding pins or the registration finalizer's owned
+key. Detach only schema-validated manifest wire data, never executable Layers,
+provider services or Schema ASTs. Preserve the public signatures and typed
+provider contracts. These regressions establish in-process ownership, not
+distributed fencing, durable registry reconstruction or whole-issue acceptance.
+
 `kernelProvider<A, I>(schema, value: NoInfer<A>)` returns
 `Effect<KernelProvider, KernelError>`. It validates the Type-side service before
 creating the handle. `KernelModule.providers` holds

@@ -208,6 +208,14 @@ const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
                 error('<contract>', 'invalid-contract')
         )
     );
+/** Detach validated wire metadata without cloning executable services or requiring platform globals. */
+const copyManifest = (manifest: KernelManifest): KernelManifest => ({
+    ...manifest,
+    dependencies: manifest.dependencies.map(/** Detach an exact dependency pin. */ (item) => ({ ...item })),
+    provides: manifest.provides.map(/** Detach a named provider declaration. */ (item) => ({ ...item })),
+    requires: manifest.requires.map(/** Detach a consumer capability requirement. */ (item) => ({ ...item })),
+    migrations: manifest.migrations.map(/** Detach migration admission metadata. */ (item) => ({ ...item })),
+});
 /** Check exact identifier uniqueness without normalizing or mutating caller input. */
 const unique = (names: ReadonlyArray<string>) => new Set(names).size === names.length;
 /** Identify states whose running services may satisfy consumers. */
@@ -484,7 +492,8 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     Effect.gen(
                         /** Caller identity remains operation-scoped rather than construction-scoped. */ function* () {
                             const caller = yield* Caller;
-                            yield* authority.authorize(caller, operation, entry.manifest);
+                            // Authority may inspect or retain its view, but cannot rewrite later planning or disposal.
+                            yield* authority.authorize(caller, operation, copyManifest(entry.manifest));
                         }
                     );
                 /** Reject ordinary mutations during ambiguity, disposal or active workflow leases. */
@@ -504,7 +513,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             // A self-declared isolation mode is not an actual sandbox. No executable fallback.
                             if (manifest.isolation !== 'in-process')
                                 return yield* error(manifest.id, 'isolation-unavailable');
-                            yield* authority.admit(manifest);
+                            yield* authority.admit(copyManifest(manifest));
                             if (
                                 !unique(
                                     manifest.dependencies.map(
@@ -810,12 +819,13 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     Effect.gen(
                         /** Admit registration before transferring its removal to the caller's scope. */ function* () {
                             // The finalizer is installed before visibility, including confirmation-loss paths.
+                            const id = entry.manifest.id;
                             const mutation = yield* begin(projection(entry, 'register', entry.state, true, null));
                             yield* Effect.addFinalizer(
                                 /** Retain entry identity so hot replacement remains owned by this registration. */ () =>
-                                    dispose(entry.manifest.id, entry)
+                                    dispose(id, entry)
                             );
-                            entries.set(entry.manifest.id, entry);
+                            entries.set(id, entry);
                             yield* committed(mutation, true);
                         }
                     );
@@ -842,7 +852,8 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                                     previous.manifest.version === manifest.version ? 'duplicate' : 'incompatible'
                                 );
                             yield* publish(entry);
-                            return manifest;
+                            // Only wire metadata is copied; executable layers and decoded provider services stay intact.
+                            return copyManifest(manifest);
                         }
                     ).pipe(
                         /** Observe registration without changing its publication result. */ (effect) =>

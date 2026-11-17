@@ -10046,6 +10046,18 @@
     ],
     "annotations": [
         {
+            "issue": "EVE-257",
+            "kind": "later-status",
+            "date": "2026-11-17",
+            "status": "In Progress",
+            "statusType": "started",
+            "summary": "Batch 5 slice 1 preserves private admitted kernel manifests across register return values, fresh authority views and staged updates. Red-first public regressions reproduce missing-dependency bypass, renamed-scope leakage and retained authority replacement corruption: seven fail on unchanged production source while all 39 existing tests and three new controls pass. The private typed manifest copy and captured disposal key leave contracts, executable Layers and provider service values unchanged. Focused kernel/telemetry and two-dialect producer checks pass; final latest-main aggregate verification and signed delivery are recorded separately in the timeline and owning issue. EVE-257 remains In Progress; in-process alias isolation is not distributed fencing, durable registry reconstruction, production activation or complete platform acceptance. The historical issue capture is unchanged.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-257#comment-b21e1a9b-d224-416a-bd29-a85d3e81ac38",
+                "https://ampcode.com/threads/T-7fb29ae7-0008-4ec1-81c5-7078270fe066"
+            ]
+        },
+        {
             "issue": "EVE-39",
             "kind": "later-status",
             "date": "2026-11-17",

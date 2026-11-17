@@ -1420,6 +1420,283 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
         )
     );
 
+    for (const change of ['untouched', 'dependencies', 'id', 'metadata'] as const) {
+        it.effect(
+            `isolates the returned registration manifest: ${change}`,
+            /** Keep dependency rejection and scope removal bound to the admitted manifest. */ () =>
+                run(
+                    Effect.gen(
+                        /** Observe validation and disposal before asserting, so a renamed registration cannot hide a leak. */ function* () {
+                            // The registration scope closes while the kernel stays alive, exposing stale registry entries.
+                            const kernel = yield* Kernel;
+                            const observed = yield* Effect.scoped(
+                                Effect.gen(
+                                    /** Attempt independent identity, topology and security rewrites through the public return value. */ function* () {
+                                        const returned = yield* kernel.register(
+                                            definition(
+                                                manifest('consumer', {
+                                                    dependencies: [{ id: 'absent', version: '1.0.0' }],
+                                                    provides: [
+                                                        { name: 'primary', capability: 'records', version: '2.0.0' },
+                                                    ],
+                                                }),
+                                                []
+                                            )
+                                        );
+                                        if (change === 'dependencies')
+                                            Object.assign(returned.dependencies, { length: 0 });
+                                        if (change === 'id') Object.assign(returned, { id: 'renamed' });
+                                        if (change === 'metadata') {
+                                            Object.assign(returned, {
+                                                version: '9.9.9',
+                                                trust: 'untrusted',
+                                                isolation: 'isolated',
+                                            });
+                                            for (const item of returned.provides)
+                                                Object.assign(item, {
+                                                    name: 'changed',
+                                                    capability: 'changed',
+                                                    version: '9.9.9',
+                                                });
+                                            Object.assign(returned.requires, {
+                                                0: { name: 'input', capability: 'changed', version: '9.9.9' },
+                                                length: 1,
+                                            });
+                                        }
+                                        return {
+                                            validation: yield* reason(kernel.validate('consumer')),
+                                            snapshot: yield* kernel.snapshot,
+                                        };
+                                    }
+                                )
+                            );
+                            expect(yield* kernel.snapshot).toEqual([]);
+                            expect(observed).toEqual({
+                                validation: 'dependency-missing',
+                                snapshot: [{ module: 'consumer', version: '1.0.0', state: 'registered' }],
+                            });
+                        }
+                    )
+                )
+        );
+    }
+
+    for (const boundary of ['untouched', 'admit', 'authorize'] as const) {
+        it.effect(
+            `isolates authority manifest views during composition: ${boundary}`,
+            /** Exercise original provider pins, lifecycle and disposal despite adapter rewrites. */ () => {
+                const events: Array<string> = [];
+                /** Corrupt both nested declarations and top-level fields to distinguish deep isolation from a shallow copy. */
+                const rewrite = (view: KernelManifest) => {
+                    for (const item of [...view.dependencies, ...view.provides, ...view.requires, ...view.migrations])
+                        Object.assign(item, {
+                            id: 'absent',
+                            name: 'changed',
+                            capability: 'changed',
+                            version: '9.9.9',
+                            online: false,
+                        });
+                    Object.assign(view.dependencies, { length: 0 });
+                    Object.assign(view, {
+                        id: 'renamed',
+                        version: '9.9.9',
+                        trust: 'untrusted',
+                        isolation: 'isolated',
+                        restartRequired: true,
+                    });
+                };
+                const hostile = Layer.succeed(KernelAuthority, {
+                    /** Inspect a disposable view without authority to rewrite admitted provenance. */
+                    admit: (view) =>
+                        Effect.sync(
+                            /** Apply the mutation only at the boundary selected by this scenario. */ () => {
+                                if (boundary === 'admit') rewrite(view);
+                            }
+                        ),
+                    /** Inspect every operation, including resolve and workflow, without changing registry metadata. */
+                    authorize: (_identity, _operation, view) =>
+                        Effect.sync(
+                            /** Isolate operation authorization from provenance admission mutations. */ () => {
+                                if (boundary === 'authorize') rewrite(view);
+                            }
+                        ),
+                });
+                return Effect.gen(
+                    /** Start an explicitly bound graph, observe provider selection and then close only registration ownership. */ function* () {
+                        // Keep two same-capability instances so a changed instance cannot accidentally return an equivalent binding.
+                        const kernel = yield* Kernel;
+                        const provider = manifest('provider', {
+                            provides: [
+                                { name: 'primary', capability: 'records', version: '2.0.0' },
+                                { name: 'reporting', capability: 'records', version: '2.0.0' },
+                            ],
+                        });
+                        const consumer = manifest('consumer', {
+                            dependencies: [{ id: 'provider', version: '1.0.0' }],
+                            requires: [{ name: 'input', capability: 'records', version: '2.0.0' }],
+                            migrations: [{ id: 'initial', kind: 'additive', online: true }],
+                        });
+                        const binding = {
+                            consumer: 'consumer',
+                            requirement: 'input',
+                            provider: 'provider',
+                            instance: 'reporting',
+                        };
+                        yield* Effect.scoped(
+                            Effect.gen(
+                                /** Verify admitted manifests still drive planning and public ready leases. */ function* () {
+                                    yield* kernel.compose(composition([consumer, provider], [binding]), [
+                                        definition(consumer, events),
+                                        definition(provider, events),
+                                    ]);
+                                    expect(yield* kernel.resolve('consumer', 'input')).toEqual(binding);
+                                    yield* Effect.scoped(
+                                        Effect.gen(
+                                            /** Pin the original identity/version after repeated adapter callbacks. */ function* () {
+                                                expect(yield* kernel.workflow('consumer')).toMatchObject({
+                                                    module: 'consumer',
+                                                    version: '1.0.0',
+                                                });
+                                            }
+                                        )
+                                    );
+                                    expect(yield* kernel.snapshot).toEqual([
+                                        { module: 'consumer', version: '1.0.0', state: 'ready' },
+                                        { module: 'provider', version: '1.0.0', state: 'ready' },
+                                    ]);
+                                }
+                            )
+                        );
+                        expect(yield* kernel.snapshot).toEqual([]);
+                        expect(
+                            events.filter(
+                                /** Observe dependent-first cleanup rather than internal registry implementation. */ (
+                                    event
+                                ) => event.startsWith('release:')
+                            )
+                        ).toEqual(['release:consumer:1.0.0', 'release:provider:1.0.0']);
+                    }
+                ).pipe(
+                    Effect.provideService(Caller, caller),
+                    Effect.provide(KernelLive('authority-runtime').pipe(Layer.provide(hostile))),
+                    Effect.scoped
+                );
+            }
+        );
+    }
+
+    for (const boundary of ['caller', 'admit', 'authorize'] as const) {
+        it.effect(
+            `isolates a staged update from retained ${boundary} manifests`,
+            /** Attempt replacement rewrites while deterministic preflight holds the candidate unpublished. */ () => {
+                const retained: Array<KernelManifest> = [];
+                const events: Array<string> = [];
+                const observing = Layer.succeed(KernelAuthority, {
+                    /** Retain the candidate admission view for mutation during its later preflight. */
+                    admit: (view) =>
+                        Effect.sync(
+                            /** Capture only the replacement, leaving the serving control untouched. */ () => {
+                                if (boundary === 'admit' && view.version === '1.0.1') retained.push(view);
+                            }
+                        ),
+                    /** Retain the candidate authorization view rather than the serving module's update check. */
+                    authorize: (_identity, _operation, view) =>
+                        Effect.sync(
+                            /** Separate candidate and serving identities using their exact versions. */ () => {
+                                if (boundary === 'authorize' && view.version === '1.0.1') retained.push(view);
+                            }
+                        ),
+                });
+                return Effect.gen(
+                    /** Keep the admitted replacement and its registration finalizer independent of all retained views. */ function* () {
+                        // Mutate after admission but before build, without letting fixture layer closures read caller-owned metadata.
+                        const kernel = yield* Kernel;
+                        const entered = yield* Deferred.make<void>();
+                        const resume = yield* Deferred.make<void>();
+                        const provider = manifest('provider', {
+                            provides: [{ name: 'primary', capability: 'records', version: '2.0.0' }],
+                        });
+                        const consumer = manifest('consumer', {
+                            requires: [{ name: 'input', capability: 'records', version: '2.0.0' }],
+                        });
+                        const source = {
+                            ...consumer,
+                            version: '1.0.1',
+                            migrations: [{ id: 'add', kind: 'additive' as const, online: true }],
+                        };
+                        const binding = {
+                            consumer: 'consumer',
+                            requirement: 'input',
+                            provider: 'provider',
+                            instance: 'primary',
+                        };
+                        yield* Effect.scoped(
+                            Effect.gen(
+                                /** Stage and publish a compatible replacement under the original registration scope. */ function* () {
+                                    yield* kernel.compose(composition([consumer, provider], [binding]), [
+                                        definition(consumer, events),
+                                        definition(provider, events),
+                                    ]);
+                                    const candidate = {
+                                        ...definition(structuredClone(source), events),
+                                        manifest: source,
+                                        validate: Deferred.succeed(entered, undefined).pipe(
+                                            Effect.andThen(Deferred.await(resume))
+                                        ),
+                                    };
+                                    const updating = yield* kernel.update('consumer', candidate).pipe(Effect.fork);
+                                    yield* Deferred.await(entered);
+                                    if (boundary === 'caller') retained.push(source);
+                                    expect(retained.length).toBeGreaterThan(0);
+                                    for (const view of retained) {
+                                        for (const requirement of view.requires)
+                                            Object.assign(requirement, {
+                                                name: 'changed',
+                                                capability: 'changed',
+                                                version: '9.9.9',
+                                            });
+                                        for (const migration of view.migrations)
+                                            Object.assign(migration, { kind: 'staged', online: false });
+                                        Object.assign(view, {
+                                            id: 'renamed',
+                                            version: '9.9.9',
+                                            trust: 'untrusted',
+                                            isolation: 'isolated',
+                                            dependencies: [{ id: 'absent', version: '1.0.0' }],
+                                        });
+                                    }
+                                    yield* Deferred.succeed(resume, undefined);
+                                    expect(yield* Fiber.join(updating)).toEqual({
+                                        status: 'updated',
+                                        version: '1.0.1',
+                                    });
+                                    yield* kernel.ready;
+                                    expect(yield* kernel.resolve('consumer', 'input')).toEqual(binding);
+                                    expect(yield* kernel.snapshot).toEqual([
+                                        { module: 'consumer', version: '1.0.1', state: 'ready' },
+                                        { module: 'provider', version: '1.0.0', state: 'ready' },
+                                    ]);
+                                }
+                            )
+                        );
+                        expect(yield* kernel.snapshot).toEqual([]);
+                        expect(
+                            events.filter(
+                                /** Require exactly one release for the old version and each surviving registration. */ (
+                                    event
+                                ) => event.startsWith('release:')
+                            )
+                        ).toEqual(['release:consumer:1.0.0', 'release:consumer:1.0.1', 'release:provider:1.0.0']);
+                    }
+                ).pipe(
+                    Effect.provideService(Caller, caller),
+                    Effect.provide(KernelLive('update-runtime').pipe(Layer.provide(observing))),
+                    Effect.scoped
+                );
+            }
+        );
+    }
+
     it.effect('redacts defective config and still releases scope when deactivation fails', /** Exercise private validation defects and failed deactivation cleanup. */ () =>
         run(
             Effect.gen(/** Verify bounded configuration errors and resource finalization survive distinct lifecycle failures. */ function* () {

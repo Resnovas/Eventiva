@@ -67,6 +67,31 @@ within a module, duplicate requirement bindings and incompatible capability pins
 fail admission. Name uniqueness and explicit binding are separate from service
 Schema validation.
 
+## Manifest ownership
+
+Treat manifests as admitted wire metadata, not mutable registry handles.
+`register` strictly decodes the definition and returns a detached manifest.
+Changing that return value, including nested dependency and capability records,
+cannot change the registered identity/version, dependency planning, provider
+selection, trust/isolation checks or scope cleanup. For example, clearing a
+returned consumer's `dependencies` does not repair its missing dependency:
+`validate('consumer')` still fails with `dependency-missing`. Supply the actual
+dependency rather than rewriting the returned observation.
+
+Each `KernelAuthority.admit` and `authorize` call receives a fresh detached
+manifest view. An adapter can inspect or retain its view but cannot rewrite the
+registry's admitted metadata or a staged `update` candidate. Caller-owned update
+metadata is also decoded before admission; edits while candidate preflight waits
+do not change the eventual replacement. Authorization and admission still run
+at their existing lifecycle boundaries; no permission decision is cached.
+
+Closing a registration scope removes its original registry key, including after
+a compatible replacement, and retains dependent-first resource cleanup. Only
+manifest wire metadata is detached: executable Layers, callable provider values
+and their Schemas are not cloned or serialized. Public signatures are unchanged.
+This in-process ownership guarantee is not distributed fencing, durable registry
+recovery or production isolation of arbitrary executable code.
+
 ## Cycle diagnostics and lifecycle guarantees
 
 `KernelError` remains a Data.TaggedError with the existing closed reason union.

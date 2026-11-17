@@ -787,6 +787,47 @@ flowchart LR
     Deliver --> Remaining[Broader EVE-258 and EVE-263 acceptance stays open]
 ```
 
+## Kernel manifest ownership, batch 5 slice 1 - 2026-11-17
+
+The [EVE-257 checkpoint](https://linear.app/resnovas/issue/EVE-257#comment-b21e1a9b-d224-416a-bd29-a85d3e81ac38)
+implements private registry ownership without a contract change. The documentation
+lane cleared the four reserved source/test/guide paths before test edits. The
+complete historical Linear capture remains unchanged; a dated generated
+annotation records the bounded live In Progress read and implementation evidence.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Returned manifest and retained authority aliases | Reproduced before the fix | Seven new public cases fail on unchanged 355b1182 production source: clearing dependencies bypasses missing-dependency validation, renaming leaks registration after scope close, metadata changes snapshots, and authority views corrupt composition or replacement. All 39 existing cases and three new controls pass. |
+| Private admitted metadata and original disposal key | Focused verification passed | Detached nested wire declarations at register return and each authority callback; update admission remains private across deterministic preflight suspension. Kernel/runtime telemetry passes 70 tests, and the durable producer suite passes 38 tests against SQLite and the approved disposable PostgreSQL fixture. Callable services, executable Layers and public signatures are unchanged. |
+| Latest-main integration and aggregate gates | Integrated / delivery evidence separate | Full gates passed after rebase onto 954f8ec2; a later pre-push race was integrated at 2484fdb7, preserving the disjoint resource-catalogue correction as well as documentation, native-shutdown and schema-diagnostic deliveries. Regenerated planning/LLMS, location evidence and clean-source Graphify; repeated final integration gates and signed delivery are recorded on EVE-257. Jonathan's 2026-11-17 option B removes the attribution-only push hold while preserving model-specific credit and his sign-off. |
+| Complete kernel/platform acceptance | Upcoming / open | In-process alias isolation does not prove distributed fencing, durable registry reconstruction, external executable isolation, native behavior or production activation. EVE-257 is not marked Done. |
+
+The first runtime aggregate omitted the disposable PostgreSQL environment and
+failed ten connection checks; that run is not a passing gate. Both subsequent
+full fixture-backed verifications passed without skipping tests or changing
+thresholds; latest-main integration evidence remains separately recorded.
+One stale test-suite rationale fingerprint was automatically pruned, not accepted
+as new debt or claimed as semantic remediation. Graphify Cloud memory and the
+MCP gateway were unavailable; local source/graph and the connected Linear tool
+supplied evidence instead. No API behavior was implemented from memory.
+
+Jonathan selected option B on 2026-11-17, through Puck and the
+[delivery relay](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a):
+auto-added `Amp-Thread-ID` and `Co-authored-by: Amp <amp@ampcode.com>` trailers
+are allowed on agent commits as a standing attribution-only exception. Keep
+the model-specific AI credit and Jonathan's sign-off. This does not waive
+verification or authorize production changes; EVE-257 remains In Progress.
+
+```mermaid
+flowchart LR
+    Red["EVE-257: alias regressions red"] --> Private["Private admitted manifests"]
+    Private --> Views["Detached caller and authority views"]
+    Views --> Scope["Original-key dependent-first disposal"]
+    Scope --> Gates["Latest-main full verification"]
+    Gates --> Delivery["Signed delivery under option B attribution exception"]
+    Delivery --> Open["Broader kernel acceptance remains open"]
+```
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
@@ -798,6 +839,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 
 ### Curated evidence separate from capture
 
+- EVE-257, 2026-11-17, later-status: Batch 5 slice 1 preserves private admitted kernel manifests across register return values, fresh authority views and staged updates. Red-first public regressions reproduce missing-dependency bypass, renamed-scope leakage and retained authority replacement corruption: seven fail on unchanged production source while all 39 existing tests and three new controls pass. The private typed manifest copy and captured disposal key leave contracts, executable Layers and provider service values unchanged. Focused kernel/telemetry and two-dialect producer checks pass; final latest-main aggregate verification and signed delivery are recorded separately in the timeline and owning issue. EVE-257 remains In Progress; in-process alias isolation is not distributed fencing, durable registry reconstruction, production activation or complete platform acceptance. The historical issue capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-257#comment-b21e1a9b-d224-416a-bd29-a85d3e81ac38), [evidence](https://ampcode.com/threads/T-7fb29ae7-0008-4ec1-81c5-7078270fe066).
 - EVE-39, 2026-11-17, later-status: Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only; its prior red/green and signed delivery remain cited. Batch 4 slice 1 implements the approved EVE-40 A3 intent lifetime inside the executor: each policy inspection receives a disposable scalar view, never the decoded intent subsequently enforced. Restoring shared-intent behavior makes 14 of 17 public regressions fail, including deadline-0 deletion incorrectly succeeding; all 17 pass with isolation, and the focused execution/host/action-type suite passes 131 tests. Retained references across integrity waits and replay cannot rewrite timing, schedule, expected state/version or idempotency/approval bindings; live identity, policy and approval revocation remain fresh. Full gates and signed delivery evidence are recorded separately on EVE-39/EVE-40. EVE-39 remains Backlog; EVE-40 was already Done, and neither status is changed. This volatile in-process fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged. [evidence](https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc), [evidence](https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325), [evidence](https://linear.app/resnovas/issue/EVE-39#comment-b29e9dc6-13ad-4601-b816-2775d340b154), [evidence](https://linear.app/resnovas/issue/EVE-40#comment-f520561e-5fa6-4843-b0f3-5e8c70c885f1), [evidence](https://ampcode.com/threads/T-1d187d8d-5a8e-492a-b9f9-66786c3a790a).
 - EVE-60, 2026-11-17T15:28:28.416Z, later-status: Live issue and complete terminal comment page rechecked. Jonathan confirmed one-hour rotation at 15:27:19.582Z, conditional on automatic client renewal without disrupted actions; the separate 15:27:26.780Z Puck relay specifies UTC alignment, in-flight boundary and multi-epoch tests. This supersedes the historical lifetime-pending clause, not privacy/consent/protected-profile denial. The governed follow-up uses injected non-production fixture keys only; production, provisioning and real issuer/consent stores remain denied. Source/tests and exact-head aggregate/delivery evidence are recorded separately in the timeline and export guide. Frozen issue capture is unchanged; this is not a full live-source refresh or whole-issue acceptance. [evidence](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).
 - EVE-19, 2026-11-17T15:28:29.172Z, later-status: Live capability-study issue retains historical Done, not EVE-60 implementation acceptance. The later decision records the owner's hourly rotation with automatic trusted-issuer renewal, no user-visible failure or action replay/drop, and UTC boundary/multi-epoch tests. Only pseudonyms may leave the process with per-request opt-in and current consent/release; raw SDK headers remain forbidden. Dedicated server-only tenant/destination/purpose keys are design-authorized, not provisioned; production remains denied. The source capture stays historical and the later cited annotation supersedes only the lifetime-pending proposal. [evidence](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).

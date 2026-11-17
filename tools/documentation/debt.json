@@ -238,7 +238,7 @@
     {
       "id": "41c3ab56bf2a395d82f579ea9cf4fbe7eb1b4ed809b38bf6437aa155d81f0e59:0",
       "file": "tests/resources/src/resource.spec.ts",
-      "line": 1347,
+      "line": 1499,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -246,7 +246,7 @@
     {
       "id": "69377bfea153478c7c87a1b345200de1a6d5453aeaac39f677d44f858ead495e:0",
       "file": "tests/resources/src/resource.spec.ts",
-      "line": 1427,
+      "line": 1579,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -254,7 +254,7 @@
     {
       "id": "a4dc5ec6c1405590ea3e2e5cfcf7d3e372d658959fb6d1b183efd523b6e6fa0d:0",
       "file": "tests/resources/src/resource.spec.ts",
-      "line": 1552,
+      "line": 1704,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -568,14 +568,6 @@
       "file": "tests/runtime/src/kernel-runtime.spec.ts",
       "line": 41,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "464b515ab6b9a09a6735b92022389dbd5e8074bc3138d5ccdee980c4f67f3279:0",
-      "file": "tests/runtime/src/kernel-runtime.spec.ts",
-      "line": 152,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -1006,7 +998,7 @@
     {
       "id": "0faecc905683663adbb7477814b2a5124aa4ee4382f0aa41648657891ce84e54:0",
       "file": "tests/storage/src/marketplace.spec.ts",
-      "line": 182,
+      "line": 224,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
