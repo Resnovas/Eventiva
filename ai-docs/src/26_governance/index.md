@@ -1,5 +1,28 @@
 # Planning and source documentation governance
 
+The canonical house tooling JSDoc packet was accepted by Jonathan in
+`Resnovas/.github` PR 48 on 2026-11-17 at 14:35:04Z, commit
+`30c7ff08dd05dc492feb26fc42da9f2e8903bbda`. Eventiva's 13 synced tool copies
+must match that accepted render rather than accumulating local patches.
+The bounded sync uses immutable Eventiva base
+`416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`: unchanged executable ASTs,
+72 missing contracts and 15 rationale candidates resolved, five adequate
+scoped rationale candidates retained. Rebase onto
+`970e44851983a15ef8f2130c930ffafc15b0c129` preserves the intervening independent
+documentation and trusted-fingerprint batches: 338 to 251 global ledger
+identities. The scanner has zero missing contracts but 330 live review-only
+rationale candidates; neither count is strict-zero semantic acceptance.
+Read the authored checkpoint in `docs/documentation-standard.md` for actual
+dry-run/preview side effects and escaping/truncation limits. Verification uses
+renderer and AST checks rather than executing release commands. This packet changes no
+checker rule, gate, dependency, release configuration or application behavior;
+strict-zero documentation and broader platform acceptance remain separate.
+The directing owner explicitly ended the coordinator gate for this packet and
+authorized this lane's verified direct-main delivery after the human house
+merge. Record verification, delivery and asynchronous CI on EVE-22 and
+the documentation tracking parents EVE-13/EVE-261; distinguish pending results
+from executed evidence.
+
 Read `docs/planning/README.md`, `docs/planning/decisions.md` and `docs/planning/timeline.md` before changing approved platform plans or sequencing. The latest binding owner decision on the owning Linear issue governs until Markdown is synchronized. Record the source/date, distinguish proposals from approvals and code presence from executed evidence, and update Linear plus the affected repository plan/timeline/graph in the same delivery increment. Keep detailed contracts in their existing architecture/feature document. Missing access means a stale mirror and a reported blocker, never invented approval or issue state.
 
 Read `docs/documentation-standard.md` before editing TypeScript. Every function, callback/expression/arrow, method/accessor/constructor, class, interface and explicit callable signature needs useful attached JSDoc. Internal comments explain meaningful phases, invariants, security boundaries and non-obvious choices; pure expressions and trivial bodies do not need syntax narration. Document actual contracts, not hoped-for guarantees. Exclusions are limited to the documented history/vendor/generated paths and syntax without a local callable declaration. Tests, configs, examples and handwritten declarations are not exempt.

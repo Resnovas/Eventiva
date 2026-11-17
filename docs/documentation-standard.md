@@ -1,5 +1,41 @@
 # TypeScript documentation standard
 
+## Canonical house tooling checkpoint - 2026-11-17
+
+The 13 synced TypeScript tools under `tools/ci/`, `tools/dev/`,
+`tools/release/` and `tools/typecheck/` take their JSDoc from the canonical
+`Resnovas/.github/templates/tools/` sources. Jonathan accepted
+[house PR 48](https://github.com/Resnovas/.github/pull/48) at 14:35:04Z as
+[house commit 30c7ff08](https://github.com/Resnovas/.github/commit/30c7ff08dd05dc492feb26fc42da9f2e8903bbda).
+The Eventiva sync compares against immutable pre-packet main
+`416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`; the 13 rendered copies match
+accepted canonical source and preserve executable ASTs apart from redundant
+parentheses. No release script or application behavior is changed.
+
+The review distinguishes advisory coverage from enforced thresholds, validates
+configuration before release work, and documents actual command failures and
+workflow outputs. Stable release dry runs still build configured bundles and
+strip source maps without uploading them; release previews instead may write
+synthetic local Git state and workflow summary/output files. Neither is an
+unqualified read-only operation. Table-cell escaping covers pipes and LF/CRLF,
+not arbitrary Markdown; truncation appends its notice outside the retained-text
+limit; nightly versions handle both the first stable release and next patch.
+
+Exact prune-only remediation removes 87 accepted identities: 72 missing
+contracts and 15 rationale candidates. Five adequate review-only candidates
+remain: the renderer's breaking-marker replacement, two workflow output
+appenders, squash-message assembly and bounded-note truncation. Their attached
+contracts explain these small operations; no filler or classifier exception is
+added. The original base took global debt from 3,049 to 2,962 identities.
+Rebase onto `970e44851983a15ef8f2130c930ffafc15b0c129` uses its published
+trusted-fingerprint reconciliation and preserves both independent batches:
+this packet now takes 338 to 251 identities. All 72 remaining missing contracts
+are resolved, while 330 live rationale review candidates remain globally.
+No supplied candidate IDs are adopted and no ledger JSON is manually merged.
+This is not strict-zero semantic acceptance.
+See the [timeline](planning/timeline.md#house-tooling-jsdoc-sync---2026-11-17)
+and [backlog](planning/documentation-backlog.md) for bounded delivery evidence.
+
 Document the contract, purpose and important constraints of every editable Eventiva TypeScript function, method, class and interface with attached JSDoc (`/** ... */`). Include private code, callbacks, function expressions, arrows, overloads, constructors/accessors and callable type signatures. A name or parameter list is not a description. Explain what callers can rely on: ownership, validation, failures, authorization, lifetimes or deliberate absence of side effects, as applicable. Do not claim a guarantee that the implementation does not provide.
 
 Inside bodies, explain meaningful phases, invariants, security boundaries and non-obvious decisions. Comments explain why the implementation takes a step, not that an assignment assigns or a return returns. A pure expression or trivial straight-line body does not need invented internal narration. It still needs a useful contract. No code is grandfathered by its age or by being a test.

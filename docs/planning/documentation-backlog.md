@@ -210,7 +210,7 @@ Executed `DOCUMENTATION_BASE=b5837844e68a28e5031f76d60006b1d4728f20ba NX_SKIP_NX
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-338 remaining findings across 65 files: 72 mechanically missing JSDoc; 0 prose-review candidates; 266 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+251 remaining findings across 56 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 251 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -266,17 +266,8 @@ Executed `DOCUMENTATION_BASE=b5837844e68a28e5031f76d60006b1d4728f20ba NX_SKIP_NX
 | D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 0 | 0 | 15 |
 | D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
 | D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
-| D06 | [tools/ci/coverage-goal.ts](../../tools/ci/coverage-goal.ts) | 8 | 0 | 2 |
-| D06 | [tools/ci/flaky-tests.ts](../../tools/ci/flaky-tests.ts) | 9 | 0 | 0 |
-| D06 | [tools/dev/docs.ts](../../tools/dev/docs.ts) | 1 | 0 | 0 |
-| D06 | [tools/release/changelog-renderer.ts](../../tools/release/changelog-renderer.ts) | 5 | 0 | 1 |
-| D06 | [tools/release/changelogs.ts](../../tools/release/changelogs.ts) | 1 | 0 | 0 |
-| D06 | [tools/release/config.ts](../../tools/release/config.ts) | 8 | 0 | 3 |
-| D06 | [tools/release/nightly-version.ts](../../tools/release/nightly-version.ts) | 4 | 0 | 1 |
-| D06 | [tools/release/nightly.ts](../../tools/release/nightly.ts) | 13 | 0 | 3 |
-| D06 | [tools/release/preview.ts](../../tools/release/preview.ts) | 6 | 0 | 4 |
-| D06 | [tools/release/release-preview.ts](../../tools/release/release-preview.ts) | 6 | 0 | 3 |
-| D06 | [tools/release/release.ts](../../tools/release/release.ts) | 6 | 0 | 2 |
-| D06 | [tools/release/sourcemaps.ts](../../tools/release/sourcemaps.ts) | 3 | 0 | 1 |
-| D06 | [tools/typecheck/tests.ts](../../tools/typecheck/tests.ts) | 2 | 0 | 0 |
+| D06 | [tools/release/changelog-renderer.ts](../../tools/release/changelog-renderer.ts) | 0 | 0 | 1 |
+| D06 | [tools/release/nightly.ts](../../tools/release/nightly.ts) | 0 | 0 | 1 |
+| D06 | [tools/release/preview.ts](../../tools/release/preview.ts) | 0 | 0 | 2 |
+| D06 | [tools/release/release.ts](../../tools/release/release.ts) | 0 | 0 | 1 |
 <!-- documentation:inventory:end -->

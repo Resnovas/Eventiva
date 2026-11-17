@@ -155,6 +155,7 @@ flowchart TD
     D["EVE-252: distributed recovery evidence"] -.-> I
     DOC_A["D01 complete; D02 attachments complete"] --> DOC_B["D03: adapter packets current; SQL next"]
     DOC_B --> DOC_C["D04-D06: remaining documentation"]
+    HOUSE_DOC["House PR48 accepted; 13 tool copies synced"] --> DOC_C
     DOC_C --> DOC_D["D07: strict zero held on remaining debt and safe calibration"]
     DOC_D -.-> I
     click F "https://linear.app/resnovas/issue/EVE-244"
@@ -176,6 +177,24 @@ flowchart TD
 ## Acceptance ledger
 
 The authoritative detailed matrix remains [specification G01-G15](../architecture/modular-platform.md#14-hard-readiness-gates-and-acceptance-evidence-ledger) and the live [EVE-261](https://linear.app/resnovas/issue/EVE-261) packet. This lane has not executed platform acceptance and marks none of those rows passed. Each completed checkpoint must name commit, command/output, runtime/provider, negative control and remaining limits. In particular, native/UI, production security/ingestion and full platform integration are **not proven** by this governance change.
+
+## House tooling JSDoc sync - 2026-11-17
+
+| Step | State | Evidence and limits |
+| --- | --- | --- |
+| Canonical house JSDoc | Human accepted | Jonathan merged [house PR48](https://github.com/Resnovas/.github/pull/48) at 14:35:04Z as [30c7ff08](https://github.com/Resnovas/.github/commit/30c7ff08dd05dc492feb26fc42da9f2e8903bbda). House CI and smartcloud passed on the tested PR head. |
+| Thirteen Eventiva tooling copies | Source verified | Rendered from accepted templates against immutable pre-packet main `416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`; copies match canonical bytes, ASTs preserve behavior, no parse errors or scoped blocking JSDoc findings. |
+| Exact ledger prune and semantic review | Completed | Only 87 identities removed: 72 attachments and 15 rationale candidates. Five adequate scoped candidates and all unrelated debt remain. After two intervening batches, regenerate from `970e44851983a15ef8f2130c930ffafc15b0c129` and its published trusted-fingerprint reconciliation: 338 to 251. Zero missing contracts and 330 live rationale review candidates, not strict zero. No authored checker, suppression or acceptance-policy change. |
+| Eventiva local verification | Completed | Full `node --run verify` passed against the original base, `b5837844e68a28e5031f76d60006b1d4728f20ba`, `970e44851983a15ef8f2130c930ffafc15b0c129`, and final combined base `ded8c72a5958e7ccc26d8f08d3002cebb413c561`, using the approved disposable PostgreSQL fixture. Final run: 98 documentation fixtures, 95 resource/type-boundary fixtures, all 85 aggregate Nx tasks (63 cached), and three-project smoke plus 12 dependencies (12 cached) passed. Source/emitted boundaries have zero violations/cycles. Root `check` and the trusted-base ratchet also passed; each fixture/network was removed. |
+| Eventiva direct-main delivery | This verified increment | Authorized after the human house merge. Exact pushed head and asynchronous CI status are recorded on [EVE-22](https://linear.app/resnovas/issue/EVE-22), [EVE-13](https://linear.app/resnovas/issue/EVE-13) and [EVE-261](https://linear.app/resnovas/issue/EVE-261); local verification is not remote CI success. |
+| Remaining D03-D07 and product acceptance | Upcoming / held | This is partial D06 remediation. It does not complete EVE-22, strict global documentation, runtime integration, production release or any native/device gate. |
+
+Semantic scope and the retained-candidate rationale are in the
+[documentation standard](../documentation-standard.md#canonical-house-tooling-checkpoint---2026-11-17).
+Canonical Markdown remains the source; no AsciiDoc pointers or historical
+example edits are introduced. The directing owner ended the coordinator gate
+for this packet and authorized this lane to verify and ship only the accepted
+copies after the human house merge.
 
 ## Anchor-confirmation planning resolution - 2026-11-17
 
