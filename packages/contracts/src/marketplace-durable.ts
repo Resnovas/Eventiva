@@ -60,6 +60,7 @@ export type MarketplaceAuditEvent = typeof MarketplaceAuditEvent.Type;
 export class MarketplaceOperatorPolicy extends Context.Tag('@eventiva/contracts/MarketplaceOperatorPolicy')<
     MarketplaceOperatorPolicy,
     {
+        /** Recheck this caller's operator authority for the exact exchange scope, including identical retries. */
         readonly authorize: (
             caller: CallerIdentity,
             operation: 'provision' | 'revoke' | 'audit' | 'process',
@@ -68,15 +69,20 @@ export class MarketplaceOperatorPolicy extends Context.Tag('@eventiva/contracts/
     }
 >() {}
 export const MarketplaceOperatorPolicyDeny = Layer.succeed(MarketplaceOperatorPolicy, {
+    /** Refuse operator operations until a trusted live policy is composed. */
     authorize: () => Effect.fail(new MarketplaceFailure({ reason: 'denied' })),
 });
 
 type OperatorContext = Caller | CurrentTenant | MarketplaceOperatorPolicy;
+/** Tenant-routed control plane for classified references and grants, independent of participant read/stage authority. */
 export class MarketplaceAdministration extends Context.Tag('@eventiva/contracts/MarketplaceAdministration')<
     MarketplaceAdministration,
     {
+        /** Atomically provision an immutable reference and grant under a retry-safe request and live operator checks. */
         readonly provision: (input: ProvisionExchange) => Effect.Effect<void, MarketplaceFailure, OperatorContext>;
+        /** Revoke the scoped participant grant with request deduplication and fresh operator authorization. */
         readonly revoke: (input: RevokeParticipant) => Effect.Effect<void, MarketplaceFailure, OperatorContext>;
+        /** Release only bounded classified audit metadata for an authorized exchange scope. */
         readonly audit: (
             input: MarketplaceAuditQuery
         ) => Effect.Effect<ReadonlyArray<MarketplaceAuditEvent>, MarketplaceFailure, OperatorContext>;
@@ -111,9 +117,11 @@ export type SettleExchange = typeof SettleExchange.Type;
 export class MarketplaceOutbox extends Context.Tag('@eventiva/contracts/MarketplaceOutbox')<
     MarketplaceOutbox,
     {
+        /** Lease due local intent with a fresh fence after operator and classified-reference authorization; absence is not delivery. */
         readonly claim: (
             input: ClaimExchange
         ) => Effect.Effect<ExchangeClaim | undefined, MarketplaceFailure, OperatorContext | MarketplaceAuthority>;
+        /** Record local completion or retry against the exact lease fence, reauthorizing completed retries as well. */
         readonly settle: (
             input: SettleExchange
         ) => Effect.Effect<void, MarketplaceFailure, OperatorContext | MarketplaceAuthority>;

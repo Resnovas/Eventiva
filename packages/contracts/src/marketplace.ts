@@ -30,7 +30,12 @@ export const ExchangeScope = Schema.Struct({
     purpose: Schema.NonEmptyTrimmedString.pipe(Schema.maxLength(100)),
 })
     .annotations(strict)
-    .pipe(Schema.filter((scope) => scope.ownerTenant !== scope.recipientTenant));
+    .pipe(
+        Schema.filter(
+            /** Require an exchange to cross tenant identities rather than describe an internal transfer. */ (scope) =>
+                scope.ownerTenant !== scope.recipientTenant
+        )
+    );
 export type ExchangeScope = typeof ExchangeScope.Type;
 export const ExchangeAction = Schema.Literal('read', 'stage');
 export type ExchangeAction = typeof ExchangeAction.Type;
@@ -51,7 +56,11 @@ export const SnapshotReference = Schema.Struct({
     sourceRecord: Schema.UUID,
     sourceVersion: Version,
     classification: SecurityProfile.pipe(
-        Schema.filter((profile) => profile === 'sensitive' || profile === 'restricted')
+        Schema.filter(
+            /** Admit only classified references; neither baseline publication nor vault release is represented here. */ (
+                profile
+            ) => profile === 'sensitive' || profile === 'restricted'
+        )
     ),
 }).annotations(strict);
 export type SnapshotReference = typeof SnapshotReference.Type;
@@ -79,9 +88,11 @@ export const ExchangeIntent = Schema.Struct({
 }).annotations(strict);
 export type ExchangeIntent = typeof ExchangeIntent.Type;
 
+/** Closed failure categories that can cross the marketplace boundary without disclosing classified context. */
 interface MarketplaceFailureFields {
     readonly reason: 'invalid' | 'denied' | 'conflict' | 'unavailable' | 'disabled' | 'trust-unapproved';
 }
+/** Construct a yieldable marketplace error without leaking the vendor's generic constructor into declarations. */
 const FailureBase: new (
     fields: MarketplaceFailureFields
 ) => Cause.YieldableError & MarketplaceFailureFields & { readonly _tag: 'MarketplaceFailure' } =
@@ -104,6 +115,7 @@ export const marketplaceFlag = {
 export class MarketplaceAuthority extends Context.Tag('@eventiva/contracts/MarketplaceAuthority')<
     MarketplaceAuthority,
     {
+        /** Verify live release authority for this exact classified reference and action; success never releases its payload. */
         readonly authorize: (
             caller: CallerIdentity,
             snapshot: SnapshotReference,
@@ -112,15 +124,21 @@ export class MarketplaceAuthority extends Context.Tag('@eventiva/contracts/Marke
     }
 >() {}
 export const MarketplaceAuthorityDeny = Layer.succeed(MarketplaceAuthority, {
+    /** Deny classified metadata release until independent trusted authority is supplied. */
     authorize: () => Effect.fail(new MarketplaceFailure({ reason: 'denied' })),
 });
 
 /** Backend-only transaction capability. No raw tenant SQL or canonical-record fetch/write capability. */
 export interface MarketplaceTransaction {
+    /** Read the routed tenant's current grant inside the serialization boundary shared with revocation. */
     readonly grant: (id: string) => Effect.Effect<ParticipantGrant | undefined, MarketplaceFailure>;
+    /** Read an immutable classified reference, not the underlying private record. */
     readonly snapshot: (id: string) => Effect.Effect<SnapshotReference | undefined, MarketplaceFailure>;
+    /** Look up an existing command for exact replay/conflict validation before staging another intent. */
     readonly intent: (command: string) => Effect.Effect<ExchangeIntent | undefined, MarketplaceFailure>;
+    /** Persist local pending intent within the owning transaction; this does not establish a remote commitment. */
     readonly insertIntent: (intent: ExchangeIntent) => Effect.Effect<void, MarketplaceFailure>;
+    /** Stage local processing alongside its intent so either both commit or neither does. */
     readonly enqueue: (intent: ExchangeIntent) => Effect.Effect<void, MarketplaceFailure>;
 }
 /** Must serialize live grant checks with revocations and deduplication, committing intent + outbox atomically.
@@ -131,11 +149,14 @@ export interface MarketplaceTransaction {
 export class MarketplaceStore extends Context.Tag('@eventiva/contracts/MarketplaceStore')<
     MarketplaceStore,
     {
+        /** Run a tenant-bound callback with atomic intent/outbox writes and grant-revocation serialization. */
         readonly transaction: <A, E, R>(
+            /** Use only this transaction's reference/intent capabilities and trusted live policy checks, never external effects. */
             use: (transaction: MarketplaceTransaction) => Effect.Effect<A, E, R>
         ) => Effect.Effect<A, E | MarketplaceFailure, R>;
     }
 >() {}
 export const MarketplaceStoreUnavailable = Layer.succeed(MarketplaceStore, {
+    /** Reject admission without evaluating the callback when no durable marketplace store is composed. */
     transaction: () => Effect.fail(new MarketplaceFailure({ reason: 'unavailable' })),
 });

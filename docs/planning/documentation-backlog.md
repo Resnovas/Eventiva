@@ -45,10 +45,29 @@ The pruning command uses `--base 87a82c9a3d1229f9a306230dfb5ebf268f9170bb --upda
 
 Executed before delivery: `pnpm nx run-many -t lint typecheck --projects=@eventiva/contracts --parallel=1` passed package lint/typecheck plus build; `DOCUMENTATION_BASE=87a82c9a3d1229f9a306230dfb5ebf268f9170bb node --run check` passed, including 84 documentation fixtures and offline consistency. `node --run verify`, under the approved disposable PostgreSQL 17 fixture with random run-only credentials, exited zero: 85 Nx lint/typecheck/test/build/parity tasks, zero source/declaration boundary violations, and smoke for all three projects plus 12 dependencies. The fixture and network were removed. An earlier contracts-suite run without PostgreSQL failed with connection refused; the full configured rerun passed, including that suite, without weakening tests. Android export is not native-device execution. Token equivalence and exact prune assertions passed for every reserved file. No UI behavior changed. Delivery commits and asynchronous exact-head CI are linked from the tracking issues rather than represented here as already passed.
 
+## Second partial D01 semantic checkpoint - 2026-11-17
+
+This packet starts from delivered immutable main `22c13a08a76ffc0efc2077c0404a37ab90950fc4`. The coordinator released these eight contract sources and the shared evidence/generated window for sequential delivery. Documentation resolves 119 missing attachments and six retained rationale candidates; checker corrections are zero. Each reviewed file has zero live findings and its parsed noncomment TypeScript terminal kind/text sequence matches that base exactly. Rationale comments explain actual boundaries rather than satisfying a word-count threshold. This remains partial D01, not complete contracts/schema remediation.
+
+| Reviewed contract source | Semantic evidence and boundary | Ledger removals |
+| --- | --- | --- |
+| `hook.ts` | Subscription authorization, feed cursor/retention bounds, delivery leases and committed-fact provenance remain distinct from originating mutation authority. `KernelSnapshot` carries module/version/state, not the separate live generation pin. | 19 attachments |
+| `inventory.ts` | Validate the whole registry before advertising any action; reject unsupported protection profiles instead of silently publishing a partial catalogue. Provider formats retain object-only tool inputs while scalar result schemas remain valid. | 19 attachments, 5 rationale |
+| `json-schema.ts` | Conservative portable schema compilation rejects unsupported annotations/shapes; safe own-property definition avoids prototype setters without widening the accepted vocabulary. | 10 attachments, 1 rationale |
+| `marketplace-durable.ts` | Tenant-bound persistence joins the existing storage transaction owner; durable provider methods do not authorize marketplace operations. | 8 attachments |
+| `marketplace.ts` | Admission, custody, listing and installation contracts keep independent caller, protection, trust and tenant boundaries. Persistence is not permission. | 14 attachments |
+| `storage.ts` | Replay, deadline, lock, lease, transaction and outbox contracts preserve exact wire values and one atomic owner; no external provider execution is implied. | 26 attachments |
+| `trust.ts` | Evidence verification and replay consumption enforce separate one-use, audience and lifetime constraints; trust does not replace independent key/decryption gates. | 15 attachments |
+| `ui-module.ts` | Viewer context is resolved lazily in the authorized screen boundary; portable declarations contain data rather than executable UI or ambient caller state. | 8 attachments |
+
+The exact prune is 4,009 to 3,884 identities: 3,087 missing attachments and 797 retained rationale candidates. It removes only this packet's 125 accepted identities. Resource/schema source work is staged as a later sequential packet and is not included here. Completed: semantic review, exact-token proof, unchanged checker fixtures (47/47), uncached contracts/schema package lint/typecheck/build (6/6) and approved-fixture contracts/schema tests (2/2 targets); the eight-file contracts packet also passed all 405 contract tests before resource/schema edits. Current: full repository verification and clean-source graph delivery against the immutable base. Upcoming: resource/schema D01 packet, then D02-D06 and D07 strict-zero acceptance. No source-semantic unknown was established in this packet. Exact commits and asynchronous CI evidence are recorded on [EVE-13](https://linear.app/resnovas/issue/EVE-13) and [EVE-261](https://linear.app/resnovas/issue/EVE-261), not inferred from local checks.
+
+Executed before the second packet's delivery: `DOCUMENTATION_BASE=22c13a08a76ffc0efc2077c0404a37ab90950fc4 node --run verify` exited zero under the approved disposable PostgreSQL 17 fixture. Root checks passed; all 85 Nx lint/typecheck/test/build/parity tasks passed (18 cache hits); source and emitted declaration boundaries reported zero violations/cycles; all three smoke targets and 12 dependencies passed. The fixture/network were removed. Exact token and prune assertions passed. Clean-source Graphify generation and its separate signed commit follow source commitment; CI is asynchronous, not a local verification claim. The first delivered head's final CI rollup also completed successfully, including [Code Quality](https://github.com/Resnovas/Eventiva/actions/runs/44075216962); release jobs were skipped, not deployed.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-4009 remaining findings across 123 files: 3206 mechanically missing JSDoc; 0 prose-review candidates; 803 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3884 remaining findings across 115 files: 3087 mechanically missing JSDoc; 0 prose-review candidates; 797 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -73,15 +92,7 @@ Executed before delivery: `pnpm nx run-many -t lint typecheck --projects=@eventi
 | D04 | [apps/server/src/status.ts](../../apps/server/src/status.ts) | 3 | 0 | 0 |
 | D04 | [apps/server/tests/backend.spec.ts](../../apps/server/tests/backend.spec.ts) | 12 | 0 | 1 |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 37 | 0 | 16 |
-| D01 | [packages/contracts/src/hook.ts](../../packages/contracts/src/hook.ts) | 19 | 0 | 0 |
-| D01 | [packages/contracts/src/inventory.ts](../../packages/contracts/src/inventory.ts) | 19 | 0 | 5 |
-| D01 | [packages/contracts/src/json-schema.ts](../../packages/contracts/src/json-schema.ts) | 10 | 0 | 1 |
-| D01 | [packages/contracts/src/marketplace-durable.ts](../../packages/contracts/src/marketplace-durable.ts) | 8 | 0 | 0 |
-| D01 | [packages/contracts/src/marketplace.ts](../../packages/contracts/src/marketplace.ts) | 14 | 0 | 0 |
 | D01 | [packages/contracts/src/resource.ts](../../packages/contracts/src/resource.ts) | 48 | 0 | 8 |
-| D01 | [packages/contracts/src/storage.ts](../../packages/contracts/src/storage.ts) | 26 | 0 | 0 |
-| D01 | [packages/contracts/src/trust.ts](../../packages/contracts/src/trust.ts) | 15 | 0 | 0 |
-| D01 | [packages/contracts/src/ui-module.ts](../../packages/contracts/src/ui-module.ts) | 8 | 0 | 0 |
 | D03 | [packages/integrations/formatjs/src/i18n.ts](../../packages/integrations/formatjs/src/i18n.ts) | 3 | 0 | 1 |
 | D03 | [packages/integrations/openfeature-client/src/flags.ts](../../packages/integrations/openfeature-client/src/flags.ts) | 14 | 0 | 0 |
 | D03 | [packages/integrations/openfeature-server/src/flags.ts](../../packages/integrations/openfeature-server/src/flags.ts) | 14 | 0 | 0 |

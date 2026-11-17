@@ -28,18 +28,20 @@ export const Quantity = Schema.Number.pipe(Schema.int(), Schema.between(1, Numbe
 export const Version = Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_SAFE_INTEGER));
 export type JsonValue =
     null | boolean | number | string | ReadonlyArray<JsonValue> | { readonly [key: string]: JsonValue };
-export const JsonValue: Schema.Schema<JsonValue> = Schema.suspend(() =>
-    Schema.Union(
-        Schema.Null,
-        Schema.Boolean,
-        Schema.JsonNumber,
-        Schema.String,
-        Schema.Array(JsonValue),
-        Schema.Record({ key: Schema.String, value: JsonValue })
-    )
+export const JsonValue: Schema.Schema<JsonValue> = Schema.suspend(
+    /** Resolve recursive JSON containers lazily while excluding nonfinite numbers and non-JSON values. */ () =>
+        Schema.Union(
+            Schema.Null,
+            Schema.Boolean,
+            Schema.JsonNumber,
+            Schema.String,
+            Schema.Array(JsonValue),
+            Schema.Record({ key: Schema.String, value: JsonValue })
+        )
 );
 export const Json: Schema.Schema<JsonValue, string> = Schema.parseJson(JsonValue);
 
+/** Sanitized storage operation and optional bounded failure reason; raw driver errors do not cross this port. */
 interface StorageFailureFields {
     readonly operation: string;
     readonly reason?:
@@ -54,25 +56,30 @@ interface StorageFailureFields {
         | 'identity-link-collision'
         | 'identity-audit-tenant-mismatch';
 }
+/** Identify the rejected optimistic operation and its recoverable conflict category without database diagnostics. */
 interface ConflictFields {
     readonly id: string;
     readonly reason: 'stale' | 'illegal-transition' | 'expired' | 'unavailable' | 'duplicate' | 'input-changed';
 }
+/** Explain a routing refusal without granting access to the requested tenant database. */
 interface RoutingDeniedFields {
     readonly reason: string;
 }
 
 // Exact constructors keep the vendor's open generic out of emitted public declarations.
+/** Construct the exact yieldable storage failure shape exported by this package. */
 const storageFailureBase: new (
     fields: StorageFailureFields
 ) => Cause.YieldableError & StorageFailureFields & { readonly _tag: 'StorageFailure' } = Data.TaggedError(
     'StorageFailure'
 )<StorageFailureFields>;
+/** Construct a yieldable storage conflict without exposing the vendor's open error generic. */
 const conflictBase: new (
     fields: ConflictFields
 ) => Cause.YieldableError & ConflictFields & { readonly _tag: 'StorageConflict' } = Data.TaggedError(
     'StorageConflict'
 )<ConflictFields>;
+/** Construct a routing denial whose fields carry no database capability. */
 const routingDeniedBase: new (
     fields: RoutingDeniedFields
 ) => Cause.YieldableError & RoutingDeniedFields & { readonly _tag: 'RoutingDenied' } = Data.TaggedError(
@@ -81,7 +88,9 @@ const routingDeniedBase: new (
 
 /** Diagnostics contain module-owned identifiers only, never database errors or rejected input. */
 export class StorageFailure extends storageFailureBase {}
+/** An optimistic, expiry or deduplication conflict that the caller must resolve before retrying. */
 export class Conflict extends conflictBase {}
+/** Tenant admission failed; no routed storage service is supplied by this error. */
 export class RoutingDenied extends routingDeniedBase {}
 
 /** A queued command is an intent, never evidence of a confirmed allocation. */
@@ -96,12 +105,14 @@ export const GuardedCommand = Schema.Struct({
 export type GuardedCommand = typeof GuardedCommand.Type;
 export const IntentOutcome = Schema.Literal('pending', 'confirmed', 'rejected', 'expired');
 
+/** Required server-side integrity capabilities; device storage cannot satisfy this durable port. */
 export interface Capabilities {
     readonly transactions: true;
     readonly compareAndSet: true;
     readonly appendOnlyLedger: true;
     readonly device: false;
 }
+/** Tenant-local operational record with optimistic version, state-machine state and optional expiry lease. */
 export interface RecordValue {
     readonly id: string;
     readonly state: string;
@@ -109,11 +120,13 @@ export interface RecordValue {
     readonly payload: JsonValue;
     readonly leaseUntil: number | null;
 }
+/** Stable scoped idempotency identity plus canonical input digest used to reject changed-input replays. */
 export interface CommitRequest {
     /** Caller/action/version scope is part of the key, not hidden database state. */
     readonly key: string;
     readonly inputHash: string;
 }
+/** JSON-only mutation result and its receipt, persisted atomically for subsequent replay. */
 export interface CommitResult {
     readonly output: JsonValue;
     readonly receipt: JsonValue;
@@ -125,13 +138,18 @@ export class Storage extends Context.Tag('@eventiva/contracts/Storage')<
     {
         readonly capabilities: Capabilities;
         readonly ready: Effect.Effect<void, StorageFailure>;
+        /** Commit the supplied effect atomically, rolling back its storage writes on failure, defect or interruption. */
         readonly transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | StorageFailure, R>;
+        /** Serialize by scoped key, reject changed input and persist result plus receipt; replay never reruns execute. */
         readonly commit: <E, R>(
             request: CommitRequest,
             execute: Effect.Effect<CommitResult, E, R>
         ) => Effect.Effect<CommitResult & { readonly replayed: boolean }, E | StorageFailure | Conflict, R>;
+        /** Insert a new tenant-local record, rejecting an existing identity rather than overwriting it. */
         readonly create: (record: RecordValue) => Effect.Effect<void, StorageFailure | Conflict>;
+        /** Read the routed tenant's record or return absence; no cross-tenant lookup is available. */
         readonly get: (id: string) => Effect.Effect<RecordValue | undefined, StorageFailure>;
+        /** Check current version/state, deadline and lease under serialization, then apply an allowed transition and increment version. */
         readonly compareAndSet: (
             command: GuardedCommand,
             next: string,
@@ -139,26 +157,33 @@ export class Storage extends Context.Tag('@eventiva/contracts/Storage')<
             machine: Readonly<Record<string, ReadonlyArray<string>>>,
             leaseUntil?: number
         ) => Effect.Effect<RecordValue, StorageFailure | Conflict>;
+        /** Initialize positive integer stock and its opening ledger entry atomically; this is not an upsert. */
         readonly stock: (id: string, capacity: number) => Effect.Effect<void, StorageFailure>;
+        /** Read recorded available stock; callers must explicitly expire old reservations when current expiry reclamation is required. */
         readonly available: (id: string) => Effect.Effect<number, StorageFailure>;
+        /** Reclaim expired holds, then atomically reserve positive available quantity until a future expiry and append its ledger delta. */
         readonly reserve: (
             id: string,
             resource: string,
             quantity: number,
             expiresAt: number
         ) => Effect.Effect<void, StorageFailure | Conflict>;
+        /** Confirm or release a still-pending unexpired reservation; release restores stock and records the quantity delta. */
         readonly settle: (
             id: string,
             outcome: 'confirmed' | 'released'
         ) => Effect.Effect<void, StorageFailure | Conflict>;
         readonly expire: Effect.Effect<void, StorageFailure>;
+        /** Append exact integer payment units once per event; identical replay succeeds and changed payment data conflicts. */
         readonly reconcile: (
             event: string,
             payment: string,
             currency: string,
             minorUnits: string
         ) => Effect.Effect<'applied' | 'replayed', StorageFailure | Conflict>;
+        /** Persist a JSON command for later processing, never execute an external effect in the originating transaction. */
         readonly enqueue: (id: string, command: JsonValue) => Effect.Effect<void, StorageFailure>;
+        /** Persist a JSON receipt once per identifier; identical replay succeeds but different receipt content fails. */
         readonly audit: (id: string, receipt: JsonValue) => Effect.Effect<void, StorageFailure>;
     }
 >() {}
@@ -173,6 +198,7 @@ export class CurrentTenant extends Context.Tag('@eventiva/contracts/CurrentTenan
 export class TenantRouter extends Context.Tag('@eventiva/contracts/TenantRouter')<
     TenantRouter,
     {
+        /** Reauthorize tenant access even on route reuse, providing only that scope's Storage and authenticated CurrentTenant. */
         readonly run: <A, E, R>(
             tenant: TenantId,
             effect: Effect.Effect<A, E, R | Storage | CurrentTenant>

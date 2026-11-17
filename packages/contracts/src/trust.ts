@@ -56,7 +56,12 @@ export const TrustKeyVersion = Schema.Struct({
     dekVersion: Version,
 })
     .annotations(strict)
-    .pipe(Schema.filter((v) => v.signingAuthority.toLowerCase() !== v.encryptionAuthority.toLowerCase()));
+    .pipe(
+        Schema.filter(
+            /** Keep signing and encryption authorities distinct even when UUID casing differs. */ (v) =>
+                v.signingAuthority.toLowerCase() !== v.encryptionAuthority.toLowerCase()
+        )
+    );
 export type TrustKeyVersion = typeof TrustKeyVersion.Type;
 
 export const TrustRequest = Schema.Struct({
@@ -102,14 +107,17 @@ export const TrustFailureReason = Schema.Literal(
     'assurance',
     'vault'
 );
+/** Identify the failing independent trust gate using bounded reasons rather than verifier internals or key material. */
 interface TrustFailureFields {
     readonly gate: TrustGate;
     readonly reason: typeof TrustFailureReason.Type;
 }
+/** Construct an exact yieldable trust error while keeping vendor constructor generics private. */
 const TrustFailureBase: new (fields: TrustFailureFields) => Cause.YieldableError &
     TrustFailureFields & {
         readonly _tag: 'TrustFailure';
     } = Data.TaggedError('TrustFailure');
+/** Safe trust denial or unavailability; never evidence that a key or plaintext was released. */
 export class TrustFailure extends TrustFailureBase {}
 
 /** Success is a live verified observation, not acceptance of caller-presented booleans.
@@ -118,11 +126,16 @@ export class TrustFailure extends TrustFailureBase {}
  * measured assurance; broker verifies current custody/key policy. No port releases a key.
  */
 export interface TrustVerifier {
+    /** Produce this port's live verified evidence for the exact request and explicit freshness/assurance policy. */
     readonly verify: (request: TrustRequest, policy: TrustPolicy) => Effect.Effect<TrustEvidence, TrustFailure>;
 }
+/** Independent identity/delegation verifier, not a resource-permission or custody authority. */
 export class IdentityGate extends Context.Tag('@eventiva/contracts/IdentityGate')<IdentityGate, TrustVerifier>() {}
+/** Independent exact-purpose resource-permission verifier; identity evidence alone cannot satisfy it. */
 export class ResourceGate extends Context.Tag('@eventiva/contracts/ResourceGate')<ResourceGate, TrustVerifier>() {}
+/** Independent measured-workload assurance verifier; metadata claims alone are insufficient. */
 export class WorkloadGate extends Context.Tag('@eventiva/contracts/WorkloadGate')<WorkloadGate, TrustVerifier>() {}
+/** Independent current custody/key-policy verifier that returns evidence, never a usable key. */
 export class BrokerGate extends Context.Tag('@eventiva/contracts/BrokerGate')<BrokerGate, TrustVerifier>() {}
 
 /** Atomically consume a nonce once for the exact request, after all checks. Return only an
@@ -131,7 +144,10 @@ export class BrokerGate extends Context.Tag('@eventiva/contracts/BrokerGate')<Br
  */
 export class TrustReplay extends Context.Tag('@eventiva/contracts/TrustReplay')<
     TrustReplay,
-    { readonly consume: (request: TrustRequest, policy: TrustPolicy) => Effect.Effect<string, TrustFailure> }
+    {
+        /** Consume the exact request nonce atomically after verification, returning only its opaque audit receipt. */
+        readonly consume: (request: TrustRequest, policy: TrustPolicy) => Effect.Effect<string, TrustFailure>
+    }
 >() {}
 
 /** Metadata only: there is deliberately no key, plaintext, handle, or usable release grant. */
@@ -151,18 +167,23 @@ export type TrustPreflight = typeof TrustPreflight.Type;
 /** Safe wiring placeholder, not a production verifier. Missing ports also fail unavailable. */
 export const TrustUnavailable = Layer.mergeAll(
     Layer.succeed(IdentityGate, {
+        /** Fail identity verification closed until a trusted verifier is composed. */
         verify: () => Effect.fail(new TrustFailure({ gate: 'identity', reason: 'unavailable' })),
     }),
     Layer.succeed(ResourceGate, {
+        /** Refuse resource evidence rather than treating missing policy as permission. */
         verify: () => Effect.fail(new TrustFailure({ gate: 'resource', reason: 'unavailable' })),
     }),
     Layer.succeed(WorkloadGate, {
+        /** Refuse workload assurance without an independently verified measurement. */
         verify: () => Effect.fail(new TrustFailure({ gate: 'workload', reason: 'unavailable' })),
     }),
     Layer.succeed(BrokerGate, {
+        /** Refuse custody evidence without a live trusted broker verifier. */
         verify: () => Effect.fail(new TrustFailure({ gate: 'broker', reason: 'unavailable' })),
     }),
     Layer.succeed(TrustReplay, {
+        /** Never claim nonce consumption when no approved replay store exists. */
         consume: () => Effect.fail(new TrustFailure({ gate: 'replay', reason: 'unavailable' })),
     })
 );

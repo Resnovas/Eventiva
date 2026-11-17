@@ -35,7 +35,13 @@ export const HookModuleIdentity = Schema.Struct({
 export const HookPin = Schema.Struct({
     tenant: TenantId,
     // Serving pins require a verified active/ready generation; positivity alone is NOT that verification.
-    owner: HookModuleIdentity.pipe(Schema.filter((identity) => identity.generation > 0)),
+    owner: HookModuleIdentity.pipe(
+        Schema.filter(
+            /** Exclude non-serving generation zero; provenance and readiness still require independent verification. */ (
+                identity
+            ) => identity.generation > 0
+        )
+    ),
     hook: Name,
     revision: Version,
 }).annotations(strict);
@@ -77,7 +83,13 @@ export const HookObservation = Schema.Union(
         step: Schema.NullOr(Name),
     })
         .annotations(strict)
-        .pipe(Schema.filter((value) => (value.kind === 'step') === (value.step !== null))),
+        .pipe(
+            Schema.filter(
+                /** Require a step name only for step observations, never for whole-execution observations. */ (
+                    value
+                ) => (value.kind === 'step') === (value.step !== null)
+            )
+        ),
     Schema.Struct({
         kind: Schema.Literal('domain.change'),
         identity: HookModuleIdentity,
@@ -128,7 +140,13 @@ export const HookDeclaration = Schema.Struct({
     capacity: Schema.Int.pipe(Schema.between(1, 10_000)),
 })
     .annotations(strict)
-    .pipe(Schema.filter((d) => d.capability.kind === 'observation' || d.target === 'declarative'));
+    .pipe(
+        Schema.filter(
+            /** Keep additive action requests declarative; executable callbacks receive observation authority only. */ (
+                d
+            ) => d.capability.kind === 'observation' || d.target === 'declarative'
+        )
+    );
 export type HookDeclaration = typeof HookDeclaration.Type;
 
 /** Provider-neutral requirements, NOT attestation, broker evidence or authority to decrypt. */
@@ -150,9 +168,11 @@ export const hookReleaseRequirements = (event: HookEvent) =>
         grantsDecryption: false,
     }) as const;
 
+/** Bounded admission or release refusal without rejected declaration data or policy details. */
 export class HookDenied extends Schema.TaggedError<HookDenied>()('HookDenied', {
     reason: Schema.Literal('disabled', 'invalid', 'duplicate', 'unavailable', 'policy-denied'),
 }) {}
+/** Safe durable-journal, transaction or lease failure; no database diagnostics or event payloads escape. */
 export class HookOutboxFailure extends Schema.TaggedError<HookOutboxFailure>()('HookOutboxFailure', {
     reason: Schema.Literal(
         'unavailable',
@@ -164,6 +184,7 @@ export class HookOutboxFailure extends Schema.TaggedError<HookOutboxFailure>()('
         'transaction-active'
     ),
 }) {}
+/** Opaque observer failure that cannot retain callback causes or released metadata. */
 export class HookObserverFailure extends Schema.TaggedError<HookObserverFailure>()('HookObserverFailure', {}) {}
 
 /** Trusted internal policy, never supplied by a plugin. Recheck live grants and provider evidence on EVERY retry.
@@ -172,6 +193,7 @@ export class HookObserverFailure extends Schema.TaggedError<HookObserverFailure>
 export class HookReleasePolicy extends Context.Tag('@eventiva/contracts/HookReleasePolicy')<
     HookReleasePolicy,
     {
+        /** Recheck exact event/pin binding, live grants and required provider evidence on every delivery attempt. */
         readonly authorize: (
             declaration: HookDeclaration,
             event: HookEvent,
@@ -180,6 +202,7 @@ export class HookReleasePolicy extends Context.Tag('@eventiva/contracts/HookRele
     }
 >() {}
 export const HookReleaseDeny = Layer.succeed(HookReleasePolicy, {
+    /** Refuse metadata release when no trusted live release policy is composed. */
     authorize: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
 });
 
@@ -215,20 +238,26 @@ export const HookDeliveryState = Schema.Literal('pending', 'running', 'retry', '
 export class HookOutbox extends Context.Tag('@eventiva/contracts/HookOutbox')<
     HookOutbox,
     {
+        /** Atomically stage minimized event facts and exact observer pins inside the originating transaction, rejecting overflow or changed replay. */
         readonly stage: (
             event: HookEvent,
             observers: ReadonlyArray<HookDeclaration>
         ) => Effect.Effect<void, HookOutboxFailure>;
+        /** Lease a due stream head under a fence; adapters must decide eligibility using authoritative time after serialization. */
         readonly claim: (
             declaration: HookDeclaration,
             now: number
         ) => Effect.Effect<HookClaim | undefined, HookOutboxFailure>;
+        /** Settle only the matching lease fence; identical settlement replay is safe and terminal outcomes unblock the stream. */
         readonly settle: (claim: HookClaim, settlement: HookSettlement) => Effect.Effect<void, HookOutboxFailure>;
     }
 >() {}
 export const HookOutboxUnavailable = Layer.succeed(HookOutbox, {
+    /** Reject staging rather than substitute a volatile production outbox. */
     stage: () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })),
+    /** Report unavailable durable storage rather than pretend the delivery queue is empty. */
     claim: () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })),
+    /** Refuse to acknowledge delivery without persisting its fenced settlement. */
     settle: () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' })),
 });
 
@@ -238,10 +267,12 @@ export const HookOutboxUnavailable = Layer.succeed(HookOutbox, {
 export class HookOperatorPolicy extends Context.Tag('@eventiva/contracts/HookOperatorPolicy')<
     HookOperatorPolicy,
     {
+        /** Authorize metadata inspection or redrive of an exact pin using live host-only operator policy. */
         readonly authorize: (pin: HookPin, operation: 'inspect' | 'replay') => Effect.Effect<void, HookDenied>;
     }
 >() {}
 export const HookOperatorDeny = Layer.succeed(HookOperatorPolicy, {
+    /** Deny operator inspection and redrive until independent host authority is supplied. */
     authorize: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
 });
 
@@ -254,9 +285,11 @@ export const HookDeadLetter = Schema.Struct({
 }).annotations(strict);
 export type HookDeadLetter = typeof HookDeadLetter.Type;
 
+/** Authorized dead-letter inspection and explicit retry-safe redrive, never an observer release grant. */
 export class HookRecovery extends Context.Tag('@eventiva/contracts/HookRecovery')<
     HookRecovery,
     {
+        /** List bounded dead-letter metadata after an exclusive delivery-key cursor; authorize the exact declaration before reading. */
         readonly deadLetters: (
             declaration: HookDeclaration,
             after: string | null,
@@ -281,6 +314,7 @@ export class HookRecovery extends Context.Tag('@eventiva/contracts/HookRecovery'
 export class HookChangeFeed extends Context.Tag('@eventiva/contracts/HookChangeFeed')<
     HookChangeFeed,
     {
+        /** Page committed tenant facts after an exclusive commit-order cursor; an empty page retains the supplied cursor. */
         readonly read: (
             after: number,
             limit: number

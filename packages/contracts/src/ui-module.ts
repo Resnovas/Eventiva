@@ -26,7 +26,11 @@ const Version = Schema.String.pipe(Schema.pattern(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.
 // additional admission restriction, not as a JavaScript sandbox or sanitizer.
 const Text = Schema.String.pipe(
     Schema.maxLength(4096),
-    Schema.filter((text) => !/(?:javascript\s*:|<\s*script\b|\beval\s*\(|\bimport\s*\(|=>)/i.test(text))
+    Schema.filter(
+        /** Reject executable-looking text as an admission restriction, not as proof that arbitrary text is safe to execute. */ (
+            text
+        ) => !/(?:javascript\s*:|<\s*script\b|\beval\s*\(|\bimport\s*\(|=>)/i.test(text)
+    )
 );
 export const UiValue = Schema.Union(Text, Schema.Finite, Schema.Boolean, Schema.Null);
 export type UiValue = typeof UiValue.Type;
@@ -126,10 +130,15 @@ export class UiModuleFailure extends Schema.TaggedError<UiModuleFailure>()('UiMo
 export class UiPlatform extends Context.Tag('@eventiva/contracts/UiPlatform')<
     UiPlatform,
     {
+        /** Recheck active profile, module consent and revocation for this caller before admitting a declarative definition. */
         readonly admit: (definition: UiModuleDefinition) => Effect.Effect<void, UiModuleFailure, Caller>;
+        /** Decode the binding against its canonical action schema without executing it or granting invocation authority. */
         readonly checkInput: (binding: UiActionBinding) => Effect.Effect<void, UiModuleFailure, Caller>;
+        /** Dispatch through the authorized host with fresh identity, input, approval, audit and offline-policy checks. */
         readonly invoke: (binding: UiActionBinding) => Effect.Effect<void, UiModuleFailure, Caller>;
+        /** Evaluate current tenant/viewer visibility for this node rather than trusting declaration permission claims. */
         readonly visible: (module: string, node: UiNode) => Effect.Effect<boolean, UiModuleFailure, Caller>;
+        /** Read a field under live viewer masking; no protected plaintext release capability is implied. */
         readonly value: (module: string, field: string) => Effect.Effect<UiValue, UiModuleFailure, Caller>;
         readonly online: Effect.Effect<boolean>;
     }
@@ -144,8 +153,10 @@ export class UiPlatform extends Context.Tag('@eventiva/contracts/UiPlatform')<
 export class UiScreenContext extends Context.Tag('@eventiva/contracts/UiScreenContext')<
     UiScreenContext,
     {
+        /** Register lazy caller-bound screen capabilities for this scope; cleanup must not remove a replacement registration. */
         readonly mount: (screen: {
             readonly read: Effect.Effect<UiProjection, UiModuleFailure, Caller>;
+            /** Resolve a node against current authorized module state rather than invoking a retained stale projection. */
             readonly invoke: (node: string) => Effect.Effect<void, UiModuleFailure, Caller>;
         }) => Effect.Effect<void, UiModuleFailure, Caller | Scope.Scope>;
     }
