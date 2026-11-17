@@ -1,5 +1,7 @@
 # Central Resources
 
+Read `02_telemetry.md` and `docs/resource-telemetry.md` for actual public resource-operation spans, central sanitization and transaction ancestry. Read `03_process-recovery.md` and `docs/resource-process-recovery.md` for process-loss proof boundaries. Neither diagnostic spans nor local replay evidence clears production or native acceptance.
+
 EVE-258 is an isolated typed resource library increment, not server activation or completion of EVE-42/device storage. Read `docs/resources.md` for limits, values, options, tenant routing, migrations, conformance and failure handling. Existing schema/resource adaptation, export maps, root CI wiring, docgen and graph refresh remain coordinator-owned.
 
 Use contracts/resource for Resources, strict Field/Fields/ResourceDefinition schemas, Resource/ResourceValue/ResourceQuery, ResourceFailure, declareResource, contributeFields, validateDefinition, validateEvolution, canonicalDefinition and decodeResource. Features may not import privileged ResourceDriver/ResourceProvider, integrations, SQL, drivers or backend connections. Field algebra is closed; optional contributions preserve prior ownership and exact numeric module pins. Required fields remain required in types and decoding. Module/provider pins are independent of integer schema epochs.

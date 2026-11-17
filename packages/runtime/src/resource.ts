@@ -109,7 +109,7 @@ export const resourceRuntime = (
                         yield* recordId(id);
                         const row = yield* driver.get(resource.id, id);
                         return row ? yield* record(resource, row) : undefined;
-                    }),
+                    }).pipe(Effect.withSpan('resource.get', { captureStackTrace: false })),
                 query: (resource, query) =>
                     Effect.gen(function* () {
                         const definition = yield* resolve(resource, 'read');
@@ -134,7 +134,7 @@ export const resourceRuntime = (
                         }
                         const rows = yield* driver.query(definition, request);
                         return yield* Effect.forEach(rows, (row) => record(resource, row));
-                    }),
+                    }).pipe(Effect.withSpan('resource.query', { captureStackTrace: false })),
                 create: (resource, id, value) =>
                     Effect.gen(function* () {
                         const definition = yield* resolve(resource, 'write');
@@ -143,7 +143,7 @@ export const resourceRuntime = (
                         return yield* transaction(
                             driver.write(definition, id, 0, data).pipe(Effect.flatMap((row) => record(resource, row)))
                         );
-                    }),
+                    }).pipe(Effect.withSpan('resource.create', { captureStackTrace: false })),
                 update: (resource, id, revision, patch) =>
                     Effect.gen(function* () {
                         const definition = yield* resolve(resource, 'write');
@@ -159,18 +159,18 @@ export const resourceRuntime = (
                                 return yield* record(resource, yield* driver.write(definition, id, revision, value));
                             })
                         );
-                    }),
+                    }).pipe(Effect.withSpan('resource.update', { captureStackTrace: false })),
                 history: (resource, id) =>
                     Effect.gen(function* () {
                         yield* resolve(resource, 'history');
                         yield* recordId(id);
                         return yield* driver.history(resource.id, id);
-                    }),
+                    }).pipe(Effect.withSpan('resource.history', { captureStackTrace: false })),
                 transaction: (effect) =>
                     Effect.gen(function* () {
                         yield* check('*', 'transaction');
                         return yield* transaction(effect);
-                    }),
+                    }).pipe(Effect.withSpan('resource.transaction', { captureStackTrace: false })),
             });
         })
     );

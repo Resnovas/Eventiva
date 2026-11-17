@@ -19,9 +19,24 @@ import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
-import { Cause, ConfigProvider, Context, Effect, Either, Exit, FiberRef, Layer, Schema } from 'effect';
+import {
+    Cause,
+    Config,
+    ConfigProvider,
+    Context,
+    Deferred,
+    Effect,
+    Either,
+    Exit,
+    Fiber,
+    FiberRef,
+    Layer,
+    Ref,
+    Schema,
+} from 'effect';
 import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { HookDeclaration, HookEvent, HookOutboxFailure } from '@eventiva/contracts/hook';
+import { TelemetryRecord, TelemetrySink, TelemetrySinkFailure } from '@eventiva/contracts/observability';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { CurrentTenant, Storage, TenantRouter } from '@eventiva/contracts/storage';
 import {
@@ -49,6 +64,7 @@ import {
     resourceHookProvider,
 } from '@eventiva/integrations.sql/resource';
 import { resourceRuntime } from '@eventiva/runtime/resource';
+import { TelemetryControl, telemetryLayer } from '@eventiva/runtime/telemetry';
 import { durable } from '@eventiva/runtime/storage';
 import { Integrity } from '@eventiva/runtime/invocation';
 import { KernelAuthority, KernelError } from '@eventiva/contracts/module-policy';
@@ -696,6 +712,201 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 _tag: 'Left',
                             });
                             expect(yield* reactivated.history(extended, id(1))).toEqual(historical);
+                        })
+                    )
+                ),
+            20000
+        );
+
+        it.effect(
+            'real resource spans preserve correlation, redaction, failures and transaction atomicity',
+            () =>
+                withDatabase(
+                    dialect,
+                    auth(
+                        Effect.gen(function* () {
+                            const resource = yield* base();
+                            yield* migrateResources(dialect, tenant, [resource], policy);
+                            const provider = yield* resourceProvider(dialect, tenant, identity, [resource]);
+                            const api = yield* bind(provider);
+                            const rejected = yield* Layer.build(
+                                resourceRuntime(provider, () => Effect.fail(denied('DENIAL_CANARY')))
+                            );
+                            const deniedApi = Context.get(rejected, Resources);
+                            const records = yield* Ref.make<ReadonlyArray<TelemetryRecord>>([]);
+                            const messages = {
+                                'resource.fixture': 'Resource consumer.',
+                                'resource.get': 'Read resource.',
+                                'resource.query': 'Query resources.',
+                                'resource.create': 'Create resource.',
+                                'resource.update': 'Update resource.',
+                                'resource.history': 'Read resource history.',
+                                'resource.transaction': 'Resource transaction.',
+                            };
+                            const telemetry = telemetryLayer({ messages, attributes: {} }).pipe(
+                                Layer.provide(
+                                    Layer.succeed(TelemetrySink, {
+                                        write: (entry) => Ref.update(records, (all) => [...all, entry]),
+                                        flush: Effect.void,
+                                    })
+                                )
+                            );
+                            yield* Effect.gen(function* () {
+                                yield* api.transaction(
+                                    Effect.gen(function* () {
+                                        yield* api.create(resource, id(1), { ...data, name: 'VALUE_CANARY' });
+                                        yield* api.update(resource, id(1), 1, { seats: 9 });
+                                        expect((yield* api.get(resource, id(1)))?.value.seats).toBe(9);
+                                        expect(yield* api.query(resource, { limit: 10 })).toHaveLength(1);
+                                        expect(yield* api.history(resource, id(1))).toHaveLength(2);
+                                    })
+                                );
+                                expect(yield* Effect.either(deniedApi.get(resource, id(1)))).toMatchObject({
+                                    _tag: 'Left',
+                                    left: { reason: 'denied' },
+                                });
+                                expect(yield* Effect.either(api.get(resource, 'INVALID_ID_CANARY'))).toMatchObject({
+                                    _tag: 'Left',
+                                });
+                                expect(
+                                    yield* Effect.either(api.update(resource, id(1), 1, { seats: 5 }))
+                                ).toMatchObject({
+                                    _tag: 'Left',
+                                    left: { reason: 'conflict' },
+                                });
+                                expect(
+                                    yield* Effect.either(
+                                        api.transaction(
+                                            Effect.gen(function* () {
+                                                yield* api.create(resource, id(2), data);
+                                                yield* provider.storage.enqueue('ROLLBACK_CANARY', {
+                                                    secret: 'OUTBOX_CANARY',
+                                                });
+                                                return yield* Effect.fail('ROLLBACK_CANARY');
+                                            })
+                                        )
+                                    )
+                                ).toEqual(Either.left('ROLLBACK_CANARY'));
+                                const started = yield* Deferred.make<void>();
+                                const pending = yield* Effect.fork(
+                                    api.transaction(
+                                        Effect.gen(function* () {
+                                            yield* api.create(resource, id(3), data);
+                                            yield* Deferred.succeed(started, undefined);
+                                            return yield* Effect.never;
+                                        })
+                                    )
+                                );
+                                yield* Deferred.await(started);
+                                expect(Exit.isInterrupted(yield* Fiber.interrupt(pending))).toBe(true);
+                            }).pipe(
+                                Effect.withSpan('resource.fixture', { captureStackTrace: false }),
+                                Effect.provide(telemetry)
+                            );
+
+                            const spans = (yield* Ref.get(records)).filter((entry) => entry.signal === 'span');
+                            const root = spans.find((entry) => entry.code === 'resource.fixture');
+                            expect(root).toBeDefined();
+                            expect(new Set(spans.map((entry) => entry.traceId)).size).toBe(1);
+                            const transactions = spans.filter((entry) => entry.code === 'resource.transaction');
+                            expect(transactions.map((entry) => entry.outcome).sort()).toEqual([
+                                'failed',
+                                'failed',
+                                'succeeded',
+                            ]);
+                            const committed = transactions.find((entry) => entry.outcome === 'succeeded');
+                            expect(committed?.parentSpanId).toBe(root?.spanId);
+                            expect(
+                                spans
+                                    .filter((entry) => {
+                                        if (
+                                            !entry.code.startsWith('resource.') ||
+                                            entry.code === 'resource.transaction'
+                                        )
+                                            return false;
+                                        let parent = spans.find((candidate) => candidate.spanId === entry.parentSpanId);
+                                        while (parent) {
+                                            if (parent.spanId === committed?.spanId) return true;
+                                            parent = spans.find(
+                                                (candidate) => candidate.spanId === parent?.parentSpanId
+                                            );
+                                        }
+                                        return false;
+                                    })
+                                    .map((entry) => entry.code)
+                                    .sort()
+                            ).toEqual([
+                                'resource.create',
+                                'resource.get',
+                                'resource.history',
+                                'resource.query',
+                                'resource.update',
+                            ]);
+                            expect(
+                                spans
+                                    .filter((entry) => entry.code === 'resource.get')
+                                    .map((entry) => entry.outcome)
+                                    .sort()
+                            ).toEqual(['failed', 'failed', 'succeeded']);
+                            expect(
+                                spans
+                                    .filter((entry) => entry.code === 'resource.update')
+                                    .map((entry) => entry.outcome)
+                                    .sort()
+                            ).toEqual(['failed', 'succeeded']);
+                            expect(spans.filter((entry) => entry.code === 'resource.create')).toHaveLength(3);
+                            for (const entry of spans) expect(entry.attributes).toEqual({});
+                            const serialized = JSON.stringify(spans);
+                            for (const secret of [
+                                'CANARY',
+                                resource.id,
+                                id(1),
+                                id(2),
+                                id(3),
+                                tenant,
+                                caller.subject,
+                                caller.session,
+                            ])
+                                expect(serialized).not.toContain(secret);
+                            expect((yield* api.get(resource, id(1)))?.revision).toBe(2);
+                            expect(yield* api.history(resource, id(1))).toHaveLength(2);
+                            for (const missing of [id(2), id(3)]) {
+                                expect(yield* api.get(resource, missing)).toBeUndefined();
+                                expect(yield* api.history(resource, missing)).toEqual([]);
+                            }
+                            const sql = yield* SqlClient.SqlClient;
+                            expect(yield* sql`SELECT id FROM command_outbox`).toEqual([]);
+
+                            // The existing exporter boundary must not turn a committed write into failure.
+                            const unavailable = telemetryLayer({ messages, attributes: {} }).pipe(
+                                Layer.provide(
+                                    Layer.succeed(TelemetrySink, {
+                                        write: () => Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
+                                        flush: Effect.void,
+                                    })
+                                )
+                            );
+                            yield* Effect.gen(function* () {
+                                expect((yield* api.create(resource, id(4), data)).revision).toBe(1);
+                                expect(Exit.isFailure(yield* Effect.exit((yield* TelemetryControl).flush))).toBe(true);
+                                expect((yield* (yield* TelemetryControl).health).failed).toBeGreaterThan(0);
+                            }).pipe(Effect.provide(unavailable));
+                            expect(yield* api.history(resource, id(4))).toHaveLength(1);
+                            yield* Ref.set(records, []);
+                            const disabled = telemetryLayer(
+                                { messages, attributes: {} },
+                                Config.succeed({ enabled: false, capacity: 256, timeoutMs: 1000 })
+                            ).pipe(
+                                Layer.provide(
+                                    Layer.succeed(TelemetrySink, {
+                                        write: (entry) => Ref.update(records, (all) => [...all, entry]),
+                                        flush: Effect.void,
+                                    })
+                                )
+                            );
+                            yield* api.create(resource, id(5), data).pipe(Effect.provide(disabled));
+                            expect(yield* api.history(resource, id(5))).toHaveLength(1);
+                            expect(yield* Ref.get(records)).toEqual([]);
                         })
                     )
                 ),
