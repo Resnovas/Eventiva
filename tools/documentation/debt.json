@@ -1404,46 +1404,6 @@
       "rule": "missing-jsdoc"
     },
     {
-      "id": "705f0e60a96cafa0b43d1bf9764244d88e91a15f5036855795722b324faac522:0",
-      "file": "packages/contracts/src/caller.ts",
-      "line": 58,
-      "kind": "FunctionType",
-      "name": "canInvoke",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "45f4536389804e8d0be867da2746212e4fb033554c126546a5b8ddbb449e425c:0",
-      "file": "packages/contracts/src/caller.ts",
-      "line": 59,
-      "kind": "FunctionType",
-      "name": "check",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "0d504acb397e2c1b621819e44f2ac3349409a72e24c0b28e272d56a87bf8db63:0",
-      "file": "packages/contracts/src/flags.ts",
-      "line": 77,
-      "kind": "FunctionType",
-      "name": "evaluate",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "f27c176d49af2923ec0e32d44145327969ccddbc3bfdb66ad31bee914e06af65:0",
-      "file": "packages/contracts/src/flags.ts",
-      "line": 91,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "4b9f1833bfa20051c7f6f91a5ced87c5d511e198813fb9a57b1c4663f2797f93:0",
-      "file": "packages/contracts/src/flags.ts",
-      "line": 95,
-      "kind": "ArrowFunction",
-      "name": "evaluate",
-      "rule": "missing-jsdoc"
-    },
-    {
       "id": "de3f542dfa619e8381d81e91affd6b4726c09795f4c18abf1875a2416b586624:0",
       "file": "packages/contracts/src/hook.ts",
       "line": 38,
@@ -1593,86 +1553,6 @@
       "line": 284,
       "kind": "FunctionType",
       "name": "read",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "a725cc2f1c3ebd0e5710be14aeba931943094477afc563a7ae85bd13a13ef88c:0",
-      "file": "packages/contracts/src/i18n.ts",
-      "line": 51,
-      "kind": "FunctionType",
-      "name": "format",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "f06cac432b255f20e0032deede320d9e89c964b9bec4d731a0ac7e06392e670e:0",
-      "file": "packages/contracts/src/i18n.ts",
-      "line": 75,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "e5f33c3820f1ddd792cd0a99cd934a095cf2dd47a358c414c25bc212f3d17fee:0",
-      "file": "packages/contracts/src/i18n.ts",
-      "line": 75,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "179dfc472421d133485300db19abe871ef89ea7586ddf3ea3a29c910352d4e26:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 72,
-      "kind": "InterfaceDeclaration",
-      "name": "StoredIdentity",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "2906e6b854b6a388a264c00352958cf810b7b6c316f139c5815700f3c5e4a334:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 85,
-      "kind": "FunctionType",
-      "name": "get",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "a5f95c4a71eb1a2bf6a736fe51c38daf7c038ce308cb03678d6c49eb6a309d48:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 95,
-      "kind": "FunctionType",
-      "name": "teams",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "03e10a3e31b5cd4cbd31c128b7893aa4c007d3987c7bea3db9fc27f4230ed709:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 96,
-      "kind": "FunctionType",
-      "name": "link",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "5ef6c51f1e8e8b5a95c6e8aa81dcf8416f859076e7c85d63f4462df4a99948b8:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 97,
-      "kind": "FunctionType",
-      "name": "lookup",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "4fb6df49b1e7a0a03a04ab39f7f933bb34c3810ac2bef802a95eaf8ff9af1f82:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 98,
-      "kind": "FunctionType",
-      "name": "audit",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "b497a297ea8dabb283d6c31c6db4f0be7e40477f798602080c0b80a3fe88cb8b:0",
-      "file": "packages/contracts/src/identity.ts",
-      "line": 116,
-      "kind": "ArrowFunction",
-      "name": "stored",
       "rule": "missing-jsdoc"
     },
     {
@@ -1956,14 +1836,6 @@
       "rule": "missing-jsdoc"
     },
     {
-      "id": "2457b9231692a8c2576efffd47c1af3f5c89be45c22039fc6e8a5f640fb270f7:0",
-      "file": "packages/contracts/src/machine.ts",
-      "line": 24,
-      "kind": "ArrowFunction",
-      "name": "transition",
-      "rule": "missing-jsdoc"
-    },
-    {
       "id": "15f7c05c01d84ee92048321a0878b48c4b04a2d3e42a8423b0cb1052523cf0f2:0",
       "file": "packages/contracts/src/marketplace-durable.ts",
       "line": 63,
@@ -2137,86 +2009,6 @@
       "line": 140,
       "kind": "ArrowFunction",
       "name": "transaction",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "c15861db40c3e405a7e69e23d895f0c4a76734e0758e4af3dc1aec89c0564f5a:0",
-      "file": "packages/contracts/src/module-policy.ts",
-      "line": 53,
-      "kind": "ConstructorType",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "b283d7c3b386e888c591d9877ebd29c76680ee54e671384f880ebedb60790e24:0",
-      "file": "packages/contracts/src/module-policy.ts",
-      "line": 56,
-      "kind": "ClassDeclaration",
-      "name": "KernelError",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "2770c0e720b98921a72b847beb348191e08823c56d9ca3d331e1fbf8ed346a68:0",
-      "file": "packages/contracts/src/module-policy.ts",
-      "line": 62,
-      "kind": "FunctionType",
-      "name": "admit",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "924139802f2b89bf21d772edb3d58e5d31b6d67c2e04f60382c37769ac400ad4:0",
-      "file": "packages/contracts/src/module-policy.ts",
-      "line": 63,
-      "kind": "FunctionType",
-      "name": "authorize",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "3923060ffbfe527684e8d0b0b1fed63f8fcdb13c6f31dbe82562ea3fdc377946:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 28,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "b6ad6eda5c1b9e1880758f616c0d3de2dd2c18ed7d48d69094487990593e4865:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 29,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "3c14d0b36df62235bbeca65122f8f639543ca1653a28d30daefb9004f489bce4:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 48,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "af8b9787c9d1c83c95e3b796fd8233bcebee6995359186cceea3537cf7ba3d9e:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 54,
-      "kind": "InterfaceDeclaration",
-      "name": "TelemetrySinkFailureFields",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "d0ff5efff6c86b0c3297ba4825851fd4103d123f6557c3b064ab331600215848:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 59,
-      "kind": "ConstructorType",
-      "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "193d41a3105c1a55cba2641cd5eb3b732698525ed1f37e8364323c7b031535f8:0",
-      "file": "packages/contracts/src/observability.ts",
-      "line": 75,
-      "kind": "FunctionType",
-      "name": "write",
       "rule": "missing-jsdoc"
     },
     {
@@ -2665,14 +2457,6 @@
       "line": 408,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
-      "rule": "missing-jsdoc"
-    },
-    {
-      "id": "d1f97c3287be5353e096ba1d2e951ebd1a2ff44d9ca3956fb746ababda1676a1:0",
-      "file": "packages/contracts/src/security.ts",
-      "line": 29,
-      "kind": "ArrowFunction",
-      "name": "rank",
       "rule": "missing-jsdoc"
     },
     {

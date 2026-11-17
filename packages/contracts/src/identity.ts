@@ -69,6 +69,7 @@ export const records = {
 };
 export type IdentityKind = keyof typeof records;
 export type IdentityRecords = { readonly [K in IdentityKind]: Schema.Schema.Type<(typeof records)[K]> };
+/** A tenant identity record paired with the optimistic version required for a subsequent update. */
 export interface StoredIdentity<K extends IdentityKind> {
     readonly version: number;
     readonly value: IdentityRecords[K];
@@ -82,6 +83,7 @@ export class IdentityStore extends Context.Tag('@eventiva/contracts/IdentityStor
         readonly tenant: TenantId;
         /** Serialize policy refresh with revocations; participates in the SAME Storage.commit transaction. */
         readonly lock: Effect.Effect<void, StorageFailure>;
+        /** Read a typed identity by kind and key in the captured tenant; absence is not an authorization decision. */
         readonly get: <K extends IdentityKind>(
             kind: K,
             id: string
@@ -92,9 +94,13 @@ export class IdentityStore extends Context.Tag('@eventiva/contracts/IdentityStor
             value: IdentityRecords[K],
             expectedVersion: number | null
         ) => Effect.Effect<void, StorageFailure>;
+        /** Return teams containing this subject so policy can resolve current team-derived roles. */
         readonly teams: (subject: SubjectId) => Effect.Effect<ReadonlyArray<IdentityRecords['team']>, StorageFailure>;
+        /** Bind an exact issuer/subject pair to an active principal; conflicting existing links must fail. */
         readonly link: (external: FederatedSubject, subject: SubjectId) => Effect.Effect<void, StorageFailure>;
+        /** Resolve only the exact federated pair; missing links never fall back to email or display names. */
         readonly lookup: (external: FederatedSubject) => Effect.Effect<SubjectId | undefined, StorageFailure>;
+        /** Read recent tenant action receipts with a validated limit of 1 through 100, never cross-tenant receipts. */
         readonly audit: (limit: number) => Effect.Effect<ReadonlyArray<Receipt>, StorageFailure>;
     }
 >() {}
@@ -113,6 +119,7 @@ export const identityFlag = {
 const common = { version: 1, offline: 'online-only', sensitive: true, error: IdentityFailure } as const;
 const write = { ...common, sideEffect: 'write', risk: 'permission', approval: 'always' } as const;
 const expectedVersion = Schema.NullOr(Version);
+/** Pair a record codec with its optimistic version while preserving its decoded and encoded value types. */
 const stored = <A, I>(schema: Schema.Schema<A, I>) => Schema.Struct({ value: schema, version: Version });
 export const organizationGet = define('identity.organization.get', {
     ...common,

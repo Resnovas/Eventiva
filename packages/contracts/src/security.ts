@@ -26,6 +26,7 @@ import { Schema } from 'effect';
 export const SecurityProfile = Schema.Literal('baseline', 'sensitive', 'restricted', 'vault');
 export type SecurityProfile = typeof SecurityProfile.Type;
 
+/** Use the closed profile order as a protection rank; callers must supply a validated profile. */
 const rank = (profile: SecurityProfile): number => SecurityProfile.literals.indexOf(profile);
 
 /** True when `profile` gives less protection than `floor`. */

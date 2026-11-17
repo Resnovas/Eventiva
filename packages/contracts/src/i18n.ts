@@ -48,6 +48,7 @@ export class I18n extends Context.Tag('@eventiva/contracts/I18n')<
     I18n,
     {
         readonly locale: LocaleTag;
+        /** Interpolate ICU values in the active locale, falling back to the descriptor's canonical message. */
         readonly format: (message: MessageDescriptor, values?: MessageValues) => string;
     }
 >() {}
@@ -72,14 +73,17 @@ const ProfileVersion = Schema.Int.pipe(Schema.between(1, Number.MAX_SAFE_INTEGER
 /** A calendar date, not an activation timestamp or proof that a source is current. */
 const EffectiveDate = Schema.String.pipe(
     Schema.pattern(/^\d{4}-\d{2}-\d{2}$/),
-    Schema.filter((value) => {
-        const year = Number(value.slice(0, 4));
-        const month = Number(value.slice(5, 7));
-        const day = Number(value.slice(8, 10));
-        const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-        const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-        return year >= 1 && day >= 1 && day <= (days[month - 1] ?? 0);
-    })
+    Schema.filter(
+        /** Reject impossible Gregorian dates without treating the calendar date as a time-zone instant. */ (value) => {
+            // Calendar arithmetic avoids Date normalization accepting overflow days or remapping years below 100.
+            const year = Number(value.slice(0, 4));
+            const month = Number(value.slice(5, 7));
+            const day = Number(value.slice(8, 10));
+            const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+            const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            return year >= 1 && day >= 1 && day <= (days[month - 1] ?? 0);
+        }
+    )
 );
 
 /**

@@ -55,7 +55,9 @@ export class Caller extends Context.Tag('@eventiva/contracts/Caller')<Caller, Ca
 export class Authorizer extends Context.Tag('@eventiva/contracts/Authorizer')<
     Authorizer,
     {
+        /** Check current permission before input decoding; success grants no authority over an input target. */
         readonly canInvoke: (caller: CallerIdentity, action: ActionSpec) => Effect.Effect<void, Forbidden>;
+        /** Authorize the decoded target using live grants; retain the action's exact input type. */
         readonly check: <S extends ActionSpec>(
             caller: CallerIdentity,
             action: S,

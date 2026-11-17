@@ -74,6 +74,7 @@ export interface Evaluation {
 export class Flags extends Context.Tag('@eventiva/contracts/Flags')<
     Flags,
     {
+        /** Resolve one flag for this targeting context, returning its safe default when no provider can answer. */
         readonly evaluate: (flag: Flag, context?: EvaluationContext) => Effect.Effect<Evaluation>;
     }
 >() {}
@@ -88,9 +89,13 @@ export const safeDefault = (flag: Flag, reason = 'SAFE_DEFAULT'): Evaluation => 
 
 /** Orders sourced entries by precedence, highest first, keeping the given order within one source. */
 export const byPrecedence = <A extends { readonly source: FlagSource }>(entries: ReadonlyArray<A>): ReadonlyArray<A> =>
-    [...entries].sort((a, b) => FlagSource.literals.indexOf(a.source) - FlagSource.literals.indexOf(b.source));
+    [...entries].sort(
+        /** Compare only source rank so stable sorting preserves order among entries from the same source. */
+        (a, b) => FlagSource.literals.indexOf(a.source) - FlagSource.literals.indexOf(b.source)
+    );
 
 /** A `Flags` service that answers every flag with its safe default: tests, offline cold start, no provider. */
 export const FlagsSafeDefaults: Layer.Layer<Flags> = Layer.succeed(Flags, {
+    /** Ignore targeting when no provider is configured; the declaration remains the safe source of truth. */
     evaluate: (flag) => Effect.succeed(safeDefault(flag)),
 });

@@ -26,10 +26,29 @@ Every batch starts by reserving its exact files, reading the current implementat
 
 Independent modules may be remediated in parallel only under disjoint reservations. These are implementation sequencing packets, not deadlines or release approval. After every packet, run `node tools/documentation/ratchet.mjs --base HEAD --update-ledger` locally to **prune only**, review ledger removals and this generated table, then record exact commands/output and delivered commit on the tracking parent. CI must compare against its trusted event SHA rather than a candidate-chosen ref. Keep all existing lint, type, coverage, boundary, license and documentation gates.
 
+## Partial D01 semantic checkpoint - 2026-11-17
+
+This packet starts from immutable remote main `87a82c9a3d1229f9a306230dfb5ebf268f9170bb` under the central coordinator's exclusive eight-file reservation. It resolves 26 missing attachments and one retained rationale candidate through documentation, with zero checker corrections. All eight files have zero live findings; their comment-free TypeScript token kind/text sequences match that base exactly. This is partial D01 progress, not complete contracts/schema remediation or global compliance. D02-D07 remain upcoming after their prerequisite packets.
+
+| Reviewed contract source | Semantic evidence and boundary | Ledger removals |
+| --- | --- | --- |
+| `caller.ts` | Pre-decode permission discovery is distinct from post-decode target authorization; live grants apply to both. | 2 attachments |
+| `flags.ts` | Stable source-rank sorting preserves same-source order; the provider-free layer ignores targeting and returns the declared safe default. | 3 attachments |
+| `i18n.ts` | ICU formatting retains canonical fallback. Gregorian arithmetic rejects impossible calendar days without Date overflow normalization or years-below-100 remapping; a date is not an activation instant. | 2 attachments, 1 rationale |
+| `identity.ts` | The SQL implementation confirms optimistic versions, current team membership, exact case-sensitive federation lookup, collision denial and bounded tenant-checked receipt reads. Persistence does not replace provisioning authorization. | 7 attachments |
+| `machine.ts` | Edge validation does not mutate state or replace storage's atomic compare-and-set. | 1 attachment |
+| `module-policy.ts` | Exact error construction excludes arbitrary causes; provenance admission does not replace caller authorization for lifecycle operations. | 4 attachments |
+| `observability.ts` | Text predicates restrict terminal/directional control characters, attributes have a separate cardinality bound, and the composition-only sink keeps closed sanitized failures. The predicate is a single-return calculation, not a phased body needing invented narration. | 6 attachments |
+| `security.ts` | Protection rank uses only the validated closed profile order; no new classification or downgrade behavior. | 1 attachment |
+
+The pruning command uses `--base 87a82c9a3d1229f9a306230dfb5ebf268f9170bb --update-ledger`, not candidate HEAD: 178 files, 3,206 blocking findings, 854 live rationale candidates, zero violations. Retained debt is 4,009 identities: 3,206 attachments and 803 rationale candidates. Live candidates include 51 identities never admitted to the ledger. No source exception, exclusion change, heuristic activation or debt addition is included. Final verification and delivered commit/CI evidence are recorded on [EVE-13](https://linear.app/resnovas/issue/EVE-13) and [EVE-261](https://linear.app/resnovas/issue/EVE-261); pending execution is not a pass.
+
+Executed before delivery: `pnpm nx run-many -t lint typecheck --projects=@eventiva/contracts --parallel=1` passed package lint/typecheck plus build; `DOCUMENTATION_BASE=87a82c9a3d1229f9a306230dfb5ebf268f9170bb node --run check` passed, including 84 documentation fixtures and offline consistency. `node --run verify`, under the approved disposable PostgreSQL 17 fixture with random run-only credentials, exited zero: 85 Nx lint/typecheck/test/build/parity tasks, zero source/declaration boundary violations, and smoke for all three projects plus 12 dependencies. The fixture and network were removed. An earlier contracts-suite run without PostgreSQL failed with connection refused; the full configured rerun passed, including that suite, without weakening tests. Android export is not native-device execution. Token equivalence and exact prune assertions passed for every reserved file. No UI behavior changed. Delivery commits and asynchronous exact-head CI are linked from the tracking issues rather than represented here as already passed.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-4036 remaining findings across 131 files: 3232 mechanically missing JSDoc; 0 prose-review candidates; 804 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+4009 remaining findings across 123 files: 3206 mechanically missing JSDoc; 0 prose-review candidates; 803 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -54,20 +73,12 @@ Independent modules may be remediated in parallel only under disjoint reservatio
 | D04 | [apps/server/src/status.ts](../../apps/server/src/status.ts) | 3 | 0 | 0 |
 | D04 | [apps/server/tests/backend.spec.ts](../../apps/server/tests/backend.spec.ts) | 12 | 0 | 1 |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 37 | 0 | 16 |
-| D01 | [packages/contracts/src/caller.ts](../../packages/contracts/src/caller.ts) | 2 | 0 | 0 |
-| D01 | [packages/contracts/src/flags.ts](../../packages/contracts/src/flags.ts) | 3 | 0 | 0 |
 | D01 | [packages/contracts/src/hook.ts](../../packages/contracts/src/hook.ts) | 19 | 0 | 0 |
-| D01 | [packages/contracts/src/i18n.ts](../../packages/contracts/src/i18n.ts) | 2 | 0 | 1 |
-| D01 | [packages/contracts/src/identity.ts](../../packages/contracts/src/identity.ts) | 7 | 0 | 0 |
 | D01 | [packages/contracts/src/inventory.ts](../../packages/contracts/src/inventory.ts) | 19 | 0 | 5 |
 | D01 | [packages/contracts/src/json-schema.ts](../../packages/contracts/src/json-schema.ts) | 10 | 0 | 1 |
-| D01 | [packages/contracts/src/machine.ts](../../packages/contracts/src/machine.ts) | 1 | 0 | 0 |
 | D01 | [packages/contracts/src/marketplace-durable.ts](../../packages/contracts/src/marketplace-durable.ts) | 8 | 0 | 0 |
 | D01 | [packages/contracts/src/marketplace.ts](../../packages/contracts/src/marketplace.ts) | 14 | 0 | 0 |
-| D01 | [packages/contracts/src/module-policy.ts](../../packages/contracts/src/module-policy.ts) | 4 | 0 | 0 |
-| D01 | [packages/contracts/src/observability.ts](../../packages/contracts/src/observability.ts) | 6 | 0 | 0 |
 | D01 | [packages/contracts/src/resource.ts](../../packages/contracts/src/resource.ts) | 48 | 0 | 8 |
-| D01 | [packages/contracts/src/security.ts](../../packages/contracts/src/security.ts) | 1 | 0 | 0 |
 | D01 | [packages/contracts/src/storage.ts](../../packages/contracts/src/storage.ts) | 26 | 0 | 0 |
 | D01 | [packages/contracts/src/trust.ts](../../packages/contracts/src/trust.ts) | 15 | 0 | 0 |
 | D01 | [packages/contracts/src/ui-module.ts](../../packages/contracts/src/ui-module.ts) | 8 | 0 | 0 |

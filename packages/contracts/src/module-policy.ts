@@ -49,17 +49,20 @@ interface KernelErrorFields {
         | 'recovery-required';
 }
 
-// Constrain the vendor's open generic constructor so declarations retain the exact error contract.
+/** Constrain the vendor's open generic constructor so declarations retain the exact error contract. */
 const KernelErrorBase: new (
     fields: KernelErrorFields
 ) => Cause.YieldableError & KernelErrorFields & { readonly _tag: 'KernelError' } = Data.TaggedError('KernelError');
+/** Report a closed lifecycle/admission failure without leaking module configuration or arbitrary causes. */
 export class KernelError extends KernelErrorBase {}
 
 /** No permissive default. Admission verifies provenance, not just the manifest's self-assertion. */
 export class KernelAuthority extends Context.Tag('@eventiva/contracts/KernelAuthority')<
     KernelAuthority,
     {
+        /** Verify manifest provenance before kernel admission; self-declared trust is not evidence. */
         readonly admit: (manifest: KernelManifest) => Effect.Effect<void, KernelError>;
+        /** Recheck this caller's authority for the exact lifecycle operation and manifest; admission alone is insufficient. */
         readonly authorize: (
             caller: CallerIdentity,
             operation: LifecycleOperation,

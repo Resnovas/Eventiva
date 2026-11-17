@@ -21,6 +21,7 @@ import { Conflict } from './storage.ts';
 export const define = <const M extends Readonly<Record<string, ReadonlyArray<string>>>>(
     edges: M & { readonly [K in keyof M]: ReadonlyArray<keyof M & string> }
 ) => edges;
+/** Validate a declared edge without mutating state; storage must still enforce the transition atomically. */
 export const transition = <const M extends Readonly<Record<string, ReadonlyArray<string>>>>(
     machine: M,
     id: string,

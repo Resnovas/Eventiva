@@ -25,17 +25,24 @@ export const TelemetryRecord = Schema.Struct({
     code: Schema.String.pipe(Schema.maxLength(96), Schema.pattern(/^[a-z][a-z0-9._-]*$/)),
     text: Schema.String.pipe(
         Schema.maxLength(8192),
-        Schema.filter((text) =>
-            Array.from(text).every((character) => {
-                const code = character.codePointAt(0) ?? 0;
-                return (
-                    code === 10 ||
-                    (code >= 32 &&
-                        !(code >= 127 && code <= 159) &&
-                        !(code >= 0x2028 && code <= 0x202e) &&
-                        !(code >= 0x2066 && code <= 0x2069))
-                );
-            })
+        Schema.filter(
+            /** Permit multiline diagnostic text only when every code point meets the local wire restrictions. */ (
+                text
+            ) =>
+                Array.from(text).every(
+                    /** Reject terminal controls and directional formatting that can disguise diagnostic content. */ (
+                        character
+                    ) => {
+                        const code = character.codePointAt(0) ?? 0;
+                        return (
+                            code === 10 ||
+                            (code >= 32 &&
+                                !(code >= 127 && code <= 159) &&
+                                !(code >= 0x2028 && code <= 0x202e) &&
+                                !(code >= 0x2066 && code <= 0x2069))
+                        );
+                    }
+                )
         )
     ),
     profile: Schema.Literal('baseline', 'sensitive', 'restricted', 'vault'),
@@ -45,17 +52,23 @@ export const TelemetryRecord = Schema.Struct({
     attributes: Schema.Record({
         key: Schema.String.pipe(Schema.maxLength(96), Schema.pattern(/^[a-z][a-z0-9._-]*$/)),
         value: Schema.String.pipe(Schema.maxLength(96), Schema.pattern(/^[a-zA-Z0-9._-]*$/)),
-    }).pipe(Schema.filter((attributes) => Object.keys(attributes).length <= 16)),
+    }).pipe(
+        Schema.filter(
+            /** Bound wire metadata cardinality independently of each attribute's length constraint. */ (attributes) =>
+                Object.keys(attributes).length <= 16
+        )
+    ),
     durationMs: Schema.Number.pipe(Schema.between(0, Number.MAX_SAFE_INTEGER)),
     outcome: Schema.Literal('none', 'succeeded', 'failed'),
 });
 export type TelemetryRecord = typeof TelemetryRecord.Type;
 
+/** Closed sink failure categories safe to expose without paths, driver diagnostics or record contents. */
 interface TelemetrySinkFailureFields {
     readonly reason: 'configuration' | 'unavailable' | 'write' | 'flush' | 'timeout' | 'invalid-record';
 }
 
-// An exact constructor boundary keeps Data.TaggedError's open vendor generic out of emitted public declarations.
+/** Keep Data.TaggedError's open vendor generic out of emitted public declarations through an exact constructor. */
 const failureBase: new (
     fields: TelemetrySinkFailureFields
 ) => Cause.YieldableError & TelemetrySinkFailureFields & { readonly _tag: 'TelemetrySinkFailure' } = Data.TaggedError(
@@ -72,6 +85,7 @@ export class TelemetrySinkFailure extends failureBase {}
 export class TelemetrySink extends Context.Tag('@eventiva/contracts/TelemetrySink/v1')<
     TelemetrySink,
     {
+        /** Write one validated local record through the scoped sink; fail with a sanitized bounded reason. */
         readonly write: (record: TelemetryRecord) => Effect.Effect<void, TelemetrySinkFailure>;
         readonly flush: Effect.Effect<void, TelemetrySinkFailure>;
     }
