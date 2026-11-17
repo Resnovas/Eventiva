@@ -151,6 +151,10 @@ flowchart TD
     T["EVE-263: exact types and acyclic boundaries"] --> I
     N["EVE-16 / EVE-240: target and device evidence"] -.-> I
     D["EVE-252: distributed recovery evidence"] -.-> I
+    DOC_A["D01 complete; D02 attachments complete"] --> DOC_B["D03: adapter packets current; SQL next"]
+    DOC_B --> DOC_C["D04-D06: remaining documentation"]
+    DOC_C --> DOC_D["D07: strict zero held on remaining debt and safe calibration"]
+    DOC_D -.-> I
     click F "https://linear.app/resnovas/issue/EVE-244"
     click K "https://linear.app/resnovas/issue/EVE-257"
     click R "https://linear.app/resnovas/issue/EVE-258"
@@ -231,6 +235,31 @@ logs; passing local probes and final-D02 CI do not establish why they timed out.
 The diagnostics add evidence for future failures without retries, timeout
 inflation, assertion weakening or runtime changes. Existing platform dependency
 edges and production/native/UI acceptance gates remain unchanged.
+
+## Second D03 adapter checkpoint - 2026-11-17
+
+The coordinator returned the shared window at confirmed remote main
+`17631eaf5712d422376e5d3d2f0bbfd939773959`. Its EVE-250/251 source
+reconciliation is inherited, not reimplemented here; the unrelated EVE-34 packet
+is not imported. Tracking remains EVE-13/EVE-261. The
+[per-file backlog evidence](documentation-backlog.md#second-d03-flag-and-local-logger-checkpoint---2026-11-17)
+records the review and exact immutable-base accounting.
+
+| Step | Status | Evidence / remaining boundary |
+| --- | --- | --- |
+| First D03 packet and approved diagnostics | Delivered | Signed source `cad66393` and clean graph `285fc569`; passing local verification did not prevent a later CI timeout. |
+| PostHog flag adapters and local logger | Source and focused verification complete | Exact executable tokens, zero scoped findings, 52 attachments and three rationale improvements; all 22 affected uncached Nx tasks passed. |
+| Exact prune and combined verification | Completed local gate; signed delivery current | 3,062 retained identities: 2,368 attachments and 694 rationale. Uncached immutable-base verify passed all 85 Nx tasks, 89 documentation fixtures, 95 boundary/type fixtures and three smoke targets plus 12 dependencies; exact-head CI is separate. |
+| Remaining SQL adapters and D04-D06 | Upcoming | Five SQL sources reserved for documentation only; no production migrations, provider changes or dependencies are authorized. |
+| D07 strict zero | Held | Adequate retained rationale candidates still need a safe general classifier refinement; neither token equality nor the ratchet proves repository-wide compliance. |
+
+The first-D03 exact-head CI failed the contracts-suite opt-out invalid-profile
+child with `ETIMEDOUT`/`SIGTERM` after recording `bootstrap.failure`; its stdout
+summary had 142 characters and stderr was empty. Root cause and shutdown timing
+remain unproven. No timeout increase, retry, assertion change or runtime fix is
+part of this documentation packet. Puck assigned further root-cause work to a
+separate reserved lane; this lane stopped that investigation and supplied its
+evidence. Existing platform and production acceptance gates remain unchanged.
 
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage

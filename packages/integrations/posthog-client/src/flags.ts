@@ -31,10 +31,16 @@ import {
 
 /** What the provider needs from a PostHog client; `posthog-react-native`'s `PostHog` satisfies it. */
 export interface PostHogFlagClient {
+    /** Read a cached boolean or variant; undefined means this source cannot resolve the key. */
     readonly getFeatureFlag: (key: string) => boolean | string | undefined;
-    readonly onFeatureFlags: (callback: () => void) => () => void;
+    /** Subscribe to cache refreshes and return cleanup owned by the provider, not the client connection. */
+    readonly onFeatureFlags: (
+        /** Notify that cached evaluations may have changed; no flag payload is required. */
+        callback: () => void
+    ) => /** Detach this subscription without closing the shared PostHog client. */ () => void;
 }
 
+/** Preserve the requested default while signalling absence so first-match resolution can try another source. */
 const notFound = <T>(defaultValue: T, flagKey: string): ResolutionDetails<T> => ({
     value: defaultValue,
     reason: 'ERROR',
@@ -42,6 +48,7 @@ const notFound = <T>(defaultValue: T, flagKey: string): ResolutionDetails<T> => 
     errorMessage: `PostHog has no value for ${flagKey}`,
 });
 
+/** Report an unsupported value type without coercing it or replacing the caller's default. */
 const mismatch = <T>(defaultValue: T, flagKey: string): ResolutionDetails<T> => ({
     value: defaultValue,
     reason: 'ERROR',
@@ -55,18 +62,25 @@ export class PostHogClientProvider implements Provider {
     readonly metadata = { name: 'PostHogClientProvider' } as const;
     readonly events = new OpenFeatureEventEmitter();
     private readonly client: PostHogFlagClient;
-    private readonly unsubscribe: () => void;
+    private readonly unsubscribe: /** Detach this provider's refresh listener without closing the shared client. */ () => void;
 
+    /** Borrow a cached-flag client and own one refresh subscription until OpenFeature closes this provider. */
     constructor(client: PostHogFlagClient) {
         this.client = client;
-        this.unsubscribe = client.onFeatureFlags(() => this.events.emit(ProviderEvents.ConfigurationChanged));
+        this.unsubscribe = client.onFeatureFlags(
+            /** Invalidate OpenFeature's configuration view when PostHog updates its cached flags. */
+            () => this.events.emit(ProviderEvents.ConfigurationChanged)
+        );
     }
 
+    /** Detach the refresh subscription synchronously; the resolved promise satisfies OpenFeature's close protocol. */
     onClose(): Promise<void> {
+        // This provider borrows the client, so closing it must not shut down other users of that client.
         this.unsubscribe();
         return Promise.resolve();
     }
 
+    /** Resolve cached booleans and treat a served variant as enabled; unknown keys preserve the caller's default. */
     resolveBooleanEvaluation(flagKey: string, defaultValue: boolean): ResolutionDetails<boolean> {
         const value = this.client.getFeatureFlag(flagKey);
         if (value === undefined) return notFound(defaultValue, flagKey);
@@ -74,18 +88,22 @@ export class PostHogClientProvider implements Provider {
         return { value: typeof value === 'string' ? true : value, reason: 'TARGETING_MATCH' };
     }
 
+    /** Return only actual variant strings; distinguish absent keys from boolean values of the wrong type. */
     resolveStringEvaluation(flagKey: string, defaultValue: string): ResolutionDetails<string> {
         const value = this.client.getFeatureFlag(flagKey);
+        // Absence permits source fallback; a known boolean is a type mismatch, not a string variant.
         if (value === undefined) return notFound(defaultValue, flagKey);
         return typeof value === 'string'
             ? { value, variant: value, reason: 'TARGETING_MATCH' }
             : mismatch(defaultValue, flagKey);
     }
 
+    /** Reject numeric evaluation without reading the cache; PostHog flags expose only booleans and variants here. */
     resolveNumberEvaluation(flagKey: string, defaultValue: number): ResolutionDetails<number> {
         return mismatch(defaultValue, flagKey);
     }
 
+    /** Preserve the object default with a type error; this adapter does not interpret feature-flag payloads. */
     resolveObjectEvaluation<T>(flagKey: string, defaultValue: T): ResolutionDetails<T> {
         return mismatch(defaultValue, flagKey);
     }
