@@ -367,14 +367,18 @@ Jonathan/Puck ended central shared-output windows. Documentation batches now del
 | Canonical synced tools | Delivered independently | Human-merged house PR 48 supplies the normal 13-file render at Eventiva head `c39cfb4f`. Its separate 72 attachment and 15 rationale removals take 338 to 251; all 20 scoped candidates reviewed, five adequate candidates retained. |
 | Runtime and adapter rationale | Combined full serial verification passed; signed delivery current | Twenty sources receive 36 meaningful comments with all 41,353 parsed terminals unchanged. Exact prune removes 21 accepted identities, 246 to 225, without new debt; the independent trust input-isolation implementation pruned five other identities. Independent canonical sync and marketplace/resource/trust delivery through 6016e99d are preserved. All 98 documentation fixtures, 95 boundary/type fixtures, 85 aggregate Nx targets and smoke pass uncached against that immutable head; exact-head CI is separate. All five EVE-60 path holds are released. |
 | Bounded test-scaffolding correction | Combined full verification passed; signed delivery current | Semantic review confirms 28 registration-only suites and four type-assertion bodies have no separate implementation phase, including the new EVE-60 registration suite. Lexical import identity and conservative escape rejection clear exactly 32 false positives without changing TypeScript source; 24 accepted identities prune 225 to 201. Combined uncached verification through EVE-60 head d8b529c4 passes 102 documentation fixtures, 116 boundary/type fixtures, aggregate Nx targets and smoke. Final root/clean graph checks and exact-head CI are separate. |
-| Remaining live rationale / D07 | Upcoming | At EVE-60 head d8b529c4, all 306 live candidates across 50 files remain in scope, including 105 never ledgered. Exact accepted debt is 201 across 39 files. Do not activate strict mode before complete remediation/calibration and an empty strict scan. |
+| Application and boundary test rationale | Latest combined full verification passed; signed delivery current | All nineteen scoped candidates reviewed; fourteen comments resolve eleven live findings. After preserving independent EVE-35/EVE-39 changes through 355b1182, all 13,953 parsed terminals remain unchanged. Eight adequately contracted short bodies stay visible, not suppressed. Exact accepted debt prunes 192 to 188; checker corrections are zero. Latest full repeat passes 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (65 cached) and 15 smoke/dependency tasks (12 cached). The prior local EADDRINUSE startup failure remains recorded separately. |
+| Remaining live rationale / D07 | Upcoming | The current queue retains 300 candidates across 50 files, including 112 never ledgered; accepted debt is 188 across 39 files. Eight scoped adequate dispositions are recorded in the backlog, not removed from the queue. Do not activate strict mode before complete remediation/calibration and an empty strict scan. |
+
+The bounded-checker head 3bb0bb5a failed remote verification in the invalid-application-config subprocess, with its failure-exit boundary recorded at 1,041ms but termination at the ten-second timeout. Read the [actual CI evidence on EVE-261](https://linear.app/resnovas/issue/EVE-261#comment-1e674ce8): this differs from earlier late-import timing but is not an established cause. The aggregate failure is not a second independent defect. No timeout, retry or assertion changes belong to this documentation increment.
 
 ```mermaid
 flowchart LR
     Safe[Identity-independent source verification] --> Ship[Signed direct-main batch]
     Ship --> Identity[Trusted parser identity reconciliation]
     Identity --> Blocked[Nineteen documented source files]
-    Blocked --> Review[Complete live rationale review]
+    Blocked --> AppTests[Application and boundary rationale packet]
+    AppTests --> Review[Complete live rationale review]
     House[Canonical tooling sync] --> Strict[D07 strict zero and full verification]
     Review --> Strict
 ```

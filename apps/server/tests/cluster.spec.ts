@@ -101,6 +101,7 @@ describe('deployment profiles', /** Register topology validation tests without a
         /** Verify every exposed deployment setting reaches the upstream sharding configuration. */ () =>
             Effect.gen(
                 /** Decode an explicit scaled profile and compare its complete supported configuration mapping. */ function* () {
+                    // Distinct timing values and listen/advertised hosts expose swapped configuration mappings.
                     const profile = yield* Schema.decodeUnknown(DeploymentProfile)({
                         edition: 'community',
                         expectedRunners: 3,
@@ -210,6 +211,7 @@ describe('one authorized dispatch boundary', /** Register receiver authorization
             entityId({ ...caller, tenant: TenantId.make('0193a4f0-0000-7000-8000-000000000004') }, 'a:b')
         );
         expect(entityId({ ...caller, tenant: undefined }, 'a:b')).not.toBe(entityId(caller, 'a:b'));
+        // Distinct compute addresses do not establish a valid invocation; business intent is validated separately.
         expect(Either.isLeft(Schema.decodeUnknownEither(ClusterInvocation)({ ...request, intent: {} }))).toBe(true);
     });
 
@@ -423,6 +425,7 @@ describe('health observations, not availability promises', /** Register syntheti
                     const snapshot = (edition: 'cloud' | 'community') =>
                         Effect.gen(
                             /** Bind controlled observation services while retaining the real sharding service's other members. */ function* () {
+                                // Resample ownership for each layer so an earlier snapshot cannot hide later transitions.
                                 const owned = yield* Ref.get(owns);
                                 const layer = clusterStatus(
                                     yield* Schema.decodeUnknown(DeploymentProfile)({ edition, shards: 4 })

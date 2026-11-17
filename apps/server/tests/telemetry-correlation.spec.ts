@@ -492,6 +492,7 @@ const correlationAcceptance = () => {
                                         yield* (yield* TelemetryControl).flush;
                                         if ('enabled' in options) expect(records).toEqual([]);
                                         else {
+                                            // Flag-off privacy must hold with a live pipeline, not only with all export disabled.
                                             expect(records).toHaveLength(1);
                                             clean(records);
                                         }

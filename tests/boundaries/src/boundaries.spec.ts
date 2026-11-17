@@ -162,6 +162,7 @@ const filesUnder = (dir: string): ReadonlyArray<string> =>
     );
 
 describe('package hygiene', /** Verify portable package exports and historical-source isolation without importing the archive. */ () => {
+    // Per-manifest checks are vacuous if discovery misses a package, so pin the discovered package set too.
     const manifests = filesUnder(join(root, 'packages')).filter(
         /** Select owned package manifests, not arbitrary source JSON. */ (file) => file.endsWith('/package.json')
     );
@@ -230,6 +231,7 @@ describe('package hygiene', /** Verify portable package exports and historical-s
     });
 
     it('keeps the historical snapshots out of every production import', /** Reject archive references throughout active application and package source. */ () => {
+        // Archived source may legitimately retain historical imports; only active roots define this boundary.
         const sources = ['apps', 'packages'].flatMap(
             /** Enumerate active source roots only; historical fixtures are not production. */ (top) =>
                 filesUnder(join(root, top))
@@ -250,6 +252,7 @@ describe(
     { timeout: 120_000 },
     /** Verify browser dependency closure, tree shaking and native bytecode compatibility using real bundler/compiler output. */ () => {
         const out = join(root, 'tests/boundaries/test-output/bundle');
+        // One public-entry inventory prevents new exports escaping closure, tree-shaking or Hermes checks independently.
         const portable = ['contracts', 'schema'].flatMap(
             /** Discover all public portable subpaths so newly exported modules enter the portability checks. */ (
                 name

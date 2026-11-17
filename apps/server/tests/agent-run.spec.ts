@@ -103,6 +103,7 @@ const fixture = (options: FixtureOptions = {}) =>
                     Effect.suspend(
                         /** One synchronous map insertion models only the unique-id conflict, not SQL concurrency. */
                         () => {
+                            // Neither an injected failure nor a duplicate may mutate the acceptance map.
                             if (options.createError !== undefined) return Effect.fail(options.createError);
                             if (records.has(record.id))
                                 return Effect.fail(new Conflict({ id: record.id, reason: 'duplicate' }));
@@ -290,6 +291,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
         () =>
             Effect.gen(
                 /** Assert observable domain effects and output through the public run handle. */ function* () {
+                    // Observable domain writes distinguish real host dispatch from a model that merely echoes success.
                     const audit = yield* makeTestOnlyHarness(caller);
                     const host = Context.get(
                         yield* Layer.build(
@@ -405,6 +407,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
                         /** The second run intentionally omits every optional action constraint. */
                         (policy) => ({ ...policy, approval: 'none' as const })
                     );
+                    // This positive control detects a dispatcher that incorrectly requires every optional constraint.
                     const plain: AgentRunInput = {
                         ...input,
                         runId: '019b0000-0000-7000-8000-000000001002',
@@ -434,6 +437,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
                         /** Each constraint must independently reach the real host rather than be dropped by run dispatch. */
                         (policy) => ({ ...policy, approval: 'confirm' as const })
                     );
+                    // Change one otherwise-valid constraint per run so a dropped field would permit another write.
                     const constraints = [
                         { approvalId: 'missing' },
                         { deadline: now - 1 },
@@ -476,6 +480,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
                         /** Isolate permission revocation from the approval failures above. */
                         (policy) => ({ ...policy, approval: 'none' as const })
                     );
+                    // Remove approval requirements before revocation so an approval rejection cannot mask host denial.
                     yield* Ref.set(audit.authorization, { invoke: false, input: true });
                     const denied = { ...plain, runId: '019b0000-0000-7000-8000-000000001003' };
                     yield* h.runs.start(denied);
@@ -567,6 +572,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
                                             ? h.runs.start(input).pipe(Effect.asVoid)
                                             : h.runs.status(input).pipe(Effect.asVoid);
                                     const result = yield* Effect.either(invoke);
+                                    // A typed denial alone proves neither private-cause redaction nor refusal before model execution.
                                     expect(result).toMatchObject({
                                         _tag: 'Left',
                                         left: { _tag: 'AgentRunDenied', reason },
@@ -578,6 +584,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
                             )
                         );
                     }
+                    // A valid pending record is the positive control against rejecting every acceptance indiscriminately.
                     const h = yield* fixture({ records: [accepted] });
                     expect(yield* h.runs.status(input)).toEqual({ state: 'pending' });
                     const invalid: AgentRunInput = {
