@@ -88,3 +88,22 @@ pnpm exec prettier --check packages/contracts/src/trust.ts packages/runtime/src/
 ```
 
 The Effect fixtures exercise missing/denied/unavailable/revoked gates, exact binding, timing, A1-A5 floors, Vault refusal, nonce races, algorithm-neutral versions and secret-canary serialization. They use in-memory `Ref` state: they prove neither SQL/process-crash replay protection nor cryptographic/provider conformance. Production release remains blocked on separately approved concrete verification, custody/client-release policy, durable audit/replay transactions and actual provider tests.
+
+## Prove independent-process nonce consumption
+
+Prepare the approved disposable loopback database using [storage conformance](storage.md#run-conformance), then build the public SQL package and run both dialects:
+
+```sh
+pnpm nx run @eventiva/integrations.sql:build
+node tests/storage/fixtures/trust-process.mjs proof sqlite
+node tests/storage/fixtures/trust-process.mjs proof postgres
+pnpm nx run @eventiva/storage-tests:test --skip-nx-cache
+```
+
+Each default fixture invocation keeps the original SIGKILL-before-commit and lost-acknowledgement recovery assertions. It then runs two four-worker races through the public durable replay port: identical requests, followed by equivalent lower/upper-case UUID nonces containing hexadecimal letters. Each worker has a distinct PID and its own connected SQL client before the parent releases the barrier. No contender automatically retries its nonce.
+
+Every race asserts exactly one receipt and exactly one matching retained request/time/audit row. Losers must return a sanitized typed replay-gate failure, either `replay` or `unavailable` from the real storage path under contention; raw provider errors and second receipts fail the fixture. After all racing workers close, separate fresh processes retry both UUID spellings and must deterministically return `replay`, without changing any retained row. A distinct nonce must succeed with a distinct receipt and matching row, ruling out an always-deny implementation. Scenario nonces are disjoint from the original recovery nonce; exact whole-table comparisons detect extra rows or changed evidence.
+
+Assertions run inside the existing storage gate and preserve its 60-second subprocess bound and exact original stdout JSON, including original-scenario `retained: 1`. Additional scenario rows are not reported as original recovery rows. Failure exits nonzero rather than printing a passing boolean. A connection failure before the barrier is a fixture failure, not an accepted contention result. SQLite uses a disposable disk file and PostgreSQL a unique disposable database; follow the storage guide's teardown even on failure.
+
+This EVE-251 slice proves only metadata nonce uniqueness within one database across independent processes/connections. It neither runs the four real verifiers nor selects concrete trust policy, cryptography, custody, replay retention or release composition. It returns no key, plaintext, handle or release grant, and does not prove power-loss or replicated-database durability.

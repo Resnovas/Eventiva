@@ -28,7 +28,7 @@ All checks precede atomic replay consumption. All successful results remain `{ d
 
 `TrustFailure` has an exact Data.TaggedError constructor exposing only finite `gate` and `reason`; `TrustFailureReason` is the shared reason schema. Runtime sanitizes verifier/replay defects, synchronous throws and malformed reasons to the expected gate's `unavailable`; pure interruption stays interruption. Later gates never run after refusal. Signing/encryption UUID inequality is case-insensitive and does not establish physical independence. No `any`, public `unknown`, type suppression or unchecked cast is authored. Adapters must sanitize failure channels and keep protected evidence/audit lookup access controlled. Do not serialize whole requests or raw Schema parse failures into telemetry. Schema checks do not make all valid UUIDs safe public data.
 
-Tests live in `tests/runtime/src/trust.spec.ts` and use `@effect/vitest`. They cover every missing/denied/unavailable/revoked gate, all binding fields on all four evidence gates, timing, A1-A5/profile/operation combinations, stricter policy, atomic in-process nonce races, rotations and secret-canary errors/audit serialization. These fixtures are not cryptographic, provider, SQL or crash proofs. See [the people guide](../../../docs/trust.md) for setup, every input and limitations. The coordinator owns public export wiring, LLMS generation, Graphify and aggregate validation; do not add aliases to bypass a missing public subpath.
+Tests live in `tests/runtime/src/trust.spec.ts` and use `@effect/vitest`. They cover every missing/denied/unavailable/revoked gate, all binding fields on all four evidence gates, timing, A1-A5/profile/operation combinations, stricter policy, atomic in-process nonce races, rotations and secret-canary errors/audit serialization. These fixtures are not cryptographic, provider, SQL or crash proofs. See [the people guide](../../../docs/trust.md) for setup, every input and limitations. Each lane regenerates affected LLMS/Graphify outputs and runs aggregate validation before independent delivery; do not add aliases to bypass a missing public subpath.
 
 The separate `@eventiva/integrations.sql/trust` subpath supplies unactivated
 `trustReplay` over the captured SqlClient. Migration 0007 stores nonce, exact
@@ -38,5 +38,24 @@ cannot reuse it. Every ambient transaction is refused to avoid acknowledging
 a savepoint as a durable commit. No cleanup or retention policy is selected.
 See `docs/trust-replay.md` and the compiling example below. Storage conformance
 tests cover both dialects; the separate trust-process fixture kills before and
-after commit and reopens a fresh process. These are bounded persistence proofs,
-not actual verifier, custody, live revocation or release conformance.
+after commit and reopens a fresh process.
+
+The default `node tests/storage/fixtures/trust-process.mjs proof sqlite` and
+`proof postgres` invocations also assert two four-process consume-once races:
+identical requests and mixed-case equivalent UUIDs containing hexadecimal letters.
+Build `@eventiva/integrations.sql` first; PostgreSQL requires only the approved
+disposable loopback fixture in `docs/storage.md#run-conformance`.
+Each contender establishes its own client before the IPC ready/go barrier.
+Exactly one receipt must match the retained request, consumption time and audit;
+losers must be `TrustFailure` at gate `replay`, reason `replay` or `unavailable`
+from actual storage contention, with no raw provider error or second receipt.
+No automatic same-nonce retries occur. After all contenders exit successfully,
+fresh processes retry both spellings and must return `replay` deterministically.
+A distinct-nonce positive control must retain a distinct matching receipt.
+Exact whole-table comparisons preserve the original recovery row and detect extra
+or modified rows. Scenario nonces are disjoint; the existing stdout/parser retains
+original-scenario `retained: 1` and the subprocess timeout remains 60 seconds.
+These assertions run in the existing storage test gate without new target wiring.
+These are bounded persistence proofs, not actual verifier, custody, live revocation,
+power-loss/replication, replay-retention policy or release conformance. No concrete
+crypto, policy or production composition is selected by this test-only slice.

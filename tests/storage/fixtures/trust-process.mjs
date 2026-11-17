@@ -24,13 +24,13 @@ import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { SqlClient } from '@effect/sql';
 import { SqliteClient } from '@effect/sql-sqlite-node';
-import { TrustReplay, TrustRequest } from '@eventiva/contracts/trust';
+import { TrustFailure, TrustReplay, TrustRequest } from '@eventiva/contracts/trust';
 import { trustReplay } from '@eventiva/integrations.sql/trust';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
 import { ConfigProvider, Context, Deferred, Effect, Layer, Schema, Scope } from 'effect';
 
-const [role, dialect, target, phase] = process.argv.slice(2);
+const [role, dialect, target, phase, nonce] = process.argv.slice(2);
 assert.ok(['sqlite', 'postgres'].includes(dialect));
 const id = (n) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const request = Schema.decodeUnknownSync(TrustRequest)({
@@ -96,40 +96,76 @@ if (role === 'worker') {
               })
             : sql
     );
-    process.once('disconnect', () => process.kill(process.pid, 'SIGKILL'));
+    const disconnected = () => process.kill(process.pid, 'SIGKILL');
+    process.once('disconnect', disconnected);
+    const input = nonce ? Schema.decodeUnknownSync(TrustRequest)({ ...request, nonce }) : request;
+    if (phase === 'race') {
+        // Establish each independent connection before the parent releases all contenders.
+        await run(sql`SELECT 1`);
+        const released = once(process, 'message');
+        process.send({ boundary: 'ready', value: process.pid });
+        assert.deepEqual(await released, [{ boundary: 'go' }, undefined]);
+    }
     const result = await run(
-        port.consume(request, policy).pipe(
+        port.consume(input, policy).pipe(
             Effect.tap((audit) => (phase === 'after' ? barrier('after', audit) : Effect.void)),
-            Effect.match({ onSuccess: (audit) => ({ audit }), onFailure: (error) => ({ reason: error.reason }) })
+            Effect.match({
+                onSuccess: (audit) => ({ audit }),
+                onFailure: (error) => {
+                    assert.ok(error instanceof TrustFailure);
+                    assert.equal(error.gate, 'replay');
+                    assert.ok(['replay', 'unavailable'].includes(error.reason));
+                    assert.deepEqual(Object.keys(error).sort(), ['_tag', 'gate', 'reason']);
+                    return { reason: error.reason };
+                },
+            })
         )
     );
-    process.send({ boundary: 'result', value: result }, () => process.disconnect());
     await Effect.runPromise(Scope.close(scope, { _tag: 'Success', value: undefined }));
+    process.off('disconnect', disconnected);
+    process.send({ boundary: 'result', value: result }, () => process.disconnect());
 } else {
     assert.equal(role, 'proof');
     const children = new Set();
-    const launch = (database, boundary) => {
-        const child = fork(fileURLToPath(import.meta.url), ['worker', dialect, database, boundary], {
-            execArgv: [],
-            stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-        });
-        children.add(child);
-        const message = new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('Trust proof IPC deadline exceeded')), 15000);
-            child.once('message', (value) => {
+    const nextMessage = (child) =>
+        new Promise((resolve, reject) => {
+            const cleanup = () => {
                 clearTimeout(timer);
+                child.off('message', received);
+                child.off('error', failed);
+                child.off('exit', exited);
+            };
+            const received = (value) => {
+                cleanup();
                 resolve(value);
-            });
-            child.once('error', (error) => {
-                clearTimeout(timer);
+            };
+            const failed = (error) => {
+                cleanup();
                 reject(error);
-            });
+            };
+            const exited = (code, signal) => failed(new Error(`Trust worker exited ${code}/${signal}`));
+            const timer = setTimeout(() => failed(new Error('Trust proof IPC deadline exceeded')), 15000);
+            child.once('message', received);
+            child.once('error', failed);
+            child.once('exit', exited);
+        });
+    const launch = (database, boundary, nonce) => {
+        const child = fork(
+            fileURLToPath(import.meta.url),
+            ['worker', dialect, database, boundary, ...(nonce ? [nonce] : [])],
+            {
+                execArgv: [],
+                stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+            }
+        );
+        children.add(child);
+        const exited = new Promise((resolve) => {
             child.once('exit', (code, signal) => {
-                clearTimeout(timer);
-                reject(new Error(`Trust worker exited ${code}/${signal}`));
+                children.delete(child);
+                resolve({ code, signal });
             });
         });
-        return { child, message };
+        return { child, message: nextMessage(child), exited };
     };
     const kill = async (child) => {
         if (child.exitCode !== null || child.signalCode !== null) return;
@@ -179,6 +215,110 @@ if (role === 'worker') {
         assert.deepEqual(retried, { boundary: 'result', value: { reason: 'replay' } });
         await kill(retry.child);
         assert.deepEqual(await run(sql`SELECT nonce, request, consumed_at, audit FROM trust_replay`), [row]);
+
+        // Keep race nonces separate from the original crash scenario and its stdout contract.
+        const retained = [row];
+        const pids = new Set([process.pid, first.child.pid, committed.child.pid, retry.child.pid]);
+        for (const mixedCase of [false, true]) {
+            const lower = id(mixedCase ? 0xabcdee : 0xabcdef);
+            const spellings = [
+                lower,
+                lower,
+                mixedCase ? lower.toUpperCase() : lower,
+                mixedCase ? lower.toUpperCase() : lower,
+            ];
+            const contenders = spellings.map((spelling) => launch(database, 'race', spelling));
+            const ready = await Promise.all(contenders.map((worker) => worker.message));
+            for (const [index, worker] of contenders.entries()) {
+                assert.deepEqual(ready[index], { boundary: 'ready', value: worker.child.pid });
+                assert.ok(!pids.has(worker.child.pid));
+                pids.add(worker.child.pid);
+            }
+            assert.deepEqual(
+                await run(sql`SELECT nonce, request, consumed_at, audit FROM trust_replay ORDER BY nonce`),
+                retained
+            );
+            // Install every result listener before releasing any worker. Never retry contenders.
+            const results = contenders.map((worker) => nextMessage(worker.child));
+            for (const worker of contenders) worker.child.send({ boundary: 'go' });
+            const messages = await Promise.all(results);
+            const winners = [];
+            for (const [index, message] of messages.entries()) {
+                assert.equal(message.boundary, 'result');
+                if (Object.hasOwn(message.value, 'audit')) {
+                    assert.deepEqual(Object.keys(message.value), ['audit']);
+                    assert.match(message.value.audit, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+                    winners.push(index);
+                } else {
+                    assert.ok(['replay', 'unavailable'].includes(message.value.reason));
+                    assert.deepEqual(message.value, { reason: message.value.reason });
+                }
+            }
+            assert.equal(winners.length, 1);
+            assert.deepEqual(
+                await Promise.all(contenders.map((worker) => worker.exited)),
+                contenders.map(() => ({ code: 0, signal: null }))
+            );
+            const [winner] = await run(
+                sql`SELECT nonce, request, consumed_at, audit FROM trust_replay WHERE nonce = ${lower}`
+            );
+            assert.ok(winner);
+            assert.equal(winner.nonce, lower);
+            assert.deepEqual(JSON.parse(winner.request), { ...request, nonce: spellings[winners[0]] });
+            assert.equal(Number(winner.consumed_at), policy.now);
+            assert.equal(winner.audit, messages[winners[0]].value.audit);
+            assert.ok(retained.every((prior) => prior.audit !== winner.audit));
+            retained.push(winner);
+            retained.sort((a, b) => a.nonce.localeCompare(b.nonce));
+            // All racing clients have closed. Each spelling must now deterministically refuse.
+            for (const spelling of [lower, lower.toUpperCase()]) {
+                const reopened = launch(database, 'retry', spelling);
+                assert.ok(!pids.has(reopened.child.pid));
+                pids.add(reopened.child.pid);
+                assert.deepEqual(await reopened.message, { boundary: 'result', value: { reason: 'replay' } });
+                assert.deepEqual(await reopened.exited, { code: 0, signal: null });
+            }
+            assert.deepEqual(
+                await run(sql`SELECT nonce, request, consumed_at, audit FROM trust_replay ORDER BY nonce`),
+                retained
+            );
+        }
+        const controlNonce = id(0xabcdf0);
+        const control = launch(database, 'retry', controlNonce);
+        assert.ok(!pids.has(control.child.pid));
+        const allowed = await control.message;
+        assert.equal(allowed.boundary, 'result');
+        assert.deepEqual(Object.keys(allowed.value), ['audit']);
+        assert.deepEqual(await control.exited, { code: 0, signal: null });
+        const [controlRow] = await run(
+            sql`SELECT nonce, request, consumed_at, audit FROM trust_replay WHERE nonce = ${controlNonce}`
+        );
+        assert.ok(controlRow);
+        assert.equal(controlRow.nonce, controlNonce);
+        assert.deepEqual(JSON.parse(controlRow.request), { ...request, nonce: controlNonce });
+        assert.equal(Number(controlRow.consumed_at), policy.now);
+        assert.equal(controlRow.audit, allowed.value.audit);
+        assert.ok(retained.every((prior) => prior.audit !== controlRow.audit));
+        retained.push(controlRow);
+        retained.sort((a, b) => a.nonce.localeCompare(b.nonce));
+        assert.deepEqual(
+            await run(sql`SELECT nonce, request, consumed_at, audit FROM trust_replay ORDER BY nonce`),
+            retained
+        );
+        // Keep new evidence off stdout: the existing wrapper parses its exact recovery JSON.
+        console.error(
+            JSON.stringify({
+                event: 'trust-process-races-passed',
+                dialect,
+                races: 2,
+                contendersPerRace: 4,
+                winners: 2,
+                losers: 6,
+                reopenedReplays: 4,
+                distinctControl: true,
+                retained: retained.length,
+            })
+        );
         console.log(
             JSON.stringify({
                 event: 'trust-process-recovery-passed',
