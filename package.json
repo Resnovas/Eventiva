@@ -11,12 +11,23 @@
         "node": ">=24.22.3 <25"
     },
     "nx": {
-        "includedScripts": []
+        "includedScripts": [],
+        "targets": {
+            "documentation": {
+                "executor": "nx:run-commands",
+                "cache": false,
+                "options": {
+                    "cwd": "{workspaceRoot}",
+                    "command": "node --run documentation"
+                }
+            }
+        }
     },
     "scripts": {
         "prepare": "effect-language-service patch",
         "setup": "node tools/dev/surfaces.mjs install",
-        "check": "node tools/toolchain/versions.mjs --check && node tools/dev/surfaces.mjs check && node tools/license/check-headers.mjs && node tools/ai-docs/docgen.mjs --check && node tools/storage/policy.mjs && node --test tools/storage/guard.test.mjs && node tools/references/check.mjs && node --test tools/references/check.test.mjs",
+        "check": "node tools/toolchain/versions.mjs --check && node tools/dev/surfaces.mjs check && node tools/license/check-headers.mjs && node tools/ai-docs/docgen.mjs --check && node tools/storage/policy.mjs && node --test tools/storage/guard.test.mjs && node tools/references/check.mjs && node --test tools/references/check.test.mjs && node --run documentation",
+        "documentation": "node --test tools/documentation/check.test.mjs tools/documentation/ratchet.test.mjs tools/documentation/linear-mirror.test.mjs tools/documentation/sync-linear.test.mjs tools/documentation/planning.test.mjs && node tools/documentation/linear-mirror.mjs --check && node tools/documentation/planning.mjs --check && node tools/documentation/ratchet.mjs --base HEAD",
         "toolchain": "node tools/toolchain/versions.mjs",
         "lint": "nx run-many -t lint",
         "typecheck": "nx run-many -t typecheck",
