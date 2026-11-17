@@ -100,13 +100,17 @@ SQL-error/defect handling never releases private error text. This library capabi
 is explicit opt-in, not a new application toggle; hook dispatch stays default-off.
 Retain all additive tables on rollback and do not run migrations remotely here.
 
-Do not synthesize automatic receipt/lifecycle events from snapshots: the action host
-still lacks a trusted generation/classification binding; KernelLive remains unwired.
-The follow-on must capture actual mutation owners, implicit cascades/disposal,
-publication-before-cleanup failures and stable callback context. Local ReadyReceipt
-keeps its named runtime. No automatic kernel production, native/UI consumer,
-production sink/release policy or exactly-once lifecycle delivery is claimed by
-the journal's trusted synthetic crash/reopen fixture. Keep EVE-45/261 open.
+Do not synthesize receipt/lifecycle events from snapshots. KernelLive optionally
+captures a trusted KernelProducer; actual mutation owners, cascades/disposal and
+publication-before-cleanup failures now produce retained journal facts. KernelMutation
+supplies callback request keys/projections; callback slots namespace external keys.
+Mandatory disposal always finalizes, including denied admission, with sticky
+recovery-required and no fabricated fact. Ordinary mutation fails closed before
+callbacks without replay. See the kernel section and its compiling producer example.
+Local ReadyReceipt keeps its named runtime; durable ready uses persisted incarnation.
+ActionHost still lacks trusted generation/classification binding. No native/UI
+consumer, production release, distributed fencing or exactly-once physical delivery
+is proved by real-kernel SQL tests or synthetic crash/reopen fixtures. Keep EVE-45/261 open.
 
 The committed hook-process fixture separately proves a trusted synthetic feed
 consumer can atomically store local metadata application markers plus its cursor,

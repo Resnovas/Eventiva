@@ -95,8 +95,9 @@ or acquiring module Layers. It strictly decodes manifests and exact pins, checks
 lifecycle authorization and trust, validates dependencies and provider bindings,
 then runs each module's non-mutating `validate` once in dependency order. Staged
 or offline migrations also reject before publication. Only after every preflight
-succeeds does it publish validated entries and install/activate in dependency
-order. Install, activate and ready still recheck their operation's authorization.
+succeeds does it publish registered entries, commit their validated transitions,
+and install/activate in dependency order without rerunning Config preflight.
+Install, activate and ready still recheck their operation's authorization.
 
 Keep `ModuleDefinition.validate` limited to Config, secret-safe admission and
 resource compatibility checks. Do not acquire services or mutate storage there.
@@ -125,6 +126,57 @@ restart-required updates from new receipts and applied replacements. Optional
 diagnostics do not change authority, lifecycle results or scoped ownership and
 are not durable transition events.
 
+## Opt into durable lifecycle production
+
+Provide `KernelProducer` when building `KernelLive`, not on individual lifecycle
+calls. Its absence preserves local-only behavior (`Kernel.durability.state` is
+`local`); it does not silently claim durable readiness. The service contains the
+already tenant-bound `HookProducer`, a trusted `HookProducerPolicy`, and an Effect
+that supplies a fresh request UUID for each attempted transition. The producer's
+logical runtime must equal the `KernelLive` name. A fresh producer build persists
+a new incarnation; this adapter does not reconstruct a lost registry.
+
+1. Apply the existing additive producer migrations to a disposable or separately
+   authorized database and construct `hookProducer` with its authenticated tenant.
+2. Supply a trusted policy that classifies the transition's purpose, profile and
+   operation. Read the kernel-provided `KernelMutation.projection` during `bind`;
+   never derive generation or state from a later snapshot. The kernel rejects a
+   policy projection that contradicts its owned transition.
+3. Build the kernel with that captured service and retain its Scope. See the
+   complete typed [host wiring example](../ai-docs/src/21_kernel/03_producer.ts).
+4. In callbacks with external effects, read `KernelMutation` with
+   `Effect.serviceOption`. Use its request UUID plus the callback's stable slot
+   (for example, `install`) as an idempotency/status key. The same attempt may
+   encompass acquisition, install and health checks, so the UUID alone does not
+   distinguish callback slots. Null means no durable admission, never replay
+   permission. Do not expose the producer or its policy to plugins.
+5. Inspect `Kernel.durability` after failure and disposal. `unconfirmed` retains
+   opaque request identifiers for status reconciliation, not callback
+   arguments or errors. `recovery-required` blocks ordinary mutations, ready and
+   new workflow leases; it does not stop mandatory cleanup.
+
+Intent is persisted before callback execution. Only fresh admission permits the
+callback; duplicate requests never replay it. Facts are confirmed where state
+actually changes, including dependent failure/removal, readiness invalidation and
+the update swap before old-code cleanup. A failed old finalizer can therefore
+make `update` fail after the replacement fact has committed. Module-ready facts
+precede the platform-ready fact; the latter uses the persisted incarnation UUID
+and generation. Repeating ready without a change emits no second fact.
+
+Jonathan chose mandatory-disposal option A on 2026-11-17, recorded on
+[EVE-45](https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change#comment-2ef327d5).
+If intent cannot be persisted during mandatory teardown, run resource finalizers,
+remove the disposed scopes, expose `recovery-required`, and emit no fabricated
+fact for the unadmitted transition. Ordinary requested mutations still fail
+closed before callbacks. Confirmation loss leaves the original intent unresolved;
+reconciliation queries authoritative status and never invokes callbacks again.
+There is no automatic recovery/reset API or blind retry of ambiguous side effects.
+
+These are trusted library composition points, not a production flag activation,
+distributed fencing, durable registry recovery, observer release authorization or
+native/UI consumer proof. The existing hook-dispatch flag remains default off.
+No application bootstrap or production migration is enabled here.
+
 ## Troubleshoot and verify
 
 - Fix an `invalid-contract` provider error by checking the producer's decoded
@@ -139,10 +191,13 @@ are not durable transition events.
   publication, cross-runner fencing or persisted crash recovery.
 
 The dedicated tests are `tests/contracts/src/module-manifest.spec.ts` and
-`tests/runtime/src/kernel-runtime.spec.ts`. Run them with coordinator-provided
-aliases until the held exports exist, plus strict TypeScript, typed lint and
-declaration/type-negative fixtures. The original 36 focused tests remain; new
-coverage includes callable provider swaps, independent named instances, exact
-producer/consumer validation, local-name grammar and closed cycle paths. Shared
-Nx/export/source-graph integration, generated LLMS and Graphify remain coordinator
-obligations, not claims established by isolated checks.
+`tests/runtime/src/kernel-runtime.spec.ts`. Durable mutation-owner acceptance is
+in `tests/storage/src/hook-producer.spec.ts`, running the real kernel against
+SQLite and an approved disposable loopback PostgreSQL fixture. Run the runtime
+tests with `pnpm exec vitest run --config tests/runtime/vitest.config.mts
+tests/runtime/src/kernel-runtime.spec.ts --coverage.enabled=false`; the complete
+repository gate is `node --run verify` with that disposable fixture configured.
+Coverage includes provider swaps, independent named instances, exact contracts,
+cycles, intent admission, denied/duplicate no-replay, ready deduplication,
+dependent-first disposal, interruption, confirmation loss and update cleanup.
+These checks do not replace the open distributed/native/security acceptance gates.

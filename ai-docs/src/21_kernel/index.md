@@ -35,8 +35,8 @@ Composition uses a private candidate registry and explicit candidate bindings fo
 topology planning. Decode and pin every manifest, authorize the lifecycle, admit
 trust, plan the full graph and run all non-mutating Config preflights before
 publishing entries, bindings or Layers. Run preflights once in dependency order;
-publish their entries directly as `validated`, rather than calling public
-`validate` again. Reject staged/offline migrations before publication too.
+publish registered entries then record validated transitions without calling the
+public `validate` again. Reject staged/offline migrations before publication too.
 Install/activate/ready retain their normal authorization checks during startup.
 
 During preflight, `snapshot` returns an empty registry without waiting on the
@@ -61,8 +61,40 @@ with finite `eventiva.kernel.outcome` values and no identifiers or configuration
 Readiness receipts and restart-required updates retain distinct outcomes; these
 diagnostics are not durable lifecycle facts or distributed fencing.
 
-No new dependency, export map, Nx setting, generated file or main push belongs to
-this lane. Shared exports, whole-repository source/package graphs, LLMS generation
-and Graphify refresh are held by the coordinator. Isolated aliases and emitted
-declarations do not clear EVE-261 or repository-wide EVE-263. Ready/lease evidence
-is process-local, not durable delivery or distributed fencing.
+## Trusted durable mutation owner
+
+Build `KernelLive` with optional captured `KernelProducer` for durable lifecycle
+facts. Without it, behavior stays local and `Kernel.durability` reports `local`.
+The logical runtime must match the producer; platform-ready facts use the fresh
+persisted incarnation UUID, not the local receipt's logical name. The complete
+`03_producer.ts` example takes trusted services and authenticated caller inputs;
+it does not create a permissive production policy or driver inside runtime.
+
+Kernel-owned `KernelMutation` binds the exact projection and stable request UUID
+before callbacks. Trusted policy supplies tenant/purpose/profile classification
+and cannot contradict transition/version/generation. Callbacks may inspect this
+optional context for status/idempotency, namespace the key per callback slot and
+never infer replay authority from its presence. A null key is local-only or
+mandatory cleanup without durable admission. Producer/policy remain host-private.
+
+Only fresh durable admission permits first execution. Confirm at actual state
+writes, not successful public returns: the replacement is committed before old
+cleanup and may remain installed when `update` returns an error. Failure/removal
+cascades and ready invalidation produce their actual intermediate transitions.
+Ready deduplicates by incarnation/generation; module facts precede platform-ready.
+An ambiguous callback or lost confirmation sets sticky `recovery-required`, blocks
+ordinary mutations/new ready/workflow leases, and retains request IDs for status
+reconciliation without callback replay. No automatic reset/recovery is supplied.
+
+Jonathan's 2026-11-17 mandatory-disposal option A is recorded on EVE-45 comment
+`2ef327d5-35a0-4a74-a70f-2e8ef126222e`: failed intent cannot prevent finalizers or
+scope removal. Report recovery-required and never fabricate an unadmitted fact.
+The existing journal reconciles retained status; it does not reconstruct a lost
+kernel registry or prove cross-runner fencing. EVE-45/EVE-261 remain open for
+broader composed consumers, security, native and production acceptance.
+
+The source and declaration boundary gates, strict typecheck, lifecycle tests and
+two-dialect producer acceptance run in the combined workspace. Shared LLMS/Graphify
+generation and final delivery remain coordinator-owned. Local ReadyReceipt and
+workflow lease evidence is process-local; durable journal confirmation does not
+turn it into distributed fencing or complete EVE-261/EVE-263 acceptance.

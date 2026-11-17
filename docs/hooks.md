@@ -335,15 +335,22 @@ feed capability inside the trusted host, never client/plugin context. Policy and
 SQL defects become bounded typed failures, with no supplied error text projected.
 See the compiling example in `ai-docs/src/13_storage/02_hook_producer.ts`.
 
-`KernelLive` and `ActionHost` are **not automatically wired** by this prerequisite.
-The kernel still has process-local generations; its named `ReadyReceipt.runtimeId`
-stays unchanged. A public-method wrapper would miss disposal/dependent cascades and
-mutations preceding a failed cleanup. The next integration must capture those
-actual mutation owners, propagate callback keys and retain authoritative
-provenance, rather than diff snapshots or translate telemetry spans. Until then,
-do not claim automatic durable lifecycle/platform-ready production. The distinct-
-process fixture proves this journal protocol with a trusted synthetic mutation
-owner, not native/UI consumers, production release or full EVE-45/EVE-261 acceptance.
+`KernelLive` now captures an optional trusted `KernelProducer` at construction.
+Its actual mutation owners admit intent before callbacks and confirm at state
+publication, including dependent cascades, readiness invalidation and disposal.
+`KernelMutation` supplies the immutable projection and callback request key; each
+callback namespaces its external idempotency/status by slot. Mandatory disposal
+runs finalizers even if admission fails, exposes recovery-required and emits no
+unadmitted fact. Ordinary requests fail closed without replay. See the
+[kernel composition and recovery contract](kernel.md#opt-into-durable-lifecycle-production)
+and compiling `ai-docs/src/21_kernel/03_producer.ts` example.
+
+The kernel retains process-local generations and its named `ReadyReceipt.runtimeId`;
+durable platform-ready uses the producer's persisted incarnation. `ActionHost`
+still lacks authoritative generation/classification binding and is not wired by
+this integration. Real-kernel SQL acceptance complements the distinct-process
+journal fixture; neither proves native/UI consumers, production release, full
+distributed fencing or complete EVE-45/EVE-261 acceptance.
 
 ## Diagnose failures
 

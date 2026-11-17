@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { SqlClient } from '@effect/sql';
 import { SqliteClient } from '@effect/sql-sqlite-node';
 import { describe, expect, it } from '@effect/vitest';
+import { Caller } from '@eventiva/contracts/caller';
 import {
     HookChangeFeed,
     HookDenied,
@@ -28,17 +29,27 @@ import {
     HookProducerBinding,
     HookProducerDeny,
     HookProducerPolicy,
-    type HookOutboxFailure,
+    HookOutboxFailure,
     type HookProducerStatus,
     type HookProducerTarget,
 } from '@eventiva/contracts/hook';
-import { TenantId } from '@eventiva/contracts/ids';
+import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
+import type { KernelManifest } from '@eventiva/contracts/module-manifest';
+import { KernelAuthority, KernelError } from '@eventiva/contracts/module-policy';
 import { CurrentTenant } from '@eventiva/contracts/storage';
 import { hookStorage } from '@eventiva/integrations.sql/hook';
 import { hookProducer } from '@eventiva/integrations.sql/hook-producer';
 import { load, migrate, type Dialect } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { ConfigProvider, Context, Deferred, Effect, Exit, Fiber, Layer, Ref, Schema, Scope } from 'effect';
+import {
+    Kernel,
+    KernelLive,
+    KernelModule,
+    KernelMutation,
+    KernelProducer,
+    type ModuleDefinition,
+} from '@eventiva/runtime/kernel-runtime';
+import { ConfigProvider, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Ref, Schema, Scope } from 'effect';
 
 /** Derive stable request UUIDs so duplicate and cross-tenant cases share deliberate identities. */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
@@ -205,8 +216,699 @@ const fixture = (dialect: Dialect) =>
         }
     );
 
+/** Capture callback-visible journal evidence without pretending a callback return is a state commit. */
+interface KernelCallbackEvidence {
+    readonly slot: string;
+    readonly request: string | null;
+    readonly status: HookProducerStatus | 'unadmitted';
+    readonly projection: HookProducerBinding['projection'];
+}
+
+/** Compose the real kernel with the fixture's SQL producer, independently controllable admission and confirmation. */
+const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, contradictoryInstall = false) =>
+    Effect.gen(
+        /** Capture host services at layer construction, keeping later caller context out of provenance decisions. */ function* () {
+            const confirmationFails = yield* Ref.make(false);
+            const forcedRequest = yield* Ref.make<string | undefined>(undefined);
+            const requests = yield* Ref.make(1000);
+            const callbacks = yield* Ref.make<ReadonlyArray<KernelCallbackEvidence>>([]);
+            const finalized = yield* Ref.make<ReadonlyArray<string>>([]);
+            const policy = HookProducerPolicy.of({
+                ...f.policy,
+                /** Use only the kernel-owned transition; retain the fixture's classification and denial controls. */
+                bind: (owner, runtime, incarnation, target) =>
+                    Effect.gen(
+                        /** Missing mutation context is not permission to fall back to synthetic lifecycle provenance. */ function* () {
+                            const mutation = yield* Effect.serviceOption(KernelMutation);
+                            if (Option.isNone(mutation)) return yield* new HookDenied({ reason: 'policy-denied' });
+                            // Synthetic classification is reusable, but it must never supply a kernel transition.
+                            const classification = yield* f.policy.bind(owner, runtime, incarnation, target);
+                            if (
+                                contradictoryInstall &&
+                                target.kind === 'module.lifecycle' &&
+                                target.operation === 'install' &&
+                                mutation.value.projection.kind === 'module.lifecycle'
+                            )
+                                return {
+                                    ...classification,
+                                    projection: {
+                                        ...mutation.value.projection,
+                                        identity: { ...mutation.value.projection.identity, generation: 99 },
+                                    },
+                                };
+                            return { ...classification, projection: mutation.value.projection };
+                        }
+                    ),
+            });
+            const producer = HookProducer.of({
+                ...f.producer,
+                /** Fail before SQL confirmation without changing admission or callback behavior. */
+                confirm: (request) =>
+                    Effect.gen(
+                        /** Keep retained intent unresolved to model a failed commit acknowledgement boundary. */ function* () {
+                            if (yield* Ref.get(confirmationFails))
+                                return yield* new HookOutboxFailure({ reason: 'unavailable' });
+                            return yield* f.producer.confirm(request);
+                        }
+                    ),
+            });
+            const kernel = Context.get(
+                yield* Layer.build(
+                    KernelLive(logical).pipe(
+                        Layer.provide(
+                            Layer.succeed(KernelProducer, {
+                                producer,
+                                policy,
+                                requestId: Effect.gen(
+                                    /** Allocate distinct intents unless a test deliberately supplies a retained duplicate. */ function* () {
+                                        const forced = yield* Ref.get(forcedRequest);
+                                        if (forced !== undefined) return forced;
+                                        return id(
+                                            yield* Ref.updateAndGet(
+                                                requests,
+                                                /** Advance the fixture UUID counter. */ (n) => n + 1
+                                            )
+                                        );
+                                    }
+                                ),
+                            })
+                        ),
+                        Layer.provide(
+                            Layer.succeed(KernelAuthority, {
+                                /** Host admission is allowed so journal policy remains the independent failure boundary. */
+                                admit: () => Effect.void,
+                                /** All fixture callers are authorized; production authorization is not bypassed by source edits. */
+                                authorize: () => Effect.void,
+                            })
+                        )
+                    )
+                ),
+                Kernel
+            );
+            /** Provide a concrete caller per public operation without rebuilding the captured kernel layer. */
+            const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+                effect.pipe(
+                    Effect.provideService(Caller, {
+                        kind: 'human',
+                        tenant,
+                        subject: SubjectId.make(id(2)),
+                        session: SessionId.make(id(3)),
+                    })
+                );
+            /** Inspect the real retained request from inside a module callback, including teardown without admission. */
+            const record = (slot: string): Effect.Effect<void, KernelError> =>
+                Effect.gen(
+                    /** A callback must observe a kernel mutation context, never invent its own request or transition. */ function* () {
+                        // Inspect evidence at the callback boundary instead of inferring admission from public success.
+                        const mutation = yield* Effect.serviceOption(KernelMutation);
+                        if (Option.isNone(mutation))
+                            return yield* new KernelError({ module: 'fixture', reason: 'invalid-contract' });
+                        const current = mutation.value;
+                        const status: KernelCallbackEvidence['status'] =
+                            current.request === null
+                                ? 'unadmitted'
+                                : (yield* f.producer.inspect(current.request).pipe(
+                                      Effect.provideService(HookProducerPolicy, policy),
+                                      Effect.mapError(
+                                          /** Preserve the callback's typed kernel failure channel on journal inspection failure. */ () =>
+                                              new KernelError({ module: 'fixture', reason: 'module-failed' })
+                                      )
+                                  )).status;
+                        yield* Ref.update(
+                            callbacks,
+                            /** Retain exactly the policy-bound transition visible during the callback. */ (
+                                previous
+                            ) => [
+                                ...previous,
+                                { slot, request: current.request, status, projection: current.projection },
+                            ]
+                        );
+                    }
+                );
+            /** Build a scoped executable module with typed hook failures and independently observable resource release. */
+            const definition = (
+                name = 'fixture',
+                extra: Partial<KernelManifest> = {},
+                failures: {
+                    readonly activate?: boolean;
+                    readonly deactivate?: boolean;
+                    readonly interruptDeactivate?: boolean;
+                    readonly ready?: Ref.Ref<boolean>;
+                } = {}
+            ): ModuleDefinition => {
+                const manifest: KernelManifest = {
+                    id: name,
+                    version: '1.0.0',
+                    trust: 'first-party',
+                    isolation: 'in-process',
+                    dependencies: [],
+                    provides: [],
+                    requires: [],
+                    migrations: [],
+                    restartRequired: false,
+                    ...extra,
+                };
+                /** Record the mutation before optionally reporting a typed module failure. */
+                const hook = (slot: string, fails = false) =>
+                    record(`${name}:${manifest.version}:${slot}`).pipe(
+                        Effect.zipRight(
+                            fails
+                                ? Effect.fail(new KernelError({ module: name, reason: 'module-failed' }))
+                                : Effect.void
+                        )
+                    );
+                return {
+                    manifest,
+                    compatibleWith: '1.0.0',
+                    validate: Effect.void,
+                    layer: Layer.scoped(
+                        KernelModule,
+                        Effect.gen(
+                            /** Resource finalization is observable even when deactivation or durable admission fails. */ function* () {
+                                yield* hook('build');
+                                // A failing deactivate hook must not own or suppress actual resource finalization.
+                                yield* Effect.addFinalizer(
+                                    /** Release once per acquired incarnation, independently of the lifecycle hook result. */ () =>
+                                        Ref.update(
+                                            finalized,
+                                            /** Keep module/version identity so update cleanup cannot release the candidate instead. */ (
+                                                previous
+                                            ) => [...previous, `${name}:${manifest.version}`]
+                                        )
+                                );
+                                return KernelModule.of({
+                                    providers: new Map(),
+                                    install: hook('install'),
+                                    activate: hook('activate', failures.activate),
+                                    ready: hook('ready').pipe(
+                                        Effect.zipRight(
+                                            failures.ready === undefined
+                                                ? Effect.void
+                                                : Ref.get(failures.ready).pipe(
+                                                      Effect.flatMap(
+                                                          /** Fail health only when armed, so dependent modules can first become active. */ (
+                                                              fails
+                                                          ) =>
+                                                              fails
+                                                                  ? Effect.fail(
+                                                                        new KernelError({
+                                                                            module: name,
+                                                                            reason: 'module-failed',
+                                                                        })
+                                                                    )
+                                                                  : Effect.void
+                                                      )
+                                                  )
+                                        )
+                                    ),
+                                    deactivate: hook('deactivate', failures.deactivate).pipe(
+                                        Effect.zipRight(failures.interruptDeactivate ? Effect.interrupt : Effect.void)
+                                    ),
+                                });
+                            }
+                        )
+                    ),
+                };
+            };
+            /** Bring one module to active using public lifecycle operations and real SQL intent/confirmation boundaries. */
+            const start = (module: ModuleDefinition) =>
+                run(
+                    Effect.gen(
+                        /** Registration ownership stays with the caller's scope for explicit cascade/disposal tests. */ function* () {
+                            yield* kernel.register(module);
+                            yield* kernel.validate(module.manifest.id);
+                            yield* kernel.install(module.manifest.id);
+                            yield* kernel.activate(module.manifest.id);
+                        }
+                    )
+                );
+            return { kernel, policy, run, definition, start, callbacks, finalized, confirmationFails, forcedRequest };
+        }
+    );
+
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`producer journal prerequisite ${dialect}`, /** Register the same journal invariants for both SQL dialects. */ () => {
+        it.scoped(
+            'kernel publishes exact transitions in commit order and deduplicates same-generation ready',
+            /** Verify callback admission, retained provenance and ready incarnation identity on the real SQL feed. */ () =>
+                Effect.gen(
+                    /** Public kernel state, callback observations and SQL facts must describe the same transitions. */ function* () {
+                        const f = yield* fixture(dialect);
+                        const k = yield* kernelFixture(f);
+                        yield* k.start(k.definition());
+                        const receipt = yield* k.run(k.kernel.ready);
+                        expect(receipt).toMatchObject({ runtimeId: logical, emitted: true });
+                        expect(yield* k.run(k.kernel.ready)).toEqual({ ...receipt, emitted: false });
+                        const observed = yield* Ref.get(k.callbacks);
+                        expect(observed).toHaveLength(5);
+                        for (const callback of observed) {
+                            expect(callback.request).not.toBeNull();
+                            expect(callback.status).toBe('unresolved');
+                            if (callback.request === null)
+                                return yield* new KernelError({ module: 'fixture', reason: 'invalid-contract' });
+                            const retained = yield* f.producer
+                                .inspect(callback.request)
+                                .pipe(Effect.provideService(HookProducerPolicy, k.policy));
+                            expect(retained.status).toBe('committed');
+                            expect(retained.attempt.binding.projection).toEqual(callback.projection);
+                        }
+                        const page = yield* f.feed.read(0, 100);
+                        expect(
+                            page.events.map(
+                                /** Preserve append order, not request allocation order. */ ({ event }) =>
+                                    event.projection
+                            )
+                        ).toEqual([
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'register',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 1 },
+                                from: null,
+                                to: 'registered',
+                            },
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'validate',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 1 },
+                                from: 'registered',
+                                to: 'validated',
+                            },
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'install',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 1 },
+                                from: 'validated',
+                                to: 'installed',
+                            },
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'activate',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 2 },
+                                from: 'installed',
+                                to: 'active',
+                            },
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'ready',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 2 },
+                                from: 'active',
+                                to: 'ready',
+                            },
+                            {
+                                kind: 'platform.ready',
+                                runtimeId: f.producer.runtime.incarnation,
+                                generation: receipt.generation,
+                            },
+                        ]);
+                        for (const [index, { event }] of page.events.entries()) {
+                            expect(event).toMatchObject({
+                                tenant,
+                                resource: 'kernel.lifecycle',
+                                resourceId: f.producer.runtime.incarnation,
+                                purpose: 'fixture.lifecycle',
+                                profile: 'restricted',
+                                operation: 'protected',
+                                sequence: index + 1,
+                                commit: event.id,
+                            });
+                        }
+                        expect(yield* k.kernel.durability).toEqual({ state: 'healthy', unconfirmed: [] });
+                        expect(yield* f.feed.read(page.cursor, 100)).toEqual({ cursor: page.cursor, events: [] });
+                    }
+                )
+        );
+
+        it.scoped(
+            'kernel interruption during deactivate still finalizes the scope and records physical inactivity',
+            /** Cancellation may stop a hook, never the resource finalizers or the actual inactive transition. */ () =>
+                Effect.gen(
+                    /** Interrupt only after the hook starts so this exercises the owned-release boundary. */ function* () {
+                        const f = yield* fixture(dialect);
+                        const k = yield* kernelFixture(f);
+                        const started = yield* Deferred.make<void>();
+                        const released = yield* Ref.make(0);
+                        const original = k.definition();
+                        const definition: ModuleDefinition = {
+                            ...original,
+                            layer: Layer.scoped(
+                                KernelModule,
+                                Effect.gen(
+                                    /** A single resource outlives its cancellable deactivation hook. */ function* () {
+                                        yield* Effect.addFinalizer(
+                                            /** The finalizer is independent of journal and callback success. */ () =>
+                                                Ref.update(
+                                                    released,
+                                                    /** Count physical release, not attempted deactivation. */ (n) =>
+                                                        n + 1
+                                                )
+                                        );
+                                        return KernelModule.of({
+                                            providers: new Map(),
+                                            install: Effect.void,
+                                            activate: Effect.void,
+                                            ready: Effect.void,
+                                            deactivate: Deferred.succeed(started, undefined).pipe(
+                                                Effect.zipRight(Effect.never)
+                                            ),
+                                        });
+                                    }
+                                )
+                            ),
+                        };
+                        yield* k.start(definition);
+                        const before = yield* f.feed.read(0, 100);
+                        const fiber = yield* k.run(k.kernel.deactivate('fixture')).pipe(Effect.fork);
+                        yield* Deferred.await(started);
+                        expect(Exit.isInterrupted(yield* Fiber.interrupt(fiber))).toBe(true);
+                        expect(yield* Ref.get(released)).toBe(1);
+                        expect(yield* k.kernel.snapshot).toEqual([
+                            { module: 'fixture', version: '1.0.0', state: 'inactive' },
+                        ]);
+                        expect(
+                            (yield* f.feed.read(before.cursor, 100)).events.map(
+                                /** Inspect committed physical state rather than the cancelled public return. */ ({
+                                    event,
+                                }) => event.projection
+                            )
+                        ).toEqual([
+                            {
+                                kind: 'module.lifecycle',
+                                operation: 'deactivate',
+                                identity: { module: 'fixture', version: '1.0.0', generation: 3 },
+                                from: 'active',
+                                to: 'inactive',
+                            },
+                        ]);
+                        expect(yield* k.kernel.durability).toEqual({ state: 'recovery-required', unconfirmed: [] });
+                        yield* k.run(k.kernel.ready).pipe(Effect.flip);
+                        expect(yield* Ref.get(released)).toBe(1);
+                    }
+                )
+        );
+
+        for (const disposal of ['allowed', 'denied', 'interrupted'] as const)
+            it.scoped(
+                `kernel cascaded scoped removal finalizes all resources with disposal ${disposal}`,
+                /** Compare mandatory physical teardown with admitted facts, never fabricating denied transitions. */ () =>
+                    Effect.gen(
+                        /** Only the provider registration scope closes; its live dependent must still be removed first. */ function* () {
+                            const f = yield* fixture(dialect);
+                            const k = yield* kernelFixture(f);
+                            const denyDisposal = disposal === 'denied';
+                            const owner = yield* Effect.acquireRelease(
+                                Scope.make(),
+                                /** Avoid leaking a failed assertion's registration scope. */ (scope) =>
+                                    Scope.close(scope, Exit.void)
+                            );
+                            // Combine denied admission with a typed teardown failure to prove disposal is unconditional.
+                            yield* k
+                                .start(
+                                    k.definition(
+                                        'provider',
+                                        {},
+                                        {
+                                            deactivate: denyDisposal,
+                                        }
+                                    )
+                                )
+                                .pipe(Scope.extend(owner));
+                            yield* k.start(
+                                k.definition(
+                                    'consumer',
+                                    { dependencies: [{ id: 'provider', version: '1.0.0' }] },
+                                    { interruptDeactivate: disposal === 'interrupted' }
+                                )
+                            );
+                            const before = yield* f.feed.read(0, 100);
+                            yield* Ref.set(f.allowed, !denyDisposal);
+                            yield* Scope.close(owner, Exit.void);
+                            expect(yield* k.kernel.snapshot).toEqual([]);
+                            expect(yield* Ref.get(k.finalized)).toEqual(['consumer:1.0.0', 'provider:1.0.0']);
+                            const after = yield* f.feed.read(before.cursor, 100);
+                            const cleanup = (yield* Ref.get(k.callbacks)).slice(-2);
+                            expect(
+                                cleanup.map(/** Identify dependent-first teardown hooks. */ ({ slot }) => slot)
+                            ).toEqual(['consumer:1.0.0:deactivate', 'provider:1.0.0:deactivate']);
+                            if (denyDisposal) {
+                                expect(after.events).toEqual([]);
+                                for (const callback of cleanup)
+                                    expect(callback).toMatchObject({ request: null, status: 'unadmitted' });
+                                expect(yield* k.kernel.durability).toMatchObject({ state: 'recovery-required' });
+                                expect(
+                                    yield* f.sql`SELECT * FROM hook_producer_attempt WHERE state = 'unresolved'`
+                                ).toHaveLength(0);
+                            } else {
+                                expect(
+                                    after.events.map(
+                                        /** Retain actual intermediate inactive states, not a direct synthetic deletion. */ ({
+                                            event,
+                                        }) => event.projection
+                                    )
+                                ).toMatchObject([
+                                    {
+                                        operation: 'deactivate',
+                                        identity: { module: 'consumer' },
+                                        from: 'active',
+                                        to: 'inactive',
+                                    },
+                                    {
+                                        operation: 'unregister',
+                                        identity: { module: 'consumer' },
+                                        from: 'inactive',
+                                        to: null,
+                                    },
+                                    {
+                                        operation: 'deactivate',
+                                        identity: { module: 'provider' },
+                                        from: 'active',
+                                        to: 'inactive',
+                                    },
+                                    {
+                                        operation: 'unregister',
+                                        identity: { module: 'provider' },
+                                        from: 'inactive',
+                                        to: null,
+                                    },
+                                ]);
+                                for (const callback of cleanup) expect(callback.status).toBe('unresolved');
+                                expect(yield* k.kernel.durability).toEqual({
+                                    state: disposal === 'interrupted' ? 'recovery-required' : 'healthy',
+                                    unconfirmed: [],
+                                });
+                            }
+                        }
+                    )
+            );
+
+        it.scoped(
+            'kernel records dependent failure cleanup as actual transitions without confirming failed ready',
+            /** Trigger a provider health failure after its consumer is active and inspect cascade evidence. */ () =>
+                Effect.gen(
+                    /** Failure transitions can commit while the failed ready intents remain explicitly unresolved. */ function* () {
+                        const f = yield* fixture(dialect);
+                        const k = yield* kernelFixture(f);
+                        const failHealth = yield* Ref.make(false);
+                        yield* k.start(k.definition('provider', {}, { ready: failHealth }));
+                        yield* k.start(
+                            k.definition('consumer', { dependencies: [{ id: 'provider', version: '1.0.0' }] })
+                        );
+                        const before = yield* f.feed.read(0, 100);
+                        yield* Ref.set(failHealth, true);
+                        expect(yield* Effect.flip(k.run(k.kernel.ready))).toMatchObject({
+                            _tag: 'KernelError',
+                            reason: 'module-failed',
+                        });
+                        expect(yield* k.kernel.snapshot).toMatchObject([
+                            { module: 'provider', state: 'failed' },
+                            { module: 'consumer', state: 'failed' },
+                        ]);
+                        expect(yield* Ref.get(k.finalized)).toEqual(['consumer:1.0.0', 'provider:1.0.0']);
+                        const after = yield* f.feed.read(before.cursor, 100);
+                        expect(
+                            after.events.map(
+                                /** Exclude uncommitted health checks while retaining physical failure cleanup. */ ({
+                                    event,
+                                }) => event.projection
+                            )
+                        ).toMatchObject([
+                            {
+                                operation: 'deactivate',
+                                identity: { module: 'consumer' },
+                                from: 'active',
+                                to: 'inactive',
+                            },
+                            { operation: 'ready', identity: { module: 'consumer' }, from: 'inactive', to: 'failed' },
+                            {
+                                operation: 'deactivate',
+                                identity: { module: 'provider' },
+                                from: 'active',
+                                to: 'inactive',
+                            },
+                            { operation: 'ready', identity: { module: 'provider' }, from: 'inactive', to: 'failed' },
+                        ]);
+                        const durability = yield* k.kernel.durability;
+                        expect(durability.state).toBe('recovery-required');
+                        expect(durability.unconfirmed).toHaveLength(2);
+                        for (const request of durability.unconfirmed)
+                            expect(
+                                (yield* f.producer
+                                    .inspect(request)
+                                    .pipe(Effect.provideService(HookProducerPolicy, k.policy))).status
+                            ).toBe('unresolved');
+                        const callbacks = yield* Ref.get(k.callbacks);
+                        expect(yield* Effect.flip(k.run(k.kernel.recover('provider')))).toMatchObject({
+                            reason: 'recovery-required',
+                        });
+                        expect(yield* Effect.flip(k.run(k.kernel.ready))).toMatchObject({
+                            reason: 'recovery-required',
+                        });
+                        expect(yield* Ref.get(k.callbacks)).toEqual(callbacks);
+                    }
+                )
+        );
+
+        for (const failConfirmation of [false, true])
+            it.scoped(
+                `kernel update commits the swap and finalizes old code when cleanup fails and confirmation ${failConfirmation ? 'fails' : 'succeeds'}`,
+                /** Distinguish public cleanup failure from a committed swap, including independent confirmation loss. */ () =>
+                    Effect.gen(
+                        /** Old finalizers must run after the state write even when neither later acknowledgement succeeds. */ function* () {
+                            const f = yield* fixture(dialect);
+                            const k = yield* kernelFixture(f);
+                            yield* k.start(k.definition('fixture', {}, { deactivate: true }));
+                            const before = yield* f.feed.read(0, 100);
+                            yield* Ref.set(k.confirmationFails, failConfirmation);
+                            expect(
+                                yield* Effect.flip(
+                                    k.run(k.kernel.update('fixture', k.definition('fixture', { version: '1.0.1' })))
+                                )
+                            ).toMatchObject({
+                                _tag: 'KernelError',
+                                reason: failConfirmation ? 'recovery-required' : 'module-failed',
+                            });
+                            expect(yield* k.kernel.snapshot).toEqual([
+                                { module: 'fixture', version: '1.0.1', state: 'active' },
+                            ]);
+                            expect(yield* Ref.get(k.finalized)).toEqual(['fixture:1.0.0']);
+                            const after = yield* f.feed.read(before.cursor, 100);
+                            expect(
+                                after.events.map(
+                                    /** A failed public call still publishes an acknowledged committed swap. */ ({
+                                        event,
+                                    }) => event.projection
+                                )
+                            ).toEqual(
+                                failConfirmation
+                                    ? []
+                                    : [
+                                          {
+                                              kind: 'module.lifecycle',
+                                              operation: 'update',
+                                              identity: { module: 'fixture', version: '1.0.1', generation: 3 },
+                                              from: 'active',
+                                              to: 'active',
+                                          },
+                                      ]
+                            );
+                            const cleanup = (yield* Ref.get(k.callbacks)).at(-1);
+                            if (cleanup === undefined || cleanup.request === null)
+                                return yield* new KernelError({ module: 'fixture', reason: 'invalid-contract' });
+                            expect(cleanup.slot).toBe('fixture:1.0.0:deactivate');
+                            expect(cleanup.status).toBe(failConfirmation ? 'unresolved' : 'committed');
+                            const retained = yield* f.producer
+                                .inspect(cleanup.request)
+                                .pipe(Effect.provideService(HookProducerPolicy, k.policy));
+                            expect(retained.status).toBe(failConfirmation ? 'unresolved' : 'committed');
+                            expect(retained.attempt.binding.projection).toMatchObject({
+                                operation: 'update',
+                                identity: { version: '1.0.1' },
+                                from: 'active',
+                                to: 'active',
+                            });
+                            const durability = yield* k.kernel.durability;
+                            expect(durability.state).toBe('recovery-required');
+                            expect(durability.unconfirmed).toEqual(failConfirmation ? [cleanup.request] : []);
+                            yield* Ref.set(k.confirmationFails, false);
+                        }
+                    )
+            );
+
+        for (const admission of ['denied', 'duplicate', 'contradictory'] as const)
+            it.scoped(
+                `kernel ${admission} intent fails closed and sticky recovery never replays callbacks`,
+                /** Reject admission before module effects, then prove permission restoration does not authorize replay. */ () =>
+                    Effect.gen(
+                        /** A duplicate retained attempt is status evidence only, including when it was never committed. */ function* () {
+                            const f = yield* fixture(dialect);
+                            const k = yield* kernelFixture(f, admission === 'contradictory');
+                            yield* k.run(k.kernel.register(k.definition()));
+                            yield* k.run(k.kernel.validate('fixture'));
+                            if (admission === 'duplicate') {
+                                const request = id(2000);
+                                yield* f.producer
+                                    .begin(request, {
+                                        kind: 'module.lifecycle',
+                                        module: 'fixture',
+                                        operation: 'install',
+                                    })
+                                    .pipe(
+                                        Effect.provideService(HookProducerPolicy, k.policy),
+                                        Effect.provideService(KernelMutation, {
+                                            request,
+                                            projection: {
+                                                kind: 'module.lifecycle',
+                                                operation: 'install',
+                                                identity: { module: 'fixture', version: '1.0.0', generation: 1 },
+                                                from: 'validated',
+                                                to: 'installed',
+                                            },
+                                        })
+                                    );
+                                yield* Ref.set(k.forcedRequest, request);
+                            } else if (admission === 'denied') yield* Ref.set(f.allowed, false);
+                            const before = yield* f.feed.read(0, 100);
+                            expect(yield* Effect.flip(k.run(k.kernel.install('fixture')))).toMatchObject({
+                                _tag: 'KernelError',
+                                reason: 'recovery-required',
+                            });
+                            expect(yield* k.kernel.snapshot).toEqual([
+                                { module: 'fixture', version: '1.0.0', state: 'validated' },
+                            ]);
+                            expect(yield* Ref.get(k.callbacks)).toEqual([]);
+                            yield* Ref.set(f.allowed, true);
+                            yield* Ref.set(k.forcedRequest, undefined);
+                            for (const operation of [
+                                k.kernel.install('fixture'),
+                                k.kernel.ready,
+                                k.kernel.workflow('fixture'),
+                                k.kernel.recover('fixture'),
+                            ])
+                                expect(yield* Effect.flip(k.run(operation))).toMatchObject({
+                                    reason: 'recovery-required',
+                                });
+                            expect(yield* Ref.get(k.callbacks)).toEqual([]);
+                            expect(yield* Ref.get(f.reconciliations)).toBe(0);
+                            expect(yield* f.feed.read(before.cursor, 100)).toEqual({
+                                cursor: before.cursor,
+                                events: [],
+                            });
+                            const durability = yield* k.kernel.durability;
+                            expect(durability.state).toBe('recovery-required');
+                            expect(durability.unconfirmed).toHaveLength(1);
+                            if (admission === 'duplicate')
+                                expect(
+                                    (yield* f.producer
+                                        .inspect(id(2000))
+                                        .pipe(Effect.provideService(HookProducerPolicy, k.policy))).status
+                                ).toBe('unresolved');
+                            else
+                                expect(
+                                    yield* f.sql`SELECT * FROM hook_producer_attempt WHERE state = 'unresolved'`
+                                ).toHaveLength(0);
+                        }
+                    )
+            );
+
         it.scoped(
             'persists a fresh incarnation on every build and grants callback eligibility only once',
             /** Exercise restart identity and one-time callback eligibility. */ () =>
