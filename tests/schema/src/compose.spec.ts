@@ -18,6 +18,7 @@ import type { SecurityProfile } from '@eventiva/contracts/security';
 import {
     compose,
     contribute,
+    type Contribution,
     DuplicateResource,
     DuplicateField,
     UnknownTarget,
@@ -56,12 +57,22 @@ const Venue = Resource.make('venues.venue', {
     fields: { id: Field.id().pipe(Field.classify('restricted')) },
 });
 
+/** Enumerate every arrival order of three distinct declarations without modifying caller-owned inputs. */
+const permutations = (a: Contribution, b: Contribution, c: Contribution) => [
+    [a, b, c],
+    [a, c, b],
+    [b, a, c],
+    [b, c, a],
+    [c, a, b],
+    [c, b, a],
+];
+
 /** Project successful composition into ordered owner-qualified field names while preserving composition failures. */
 const names = (composed: Either.Either<{ readonly resources: ReadonlyArray<Resource.Resource | object> }, unknown>) =>
     Either.map(
         composed,
         /** Preserve resource order when reducing a successful composition to its field ownership evidence. */ ({
-            resources
+            resources,
         }) =>
             resources.map(
                 /** Extract composed array-form fields; uncomposed or opaque resources contribute no names. */ (
@@ -305,6 +316,166 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
         );
         const own = compose([Event], [contribute(Event, 'tickets', { title: Field.text() })]);
         expect(Either.getLeft(own)).toEqual(Option.some(expect.objectContaining({ modules: ['events', 'tickets'] })));
+    });
+
+    it('selects the same complete diagnostic for tied contributions in every permutation', /** Pin fixed typed errors across equal-module ties, including metadata ties beyond field names. */ () => {
+        // Each expected error is independent of compose; comparing two executions alone could preserve the same bug.
+        const collision = Resource.make('events.collision', {
+            module: 'events',
+            version: 1,
+            plane: 'tenant',
+            consistency: 'record',
+            fields: { beta: Field.integer(), alpha: Field.text() },
+        });
+        const cases = [
+            {
+                resource: collision,
+                contributions: [
+                    contribute(collision, 'tickets', { beta: Field.text() }),
+                    contribute(collision, 'tickets', { alpha: Field.integer() }),
+                    contribute(collision, 'tickets', { zeta: Field.boolean() }),
+                ] as const,
+                expected: new DuplicateField({
+                    resource: 'events.collision',
+                    field: 'alpha',
+                    modules: ['events', 'tickets'],
+                }),
+            },
+            {
+                resource: Event,
+                contributions: [
+                    contribute(Event, 'tickets', { 'beta-invalid': Field.text() }),
+                    contribute(Event, 'tickets', { 'alpha-invalid': Field.integer() }),
+                    contribute(Event, 'tickets', { zeta: Field.boolean() }),
+                ] as const,
+                expected: new InvalidName({ module: 'tickets', name: 'alpha-invalid' }),
+            },
+            {
+                resource: Venue,
+                contributions: [
+                    contribute(Venue, 'tickets', { beta: Field.text() }),
+                    contribute(Venue, 'tickets', { alpha: Field.integer() }),
+                    contribute(Venue, 'tickets', { zeta: Field.boolean().pipe(Field.classify('vault')) }),
+                ] as const,
+                expected: new WeakerClassification({
+                    resource: 'venues.venue',
+                    field: 'alpha',
+                    module: 'tickets',
+                    profile: 'baseline',
+                    floor: 'restricted',
+                }),
+            },
+            {
+                resource: Event,
+                contributions: [
+                    contribute(Event, 'tickets', { beta: Field.reference('missing.beta') }),
+                    contribute(Event, 'tickets', { alpha: Field.reference('missing.alpha') }),
+                    contribute(Event, 'tickets', { zeta: Field.boolean() }),
+                ] as const,
+                expected: new UnknownTarget({ resource: 'events.event', module: 'tickets', target: 'missing.alpha' }),
+            },
+            {
+                resource: Venue,
+                contributions: [
+                    contribute(Venue, 'tickets', { alpha: Field.text().pipe(Field.classify('sensitive')) }),
+                    contribute(Venue, 'tickets', { alpha: Field.text() }),
+                    contribute(Venue, 'tickets', { zeta: Field.boolean().pipe(Field.classify('vault')) }),
+                ] as const,
+                expected: new WeakerClassification({
+                    resource: 'venues.venue',
+                    field: 'alpha',
+                    module: 'tickets',
+                    profile: 'baseline',
+                    floor: 'restricted',
+                }),
+            },
+            {
+                resource: Event,
+                contributions: [
+                    contribute(Event, 'tickets', { alpha: Field.reference('missing.beta') }),
+                    contribute(Event, 'tickets', { alpha: Field.reference('missing.alpha') }),
+                    contribute(Event, 'tickets', { zeta: Field.boolean() }),
+                ] as const,
+                expected: new UnknownTarget({ resource: 'events.event', module: 'tickets', target: 'missing.alpha' }),
+            },
+        ];
+        const unrelated = Resource.make('zz.control', { ...Event, module: 'control' });
+        for (const scenario of cases) {
+            for (const order of permutations(...scenario.contributions)) {
+                for (const resources of [
+                    [scenario.resource, unrelated],
+                    [unrelated, scenario.resource],
+                ]) {
+                    expect(compose(resources, order)).toEqual(Either.left(scenario.expected));
+                }
+            }
+        }
+    });
+
+    it('preserves tied valid declarations, schema identities and caller-owned input', /** Verify successful tied-source composition retains every original field without sorting or decorating input objects. */ () => {
+        // Freeze containers and snapshot descriptors: schema functions are opaque references, not sortable/serializable data.
+        const metadata = Field.json(Schema.Struct({ at: Schema.Date }));
+        const timestamp = Field.timestamp();
+        const link = Field.reference('venues.venue').pipe(Field.nullable);
+        const first = Object.freeze(contribute(Event, 'tickets', Object.freeze({ zeta: metadata, alpha: timestamp })));
+        const second = Object.freeze(contribute(Event, 'tickets', Object.freeze({ beta: link })));
+        const third = Object.freeze(contribute(Event, 'tickets', Object.freeze({ gamma: Field.integer() })));
+        const resources = Object.freeze([Venue, Event]);
+        const inputs = [
+            Event,
+            Venue,
+            Event.fields,
+            Venue.fields,
+            ...Object.values(Event.fields),
+            ...Object.values(Venue.fields),
+            metadata,
+            timestamp,
+            link,
+            ...Object.values(third.fields),
+        ];
+        const originalDescriptors = inputs.map(
+            /** Snapshot caller metadata without traversing schema ASTs or executing schema functions. */ (input) =>
+                Object.getOwnPropertyDescriptors(input)
+        );
+        for (const order of permutations(first, second, third)) {
+            const originalOrder = [...order];
+            const contributions = Object.freeze(order);
+            const result = compose(resources, contributions);
+            expect(result).toEqual(compose(Object.freeze([Event, Venue]), Object.freeze([...order].reverse())));
+            expect(Either.isRight(result)).toBe(true);
+            if (Either.isRight(result)) {
+                for (const composed of result.right.resources) {
+                    expect(composed.resource).toBe(composed.resource.name === Event.name ? Event : Venue);
+                    const expected: Resource.Fields =
+                        composed.resource.name === Event.name
+                            ? { ...Event.fields, ...first.fields, ...second.fields, ...third.fields }
+                            : Venue.fields;
+                    expect(
+                        composed.fields.map(
+                            /** Require every declared field exactly once in canonical output order. */ (field) =>
+                                field.name
+                        )
+                    ).toEqual(Object.keys(expected).sort());
+                    for (const field of composed.fields) {
+                        expect(field.module).toBe(
+                            composed.resource === Venue ? 'venues' : field.name in Event.fields ? 'events' : 'tickets'
+                        );
+                        expect(field.field).toBe(expected[field.name]);
+                        expect(field.field.schema).toBe(expected[field.name]?.schema);
+                    }
+                }
+            }
+            expect(resources).toEqual([Venue, Event]);
+            expect(contributions).toEqual(originalOrder);
+        }
+        expect(Object.keys(first.fields)).toEqual(['zeta', 'alpha']);
+        expect(
+            inputs.map(
+                /** Detect writes through retained caller-owned resource, field-map and field references. */ (input) =>
+                    Object.getOwnPropertyDescriptors(input)
+            )
+        ).toEqual(originalDescriptors);
+        expect(metadata.schema.fields.at).toBe(Schema.Date);
     });
 
     it('lets a contribution raise a profile but never lower it below the resource', /** Verify contribution security honors the resource floor while allowing stronger field classification. */ () => {

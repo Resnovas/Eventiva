@@ -41,4 +41,12 @@ The emitted constructor bases have no open generic parameter, `any` or `unknown`
 
 This is a pure library typing change, not a new application behavior switch or a storage adapter. It adds no dependency, runtime registry, persistence model or feature flag. The separate resource-provider model is not reinterpreted here.
 
+## Deterministic contribution diagnostics
+
+`compose(resources, contributions)` validates owner declarations first, then contributions ordered by target and module. When several contributions share both keys, it breaks the tie using the JSON encoding of their field-name-sorted `[name, security, referenceTargetOrNull]` tuples, compared by code-unit order. Field-object insertion order and contribution arrival order do not select the first error. Schemas remain opaque: composition neither serializes nor decodes them to order declarations.
+
+For example, if `events.event` owns `alpha` and `beta`, two contributions from `tickets` that separately redeclare those fields both produce `DuplicateField({ resource: 'events.event', field: 'alpha', modules: ['events', 'tickets'] })`, whichever contribution arrives first. Independently malformed names, weaker protection profiles and missing references also select the same complete typed diagnostic under permutation. Ties with identical validation metadata need no schema-based ordering: nonempty ties have the same failure, and empty contributions add no fields.
+
+Accepted schemas, owner/module attribution, owner-first validation, security floors, unknown-target checks and the five public error classes are unchanged. Successful composition retains the original resource, field and schema references; it sorts copied arrays and entry lists, never caller-owned containers. The regression controls enumerate all six orders of three same-module contributions with both resource orders, plus frozen-input and transformed-schema identity controls. This corrects the existing pure deterministic-composition invariant, not an optional product capability or a feature-flag rollout.
+
 Run `pnpm exec tsc -b packages/schema/tsconfig.build.json`, then `pnpm exec tsc -p tests/schema/tsconfig.json --noEmit`. Run `pnpm exec vitest run --config vitest.config.mts` from `tests/schema`. The composition test includes compile-time row/field type checks, Date round trips, source-schema identity and nullable metadata checks.

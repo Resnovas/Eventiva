@@ -830,7 +830,7 @@
     {
       "id": "9d2eae07379c92add31acc06e72b8fb9cd0553e703073c07d67e503fae17fcb4:0",
       "file": "tests/schema/src/compose.spec.ts",
-      "line": 80,
+      "line": 91,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -838,7 +838,7 @@
     {
       "id": "e4e98d7b26d9c0d6073a66e33e326588dbbc118da485d3dafd0bab9360963742:0",
       "file": "tests/schema/src/compose.spec.ts",
-      "line": 159,
+      "line": 170,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -846,7 +846,7 @@
     {
       "id": "44bed824482744c18c6490f37889e8ee2847b962ef7c50d8755500d2e1481b63:0",
       "file": "tests/schema/src/compose.spec.ts",
-      "line": 356,
+      "line": 527,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"

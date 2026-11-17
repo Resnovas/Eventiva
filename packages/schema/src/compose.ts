@@ -197,8 +197,24 @@ export const compose = (
         ),
         ...[...contributions].sort(
             byName(
-                /** Order contributions by target and module before checking field conflicts. */ (contribution) =>
-                    `${contribution.target}\u0000${contribution.module}`
+                /** Break target/module ties using only canonical metadata that can affect validation diagnostics. */ (
+                    contribution
+                ) =>
+                    `${contribution.target}\u0000${contribution.module}\u0000${JSON.stringify(
+                        Object.entries(contribution.fields)
+                            .sort(
+                                byName(
+                                    /** Ignore field-object insertion order when ordering tied sources. */ ([name]) =>
+                                        name
+                                )
+                            )
+                            .map(
+                                /** Keep schemas opaque; only names, protection and reference targets affect first-error selection. */ ([
+                                    name,
+                                    field,
+                                ]) => [name, field.security, field.target._tag === 'Some' ? field.target.value : null]
+                            )
+                    )}`
             )
         ),
     ];
@@ -216,7 +232,7 @@ export const compose = (
             byName(
                 /** Use field identity, not object insertion order, to select validation order. */ ([name]: [
                     string,
-                    Field
+                    Field,
                 ]) => name
             )
         )) {
