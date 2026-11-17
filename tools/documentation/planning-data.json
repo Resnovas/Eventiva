@@ -10051,10 +10051,13 @@
             "date": "2026-11-17",
             "status": "Backlog",
             "statusType": "backlog",
-            "summary": "Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only. Four public-host corrupting trusted-adapter cases failed on unchanged main by returning nested amount 999 instead of approved 20; two controls passed. Private canonical encoded bytes and fresh typed decoding per observer now pass the focused 114 execution/host/type tests, including nested arrays/objects, NumberFromString, retained references during transaction waits and replay. Full checks, storage compatibility and signed delivery evidence are recorded separately on EVE-39. This explicitly volatile fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged.",
+            "summary": "Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only; its prior red/green and signed delivery remain cited. Batch 4 slice 1 implements the approved EVE-40 A3 intent lifetime inside the executor: each policy inspection receives a disposable scalar view, never the decoded intent subsequently enforced. Restoring shared-intent behavior makes 14 of 17 public regressions fail, including deadline-0 deletion incorrectly succeeding; all 17 pass with isolation, and the focused execution/host/action-type suite passes 131 tests. Retained references across integrity waits and replay cannot rewrite timing, schedule, expected state/version or idempotency/approval bindings; live identity, policy and approval revocation remain fresh. Full gates and signed delivery evidence are recorded separately on EVE-39/EVE-40. EVE-39 remains Backlog; EVE-40 was already Done, and neither status is changed. This volatile in-process fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged.",
             "sources": [
                 "https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc",
-                "https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325"
+                "https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325",
+                "https://linear.app/resnovas/issue/EVE-39#comment-b29e9dc6-13ad-4601-b816-2775d340b154",
+                "https://linear.app/resnovas/issue/EVE-40#comment-f520561e-5fa6-4843-b0f3-5e8c70c885f1",
+                "https://ampcode.com/threads/T-1d187d8d-5a8e-492a-b9f9-66786c3a790a"
             ]
         },
         {

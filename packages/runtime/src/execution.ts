@@ -168,7 +168,7 @@ export const makeExecutor = Effect.gen(
         const digest = yield* InputDigest;
 
         return /** Execute untrusted wire input through refreshed authority and durable receipt handling; audit failure stays on the outer channel. */ <
-            Wire
+            Wire,
         >(
             action: string,
             input: Wire,
@@ -224,7 +224,9 @@ export const makeExecutor = Effect.gen(
                                             yield* prepared.authorize(authorizer, caller);
                                             const canonical = yield* prepared.canonicalInput;
                                             inputHash = yield* digest.digest(canonical);
-                                            const live = yield* prepared.inspect(policy, caller, intent);
+                                            // Intent contains only decoded scalars. Keep it private: each policy
+                                            // inspection receives a disposable view, never the values we enforce.
+                                            const live = yield* prepared.inspect(policy, caller, { ...intent });
                                             yield* checkExecution(
                                                 caller,
                                                 spec,
@@ -252,16 +254,14 @@ export const makeExecutor = Effect.gen(
                                                     )
                                                         return yield* new InvocationDenied({
                                                             action,
-                                                            reason: 'identity-changed'
+                                                            reason: 'identity-changed',
                                                         });
                                                     yield* entry.available;
                                                     yield* authorizer.canInvoke(currentCaller, entry.spec);
                                                     yield* prepared.authorize(authorizer, currentCaller);
-                                                    const current = yield* prepared.inspect(
-                                                        policy,
-                                                        currentCaller,
-                                                        intent
-                                                    );
+                                                    const current = yield* prepared.inspect(policy, currentCaller, {
+                                                        ...intent,
+                                                    });
                                                     yield* checkExecution(
                                                         currentCaller,
                                                         entry.spec,

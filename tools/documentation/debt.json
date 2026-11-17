@@ -382,23 +382,15 @@
     {
       "id": "0581a1fafa46a93b246919bb5b76336a6e6dbf7f3c3ee32702b356b62aa62d3f:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 227,
+      "line": 241,
       "kind": "ArrowFunction",
       "name": "denied",
       "rule": "review-internal-rationale"
     },
     {
-      "id": "3054c1d276c9e3841eea14c3f01ea1bd110d0e7cf596b6bd4761d3bc3c9a9bc7:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 232,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "f5546c4f4889e8283fc9a80c1703c617c40716d2b87404469c57d13cdccabdda:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 362,
+      "line": 376,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -406,23 +398,15 @@
     {
       "id": "dd81f3498f89b735730ae3a519a2c503cc64a0abb8f6ad3a35c90a5a47a1450b:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 379,
+      "line": 393,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "82dc90bbe3485baa46c42e323bf874fb8a060c6494cb40e6e95707e7243a93a3:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 586,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
     {
       "id": "eb85a37b9e9532a22988a45e4eaa1556d46746ead29b6d2346ba84a35d4c9ad7:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 611,
+      "line": 625,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -430,31 +414,7 @@
     {
       "id": "e5b6aeac94f29a5782b206e563a72a1df0e4f494b417aa480b45fd76e1f5792d:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 630,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "88453ad54fedb764cfa3585d48a27a8a4e5317f035fabe3486b04ac7acf796e9:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 659,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "d780d9a914364d7d200ef79339e6952854f044487a3d8b78e6ec0e63b7eff255:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 731,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "b12072090cfa3b4df9fc2823cb3623a8a6f95954796ed3aa0a761fdd7ab9d6ab:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 760,
+      "line": 644,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -462,15 +422,7 @@
     {
       "id": "5eb95eb510932c3dc902afe4a2a73fd28ceb4c9266770e2643ba96e008ed5682:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 813,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "d9d929b6c1b83cb2ec9bab5ab8ac8c0f6a615b447ac1be3b9b865f2ccb930d9b:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 830,
+      "line": 827,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -478,23 +430,15 @@
     {
       "id": "f26c704dcb1191089692281a7ec5aef28d020e939c465e3a3027a8b58d643257:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 877,
+      "line": 891,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "d01c047cb1722f67a82b101fb0d36783e1146910755ea549a61e796e1dd4014e:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 893,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
     {
       "id": "4d08f378312a90f7288dc8ad0366ac17e93e1b88d1d8185aaf0d221f2ba3af20:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1001,
+      "line": 1217,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -502,15 +446,7 @@
     {
       "id": "e5055ed048c940ec5282e26f994f4c38cfdbbd810ba6369e244b4f578c80f69c:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1046,
-      "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "4a0aebb844cf02c84258ac9e6515e3c51e63a6fadf027b23fd141a0af13d4fb4:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1115,
+      "line": 1262,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -518,7 +454,7 @@
     {
       "id": "57472edb6c501dab89a15704004726cbed172c4b996bdd663f48bcb5df1f1b4e:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1146,
+      "line": 1362,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -526,23 +462,15 @@
     {
       "id": "754a62efbcc64f01f3ead732fc7fd676fe716801a05dfd478945bf93cb11fa07:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1162,
+      "line": 1378,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "206eae9fc53219a4966f137f12b5a891cee3f55ce407716ce86d1c3b9c8b43ef:0",
-      "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1183,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
     {
       "id": "b890bf98711d3096203bcd4f01613161e81d886c1a66b0547ce2f2e49de2fe72:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1189,
+      "line": 1405,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -550,7 +478,7 @@
     {
       "id": "c1f58a83f66265a312e00429922278f8123b62fdb1468f4c5d1e555d060135f5:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1206,
+      "line": 1422,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"

@@ -111,7 +111,11 @@ type Harness = Effect.Effect.Success<ReturnType<typeof makeTestOnlyHarness>>;
 type FixtureSpec = ReturnType<typeof spec>;
 
 /** Register controllable handlers on a volatile integrity harness, not a durable adapter. */
-const setup = (specs: ReadonlyArray<FixtureSpec> = [spec('read'), spec('write'), spec('external')]) =>
+const setup = (
+    specs: ReadonlyArray<FixtureSpec> = [spec('read'), spec('write'), spec('external')],
+    /** Observe policy intent without replacing the fixture's fresh live requirements. */
+    inspectIntent?: (intent: InvokeOptions) => Effect.Effect<void>
+) =>
     Effect.gen(
         /** Allocate isolated ledger state and expose caller-bound execute/invoke entry points. */ function* () {
             // All observable writes use one harness ledger so rollback and visibility share a transaction boundary.
@@ -120,7 +124,17 @@ const setup = (specs: ReadonlyArray<FixtureSpec> = [spec('read'), spec('write'),
             const entered = yield* Deferred.make<void>();
             const release = yield* Deferred.make<void>();
             const context = yield* Layer.build(
-                ActionHostLive.pipe(Layer.provide(h.TestOnly), Layer.provide(FlagsSafeDefaults))
+                ActionHostLive.pipe(
+                    Layer.provide(
+                        Layer.succeed(ExecutionPolicy, {
+                            /** Expose the adapter view before reading current requirements, including after waits and replay. */
+                            inspect: (_caller, _spec, _input, intent) =>
+                                (inspectIntent?.(intent) ?? Effect.void).pipe(Effect.zipRight(Ref.get(h.policy))),
+                        })
+                    ),
+                    Layer.provide(h.TestOnly),
+                    Layer.provide(FlagsSafeDefaults)
+                )
             );
             const host = Context.get(context, ActionHost);
             yield* host.register({
@@ -152,7 +166,7 @@ const setup = (specs: ReadonlyArray<FixtureSpec> = [spec('read'), spec('write'),
                                             yield* h.ledger.stage('domain', decoded);
                                             yield* h.ledger.stage('history', {
                                                 action: action.name,
-                                                transition: 'committed'
+                                                transition: 'committed',
                                             });
                                             if (action.sideEffect === 'external')
                                                 yield* h.ledger.stage('outbox', { command: decoded });
@@ -318,7 +332,7 @@ describe('A1: transaction integrity through ActionHost', /** Register host trans
                         domain: [],
                         history: [],
                         outbox: [],
-                        receipts: []
+                        receipts: [],
                     });
                     yield* Deferred.succeed(t.release, undefined);
                     expect(Exit.isSuccess((yield* Fiber.join(pending)).result)).toBe(true);
@@ -663,7 +677,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                             t.h.policy,
                             /** Replace only the bounds under test, preserving other policy controls. */ (p) => ({
                                 ...p,
-                                bounds
+                                bounds,
                             })
                         );
                         yield* approve(t.h);
@@ -700,7 +714,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                         t.h.policy,
                         /** Remove preauthorization before testing the independent approval path. */ (p) => ({
                             ...p,
-                            routinePreauthorized: false
+                            routinePreauthorized: false,
                         })
                     );
                     yield* approve(t.h);
@@ -708,7 +722,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                         Exit.isSuccess(
                             (yield* t.execute('fixture.write', input, {
                                 idempotencyKey: 'approved',
-                                approvalId: 'approval'
+                                approvalId: 'approval',
                             })).result
                         )
                     ).toBe(true);
@@ -735,7 +749,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                             t.h.policy,
                             /** Enable routine preauthorization without changing the action's risk floor. */ (p) => ({
                                 ...p,
-                                routinePreauthorized: true
+                                routinePreauthorized: true,
                             })
                         );
                         const options = { idempotencyKey: 'key', deadline: 10_000 };
@@ -765,7 +779,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                             Exit.isSuccess(
                                 (yield* t.execute('fixture.write', input, {
                                     idempotencyKey: 'key',
-                                    approvalId: 'approval'
+                                    approvalId: 'approval',
                                 })).result
                             )
                         ).toBe(true);
@@ -787,7 +801,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                         /** Raise approval and step-up while retaining all other policy fields. */ (p) => ({
                             ...p,
                             approval: 'always' as const,
-                            stepUp: true
+                            stepUp: true,
                         })
                     );
                     denied(yield* t.execute('fixture.write'), 'approval-required');
@@ -836,7 +850,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                         Exit.isSuccess(
                             (yield* t.execute('fixture.external', input, {
                                 idempotencyKey: 'key',
-                                approvalId: 'approval'
+                                approvalId: 'approval',
                             })).result
                         )
                     ).toBe(true);
@@ -890,6 +904,208 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
     );
 });
 
+describe('A3: admitted intent isolation', /** Exercise policy substitution through public execution, not a private snapshot helper. */ () => {
+    for (const field of ['idempotencyKey', 'approvalId', 'mode'] as const) {
+        it.scoped(
+            `rejects immediate ${field} substitution`,
+            /** Keep deduplication, approval lookup and schedule completeness bound to admitted scalar values. */ () =>
+                Effect.gen(
+                    /** Distinguish substitution from normal execution with an independently constructed retry. */ function* () {
+                        let corrupt = true;
+                        const t = yield* setup(
+                            undefined,
+                            /** Attempt one reference or schedule substitution before the executor enforces intent. */ (
+                                intent
+                            ) =>
+                                Effect.sync(
+                                    /** Change only the selected field so another gate cannot mask the regression. */ () => {
+                                        if (corrupt)
+                                            Object.assign(intent, {
+                                                [field]:
+                                                    field === 'idempotencyKey'
+                                                        ? 'redirected'
+                                                        : field === 'approvalId'
+                                                          ? 'approval'
+                                                          : 'online',
+                                            });
+                                    }
+                                )
+                        );
+                        yield* Ref.update(
+                            t.h.policy,
+                            /** Require approval only when testing an attempted replacement of a missing reference. */ (
+                                p
+                            ) => ({ ...p, approval: field === 'approvalId' ? ('always' as const) : ('none' as const) })
+                        );
+                        yield* approve(t.h);
+                        const options: InvokeOptions = {
+                            idempotencyKey: 'key',
+                            ...(field === 'approvalId' ? { approvalId: 'missing' } : {}),
+                            ...(field === 'mode' ? { mode: 'scheduled' } : {}),
+                        };
+                        const result = yield* t.execute('fixture.write', input, options);
+                        if (field === 'idempotencyKey') {
+                            expect(result.result).toEqual(Exit.succeed({ count: 2 }));
+                            corrupt = false;
+                            const retry = yield* t.execute('fixture.write', input, { idempotencyKey: 'key' });
+                            expect(retry.result).toEqual(Exit.succeed({ count: 2 }));
+                            expect(retry.replayed).toBe(true);
+                        } else denied(result, field === 'approvalId' ? 'approval-revoked' : 'schedule-window-required');
+                        const writes = field === 'idempotencyKey' ? 1 : 0;
+                        expect(yield* Ref.get(t.calls)).toBe(writes);
+                        const state = yield* Ref.get(t.h.state);
+                        expect(state.domain).toEqual(writes === 0 ? [] : [input]);
+                        expect(state.dedup.size).toBe(writes);
+                    }
+                )
+        );
+    }
+
+    for (const corrupt of [false, true]) {
+        for (const deadline of [0, 100]) {
+            it.scoped(
+                `preserves deadline ${deadline} with ${corrupt ? 'deleting' : 'unchanged'} policy`,
+                /** Compare the expired refusal with a future-deadline control under identical policy requirements. */ () =>
+                    Effect.gen(
+                        /** Require no handler or successful dedup entry for expired admitted intent. */ function* () {
+                            const t = yield* setup(
+                                undefined,
+                                /** Deliberately corrupt only the adapter's deadline view. */ (intent) =>
+                                    Effect.sync(
+                                        /** Model an in-process adapter error, not an external dispatch exploit. */ () => {
+                                            if (corrupt) Reflect.deleteProperty(intent, 'deadline');
+                                        }
+                                    )
+                            );
+                            const result = yield* t.execute('fixture.write', input, {
+                                idempotencyKey: 'key',
+                                deadline,
+                            });
+                            if (deadline === 0) denied(result, 'expired');
+                            else expect(result.result).toEqual(Exit.succeed({ count: 2 }));
+                            expect(yield* Ref.get(t.calls)).toBe(deadline === 0 ? 0 : 1);
+                            const state = yield* Ref.get(t.h.state);
+                            expect(state.domain).toEqual(deadline === 0 ? [] : [input]);
+                            expect(state.dedup.size).toBe(deadline === 0 ? 0 : 1);
+                        }
+                    )
+            );
+        }
+    }
+
+    for (const replay of [false, true]) {
+        for (const change of ['deadline', 'notBefore', 'state', 'version', 'references'] as const) {
+            it.scoped(
+                `preserves ${change} through retained policy references on ${replay ? 'replay' : 'new work'}`,
+                /** Mutate admitted views only after preflight reaches a deterministic integrity barrier. */ () =>
+                    Effect.gen(
+                        /** Keep original timing, state and reference bindings while live requirements remain fresh. */ function* () {
+                            const retained: Array<InvokeOptions> = [];
+                            const t = yield* setup(
+                                undefined,
+                                /** Retain every inspection view, including earlier invocations and transaction revalidation. */ (
+                                    intent
+                                ) =>
+                                    Effect.sync(
+                                        /** Capture the adapter-owned reference for the barrier attack. */ () => {
+                                            retained.push(intent);
+                                        }
+                                    )
+                            );
+                            yield* Ref.update(
+                                t.h.policy,
+                                /** Require the original approval and version so reference substitution is observable. */ (
+                                    p
+                                ) => ({ ...p, approval: 'always' as const, currentVersion: 'v1' })
+                            );
+                            yield* approve(t.h);
+                            const options = {
+                                idempotencyKey: 'key',
+                                approvalId: 'approval',
+                                mode: 'scheduled' as const,
+                                notBefore: 0,
+                                deadline: 100,
+                                expectedState: 'open',
+                                expectedVersion: 'v1',
+                            };
+                            if (replay)
+                                expect((yield* t.execute('fixture.write', input, options)).result).toEqual(
+                                    Exit.succeed({ count: 2 })
+                                );
+                            yield* Ref.set(
+                                t.h.beforeIntegrity,
+                                Deferred.succeed(t.entered, undefined).pipe(Effect.zipRight(Deferred.await(t.release)))
+                            );
+                            const pending = yield* t.execute('fixture.write', input, options).pipe(Effect.fork);
+                            yield* Deferred.await(t.entered);
+                            // Change live gates and try to rewrite the policy-retained expectation to match them.
+                            if (change === 'deadline') yield* TestClock.adjust(100);
+                            if (change === 'state' || change === 'version')
+                                yield* Ref.update(
+                                    t.h.policy,
+                                    /** Revoke only the selected state/version while leaving all other gates satisfied. */ (
+                                        p
+                                    ) => ({
+                                        ...p,
+                                        ...(change === 'state' ? { currentState: 'closed' } : { currentVersion: 'v2' }),
+                                    })
+                                );
+                            for (const intent of [...retained, options]) {
+                                if (change === 'deadline') Object.assign(intent, { deadline: 10_000 });
+                                if (change === 'notBefore') Object.assign(intent, { notBefore: 10_000 });
+                                if (change === 'state') Object.assign(intent, { expectedState: 'closed' });
+                                if (change === 'version') Object.assign(intent, { expectedVersion: 'v2' });
+                                if (change === 'references')
+                                    Object.assign(intent, {
+                                        idempotencyKey: 'redirected',
+                                        approvalId: 'missing',
+                                        mode: 'offline-intent',
+                                        notBefore: 10_000,
+                                        deadline: 0,
+                                        expectedState: 'closed',
+                                        expectedVersion: 'v2',
+                                    });
+                            }
+                            yield* Deferred.succeed(t.release, undefined);
+                            const result = yield* Fiber.join(pending);
+                            if (change === 'references' || change === 'notBefore') {
+                                expect(result.result).toEqual(Exit.succeed({ count: 2 }));
+                                expect(result.replayed).toBe(replay);
+                                // A clean same-key retry must replay the original commit, not create redirected work.
+                                yield* Ref.set(t.h.beforeIntegrity, Effect.void);
+                                const original = yield* t.execute('fixture.write', input, {
+                                    idempotencyKey: 'key',
+                                    approvalId: 'approval',
+                                    mode: 'scheduled',
+                                    notBefore: 0,
+                                    deadline: 100,
+                                    expectedState: 'open',
+                                    expectedVersion: 'v1',
+                                });
+                                expect(original.result).toEqual(Exit.succeed({ count: 2 }));
+                                expect(original.replayed).toBe(true);
+                            } else
+                                denied(
+                                    result,
+                                    {
+                                        deadline: 'expired',
+                                        state: 'state-conflict',
+                                        version: 'version-conflict',
+                                    }[change]
+                                );
+                            const writes = change === 'references' || change === 'notBefore' || replay ? 1 : 0;
+                            expect(yield* Ref.get(t.calls)).toBe(writes);
+                            const state = yield* Ref.get(t.h.state);
+                            expect(state.domain).toEqual(writes === 0 ? [] : [input]);
+                            expect(state.history).toHaveLength(writes);
+                            expect(state.dedup.size).toBe(writes);
+                        }
+                    )
+            );
+        }
+    }
+});
+
 describe('A3: delayed and guarded intent revalidation', /** Register wait-boundary, schedule and offline-intent safety cases. */ () => {
     for (const replay of [false, true]) {
         for (const change of [
@@ -912,7 +1128,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                                 t.h.policy,
                                 /** Require approval so revocation is meaningful in every wait scenario. */ (p) => ({
                                     ...p,
-                                    approval: 'always' as const
+                                    approval: 'always' as const,
                                 })
                             );
                             yield* approve(t.h);
@@ -942,7 +1158,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                                     t.h.policy,
                                     /** Invalidate expected state during the admission wait. */ (p) => ({
                                         ...p,
-                                        currentState: 'closed'
+                                        currentState: 'closed',
                                     })
                                 );
                             if (change === 'dependency')
@@ -950,7 +1166,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                                     t.h.policy,
                                     /** Revoke dependency readiness during admission. */ (p) => ({
                                         ...p,
-                                        dependenciesReady: false
+                                        dependenciesReady: false,
                                     })
                                 );
                             if (change === 'capacity')
@@ -958,7 +1174,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                                     t.h.policy,
                                     /** Revoke available capacity during admission. */ (p) => ({
                                         ...p,
-                                        capacityAvailable: false
+                                        capacityAvailable: false,
                                     })
                                 );
                             yield* Deferred.succeed(t.release, undefined);
@@ -1030,7 +1246,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                             t.h.policy,
                             /** Restore the same prerequisite without changing committed intent. */ (p) => ({
                                 ...p,
-                                [gate]: true
+                                [gate]: true,
                             })
                         );
                         expect((yield* t.execute('fixture.external')).replayed).toBe(true);
@@ -1081,7 +1297,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                         t.h.policy,
                         /** Advance live version beyond the scheduled expectation. */ (p) => ({
                             ...p,
-                            currentVersion: '2'
+                            currentVersion: '2',
                         })
                     );
                     denied(yield* t.execute('fixture.write', input, options), 'version-conflict');
@@ -1090,7 +1306,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                         /** Restore version while making expected state stale. */ (p) => ({
                             ...p,
                             currentVersion: '1',
-                            currentState: 'closed'
+                            currentState: 'closed',
                         })
                     );
                     denied(yield* t.execute('fixture.write', input, options), 'state-conflict');
@@ -1098,7 +1314,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                         t.h.policy,
                         /** Restore state before testing deadline expiry alone. */ (p) => ({
                             ...p,
-                            currentState: 'open'
+                            currentState: 'open',
                         })
                     );
                     yield* TestClock.adjust(100);
@@ -1115,7 +1331,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                 /** Require explicit offline guards and production deadlines before risky execution. */ function* () {
                     const t = yield* setup([
                         spec('write', { risk: 'stock' }),
-                        spec('external', { risk: 'live-production' })
+                        spec('external', { risk: 'live-production' }),
                     ]);
                     denied(
                         yield* t.execute('fixture.write', input, { idempotencyKey: 'key', mode: 'offline-intent' }),
@@ -1268,14 +1484,7 @@ describe('A4: receipts, fail-closed audit and bounded recovery', /** Register au
                             /** Compare public receipt classification in request order. */ (result) =>
                                 result.receipt.outcome
                         )
-                    ).toEqual([
-                        'denied',
-                        'denied',
-                        'failed',
-                        'defect',
-                        'succeeded',
-                        'denied',
-                    ]);
+                    ).toEqual(['denied', 'denied', 'failed', 'defect', 'succeeded', 'denied']);
                     expect(failure(results[0])).toMatchObject({ _tag: 'UnknownAction' });
                     expect(failure(results[1])).toMatchObject({ _tag: 'InvalidInput' });
                     expect(failure(results[2])).toMatchObject({
