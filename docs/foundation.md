@@ -6,18 +6,19 @@ The foundation from [EVE-244](https://linear.app/resnovas/issue/EVE-244) is the 
 
 ## What is in the workspace
 
-| Project                                                   | Path                                  | Tags                               | What it does                                                                                                                                                                       |
-| --------------------------------------------------------- | ------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@eventiva/contracts`                                     | `packages/contracts`                  | `type:core`, `layer:shared`        | Portable contracts: action specifications, the caller and `Authorizer`, platform errors, identifiers, security profiles, flag, i18n and telemetry names. Depends only on `effect`. |
-| `@eventiva/schema`                                        | `packages/schema`                     | `type:shared`, `layer:shared`      | Database-neutral resources and fields, pure schema composition, and the module manifest (format 1).                                                                                |
-| `@eventiva/runtime`                                       | `packages/runtime`                    | `type:runtime`, `layer:backend`    | `implement` binds a handler to a specification; `ActionHost` registers modules, authorises every call and runs it through one path.                                                |
-| `@eventiva/integrations.formatjs`                         | `packages/integrations/formatjs`      | `type:integration`, `layer:shared` | The `I18n` service over FormatJS, with terminology overlays and the en-GB default message as fallback.                                                                             |
-| `@eventiva/integrations.openfeature.server` and `.client` | `packages/integrations/openfeature-*` | `type:integration`                 | The `Flags` service over OpenFeature, with sources in a fixed precedence and a safe default for every flag.                                                                        |
-| `@eventiva/integrations.posthog.server` and `.client`     | `packages/integrations/posthog-*`     | `type:integration`                 | PostHog as an OpenFeature provider. Nothing connects without a key.                                                                                                                |
-| `@eventiva/server`                                        | `apps/server`                         | `type:platform`, `layer:backend`   | The backend composition root. It registers the built-in `platform` module and runs `platform.status` once.                                                                         |
-| `@eventiva/client`                                        | `apps/client`                         | `type:platform`, `layer:frontend`  | The Expo shell with React Intl, OpenFeature and the Hermes `Intl` polyfills.                                                                                                       |
-| `@eventiva/client-e2e`                                    | `apps/client-e2e`                     | `type:test`                        | The Playwright web smoke test.                                                                                                                                                     |
-| Test projects                                             | `tests/*`                             | `type:test`                        | Vitest and `@effect/vitest` tests for each package, and the boundary rule tests.                                                                                                   |
+| Project                                                   | Path                                     | Tags                                | What it does                                                                                                                                                                       |
+| --------------------------------------------------------- | ---------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@eventiva/contracts`                                     | `packages/contracts`                     | `type:core`, `layer:shared`         | Portable contracts: action specifications, the caller and `Authorizer`, platform errors, identifiers, security profiles, flag, i18n and telemetry names. Depends only on `effect`. |
+| `@eventiva/schema`                                        | `packages/schema`                        | `type:shared`, `layer:shared`       | Database-neutral resources and fields, pure schema composition, and the module manifest (format 1).                                                                                |
+| `@eventiva/runtime`                                       | `packages/runtime`                       | `type:runtime`, `layer:backend`     | `implement` binds a handler to a specification; `ActionHost` registers modules, authorises every call and runs it through one path.                                                |
+| `@eventiva/integrations.formatjs`                         | `packages/integrations/formatjs`         | `type:integration`, `layer:shared`  | The `I18n` service over FormatJS, with terminology overlays and the en-GB default message as fallback.                                                                             |
+| `@eventiva/integrations.openfeature.server` and `.client` | `packages/integrations/openfeature-*`    | `type:integration`                  | The `Flags` service over OpenFeature, with sources in a fixed precedence and a safe default for every flag.                                                                        |
+| `@eventiva/integrations.posthog.server` and `.client`     | `packages/integrations/posthog-*`        | `type:integration`                  | PostHog as an OpenFeature provider. Nothing connects without a key.                                                                                                                |
+| `@eventiva/integrations.telemetry.server`                 | `packages/integrations/telemetry.server` | `type:integration`, `layer:backend` | Local Node telemetry sinks and the separately approved EVE-21 default-off governed OTLP span adapter. See [telemetry](telemetry.md).                                               |
+| `@eventiva/server`                                        | `apps/server`                            | `type:platform`, `layer:backend`    | The backend composition root. It registers the built-in `platform` module and runs `platform.status` once.                                                                         |
+| `@eventiva/client`                                        | `apps/client`                            | `type:platform`, `layer:frontend`   | The Expo shell with React Intl, OpenFeature and the Hermes `Intl` polyfills.                                                                                                       |
+| `@eventiva/client-e2e`                                    | `apps/client-e2e`                        | `type:test`                         | The Playwright web smoke test.                                                                                                                                                     |
+| Test projects                                             | `tests/*`                                | `type:test`                         | Vitest and `@effect/vitest` tests for each package, and the boundary rule tests.                                                                                                   |
 
 Every package exports subpaths only, such as `@eventiva/contracts/action`. There is no root `index.ts`, no `export *`, and every package sets `"sideEffects": false`, so bundlers drop what a screen does not import.
 
@@ -73,15 +74,51 @@ Registration lasts until the scope that called `register` closes. Then the host 
 
 ## Boundaries
 
-`eslint.config.mjs` enforces the module boundaries from the Nx project tags:
+[`eslint.config.mjs`](../eslint.config.mjs) is the source of truth for Nx import constraints. Active projects use colon-separated `type:*`, `layer:*` and `capability:*` tags in `project.json`. An import must satisfy every matching constraint, not just one row or one tag family. These tables list allowed workspace targets; they do not grant access to external packages.
 
-- **Type**: `core` imports only `core`; `shared` adds `shared`; `runtime`, `integration` and `extension` each add their own type to `core` and `shared`; `platform` imports every library type but no other platform; `test` imports anything.
-- **Layer**: `frontend` imports `frontend` and `shared`, `backend` imports `backend` and `shared`, and `shared` imports only `shared`.
-- **Capability**: `contracts` imports only `contracts`; `schema`, `actions`, `flags` and `i18n` import `contracts` and the capabilities below them, so the graph stays acyclic.
-- **External**: `core` and `shared` packages import only `effect`; server-only packages, Node built-ins and Node globals are refused in `shared` and `frontend` code. The action runtime (`capability:actions`) also imports only `effect` and no Node built-ins: drivers, vendor SDKs, Node platform layers and Cluster reach it through an app's layers.
-- **Direction**: the platform packages form one chain, `runtime` -> `schema` -> `contracts`. An import in the other direction is reported as a circular dependency.
+| Source type tag    | Allowed target type tags                                                         |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `type:core`        | `type:core`                                                                      |
+| `type:shared`      | `type:core`, `type:shared`                                                       |
+| `type:runtime`     | `type:core`, `type:shared`, `type:runtime`                                       |
+| `type:integration` | `type:core`, `type:shared`, `type:integration`                                   |
+| `type:extension`   | `type:core`, `type:shared`, `type:extension`                                     |
+| `type:platform`    | `type:core`, `type:shared`, `type:runtime`, `type:integration`, `type:extension` |
+| `type:test`        | Any type, subject to its layer and any other matching constraints                |
 
-The `boundaries` test project runs these rules against fixture projects and the real packages, so a rule that stops working fails a test. It also bundles every `@eventiva/contracts` and `@eventiva/schema` subpath for the browser and checks that the bundle holds only those packages and `effect` with its own dependencies, with no Node import. It checks that a bundle of one subpath leaves the others out, and that React Native's own Hermes compiler turns the full bundle into bytecode.
+Same-type library imports are allowed, but cycles are not. `type:platform` does not allow another platform project. There is no active `type:database` rule: SQL adapters are integrations, not a tier available to extensions. Do not restore the archived core/database hierarchy or a type-only/devDependency exemption.
+
+| Source layer tag | Allowed target layer tags                                       |
+| ---------------- | --------------------------------------------------------------- |
+| `layer:shared`   | `layer:shared`                                                  |
+| `layer:frontend` | `layer:frontend`, `layer:shared`                                |
+| `layer:backend`  | `layer:backend`, `layer:shared`                                 |
+| `layer:test`     | `layer:frontend`, `layer:backend`, `layer:shared`, `layer:test` |
+
+A `type:test` project with `layer:backend` still cannot import a frontend library. Only the explicit `layer:test` row permits both frontend and backend targets.
+
+| Source capability tag with an ESLint constraint | Allowed target capability tags                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| `capability:contracts`                          | `capability:contracts`                                            |
+| `capability:schema`                             | `capability:contracts`, `capability:schema`                       |
+| `capability:actions`                            | `capability:contracts`, `capability:schema`, `capability:actions` |
+| `capability:flags`                              | `capability:contracts`, `capability:flags`                        |
+| `capability:i18n`                               | `capability:contracts`, `capability:i18n`                         |
+
+Other active capabilities, including `app`, `storage`, `telemetry`, `ui` and `test`, have no capability-specific ESLint row. Their type/layer constraints still apply. These capabilities are not a single ordered hierarchy: for example, flags cannot import i18n merely because both implement contracts.
+
+External imports have additional restrictions:
+
+- `type:core`, `type:shared` and `capability:actions` allow only `effect` and its subpaths externally. Workspace imports still follow all tables above. The action runtime receives drivers, SDKs, Node platform layers and Cluster through services composed by apps/integrations.
+- `layer:shared` and `layer:frontend` ban the exact `serverOnly` list in the ESLint configuration: server Effect packages (including SQL, Cluster, Workflow and OpenTelemetry), server OpenFeature/PostHog SDKs, and the listed database packages. This is an explicit list, not detection of every possible server SDK.
+- Shared/frontend source also rejects Node built-in imports (bare and `node:` names) and the globals `process`, `Buffer`, `require`, `module`, `global`, `__dirname`, `__filename` and `setImmediate`. The action runtime rejects Node built-in imports too; it has no separate Node-global rule.
+- `zod` imports are rejected workspace-wide. Package TypeScript source rejects `export *`; the package hygiene tests additionally require explicit subpaths, no root export and `"sideEffects": false`.
+
+For example, a frontend extension may import `@eventiva/schema/compose` and `@eventiva/contracts/action`. It cannot import the backend runtime (type and layer), a client integration (type, even when the layer matches), the SQL integration, or a listed server SDK. Runtime may import schema/contracts; the reverse creates a cycle in the current graph and is also outside the allowed target tags. Moving an import to `import type` does not grant an exception.
+
+The Nx rule detects project cycles in addition to tag checks; equal-type permissions alone do not prevent them. The separate source/manifest and emitted-declaration audits described under "Coordinated module validation" check resolved dependency graphs. Neither a tag table nor a single clean fixture is proof that all graphs are cycle-free.
+
+Run `pnpm nx test @eventiva/boundaries-tests` from the root so Nx supplies the cached project graph used by the ESLint rule. Running Vitest directly before that graph exists skips Nx enforcement with a warning and makes the negative fixtures fail; that is not boundary proof. The suite checks imports against fixture projects and real packages, bundles all contracts/schema subpaths for the browser with only Effect's dependency closure and no Node import, checks unused subpaths are dropped, and compiles the portable bundle with React Native's Hermes compiler. It does not execute a native device.
 
 ## Set up
 

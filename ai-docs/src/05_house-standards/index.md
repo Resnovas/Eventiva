@@ -29,8 +29,15 @@ with them. The sections after this one describe this repository itself.
   `feature-flags`). Telemetry events carry no secret or personal data.
 - **Module boundaries.** The core package holds domain-agnostic building
   blocks only. Vendor SDKs and API clients live in
-  `@resnovas/integrations.<vendor>`. Features depend on core and
-  integrations, never the other way round (`AI_POLICY.md` AI-13).
+  `@resnovas/integrations.<vendor>` (`AI_POLICY.md` AI-13).
+  Use colon-separated Nx tags (`type:core`, `layer:shared`,
+  `capability:contracts`) and intersect every matching constraint in the
+  repository's `eslint.config.mjs`. Type-only imports and `devDependencies`
+  do not bypass boundaries; same-type permission does not permit cycles.
+  Read `coding-preferences/references/architecture.md` for Eventiva's
+  16-row baseline and the distinction between workspace, external and cycle
+  checks. That baseline is not a universal hierarchy or permission for
+  extensions to import integrations.
 - **Comments explain why.** Constraints, trade-offs and anything surprising;
   never a restatement of the code.
 
