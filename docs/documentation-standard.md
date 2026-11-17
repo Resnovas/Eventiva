@@ -18,6 +18,8 @@ Both strict checker formats return exit 1 when there are findings, including rev
 
 Jonathan approved an exact reviewed documentation-debt ratchet on 2026-11-17. Its implementation is `tools/documentation/ratchet.mjs`; the full debt ledger is `tools/documentation/debt.json`. Run `node --run documentation` for all documentation fixtures, offline mirror/planning freshness and the ratchet; root `check` includes the same gate without replacing existing checks or thresholds. `pnpm nx run @eventiva/eventiva:documentation` invokes it uncached because Git history and working-tree state are inputs. The strict scanner still reports all debt; a passing ratchet is **not global documentation compliance**. This is tooling governance, not runtime behavior, so it adds no application feature flag.
 
+Install the approved lockfile before running the gate: `pnpm install --frozen-lockfile --ignore-scripts` is sufficient for documentation/house checks, which import the pinned TypeScript AST package but build no application and need no services. Both CI jobs fetch full history and supply the trusted event base. A dependency-free checkout cannot run the AST checker; missing TypeScript is a setup failure, not permission to skip it. Normal application verification keeps its existing installation and build steps.
+
 ## Enforce the ratchet
 
 ```sh
