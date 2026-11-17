@@ -104,10 +104,37 @@ The prune removes exactly 141 accepted identities: 3,597 to 3,456 retained ident
 
 Executed `DOCUMENTATION_BASE=82320fc5bfbe2f0cb620604b1a6ec756d76e33da NX_SKIP_NX_CACHE=true node --run verify` under the approved disposable PostgreSQL fixture: exit zero, all 85 Nx tasks, all three smoke targets plus 12 dependencies, 89 documentation fixtures and 95 resource/boundary/type fixtures passed. Source and declaration graphs report zero violations/cycles. The fixture/network were removed. The initial attempt lacked the newly delivered approved OpenTelemetry package; `pnpm install --frozen-lockfile` repaired the orb installation without tracked dependency changes, then the identical uncached gate passed. Nx retained that earlier failure in its local flaky-task history; no failed target was suppressed or retried by a cloud service. No UI behavior changed and no deployment ran. This packet's checker remains unchanged; clean-source graph and exact-head CI follow separately.
 
+## Second D02 source and hook checkpoint - 2026-11-17
+
+The first packet was delivered at [c0719a76](https://github.com/Resnovas/Eventiva/commit/c0719a76a3e827f9e6faa56df1bf7f4065d091b7): signed source [ad42fa6f](https://github.com/Resnovas/Eventiva/commit/ad42fa6fc26f4a037dc62aa71d89e1373edc262c) and a separate signed clean-source graph commit. Independent `git ls-remote` matched that head. Graphify matched committed code, the post-commit immutable-base ratchet had zero violations, and exact-head CI follow-up is active rather than presumed green.
+
+This packet compares against that actual immutable delivered head. All eight files retain exact parsed TypeScript terminal kind/text sequences and have zero blocking findings. Documentation resolves 224 attachments and 44 retained rationale candidates; checker corrections are zero. Seven adequate rationale candidates retain their original identities. No source-semantic unknown was established, no accepted identity was added, and exclusions/heuristics/runtime behavior are unchanged.
+
+| Reviewed runtime source | Semantic evidence and boundary | Ledger removals |
+| --- | --- | --- |
+| `identity.ts` | Tenant-routed trusted records, intersected principal/human/delegation grants and explicit target grammar; membership barriers and optimistic writes do not trust presented authority. | 53 attachments, 9 rationale |
+| `marketplace.ts` | Reauthorize before retry lookup and after delayed authority checks; metadata intent and outbox staging share an atomic storage owner, not private-record release. | 15 attachments, 4 rationale |
+| `resource.ts` | Validate the active schema, tenant and revision before driver operations; historical values retain their original schema pins, while transaction admission uses wildcard resource authority. | 29 attachments, 9 rationale |
+| `storage.ts` | Keep tenant/delegation routing, intent binding, receipt durability and transaction ownership explicit rather than imply that a persistence provider grants authorization. | 16 attachments, 4 rationale |
+| `telemetry.ts` | Minimize static codes/attributes, strip unsafe details and bound scoped cleanup; tracer/logger installation shares one scoped minimizing policy. | 36 attachments, 7 rationale |
+| `testing.ts` | Test-controlled identity/approval/policy reads stay fresh; staging, spooling and deterministic digest are explicitly volatile/test-only, not production durability or cryptography. | 30 attachments, 6 rationale |
+| `trust.ts` | Trust, key/decryption, freshness and replay preflight are independent checks; verification alone cannot authorize private release. | 15 attachments, 2 rationale |
+| `hook.ts` | Detached frozen generation pins, locked admission, drain-before-removal, validated durable claims and fresh release policy precede bounded delivery; retry preserves the delivery key because external work may already have happened. | 30 attachments, 3 rationale |
+
+Retained adequate candidates are `identity` target grammar, authorizer target dispatch and profile membership barrier; `marketplace` enabled barrier; `resource` authorized transaction; `telemetry` paired scoped tracer/logger install; and `testing` missing/present approval selection. Adjacent contracts explain these bodies' constraints. Read-only review also confirms kernel `lookup` defers registry selection until serialized execution and kernel `resolve` authorizes the consumer before provider selection; both existing contracts are adequate. Their two retained identities are untouched. No safe general classifier exemption was established, so none is invented and no filler is added to make the inventory zero.
+
+Exact pruning removes only this packet's 268 accepted identities: 3,456 to 3,188 across 104 files, comprising 2,482 attachments and 706 rationale candidates. Runtime's blocking attachment debt is zero, but its nine retained adequate rationale identities keep D02's strict-zero done signal open. Completed: semantic review, exact-token proof and the prior seven-source runtime/resource/telemetry test targets plus runtime lint/typecheck/build/parity. Current: combined eight-source immutable-base full verification and clean-source graph delivery. Upcoming: four reserved source-only D03 adapters after explicit shared-window handback, remaining D03-D06 and D07. Do not equate review completion with classifier clearance, global compliance, product acceptance or production authorization. Evidence is linked from EVE-13/EVE-261.
+
+Executed `DOCUMENTATION_BASE=c0719a76a3e827f9e6faa56df1bf7f4065d091b7 NX_SKIP_NX_CACHE=true node --run verify` under the approved disposable PostgreSQL fixture: exit zero, all 85 Nx tasks and all three smoke targets plus 12 dependencies passed uncached. All 89 documentation fixtures and 95 resource/boundary/type fixtures passed; source/declaration graphs report zero violations/cycles. The fixture/network were removed. Exact parsed-token and 268-only prune assertions passed. Completed: local full verification. Current: clean-source graph delivery and asynchronous CI follow-up. This does not complete strict-zero acceptance or authorize production.
+
+First-packet CI evidence is separate from local success: [attempt 1](https://github.com/Resnovas/Eventiva/actions/runs/44086269222/attempts/1) failed one runtime-suite case in unchanged `tests/telemetry/src/server.spec.ts`: the invalid-configuration subprocess returned `error.code=ETIMEDOUT` at its existing 10,000 ms bound (test elapsed 10,044 ms). The failed assertion did not record child signal/stdout/stderr, so no cause or harmless-flake conclusion is established. Parent [82320fc5 CI](https://github.com/Resnovas/Eventiva/actions/runs/44084089147) passed the same runtime case in 871 ms, and its telemetry/contracts executions in 862/819 ms.
+
+Thirty local exact-child probes preserved all original status/redaction/failed-span/output assertions and the 10-second kill bound: 30 passed, 904-1,438 ms, status 1, null signal, no spawn error and empty stderr. This does not distinguish CI cold-loader/resource contention from bootstrap liveness. No executable runtime tokens or test code changed in response; no timeout inflation or test retries were added. One same-head failed-job rerun was requested as [attempt 2](https://github.com/Resnovas/Eventiva/actions/runs/44086269222/attempts/2); its result is pending, not substituted for the original failure. The inspected CI workflow runs verification and bounded disposable fixtures only, with no deployment/release/production operations; successful smoke was not repeated.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3456 remaining findings across 107 files: 2706 mechanically missing JSDoc; 0 prose-review candidates; 750 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3188 remaining findings across 104 files: 2482 mechanically missing JSDoc; 0 prose-review candidates; 706 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -150,15 +177,12 @@ Executed `DOCUMENTATION_BASE=82320fc5bfbe2f0cb620604b1a6ec756d76e33da NX_SKIP_NX
 | D03 | [packages/integrations/sql/src/trust.ts](../../packages/integrations/sql/src/trust.ts) | 11 | 0 | 0 |
 | D03 | [packages/integrations/sql/src/values.ts](../../packages/integrations/sql/src/values.ts) | 4 | 0 | 0 |
 | D03 | [packages/integrations/telemetry.server/src/logger.ts](../../packages/integrations/telemetry.server/src/logger.ts) | 28 | 0 | 1 |
-| D02 | [packages/runtime/src/hook.ts](../../packages/runtime/src/hook.ts) | 30 | 0 | 3 |
-| D02 | [packages/runtime/src/identity.ts](../../packages/runtime/src/identity.ts) | 53 | 0 | 12 |
+| D02 | [packages/runtime/src/identity.ts](../../packages/runtime/src/identity.ts) | 0 | 0 | 3 |
 | D02 | [packages/runtime/src/kernel-runtime.ts](../../packages/runtime/src/kernel-runtime.ts) | 0 | 0 | 2 |
-| D02 | [packages/runtime/src/marketplace.ts](../../packages/runtime/src/marketplace.ts) | 15 | 0 | 5 |
-| D02 | [packages/runtime/src/resource.ts](../../packages/runtime/src/resource.ts) | 29 | 0 | 10 |
-| D02 | [packages/runtime/src/storage.ts](../../packages/runtime/src/storage.ts) | 16 | 0 | 4 |
-| D02 | [packages/runtime/src/telemetry.ts](../../packages/runtime/src/telemetry.ts) | 36 | 0 | 8 |
-| D02 | [packages/runtime/src/testing.ts](../../packages/runtime/src/testing.ts) | 30 | 0 | 7 |
-| D02 | [packages/runtime/src/trust.ts](../../packages/runtime/src/trust.ts) | 15 | 0 | 2 |
+| D02 | [packages/runtime/src/marketplace.ts](../../packages/runtime/src/marketplace.ts) | 0 | 0 | 1 |
+| D02 | [packages/runtime/src/resource.ts](../../packages/runtime/src/resource.ts) | 0 | 0 | 1 |
+| D02 | [packages/runtime/src/telemetry.ts](../../packages/runtime/src/telemetry.ts) | 0 | 0 | 1 |
+| D02 | [packages/runtime/src/testing.ts](../../packages/runtime/src/testing.ts) | 0 | 0 | 1 |
 | D06 | [packages/ui-modules/src/DeclarativeModule.tsx](../../packages/ui-modules/src/DeclarativeModule.tsx) | 6 | 0 | 2 |
 | D06 | [packages/ui-modules/src/declarative-registry.ts](../../packages/ui-modules/src/declarative-registry.ts) | 51 | 0 | 10 |
 | D06 | [packages/ui-modules/src/screen-context.ts](../../packages/ui-modules/src/screen-context.ts) | 18 | 0 | 4 |
