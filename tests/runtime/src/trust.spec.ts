@@ -189,6 +189,7 @@ for (const gate of gates) {
         /** Interrupt the selected verifier rather than failing it. */ () =>
             Effect.gen(
                 /** Verify interruption remains cancellation and suppresses later gates. */ function* () {
+                    // The call prefix includes the interrupted verifier but must exclude all later authorities.
                     const f = yield* fixture({ interrupted: gate });
                     expect(Exit.isInterrupted(yield* Effect.exit(f.run()))).toBe(true);
                     expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
@@ -200,6 +201,7 @@ for (const gate of gates) {
         /** Omit exactly one required service from the fixture layer. */ () =>
             Effect.gen(
                 /** Verify missing-service preflight rejects before any provider is invoked. */ function* () {
+                    // Missing configuration is rejected as a whole, not discovered after earlier gates have consumed work.
                     const f = yield* fixture({ missing: gate });
                     expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason: 'unavailable' }));
                     expect(yield* Ref.get(f.calls)).toEqual([]);
@@ -212,6 +214,7 @@ for (const gate of gates) {
             /** Inject a typed safe failure at this gate. */ () =>
                 Effect.gen(
                     /** Verify safe reason preservation and no later verification work. */ function* () {
+                        // Check both reason and stopping point; preserving the error while continuing verification is unsafe.
                         const f = yield* fixture({ failed: gate, reason });
                         expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason }));
                         expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
@@ -265,6 +268,7 @@ it.effect(
     /** Compare absent services with the explicit unavailable layer. */ () =>
         Effect.gen(
             /** Verify both unconfigured paths fail closed with the same typed identity failure. */ function* () {
+                // An absent service and an explicitly unavailable one must not diverge into a defect or accidental allow.
                 expect(yield* Effect.flip(trustPreflight(request, policy))).toEqual(
                     new TrustFailure({ gate: 'identity', reason: 'unavailable' })
                 );
@@ -396,6 +400,7 @@ for (const gate of ['identity', 'resource', 'workload', 'broker'] as const) {
             /** Inject this binding substitution at one verification gate. */ () =>
                 Effect.gen(
                     /** Verify mismatched evidence is denied before nonce consumption. */ function* () {
+                        // Replay consumption is irreversible within the fixture, so binding must fail before reaching that gate.
                         const f = yield* fixture({
                             /** Mutate only the selected gate's evidence request. */ change: (e) =>
                                 e.gate === gate ? { ...e, request: change(e.request) } : e,
@@ -418,6 +423,7 @@ for (const gate of ['identity', 'resource', 'workload', 'broker'] as const) {
             /** Inject one timestamp boundary violation at this gate. */ () =>
                 Effect.gen(
                     /** Verify stale or future evidence cannot satisfy preflight freshness. */ function* () {
+                        // Keep other evidence valid so the selected verifier's freshness rule supplies the rejection.
                         const f = yield* fixture({
                             /** Alter timestamps only for the selected verifier. */ change: (e) =>
                                 e.gate === gate ? { ...e, ...patch } : e,
@@ -474,6 +480,7 @@ it.effect(
     /** Raise policy above the fixture's default evidence assurance. */ () =>
         Effect.gen(
             /** Verify caller-supplied evidence cannot lower the trusted tenant assurance minimum. */ function* () {
+                // Raise only trusted policy; the fixture's otherwise valid evidence must no longer satisfy it.
                 const f = yield* fixture();
                 expect(yield* Effect.flip(f.run(request, { ...policy, minimumAssurance: 'A5' }))).toEqual(
                     new TrustFailure({ gate: 'workload', reason: 'assurance' })
@@ -500,6 +507,7 @@ it.effect(
                         beforeVerify: (gate, _input, received) =>
                             Effect.sync(
                                 /** Attempt the downgrade without throwing on immutable input. */ () => {
+                                    // Reflect permits both frozen and isolated writable views without turning rejected mutation into a defect.
                                     if (gate === 'identity') Reflect.set(received, 'minimumAssurance', 'A1');
                                 }
                             ),
@@ -547,6 +555,7 @@ it.effect(
                     beforeVerify: (gate, received, receivedPolicy) =>
                         Effect.gen(
                             /** Record before mutation to permit isolated writable views as well as rejected writes. */ function* () {
+                                // Preserve the adapter's entry state before probing deep aliases into later verifiers and policy.
                                 yield* record(received, receivedPolicy);
                                 if (gate === 'identity') {
                                     Reflect.set(received.scope, 'purpose', 'fixture.changed');
@@ -593,6 +602,7 @@ it.effect(
                     beforeVerify: (gate, _input, settings) =>
                         Effect.sync(
                             /** Ignore rejected writes so host freshness verification still runs. */ () => {
+                                // Mutate at identity so the broker later tests whether its trusted window was independently retained.
                                 if (gate === 'identity') Reflect.set(settings.freshAfter, 'broker', 0);
                             }
                         ),
@@ -793,6 +803,7 @@ it.effect(
     /** Exercise independent gate, schema and trusted-time failures. */ () =>
         Effect.gen(
             /** Verify malformed evidence and policy receive the expected bounded failure categories. */ function* () {
+                // Separate binding, structural decoding and trusted-policy failures rather than accepting a generic rejection.
                 const wrong = yield* fixture({
                     /** Mislabel identity evidence as a different verifier's result. */ change: (e) => ({
                         ...e,
@@ -824,6 +835,7 @@ it.effect(
     /** Supply fresh timestamps with revocation checked before evidence issuance. */ () =>
         Effect.gen(
             /** Verify freshness alone cannot satisfy revocation ordering or consume the nonce. */ function* () {
+                // Both times remain fresh; only their reversed causal order makes this evidence invalid.
                 const f = yield* fixture({
                     /** Reverse issuance/revocation order while keeping both inside the trusted window. */ change: (
                         e

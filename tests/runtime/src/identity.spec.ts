@@ -157,6 +157,7 @@ const fixture = Effect.gen(/** Seed live authority records and assemble tenant-s
     const replace = <K extends IdentityKind>(kind: K, value: IdentityRecords[K]) =>
         Effect.gen(
             /** Preserve optimistic-version discipline when changing seeded authority. */ function* () {
+                // Reuse the current version so a revocation fixture cannot silently bypass the store's write-conflict contract.
                 const previous = yield* store.get(kind, value.id);
                 yield* store.put(kind, value, previous?.version ?? null);
             }
@@ -227,6 +228,7 @@ it.scoped(
     /** Run identity actions in an isolated volatile host fixture. */ () =>
         Effect.gen(
             /** Exercise identity reads and writes through the same host policy and receipt boundary. */ function* () {
+                // Provide this fixture's host only inside the scenario so action registrations cannot leak between tests.
                 const f = yield* fixture;
                 yield* Effect.gen(
                     /** Verify approval, reference validation and privacy across registered identity operations. */ function* () {
@@ -342,6 +344,7 @@ it.scoped(
                 expect(identityFlag.safeDefault).toBe(false);
                 yield* Effect.gen(
                     /** Invoke a registered identity action with the production safe-default flag layer. */ function* () {
+                        // Register successfully before invoking; denial must come from the disabled feature, not an unknown action.
                         const host = yield* ActionHost;
                         yield* host.register(yield* identityModule.pipe(Effect.provide(f.context)));
                         expect(

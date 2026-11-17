@@ -249,6 +249,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
                                 layer: Layer.effect(
                                     KernelModule,
                                     Effect.gen(/** Resolve a private service through the consumer's injected capability environment. */ function* () {
+                                        // Resolve a real secret-bearing service so sanitization is tested against reachable data, not invented labels.
                                         const environment = yield* KernelEnvironment;
                                         expect(yield* environment.resolve('private-requirement', Schema.String)).toBe(
                                             'PRIVATE_SECRET'
@@ -316,6 +317,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
             const { records, health, flushed } = yield* collect(
                 /** Allow exact span snapshots around lease scope closure. */ (snapshot) =>
                     Effect.gen(/** Start a serving version before testing independent workflow ownership. */ function* () {
+                        // Keep registration alive across the shorter lease scope to distinguish lease release from module teardown.
                         const kernel = yield* Kernel;
                         const before = yield* start(kernel, definition(spec, events));
                         const candidate = definition({ ...spec, version: '1.0.1' }, events);
@@ -379,6 +381,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
 for (const scenario of ['denied', 'not-ready'] as const) {
     it.effect(`observes rejected ${scenario} lease admission without a release or leaked lease`, /** Attempt lease admission with denied authority or a nonready module. */ () =>
         Effect.gen(/** Verify rejected admission emits failure without creating lease ownership. */ function* () {
+            // Inspect after collection closes its scope; a spurious lease could otherwise appear harmless until cleanup.
             const events: Array<string> = [];
             const spec = manifest('private-feature');
             const { records } = yield* collect(/** Observe rejection before its temporary scope closes. */ (snapshot) =>
@@ -435,9 +438,11 @@ it.effect('traces real compose descendants without invented registration and clo
         const feature = manifest('private-feature', { dependencies: [{ id: base.id, version: base.version }] });
         const { records } = yield* collect(
             Effect.gen(/** Verify nested composition scope removal before the final telemetry snapshot. */ function* () {
+                // The collector outlives composition ownership so finalization spans are included in the snapshot.
                 const kernel = yield* Kernel;
                 const initial = yield* Effect.scoped(
                     Effect.gen(/** Compare emitted and repeated readiness while both modules remain registered. */ function* () {
+                        // Repeated readiness shares a generation but must not fabricate a second readiness publication.
                         const receipt = yield* kernel.compose(composition([feature, base]), [
                             definition(feature, events),
                             definition(base, events),
@@ -561,6 +566,7 @@ for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as co
 for (const scenario of ['denied', 'invalid-config'] as const) {
     it.effect(`rejects ${scenario} before compose publication or acquisition`, /** Exercise composition authorization or configuration preflight rejection. */ () =>
         Effect.gen(/** Verify failed composition traces contain no fabricated startup or cleanup operations. */ function* () {
+            // Correlate absence of resource events with absent lifecycle spans; tracing must not invent rollback for unacquired modules.
             const events: Array<string> = [];
             const spec = manifest('private-feature');
             const { records } = yield* collect(
@@ -627,6 +633,7 @@ for (const scenario of ['denied', 'invalid-config'] as const) {
 
 it.effect('keeps interrupted validation an interruption and never acquires a module', /** Interrupt validation only after its preflight body enters. */ () =>
     Effect.gen(/** Verify interruption trace outcomes preserve cancellation and avoid resource acquisition. */ function* () {
+        // Cancellation is not a typed module failure, and preflight interruption has no resource owner to release.
         const events: Array<string> = [];
         const { records } = yield* collect(
             Effect.gen(/** Suspend validation with observable finalization before canceling its fiber. */ function* () {
@@ -670,6 +677,7 @@ it.effect(
     'traces recovery children while retrying the failed install and releasing both acquisitions exactly once',
     /** Fail installation once before recovering through public lifecycle operations. */ () =>
         Effect.gen(/** Verify recovery child spans correlate with real install retry and resource cleanup. */ function* () {
+            // Event counts independently witness both acquisitions; matching span names alone would not prove actual recovery.
             const events: Array<string> = [];
             const { records } = yield* collect(
                 Effect.gen(/** Inspect failed installation state before retrying recovery. */ function* () {
@@ -726,6 +734,7 @@ it.effect(
 
 it.effect('observes failed release without losing resource cleanup, unregistration or retirement results', /** Defect deactivation while retaining observable resource finalizers. */ () =>
     Effect.gen(/** Verify failed release spans do not prevent unregistration or independent retirement. */ function* () {
+        // Compare a failing module with independent successful retirement to detect cleanup aborted by the first failure.
         const events: Array<string> = [];
         const { records } = yield* collect(
             Effect.gen(/** Exercise failed deactivation cleanup before retiring an independent module. */ function* () {
@@ -768,11 +777,13 @@ it.effect('observes failed release without losing resource cleanup, unregistrati
 
 it.effect('rolls back a partially installed composition and exposes its failed child and root', /** Fail dependent installation after its prerequisite starts. */ () =>
     Effect.gen(/** Verify rollback telemetry distinguishes successful prerequisite work from the failed composition. */ function* () {
+        // The base genuinely starts before its dependent fails, so rollback must preserve that successful child outcome.
         const events: Array<string> = [];
         const base = manifest('private-base');
         const feature = manifest('private-feature', { dependencies: [{ id: base.id, version: base.version }] });
         const { records } = yield* collect(
             Effect.gen(/** Verify installation failure leaves no registered composition members. */ function* () {
+                // Assert registry rollback while the collector's kernel scope is still live, not after automatic disposal.
                 const kernel = yield* Kernel;
                 expect(
                     yield* Effect.either(
@@ -809,6 +820,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
             const events: Array<string> = [];
             const { records, value, health, flushed } = yield* collect(
                 Effect.gen(/** Return readiness only after its short registration scope has finalized. */ function* () {
+                    // Separate registration disposal from collector shutdown so exporter health cannot mask leaked registry ownership.
                     const kernel = yield* Kernel;
                     const spec = manifest('private-feature');
                     const receipt = yield* Effect.scoped(start(kernel, definition(spec, events)));

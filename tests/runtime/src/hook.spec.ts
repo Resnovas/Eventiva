@@ -339,6 +339,7 @@ it.scoped(
     /** Exercise allowed declarative and executable observer forms. */ () =>
         Effect.gen(
             /** Require executable callbacks to receive immutable metadata rather than mutation authority. */ function* () {
+                // Contrast additive commands with observers: callback delivery must not inherit the command's operation authority.
                 const t = yield* setup();
                 const code = yield* Ref.make<ReadonlyArray<string>>([]);
                 const d = declaration('fixture.add', {
@@ -478,6 +479,7 @@ it.scoped(
     /** Inject a settlement acknowledgement failure after observer delivery. */ () =>
         Effect.gen(
             /** Require failed settlement to remain visible rather than reporting a delivered row. */ function* () {
+                // Delivery already happened; keeping the row running exposes lost acknowledgement instead of claiming durable success.
                 const t = yield* setup({ settleFailure: true });
                 const d = declaration();
                 yield* t.outbox.stage(event(), [d]);

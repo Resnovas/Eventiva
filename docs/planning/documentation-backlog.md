@@ -350,10 +350,24 @@ After that delivery, semantic review also covers all five current candidates in 
 
 Repeated `DOCUMENTATION_BASE=c7a27fdb369f1590ac38bb4a1dd0174e9e5290fa NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh` exits zero: 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (55 cached), 15 smoke/dependency tasks (12 cached), zero source/emitted boundary violations/cycles and completed PostgreSQL cleanup. Final immutable-base root/strict reviewed planning and clean-source graph checks gate publication. The eighth CI subscription's final event confirms the recorded verify/aggregate failure, not a new defect; ninth-head CI remains independent.
 
+## Tenth checkpoint: released host/kernel and strict-zero direction
+
+Jonathan's direction relayed through [Puck](https://ampcode.com/threads/T-01a1e372-a71b-726e-b1a3-a17d8de5004f) on 2026-11-17 supersedes adequate-retained dispositions as a finish state. Both accepted debt and the complete live queue, including newer/never-ledgered code, must reach zero before strict rationale enforcement is enabled. Earlier dated review evidence remains historical, not an exemption. Automatic attribution trailers are permitted under the separately recorded option-B exception; all other gates remain.
+
+Against immutable delivered main `2e41eaf282f1e0ce0666e0b8138f2ad44cf760aa`, seven runtime specs receive 96 meaningful rationale comments: host 24, kernel-runtime 21, execution 22, trust 12, kernel-telemetry 12, identity three and hook two. The newly delivered kernel manifest-isolation scenarios are reread, including returned nested declarations, immediate authority rewrites and retained callback views during suspended replacement. Comments explain asymmetric controls, preflight ordering, real versus fabricated execution, authority separation, snapshot ownership and independent scope finalization. They do not change contracts, assertions or runtime behavior. All 56,173 parsed executable/type terminals match the immutable base exactly; every edited file now scans clean. Documentation resolutions: 96 live, comprising 63 accepted and 33 never ledgered. Checker corrections: zero. Exact ledger prunes 165 to 102 across 32 files; the complete live queue retains 189 rationale candidates including 87 never ledgered, with zero JSDoc attachment/prose findings. No source-semantic unknown was established.
+
+Host/kernel reservations were released by their delivered owners. Runtime marketplace remains owner-active until its successful push and must then be reread. Current: full verification and signed source/clean-graph delivery of this larger packet. Upcoming: remaining telemetry/UI/storage/contracts/tool candidates and fixture-proven strict activation. The five canonical house-tool candidates require upstream ownership, not downstream exceptions. The ninth packet's final exact-head CI at [53d72205](https://github.com/Resnovas/Eventiva/commit/53d722058eee4b970099efcdb3f4473d129ca77c) passed all executed checks, including verify, smoke, application/house and security. That result does not retroactively erase the eighth head's recorded timeout.
+
+Executed `DOCUMENTATION_BASE=2e41eaf282f1e0ce0666e0b8138f2ad44cf760aa NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (45 cached) and 15 smoke/dependency tasks (12 cached) pass; disposable PostgreSQL/network cleanup completed. Strict reviewed planning reports 258 issues, 692 edges, zero unresolved sources and zero stale outputs. Marketplace subsequently landed through `bbd214c25561628c10442f68030a4c925cdb4f1b`; preserve that implementation, reread its sources and repeat exact inventory and full combined verification before publication. The original-base pass is not evidence of that combined tree or exact-head remote CI.
+
+Latest-main integration at `bbd214c25561628c10442f68030a4c925cdb4f1b` preserves marketplace authority/persistence isolation. The repeated seven-file proof still resolves the same 96 candidates and preserves all 56,173 terminals; accepted debt remains 102. Marketplace adds two never-ledgered candidates independently, so the complete live queue is 191 including 89 never ledgered. Those five now-unheld marketplace candidates belong to the next semantic batch. Canonical release-tool rationale is [house PR49](https://github.com/Resnovas/.github/pull/49), not a downstream source exception: five canonical comments, ten paired template/rendered resolutions, 6,362 terminals unchanged, 90 tests, root check and clean-source graph check passing. Its human merge and downstream sync remain required before Eventiva strict zero.
+
+Executed combined `DOCUMENTATION_BASE=bbd214c25561628c10442f68030a4c925cdb4f1b NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (49 cached) and 15 smoke/dependency tasks (12 cached) pass. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. PostgreSQL/network cleanup completed. Root and clean-source graph checks precede publication; exact-head CI remains separate. House PR49's exact-head tests, render, graph, security and replacement Smartcloud pass; its superseded Smartcloud was cancelled. Automation marked it ready, but the human attribution/review attestations and merge remain human actions, not supplied by this agent.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-165 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 165 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+102 remaining findings across 32 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 102 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -369,15 +383,8 @@ Repeated `DOCUMENTATION_BASE=c7a27fdb369f1590ac38bb4a1dd0174e9e5290fa NX_SKIP_NX
 | D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 8 |
-| D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 23 |
-| D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 10 |
-| D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 5 |
 | D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 6 |

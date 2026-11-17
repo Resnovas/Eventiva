@@ -140,6 +140,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Invoke a transforming schema through the real host boundary. */ () =>
             Effect.gen(
                 /** Require numeric handler computation between wire-string decoding and output encoding. */ function* () {
+                    // A string on the wire must become a number only inside the handler, then return to wire form.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register(counted(calls));
@@ -154,6 +155,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Exercise invalid wire input and absent action discovery. */ () =>
             Effect.gen(
                 /** Require typed preflight rejection without any handler execution. */ function* () {
+                    // Separate lookup and decoding failures must both leave the shared handler counter untouched.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register(counted(calls));
@@ -217,6 +219,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Supply invalid input to a disabled action as an ordering probe. */ () =>
             Effect.gen(
                 /** Require flag denial to precede schema decoding and handler execution. */ function* () {
+                    // Deliberately malformed input would expose decoding if the availability gate ran too late.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register(counted(calls));
@@ -283,6 +286,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Use explicit enablement as the positive gated-action control. */ () =>
             Effect.gen(
                 /** Require enabled keyed mutation to reach its handler exactly once. */ function* () {
+                    // Explicit enablement is the positive control against an implementation that refuses every mutation.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register(counted(calls));
@@ -297,6 +301,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Apply a disabled module flag to an otherwise ungated action. */ () =>
             Effect.gen(
                 /** Require module-level availability policy to cover all registered actions. */ function* () {
+                    // test.double has no action flag, so only the module flag can explain its unavailability.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register({
@@ -314,6 +319,7 @@ describe('ActionHost.invoke', /** Register wire-boundary, feature-gating and dia
         /** Observe the current span from inside an invoked handler. */ () =>
             Effect.gen(
                 /** Require the host to install the action span and action-name attribute before handler entry. */ function* () {
+                    // Read tracing from the invoked handler rather than accepting a span fabricated by the test harness.
                     const Traced = define('test.traced', {
                         version: 3,
                         description: 'Reports its span.',
@@ -358,6 +364,7 @@ describe('ActionHost.register', /** Register manifest validation, atomic admissi
         /** Attempt a module combining a fresh action with a conflicting action. */ () =>
             Effect.gen(
                 /** Require duplicate-action rejection to leave the complete prior registry unchanged. */ function* () {
+                    // Place the fresh binding before the conflict so incremental publication cannot hide behind early refusal.
                     const calls = yield* Ref.make(0);
                     const actions = yield* ActionHost;
                     yield* actions.register(counted(calls));
@@ -403,6 +410,7 @@ describe('ActionHost.register', /** Register manifest validation, atomic admissi
         /** Compare action, flag and manifest-shape mismatches through registration. */ () =>
             Effect.gen(
                 /** Require every invalid module to fail without publishing any action. */ function* () {
+                    // Error categories alone cannot distinguish the direction of a declaration/implementation mismatch.
                     const actions = yield* ActionHost;
                     const calls = yield* Ref.make(0);
                     const [double] = counted(calls).actions;
@@ -462,6 +470,7 @@ describe('ActionHost.register', /** Register manifest validation, atomic admissi
         /** Exercise malformed action metadata and duplicate module identity. */ () =>
             Effect.gen(
                 /** Require canonical names, useful descriptions and unique module registration. */ function* () {
+                    // A valid registration between refusals distinguishes malformed metadata from an unusable registry.
                     const actions = yield* ActionHost;
                     /** Vary only metadata under validation while keeping schemas and side-effect policy valid. */
                     const spec = (name: string, description: string) =>
@@ -527,6 +536,7 @@ describe('ActionHost.register', /** Register manifest validation, atomic admissi
                     yield* Effect.scoped(
                         Effect.gen(
                             /** Assert actions are discoverable only while their registration scope is open. */ function* () {
+                                // Discovery here is the positive control for the empty registry observed after scope exit.
                                 yield* actions.register(counted(calls));
                                 expect(yield* actions.actions).toEqual(['test.double', 'test.gated']);
                             }
@@ -598,10 +608,12 @@ describe('ActionHost authorisation', /** Register ordering, decoded-target and p
         /** Use malformed input to probe the coarse authorization boundary. */ () =>
             Effect.gen(
                 /** Require caller denial before decoding can reveal input validity or invoke a handler. */ function* () {
+                    // The gate log and zero handler count independently rule out target checks or execution after coarse denial.
                     const seen = yield* Ref.make<ReadonlyArray<string>>([]);
                     const calls = yield* Ref.make(0);
                     const run = Effect.gen(
                         /** Register the valid module and submit invalid input under the injected denial policy. */ function* () {
+                            // Keep registration valid: the invocation must fail on caller authority, not module admission.
                             const actions = yield* ActionHost;
                             yield* actions.register(counted(calls));
                             return yield* Effect.flip(actions.invoke('test.double', { value: 21 }));
@@ -636,6 +648,7 @@ describe('ActionHost authorisation', /** Register ordering, decoded-target and p
                     const small = (input: unknown) => (input as { readonly value: number }).value < 10;
                     const results = yield* Effect.gen(
                         /** Invoke the same registered action with one allowed and one forbidden wire value. */ function* () {
+                            // Reuse one registration so the different outcomes depend on decoded targets, not fixture changes.
                             const actions = yield* ActionHost;
                             yield* actions.register(counted(calls));
                             const allowed = yield* actions.invoke('test.double', { value: '4' });
@@ -662,10 +675,12 @@ describe('ActionHost authorisation', /** Register ordering, decoded-target and p
         /** Observe authorizer entry while the action uses safe-default disablement. */ () =>
             Effect.gen(
                 /** Require availability gating to short-circuit both coarse and target authorization. */ function* () {
+                    // An empty authorizer log is stronger evidence of short-circuiting than the public error tag alone.
                     const seen = yield* Ref.make<ReadonlyArray<string>>([]);
                     const calls = yield* Ref.make(0);
                     const error = yield* Effect.gen(
                         /** Register and invoke the disabled action under the recording authorizer. */ function* () {
+                            // Safe-default flags remain in force even though the injected authorizer would otherwise allow entry.
                             const actions = yield* ActionHost;
                             yield* actions.register(counted(calls));
                             return yield* Effect.flip(actions.invoke('test.gated', {}));
@@ -682,6 +697,7 @@ describe('ActionHost authorisation', /** Register ordering, decoded-target and p
         /** Reuse a registration while changing the caller service between invocations. */ () =>
             Effect.gen(
                 /** Require authorization to observe each invocation's caller rather than retaining registration identity. */ function* () {
+                    // Share the policy and module but vary Caller at invocation time to expose cached registration identity.
                     const seen = yield* Ref.make<ReadonlyArray<string>>([]);
                     const calls = yield* Ref.make(0);
                     const onlyAlice = recording(seen, {
@@ -780,6 +796,7 @@ describe('module lifecycle', /** Register dependency ownership, failed activatio
                     yield* Effect.scoped(
                         Effect.gen(
                             /** Invoke twice within one registration to detect accidental per-call layer acquisition. */ function* () {
+                                // Two successful calls must still produce only the single acquisition checked after scope exit.
                                 yield* actions.register(storeModule(layer));
                                 expect(yield* actions.invoke('store.label', {})).toEqual({ label: 'main' });
                                 expect(yield* actions.invoke('store.label', {})).toEqual({ label: 'main' });
@@ -797,6 +814,7 @@ describe('module lifecycle', /** Register dependency ownership, failed activatio
         /** Fail activation only after a scoped dependency has been acquired. */ () =>
             Effect.gen(
                 /** Require rollback cleanup, no published handlers and sanitized activation diagnostics. */ function* () {
+                    // Acquire before injecting failure; initial refusal would not exercise partially constructed layer cleanup.
                     const log = yield* Ref.make<ReadonlyArray<string>>([]);
                     const actions = yield* ActionHost;
                     const layer = Layer.scoped(
@@ -832,6 +850,7 @@ describe('module lifecycle', /** Register dependency ownership, failed activatio
         /** Give a malformed module a visibly effectful dependency layer. */ () =>
             Effect.gen(
                 /** Require manifest validation before any dependency acquisition side effect. */ function* () {
+                    // The layer is intentionally observable, so an empty log proves admission did not start it.
                     const log = yield* Ref.make<ReadonlyArray<string>>([]);
                     const actions = yield* ActionHost;
                     const layer = Layer.effect(
@@ -855,6 +874,7 @@ describe('module lifecycle', /** Register dependency ownership, failed activatio
 });
 
 describe('module schema', /** Register resource/contribution ownership, conflict and scoped removal cases. */ () => {
+    // Share the same base declaration across registration scopes; ownership is established by admission, not fixture recreation.
     const Event = Resource.make('events.event', {
         module: 'events',
         version: 1,
@@ -1146,10 +1166,12 @@ describe('module schema', /** Register resource/contribution ownership, conflict
                     yield* Effect.scoped(
                         Effect.gen(
                             /** Hold base resources open across contributor registration and removal. */ function* () {
+                                // Keep the owner alive while the contributor closes to distinguish field removal from resource removal.
                                 yield* actions.register(events);
                                 yield* Effect.scoped(
                                     Effect.gen(
                                         /** Verify contributed ownership while both modules are registered. */ function* () {
+                                            // The ticket-owned field must be visible before its later absence can prove scoped removal.
                                             yield* actions.register(tickets({ ticketLimit: Field.integer() }));
                                             expect(fieldsOf(yield* actions.schema)).toEqual([
                                                 'events:id',
@@ -1173,6 +1195,7 @@ describe('module schema', /** Register resource/contribution ownership, conflict
         /** Attempt to contribute an already owned base field name. */ () =>
             Effect.gen(
                 /** Require schema conflict to reject the whole module, including its unrelated action bindings. */ function* () {
+                    // Actions and existing field ownership are independent atomicity controls for the rejected contributor.
                     const actions = yield* ActionHost;
                     yield* actions.register(events);
                     const error = yield* Effect.flip(actions.register(tickets({ title: Field.text() })));
@@ -1193,6 +1216,7 @@ describe('module schema', /** Register resource/contribution ownership, conflict
         /** Exercise missing declarations, missing definitions, foreign ownership and orphan contributions. */ () =>
             Effect.gen(
                 /** Require manifest/resource agreement and a registered target owner before contribution admission. */ function* () {
+                    // Exercise both declaration directions separately; an orphan target is a different ownership failure.
                     const actions = yield* ActionHost;
                     const unlisted = yield* Effect.flip(
                         actions.register({ ...events, manifest: manifest('events', []) })

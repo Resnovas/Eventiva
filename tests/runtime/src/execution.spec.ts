@@ -239,11 +239,13 @@ const failure = (result: InvocationResult) =>
     Exit.isFailure(result.result) ? Option.getOrUndefined(Cause.failureOption(result.result.cause)) : undefined;
 /** Require both denial accounting and a typed reason, not merely an unsuccessful handler exit. */
 const denied = (result: InvocationResult, reason: string) => {
+    // A failed handler is not a preflight denial; require accounting and the bounded reason to agree.
     expect(result.receipt.outcome).toBe('denied');
     expect(failure(result)).toMatchObject({ reason });
 };
 
 describe('A1: transaction integrity through ActionHost', /** Register host transaction, replay and rollback cases. */ () => {
+    // Apply the same failure matrix to writes and external intents so outbox staging cannot escape rollback coverage.
     for (const sideEffect of ['write', 'external'] as const) {
         it.scoped(
             `commits ${sideEffect} state/history/outbox/receipt/dedup once under concurrent replay`,
@@ -374,6 +376,7 @@ describe('A1: transaction integrity through ActionHost', /** Register host trans
         /** Reuse a committed key with changed batch content. */ () =>
             Effect.gen(
                 /** Require conflict rather than executing substituted intent or overwriting committed state. */ function* () {
+                    // Change batch membership after a real commit; a missing-key refusal would not exercise deduplication.
                     const t = yield* setup();
                     yield* t.execute('fixture.write');
                     denied(
@@ -403,6 +406,7 @@ describe('A1: transaction integrity through ActionHost', /** Register host trans
 });
 
 describe('A1/A2: admitted input isolation', /** Register corrupting trusted-adapter controls, not external exploit scenarios. */ () => {
+    // Cross immediate and retained-reference corruption with independent adapters; either may expose a shared snapshot.
     for (const adapter of ['control', 'authorizer', 'policy'] as const) {
         for (const late of [false, true]) {
             it.scoped(
@@ -465,6 +469,7 @@ describe('A1/A2: admitted input isolation', /** Register corrupting trusted-adap
                             const observe = <Value>(value: Value, selected: boolean) =>
                                 Effect.gen(
                                     /** Record an independent value copy so later retained-reference writes cannot rewrite evidence. */ function* () {
+                                        // Preserve entry-state evidence before retaining or corrupting the adapter's view.
                                         if (Schema.is(Target)(value)) {
                                             yield* Ref.update(
                                                 observations,
@@ -529,6 +534,7 @@ describe('A1/A2: admitted input isolation', /** Register corrupting trusted-adap
                                         ) =>
                                             Effect.gen(
                                                 /** Count real work separately from receipts and replay release. */ function* () {
+                                                    // Stage the actual handler argument so substitution cannot hide behind an unrelated success value.
                                                     yield* Ref.update(
                                                         calls,
                                                         /** Count only handler entry, never replay. */ (count) =>
@@ -599,6 +605,7 @@ describe('A1/A2: admitted input isolation', /** Register corrupting trusted-adap
 });
 
 describe('A2: live authority and exact human approval', /** Register approval-binding and refreshed-authority cases, including replay. */ () => {
+    // Vary one authority constraint at a time; equal batch totals must not substitute for exact approved intent.
     const invalidApprovals: ReadonlyArray<readonly [string, Partial<Approval>, string]> = [
         ['agent self approval', { approver: agent }, 'human-approval-required'],
         ['human sharing the agent subject', { approver: { ...agent, kind: 'human' } }, 'human-approval-required'],
@@ -624,6 +631,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
             /** Isolate one invalid confirmation constraint. */ () =>
                 Effect.gen(
                     /** Require a denial receipt without handler entry for invalid human approval. */ function* () {
+                        // A genuine agent invocation forces confirmation validation rather than routine-human bypass.
                         const t = yield* setup();
                         yield* Ref.set(t.h.identity, agent);
                         yield* approve(t.h, 'fixture.write', input, patch);
@@ -643,6 +651,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
         /** Present approval for a different batch with equal aggregate limits. */ () =>
             Effect.gen(
                 /** Require canonical payload binding to reject substituted batch members. */ function* () {
+                    // Keep count and amount unchanged so only canonical content binding can catch the substitution.
                     const t = yield* setup();
                     yield* Ref.set(t.h.identity, agent);
                     yield* approve(t.h);
@@ -672,6 +681,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
             /** Apply one invalid or over-limit live bound to approved agent work. */ () =>
                 Effect.gen(
                     /** Require valid bounded authority before the agent handler may execute. */ function* () {
+                        // Supply otherwise valid confirmation to isolate live policy bounds from missing approval.
                         const t = yield* setup();
                         yield* Ref.set(t.h.identity, agent);
                         yield* Ref.update(
@@ -774,6 +784,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
             /** Exercise explicit specification approval with a human caller. */ () =>
                 Effect.gen(
                     /** Require confirmation even though routine human mutations otherwise need none. */ function* () {
+                        // Follow denial with a confirmed success to rule out unconditional rejection of the specification.
                         const t = yield* setup([spec('write', { approval })]);
                         denied(yield* t.execute('fixture.write'), 'approval-required');
                         yield* approve(t.h);
@@ -845,6 +856,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
         /** Resolve the presented caller to a first-party agent for mutation checks. */ () =>
             Effect.gen(
                 /** Require independent human confirmation even for platform-owned agents. */ function* () {
+                    // Change only agent kind, then prove the same operation succeeds with independent confirmation.
                     const t = yield* setup();
                     yield* Ref.set(t.h.identity, { ...agent, kind: 'first-party-agent' as const });
                     denied(yield* t.execute('fixture.external'), 'approval-required');
@@ -909,6 +921,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
 });
 
 describe('A3: admitted intent isolation', /** Exercise policy substitution through public execution, not a private snapshot helper. */ () => {
+    // Include unchanged and replay controls so a denial cannot merely reflect an invalid fixture or a cache miss.
     for (const field of ['idempotencyKey', 'approvalId', 'mode'] as const) {
         it.scoped(
             `rejects immediate ${field} substitution`,
@@ -923,6 +936,7 @@ describe('A3: admitted intent isolation', /** Exercise policy substitution throu
                             ) =>
                                 Effect.sync(
                                     /** Change only the selected field so another gate cannot mask the regression. */ () => {
+                                        // The unchanged adapter is the control for the same admitted scalar intent.
                                         if (corrupt)
                                             Object.assign(intent, {
                                                 [field]:
@@ -978,6 +992,7 @@ describe('A3: admitted intent isolation', /** Exercise policy substitution throu
                                 /** Deliberately corrupt only the adapter's deadline view. */ (intent) =>
                                     Effect.sync(
                                         /** Model an in-process adapter error, not an external dispatch exploit. */ () => {
+                                            // Deletion probes whether later checks reread the mutable view instead of admitted intent.
                                             if (corrupt) Reflect.deleteProperty(intent, 'deadline');
                                         }
                                     )
@@ -1113,6 +1128,7 @@ describe('A3: admitted intent isolation', /** Exercise policy substitution throu
 });
 
 describe('A3: delayed and guarded intent revalidation', /** Register wait-boundary, schedule and offline-intent safety cases. */ () => {
+    // Repeat delayed revocation against new work and committed replay; cached success must not bypass live guards.
     for (const replay of [false, true]) {
         for (const change of [
             'identity',
@@ -1221,6 +1237,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
             /** Apply stale or incomplete intent to an already committed key. */ () =>
                 Effect.gen(
                     /** Require intent validation rather than unconditional release of cached success. */ function* () {
+                        // Commit first under the same key so each refusal exercises replay validation, not fresh admission only.
                         const t = yield* setup();
                         yield* t.execute('fixture.write');
                         denied(yield* t.execute('fixture.write', input, { idempotencyKey: 'key', ...options }), reason);
@@ -1266,6 +1283,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
         /** Supply a complete currently valid scheduled intent. */ () =>
             Effect.gen(
                 /** Establish a positive control for schedule, deadline, state and version checks. */ function* () {
+                    // Use an open window at the current fixture time to distinguish valid scheduling from blanket denial.
                     const t = yield* setup();
                     expect(
                         Exit.isSuccess(
@@ -1335,6 +1353,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
         /** Compare incomplete risky intent with a fully guarded approved mutation. */ () =>
             Effect.gen(
                 /** Require explicit offline guards and production deadlines before risky execution. */ function* () {
+                    // Complete the stock guards after refusal to separate missing intent from an unsupported offline mode.
                     const t = yield* setup([
                         spec('write', { risk: 'stock' }),
                         spec('external', { risk: 'live-production' }),
@@ -1366,6 +1385,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
         /** Present offline intent to an explicitly online-only action. */ () =>
             Effect.gen(
                 /** Require mode rejection before external handler entry. */ function* () {
+                    // Handler count distinguishes a preflight refusal from executing work and rejecting its result.
                     const t = yield* setup([spec('external', { offline: 'online-only' })]);
                     denied(
                         yield* t.execute('fixture.external', input, { idempotencyKey: 'key', mode: 'offline-intent' }),
@@ -1404,6 +1424,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
 });
 
 describe('A4: receipts, fail-closed audit and bounded recovery', /** Register audit availability, bounded recovery and receipt classification cases. */ () => {
+    // Sensitive reads share the fail-closed matrix; only the separate routine-read case may use bounded spooling.
     for (const sideEffect of ['write', 'external', 'read'] as const) {
         it.scoped(
             `fails closed during audit outage for ${sideEffect === 'read' ? 'sensitive read' : sideEffect}`,
@@ -1428,6 +1449,7 @@ describe('A4: receipts, fail-closed audit and bounded recovery', /** Register au
         /** Lose audit from inside the handler after transactional staging. */ () =>
             Effect.gen(
                 /** Require commit-time audit failure to roll back domain, history, outbox and dedup together. */ function* () {
+                    // Lose audit after handler staging so preflight alone cannot satisfy the rollback assertions.
                     const t = yield* setup();
                     expect(
                         (yield* Effect.flip(t.execute('fixture.external', { ...input, behavior: 'outage' })))._tag

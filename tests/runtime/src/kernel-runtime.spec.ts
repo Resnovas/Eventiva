@@ -39,6 +39,7 @@ class Records {
     constructor(prefix: string) {
         this.read = /** Build a caller-dependent read without executing it during provider resolution. */ (key) =>
             Effect.gen(/** Reject negative keys and include caller kind in successful fixture output. */ function* () {
+                // Caller lookup stays inside each read so resolving a provider cannot capture an earlier identity.
                 const identity = yield* Caller;
                 if (key < 0) return yield* new ReadFailure({ code: 'negative-key' });
                 return `${prefix}:${key}:${identity.kind}`;
@@ -150,6 +151,7 @@ const reason = <A, R>(effect: Effect.Effect<A, KernelError, R>) =>
     );
 
 describe('isolated modular kernel', /** Register lifecycle, composition and resource-ownership conformance tests. */ () => {
+    // Repeat provider choices against identical consumers; composition metadata must be the only selection mechanism.
     it('keeps decoded public results and authority requirements statically concrete', /** Assert decoded public types retain exact error and authority requirements. */ () => {
         expectTypeOf<typeof Kernel.Service.ready>().toEqualTypeOf<
             Effect.Effect<
@@ -260,6 +262,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                         layer: Layer.effect(
                             KernelModule,
                             Effect.gen(/** Resolve services only through the consumer's injected environment. */ function* () {
+                                // Capture the scoped environment, not a concrete provider, so named bindings remain observable.
                                 const environment = yield* KernelEnvironment;
                                 return KernelModule.of({
                                     providers: new Map<string, KernelProvider>(),
@@ -348,6 +351,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                         layer: Layer.effect(
                             KernelModule,
                             Effect.gen(/** Capture the injected consumer environment rather than a concrete provider. */ function* () {
+                                // The feature never reads the chosen database name; only the supplied environment can select it.
                                 const environment = yield* KernelEnvironment;
                                 return KernelModule.of({
                                     providers: new Map<string, KernelProvider>(),
@@ -385,6 +389,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
     }
 
     it.effect('enforces transitions, scoped release, reactivation and data retention', /** Observe lifecycle events through retirement and final scope cleanup. */ () => {
+        // Observe finalization after run closes its scope; assertions inside it would precede the last release.
         const events: Array<string> = [];
         const data = ['persisted-record'];
         return run(
@@ -407,6 +412,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
         ).pipe(
             Effect.tap(/** Check ownership after the enclosing kernel scope closes. */ () =>
                 Effect.sync(/** Require acquisition and release counts to balance across reactivation. */ () => {
+                    // Reactivation owns a second acquisition, but retirement must not cause a third release.
                     expect(events.filter(/** Count owned resource acquisitions. */ (event) => event.startsWith('acquire:'))).toHaveLength(2);
                     expect(events.filter(/** Count completed resource finalizations. */ (event) => event.startsWith('release:'))).toHaveLength(2);
                 })
@@ -807,6 +813,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
     it.effect('registration scope closes and removes its module', /** Start a module under a deliberately short registration scope. */ () =>
         run(
             Effect.gen(/** Verify scope exit releases resources and removes future lifecycle addressability. */ function* () {
+                // Keep the kernel alive beyond registration ownership to expose a stale entry after finalization.
                 const kernel = yield* Kernel;
                 const events: Array<string> = [];
                 yield* Effect.scoped(start(kernel, definition(manifest('temporary'), events)));
@@ -1124,6 +1131,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                 };
                 yield* Effect.scoped(
                     Effect.gen(/** Keep a workflow lease live while attempting the migration candidate. */ function* () {
+                        // Lease rejection must precede even candidate preflight, not merely block publication afterward.
                         yield* kernel.workflow('feature');
                         expect(yield* reason(kernel.update('feature', candidate))).toBe('workflow-active');
                         expect(yield* Ref.get(preflights)).toBe(0);
@@ -1378,6 +1386,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
 
     it.effect('attests provenance and assurance independently of self-declared trust', /** Deny attestation despite a first-party manifest and otherwise allowed operations. */ () =>
         Effect.gen(/** Verify independent authority admission overrides self-declared manifest trust. */ function* () {
+            // Allow operation checks so only the independent provenance decision can reject this first-party fixture.
             const events: Array<string> = [];
             const denied = Layer.succeed(KernelAuthority, {
                 /** Leave operation authorization open to isolate provenance admission. */
@@ -1386,6 +1395,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                 admit: () => Effect.fail(new KernelError({ module: 'feature', reason: 'assurance-unmet' })),
             });
             yield* Effect.gen(/** Verify failed admission neither registers the module nor acquires its layer. */ function* () {
+                // Empty public state alone would miss a layer acquired and rolled back before the denial.
                 const kernel = yield* Kernel;
                 expect(yield* reason(kernel.register(definition(manifest('feature'), events)))).toBe('assurance-unmet');
                 expect(yield* kernel.snapshot).toEqual([]);
@@ -1401,6 +1411,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
     it.effect('snapshots decoded identities independently of caller-owned manifest mutation', /** Mutate source manifest metadata after successful startup. */ () =>
         run(
             Effect.gen(/** Verify caller-owned objects cannot rewrite registered identity or lease version. */ function* () {
+                // Retain the exact input object so later mutation probes the public ownership boundary.
                 const kernel = yield* Kernel;
                 const events: Array<string> = [];
                 const source = { ...manifest('feature'), version: '1.0.0' };
@@ -1432,6 +1443,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                             const observed = yield* Effect.scoped(
                                 Effect.gen(
                                     /** Attempt independent identity, topology and security rewrites through the public return value. */ function* () {
+                                        // The missing dependency is deliberate: clearing a returned array must not make validation succeed.
                                         const returned = yield* kernel.register(
                                             definition(
                                                 manifest('consumer', {
@@ -1485,9 +1497,11 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
         it.effect(
             `isolates authority manifest views during composition: ${boundary}`,
             /** Exercise original provider pins, lifecycle and disposal despite adapter rewrites. */ () => {
+                // Give the adapter mutable views, then observe operation and cleanup for leaked authority.
                 const events: Array<string> = [];
                 /** Corrupt both nested declarations and top-level fields to distinguish deep isolation from a shallow copy. */
                 const rewrite = (view: KernelManifest) => {
+                    // Mutate nested entries too; testing only container replacement would miss a shallow snapshot.
                     for (const item of [...view.dependencies, ...view.provides, ...view.requires, ...view.migrations])
                         Object.assign(item, {
                             id: 'absent',
@@ -1510,6 +1524,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                     admit: (view) =>
                         Effect.sync(
                             /** Apply the mutation only at the boundary selected by this scenario. */ () => {
+                                // Leave authorization untouched to attribute a metadata leak to admission alone.
                                 if (boundary === 'admit') rewrite(view);
                             }
                         ),
@@ -1517,6 +1532,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                     authorize: (_identity, _operation, view) =>
                         Effect.sync(
                             /** Isolate operation authorization from provenance admission mutations. */ () => {
+                                // Admission remains a positive control while later operation checks attempt the rewrite.
                                 if (boundary === 'authorize') rewrite(view);
                             }
                         ),
@@ -1545,6 +1561,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                         yield* Effect.scoped(
                             Effect.gen(
                                 /** Verify admitted manifests still drive planning and public ready leases. */ function* () {
+                                    // Resolve around repeated authority callbacks so a late rewrite cannot hide behind startup.
                                     yield* kernel.compose(composition([consumer, provider], [binding]), [
                                         definition(consumer, events),
                                         definition(provider, events),
@@ -1589,6 +1606,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
         it.effect(
             `isolates a staged update from retained ${boundary} manifests`,
             /** Attempt replacement rewrites while deterministic preflight holds the candidate unpublished. */ () => {
+                // Retain callback views beyond admission to probe delayed mutation while an update is suspended.
                 const retained: Array<KernelManifest> = [];
                 const events: Array<string> = [];
                 const observing = Layer.succeed(KernelAuthority, {
@@ -1596,6 +1614,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                     admit: (view) =>
                         Effect.sync(
                             /** Capture only the replacement, leaving the serving control untouched. */ () => {
+                                // The old version remains an unmodified control while the candidate is suspended.
                                 if (boundary === 'admit' && view.version === '1.0.1') retained.push(view);
                             }
                         ),
@@ -1603,6 +1622,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                     authorize: (_identity, _operation, view) =>
                         Effect.sync(
                             /** Separate candidate and serving identities using their exact versions. */ () => {
+                                // Authorization also inspects the serving module; retaining that view would probe the wrong generation.
                                 if (boundary === 'authorize' && view.version === '1.0.1') retained.push(view);
                             }
                         ),
@@ -1633,6 +1653,7 @@ describe('isolated modular kernel', /** Register lifecycle, composition and reso
                         yield* Effect.scoped(
                             Effect.gen(
                                 /** Stage and publish a compatible replacement under the original registration scope. */ function* () {
+                                    // Wait for preflight so every rewrite happens after snapshotting and before publication.
                                     yield* kernel.compose(composition([consumer, provider], [binding]), [
                                         definition(consumer, events),
                                         definition(provider, events),
