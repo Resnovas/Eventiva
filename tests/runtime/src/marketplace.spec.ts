@@ -87,6 +87,7 @@ const fixture = Effect.gen(/** Model serialized copy-on-success transactions and
         intents: new Map<string, ExchangeIntent>(),
         outbox: new Map<string, ExchangeIntent>(),
         fault: 'none' as Fault,
+        mutateWrite: 'none' as 'none' | 'insert' | 'enqueue',
         identityActive: true,
         policyAllows: true,
     };
@@ -111,14 +112,25 @@ const fixture = Effect.gen(/** Model serialized copy-on-success transactions and
                                 if (state.fault === 'before-insert') return yield* unavailable();
                                 if (intents.has(value.command))
                                     return yield* new MarketplaceFailure({ reason: 'conflict' });
-                                intents.set(value.command, value);
+                                intents.set(value.command, state.mutateWrite === 'insert' ? structuredClone(value) : value);
+                                // A port may retain or rewrite its argument after persisting its own independent row.
+                                if (state.mutateWrite === 'insert') {
+                                    Object.assign(value, { subject: SubjectId.make(id(90)) });
+                                    Object.assign(value.snapshot, { sourceVersion: 2 });
+                                    Object.assign(value.snapshot.scope, { purpose: 'insert-rewrite' });
+                                }
                                 if (state.fault === 'after-insert') return yield* unavailable();
                             }),
                         /** Stage outbox state with typed failure, defect or interruption injection. */
                         enqueue: (value) =>
                             Effect.gen(/** Suspend or fail after tentative enqueue to test transaction rollback. */ function* () {
                                 // Signal interruption only after both tentative writes exist, exercising rollback rather than no-op cancellation.
-                                outbox.set(value.command, value);
+                                outbox.set(value.command, state.mutateWrite === 'enqueue' ? structuredClone(value) : value);
+                                if (state.mutateWrite === 'enqueue') {
+                                    Object.assign(value, { subject: SubjectId.make(id(91)) });
+                                    Object.assign(value.snapshot, { sourceVersion: 1 });
+                                    Object.assign(value.snapshot.scope, { purpose: 'enqueue-rewrite' });
+                                }
                                 if (state.fault === 'after-enqueue') return yield* unavailable();
                                 if (state.fault === 'defect') return yield* Effect.dieMessage('injected-store-defect');
                                 if (state.fault === 'interrupt') {
@@ -369,6 +381,115 @@ it.effect('denies unrelated tenants, substituted principals, wrong action and wr
         expect(f.state.intents.size).toBe(0);
     })
 );
+
+it.effect(
+    'keeps stale-version conflicts even when authority rewrites its snapshot',
+    /** Compare an untouched stale request with a corrupting authority under the same stored version. */ () =>
+        Effect.gen(
+            /** Require both stale attempts to fail before either local write. */ function* () {
+                const f = yield* fixture;
+                // The nonmutating control must remain a conflict, not merely a replay mismatch after staging.
+                const stale = stageExchange({ ...command, expectedVersion: 2 });
+                expect((yield* f.run(stale).pipe(Effect.flip)).reason).toBe('conflict');
+                const result = yield* f
+                    .run(
+                        stale.pipe(
+                            Effect.provideService(MarketplaceAuthority, {
+                                /** Attempt to substitute the stale request version for the stored version. */
+                                authorize: (_identity, reference) =>
+                                    Effect.sync(
+                                        /** Corrupt only the adapter-reachable reference. */ () => {
+                                            Object.assign(reference, { sourceVersion: 2 });
+                                        }
+                                    ),
+                            })
+                        )
+                    )
+                    .pipe(Effect.either);
+                expect(result).toMatchObject({
+                    _tag: 'Left',
+                    left: { _tag: 'MarketplaceFailure', reason: 'conflict' },
+                });
+                expect(f.state.snapshot).toEqual(snapshot);
+                expect(f.state.intents.size).toBe(0);
+                expect(f.state.outbox.size).toBe(0);
+            }
+        )
+);
+
+for (const action of ['read', 'stage'] as const) {
+    it.effect(
+        `keeps stored references and refreshed subjects despite authority rewrites on ${action}`,
+        /** Exercise public metadata operations with a corrupting authority and unchanged bindings. */ () =>
+            Effect.gen(
+                /** Reject substituted replay bindings while retaining canonical read and staged values. */ function* () {
+                    const f = yield* fixture;
+                    const authority = MarketplaceAuthority.of({
+                        /** Attempt nested purpose and principal replacement after ordinary grant checks. */
+                        authorize: (identity, reference, action) =>
+                            Effect.sync(
+                                /** Rewrite only the values supplied to this adapter. */ () => {
+                                    Object.assign(identity, { subject: SubjectId.make(id(92)) });
+                                    Object.assign(reference.scope, { purpose: 'authority-rewrite' });
+                                    if (action === 'read') Object.assign(reference, { sourceVersion: 2 });
+                                }
+                            ),
+                    });
+                    // Keep the presented fixture independent so a buggy runtime cannot rewrite the test's expectation.
+                    const dependencies = Layer.mergeAll(
+                        Layer.succeed(Caller, { ...caller }),
+                        Layer.succeed(MarketplaceAuthority, authority)
+                    );
+                    f.state.grant.action = action;
+                    if (action === 'read') {
+                        expect(yield* f.run(readSnapshot(request).pipe(Effect.provide(dependencies)))).toEqual(
+                            snapshot
+                        );
+                        expect(f.state.intents.size).toBe(0);
+                        expect(f.state.outbox.size).toBe(0);
+                        return;
+                    }
+                    const saved = yield* f.run(stageExchange(command).pipe(Effect.provide(dependencies)));
+                    expect(saved.subject).toBe(caller.subject);
+                    expect(saved.snapshot).toEqual(snapshot);
+                    expect([...f.state.intents.values()]).toEqual([saved]);
+                    expect([...f.state.outbox.values()]).toEqual([saved]);
+                    // Turning the corrupting adapter off must not change identical retry recognition.
+                    expect(yield* f.run(stageExchange(command))).toEqual(saved);
+                    expect(yield* f.run(stageExchange(command).pipe(Effect.provide(dependencies)))).toEqual(saved);
+                    f.state.snapshot = { ...snapshot, sourceRecord: id(93) };
+                    expect(
+                        (yield* f.run(stageExchange(command).pipe(Effect.provide(dependencies))).pipe(Effect.flip))
+                            .reason
+                    ).toBe('conflict');
+                    expect(f.state.outbox.size).toBe(1);
+                }
+            )
+    );
+}
+
+for (const direction of ['insert', 'enqueue'] as const) {
+    it.effect(
+        `isolates ${direction} input from the other write, result and identical retry`,
+        /** Let one persistence port rewrite its argument after saving its row. */ () =>
+            Effect.gen(
+                /** Verify nested and principal rewrites cannot cross the intent/outbox boundary. */ function* () {
+                    const f = yield* fixture;
+                    f.state.mutateWrite = direction;
+                    const saved = yield* f.run(stageExchange(command));
+                    expect(saved.subject).toBe(caller.subject);
+                    expect(saved.snapshot).toEqual(snapshot);
+                    expect([...f.state.intents.values()]).toEqual([saved]);
+                    expect([...f.state.outbox.values()]).toEqual([saved]);
+                    expect(yield* f.run(stageExchange(command))).toEqual(saved);
+                    f.state.snapshot = { ...snapshot, sourceRecord: id(94) };
+                    expect((yield* f.run(stageExchange(command)).pipe(Effect.flip)).reason).toBe('conflict');
+                    expect(f.state.intents.size).toBe(1);
+                    expect(f.state.outbox.size).toBe(1);
+                }
+            )
+    );
+}
 
 it.effect('rejects changed expected version and command reuse with another authorized snapshot or grant', /** Reuse a committed command under conflicting version or metadata bindings. */ () =>
     Effect.gen(/** Verify command identity cannot overwrite previously committed exchange evidence. */ function* () {

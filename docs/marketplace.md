@@ -42,6 +42,13 @@ resolved by the existing identity service, not inferred from `onBehalfOf` input.
 Membership, platform support/moderator status, a cached grant or a signature alone
 does not supply a participant grant or classified-metadata release authority.
 
+The runtime retains the decoded stored reference and refreshed identity privately.
+The authority receives detached copies, including the nested snapshot scope: its
+inspection cannot replace the version, purpose or subject used by reads, staging
+or retry comparison. For example, with stored `sourceVersion: 3`, an adapter that
+rewrites its copy to `2` cannot make `expectedVersion: 2` succeed; the result is
+still `conflict`, with no intent or outbox write. No authority decision is cached.
+
 References contain opaque IDs, a purpose code, source version and the existing
 `sensitive` or `restricted` security profile. Treat the entire reference and intent
 as classified, including queues, caches, logs and offline copies. IDs are not
@@ -107,6 +114,12 @@ version conflicts too. Retry after losing a response uses the same command ID.
 There is no process-local success cache. Revocation blocks new ordinary access
 and retries, but does not delete existing evidence. Lawful retained evidence needs
 its own independently approved access and retention policy, not a bypass here.
+
+`insertIntent` and `enqueue` receive independent intent/snapshot/scope objects.
+Rewriting one argument cannot alter the other write or the returned result.
+Adapters still own correct persistence and atomic rollback; this isolation cannot
+prevent an adapter from deliberately saving incorrect rows in its own database.
+The private copy boundary adds no option, policy default or contract change.
 
 Identity and marketplace databases remain independent. A live identity refresh is
 not a cross-database transaction or a global atomic revocation guarantee. Future

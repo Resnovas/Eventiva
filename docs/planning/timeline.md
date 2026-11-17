@@ -86,6 +86,31 @@ hook or production authorization changes. The exact owner-selection time was
 not supplied. This supersedes the earlier absent-generic-trailers delivery hold,
 not the latest-main regeneration and full-verification requirement.
 
+## Marketplace authority input isolation checkpoint - 2026-11-17
+
+[EVE-250](https://linear.app/resnovas/issue/EVE-250) remains In Progress,
+independently read with its terminal 18-comment page. The
+[batch 5 slice 3 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-5-readiness-3f236807-623e-4880-84ac-3a3624072841)
+requires private input isolation, not new marketplace policy. The documentation
+lane cleared all four reserved paths before test edits. Detailed behavior remains
+in [the marketplace guide](../marketplace.md).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Public regression before implementation | Completed | On unchanged runtime source, five new regressions failed and the 24 existing cases passed: stale version accepted, read/stage authority rewrites and both write-input mutation directions. The untouched stale request still conflicted. |
+| Private runtime isolation | Focused verification passed | All 29 marketplace cases pass. Authority receives detached caller/snapshot/scope objects; independent intent/snapshot/scope objects cross the insert/enqueue boundaries. Stored version 3 rejects expectedVersion 2 without writes; original purpose/subject and identical-versus-changed retry semantics are retained. No contract or SQL adapter change. |
+| Independent delivery gates | Signed delivery authorized; exact-head evidence tracked on EVE-250 | Jonathan selected option B on 2026-11-17 via Puck, relayed in the [delivery thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a): auto-added Amp-Thread-ID and generic Amp co-author trailers are a standing attribution-only exception; model-specific credit and Jonathan's sign-off remain required. This lifts the earlier push hold, not any verification or production boundary. The prior full check/verify and uncached 201-test storage/process proofs remain recorded separately. Latest-main rebase, planning/LLMS/clean-source Graphify regeneration, repeated full gates and final signed delivery are recorded on [EVE-250](https://linear.app/resnovas/issue/EVE-250). No pending CI is counted as passing evidence. |
+| Broader marketplace acceptance | Upcoming / open | Saga, concrete identity/crypto/verifier/custody composition, policy parameters and private release remain separate. No dependency, production activation or policy choice is included. |
+
+```mermaid
+flowchart LR
+    R["EVE-250: public red regressions"] --> I["Private authority and write inputs"]
+    I --> V["Runtime, SQL/process and full gates"]
+    V --> B["Broader marketplace acceptance remains open"]
+    click R "https://linear.app/resnovas/issue/EVE-250"
+    click B "https://linear.app/resnovas/issue/EVE-250"
+```
+
 ## Exact admitted action input checkpoint - 2026-11-17
 
 [EVE-39](https://linear.app/resnovas/issue/EVE-39) remains Backlog, independently

@@ -24,6 +24,13 @@ then independent classified-metadata resource/purpose/workload/broker authorizat
 Recheck grant expiry after policy. No successful path skips these checks on replay.
 No automatic moderator, support, service or agent privilege exists.
 
+Keep the decoded stored snapshot and refreshed caller private to the runtime.
+MarketplaceAuthority receives detached caller/reference copies, including scope;
+its rewrites cannot change read results, expected-version checks, staged purpose
+or subject, or replay comparison. Stored version 3 plus expectedVersion 2 remains
+conflict with no writes even if the authority rewrites its reference to version 2.
+Do not cache live policy decisions as part of this isolation.
+
 MarketplaceAuthorityDeny and MarketplaceStoreUnavailable are the supplied closed
 layers. Production must replace them with approved independently enforced live
 policy and durable persistence, not tests' synthetic successes or volatile maps.
@@ -40,6 +47,12 @@ adapter must be allocated separately, proven with process crashes, and integrate
 with existing identity/assurance/audit seams without pretending independent
 databases share ACID. Read-only live identity refresh is not globally atomic with
 marketplace commit.
+
+Pass independent intent/snapshot/scope objects to insertIntent and enqueue, not
+the canonical returned intent or each other's argument. Adapter input mutation
+must not contaminate the other write or identical retry binding. This does not
+certify an adapter's own persisted rows: serialization, atomicity and rollback
+remain store obligations. No public contract or concrete policy is changed.
 
 An intent binds stable command ID, grant ID, tenant, subject, delegating human and
 the full classified snapshot. expectedVersion must equal the immutable source

@@ -42,6 +42,11 @@ const decode = <A, I>(schema: Schema.Schema<A, I>, input: NoInfer<A>) =>
     Schema.decodeUnknown(schema)(input, { onExcessProperty: 'error' }).pipe(
         Effect.mapError(/** Do not expose schema diagnostics across the marketplace boundary. */ () => fail('invalid'))
     );
+/** Detach classified metadata, including its nested scope, before handing it to an adapter. */
+const copySnapshot = (snapshot: SnapshotReference): SnapshotReference => ({
+    ...snapshot,
+    scope: { ...snapshot.scope },
+});
 /** Compare the entire exchange/tenant/resource/purpose binding rather than accepting a shared exchange id alone. */
 const sameScope = (a: ExchangeScope, b: ExchangeScope) =>
     a.exchange === b.exchange &&
@@ -72,14 +77,14 @@ const authorize = (tx: MarketplaceTransaction, request: typeof ReadSnapshot.Type
             const tenant = yield* CurrentTenant;
             const presented = yield* Caller;
             const resolver = yield* IdentityResolver;
-            const caller = yield* resolver
+            const resolved = yield* resolver
                 .resolve(presented)
                 .pipe(
                     Effect.mapError(
                         /** Hide identity-provider diagnostics behind a marketplace denial. */ () => fail('denied')
                     )
                 );
-            yield* decode(CallerIdentity, caller);
+            const caller = yield* decode(CallerIdentity, resolved);
             // Refreshing authority cannot switch the presented principal/session or cross the current tenant route.
             if (
                 caller.tenant !== tenant.id ||
@@ -111,7 +116,8 @@ const authorize = (tx: MarketplaceTransaction, request: typeof ReadSnapshot.Type
             if (snapshot.id !== request.snapshot || !sameScope(snapshot.scope, request.scope))
                 return yield* fail('denied');
             const authority = yield* MarketplaceAuthority;
-            yield* authority.authorize(caller, snapshot, action);
+            // Policy may inspect metadata, but cannot rewrite the private identity/version/replay binding.
+            yield* authority.authorize({ ...caller }, copySnapshot(snapshot), action);
             // External authority checks may take time; a grant that expired while awaiting them cannot authorize this transaction.
             if (grant.expiresAt <= (yield* Clock.currentTimeMillis)) return yield* fail('denied');
             return { caller, tenant: tenant.id, snapshot };
@@ -177,8 +183,9 @@ export const stageExchange = (input: StageExchangeRequest) =>
                                 if (!sameIntent(checked, intent)) return yield* fail('conflict');
                                 return checked;
                             }
-                            yield* tx.insertIntent(intent);
-                            yield* tx.enqueue(intent);
+                            // Each port owns its argument, never the other write's binding or the returned result.
+                            yield* tx.insertIntent({ ...intent, snapshot: copySnapshot(snapshot) });
+                            yield* tx.enqueue({ ...intent, snapshot: copySnapshot(snapshot) });
                             return intent;
                         }
                     )
