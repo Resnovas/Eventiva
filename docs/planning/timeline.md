@@ -2,6 +2,30 @@
 
 Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Declarative UI protection-floor checkpoint - 2026-11-17
+
+[EVE-259](https://linear.app/resnovas/issue/EVE-259) and
+[EVE-50](https://linear.app/resnovas/issue/EVE-50) remain In Progress, independently
+read on this date. The [batch 5 slice 2 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-5-readiness-3f236807-623e-4880-84ac-3a3624072841)
+requires private adapter isolation, not a contract change. Detailed behavior stays
+in [the declarative module guide](../declarative-modules.md).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Adapter-corrupted protection floor | Reproduced on unchanged source at main 355b1182 | New mutation cases failed four ways while the untouched protected control passed: suppression returned success instead of protected-node, node writes pruned traversal, and binding writes corrupted later dispatch. |
+| Retained definition isolation | Implemented; focused checks passed | Private format-1 copies at admission, visibility, input validation and invocation preserve the admitted tree and binding. All 56 UI-module/screen-context tests pass; affected lint/typecheck pass. Live revocation, flags, offline state, field masking, stale handles and tenant controls remain tested. |
+| Independent delivery | Signed checkpoints tracked on owning issues | The first full check/verify and strict reviewed-source planning passed above main 71ef9f65. Latest-main rebase, planning/LLMS/Graphify regeneration and repeated full gates precede each push; exact signed revisions and final results are recorded on both owning issues. Pending CI is not passing evidence; unresolved auto-added attribution trailers hold the push. |
+| Native/device parity and broader UI acceptance | Upcoming / open | This process-local adapter regression does not prove native execution, renderer approval, real security composition or full screen-awareness acceptance. No dependency, public contract, provisioning or production activation changes. |
+
+```mermaid
+flowchart LR
+    R["EVE-259: red adapter regression"] --> P["Private retained definition floor"]
+    P --> V["UI and screen-context compatibility gates"]
+    V --> O["EVE-259 / EVE-50 broader acceptance remains open"]
+    click R "https://linear.app/resnovas/issue/EVE-259"
+    click O "https://linear.app/resnovas/issue/EVE-50"
+```
+
 ## Exact admitted action input checkpoint - 2026-11-17
 
 [EVE-39](https://linear.app/resnovas/issue/EVE-39) remains Backlog, independently

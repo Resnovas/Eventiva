@@ -995,53 +995,183 @@ it.effect(
     }
 );
 
-it.effect(
-    'protects canonical labels, ancestry and every replacement of protected modules',
-    /** Verify protected content keeps canonical labels and refuses replacement or viewer suppression. */ () => {
-        // Remove the normally hidden canary so the baseline protected module is fully visible.
-        const { layer, state, services } = testServices();
-        const definition = {
-            ...fixture(),
-            nodes: fixture()
-                .nodes.filter(
-                    /** Exclude the fixture's intentionally masked node from the protected baseline. */ (n) =>
-                        n.id !== 'private'
+for (const corrupt of [false, true])
+    it.effect(
+        `protects canonical labels, ancestry and every replacement of protected modules (adapter mutation: ${corrupt})`,
+        /** Verify protected content keeps canonical labels and refuses replacement or viewer suppression. */ () => {
+            // Remove the normally hidden canary so the baseline protected module is fully visible.
+            const { platform, state, services } = testServices();
+            let published = false;
+            const layer = declarativeRegistry([renderer]).pipe(
+                Layer.provide(
+                    Layer.merge(
+                        services,
+                        Layer.succeed(UiPlatform, {
+                            ...platform,
+                            /** Attempt to erase protection only after the original publication has been admitted. */
+                            admit: (candidate) =>
+                                Effect.sync(
+                                    /** Model a projection-time adapter write, not an author-supplied definition. */ () => {
+                                        if (corrupt && published && !state.visible)
+                                            for (const entry of candidate.nodes)
+                                                Object.assign(entry, { protected: false });
+                                    }
+                                ),
+                            /** Keep the root visible so suppression specifically targets the protected descendant. */
+                            visible: (_module, entry) => Effect.succeed(entry.kind === 'view' || state.visible),
+                        })
+                    )
                 )
-                .map(
-                    /** Protect the action while attempting an otherwise permitted terminology override. */ (n) => ({
-                        ...n,
-                        protected: n.id === 'open',
-                        children: n.children.filter(
-                            /** Remove the deleted canary edge so the baseline stays a complete tree. */ (id) =>
-                                id !== 'private'
-                        ),
-                        terminology: 'sample.summary',
-                    })
-                ),
-        };
-        return Effect.scoped(
-            Effect.gen(
-                /** Assert canonical wording and reject both replacement shapes before testing visibility denial. */ function* () {
-                    // Replacing with an unprotected definition must not erase an existing module's protection.
-                    const registry = yield* DeclarativeRegistry;
-                    const registration = yield* registry.register(JSON.stringify(definition));
-                    expect(
-                        (yield* registration.project).nodes.find(
-                            /** Compare the protected action label rather than the unprotected field label. */ (n) =>
-                                n.id === 'open'
-                        )?.label
-                    ).toBe('Open summary');
-                    for (const candidate of [fixture(), { ...definition, version: '2.0.0' }])
-                        expect(yield* reason(registry.register(JSON.stringify(candidate), true))).toBe(
-                            'protected-node'
-                        );
-                    state.visible = false;
-                    expect(yield* reason(registration.project)).toBe('protected-node');
-                }
-            )
-        ).pipe(Effect.provide(layer), Effect.provideService(Caller, caller), Effect.provide(services));
-    }
-);
+            );
+            const definition = {
+                ...fixture(),
+                nodes: fixture()
+                    .nodes.filter(
+                        /** Exclude the fixture's intentionally masked node from the protected baseline. */ (n) =>
+                            n.id !== 'private'
+                    )
+                    .map(
+                        /** Protect the action while attempting an otherwise permitted terminology override. */ (
+                            n
+                        ) => ({
+                            ...n,
+                            protected: n.id === 'open',
+                            children: n.children.filter(
+                                /** Remove the deleted canary edge so the baseline stays a complete tree. */ (id) =>
+                                    id !== 'private'
+                            ),
+                            terminology: 'sample.summary',
+                        })
+                    ),
+            };
+            return Effect.scoped(
+                Effect.gen(
+                    /** Assert canonical wording and reject both replacement shapes before testing visibility denial. */ function* () {
+                        // Replacing with an unprotected definition must not erase an existing module's protection.
+                        const registry = yield* DeclarativeRegistry;
+                        const registration = yield* registry.register(JSON.stringify(definition));
+                        published = true;
+                        expect(
+                            (yield* registration.project).nodes.find(
+                                /** Compare the protected action label rather than the unprotected field label. */ (
+                                    n
+                                ) => n.id === 'open'
+                            )?.label
+                        ).toBe('Open summary');
+                        state.visible = false;
+                        expect(yield* reason(registration.project)).toBe('protected-node');
+                        for (const candidate of [fixture(), { ...definition, version: '2.0.0' }])
+                            expect(yield* reason(registry.register(JSON.stringify(candidate), true))).toBe(
+                                'protected-node'
+                            );
+                        state.visible = false;
+                        expect(yield* reason(registration.project)).toBe('protected-node');
+                    }
+                )
+            ).pipe(Effect.provide(layer), Effect.provideService(Caller, caller), Effect.provide(services));
+        }
+    );
+
+for (const port of ['visible', 'checkInput', 'invoke'] as const)
+    it.effect(
+        `retains canonical projection and dispatch after ${port} adapter writes`,
+        /** Exercise nested adapter aliases and retained references through public lazy registry operations. */ () => {
+            const { platform, services, state } = testServices();
+            let published = false;
+            const retained: Array<UiActionBinding> = [];
+            const dispatched: Array<UiActionBinding> = [];
+            /** Rewrite identity, version and flat input without bypassing the readonly contract with casts. */
+            const corruptBinding = (entry: UiActionBinding) => {
+                Object.assign(entry, { action: 'sample.changed', version: 9 });
+                Object.assign(entry.input, { target: 'changed' });
+            };
+            const layer = declarativeRegistry([renderer]).pipe(
+                Layer.provide(
+                    Layer.merge(
+                        services,
+                        Layer.succeed(UiPlatform, {
+                            ...platform,
+                            /** Attempt to alter visible structure and retain nested bindings for later writes. */
+                            visible: (module, entry) =>
+                                Effect.gen(
+                                    /** Preserve the viewer decision while corrupting only callback data. */ function* () {
+                                        const visible = yield* platform.visible(module, entry);
+                                        if (port === 'visible') {
+                                            if (entry.binding !== undefined) {
+                                                retained.push(entry.binding);
+                                                corruptBinding(entry.binding);
+                                            }
+                                            Object.assign(entry, { label: 'sample.summary' });
+                                            Object.assign(entry.children, { length: 0 });
+                                            Object.assign(entry.component, { id: 'changed.content', version: '9.0.0' });
+                                            Object.assign(entry.config, { changed: true });
+                                        }
+                                        return visible;
+                                    }
+                                ),
+                            /** Validate the real input first, then simulate a corrupting schema adapter. */
+                            checkInput: (entry) =>
+                                Effect.gen(
+                                    /** Registration remains an unchanged control; later validation cannot rebind dispatch. */ function* () {
+                                        yield* platform.checkInput(entry);
+                                        if (port === 'checkInput' && published) {
+                                            retained.push(entry);
+                                            corruptBinding(entry);
+                                        }
+                                    }
+                                ),
+                            /** Record the actual dispatch before attempting to corrupt a later invocation. */
+                            invoke: (entry) =>
+                                Effect.gen(
+                                    /** Snapshot observable dispatch independently before retaining the adapter argument. */ function* () {
+                                        yield* platform.invoke(entry);
+                                        dispatched.push({ ...entry, input: { ...entry.input } });
+                                        if (port === 'invoke') {
+                                            retained.push(entry);
+                                            corruptBinding(entry);
+                                        }
+                                    }
+                                ),
+                        })
+                    )
+                )
+            );
+            return Effect.scoped(
+                Effect.gen(
+                    /** Compare two projections and dispatches, then revoke the live inventory. */ function* () {
+                        // Distinct canonical component, labels and version make substituted values observable.
+                        const registry = yield* DeclarativeRegistry;
+                        const registration = yield* registry.register(JSON.stringify(fixture()));
+                        published = true;
+                        for (let read = 0; read < 2; read += 1) {
+                            for (const entry of retained) corruptBinding(entry);
+                            const projection = yield* registration.project;
+                            expect(
+                                projection.nodes.map(
+                                    /** Preserve traversal and masking after callback writes. */ (entry) => entry.id
+                                )
+                            ).toEqual(['screen', 'summary', 'open']);
+                            expect(projection.nodes[0]).toMatchObject({
+                                label: 'Module summary',
+                                children: ['summary', 'open'],
+                                component: { id: 'approved.content', version: '1.0.0' },
+                            });
+                            expect(projection.nodes[0]?.config).toEqual({});
+                            expect(projection.nodes[2]).toMatchObject({
+                                label: 'Open summary',
+                                action: { id: 'sample.open', version: 1 },
+                            });
+                            yield* registration.invoke('open');
+                        }
+                        expect(dispatched).toEqual([binding, binding]);
+                        state.allowed = false;
+                        expect(yield* reason(registration.invoke('open'))).toBe('unknown-action');
+                        expect(state.calls).toBe(2);
+                    }
+                )
+            ).pipe(Effect.provide(layer), Effect.provideService(Caller, caller));
+        }
+    );
 
 it.effect(
     'denies author-hidden protected ancestors before publication',

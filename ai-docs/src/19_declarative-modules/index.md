@@ -99,6 +99,18 @@ baseline/sensitive/restricted/vault release floors still apply. Self-declared
 `protected` is not trust. Protected-containing modules conservatively refuse all
 replacement and conditional hiding; protected labels ignore terminology overlays.
 
+The retained decoded definition never crosses `UiPlatform` boundaries. Private
+format-1 copies detach messages, nodes, children, component/config records and
+binding input for each `admit`, `visible`, `checkInput` and `invoke` call. Config
+and input contain scalars only; this is not a general decoded-domain cloning
+policy. An adapter clearing `protected` cannot make viewer suppression succeed
+or permit an unprotected replacement. Node/binding rewrites cannot change later
+projection or canonical dispatch, even through retained callback arguments.
+Inventory action/version validation remains live on invocation; admission,
+flags, offline state, masking and tenant checks are not memoized. Public
+contracts and failure reasons are unchanged. The regression is process-local
+adapter isolation, not native/device parity or production security acceptance.
+
 Publication and invocation use a local semaphore. Finalizers compare registration
 identity before removal, so old scopes cannot overwrite/remove replacements. Failed
 candidates leave the current registration intact. Disposal waits for admitted

@@ -24,6 +24,7 @@ import {
     UiPlatform,
     UiProjection,
     UiScreenContext,
+    type UiActionBinding,
     type UiNode,
 } from '@eventiva/contracts/ui-module';
 import { Context, Effect, Layer, Option, Schema, type Scope } from 'effect';
@@ -62,6 +63,22 @@ export class DeclarativeRegistry extends Context.Tag('@eventiva/client/Declarati
 const failure = (reason: UiModuleFailure['reason']) => new UiModuleFailure({ reason });
 /** Identify the only node kinds permitted to carry canonical action bindings. */
 const control = (node: UiNode): boolean => node.kind === 'action' || node.kind === 'menu';
+/** Detach format-1 scalar input so adapter validation or dispatch cannot rewrite the canonical binding. */
+const copyBinding = (binding: UiActionBinding): UiActionBinding => ({ ...binding, input: { ...binding.input } });
+/** Copy every mutable node container before viewer policy receives it; config values are flat scalars. */
+const copyNode = (node: UiNode): UiNode => ({
+    ...node,
+    component: { ...node.component },
+    config: { ...node.config },
+    children: [...node.children],
+    ...(node.binding === undefined ? {} : { binding: copyBinding(node.binding) }),
+});
+/** Admission inspects a detached definition, never the registry's retained protection and identity floor. */
+const copyDefinition = (definition: UiModuleDefinition): UiModuleDefinition => ({
+    ...definition,
+    messages: { ...definition.messages },
+    nodes: definition.nodes.map(copyNode),
+});
 /** Trace lazy module operations and annotate typed failures without logging module payloads. */
 const observe = <A, R>(
     effect: Effect.Effect<A, UiModuleFailure, R>,
@@ -136,7 +153,7 @@ export const declarativeRegistry = (
                                 );
                             if (Option.isNone(found)) return yield* failure('unknown-action');
                             if (found.value.version !== node.binding.version) return yield* failure('unknown-action');
-                            yield* platform.checkInput(node.binding);
+                            yield* platform.checkInput(copyBinding(node.binding));
                             return found.value;
                         }
                     );
@@ -246,7 +263,7 @@ export const declarativeRegistry = (
                             for (const [key, entry] of [...entries]) {
                                 if (entry.tenant !== caller.tenant) continue;
                                 // Discovery intentionally omits typed denials without exposing reasons.
-                                if (yield* Effect.isSuccess(platform.admit(entry.definition))) {
+                                if (yield* Effect.isSuccess(platform.admit(copyDefinition(entry.definition)))) {
                                     if (entries.get(key)?.token === entry.token) visible.push(entry.definition.id);
                                 }
                             }
@@ -265,7 +282,8 @@ export const declarativeRegistry = (
                                             failure('invalid-definition')
                                     )
                                 );
-                                yield* platform.admit(definition);
+                                // Adapter authority is evaluated live, but its writable arguments never own registry state.
+                                yield* platform.admit(copyDefinition(definition));
                                 yield* validate(definition);
                                 const owner = yield* Caller;
                                 const key = JSON.stringify([owner.tenant ?? null, definition.id]);
@@ -287,7 +305,7 @@ export const declarativeRegistry = (
                                     Effect.gen(
                                         /** Produce fresh caller-masked data, with admission and identity checks before release. */ function* () {
                                             yield* current;
-                                            yield* platform.admit(definition);
+                                            yield* platform.admit(copyDefinition(definition));
                                             const online = yield* platform.online;
                                             const active = yield* enabled(definition);
                                             const state: UiProjection['state'] = !active
@@ -321,7 +339,7 @@ export const declarativeRegistry = (
                                                         if (node === undefined)
                                                             return yield* failure('invalid-definition');
                                                         if (!node.project) return;
-                                                        if (!(yield* platform.visible(definition.id, node))) {
+                                                        if (!(yield* platform.visible(definition.id, copyNode(node)))) {
                                                             if (
                                                                 definition.nodes.some(
                                                                     /** Any protected node makes viewer suppression a module-level failure. */ (
@@ -369,7 +387,7 @@ export const declarativeRegistry = (
                                                 );
                                             yield* walk(definition.root);
                                             yield* current;
-                                            yield* platform.admit(definition);
+                                            yield* platform.admit(copyDefinition(definition));
                                             // Remove even references to nodes suppressed by viewer policy.
                                             const visible = new Set(
                                                 nodes.map(
@@ -430,7 +448,7 @@ export const declarativeRegistry = (
                                                         if (visible === undefined || node?.binding === undefined)
                                                             return yield* failure('unbound-action');
                                                         yield* action(node);
-                                                        yield* platform.invoke(node.binding);
+                                                        yield* platform.invoke(copyBinding(node.binding));
                                                     }
                                                 )
                                             ),

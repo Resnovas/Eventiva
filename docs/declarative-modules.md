@@ -158,6 +158,17 @@ Viewer denial in such a module fails closed. Original protected label defaults a
 retained. This conservative policy is not a patch designer or a bypass around the
 host's authorized removal policy.
 
+The registry retains its decoded definition privately. `admit`, `visible`,
+`checkInput` and `invoke` receive detached format-1 data, including node children,
+component/config records, messages and binding input. Adapter writes, including
+writes through a retained argument, cannot clear protection, change canonical
+labels or redirect later dispatch. For example, if `admit` clears `protected` on
+its argument and the viewer then hides that action, projection still fails with
+`protected-node`; an unprotected replacement is still refused. Each invocation
+rechecks the admitted action/version against the live inventory and passes the
+original canonical input. This isolation does not cache admission, flags,
+connectivity or viewer policy, and does not replace host authorization.
+
 Replacement requires explicit `replace: true` (default `false`). Validation failure
 leaves the old registration intact. Publication, invocation and disposal serialize
 locally, waiting for an admitted invocation to finish. Old handles fail `stale`;
