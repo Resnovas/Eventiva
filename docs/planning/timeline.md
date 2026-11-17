@@ -129,6 +129,28 @@ pinning/fencing, and EVE-47 still needs the real EVE-52 agent loop. No productio
 module-bound run or complete agent acceptance is authorized by this allocation.
 Root/planning/LLMS/Graphify delivery remains coordinated after the current increment.
 
+## Unsettled marketplace revocation checkpoint - 2026-11-17
+
+[EVE-250](https://linear.app/resnovas/issue/EVE-250) remains In Progress.
+The [slice 3 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-current-main-readiness-f4c31b8c-2405-4743-ad32-bedc11c633a5)
+and [execution thread](https://ampcode.com/threads/T-01a1e9e1-b366-759e-b622-c4881886c1ee)
+scope this increment to the existing SQL metadata APIs and reserved process fixture.
+It does not select concrete marketplace policy, crypto, providers or custody.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Existing six-worker crash/replay proof | Preserved | Original assertions and stdout contract remain; post-settlement revocation alone was not unsettled-work recovery proof. |
+| Pending and running revocation | Focused execution passed | SQLite and approved disposable PostgreSQL default invocations pass pending claim denial, expired-running reclaim denial and live-lease settlement denial. Distinct workers revoke and reopen; exact rows retain one blocked audit per transition and no revoked settlement. |
+| Negative and positive controls | Focused execution passed | A scratch loader that ignores revocation only for the added namespaces fails at the pending denied-claim assertion; the unmodified adapter passes. An unrelated authorized namespace records settlement without changing prior evidence. |
+| Combined verification and delivery | Verification passed | Rebased onto origin/main 970e4485; full `node --run verify` passes the root gate, all 85 aggregate targets, source/declaration boundaries and all three smoke targets. Strict reviewed planning passes with zero unresolved sources/stale outputs. Planning/LLMS/Graphify are regenerated for independent direct-main signed delivery; exact revisions and results are posted on EVE-250. No coordinator or shared-output window is required. |
+| Remaining marketplace acceptance | Upcoming / separately gated | Real saga destinations, identity/crypto/custody composition, policy parameters, payments, protected release and production remain unproved or unauthorized. This metadata process-loss proof closes none of those broad gates. |
+
+The earlier coordinator/window-only wording in historical checkpoints is not the
+current delivery gate. The later explicit independent-delivery instruction governs
+this slice; actual other-lane source reservations remain in force. No other slice's
+fixture or storage project wiring is changed. The complete issue mirror remains a
+dated historical capture, not a fresh all-issue acquisition.
+
 ## Dependency roadmap
 
 Solid arrows indicate implementation prerequisites from the modular specification/current EVE-45 plan, not new Linear blocking relations. Dotted arrows indicate broader target evidence required for complete integration. The text above is the accessible equivalent of this graph. Every issue node links to Linear.
@@ -153,6 +175,9 @@ flowchart TD
     HR -.-> I
     N["EVE-16 / EVE-240: target and device evidence"] -.-> I
     D["EVE-252: distributed recovery evidence"] -.-> I
+    M["EVE-250: existing metadata grants/outbox"] --> MR["EVE-250: unsettled revocation process-loss proof"]
+    MR --> MA["EVE-250: remaining saga/security/policy acceptance"]
+    MA -.-> I
     DOC_A["D01 complete; D02 attachments complete"] --> DOC_B["D03: adapter packets current; SQL next"]
     DOC_B --> DOC_C["D04-D06: remaining documentation"]
     HOUSE_DOC["House PR48 accepted; 13 tool copies synced"] --> DOC_C
@@ -172,6 +197,9 @@ flowchart TD
     click T "https://linear.app/resnovas/issue/EVE-263"
     click N "https://linear.app/resnovas/issue/EVE-16"
     click D "https://linear.app/resnovas/issue/EVE-252"
+    click M "https://linear.app/resnovas/issue/EVE-250"
+    click MR "https://linear.app/resnovas/issue/EVE-250"
+    click MA "https://linear.app/resnovas/issue/EVE-250"
 ```
 
 ## Acceptance ledger

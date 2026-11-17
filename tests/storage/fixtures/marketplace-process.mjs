@@ -45,7 +45,8 @@ import { stageExchange } from '@eventiva/runtime/marketplace';
 import { Cause, ConfigProvider, Context, Deferred, Effect, Exit, FiberSet, Layer, Schema, Scope } from 'effect';
 
 // Synthetic live policy only. This fixture neither releases payloads nor invokes a remote sink.
-const id = (n) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
+const namespace = Number(process.argv[5] ?? 0);
+const id = (n) => `019b0000-0000-7000-8000-${(namespace + n).toString(16).padStart(12, '0')}`;
 const caller = Schema.decodeUnknownSync(CallerIdentity)({
     subject: id(1),
     session: id(2),
@@ -158,9 +159,10 @@ if (role === 'worker') {
                 Effect.tap((value) => (message.phase === 'after' ? barrier('after-commit', value) : Effect.void))
             );
         } else if (message.command === 'claim') {
-            operation = outbox.claim(claimRequest).pipe(
+            operation = outbox.claim({ ...claimRequest, leaseMs: message.leaseMs ?? claimRequest.leaseMs }).pipe(
                 Effect.provide(context),
-                Effect.tap((value) => (message.pause ? barrier('claimed', value) : Effect.void))
+                Effect.tap((value) => (message.pause ? barrier('claimed', value) : Effect.void)),
+                Effect.catchAll((error) => Effect.succeed(error.reason))
             );
         } else if (message.command === 'settle') {
             operation = outbox.settle(message.input).pipe(
@@ -173,6 +175,24 @@ if (role === 'worker') {
             operation = admin
                 .revoke({ request: id(12), grant: provision.grant.id, scope: snapshot.scope })
                 .pipe(Effect.provide(context), Effect.as('revoked'));
+        } else if (message.command === 'provision') {
+            operation = admin.provision(provision).pipe(Effect.provide(context), Effect.as('provisioned'));
+        } else if (message.command === 'inspect') {
+            // Raw reads are fixture evidence only, never a participant-facing access path.
+            operation = Effect.gen(function* () {
+                const rows = {};
+                for (const table of [
+                    'marketplace_snapshot',
+                    'marketplace_grant',
+                    'marketplace_request',
+                    'marketplace_intent',
+                    'marketplace_delivery',
+                    'marketplace_audit',
+                    'marketplace_settlement',
+                ])
+                    rows[table] = yield* sql`SELECT * FROM ${sql(table)} ORDER BY 1`;
+                return rows;
+            });
         } else operation = Effect.die('Unknown marketplace proof command');
         runFork(
             operation.pipe(
@@ -210,10 +230,14 @@ if (role === 'worker') {
             listeners.add(check);
             check();
         });
-    const launch = async (database) => {
-        const child = fork(fileURLToPath(import.meta.url), ['worker', dialect, database], {
+    const workerPids = new Set();
+    const launch = async (database, namespace = 0) => {
+        const child = fork(fileURLToPath(import.meta.url), ['worker', dialect, database, String(namespace)], {
             stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
         });
+        assert.notEqual(child.pid, process.pid);
+        assert.equal(workerPids.has(child.pid), false);
+        workerPids.add(child.pid);
         children.add(child);
         child.on('message', (value) => {
             messages.push({ child, value });
@@ -305,13 +329,13 @@ if (role === 'worker') {
         assert.equal(first.attempt, 1);
         assert.equal(await request(d, { command: 'claim' }), undefined);
         // Only database time expires the explicitly bounded lease; no test rewrites its deadline.
-        const expire = async () => {
+        const expire = async (key = command.command) => {
             const deadline = Date.now() + 10000;
             while (Date.now() < deadline) {
                 const [row] = await run(
                     dialect === 'postgres'
-                        ? sql`SELECT lease_until, CAST(EXTRACT(EPOCH FROM clock_timestamp()) * 1000 AS bigint) AS now FROM marketplace_delivery`
-                        : sql`SELECT lease_until, CAST((julianday('now') - 2440587.5) * 86400000 AS integer) AS now FROM marketplace_delivery`
+                        ? sql`SELECT lease_until, CAST(EXTRACT(EPOCH FROM clock_timestamp()) * 1000 AS bigint) AS now FROM marketplace_delivery WHERE command = ${key}`
+                        : sql`SELECT lease_until, CAST((julianday('now') - 2440587.5) * 86400000 AS integer) AS now FROM marketplace_delivery WHERE command = ${key}`
                 );
                 if (Number(row.now) >= Number(row.lease_until)) return;
                 await delay(10);
@@ -362,6 +386,169 @@ if (role === 'worker') {
         assert.equal((await run(sql`SELECT * FROM marketplace_settlement`)).length, 1);
         assert.equal((await run(sql`SELECT * FROM marketplace_intent`)).length, 1);
         assert.equal((await run(sql`SELECT * FROM marketplace_audit`)).length, 6);
+        await stop(f);
+
+        // Separate grants/commands retain the original six-worker report and expose collateral denial.
+        for (const [base, phase] of [
+            [100, 'pending'],
+            [200, 'expired-running'],
+            [300, 'live-running'],
+        ]) {
+            const key = id(base + 11);
+            const staged = await launch(database, base);
+            assert.equal(await request(staged, { command: 'provision' }), 'provisioned');
+            assert.equal((await request(staged, { command: 'stage' })).command, key);
+            const before = await request(staged, { command: 'inspect' });
+            const delivery = before.marketplace_delivery.find((row) => row.command === key);
+            assert.equal(delivery.state, 'pending');
+            assert.equal(Number(delivery.attempt), 0);
+            let oldClaim;
+            if (phase !== 'pending') {
+                const claimed = request(staged, {
+                    command: 'claim',
+                    pause: true,
+                    leaseMs: phase === 'live-running' ? 30000 : 2000,
+                }).catch((error) => error.message);
+                oldClaim = (await waitFor(staged, (value) => value.barrier === 'claimed')).value;
+                assert.equal(oldClaim.command, key);
+                assert.equal(oldClaim.attempt, 1);
+                await stop(staged);
+                assert.match(await claimed, /SIGKILL/);
+            } else await stop(staged);
+
+            // Revocation is committed by a different process/connection from the killed owner.
+            const revoker = await launch(database, base);
+            const prior = await request(revoker, { command: 'inspect' });
+            assert.equal(
+                prior.marketplace_delivery.find((row) => row.command === key).state,
+                phase === 'pending' ? 'pending' : 'running'
+            );
+            for (const table of [
+                'marketplace_snapshot',
+                'marketplace_grant',
+                'marketplace_request',
+                'marketplace_intent',
+                'marketplace_settlement',
+            ])
+                assert.deepEqual(prior[table], before[table]);
+            assert.equal(await request(revoker, { command: 'revoke' }), 'revoked');
+            const revoked = await request(revoker, { command: 'inspect' });
+            assert.deepEqual(revoked.marketplace_intent, prior.marketplace_intent);
+            assert.deepEqual(revoked.marketplace_delivery, prior.marketplace_delivery);
+            assert.deepEqual(revoked.marketplace_settlement, prior.marketplace_settlement);
+            assert.deepEqual(
+                revoked.marketplace_grant,
+                prior.marketplace_grant.map((row) => (row.id === id(base + 10) ? { ...row, revoked: 1 } : row))
+            );
+            const addedAudit = revoked.marketplace_audit.filter(
+                (row) => !prior.marketplace_audit.some((old) => old.id === row.id)
+            );
+            assert.equal(addedAudit.length, 1);
+            assert.equal(JSON.parse(addedAudit[0].body).operation, 'revoke');
+            await stop(revoker);
+
+            const restarted = await launch(database, base);
+            assert.deepEqual(await request(restarted, { command: 'inspect' }), revoked);
+            if (phase === 'expired-running') {
+                await expire(key);
+                // Fence validation precedes live authorization once the actual database lease expires.
+                assert.equal(
+                    await request(restarted, {
+                        command: 'settle',
+                        input: { claim: oldClaim, outcome: { state: 'recorded' } },
+                    }),
+                    'conflict'
+                );
+                assert.deepEqual(await request(restarted, { command: 'inspect' }), revoked);
+            }
+            if (phase === 'live-running') {
+                // A still-live fence reaches authorization and is denied, rather than timing out.
+                assert.equal(
+                    await request(restarted, {
+                        command: 'settle',
+                        input: { claim: oldClaim, outcome: { state: 'recorded' } },
+                    }),
+                    'denied'
+                );
+            } else assert.equal(await request(restarted, { command: 'claim' }), 'denied');
+            const blocked = await request(restarted, { command: 'inspect' });
+            assert.deepEqual(
+                blocked.marketplace_delivery,
+                revoked.marketplace_delivery.map((row) =>
+                    row.command === key ? { ...row, state: 'blocked', lease: null, lease_until: null } : row
+                )
+            );
+            for (const table of [
+                'marketplace_snapshot',
+                'marketplace_grant',
+                'marketplace_request',
+                'marketplace_intent',
+                'marketplace_settlement',
+            ])
+                assert.deepEqual(blocked[table], revoked[table]);
+            const transition = blocked.marketplace_audit.filter(
+                (row) => !revoked.marketplace_audit.some((old) => old.id === row.id)
+            );
+            assert.equal(transition.length, 1);
+            assert.equal(JSON.parse(transition[0].body).operation, 'blocked');
+            assert.equal(JSON.parse(transition[0].body).reference, key);
+            assert.deepEqual(
+                blocked.marketplace_audit.filter((row) => row.id !== transition[0].id),
+                revoked.marketplace_audit
+            );
+            await stop(restarted);
+
+            const retained = await launch(database, base);
+            assert.deepEqual(await request(retained, { command: 'inspect' }), blocked);
+            for (let repeat = 0; repeat < 2; repeat++) {
+                assert.equal(await request(retained, { command: 'claim' }), 'denied');
+                assert.equal(await request(retained, { command: 'revoke' }), 'revoked');
+                if (oldClaim)
+                    assert.equal(
+                        await request(retained, {
+                            command: 'settle',
+                            input: { claim: oldClaim, outcome: { state: 'recorded' } },
+                        }),
+                        'conflict'
+                    );
+                assert.deepEqual(await request(retained, { command: 'inspect' }), blocked);
+            }
+            await stop(retained);
+        }
+        const control = await launch(database, 400);
+        const beforeControl = await request(control, { command: 'inspect' });
+        assert.equal(await request(control, { command: 'provision' }), 'provisioned');
+        assert.equal((await request(control, { command: 'stage' })).command, id(411));
+        const allowed = await request(control, { command: 'claim' });
+        assert.equal(allowed.command, id(411));
+        assert.equal(allowed.attempt, 1);
+        assert.equal(
+            await request(control, {
+                command: 'settle',
+                input: { claim: allowed, outcome: { state: 'recorded' } },
+            }),
+            'settled'
+        );
+        const accepted = await request(control, { command: 'inspect' });
+        // Successful unrelated work cannot rewrite any revoked or previously accepted evidence.
+        for (const [table, rows] of Object.entries(beforeControl)) {
+            const key =
+                table === 'marketplace_delivery' ? 'command' : table === 'marketplace_settlement' ? 'lease' : 'id';
+            for (const row of rows)
+                assert.deepEqual(
+                    accepted[table].find((value) => value[key] === row[key]),
+                    row
+                );
+        }
+        assert.equal(accepted.marketplace_delivery.find((row) => row.command === id(411)).state, 'recorded');
+        assert.deepEqual(
+            accepted.marketplace_settlement.map((row) => row.command).sort(),
+            [command.command, id(411)].sort()
+        );
+        await stop(control);
+        const reopened = await launch(database, 400);
+        assert.deepEqual(await request(reopened, { command: 'inspect' }), accepted);
+        await stop(reopened);
         console.log(
             JSON.stringify({
                 event: 'marketplace-process-recovery-passed',

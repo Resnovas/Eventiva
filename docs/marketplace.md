@@ -144,6 +144,50 @@ Run the normal runtime test/typecheck/lint targets and `node --run verify` for
 the full combined verification gate. Use the public package exports, not scratch
 aliases that bypass package resolution.
 
+### Revoke unsettled work across process loss (EVE-250)
+
+The durable SQL adapter's process fixture additionally exercises pending and
+running metadata work, not payment settlement. Build the public packages, prepare
+only the approved disposable loopback database described in
+[storage conformance](storage.md#run-conformance), then run:
+
+```sh
+node tests/storage/fixtures/marketplace-process.mjs proof sqlite
+node tests/storage/fixtures/marketplace-process.mjs proof postgres
+pnpm nx run @eventiva/storage-tests:test --skip-nx-cache
+```
+
+Both default fixture invocations self-assert the following, without additional
+flags or a change to the parent test's JSON contract or 60-second child timeout:
+
+- A staged pending intent survives SIGKILL. Another process revokes its grant;
+  restarted claim attempts are denied and retain one blocked-transition audit.
+- A worker pauses after durable claim and is killed. Another connection revokes
+  the grant. After actual database-clock lease expiry, the old claim conflicts
+  without writing; reclaim is denied and durably blocks the delivery.
+- A separate killed worker's still-live 30-second fixture lease reaches current
+  authorization: settlement is denied and durably blocks, rather than being
+  misreported as an expiry conflict. Subsequent old-claim settlements conflict.
+- Fresh processes compare exact snapshot, grant, revocation request, intent,
+  delivery, audit and settlement rows. Repeated claim/revocation attempts add no
+  duplicate blocked evidence or settlement. An independent authorized grant
+  stages, claims and records local settlement without changing earlier evidence.
+
+The original six-worker rollback, acknowledgement-loss, stale-fence and
+post-settlement revocation proof remains intact. Its reported `pids`, `intents: 1`
+and `settlements: 1` describe that original scenario only; additional isolated
+scenario namespaces run before the same success report. All worker PIDs are
+distinct from each other and the parent, and every worker is stopped. IPC waits
+remain bounded at 15 seconds; database expiry waits at 10 seconds. The original
+and expired-running fixture leases are 2 seconds, with maxAttempts 3; these are
+synthetic test inputs, not marketplace retry or freshness policy.
+
+This proves local metadata authorization and evidence durability through process
+loss on Node SQLite and disposable PostgreSQL, not power-loss durability,
+cross-database atomicity, real identity/crypto/custody integration, payment,
+compensation, retention/residency policy or private release. EVE-250 remains
+In Progress; concrete policy and production authorization are separate gates.
+
 Failure reasons contain no classified IDs or input values:
 
 - `disabled`: leave the default off until composition and acceptance are approved.
