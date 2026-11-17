@@ -52,6 +52,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Candidate HEAD cannot certify its own new-code documentation debt.
+      # A manual event without earlier trusted history fails rather than resetting the ledger.
+      - name: Documentation against trusted history
+        env:
+          DOCUMENTATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: node --run documentation
+
       # Nx replays a task only when its input hash matches; a pull request's
       # entries stay on its own ref, so they never reach main.
       - name: Restore the Nx cache

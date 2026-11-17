@@ -1,0 +1,1483 @@
+flowchart LR
+    subgraph layer_0["Dependency layer 0"]
+        EVE_2["EVE-2:  bug(projects workflows environments discord bot):  'module' must be set to 'NodeNext' | COMPLETED | captured: Done"]
+        EVE_3["EVE-3: chore(.github/workflows/cla.yml): update to add the restyled-io bot  to allowed list | COMPLETED | captured: Done"]
+        EVE_4["EVE-4: Sweep: fix the bit-tasks init process | COMPLETED | captured: Done"]
+        EVE_5["EVE-5: Sweep: Refactor the `setTimeout` in `initialize`  | COMPLETED | captured: Done"]
+        EVE_9["EVE-9: Set up Home Assistant OS runbook and OLED Status app | COMPLETED | captured: Done"]
+        EVE_11["EVE-11: Enable verified investor/press tickets without checkout | COMPLETED | captured: Done"]
+        EVE_13["EVE-13: Establish modular core foundations for database adapters, Expo and observability | CURRENT | captured: In Progress"]
+        EVE_14["EVE-14: S1: Prove one Effect action serves UI, MCP and AI SDK from one inventory entry | COMPLETED | captured: Done"]
+        EVE_15["EVE-15: S2: Build the upstream Agent-Native capability map and protocol conformance matrix | COMPLETED | captured: Done"]
+        EVE_16["EVE-16: S3: Prove runtime loading and switching of a remote module on Expo web and Android | CURRENT | captured: In Progress"]
+        EVE_17["EVE-17: S4: Choose the offline sync engine for record edits and live text and canvas editing | COMPLETED | captured: Done"]
+        EVE_18["EVE-18: S5: Verify sharding across two independent runners with drain and runner-loss recovery | COMPLETED | captured: Done"]
+        EVE_19["EVE-19: S6: Map PostHog and OpenTelemetry support across web, native and backend | COMPLETED | captured: Done"]
+        EVE_20["EVE-20: S7: Find which AI providers allow users to bring their own subscription to Eventiva | COMPLETED | captured: Done"]
+        EVE_21["EVE-21: Remove Sentry from core and make telemetry export vendor-neutral | UPCOMING | captured: Backlog"]
+        EVE_22["EVE-22: Correct boundary docs to match lint, use colon tags, and fix the house reference | UPCOMING | captured: Backlog"]
+        EVE_23["EVE-23: Split core into portable contracts and backend runtime, with a shared schema package | COMPLETED | captured: Done"]
+        EVE_24["EVE-24: Port notifications, messaging channels and transactional email | UPCOMING | captured: Backlog"]
+        EVE_25["EVE-25: Port files, private attachments, artifacts and document import | UPCOMING | captured: Backlog"]
+        EVE_26["EVE-26: Port search and embeddings across every resource | UPCOMING | captured: Backlog"]
+        EVE_27["EVE-27: Port comments, mentions and review suggestions on any resource | UPCOMING | captured: Backlog"]
+        EVE_28["EVE-28: Port localization for people and for the agent | CURRENT | captured: In Progress"]
+        EVE_29["EVE-29: Port agent evaluations linked to PostHog datasets | UPCOMING | captured: Backlog"]
+        EVE_30["EVE-30: Port data widgets, saved dashboards and brand kits | UPCOMING | captured: Backlog"]
+        EVE_31["EVE-31: Port voice input and transcription for the agent | UPCOMING | captured: Backlog"]
+        EVE_32["EVE-32: Port settings, profiles, navigation, command menu and onboarding | UPCOMING | captured: Backlog"]
+        EVE_33["EVE-33: Port scheduling primitives for availability, bookings and rosters | UPCOMING | captured: Backlog"]
+        EVE_34["EVE-34: Agent runs restart from scratch when their shard moves | UPCOMING | captured: Backlog"]
+        EVE_35["EVE-35: Keep a long agent run from blocking its entity's other messages | UPCOMING | captured: Backlog"]
+        EVE_36["EVE-36: Stream agent output from a durable log, not volatile RPCs | UPCOMING | captured: Backlog"]
+        EVE_37["EVE-37: Remove the shard-manager process that owns shards with no entities | UPCOMING | captured: Backlog"]
+        EVE_38["EVE-38: Cut runner-loss failover from 36s and expose the cluster settings in config | UPCOMING | captured: Backlog"]
+        EVE_39["EVE-39: Make every entity action idempotent and persisted by default | UPCOMING | captured: Backlog"]
+        EVE_41["EVE-41: P1.2 Build app config, settings, secrets and credentials | CURRENT | captured: In Progress"]
+        EVE_43["EVE-43: P1.4 Build identity and access: orgs, authorization, user profiles and audit | CURRENT / BLOCKED | captured: In Progress | blocker 2026-11-17T07:22:23.589Z"]
+        EVE_45["EVE-45: P1.6 Build the change flow: domain events and a durable resource change feed | CURRENT | captured: In Progress"]
+        EVE_46["EVE-46: P1.7 Build the HTTP API, streaming and the typed client from the action inventory | UPCOMING | captured: Backlog"]
+        EVE_48["EVE-48: P1.9 Build inbound MCP from the action inventory | UPCOMING | captured: Backlog"]
+        EVE_49["EVE-49: P1.10 Build inbound ACP so editors can drive Eventiva's agent | UPCOMING | captured: Backlog"]
+        EVE_57["EVE-57: Telemetry F1: Spike Effect OTLP export of traces and metrics from Expo on Hermes | UPCOMING | captured: Backlog"]
+        EVE_58["EVE-58: Telemetry F2: Smoke test PostHog OTLP endpoints and auth for logs, traces, metrics and AI spans | UPCOMING | captured: Backlog"]
+        EVE_59["EVE-59: Telemetry F3: Implement Early Access enrollment on native and server through the Flags service | UPCOMING | captured: Backlog"]
+        EVE_60["EVE-60: Telemetry F4: Propagate session and person context from clients into server spans, logs, errors and AI spans | UPCOMING | captured: Backlog"]
+        EVE_61["EVE-61: F12 Payroll: pay staff and crew from rosters and approved timesheets | UPCOMING | captured: Backlog"]
+        EVE_62["EVE-62: F3 Tasks: task lists, assignments, dependencies and checklists per event | UPCOMING | captured: Backlog"]
+        EVE_63["EVE-63: F6 Warehousing and inventory: equipment, stock, availability, purchasing and maintenance | UPCOMING | captured: Backlog"]
+        EVE_65["EVE-65: F4 Contacts and CRM: people, organisations, relationships and history | UPCOMING | captured: Backlog"]
+        EVE_66["EVE-66: F5 Directory and marketplace: vendor, venue and professional listings, search, enquiries, quotes and reviews | UPCOMING | captured: Backlog"]
+        EVE_67["EVE-67: F2 Scheduling and rosters: crew availability, shifts, offers, call sheets and timesheets | UPCOMING | captured: Backlog"]
+        EVE_69["EVE-69: F11 Accounting: ledgers, invoices, bills, event budgets and tax | UPCOMING | captured: Backlog"]
+        EVE_71["EVE-71: F7 Fleet and live operations: vehicles, maintenance, units, dispatch and crew MDT | UPCOMING | captured: Backlog"]
+        EVE_73["EVE-73: F1 Events and production planning: the event record, run of show, departments, cues and show control | UPCOMING | captured: Backlog"]
+        EVE_76["EVE-76: F8 Ticketing: ticket types, capacity, issuance, admissions and scanning | UPCOMING | captured: Backlog"]
+        EVE_80["EVE-80: F13 Human resources: worker records, onboarding, qualifications and leave | UPCOMING | captured: Backlog"]
+        EVE_83["EVE-83: F12.2 Build time capture: clock in and out and time entries, offline | CLOSED | captured: Duplicate"]
+        EVE_85["EVE-85: F12.3 Build timesheets: draft from roster, submit and approve | CLOSED | captured: Duplicate"]
+        EVE_107["EVE-107: F9 Online and in-person sales: storefront, point of sale, orders, payments, fulfilment and refunds | UPCOMING | captured: Backlog"]
+        EVE_108["EVE-108: F10 Interactive site maps | UPCOMING | captured: Backlog"]
+        EVE_111["EVE-111: F14: Website builder and in-app customisation | UPCOMING | captured: Backlog"]
+        EVE_240["EVE-240: S4 follow-up: run the PowerSync and Yjs device test on iOS | UPCOMING | captured: Backlog"]
+        EVE_241["EVE-241: Add social publishing, shared inbox, and analytics suite | COMPLETED | captured: Done"]
+        EVE_242["EVE-242: Archive the manual pre-Amp packages and create a clean package tree | COMPLETED | captured: Done"]
+        EVE_245["EVE-245: Build the integrated training, competency and certification platform | UPCOMING | captured: Backlog"]
+        EVE_246["EVE-246: Define provider-neutral connected-account invoicing and settlement orchestration | UPCOMING | captured: Backlog"]
+        EVE_247["EVE-247: Research supplier product-catalogue coverage and bulk inventory onboarding | UPCOMING | captured: Backlog"]
+        EVE_248["EVE-248: Revisit and remove Eventiva's temporary house AI-gate override | UPCOMING | captured: Backlog"]
+        EVE_249["EVE-249: Rebase investor tests into production and merge changes | COMPLETED | captured: Done"]
+        EVE_250["EVE-250: Decide controlled cross-tenant marketplace gateway architecture | CURRENT | captured: In Progress"]
+        EVE_251["EVE-251: Decide marketplace service attestation and cryptographic trust architecture | CURRENT | captured: In Progress"]
+        EVE_253["EVE-253: Build shared guided SOP procedures and governed step execution | UPCOMING | captured: Backlog"]
+        EVE_254["EVE-254: Define QLab-class cue playback and end-to-end production control | UPCOMING | captured: Backlog"]
+        EVE_255["EVE-255: Build separate local show playback and cue execution engine | UPCOMING | captured: Backlog"]
+        EVE_256["EVE-256: Connect MDT incidents and external controls to live show cues and emergency response presets | UPCOMING | captured: Backlog"]
+        EVE_263["EVE-263: Enforce acyclic module/dependency graphs and exact Effect-TS types across the extension platform | UPCOMING | captured: Backlog"]
+        EVE_264["EVE-264: Rename the top-level Examples directory to lowercase examples | COMPLETED | captured: In Progress | later-status 2026-11-17"]
+    end
+    subgraph layer_1["Dependency layer 1"]
+        EVE_40["EVE-40: P1.1 Build the action contract and inventory in Effect Schema | COMPLETED | captured: Done"]
+        EVE_42["EVE-42: P1.3 Build the storage layer: Drizzle on Postgres and SQLite, state machines and tenant guards | CURRENT | captured: In Progress"]
+        EVE_44["EVE-44: P1.5 Build telemetry: OpenTelemetry spans on every call and a vendor-neutral tracking port | CURRENT / BLOCKED | captured: In Progress"]
+        EVE_47["EVE-47: P1.8 Build the agent: loop, engines, durable runs, threads and harness | UPCOMING | captured: Backlog"]
+        EVE_50["EVE-50: P1.11 Build screen awareness: app state, navigation and the screen registry on React Native | CURRENT / BLOCKED | captured: In Progress"]
+        EVE_51["EVE-51: P1.12 Build collaboration: Yjs for text and canvas with record sync and authorization at sync | UPCOMING | captured: Backlog"]
+        EVE_53["EVE-53: P1.8b Build model engines, model selection and user-owned subscriptions | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_120["EVE-120: F10.0 Spike: map engine with offline tiles and Yjs-bound editing on Expo web and Android | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_243["EVE-243: Fully enrol Eventiva in Smartcloud house synchronization | COMPLETED | captured: Done"]
+    end
+    subgraph layer_2["Dependency layer 2"]
+        EVE_52["EVE-52: P1.8a Build the agent turn loop with actions as tools | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_54["EVE-54: P1.8c Build durable agent runs on Effect Cluster and Workflow | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_55["EVE-55: P1.8d Build chat threads and message projections | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_56["EVE-56: P1.8e Build the agent harness: outbound ACP, agent memory and context inspection | UPCOMING | captured: Backlog"]
+        EVE_64["EVE-64: F3.1 Build task lists and tasks as synced records with actions | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_68["EVE-68: F4.1 Build people, organisations and contact points as CRM actions | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_74["EVE-74: F11.1 Build the ledger port, chart of accounts, journals and periods | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_75["EVE-75: F5.1 Build the listing model, category taxonomy and listing actions | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_81["EVE-81: F6.1 Build the equipment catalogue: products, tracking modes and kits | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_82["EVE-82: F12.1 Build pay rules, rate cards and pay profiles | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_94["EVE-94: F7.1 Build the vehicle register: vehicles, types and documents | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_98["EVE-98: F13.1 Build worker records, engagements and organisation structure | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_100["EVE-100: F7.3 Build vehicle bookings and allocation to events without clashes | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_106["EVE-106: F7.4 Build offline walkaround inspections and defect reporting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_112["EVE-112: F8.1 Build the ticket catalogue: ticket types, capacity pools, sales windows and access codes | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_128["EVE-128: F2.1 Build crew profiles, roles and availability | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_133["EVE-133: F14.1 Custom fields on any entity, in the action inventory | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_146["EVE-146: F10.1 Sites, levels, base layers and calibration | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_148["EVE-148: F7.8 Build crew MDT mode in the one app | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_166["EVE-166: F1.1 Build the event record: Event, EventSeries, Phase, Space, team and departments | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_170["EVE-170: F9.1 Build money, tax categories and the sales catalogue | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_184["EVE-184: F7.11 Define the telematics port with a test adapter | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_204["EVE-204: F14.7 Site and page model with the block registry | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_244["EVE-244: Scaffold the fresh Nx, Expo, Effect and testing foundation | COMPLETED | captured: Done"]
+        EVE_252["EVE-252: Implement Effect Cluster sharding and multi-runner recovery in the fresh Eventiva backend | CURRENT / BLOCKED | captured: In Progress"]
+        EVE_257["EVE-257: Implement the composable module kernel and safe lifecycle/provider contracts | CURRENT | captured: In Progress"]
+        EVE_258["EVE-258: Add the database-neutral Resources API and privileged tenant migration adapter | CURRENT | captured: In Progress"]
+    end
+    subgraph layer_3["Dependency layer 3"]
+        EVE_70["EVE-70: F3.2 Build checklists with photo evidence and sign-off that work offline on site | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_72["EVE-72: F3.3 Build subtasks and finish-to-start dependencies with blocker queries | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_77["EVE-77: F5.2 Build the listing editor screens for vendors, venues and professionals | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_78["EVE-78: F5.3 Build business verification, publishing and content moderation | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_79["EVE-79: F5.4 Build directory search, filters, geo radius and transparent ranking | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_87["EVE-87: F12.4 Build pay run calculation on durable runs | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_89["EVE-89: F3.6 Build task reminders, watchers and notifications | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_90["EVE-90: F11.2 Build posting rules that turn sales, stock and payroll events into journals | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_91["EVE-91: F4.2 Link contacts to events with roles and to each other with relationships | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_93["EVE-93: F3.7 Build recurring tasks on the shared scheduling rules | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_95["EVE-95: F4.3 Build the activity timeline: interactions, notes and history from other sets | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_99["EVE-99: F4.4 Find and merge duplicate contacts, and import and export them | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_103["EVE-103: F6.2 Build locations and the append-only stock movement ledger | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_109["EVE-109: F3.8 Build guest assignees so vendors and freelancers see only their tasks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_114["EVE-114: F8.2 Build the capacity engine: oversell-proof holds on a cluster entity per pool | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_116["EVE-116: F13.2 Build the sensitive profile with field masking, reveal audit and retention | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_119["EVE-119: F5.7 Build cross-tenant enquiries (RFPs) and private message threads | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_121["EVE-121: F13.3 Build HR documents, templates and built-in e-signature | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_125["EVE-125: F11.3 Build event dimensions, budgets and budget vs actual | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_129["EVE-129: F2.2 Build crew requirements and shifts on events | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_143["EVE-143: F7.5 Build maintenance schedules, work orders, fuel, mileage and cost export | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_145["EVE-145: F7.6 Build units and operational status with an ordered offline queue | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_147["EVE-147: F7.7 Build the incident control log and dispatch for live events | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_152["EVE-152: F10.2 Site maps and layers as Yjs documents with a feature record mirror | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_154["EVE-154: F13.5 Build qualifications, requirements and the eligibility check | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_155["EVE-155: F14.2 Custom record types | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_158["EVE-158: F11.7 Build VAT codes, VAT returns and MTD submission | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_161["EVE-161: F5.9 Build availability signals on listings from the vendor's own calendar | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_167["EVE-167: F1.2 Build production documents and riders as collaborative documents on the event | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_168["EVE-168: F14.3 Views: generated screens and patches over base screens | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_169["EVE-169: F1.3 Build the run of show: segments, fixed and relative timing, department columns and publishing | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_172["EVE-172: F9.2 Build carts, orders and the line provider contract | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_177["EVE-177: F7.9 Build control and crew messaging with acknowledgement | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_179["EVE-179: F13.7 Build leave policies, the leave ledger, requests and absence | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_186["EVE-186: F7.12 Build agent assist for fleet and dispatch with approvals | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_217["EVE-217: F14.8 Visual page editor: drag and drop on wide screens, structured editing on phones | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_219["EVE-219: F14.9 Data-bound blocks, collection pages and forms | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_221["EVE-221: F14.10 Publishing and public rendering | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_259["EVE-259: Implement the initial declarative UI module registry over approved native components | CURRENT / BLOCKED | captured: In Progress"]
+        EVE_262["EVE-262: Implement governed observation-only execution and lifecycle hooks with protected event gateway | UPCOMING / BLOCKED | captured: Backlog"]
+    end
+    subgraph layer_4["Dependency layer 4"]
+        EVE_84["EVE-84: F3.4 Build event-relative due dates, task templates and reschedule cascade | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_86["EVE-86: F3.5 Build the task screens with screen projections on web and mobile | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_88["EVE-88: F12.5 Build the payroll provider port and the first adapter | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_92["EVE-92: F12.6 Build freelancer self-billing and worker status records | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_97["EVE-97: F7.2 Build driver eligibility checks from staff qualifications | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_101["EVE-101: F12.8 Build labour cost reporting per event and phase | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_105["EVE-105: F4.8 Record consent and fulfil privacy requests for contacts | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_113["EVE-113: F5.5 Build the public directory web section for anonymous visitors and search engines | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_115["EVE-115: F5.6 Build shortlists of suppliers per event | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_117["EVE-117: F8.3 Build ticket issuance and delivery: signed tickets from paid orders, comps, voids and reissue | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_118["EVE-118: F6.3 Build the serialised asset register, containers and labels | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_123["EVE-123: F6.4 Build availability and reservations against events, carts and production plans | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_124["EVE-124: F5.8 Build quotes, quote comparison and the acceptance handoff to the event | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_126["EVE-126: F11.4 Build sales invoices, credit notes and receivables | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_127["EVE-127: F11.5 Build bills, expense claims, approvals and payables | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_130["EVE-130: F2.3 Build working-time rules and conflict checks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_137["EVE-137: F4.6 Capture enquiries and track opportunities through a pipeline into events | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_139["EVE-139: F4.7 Sync mailbox and calendar history into the contact timeline | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_144["EVE-144: F4.10 Give the agent CRM skills: summaries, follow-up suggestions and health checks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_153["EVE-153: F13.4 Build onboarding and offboarding runs | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_156["EVE-156: F13.6 Build right-to-work and background check records | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_159["EVE-159: F11.8 Build financial reports, event P and L and exports | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_160["EVE-160: F11.9 Build period close, year end and ledger migration export | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_171["EVE-171: F1.4 Build itineraries: per-person and per-group schedules generated from the event and published | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_173["EVE-173: F1.5 Build department cue lists with numbering, segment links and console exports | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_174["EVE-174: F9.3 Build the payment gateway port and online card payments | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_176["EVE-176: F9.5 Build the point of sale register, cash sessions and offline sales | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_178["EVE-178: F10.3 Map editor screen with screen awareness | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_180["EVE-180: F10.4 Symbol library and linked placements | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_181["EVE-181: F7.10 Build live unit positions on the event map with consent and retention | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_185["EVE-185: F14.4 Change sets: draft, preview, publish, rollback and packages | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_200["EVE-200: F10.7 Revisions, approvals and share links | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_201["EVE-201: F1.6 Build production plans: a collaborative canvas per space and department over the site map, with MVR exchange | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_211["EVE-211: F8.11 Build the seat map editor and reserved seating in F8 | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_214["EVE-214: F9.7 Build fulfilment for shipping, collection, on-site hand over and digital items | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_216["EVE-216: F9.9 Build discounts, vouchers and gift cards | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_218["EVE-218: F9.10 Build bookable services sold through checkout | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_226["EVE-226: F14.11 Domains, hosting, redirects and abuse handling | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_227["EVE-227: F14.12 AI site generation and editing by instruction | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_228["EVE-228: F14.13 SEO, agent-readable output, localisation and consent on published sites | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_234["EVE-234: F14.14 Site templates and brand themes | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_235["EVE-235: F3.10 Build the task rule builder: when X then Y, on a generic rule engine | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_236["EVE-236: F5.13 Build seeded listings, claiming, claim disputes and removal requests | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_239["EVE-239: F13.10 Build performance reviews, goals and feedback | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_260["EVE-260: Build the clean word-art reference extension after verified platform readiness | UPCOMING / BLOCKED | captured: Backlog"]
+    end
+    subgraph layer_5["Dependency layer 5"]
+        EVE_96["EVE-96: F12.7 Build the payments file and the pay run events for accounting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_102["EVE-102: F4.5 Organise contacts with tags, lists and smart lists | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_110["EVE-110: F3.9 Build agent behaviour for tasks: planning, blockers, digests and rescheduling | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_122["EVE-122: F8.4 Build the attendee view: my tickets, holder details and transfers in the one app | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_131["EVE-131: F2.4 Build assignments, offers and roster confirmation | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_141["EVE-141: F4.9 Let external contacts manage their own details and consent in a portal | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_149["EVE-149: F6.5 Build prep, pick lists and offline scan out and scan in | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_150["EVE-150: F6.6 Build discrepancies, damage reports and asset quarantine | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_151["EVE-151: F6.7 Build maintenance, repairs and safety inspections for lifting and electrical equipment | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_157["EVE-157: F11.6 Build bank import, feeds, matching and reconciliation | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_162["EVE-162: F8.5 Build check-in lists and online scanning in the app | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_163["EVE-163: F5.10 Build verified reviews, vendor responses and review moderation | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_164["EVE-164: F5.11 Build listing insights for vendors | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_165["EVE-165: F5.12 Build agent sourcing for organisers and quote drafting for vendors | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_175["EVE-175: F9.4 Build the online storefront and checkout | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_182["EVE-182: F13.8 Build self-service and the offline site check screens | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_187["EVE-187: F6.8 Build purchasing: supplier products, requests, orders, receiving and reorder points | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_191["EVE-191: F14.5 Automations: extend the F3 rules engine across every feature set | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_196["EVE-196: F13.9 Build HR agent playbooks and compliance reports | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_199["EVE-199: F10.6 Bill of quantities and exports | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_202["EVE-202: F10.8 Offline map packs and the crew map | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_203["EVE-203: F1.7 Build lighting: GDTF fixture library, fixture modes and DMX patch with conflict checks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_205["EVE-205: F10.9 Crew positions layer and as-built reporting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_206["EVE-206: F1.8 Build rigging: points, loads, indicative load summary and competent-person sign-off | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_208["EVE-208: F1.9 Build sound: input list, monitor mixes and stage plot | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_209["EVE-209: F8.10 Add wallet passes for tickets behind a neutral port | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_210["EVE-210: F1.10 Build staging and screens: staging elements, screen surfaces and pre-programmed screen content per segment and cue | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_213["EVE-213: F9.6 Build card readers, offline card payments and POS peripherals | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_215["EVE-215: F9.8 Build refunds, cancellations, exchanges and disputes | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_222["EVE-222: F9.11 Build receipts, reconciliation, sales reporting and accounting events | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_225["EVE-225: F9.14 Build quotes, deposits and equipment hire orders | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_229["EVE-229: F1.11 Build equipment requirements: roll up placed elements and hand them to warehousing | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_230["EVE-230: F1.12 Build live show calling and show sequences: run the run of show, live drift, timecode timelines and the show log | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_233["EVE-233: F1.15 Build event templates and cloning: reuse phases, departments, plans and run-of-show skeletons with date shifting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_238["EVE-238: F10.12 Venue and building plans: arenas, halls, custom structures and festival builds | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_261["EVE-261: Integrate the modular platform and prove every owner-required acceptance gate | CURRENT / BLOCKED | captured: In Progress"]
+    end
+    subgraph layer_6["Dependency layer 6"]
+        EVE_104["EVE-104: F12.9 Build the payroll agent: explanations, anomaly suggestions and approval gates | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_132["EVE-132: F2.5 Build external crew access and offer links | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_134["EVE-134: F2.6 Build the roster board and event staffing screens | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_135["EVE-135: F2.7 Build call sheets | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_136["EVE-136: F2.8 Build open shifts and shift swaps | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_138["EVE-138: F2.9 Build time capture and timesheets | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_140["EVE-140: F2.10 Build personal calendar feeds | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_142["EVE-142: F2.11 Build auto-roster proposals and agent staffing | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_183["EVE-183: F10.5 Measurements, zones, routes and rule checks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_188["EVE-188: F6.9 Build sub-hire: renting in equipment from other suppliers for an event | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_189["EVE-189: F6.10 Build stock counts and cycle counts with offline counting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_190["EVE-190: F6.11 Build stock valuation, asset depreciation and the per-period export to accounting | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_192["EVE-192: F8.6 Build offline scanning: validity snapshots, local scan ledger, sync and duplicate alerts | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_194["EVE-194: F8.8 Build the waiting list and face-value resale | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_195["EVE-195: F8.9 Build ticketing reports, the sales dashboard and attendee exports | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_197["EVE-197: F14.6 Agent-designed customisations and AI fields | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_207["EVE-207: F10.10 Public attendee map and website embed | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_223["EVE-223: F9.12 Build vendor sales at events with split payments | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_224["EVE-224: F9.13 Build the sales agent behaviours and approvals | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_231["EVE-231: F1.13 Build the show bridge: a local process that fires cues to consoles, playback and media servers over OSC, MIDI, MSC and timecode | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_237["EVE-237: F5.14 Build quote payments with commission deducted at source | UPCOMING / BLOCKED | captured: Backlog"]
+    end
+    subgraph layer_7["Dependency layer 7"]
+        EVE_193["EVE-193: F8.7 Build the box office: in-person ticket sales, reprints and offline quota sales | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_198["EVE-198: F6.12 Build the inventory agent behaviours: shortages, inspections due, reorders and overdue returns | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_212["EVE-212: F8.12 Build ticketing agent behaviour: watchers, gate briefing and approval rules | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_220["EVE-220: F10.11 Agent layout drafting, templates and proactive checks | UPCOMING / BLOCKED | captured: Backlog"]
+        EVE_232["EVE-232: F1.14 Build direct DMX output for small rigs over sACN and Art-Net | UPCOMING / BLOCKED | captured: Backlog"]
+    end
+    EVE_14 --> EVE_40
+    EVE_14 --> EVE_47
+    EVE_16 --> EVE_50
+    EVE_16 --> EVE_77
+    EVE_16 --> EVE_86
+    EVE_16 --> EVE_120
+    EVE_16 --> EVE_134
+    EVE_16 --> EVE_149
+    EVE_16 --> EVE_182
+    EVE_16 --> EVE_204
+    EVE_16 --> EVE_213
+    EVE_17 --> EVE_51
+    EVE_17 --> EVE_64
+    EVE_17 --> EVE_106
+    EVE_17 --> EVE_120
+    EVE_17 --> EVE_128
+    EVE_17 --> EVE_138
+    EVE_17 --> EVE_145
+    EVE_17 --> EVE_148
+    EVE_17 --> EVE_154
+    EVE_17 --> EVE_172
+    EVE_17 --> EVE_176
+    EVE_17 --> EVE_179
+    EVE_17 --> EVE_192
+    EVE_18 --> EVE_54
+    EVE_19 --> EVE_44
+    EVE_20 --> EVE_53
+    EVE_21 --> EVE_44
+    EVE_23 --> EVE_40
+    EVE_23 --> EVE_42
+    EVE_23 --> EVE_64
+    EVE_23 --> EVE_68
+    EVE_23 --> EVE_82
+    EVE_23 --> EVE_98
+    EVE_23 --> EVE_257
+    EVE_23 --> EVE_258
+    EVE_24 --> EVE_78
+    EVE_24 --> EVE_89
+    EVE_24 --> EVE_92
+    EVE_24 --> EVE_105
+    EVE_24 --> EVE_109
+    EVE_24 --> EVE_117
+    EVE_24 --> EVE_119
+    EVE_24 --> EVE_121
+    EVE_24 --> EVE_126
+    EVE_24 --> EVE_131
+    EVE_24 --> EVE_135
+    EVE_24 --> EVE_136
+    EVE_24 --> EVE_153
+    EVE_24 --> EVE_169
+    EVE_24 --> EVE_171
+    EVE_24 --> EVE_175
+    EVE_24 --> EVE_177
+    EVE_24 --> EVE_179
+    EVE_24 --> EVE_187
+    EVE_24 --> EVE_194
+    EVE_24 --> EVE_200
+    EVE_24 --> EVE_214
+    EVE_24 --> EVE_222
+    EVE_24 --> EVE_225
+    EVE_24 --> EVE_236
+    EVE_24 --> EVE_239
+    EVE_25 --> EVE_70
+    EVE_25 --> EVE_75
+    EVE_25 --> EVE_88
+    EVE_25 --> EVE_92
+    EVE_25 --> EVE_99
+    EVE_25 --> EVE_116
+    EVE_25 --> EVE_117
+    EVE_25 --> EVE_118
+    EVE_25 --> EVE_121
+    EVE_25 --> EVE_126
+    EVE_25 --> EVE_127
+    EVE_25 --> EVE_135
+    EVE_25 --> EVE_146
+    EVE_25 --> EVE_150
+    EVE_25 --> EVE_151
+    EVE_25 --> EVE_154
+    EVE_25 --> EVE_156
+    EVE_25 --> EVE_159
+    EVE_25 --> EVE_167
+    EVE_25 --> EVE_173
+    EVE_25 --> EVE_193
+    EVE_25 --> EVE_195
+    EVE_25 --> EVE_199
+    EVE_25 --> EVE_201
+    EVE_25 --> EVE_203
+    EVE_25 --> EVE_210
+    EVE_25 --> EVE_214
+    EVE_26 --> EVE_79
+    EVE_26 --> EVE_202
+    EVE_27 --> EVE_86
+    EVE_27 --> EVE_150
+    EVE_27 --> EVE_167
+    EVE_27 --> EVE_200
+    EVE_28 --> EVE_175
+    EVE_28 --> EVE_228
+    EVE_29 --> EVE_104
+    EVE_29 --> EVE_165
+    EVE_29 --> EVE_196
+    EVE_29 --> EVE_224
+    EVE_30 --> EVE_101
+    EVE_30 --> EVE_159
+    EVE_30 --> EVE_164
+    EVE_30 --> EVE_195
+    EVE_30 --> EVE_196
+    EVE_30 --> EVE_222
+    EVE_30 --> EVE_227
+    EVE_30 --> EVE_234
+    EVE_32 --> EVE_148
+    EVE_32 --> EVE_168
+    EVE_32 --> EVE_182
+    EVE_33 --> EVE_93
+    EVE_33 --> EVE_100
+    EVE_33 --> EVE_123
+    EVE_33 --> EVE_124
+    EVE_33 --> EVE_128
+    EVE_33 --> EVE_129
+    EVE_33 --> EVE_130
+    EVE_33 --> EVE_138
+    EVE_33 --> EVE_154
+    EVE_33 --> EVE_161
+    EVE_33 --> EVE_171
+    EVE_33 --> EVE_179
+    EVE_33 --> EVE_218
+    EVE_35 --> EVE_142
+    EVE_38 --> EVE_114
+    EVE_39 --> EVE_103
+    EVE_39 --> EVE_114
+    EVE_39 --> EVE_145
+    EVE_39 --> EVE_170
+    EVE_39 --> EVE_172
+    EVE_40 --> EVE_52
+    EVE_40 --> EVE_56
+    EVE_40 --> EVE_64
+    EVE_40 --> EVE_68
+    EVE_40 --> EVE_74
+    EVE_40 --> EVE_75
+    EVE_40 --> EVE_81
+    EVE_40 --> EVE_82
+    EVE_40 --> EVE_88
+    EVE_40 --> EVE_94
+    EVE_40 --> EVE_96
+    EVE_40 --> EVE_97
+    EVE_40 --> EVE_98
+    EVE_40 --> EVE_100
+    EVE_40 --> EVE_101
+    EVE_40 --> EVE_106
+    EVE_40 --> EVE_112
+    EVE_40 --> EVE_114
+    EVE_40 --> EVE_128
+    EVE_40 --> EVE_129
+    EVE_40 --> EVE_130
+    EVE_40 --> EVE_133
+    EVE_40 --> EVE_138
+    EVE_40 --> EVE_143
+    EVE_40 --> EVE_145
+    EVE_40 --> EVE_146
+    EVE_40 --> EVE_147
+    EVE_40 --> EVE_166
+    EVE_40 --> EVE_170
+    EVE_40 --> EVE_172
+    EVE_40 --> EVE_173
+    EVE_40 --> EVE_177
+    EVE_40 --> EVE_181
+    EVE_40 --> EVE_184
+    EVE_40 --> EVE_204
+    EVE_40 --> EVE_235
+    EVE_40 --> EVE_252
+    EVE_40 --> EVE_257
+    EVE_40 --> EVE_258
+    EVE_40 --> EVE_259
+    EVE_41 --> EVE_53
+    EVE_41 --> EVE_74
+    EVE_41 --> EVE_88
+    EVE_41 --> EVE_116
+    EVE_41 --> EVE_117
+    EVE_41 --> EVE_130
+    EVE_41 --> EVE_139
+    EVE_41 --> EVE_151
+    EVE_41 --> EVE_157
+    EVE_41 --> EVE_158
+    EVE_41 --> EVE_174
+    EVE_41 --> EVE_183
+    EVE_41 --> EVE_184
+    EVE_41 --> EVE_192
+    EVE_41 --> EVE_209
+    EVE_41 --> EVE_213
+    EVE_41 --> EVE_226
+    EVE_41 --> EVE_231
+    EVE_41 --> EVE_259
+    EVE_41 --> EVE_261
+    EVE_42 --> EVE_54
+    EVE_42 --> EVE_55
+    EVE_42 --> EVE_64
+    EVE_42 --> EVE_68
+    EVE_42 --> EVE_74
+    EVE_42 --> EVE_75
+    EVE_42 --> EVE_81
+    EVE_42 --> EVE_82
+    EVE_42 --> EVE_87
+    EVE_42 --> EVE_94
+    EVE_42 --> EVE_98
+    EVE_42 --> EVE_100
+    EVE_42 --> EVE_103
+    EVE_42 --> EVE_106
+    EVE_42 --> EVE_112
+    EVE_42 --> EVE_128
+    EVE_42 --> EVE_129
+    EVE_42 --> EVE_131
+    EVE_42 --> EVE_133
+    EVE_42 --> EVE_136
+    EVE_42 --> EVE_138
+    EVE_42 --> EVE_143
+    EVE_42 --> EVE_145
+    EVE_42 --> EVE_146
+    EVE_42 --> EVE_166
+    EVE_42 --> EVE_170
+    EVE_42 --> EVE_172
+    EVE_42 --> EVE_204
+    EVE_42 --> EVE_252
+    EVE_43 --> EVE_52
+    EVE_43 --> EVE_64
+    EVE_43 --> EVE_68
+    EVE_43 --> EVE_70
+    EVE_43 --> EVE_74
+    EVE_43 --> EVE_75
+    EVE_43 --> EVE_78
+    EVE_43 --> EVE_81
+    EVE_43 --> EVE_82
+    EVE_43 --> EVE_87
+    EVE_43 --> EVE_91
+    EVE_43 --> EVE_92
+    EVE_43 --> EVE_94
+    EVE_43 --> EVE_96
+    EVE_43 --> EVE_97
+    EVE_43 --> EVE_98
+    EVE_43 --> EVE_105
+    EVE_43 --> EVE_109
+    EVE_43 --> EVE_112
+    EVE_43 --> EVE_116
+    EVE_43 --> EVE_119
+    EVE_43 --> EVE_121
+    EVE_43 --> EVE_122
+    EVE_43 --> EVE_127
+    EVE_43 --> EVE_128
+    EVE_43 --> EVE_131
+    EVE_43 --> EVE_132
+    EVE_43 --> EVE_133
+    EVE_43 --> EVE_138
+    EVE_43 --> EVE_140
+    EVE_43 --> EVE_141
+    EVE_43 --> EVE_146
+    EVE_43 --> EVE_147
+    EVE_43 --> EVE_152
+    EVE_43 --> EVE_153
+    EVE_43 --> EVE_155
+    EVE_43 --> EVE_158
+    EVE_43 --> EVE_162
+    EVE_43 --> EVE_166
+    EVE_43 --> EVE_167
+    EVE_43 --> EVE_170
+    EVE_43 --> EVE_171
+    EVE_43 --> EVE_174
+    EVE_43 --> EVE_176
+    EVE_43 --> EVE_179
+    EVE_43 --> EVE_181
+    EVE_43 --> EVE_185
+    EVE_43 --> EVE_191
+    EVE_43 --> EVE_200
+    EVE_43 --> EVE_204
+    EVE_43 --> EVE_206
+    EVE_43 --> EVE_215
+    EVE_43 --> EVE_223
+    EVE_43 --> EVE_231
+    EVE_43 --> EVE_235
+    EVE_43 --> EVE_261
+    EVE_44 --> EVE_74
+    EVE_44 --> EVE_87
+    EVE_44 --> EVE_116
+    EVE_44 --> EVE_164
+    EVE_44 --> EVE_181
+    EVE_44 --> EVE_205
+    EVE_44 --> EVE_221
+    EVE_44 --> EVE_228
+    EVE_44 --> EVE_230
+    EVE_44 --> EVE_231
+    EVE_44 --> EVE_260
+    EVE_44 --> EVE_261
+    EVE_45 --> EVE_55
+    EVE_45 --> EVE_64
+    EVE_45 --> EVE_79
+    EVE_45 --> EVE_89
+    EVE_45 --> EVE_90
+    EVE_45 --> EVE_95
+    EVE_45 --> EVE_96
+    EVE_45 --> EVE_100
+    EVE_45 --> EVE_103
+    EVE_45 --> EVE_114
+    EVE_45 --> EVE_117
+    EVE_45 --> EVE_119
+    EVE_45 --> EVE_129
+    EVE_45 --> EVE_131
+    EVE_45 --> EVE_138
+    EVE_45 --> EVE_145
+    EVE_45 --> EVE_147
+    EVE_45 --> EVE_152
+    EVE_45 --> EVE_154
+    EVE_45 --> EVE_155
+    EVE_45 --> EVE_166
+    EVE_45 --> EVE_169
+    EVE_45 --> EVE_172
+    EVE_45 --> EVE_174
+    EVE_45 --> EVE_191
+    EVE_45 --> EVE_198
+    EVE_45 --> EVE_222
+    EVE_45 --> EVE_229
+    EVE_45 --> EVE_235
+    EVE_45 --> EVE_260
+    EVE_45 --> EVE_261
+    EVE_46 --> EVE_113
+    EVE_46 --> EVE_126
+    EVE_46 --> EVE_132
+    EVE_46 --> EVE_140
+    EVE_46 --> EVE_162
+    EVE_46 --> EVE_174
+    EVE_46 --> EVE_175
+    EVE_46 --> EVE_205
+    EVE_46 --> EVE_219
+    EVE_46 --> EVE_221
+    EVE_46 --> EVE_230
+    EVE_48 --> EVE_165
+    EVE_50 --> EVE_77
+    EVE_50 --> EVE_81
+    EVE_50 --> EVE_86
+    EVE_50 --> EVE_94
+    EVE_50 --> EVE_101
+    EVE_50 --> EVE_104
+    EVE_50 --> EVE_106
+    EVE_50 --> EVE_112
+    EVE_50 --> EVE_115
+    EVE_50 --> EVE_116
+    EVE_50 --> EVE_122
+    EVE_50 --> EVE_125
+    EVE_50 --> EVE_134
+    EVE_50 --> EVE_138
+    EVE_50 --> EVE_147
+    EVE_50 --> EVE_148
+    EVE_50 --> EVE_162
+    EVE_50 --> EVE_166
+    EVE_50 --> EVE_168
+    EVE_50 --> EVE_169
+    EVE_50 --> EVE_175
+    EVE_50 --> EVE_176
+    EVE_50 --> EVE_178
+    EVE_50 --> EVE_182
+    EVE_50 --> EVE_186
+    EVE_50 --> EVE_201
+    EVE_50 --> EVE_211
+    EVE_50 --> EVE_217
+    EVE_50 --> EVE_224
+    EVE_50 --> EVE_260
+    EVE_51 --> EVE_64
+    EVE_51 --> EVE_95
+    EVE_51 --> EVE_103
+    EVE_51 --> EVE_109
+    EVE_51 --> EVE_121
+    EVE_51 --> EVE_122
+    EVE_51 --> EVE_125
+    EVE_51 --> EVE_133
+    EVE_51 --> EVE_134
+    EVE_51 --> EVE_135
+    EVE_51 --> EVE_138
+    EVE_51 --> EVE_147
+    EVE_51 --> EVE_152
+    EVE_51 --> EVE_166
+    EVE_51 --> EVE_167
+    EVE_51 --> EVE_169
+    EVE_51 --> EVE_173
+    EVE_51 --> EVE_176
+    EVE_51 --> EVE_192
+    EVE_51 --> EVE_201
+    EVE_51 --> EVE_204
+    EVE_51 --> EVE_211
+    EVE_51 --> EVE_239
+    EVE_52 --> EVE_104
+    EVE_52 --> EVE_110
+    EVE_52 --> EVE_127
+    EVE_52 --> EVE_142
+    EVE_52 --> EVE_144
+    EVE_52 --> EVE_165
+    EVE_52 --> EVE_186
+    EVE_52 --> EVE_196
+    EVE_52 --> EVE_197
+    EVE_52 --> EVE_198
+    EVE_52 --> EVE_212
+    EVE_52 --> EVE_215
+    EVE_52 --> EVE_220
+    EVE_52 --> EVE_224
+    EVE_52 --> EVE_227
+    EVE_52 --> EVE_230
+    EVE_53 --> EVE_127
+    EVE_53 --> EVE_197
+    EVE_53 --> EVE_227
+    EVE_54 --> EVE_87
+    EVE_54 --> EVE_89
+    EVE_54 --> EVE_90
+    EVE_54 --> EVE_99
+    EVE_54 --> EVE_104
+    EVE_54 --> EVE_105
+    EVE_54 --> EVE_110
+    EVE_54 --> EVE_114
+    EVE_54 --> EVE_124
+    EVE_54 --> EVE_139
+    EVE_54 --> EVE_142
+    EVE_54 --> EVE_143
+    EVE_54 --> EVE_145
+    EVE_54 --> EVE_147
+    EVE_54 --> EVE_153
+    EVE_54 --> EVE_156
+    EVE_54 --> EVE_165
+    EVE_54 --> EVE_177
+    EVE_54 --> EVE_181
+    EVE_54 --> EVE_186
+    EVE_54 --> EVE_191
+    EVE_54 --> EVE_196
+    EVE_54 --> EVE_198
+    EVE_54 --> EVE_199
+    EVE_54 --> EVE_212
+    EVE_54 --> EVE_220
+    EVE_54 --> EVE_224
+    EVE_54 --> EVE_233
+    EVE_54 --> EVE_235
+    EVE_54 --> EVE_239
+    EVE_54 --> EVE_261
+    EVE_55 --> EVE_186
+    EVE_55 --> EVE_212
+    EVE_56 --> EVE_116
+    EVE_64 --> EVE_70
+    EVE_64 --> EVE_72
+    EVE_64 --> EVE_84
+    EVE_64 --> EVE_86
+    EVE_64 --> EVE_89
+    EVE_64 --> EVE_93
+    EVE_64 --> EVE_109
+    EVE_64 --> EVE_110
+    EVE_64 --> EVE_235
+    EVE_68 --> EVE_91
+    EVE_68 --> EVE_95
+    EVE_68 --> EVE_99
+    EVE_68 --> EVE_102
+    EVE_68 --> EVE_105
+    EVE_69 --> EVE_187
+    EVE_69 --> EVE_190
+    EVE_70 --> EVE_86
+    EVE_72 --> EVE_84
+    EVE_72 --> EVE_86
+    EVE_72 --> EVE_110
+    EVE_72 --> EVE_235
+    EVE_73 --> EVE_123
+    EVE_73 --> EVE_129
+    EVE_73 --> EVE_135
+    EVE_74 --> EVE_90
+    EVE_74 --> EVE_125
+    EVE_74 --> EVE_126
+    EVE_74 --> EVE_127
+    EVE_74 --> EVE_157
+    EVE_74 --> EVE_158
+    EVE_74 --> EVE_159
+    EVE_74 --> EVE_160
+    EVE_75 --> EVE_77
+    EVE_75 --> EVE_78
+    EVE_75 --> EVE_79
+    EVE_75 --> EVE_119
+    EVE_75 --> EVE_161
+    EVE_78 --> EVE_113
+    EVE_78 --> EVE_163
+    EVE_78 --> EVE_236
+    EVE_79 --> EVE_113
+    EVE_79 --> EVE_115
+    EVE_79 --> EVE_164
+    EVE_79 --> EVE_165
+    EVE_81 --> EVE_103
+    EVE_82 --> EVE_87
+    EVE_82 --> EVE_138
+    EVE_84 --> EVE_110
+    EVE_86 --> EVE_110
+    EVE_87 --> EVE_88
+    EVE_87 --> EVE_92
+    EVE_87 --> EVE_101
+    EVE_88 --> EVE_96
+    EVE_90 --> EVE_126
+    EVE_90 --> EVE_127
+    EVE_90 --> EVE_160
+    EVE_91 --> EVE_137
+    EVE_92 --> EVE_96
+    EVE_95 --> EVE_137
+    EVE_95 --> EVE_139
+    EVE_95 --> EVE_144
+    EVE_96 --> EVE_104
+    EVE_98 --> EVE_116
+    EVE_98 --> EVE_121
+    EVE_98 --> EVE_153
+    EVE_98 --> EVE_154
+    EVE_98 --> EVE_156
+    EVE_98 --> EVE_179
+    EVE_98 --> EVE_239
+    EVE_99 --> EVE_105
+    EVE_99 --> EVE_144
+    EVE_101 --> EVE_104
+    EVE_103 --> EVE_118
+    EVE_103 --> EVE_123
+    EVE_103 --> EVE_150
+    EVE_103 --> EVE_187
+    EVE_105 --> EVE_102
+    EVE_105 --> EVE_141
+    EVE_112 --> EVE_114
+    EVE_112 --> EVE_211
+    EVE_114 --> EVE_117
+    EVE_114 --> EVE_194
+    EVE_114 --> EVE_211
+    EVE_115 --> EVE_165
+    EVE_116 --> EVE_156
+    EVE_116 --> EVE_239
+    EVE_117 --> EVE_122
+    EVE_117 --> EVE_162
+    EVE_117 --> EVE_209
+    EVE_118 --> EVE_149
+    EVE_118 --> EVE_150
+    EVE_118 --> EVE_151
+    EVE_118 --> EVE_187
+    EVE_119 --> EVE_124
+    EVE_119 --> EVE_164
+    EVE_119 --> EVE_165
+    EVE_120 --> EVE_146
+    EVE_120 --> EVE_211
+    EVE_121 --> EVE_153
+    EVE_122 --> EVE_194
+    EVE_123 --> EVE_149
+    EVE_123 --> EVE_188
+    EVE_123 --> EVE_198
+    EVE_124 --> EVE_163
+    EVE_124 --> EVE_164
+    EVE_124 --> EVE_165
+    EVE_125 --> EVE_159
+    EVE_126 --> EVE_157
+    EVE_126 --> EVE_237
+    EVE_127 --> EVE_157
+    EVE_128 --> EVE_129
+    EVE_128 --> EVE_130
+    EVE_129 --> EVE_130
+    EVE_129 --> EVE_131
+    EVE_129 --> EVE_171
+    EVE_130 --> EVE_131
+    EVE_130 --> EVE_136
+    EVE_130 --> EVE_142
+    EVE_131 --> EVE_132
+    EVE_131 --> EVE_134
+    EVE_131 --> EVE_135
+    EVE_131 --> EVE_136
+    EVE_131 --> EVE_138
+    EVE_131 --> EVE_140
+    EVE_131 --> EVE_142
+    EVE_133 --> EVE_155
+    EVE_133 --> EVE_168
+    EVE_133 --> EVE_185
+    EVE_133 --> EVE_219
+    EVE_146 --> EVE_152
+    EVE_146 --> EVE_201
+    EVE_146 --> EVE_238
+    EVE_149 --> EVE_188
+    EVE_149 --> EVE_189
+    EVE_150 --> EVE_189
+    EVE_151 --> EVE_198
+    EVE_152 --> EVE_178
+    EVE_152 --> EVE_180
+    EVE_152 --> EVE_181
+    EVE_152 --> EVE_183
+    EVE_152 --> EVE_200
+    EVE_152 --> EVE_201
+    EVE_152 --> EVE_238
+    EVE_153 --> EVE_182
+    EVE_153 --> EVE_196
+    EVE_154 --> EVE_97
+    EVE_154 --> EVE_182
+    EVE_154 --> EVE_196
+    EVE_155 --> EVE_185
+    EVE_156 --> EVE_196
+    EVE_161 --> EVE_165
+    EVE_162 --> EVE_192
+    EVE_162 --> EVE_193
+    EVE_162 --> EVE_195
+    EVE_166 --> EVE_167
+    EVE_166 --> EVE_169
+    EVE_166 --> EVE_171
+    EVE_166 --> EVE_173
+    EVE_166 --> EVE_201
+    EVE_166 --> EVE_203
+    EVE_166 --> EVE_206
+    EVE_166 --> EVE_208
+    EVE_166 --> EVE_210
+    EVE_166 --> EVE_229
+    EVE_166 --> EVE_233
+    EVE_167 --> EVE_208
+    EVE_168 --> EVE_185
+    EVE_169 --> EVE_171
+    EVE_169 --> EVE_173
+    EVE_169 --> EVE_210
+    EVE_169 --> EVE_230
+    EVE_169 --> EVE_233
+    EVE_170 --> EVE_172
+    EVE_172 --> EVE_174
+    EVE_172 --> EVE_176
+    EVE_172 --> EVE_214
+    EVE_172 --> EVE_216
+    EVE_172 --> EVE_218
+    EVE_172 --> EVE_225
+    EVE_173 --> EVE_203
+    EVE_173 --> EVE_208
+    EVE_173 --> EVE_210
+    EVE_173 --> EVE_230
+    EVE_173 --> EVE_231
+    EVE_173 --> EVE_233
+    EVE_174 --> EVE_175
+    EVE_174 --> EVE_213
+    EVE_174 --> EVE_215
+    EVE_174 --> EVE_222
+    EVE_174 --> EVE_223
+    EVE_174 --> EVE_225
+    EVE_174 --> EVE_237
+    EVE_176 --> EVE_213
+    EVE_176 --> EVE_222
+    EVE_178 --> EVE_202
+    EVE_178 --> EVE_205
+    EVE_178 --> EVE_207
+    EVE_178 --> EVE_238
+    EVE_179 --> EVE_182
+    EVE_179 --> EVE_196
+    EVE_180 --> EVE_199
+    EVE_181 --> EVE_205
+    EVE_183 --> EVE_220
+    EVE_185 --> EVE_191
+    EVE_185 --> EVE_197
+    EVE_187 --> EVE_190
+    EVE_187 --> EVE_198
+    EVE_188 --> EVE_198
+    EVE_191 --> EVE_197
+    EVE_192 --> EVE_193
+    EVE_195 --> EVE_212
+    EVE_199 --> EVE_220
+    EVE_200 --> EVE_207
+    EVE_201 --> EVE_203
+    EVE_201 --> EVE_206
+    EVE_201 --> EVE_208
+    EVE_201 --> EVE_210
+    EVE_201 --> EVE_229
+    EVE_201 --> EVE_233
+    EVE_203 --> EVE_232
+    EVE_204 --> EVE_217
+    EVE_204 --> EVE_219
+    EVE_204 --> EVE_221
+    EVE_204 --> EVE_234
+    EVE_210 --> EVE_231
+    EVE_215 --> EVE_223
+    EVE_215 --> EVE_224
+    EVE_215 --> EVE_237
+    EVE_217 --> EVE_227
+    EVE_219 --> EVE_227
+    EVE_219 --> EVE_234
+    EVE_221 --> EVE_226
+    EVE_221 --> EVE_228
+    EVE_222 --> EVE_224
+    EVE_230 --> EVE_231
+    EVE_231 --> EVE_232
+    EVE_238 --> EVE_183
+    EVE_238 --> EVE_207
+    EVE_242 --> EVE_243
+    EVE_243 --> EVE_244
+    EVE_251 --> EVE_261
+    EVE_252 --> EVE_261
+    EVE_257 --> EVE_259
+    EVE_257 --> EVE_260
+    EVE_257 --> EVE_261
+    EVE_257 --> EVE_262
+    EVE_258 --> EVE_260
+    EVE_258 --> EVE_261
+    EVE_258 --> EVE_262
+    EVE_259 --> EVE_260
+    EVE_259 --> EVE_261
+    EVE_260 --> EVE_261
+    EVE_262 --> EVE_261
+    EVE_263 --> EVE_261
+    click EVE_2 "https://linear.app/resnovas/issue/EVE-2/bugprojectsworkflowsenvironmentsdiscordbot-module-must-be-set-to"
+    style EVE_2 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_3 "https://linear.app/resnovas/issue/EVE-3/choregithubworkflowsclayml-update-to-add-the-restyled-iobot-to-allowed"
+    style EVE_3 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_4 "https://linear.app/resnovas/issue/EVE-4/sweep-fix-the-bit-tasks-init-process"
+    style EVE_4 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_5 "https://linear.app/resnovas/issue/EVE-5/sweep-refactor-the-settimeout-in-initialize"
+    style EVE_5 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_9 "https://linear.app/resnovas/issue/EVE-9/set-up-home-assistant-os-runbook-and-oled-status-app"
+    style EVE_9 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_11 "https://linear.app/resnovas/issue/EVE-11/enable-verified-investorpress-tickets-without-checkout"
+    style EVE_11 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_13 "https://linear.app/resnovas/issue/EVE-13/establish-modular-core-foundations-for-database-adapters-expo-and"
+    style EVE_13 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_14 "https://linear.app/resnovas/issue/EVE-14/s1-prove-one-effect-action-serves-ui-mcp-and-ai-sdk-from-one-inventory"
+    style EVE_14 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_15 "https://linear.app/resnovas/issue/EVE-15/s2-build-the-upstream-agent-native-capability-map-and-protocol"
+    style EVE_15 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_16 "https://linear.app/resnovas/issue/EVE-16/s3-prove-runtime-loading-and-switching-of-a-remote-module-on-expo-web"
+    style EVE_16 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_17 "https://linear.app/resnovas/issue/EVE-17/s4-choose-the-offline-sync-engine-for-record-edits-and-live-text-and"
+    style EVE_17 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_18 "https://linear.app/resnovas/issue/EVE-18/s5-verify-sharding-across-two-independent-runners-with-drain-and"
+    style EVE_18 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_19 "https://linear.app/resnovas/issue/EVE-19/s6-map-posthog-and-opentelemetry-support-across-web-native-and-backend"
+    style EVE_19 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_20 "https://linear.app/resnovas/issue/EVE-20/s7-find-which-ai-providers-allow-users-to-bring-their-own-subscription"
+    style EVE_20 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_21 "https://linear.app/resnovas/issue/EVE-21/remove-sentry-from-core-and-make-telemetry-export-vendor-neutral"
+    style EVE_21 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_22 "https://linear.app/resnovas/issue/EVE-22/correct-boundary-docs-to-match-lint-use-colon-tags-and-fix-the-house"
+    style EVE_22 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_23 "https://linear.app/resnovas/issue/EVE-23/split-core-into-portable-contracts-and-backend-runtime-with-a-shared"
+    style EVE_23 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_24 "https://linear.app/resnovas/issue/EVE-24/port-notifications-messaging-channels-and-transactional-email"
+    style EVE_24 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_25 "https://linear.app/resnovas/issue/EVE-25/port-files-private-attachments-artifacts-and-document-import"
+    style EVE_25 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_26 "https://linear.app/resnovas/issue/EVE-26/port-search-and-embeddings-across-every-resource"
+    style EVE_26 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_27 "https://linear.app/resnovas/issue/EVE-27/port-comments-mentions-and-review-suggestions-on-any-resource"
+    style EVE_27 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_28 "https://linear.app/resnovas/issue/EVE-28/port-localization-for-people-and-for-the-agent"
+    style EVE_28 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_29 "https://linear.app/resnovas/issue/EVE-29/port-agent-evaluations-linked-to-posthog-datasets"
+    style EVE_29 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_30 "https://linear.app/resnovas/issue/EVE-30/port-data-widgets-saved-dashboards-and-brand-kits"
+    style EVE_30 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_31 "https://linear.app/resnovas/issue/EVE-31/port-voice-input-and-transcription-for-the-agent"
+    style EVE_31 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_32 "https://linear.app/resnovas/issue/EVE-32/port-settings-profiles-navigation-command-menu-and-onboarding"
+    style EVE_32 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_33 "https://linear.app/resnovas/issue/EVE-33/port-scheduling-primitives-for-availability-bookings-and-rosters"
+    style EVE_33 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_34 "https://linear.app/resnovas/issue/EVE-34/agent-runs-restart-from-scratch-when-their-shard-moves"
+    style EVE_34 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_35 "https://linear.app/resnovas/issue/EVE-35/keep-a-long-agent-run-from-blocking-its-entitys-other-messages"
+    style EVE_35 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_36 "https://linear.app/resnovas/issue/EVE-36/stream-agent-output-from-a-durable-log-not-volatile-rpcs"
+    style EVE_36 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_37 "https://linear.app/resnovas/issue/EVE-37/remove-the-shard-manager-process-that-owns-shards-with-no-entities"
+    style EVE_37 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_38 "https://linear.app/resnovas/issue/EVE-38/cut-runner-loss-failover-from-36s-and-expose-the-cluster-settings-in"
+    style EVE_38 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_39 "https://linear.app/resnovas/issue/EVE-39/make-every-entity-action-idempotent-and-persisted-by-default"
+    style EVE_39 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_41 "https://linear.app/resnovas/issue/EVE-41/p12-build-app-config-settings-secrets-and-credentials"
+    style EVE_41 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_43 "https://linear.app/resnovas/issue/EVE-43/p14-build-identity-and-access-orgs-authorization-user-profiles-and"
+    style EVE_43 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_45 "https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change"
+    style EVE_45 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_46 "https://linear.app/resnovas/issue/EVE-46/p17-build-the-http-api-streaming-and-the-typed-client-from-the-action"
+    style EVE_46 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_48 "https://linear.app/resnovas/issue/EVE-48/p19-build-inbound-mcp-from-the-action-inventory"
+    style EVE_48 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_49 "https://linear.app/resnovas/issue/EVE-49/p110-build-inbound-acp-so-editors-can-drive-eventivas-agent"
+    style EVE_49 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_57 "https://linear.app/resnovas/issue/EVE-57/telemetry-f1-spike-effect-otlp-export-of-traces-and-metrics-from-expo"
+    style EVE_57 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_58 "https://linear.app/resnovas/issue/EVE-58/telemetry-f2-smoke-test-posthog-otlp-endpoints-and-auth-for-logs"
+    style EVE_58 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_59 "https://linear.app/resnovas/issue/EVE-59/telemetry-f3-implement-early-access-enrollment-on-native-and-server"
+    style EVE_59 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_60 "https://linear.app/resnovas/issue/EVE-60/telemetry-f4-propagate-session-and-person-context-from-clients-into"
+    style EVE_60 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_61 "https://linear.app/resnovas/issue/EVE-61/f12-payroll-pay-staff-and-crew-from-rosters-and-approved-timesheets"
+    style EVE_61 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_62 "https://linear.app/resnovas/issue/EVE-62/f3-tasks-task-lists-assignments-dependencies-and-checklists-per-event"
+    style EVE_62 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_63 "https://linear.app/resnovas/issue/EVE-63/f6-warehousing-and-inventory-equipment-stock-availability-purchasing"
+    style EVE_63 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_65 "https://linear.app/resnovas/issue/EVE-65/f4-contacts-and-crm-people-organisations-relationships-and-history"
+    style EVE_65 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_66 "https://linear.app/resnovas/issue/EVE-66/f5-directory-and-marketplace-vendor-venue-and-professional-listings"
+    style EVE_66 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_67 "https://linear.app/resnovas/issue/EVE-67/f2-scheduling-and-rosters-crew-availability-shifts-offers-call-sheets"
+    style EVE_67 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_69 "https://linear.app/resnovas/issue/EVE-69/f11-accounting-ledgers-invoices-bills-event-budgets-and-tax"
+    style EVE_69 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_71 "https://linear.app/resnovas/issue/EVE-71/f7-fleet-and-live-operations-vehicles-maintenance-units-dispatch-and"
+    style EVE_71 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_73 "https://linear.app/resnovas/issue/EVE-73/f1-events-and-production-planning-the-event-record-run-of-show"
+    style EVE_73 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_76 "https://linear.app/resnovas/issue/EVE-76/f8-ticketing-ticket-types-capacity-issuance-admissions-and-scanning"
+    style EVE_76 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_80 "https://linear.app/resnovas/issue/EVE-80/f13-human-resources-worker-records-onboarding-qualifications-and-leave"
+    style EVE_80 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_83 "https://linear.app/resnovas/issue/EVE-83/f122-build-time-capture-clock-in-and-out-and-time-entries-offline"
+    style EVE_83 fill:#ede9fe,stroke:#5b21b6,color:#0f172a
+    click EVE_85 "https://linear.app/resnovas/issue/EVE-85/f123-build-timesheets-draft-from-roster-submit-and-approve"
+    style EVE_85 fill:#ede9fe,stroke:#5b21b6,color:#0f172a
+    click EVE_107 "https://linear.app/resnovas/issue/EVE-107/f9-online-and-in-person-sales-storefront-point-of-sale-orders-payments"
+    style EVE_107 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_108 "https://linear.app/resnovas/issue/EVE-108/f10-interactive-site-maps"
+    style EVE_108 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_111 "https://linear.app/resnovas/issue/EVE-111/f14-website-builder-and-in-app-customisation"
+    style EVE_111 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_240 "https://linear.app/resnovas/issue/EVE-240/s4-follow-up-run-the-powersync-and-yjs-device-test-on-ios"
+    style EVE_240 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_241 "https://linear.app/resnovas/issue/EVE-241/add-social-publishing-shared-inbox-and-analytics-suite"
+    style EVE_241 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_242 "https://linear.app/resnovas/issue/EVE-242/archive-the-manual-pre-amp-packages-and-create-a-clean-package-tree"
+    style EVE_242 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_245 "https://linear.app/resnovas/issue/EVE-245/build-the-integrated-training-competency-and-certification-platform"
+    style EVE_245 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_246 "https://linear.app/resnovas/issue/EVE-246/define-provider-neutral-connected-account-invoicing-and-settlement"
+    style EVE_246 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_247 "https://linear.app/resnovas/issue/EVE-247/research-supplier-product-catalogue-coverage-and-bulk-inventory"
+    style EVE_247 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_248 "https://linear.app/resnovas/issue/EVE-248/revisit-and-remove-eventivas-temporary-house-ai-gate-override"
+    style EVE_248 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_249 "https://linear.app/resnovas/issue/EVE-249/rebase-investor-tests-into-production-and-merge-changes"
+    style EVE_249 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_250 "https://linear.app/resnovas/issue/EVE-250/decide-controlled-cross-tenant-marketplace-gateway-architecture"
+    style EVE_250 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_251 "https://linear.app/resnovas/issue/EVE-251/decide-marketplace-service-attestation-and-cryptographic-trust"
+    style EVE_251 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_253 "https://linear.app/resnovas/issue/EVE-253/build-shared-guided-sop-procedures-and-governed-step-execution"
+    style EVE_253 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_254 "https://linear.app/resnovas/issue/EVE-254/define-qlab-class-cue-playback-and-end-to-end-production-control"
+    style EVE_254 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_255 "https://linear.app/resnovas/issue/EVE-255/build-separate-local-show-playback-and-cue-execution-engine"
+    style EVE_255 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_256 "https://linear.app/resnovas/issue/EVE-256/connect-mdt-incidents-and-external-controls-to-live-show-cues-and"
+    style EVE_256 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_263 "https://linear.app/resnovas/issue/EVE-263/enforce-acyclic-moduledependency-graphs-and-exact-effect-ts-types"
+    style EVE_263 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_264 "https://linear.app/resnovas/issue/EVE-264/rename-the-top-level-examples-directory-to-lowercase-examples"
+    style EVE_264 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_40 "https://linear.app/resnovas/issue/EVE-40/p11-build-the-action-contract-and-inventory-in-effect-schema"
+    style EVE_40 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_42 "https://linear.app/resnovas/issue/EVE-42/p13-build-the-storage-layer-drizzle-on-postgres-and-sqlite-state"
+    style EVE_42 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_44 "https://linear.app/resnovas/issue/EVE-44/p15-build-telemetry-opentelemetry-spans-on-every-call-and-a-vendor"
+    style EVE_44 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_47 "https://linear.app/resnovas/issue/EVE-47/p18-build-the-agent-loop-engines-durable-runs-threads-and-harness"
+    style EVE_47 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_50 "https://linear.app/resnovas/issue/EVE-50/p111-build-screen-awareness-app-state-navigation-and-the-screen"
+    style EVE_50 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_51 "https://linear.app/resnovas/issue/EVE-51/p112-build-collaboration-yjs-for-text-and-canvas-with-record-sync-and"
+    style EVE_51 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_53 "https://linear.app/resnovas/issue/EVE-53/p18b-build-model-engines-model-selection-and-user-owned-subscriptions"
+    style EVE_53 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_120 "https://linear.app/resnovas/issue/EVE-120/f100-spike-map-engine-with-offline-tiles-and-yjs-bound-editing-on-expo"
+    style EVE_120 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_243 "https://linear.app/resnovas/issue/EVE-243/fully-enrol-eventiva-in-smartcloud-house-synchronization"
+    style EVE_243 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_52 "https://linear.app/resnovas/issue/EVE-52/p18a-build-the-agent-turn-loop-with-actions-as-tools"
+    style EVE_52 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_54 "https://linear.app/resnovas/issue/EVE-54/p18c-build-durable-agent-runs-on-effect-cluster-and-workflow"
+    style EVE_54 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_55 "https://linear.app/resnovas/issue/EVE-55/p18d-build-chat-threads-and-message-projections"
+    style EVE_55 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_56 "https://linear.app/resnovas/issue/EVE-56/p18e-build-the-agent-harness-outbound-acp-agent-memory-and-context"
+    style EVE_56 fill:#f1f5f9,stroke:#334155,color:#0f172a
+    click EVE_64 "https://linear.app/resnovas/issue/EVE-64/f31-build-task-lists-and-tasks-as-synced-records-with-actions"
+    style EVE_64 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_68 "https://linear.app/resnovas/issue/EVE-68/f41-build-people-organisations-and-contact-points-as-crm-actions"
+    style EVE_68 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_74 "https://linear.app/resnovas/issue/EVE-74/f111-build-the-ledger-port-chart-of-accounts-journals-and-periods"
+    style EVE_74 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_75 "https://linear.app/resnovas/issue/EVE-75/f51-build-the-listing-model-category-taxonomy-and-listing-actions"
+    style EVE_75 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_81 "https://linear.app/resnovas/issue/EVE-81/f61-build-the-equipment-catalogue-products-tracking-modes-and-kits"
+    style EVE_81 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_82 "https://linear.app/resnovas/issue/EVE-82/f121-build-pay-rules-rate-cards-and-pay-profiles"
+    style EVE_82 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_94 "https://linear.app/resnovas/issue/EVE-94/f71-build-the-vehicle-register-vehicles-types-and-documents"
+    style EVE_94 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_98 "https://linear.app/resnovas/issue/EVE-98/f131-build-worker-records-engagements-and-organisation-structure"
+    style EVE_98 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_100 "https://linear.app/resnovas/issue/EVE-100/f73-build-vehicle-bookings-and-allocation-to-events-without-clashes"
+    style EVE_100 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_106 "https://linear.app/resnovas/issue/EVE-106/f74-build-offline-walkaround-inspections-and-defect-reporting"
+    style EVE_106 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_112 "https://linear.app/resnovas/issue/EVE-112/f81-build-the-ticket-catalogue-ticket-types-capacity-pools-sales"
+    style EVE_112 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_128 "https://linear.app/resnovas/issue/EVE-128/f21-build-crew-profiles-roles-and-availability"
+    style EVE_128 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_133 "https://linear.app/resnovas/issue/EVE-133/f141-custom-fields-on-any-entity-in-the-action-inventory"
+    style EVE_133 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_146 "https://linear.app/resnovas/issue/EVE-146/f101-sites-levels-base-layers-and-calibration"
+    style EVE_146 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_148 "https://linear.app/resnovas/issue/EVE-148/f78-build-crew-mdt-mode-in-the-one-app"
+    style EVE_148 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_166 "https://linear.app/resnovas/issue/EVE-166/f11-build-the-event-record-event-eventseries-phase-space-team-and"
+    style EVE_166 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_170 "https://linear.app/resnovas/issue/EVE-170/f91-build-money-tax-categories-and-the-sales-catalogue"
+    style EVE_170 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_184 "https://linear.app/resnovas/issue/EVE-184/f711-define-the-telematics-port-with-a-test-adapter"
+    style EVE_184 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_204 "https://linear.app/resnovas/issue/EVE-204/f147-site-and-page-model-with-the-block-registry"
+    style EVE_204 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_244 "https://linear.app/resnovas/issue/EVE-244/scaffold-the-fresh-nx-expo-effect-and-testing-foundation"
+    style EVE_244 fill:#d1fae5,stroke:#065f46,color:#0f172a
+    click EVE_252 "https://linear.app/resnovas/issue/EVE-252/implement-effect-cluster-sharding-and-multi-runner-recovery-in-the"
+    style EVE_252 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_257 "https://linear.app/resnovas/issue/EVE-257/implement-the-composable-module-kernel-and-safe-lifecycleprovider"
+    style EVE_257 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_258 "https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration"
+    style EVE_258 fill:#dbeafe,stroke:#1e40af,color:#0f172a
+    click EVE_70 "https://linear.app/resnovas/issue/EVE-70/f32-build-checklists-with-photo-evidence-and-sign-off-that-work"
+    style EVE_70 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_72 "https://linear.app/resnovas/issue/EVE-72/f33-build-subtasks-and-finish-to-start-dependencies-with-blocker"
+    style EVE_72 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_77 "https://linear.app/resnovas/issue/EVE-77/f52-build-the-listing-editor-screens-for-vendors-venues-and"
+    style EVE_77 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_78 "https://linear.app/resnovas/issue/EVE-78/f53-build-business-verification-publishing-and-content-moderation"
+    style EVE_78 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_79 "https://linear.app/resnovas/issue/EVE-79/f54-build-directory-search-filters-geo-radius-and-transparent-ranking"
+    style EVE_79 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_87 "https://linear.app/resnovas/issue/EVE-87/f124-build-pay-run-calculation-on-durable-runs"
+    style EVE_87 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_89 "https://linear.app/resnovas/issue/EVE-89/f36-build-task-reminders-watchers-and-notifications"
+    style EVE_89 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_90 "https://linear.app/resnovas/issue/EVE-90/f112-build-posting-rules-that-turn-sales-stock-and-payroll-events-into"
+    style EVE_90 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_91 "https://linear.app/resnovas/issue/EVE-91/f42-link-contacts-to-events-with-roles-and-to-each-other-with"
+    style EVE_91 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_93 "https://linear.app/resnovas/issue/EVE-93/f37-build-recurring-tasks-on-the-shared-scheduling-rules"
+    style EVE_93 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_95 "https://linear.app/resnovas/issue/EVE-95/f43-build-the-activity-timeline-interactions-notes-and-history-from"
+    style EVE_95 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_99 "https://linear.app/resnovas/issue/EVE-99/f44-find-and-merge-duplicate-contacts-and-import-and-export-them"
+    style EVE_99 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_103 "https://linear.app/resnovas/issue/EVE-103/f62-build-locations-and-the-append-only-stock-movement-ledger"
+    style EVE_103 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_109 "https://linear.app/resnovas/issue/EVE-109/f38-build-guest-assignees-so-vendors-and-freelancers-see-only-their"
+    style EVE_109 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_114 "https://linear.app/resnovas/issue/EVE-114/f82-build-the-capacity-engine-oversell-proof-holds-on-a-cluster-entity"
+    style EVE_114 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_116 "https://linear.app/resnovas/issue/EVE-116/f132-build-the-sensitive-profile-with-field-masking-reveal-audit-and"
+    style EVE_116 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_119 "https://linear.app/resnovas/issue/EVE-119/f57-build-cross-tenant-enquiries-rfps-and-private-message-threads"
+    style EVE_119 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_121 "https://linear.app/resnovas/issue/EVE-121/f133-build-hr-documents-templates-and-built-in-e-signature"
+    style EVE_121 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_125 "https://linear.app/resnovas/issue/EVE-125/f113-build-event-dimensions-budgets-and-budget-vs-actual"
+    style EVE_125 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_129 "https://linear.app/resnovas/issue/EVE-129/f22-build-crew-requirements-and-shifts-on-events"
+    style EVE_129 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_143 "https://linear.app/resnovas/issue/EVE-143/f75-build-maintenance-schedules-work-orders-fuel-mileage-and-cost"
+    style EVE_143 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_145 "https://linear.app/resnovas/issue/EVE-145/f76-build-units-and-operational-status-with-an-ordered-offline-queue"
+    style EVE_145 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_147 "https://linear.app/resnovas/issue/EVE-147/f77-build-the-incident-control-log-and-dispatch-for-live-events"
+    style EVE_147 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_152 "https://linear.app/resnovas/issue/EVE-152/f102-site-maps-and-layers-as-yjs-documents-with-a-feature-record"
+    style EVE_152 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_154 "https://linear.app/resnovas/issue/EVE-154/f135-build-qualifications-requirements-and-the-eligibility-check"
+    style EVE_154 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_155 "https://linear.app/resnovas/issue/EVE-155/f142-custom-record-types"
+    style EVE_155 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_158 "https://linear.app/resnovas/issue/EVE-158/f117-build-vat-codes-vat-returns-and-mtd-submission"
+    style EVE_158 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_161 "https://linear.app/resnovas/issue/EVE-161/f59-build-availability-signals-on-listings-from-the-vendors-own"
+    style EVE_161 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_167 "https://linear.app/resnovas/issue/EVE-167/f12-build-production-documents-and-riders-as-collaborative-documents"
+    style EVE_167 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_168 "https://linear.app/resnovas/issue/EVE-168/f143-views-generated-screens-and-patches-over-base-screens"
+    style EVE_168 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_169 "https://linear.app/resnovas/issue/EVE-169/f13-build-the-run-of-show-segments-fixed-and-relative-timing"
+    style EVE_169 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_172 "https://linear.app/resnovas/issue/EVE-172/f92-build-carts-orders-and-the-line-provider-contract"
+    style EVE_172 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_177 "https://linear.app/resnovas/issue/EVE-177/f79-build-control-and-crew-messaging-with-acknowledgement"
+    style EVE_177 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_179 "https://linear.app/resnovas/issue/EVE-179/f137-build-leave-policies-the-leave-ledger-requests-and-absence"
+    style EVE_179 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_186 "https://linear.app/resnovas/issue/EVE-186/f712-build-agent-assist-for-fleet-and-dispatch-with-approvals"
+    style EVE_186 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_217 "https://linear.app/resnovas/issue/EVE-217/f148-visual-page-editor-drag-and-drop-on-wide-screens-structured"
+    style EVE_217 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_219 "https://linear.app/resnovas/issue/EVE-219/f149-data-bound-blocks-collection-pages-and-forms"
+    style EVE_219 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_221 "https://linear.app/resnovas/issue/EVE-221/f1410-publishing-and-public-rendering"
+    style EVE_221 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_259 "https://linear.app/resnovas/issue/EVE-259/implement-the-initial-declarative-ui-module-registry-over-approved"
+    style EVE_259 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_262 "https://linear.app/resnovas/issue/EVE-262/implement-governed-observation-only-execution-and-lifecycle-hooks-with"
+    style EVE_262 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_84 "https://linear.app/resnovas/issue/EVE-84/f34-build-event-relative-due-dates-task-templates-and-reschedule"
+    style EVE_84 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_86 "https://linear.app/resnovas/issue/EVE-86/f35-build-the-task-screens-with-screen-projections-on-web-and-mobile"
+    style EVE_86 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_88 "https://linear.app/resnovas/issue/EVE-88/f125-build-the-payroll-provider-port-and-the-first-adapter"
+    style EVE_88 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_92 "https://linear.app/resnovas/issue/EVE-92/f126-build-freelancer-self-billing-and-worker-status-records"
+    style EVE_92 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_97 "https://linear.app/resnovas/issue/EVE-97/f72-build-driver-eligibility-checks-from-staff-qualifications"
+    style EVE_97 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_101 "https://linear.app/resnovas/issue/EVE-101/f128-build-labour-cost-reporting-per-event-and-phase"
+    style EVE_101 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_105 "https://linear.app/resnovas/issue/EVE-105/f48-record-consent-and-fulfil-privacy-requests-for-contacts"
+    style EVE_105 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_113 "https://linear.app/resnovas/issue/EVE-113/f55-build-the-public-directory-web-section-for-anonymous-visitors-and"
+    style EVE_113 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_115 "https://linear.app/resnovas/issue/EVE-115/f56-build-shortlists-of-suppliers-per-event"
+    style EVE_115 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_117 "https://linear.app/resnovas/issue/EVE-117/f83-build-ticket-issuance-and-delivery-signed-tickets-from-paid-orders"
+    style EVE_117 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_118 "https://linear.app/resnovas/issue/EVE-118/f63-build-the-serialised-asset-register-containers-and-labels"
+    style EVE_118 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_123 "https://linear.app/resnovas/issue/EVE-123/f64-build-availability-and-reservations-against-events-carts-and"
+    style EVE_123 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_124 "https://linear.app/resnovas/issue/EVE-124/f58-build-quotes-quote-comparison-and-the-acceptance-handoff-to-the"
+    style EVE_124 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_126 "https://linear.app/resnovas/issue/EVE-126/f114-build-sales-invoices-credit-notes-and-receivables"
+    style EVE_126 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_127 "https://linear.app/resnovas/issue/EVE-127/f115-build-bills-expense-claims-approvals-and-payables"
+    style EVE_127 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_130 "https://linear.app/resnovas/issue/EVE-130/f23-build-working-time-rules-and-conflict-checks"
+    style EVE_130 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_137 "https://linear.app/resnovas/issue/EVE-137/f46-capture-enquiries-and-track-opportunities-through-a-pipeline-into"
+    style EVE_137 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_139 "https://linear.app/resnovas/issue/EVE-139/f47-sync-mailbox-and-calendar-history-into-the-contact-timeline"
+    style EVE_139 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_144 "https://linear.app/resnovas/issue/EVE-144/f410-give-the-agent-crm-skills-summaries-follow-up-suggestions-and"
+    style EVE_144 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_153 "https://linear.app/resnovas/issue/EVE-153/f134-build-onboarding-and-offboarding-runs"
+    style EVE_153 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_156 "https://linear.app/resnovas/issue/EVE-156/f136-build-right-to-work-and-background-check-records"
+    style EVE_156 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_159 "https://linear.app/resnovas/issue/EVE-159/f118-build-financial-reports-event-p-and-l-and-exports"
+    style EVE_159 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_160 "https://linear.app/resnovas/issue/EVE-160/f119-build-period-close-year-end-and-ledger-migration-export"
+    style EVE_160 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_171 "https://linear.app/resnovas/issue/EVE-171/f14-build-itineraries-per-person-and-per-group-schedules-generated"
+    style EVE_171 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_173 "https://linear.app/resnovas/issue/EVE-173/f15-build-department-cue-lists-with-numbering-segment-links-and"
+    style EVE_173 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_174 "https://linear.app/resnovas/issue/EVE-174/f93-build-the-payment-gateway-port-and-online-card-payments"
+    style EVE_174 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_176 "https://linear.app/resnovas/issue/EVE-176/f95-build-the-point-of-sale-register-cash-sessions-and-offline-sales"
+    style EVE_176 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_178 "https://linear.app/resnovas/issue/EVE-178/f103-map-editor-screen-with-screen-awareness"
+    style EVE_178 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_180 "https://linear.app/resnovas/issue/EVE-180/f104-symbol-library-and-linked-placements"
+    style EVE_180 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_181 "https://linear.app/resnovas/issue/EVE-181/f710-build-live-unit-positions-on-the-event-map-with-consent-and"
+    style EVE_181 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_185 "https://linear.app/resnovas/issue/EVE-185/f144-change-sets-draft-preview-publish-rollback-and-packages"
+    style EVE_185 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_200 "https://linear.app/resnovas/issue/EVE-200/f107-revisions-approvals-and-share-links"
+    style EVE_200 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_201 "https://linear.app/resnovas/issue/EVE-201/f16-build-production-plans-a-collaborative-canvas-per-space-and"
+    style EVE_201 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_211 "https://linear.app/resnovas/issue/EVE-211/f811-build-the-seat-map-editor-and-reserved-seating-in-f8"
+    style EVE_211 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_214 "https://linear.app/resnovas/issue/EVE-214/f97-build-fulfilment-for-shipping-collection-on-site-hand-over-and"
+    style EVE_214 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_216 "https://linear.app/resnovas/issue/EVE-216/f99-build-discounts-vouchers-and-gift-cards"
+    style EVE_216 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_218 "https://linear.app/resnovas/issue/EVE-218/f910-build-bookable-services-sold-through-checkout"
+    style EVE_218 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_226 "https://linear.app/resnovas/issue/EVE-226/f1411-domains-hosting-redirects-and-abuse-handling"
+    style EVE_226 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_227 "https://linear.app/resnovas/issue/EVE-227/f1412-ai-site-generation-and-editing-by-instruction"
+    style EVE_227 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_228 "https://linear.app/resnovas/issue/EVE-228/f1413-seo-agent-readable-output-localisation-and-consent-on-published"
+    style EVE_228 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_234 "https://linear.app/resnovas/issue/EVE-234/f1414-site-templates-and-brand-themes"
+    style EVE_234 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_235 "https://linear.app/resnovas/issue/EVE-235/f310-build-the-task-rule-builder-when-x-then-y-on-a-generic-rule"
+    style EVE_235 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_236 "https://linear.app/resnovas/issue/EVE-236/f513-build-seeded-listings-claiming-claim-disputes-and-removal"
+    style EVE_236 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_239 "https://linear.app/resnovas/issue/EVE-239/f1310-build-performance-reviews-goals-and-feedback"
+    style EVE_239 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_260 "https://linear.app/resnovas/issue/EVE-260/build-the-clean-word-art-reference-extension-after-verified-platform"
+    style EVE_260 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_96 "https://linear.app/resnovas/issue/EVE-96/f127-build-the-payments-file-and-the-pay-run-events-for-accounting"
+    style EVE_96 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_102 "https://linear.app/resnovas/issue/EVE-102/f45-organise-contacts-with-tags-lists-and-smart-lists"
+    style EVE_102 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_110 "https://linear.app/resnovas/issue/EVE-110/f39-build-agent-behaviour-for-tasks-planning-blockers-digests-and"
+    style EVE_110 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_122 "https://linear.app/resnovas/issue/EVE-122/f84-build-the-attendee-view-my-tickets-holder-details-and-transfers-in"
+    style EVE_122 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_131 "https://linear.app/resnovas/issue/EVE-131/f24-build-assignments-offers-and-roster-confirmation"
+    style EVE_131 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_141 "https://linear.app/resnovas/issue/EVE-141/f49-let-external-contacts-manage-their-own-details-and-consent-in-a"
+    style EVE_141 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_149 "https://linear.app/resnovas/issue/EVE-149/f65-build-prep-pick-lists-and-offline-scan-out-and-scan-in"
+    style EVE_149 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_150 "https://linear.app/resnovas/issue/EVE-150/f66-build-discrepancies-damage-reports-and-asset-quarantine"
+    style EVE_150 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_151 "https://linear.app/resnovas/issue/EVE-151/f67-build-maintenance-repairs-and-safety-inspections-for-lifting-and"
+    style EVE_151 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_157 "https://linear.app/resnovas/issue/EVE-157/f116-build-bank-import-feeds-matching-and-reconciliation"
+    style EVE_157 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_162 "https://linear.app/resnovas/issue/EVE-162/f85-build-check-in-lists-and-online-scanning-in-the-app"
+    style EVE_162 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_163 "https://linear.app/resnovas/issue/EVE-163/f510-build-verified-reviews-vendor-responses-and-review-moderation"
+    style EVE_163 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_164 "https://linear.app/resnovas/issue/EVE-164/f511-build-listing-insights-for-vendors"
+    style EVE_164 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_165 "https://linear.app/resnovas/issue/EVE-165/f512-build-agent-sourcing-for-organisers-and-quote-drafting-for"
+    style EVE_165 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_175 "https://linear.app/resnovas/issue/EVE-175/f94-build-the-online-storefront-and-checkout"
+    style EVE_175 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_182 "https://linear.app/resnovas/issue/EVE-182/f138-build-self-service-and-the-offline-site-check-screens"
+    style EVE_182 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_187 "https://linear.app/resnovas/issue/EVE-187/f68-build-purchasing-supplier-products-requests-orders-receiving-and"
+    style EVE_187 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_191 "https://linear.app/resnovas/issue/EVE-191/f145-automations-extend-the-f3-rules-engine-across-every-feature-set"
+    style EVE_191 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_196 "https://linear.app/resnovas/issue/EVE-196/f139-build-hr-agent-playbooks-and-compliance-reports"
+    style EVE_196 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_199 "https://linear.app/resnovas/issue/EVE-199/f106-bill-of-quantities-and-exports"
+    style EVE_199 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_202 "https://linear.app/resnovas/issue/EVE-202/f108-offline-map-packs-and-the-crew-map"
+    style EVE_202 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_203 "https://linear.app/resnovas/issue/EVE-203/f17-build-lighting-gdtf-fixture-library-fixture-modes-and-dmx-patch"
+    style EVE_203 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_205 "https://linear.app/resnovas/issue/EVE-205/f109-crew-positions-layer-and-as-built-reporting"
+    style EVE_205 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_206 "https://linear.app/resnovas/issue/EVE-206/f18-build-rigging-points-loads-indicative-load-summary-and-competent"
+    style EVE_206 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_208 "https://linear.app/resnovas/issue/EVE-208/f19-build-sound-input-list-monitor-mixes-and-stage-plot"
+    style EVE_208 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_209 "https://linear.app/resnovas/issue/EVE-209/f810-add-wallet-passes-for-tickets-behind-a-neutral-port"
+    style EVE_209 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_210 "https://linear.app/resnovas/issue/EVE-210/f110-build-staging-and-screens-staging-elements-screen-surfaces-and"
+    style EVE_210 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_213 "https://linear.app/resnovas/issue/EVE-213/f96-build-card-readers-offline-card-payments-and-pos-peripherals"
+    style EVE_213 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_215 "https://linear.app/resnovas/issue/EVE-215/f98-build-refunds-cancellations-exchanges-and-disputes"
+    style EVE_215 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_222 "https://linear.app/resnovas/issue/EVE-222/f911-build-receipts-reconciliation-sales-reporting-and-accounting"
+    style EVE_222 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_225 "https://linear.app/resnovas/issue/EVE-225/f914-build-quotes-deposits-and-equipment-hire-orders"
+    style EVE_225 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_229 "https://linear.app/resnovas/issue/EVE-229/f111-build-equipment-requirements-roll-up-placed-elements-and-hand"
+    style EVE_229 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_230 "https://linear.app/resnovas/issue/EVE-230/f112-build-live-show-calling-and-show-sequences-run-the-run-of-show"
+    style EVE_230 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_233 "https://linear.app/resnovas/issue/EVE-233/f115-build-event-templates-and-cloning-reuse-phases-departments-plans"
+    style EVE_233 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_238 "https://linear.app/resnovas/issue/EVE-238/f1012-venue-and-building-plans-arenas-halls-custom-structures-and"
+    style EVE_238 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_261 "https://linear.app/resnovas/issue/EVE-261/integrate-the-modular-platform-and-prove-every-owner-required"
+    style EVE_261 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_104 "https://linear.app/resnovas/issue/EVE-104/f129-build-the-payroll-agent-explanations-anomaly-suggestions-and"
+    style EVE_104 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_132 "https://linear.app/resnovas/issue/EVE-132/f25-build-external-crew-access-and-offer-links"
+    style EVE_132 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_134 "https://linear.app/resnovas/issue/EVE-134/f26-build-the-roster-board-and-event-staffing-screens"
+    style EVE_134 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_135 "https://linear.app/resnovas/issue/EVE-135/f27-build-call-sheets"
+    style EVE_135 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_136 "https://linear.app/resnovas/issue/EVE-136/f28-build-open-shifts-and-shift-swaps"
+    style EVE_136 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_138 "https://linear.app/resnovas/issue/EVE-138/f29-build-time-capture-and-timesheets"
+    style EVE_138 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_140 "https://linear.app/resnovas/issue/EVE-140/f210-build-personal-calendar-feeds"
+    style EVE_140 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_142 "https://linear.app/resnovas/issue/EVE-142/f211-build-auto-roster-proposals-and-agent-staffing"
+    style EVE_142 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_183 "https://linear.app/resnovas/issue/EVE-183/f105-measurements-zones-routes-and-rule-checks"
+    style EVE_183 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_188 "https://linear.app/resnovas/issue/EVE-188/f69-build-sub-hire-renting-in-equipment-from-other-suppliers-for-an"
+    style EVE_188 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_189 "https://linear.app/resnovas/issue/EVE-189/f610-build-stock-counts-and-cycle-counts-with-offline-counting"
+    style EVE_189 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_190 "https://linear.app/resnovas/issue/EVE-190/f611-build-stock-valuation-asset-depreciation-and-the-per-period"
+    style EVE_190 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_192 "https://linear.app/resnovas/issue/EVE-192/f86-build-offline-scanning-validity-snapshots-local-scan-ledger-sync"
+    style EVE_192 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_194 "https://linear.app/resnovas/issue/EVE-194/f88-build-the-waiting-list-and-face-value-resale"
+    style EVE_194 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_195 "https://linear.app/resnovas/issue/EVE-195/f89-build-ticketing-reports-the-sales-dashboard-and-attendee-exports"
+    style EVE_195 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_197 "https://linear.app/resnovas/issue/EVE-197/f146-agent-designed-customisations-and-ai-fields"
+    style EVE_197 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_207 "https://linear.app/resnovas/issue/EVE-207/f1010-public-attendee-map-and-website-embed"
+    style EVE_207 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_223 "https://linear.app/resnovas/issue/EVE-223/f912-build-vendor-sales-at-events-with-split-payments"
+    style EVE_223 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_224 "https://linear.app/resnovas/issue/EVE-224/f913-build-the-sales-agent-behaviours-and-approvals"
+    style EVE_224 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_231 "https://linear.app/resnovas/issue/EVE-231/f113-build-the-show-bridge-a-local-process-that-fires-cues-to-consoles"
+    style EVE_231 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_237 "https://linear.app/resnovas/issue/EVE-237/f514-build-quote-payments-with-commission-deducted-at-source"
+    style EVE_237 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_193 "https://linear.app/resnovas/issue/EVE-193/f87-build-the-box-office-in-person-ticket-sales-reprints-and-offline"
+    style EVE_193 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_198 "https://linear.app/resnovas/issue/EVE-198/f612-build-the-inventory-agent-behaviours-shortages-inspections-due"
+    style EVE_198 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_212 "https://linear.app/resnovas/issue/EVE-212/f812-build-ticketing-agent-behaviour-watchers-gate-briefing-and"
+    style EVE_212 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_220 "https://linear.app/resnovas/issue/EVE-220/f1011-agent-layout-drafting-templates-and-proactive-checks"
+    style EVE_220 fill:#fef3c7,stroke:#78350f,color:#0f172a
+    click EVE_232 "https://linear.app/resnovas/issue/EVE-232/f114-build-direct-dmx-output-for-small-rigs-over-sacn-and-art-net"
+    style EVE_232 fill:#fef3c7,stroke:#78350f,color:#0f172a

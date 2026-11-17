@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="1452" viewBox="0 0 380 1452" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 0, group 5</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-67" href="https://linear.app/resnovas/issue/EVE-67/f2-scheduling-and-rosters-crew-availability-shifts-offers-call-sheets" xlink:href="https://linear.app/resnovas/issue/EVE-67/f2-scheduling-and-rosters-crew-availability-shifts-offers-call-sheets" tabindex="0" aria-label="EVE-67: F2 Scheduling and rosters: crew availability, shifts, offers, call sheets and timesheets. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-67: F2 Scheduling and rosters: crew availability, shifts, offers, call sheets and timesheets. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-67 | UPCOMING</text>
+<text x="34" y="193" font-size="12">F2 Scheduling and</text>
+<text x="34" y="209" font-size="12">rosters: crew...</text>
+<text x="34" y="231" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-69" href="https://linear.app/resnovas/issue/EVE-69/f11-accounting-ledgers-invoices-bills-event-budgets-and-tax" xlink:href="https://linear.app/resnovas/issue/EVE-69/f11-accounting-ledgers-invoices-bills-event-budgets-and-tax" tabindex="0" aria-label="EVE-69: F11 Accounting: ledgers, invoices, bills, event budgets and tax. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 2 unlocks. Layer 0."><title>EVE-69: F11 Accounting: ledgers, invoices, bills, event budgets and tax. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 2 unlocks. Layer 0.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-69 | UPCOMING</text>
+<text x="34" y="299" font-size="12">F11 Accounting:</text>
+<text x="34" y="315" font-size="12">ledgers, invoices,...</text>
+<text x="34" y="337" font-size="11">Prerequisites 0 | Unlocks 2 | L0</text></a>
+<a id="EVE-71" href="https://linear.app/resnovas/issue/EVE-71/f7-fleet-and-live-operations-vehicles-maintenance-units-dispatch-and" xlink:href="https://linear.app/resnovas/issue/EVE-71/f7-fleet-and-live-operations-vehicles-maintenance-units-dispatch-and" tabindex="0" aria-label="EVE-71: F7 Fleet and live operations: vehicles, maintenance, units, dispatch and crew MDT. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-71: F7 Fleet and live operations: vehicles, maintenance, units, dispatch and crew MDT. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-71 | UPCOMING</text>
+<text x="34" y="405" font-size="12">F7 Fleet and live</text>
+<text x="34" y="421" font-size="12">operations: vehicles...</text>
+<text x="34" y="443" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-73" href="https://linear.app/resnovas/issue/EVE-73/f1-events-and-production-planning-the-event-record-run-of-show" xlink:href="https://linear.app/resnovas/issue/EVE-73/f1-events-and-production-planning-the-event-record-run-of-show" tabindex="0" aria-label="EVE-73: F1 Events and production planning: the event record, run of show, departments, cues and show control. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 3 unlocks. Layer 0."><title>EVE-73: F1 Events and production planning: the event record, run of show, departments, cues and show control. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 3 unlocks. Layer 0.</title><rect x="24" y="474" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="492" font-size="12" font-weight="700">EVE-73 | UPCOMING</text>
+<text x="34" y="511" font-size="12">F1 Events and</text>
+<text x="34" y="527" font-size="12">production planning:...</text>
+<text x="34" y="549" font-size="11">Prerequisites 0 | Unlocks 3 | L0</text></a>
+<a id="EVE-76" href="https://linear.app/resnovas/issue/EVE-76/f8-ticketing-ticket-types-capacity-issuance-admissions-and-scanning" xlink:href="https://linear.app/resnovas/issue/EVE-76/f8-ticketing-ticket-types-capacity-issuance-admissions-and-scanning" tabindex="0" aria-label="EVE-76: F8 Ticketing: ticket types, capacity, issuance, admissions and scanning. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-76: F8 Ticketing: ticket types, capacity, issuance, admissions and scanning. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="580" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="598" font-size="12" font-weight="700">EVE-76 | UPCOMING</text>
+<text x="34" y="617" font-size="12">F8 Ticketing: ticket</text>
+<text x="34" y="633" font-size="12">types, capacity,...</text>
+<text x="34" y="655" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-80" href="https://linear.app/resnovas/issue/EVE-80/f13-human-resources-worker-records-onboarding-qualifications-and-leave" xlink:href="https://linear.app/resnovas/issue/EVE-80/f13-human-resources-worker-records-onboarding-qualifications-and-leave" tabindex="0" aria-label="EVE-80: F13 Human resources: worker records, onboarding, qualifications and leave. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-80: F13 Human resources: worker records, onboarding, qualifications and leave. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="686" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="704" font-size="12" font-weight="700">EVE-80 | UPCOMING</text>
+<text x="34" y="723" font-size="12">F13 Human resources:</text>
+<text x="34" y="739" font-size="12">worker records,...</text>
+<text x="34" y="761" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-83" href="https://linear.app/resnovas/issue/EVE-83/f122-build-time-capture-clock-in-and-out-and-time-entries-offline" xlink:href="https://linear.app/resnovas/issue/EVE-83/f122-build-time-capture-clock-in-and-out-and-time-entries-offline" tabindex="0" aria-label="EVE-83: F12.2 Build time capture: clock in and out and time entries, offline. CLOSED. Captured Linear: Duplicate.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-83: F12.2 Build time capture: clock in and out and time entries, offline. CLOSED. Captured Linear: Duplicate.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="792" width="320" height="94" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="810" font-size="12" font-weight="700">EVE-83 | CLOSED</text>
+<text x="34" y="829" font-size="12">F12.2 Build time</text>
+<text x="34" y="845" font-size="12">capture: clock in an...</text>
+<text x="34" y="867" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-85" href="https://linear.app/resnovas/issue/EVE-85/f123-build-timesheets-draft-from-roster-submit-and-approve" xlink:href="https://linear.app/resnovas/issue/EVE-85/f123-build-timesheets-draft-from-roster-submit-and-approve" tabindex="0" aria-label="EVE-85: F12.3 Build timesheets: draft from roster, submit and approve. CLOSED. Captured Linear: Duplicate.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-85: F12.3 Build timesheets: draft from roster, submit and approve. CLOSED. Captured Linear: Duplicate.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="898" width="320" height="94" rx="6" fill="#ede9fe" stroke="#5b21b6" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="916" font-size="12" font-weight="700">EVE-85 | CLOSED</text>
+<text x="34" y="935" font-size="12">F12.3 Build timesheets:</text>
+<text x="34" y="951" font-size="12">draft from roster,...</text>
+<text x="34" y="973" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-107" href="https://linear.app/resnovas/issue/EVE-107/f9-online-and-in-person-sales-storefront-point-of-sale-orders-payments" xlink:href="https://linear.app/resnovas/issue/EVE-107/f9-online-and-in-person-sales-storefront-point-of-sale-orders-payments" tabindex="0" aria-label="EVE-107: F9 Online and in-person sales: storefront, point of sale, orders, payments, fulfilment and refunds. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-107: F9 Online and in-person sales: storefront, point of sale, orders, payments, fulfilment and refunds. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1004" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1022" font-size="12" font-weight="700">EVE-107 | UPCOMING</text>
+<text x="34" y="1041" font-size="12">F9 Online and in-person</text>
+<text x="34" y="1057" font-size="12">sales: storefront,...</text>
+<text x="34" y="1079" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-108" href="https://linear.app/resnovas/issue/EVE-108/f10-interactive-site-maps" xlink:href="https://linear.app/resnovas/issue/EVE-108/f10-interactive-site-maps" tabindex="0" aria-label="EVE-108: F10 Interactive site maps. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-108: F10 Interactive site maps. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1110" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1128" font-size="12" font-weight="700">EVE-108 | UPCOMING</text>
+<text x="34" y="1147" font-size="12">F10 Interactive site</text>
+<text x="34" y="1163" font-size="12">maps</text>
+<text x="34" y="1185" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-111" href="https://linear.app/resnovas/issue/EVE-111/f14-website-builder-and-in-app-customisation" xlink:href="https://linear.app/resnovas/issue/EVE-111/f14-website-builder-and-in-app-customisation" tabindex="0" aria-label="EVE-111: F14: Website builder and in-app customisation. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-111: F14: Website builder and in-app customisation. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1216" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1234" font-size="12" font-weight="700">EVE-111 | UPCOMING</text>
+<text x="34" y="1253" font-size="12">F14: Website builder</text>
+<text x="34" y="1269" font-size="12">and in-app...</text>
+<text x="34" y="1291" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-240" href="https://linear.app/resnovas/issue/EVE-240/s4-follow-up-run-the-powersync-and-yjs-device-test-on-ios" xlink:href="https://linear.app/resnovas/issue/EVE-240/s4-follow-up-run-the-powersync-and-yjs-device-test-on-ios" tabindex="0" aria-label="EVE-240: S4 follow-up: run the PowerSync and Yjs device test on iOS. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-240: S4 follow-up: run the PowerSync and Yjs device test on iOS. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1322" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1340" font-size="12" font-weight="700">EVE-240 | UPCOMING</text>
+<text x="34" y="1359" font-size="12">S4 follow-up: run the</text>
+<text x="34" y="1375" font-size="12">PowerSync and Yjs...</text>
+<text x="34" y="1397" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+</svg>

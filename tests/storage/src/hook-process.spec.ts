@@ -21,19 +21,22 @@ import { describe, expect, it } from '@effect/vitest';
 // Node deliberately resolves emitted package subpaths, not Vitest's source
 // condition. The normal verify pipeline builds workspace dependencies first.
 for (const dialect of ['sqlite', 'postgres'] as const)
-    describe(`${dialect} hook process recovery`, () => {
-        it('survives SIGKILL with stale delivery fencing, operator replay and trusted synthetic consumer cursor recovery', async () => {
-            const stdout = await new Promise<string>((resolve, reject) => {
-                execFile(
-                    process.execPath,
-                    [fileURLToPath(new URL('../fixtures/hook-process.mjs', import.meta.url)), 'proof', dialect],
-                    { timeout: 60000, maxBuffer: 1024 * 1024 },
-                    (error, stdout, stderr) => {
-                        if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
-                        else resolve(stdout);
-                    }
-                );
-            });
+    describe(`${dialect} hook process recovery`, /** Verify emitted SQL recovery protocols in independent processes for each supported dialect. */ () => {
+        it('survives SIGKILL with stale delivery fencing, operator replay and trusted synthetic consumer cursor recovery', /** Assert durable delivery and consumer recovery without treating in-memory state as evidence. */ async () => {
+            const stdout = await new Promise<string>(
+                /** Run the existing child-process proof and preserve its failure diagnostics. */ (resolve, reject) => {
+                    execFile(
+                        process.execPath,
+                        [fileURLToPath(new URL('../fixtures/hook-process.mjs', import.meta.url)), 'proof', dialect],
+                        { timeout: 60000, maxBuffer: 1024 * 1024 },
+                        /** Reject failed child execution with captured diagnostics, otherwise return its proof report. */
+                        (error, stdout, stderr) => {
+                            if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
+                            else resolve(stdout);
+                        }
+                    );
+                }
+            );
             const report = JSON.parse(stdout.trim());
             expect(report).toMatchObject({
                 event: 'hook-process-recovery-passed',

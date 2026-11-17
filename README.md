@@ -39,6 +39,8 @@ The archived snapshots described under [Historical reference](#historical-refere
 
 ## Rebuild order
 
+Read the [canonical planning record](docs/planning/README.md) for the maintained [timeline and dependency roadmap](docs/planning/timeline.md), decision evidence and outstanding acceptance gates. Linear owner decisions govern; repository checkpoints are not approvals. The [source documentation standard](docs/documentation-standard.md) and [exact remediation backlog](docs/planning/documentation-backlog.md) explain the prune-only debt ratchet. `node --run documentation` runs offline mirror, planning and documentation checks; `pnpm nx run @eventiva/eventiva:documentation` runs the same uncached target. Root `check` includes this gate; CI supplies trusted earlier history rather than letting a candidate certify its own changes. Live API freshness is a separate read-only check and requires a securely injected credential.
+
 1. Accept the EVE-242 archive and clean repository (done).
 2. Complete [EVE-243](https://linear.app/resnovas/issue/EVE-243): full Smartcloud enrollment and current house-generated governance, guidance, workflows and repository configuration (done).
 3. Complete [EVE-244](https://linear.app/resnovas/issue/EVE-244): fresh Nx/PNPM/Expo/React Native/Effect workspace and testing foundation (done).

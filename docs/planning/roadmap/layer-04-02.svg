@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="1452" viewBox="0 0 380 1452" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 4, group 2</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-124" href="https://linear.app/resnovas/issue/EVE-124/f58-build-quotes-quote-comparison-and-the-acceptance-handoff-to-the" xlink:href="https://linear.app/resnovas/issue/EVE-124/f58-build-quotes-quote-comparison-and-the-acceptance-handoff-to-the" tabindex="0" aria-label="EVE-124: F5.8 Build quotes, quote comparison and the acceptance handoff to the event. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 3 unlocks. Layer 4."><title>EVE-124: F5.8 Build quotes, quote comparison and the acceptance handoff to the event. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 3 unlocks. Layer 4.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="157" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-124 | UPCOMING / BLOCKED</text>
+<text x="34" y="193" font-size="12">F5.8 Build quotes,</text>
+<text x="34" y="209" font-size="12">quote comparison and...</text>
+<text x="34" y="231" font-size="11">Prerequisites 3 | Unlocks 3 | L4</text></a>
+<a id="EVE-126" href="https://linear.app/resnovas/issue/EVE-126/f114-build-sales-invoices-credit-notes-and-receivables" xlink:href="https://linear.app/resnovas/issue/EVE-126/f114-build-sales-invoices-credit-notes-and-receivables" tabindex="0" aria-label="EVE-126: F11.4 Build sales invoices, credit notes and receivables. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 2 unlocks. Layer 4."><title>EVE-126: F11.4 Build sales invoices, credit notes and receivables. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 2 unlocks. Layer 4.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="263" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-126 | UPCOMING / BLOCKED</text>
+<text x="34" y="299" font-size="12">F11.4 Build sales</text>
+<text x="34" y="315" font-size="12">invoices, credit not...</text>
+<text x="34" y="337" font-size="11">Prerequisites 5 | Unlocks 2 | L4</text></a>
+<a id="EVE-127" href="https://linear.app/resnovas/issue/EVE-127/f115-build-bills-expense-claims-approvals-and-payables" xlink:href="https://linear.app/resnovas/issue/EVE-127/f115-build-bills-expense-claims-approvals-and-payables" tabindex="0" aria-label="EVE-127: F11.5 Build bills, expense claims, approvals and payables. UPCOMING / BLOCKED. Captured Linear: Backlog.  6 prerequisites; 1 unlocks. Layer 4."><title>EVE-127: F11.5 Build bills, expense claims, approvals and payables. UPCOMING / BLOCKED. Captured Linear: Backlog.  6 prerequisites; 1 unlocks. Layer 4.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="369" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-127 | UPCOMING / BLOCKED</text>
+<text x="34" y="405" font-size="12">F11.5 Build bills,</text>
+<text x="34" y="421" font-size="12">expense claims,...</text>
+<text x="34" y="443" font-size="11">Prerequisites 6 | Unlocks 1 | L4</text></a>
+<a id="EVE-130" href="https://linear.app/resnovas/issue/EVE-130/f23-build-working-time-rules-and-conflict-checks" xlink:href="https://linear.app/resnovas/issue/EVE-130/f23-build-working-time-rules-and-conflict-checks" tabindex="0" aria-label="EVE-130: F2.3 Build working-time rules and conflict checks. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 3 unlocks. Layer 4."><title>EVE-130: F2.3 Build working-time rules and conflict checks. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 3 unlocks. Layer 4.</title><rect x="24" y="474" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="475" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="492" font-size="12" font-weight="700">EVE-130 | UPCOMING / BLOCKED</text>
+<text x="34" y="511" font-size="12">F2.3 Build working-time</text>
+<text x="34" y="527" font-size="12">rules and conflict...</text>
+<text x="34" y="549" font-size="11">Prerequisites 5 | Unlocks 3 | L4</text></a>
+<a id="EVE-137" href="https://linear.app/resnovas/issue/EVE-137/f46-capture-enquiries-and-track-opportunities-through-a-pipeline-into" xlink:href="https://linear.app/resnovas/issue/EVE-137/f46-capture-enquiries-and-track-opportunities-through-a-pipeline-into" tabindex="0" aria-label="EVE-137: F4.6 Capture enquiries and track opportunities through a pipeline into events. UPCOMING / BLOCKED. Captured Linear: Backlog.  2 prerequisites; 0 unlocks. Layer 4."><title>EVE-137: F4.6 Capture enquiries and track opportunities through a pipeline into events. UPCOMING / BLOCKED. Captured Linear: Backlog.  2 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="580" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="581" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="598" font-size="12" font-weight="700">EVE-137 | UPCOMING / BLOCKED</text>
+<text x="34" y="617" font-size="12">F4.6 Capture enquiries</text>
+<text x="34" y="633" font-size="12">and track opportunit...</text>
+<text x="34" y="655" font-size="11">Prerequisites 2 | Unlocks 0 | L4</text></a>
+<a id="EVE-139" href="https://linear.app/resnovas/issue/EVE-139/f47-sync-mailbox-and-calendar-history-into-the-contact-timeline" xlink:href="https://linear.app/resnovas/issue/EVE-139/f47-sync-mailbox-and-calendar-history-into-the-contact-timeline" tabindex="0" aria-label="EVE-139: F4.7 Sync mailbox and calendar history into the contact timeline. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 0 unlocks. Layer 4."><title>EVE-139: F4.7 Sync mailbox and calendar history into the contact timeline. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="686" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="687" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="704" font-size="12" font-weight="700">EVE-139 | UPCOMING / BLOCKED</text>
+<text x="34" y="723" font-size="12">F4.7 Sync mailbox and</text>
+<text x="34" y="739" font-size="12">calendar history int...</text>
+<text x="34" y="761" font-size="11">Prerequisites 3 | Unlocks 0 | L4</text></a>
+<a id="EVE-144" href="https://linear.app/resnovas/issue/EVE-144/f410-give-the-agent-crm-skills-summaries-follow-up-suggestions-and" xlink:href="https://linear.app/resnovas/issue/EVE-144/f410-give-the-agent-crm-skills-summaries-follow-up-suggestions-and" tabindex="0" aria-label="EVE-144: F4.10 Give the agent CRM skills: summaries, follow-up suggestions and health checks. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 0 unlocks. Layer 4."><title>EVE-144: F4.10 Give the agent CRM skills: summaries, follow-up suggestions and health checks. UPCOMING / BLOCKED. Captured Linear: Backlog.  3 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="792" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="793" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="810" font-size="12" font-weight="700">EVE-144 | UPCOMING / BLOCKED</text>
+<text x="34" y="829" font-size="12">F4.10 Give the agent</text>
+<text x="34" y="845" font-size="12">CRM skills: summarie...</text>
+<text x="34" y="867" font-size="11">Prerequisites 3 | Unlocks 0 | L4</text></a>
+<a id="EVE-153" href="https://linear.app/resnovas/issue/EVE-153/f134-build-onboarding-and-offboarding-runs" xlink:href="https://linear.app/resnovas/issue/EVE-153/f134-build-onboarding-and-offboarding-runs" tabindex="0" aria-label="EVE-153: F13.4 Build onboarding and offboarding runs. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 2 unlocks. Layer 4."><title>EVE-153: F13.4 Build onboarding and offboarding runs. UPCOMING / BLOCKED. Captured Linear: Backlog.  5 prerequisites; 2 unlocks. Layer 4.</title><rect x="24" y="898" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="899" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="916" font-size="12" font-weight="700">EVE-153 | UPCOMING / BLOCKED</text>
+<text x="34" y="935" font-size="12">F13.4 Build onboarding</text>
+<text x="34" y="951" font-size="12">and offboarding runs</text>
+<text x="34" y="973" font-size="11">Prerequisites 5 | Unlocks 2 | L4</text></a>
+<a id="EVE-156" href="https://linear.app/resnovas/issue/EVE-156/f136-build-right-to-work-and-background-check-records" xlink:href="https://linear.app/resnovas/issue/EVE-156/f136-build-right-to-work-and-background-check-records" tabindex="0" aria-label="EVE-156: F13.6 Build right-to-work and background check records. UPCOMING / BLOCKED. Captured Linear: Backlog.  4 prerequisites; 1 unlocks. Layer 4."><title>EVE-156: F13.6 Build right-to-work and background check records. UPCOMING / BLOCKED. Captured Linear: Backlog.  4 prerequisites; 1 unlocks. Layer 4.</title><rect x="24" y="1004" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="1005" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="1022" font-size="12" font-weight="700">EVE-156 | UPCOMING / BLOCKED</text>
+<text x="34" y="1041" font-size="12">F13.6 Build</text>
+<text x="34" y="1057" font-size="12">right-to-work and...</text>
+<text x="34" y="1079" font-size="11">Prerequisites 4 | Unlocks 1 | L4</text></a>
+<a id="EVE-159" href="https://linear.app/resnovas/issue/EVE-159/f118-build-financial-reports-event-p-and-l-and-exports" xlink:href="https://linear.app/resnovas/issue/EVE-159/f118-build-financial-reports-event-p-and-l-and-exports" tabindex="0" aria-label="EVE-159: F11.8 Build financial reports, event P and L and exports. UPCOMING / BLOCKED. Captured Linear: Backlog.  4 prerequisites; 0 unlocks. Layer 4."><title>EVE-159: F11.8 Build financial reports, event P and L and exports. UPCOMING / BLOCKED. Captured Linear: Backlog.  4 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="1110" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="1111" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="1128" font-size="12" font-weight="700">EVE-159 | UPCOMING / BLOCKED</text>
+<text x="34" y="1147" font-size="12">F11.8 Build financial</text>
+<text x="34" y="1163" font-size="12">reports, event P and...</text>
+<text x="34" y="1185" font-size="11">Prerequisites 4 | Unlocks 0 | L4</text></a>
+<a id="EVE-160" href="https://linear.app/resnovas/issue/EVE-160/f119-build-period-close-year-end-and-ledger-migration-export" xlink:href="https://linear.app/resnovas/issue/EVE-160/f119-build-period-close-year-end-and-ledger-migration-export" tabindex="0" aria-label="EVE-160: F11.9 Build period close, year end and ledger migration export. UPCOMING / BLOCKED. Captured Linear: Backlog.  2 prerequisites; 0 unlocks. Layer 4."><title>EVE-160: F11.9 Build period close, year end and ledger migration export. UPCOMING / BLOCKED. Captured Linear: Backlog.  2 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="1216" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="1217" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="1234" font-size="12" font-weight="700">EVE-160 | UPCOMING / BLOCKED</text>
+<text x="34" y="1253" font-size="12">F11.9 Build period</text>
+<text x="34" y="1269" font-size="12">close, year end and...</text>
+<text x="34" y="1291" font-size="11">Prerequisites 2 | Unlocks 0 | L4</text></a>
+<a id="EVE-171" href="https://linear.app/resnovas/issue/EVE-171/f14-build-itineraries-per-person-and-per-group-schedules-generated" xlink:href="https://linear.app/resnovas/issue/EVE-171/f14-build-itineraries-per-person-and-per-group-schedules-generated" tabindex="0" aria-label="EVE-171: F1.4 Build itineraries: per-person and per-group schedules generated from the event and published. UPCOMING / BLOCKED. Captured Linear: Backlog.  6 prerequisites; 0 unlocks. Layer 4."><title>EVE-171: F1.4 Build itineraries: per-person and per-group schedules generated from the event and published. UPCOMING / BLOCKED. Captured Linear: Backlog.  6 prerequisites; 0 unlocks. Layer 4.</title><rect x="24" y="1322" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="1323" width="10" height="92" fill="url(#blocked-pattern)"/>
+<text x="34" y="1340" font-size="12" font-weight="700">EVE-171 | UPCOMING / BLOCKED</text>
+<text x="34" y="1359" font-size="12">F1.4 Build itineraries:</text>
+<text x="34" y="1375" font-size="12">per-person and...</text>
+<text x="34" y="1397" font-size="11">Prerequisites 6 | Unlocks 0 | L4</text></a>
+</svg>

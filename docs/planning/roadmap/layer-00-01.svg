@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="1452" viewBox="0 0 380 1452" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 0, group 1</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-2" href="https://linear.app/resnovas/issue/EVE-2/bugprojectsworkflowsenvironmentsdiscordbot-module-must-be-set-to" xlink:href="https://linear.app/resnovas/issue/EVE-2/bugprojectsworkflowsenvironmentsdiscordbot-module-must-be-set-to" tabindex="0" aria-label="EVE-2:  bug(projects\workflows\environments\discord\bot):  &apos;module&apos; must be set to &apos;NodeNext&apos;. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-2:  bug(projects\workflows\environments\discord\bot):  &apos;module&apos; must be set to &apos;NodeNext&apos;. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-2 | COMPLETED</text>
+<text x="34" y="193" font-size="12">bug(projects\workflows\</text>
+<text x="34" y="209" font-size="12">environments\discord...</text>
+<text x="34" y="231" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-3" href="https://linear.app/resnovas/issue/EVE-3/choregithubworkflowsclayml-update-to-add-the-restyled-iobot-to-allowed" xlink:href="https://linear.app/resnovas/issue/EVE-3/choregithubworkflowsclayml-update-to-add-the-restyled-iobot-to-allowed" tabindex="0" aria-label="EVE-3: chore(.github/workflows/cla.yml): update to add the restyled-io[bot] to allowed list. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-3: chore(.github/workflows/cla.yml): update to add the restyled-io[bot] to allowed list. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-3 | COMPLETED</text>
+<text x="34" y="299" font-size="12">chore(.github/workflows</text>
+<text x="34" y="315" font-size="12">/cla.yml): update to...</text>
+<text x="34" y="337" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-4" href="https://linear.app/resnovas/issue/EVE-4/sweep-fix-the-bit-tasks-init-process" xlink:href="https://linear.app/resnovas/issue/EVE-4/sweep-fix-the-bit-tasks-init-process" tabindex="0" aria-label="EVE-4: Sweep: fix the bit-tasks init process. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-4: Sweep: fix the bit-tasks init process. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-4 | COMPLETED</text>
+<text x="34" y="405" font-size="12">Sweep: fix the</text>
+<text x="34" y="421" font-size="12">bit-tasks init process</text>
+<text x="34" y="443" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-5" href="https://linear.app/resnovas/issue/EVE-5/sweep-refactor-the-settimeout-in-initialize" xlink:href="https://linear.app/resnovas/issue/EVE-5/sweep-refactor-the-settimeout-in-initialize" tabindex="0" aria-label="EVE-5: Sweep: Refactor the `setTimeout` in `initialize` . COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-5: Sweep: Refactor the `setTimeout` in `initialize` . COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="474" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="492" font-size="12" font-weight="700">EVE-5 | COMPLETED</text>
+<text x="34" y="511" font-size="12">Sweep: Refactor the</text>
+<text x="34" y="527" font-size="12">`setTimeout` in...</text>
+<text x="34" y="549" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-9" href="https://linear.app/resnovas/issue/EVE-9/set-up-home-assistant-os-runbook-and-oled-status-app" xlink:href="https://linear.app/resnovas/issue/EVE-9/set-up-home-assistant-os-runbook-and-oled-status-app" tabindex="0" aria-label="EVE-9: Set up Home Assistant OS runbook and OLED Status app. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-9: Set up Home Assistant OS runbook and OLED Status app. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="580" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="598" font-size="12" font-weight="700">EVE-9 | COMPLETED</text>
+<text x="34" y="617" font-size="12">Set up Home Assistant</text>
+<text x="34" y="633" font-size="12">OS runbook and OLED...</text>
+<text x="34" y="655" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-11" href="https://linear.app/resnovas/issue/EVE-11/enable-verified-investorpress-tickets-without-checkout" xlink:href="https://linear.app/resnovas/issue/EVE-11/enable-verified-investorpress-tickets-without-checkout" tabindex="0" aria-label="EVE-11: Enable verified investor/press tickets without checkout. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-11: Enable verified investor/press tickets without checkout. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="686" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="704" font-size="12" font-weight="700">EVE-11 | COMPLETED</text>
+<text x="34" y="723" font-size="12">Enable verified</text>
+<text x="34" y="739" font-size="12">investor/press ticke...</text>
+<text x="34" y="761" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-13" href="https://linear.app/resnovas/issue/EVE-13/establish-modular-core-foundations-for-database-adapters-expo-and" xlink:href="https://linear.app/resnovas/issue/EVE-13/establish-modular-core-foundations-for-database-adapters-expo-and" tabindex="0" aria-label="EVE-13: Establish modular core foundations for database adapters, Expo and observability. CURRENT. Captured Linear: In Progress.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-13: Establish modular core foundations for database adapters, Expo and observability. CURRENT. Captured Linear: In Progress.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="792" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="796" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="810" font-size="12" font-weight="700">EVE-13 | CURRENT</text>
+<text x="34" y="829" font-size="12">Establish modular core</text>
+<text x="34" y="845" font-size="12">foundations for...</text>
+<text x="34" y="867" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-14" href="https://linear.app/resnovas/issue/EVE-14/s1-prove-one-effect-action-serves-ui-mcp-and-ai-sdk-from-one-inventory" xlink:href="https://linear.app/resnovas/issue/EVE-14/s1-prove-one-effect-action-serves-ui-mcp-and-ai-sdk-from-one-inventory" tabindex="0" aria-label="EVE-14: S1: Prove one Effect action serves UI, MCP and AI SDK from one inventory entry. COMPLETED. Captured Linear: Done.  0 prerequisites; 2 unlocks. Layer 0."><title>EVE-14: S1: Prove one Effect action serves UI, MCP and AI SDK from one inventory entry. COMPLETED. Captured Linear: Done.  0 prerequisites; 2 unlocks. Layer 0.</title><rect x="24" y="898" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="916" font-size="12" font-weight="700">EVE-14 | COMPLETED</text>
+<text x="34" y="935" font-size="12">S1: Prove one Effect</text>
+<text x="34" y="951" font-size="12">action serves UI, MC...</text>
+<text x="34" y="973" font-size="11">Prerequisites 0 | Unlocks 2 | L0</text></a>
+<a id="EVE-15" href="https://linear.app/resnovas/issue/EVE-15/s2-build-the-upstream-agent-native-capability-map-and-protocol" xlink:href="https://linear.app/resnovas/issue/EVE-15/s2-build-the-upstream-agent-native-capability-map-and-protocol" tabindex="0" aria-label="EVE-15: S2: Build the upstream Agent-Native capability map and protocol conformance matrix. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-15: S2: Build the upstream Agent-Native capability map and protocol conformance matrix. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1004" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="1022" font-size="12" font-weight="700">EVE-15 | COMPLETED</text>
+<text x="34" y="1041" font-size="12">S2: Build the upstream</text>
+<text x="34" y="1057" font-size="12">Agent-Native capabil...</text>
+<text x="34" y="1079" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-16" href="https://linear.app/resnovas/issue/EVE-16/s3-prove-runtime-loading-and-switching-of-a-remote-module-on-expo-web" xlink:href="https://linear.app/resnovas/issue/EVE-16/s3-prove-runtime-loading-and-switching-of-a-remote-module-on-expo-web" tabindex="0" aria-label="EVE-16: S3: Prove runtime loading and switching of a remote module on Expo web and Android. CURRENT. Captured Linear: In Progress.  0 prerequisites; 9 unlocks. Layer 0."><title>EVE-16: S3: Prove runtime loading and switching of a remote module on Expo web and Android. CURRENT. Captured Linear: In Progress.  0 prerequisites; 9 unlocks. Layer 0.</title><rect x="24" y="1110" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="1114" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="1128" font-size="12" font-weight="700">EVE-16 | CURRENT</text>
+<text x="34" y="1147" font-size="12">S3: Prove runtime</text>
+<text x="34" y="1163" font-size="12">loading and switchin...</text>
+<text x="34" y="1185" font-size="11">Prerequisites 0 | Unlocks 9 | L0</text></a>
+<a id="EVE-17" href="https://linear.app/resnovas/issue/EVE-17/s4-choose-the-offline-sync-engine-for-record-edits-and-live-text-and" xlink:href="https://linear.app/resnovas/issue/EVE-17/s4-choose-the-offline-sync-engine-for-record-edits-and-live-text-and" tabindex="0" aria-label="EVE-17: S4: Choose the offline sync engine for record edits and live text and canvas editing. COMPLETED. Captured Linear: Done.  0 prerequisites; 13 unlocks. Layer 0."><title>EVE-17: S4: Choose the offline sync engine for record edits and live text and canvas editing. COMPLETED. Captured Linear: Done.  0 prerequisites; 13 unlocks. Layer 0.</title><rect x="24" y="1216" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="1234" font-size="12" font-weight="700">EVE-17 | COMPLETED</text>
+<text x="34" y="1253" font-size="12">S4: Choose the offline</text>
+<text x="34" y="1269" font-size="12">sync engine for reco...</text>
+<text x="34" y="1291" font-size="11">Prerequisites 0 | Unlocks 13 | L0</text></a>
+<a id="EVE-18" href="https://linear.app/resnovas/issue/EVE-18/s5-verify-sharding-across-two-independent-runners-with-drain-and" xlink:href="https://linear.app/resnovas/issue/EVE-18/s5-verify-sharding-across-two-independent-runners-with-drain-and" tabindex="0" aria-label="EVE-18: S5: Verify sharding across two independent runners with drain and runner-loss recovery. COMPLETED. Captured Linear: Done.  0 prerequisites; 1 unlocks. Layer 0."><title>EVE-18: S5: Verify sharding across two independent runners with drain and runner-loss recovery. COMPLETED. Captured Linear: Done.  0 prerequisites; 1 unlocks. Layer 0.</title><rect x="24" y="1322" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="1340" font-size="12" font-weight="700">EVE-18 | COMPLETED</text>
+<text x="34" y="1359" font-size="12">S5: Verify sharding</text>
+<text x="34" y="1375" font-size="12">across two independe...</text>
+<text x="34" y="1397" font-size="11">Prerequisites 0 | Unlocks 1 | L0</text></a>
+</svg>

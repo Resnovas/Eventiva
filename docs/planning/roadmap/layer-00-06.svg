@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="1452" viewBox="0 0 380 1452" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 0, group 6</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-241" href="https://linear.app/resnovas/issue/EVE-241/add-social-publishing-shared-inbox-and-analytics-suite" xlink:href="https://linear.app/resnovas/issue/EVE-241/add-social-publishing-shared-inbox-and-analytics-suite" tabindex="0" aria-label="EVE-241: Add social publishing, shared inbox, and analytics suite. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-241: Add social publishing, shared inbox, and analytics suite. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-241 | COMPLETED</text>
+<text x="34" y="193" font-size="12">Add social publishing,</text>
+<text x="34" y="209" font-size="12">shared inbox, and...</text>
+<text x="34" y="231" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-242" href="https://linear.app/resnovas/issue/EVE-242/archive-the-manual-pre-amp-packages-and-create-a-clean-package-tree" xlink:href="https://linear.app/resnovas/issue/EVE-242/archive-the-manual-pre-amp-packages-and-create-a-clean-package-tree" tabindex="0" aria-label="EVE-242: Archive the manual pre-Amp packages and create a clean package tree. COMPLETED. Captured Linear: Done.  0 prerequisites; 1 unlocks. Layer 0."><title>EVE-242: Archive the manual pre-Amp packages and create a clean package tree. COMPLETED. Captured Linear: Done.  0 prerequisites; 1 unlocks. Layer 0.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-242 | COMPLETED</text>
+<text x="34" y="299" font-size="12">Archive the manual</text>
+<text x="34" y="315" font-size="12">pre-Amp packages and...</text>
+<text x="34" y="337" font-size="11">Prerequisites 0 | Unlocks 1 | L0</text></a>
+<a id="EVE-245" href="https://linear.app/resnovas/issue/EVE-245/build-the-integrated-training-competency-and-certification-platform" xlink:href="https://linear.app/resnovas/issue/EVE-245/build-the-integrated-training-competency-and-certification-platform" tabindex="0" aria-label="EVE-245: Build the integrated training, competency and certification platform. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-245: Build the integrated training, competency and certification platform. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-245 | UPCOMING</text>
+<text x="34" y="405" font-size="12">Build the integrated</text>
+<text x="34" y="421" font-size="12">training, competency...</text>
+<text x="34" y="443" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-246" href="https://linear.app/resnovas/issue/EVE-246/define-provider-neutral-connected-account-invoicing-and-settlement" xlink:href="https://linear.app/resnovas/issue/EVE-246/define-provider-neutral-connected-account-invoicing-and-settlement" tabindex="0" aria-label="EVE-246: Define provider-neutral connected-account invoicing and settlement orchestration. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-246: Define provider-neutral connected-account invoicing and settlement orchestration. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="474" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="492" font-size="12" font-weight="700">EVE-246 | UPCOMING</text>
+<text x="34" y="511" font-size="12">Define provider-neutral</text>
+<text x="34" y="527" font-size="12">connected-account...</text>
+<text x="34" y="549" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-247" href="https://linear.app/resnovas/issue/EVE-247/research-supplier-product-catalogue-coverage-and-bulk-inventory" xlink:href="https://linear.app/resnovas/issue/EVE-247/research-supplier-product-catalogue-coverage-and-bulk-inventory" tabindex="0" aria-label="EVE-247: Research supplier product-catalogue coverage and bulk inventory onboarding. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-247: Research supplier product-catalogue coverage and bulk inventory onboarding. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="580" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="598" font-size="12" font-weight="700">EVE-247 | UPCOMING</text>
+<text x="34" y="617" font-size="12">Research supplier</text>
+<text x="34" y="633" font-size="12">product-catalogue...</text>
+<text x="34" y="655" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-248" href="https://linear.app/resnovas/issue/EVE-248/revisit-and-remove-eventivas-temporary-house-ai-gate-override" xlink:href="https://linear.app/resnovas/issue/EVE-248/revisit-and-remove-eventivas-temporary-house-ai-gate-override" tabindex="0" aria-label="EVE-248: Revisit and remove Eventiva&apos;s temporary house AI-gate override. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-248: Revisit and remove Eventiva&apos;s temporary house AI-gate override. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="686" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="704" font-size="12" font-weight="700">EVE-248 | UPCOMING</text>
+<text x="34" y="723" font-size="12">Revisit and remove</text>
+<text x="34" y="739" font-size="12">Eventiva&apos;s temporary...</text>
+<text x="34" y="761" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-249" href="https://linear.app/resnovas/issue/EVE-249/rebase-investor-tests-into-production-and-merge-changes" xlink:href="https://linear.app/resnovas/issue/EVE-249/rebase-investor-tests-into-production-and-merge-changes" tabindex="0" aria-label="EVE-249: Rebase investor tests into production and merge changes. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-249: Rebase investor tests into production and merge changes. COMPLETED. Captured Linear: Done.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="792" width="320" height="94" rx="6" fill="#d1fae5" stroke="#065f46" stroke-width="2"/>
+<text x="34" y="810" font-size="12" font-weight="700">EVE-249 | COMPLETED</text>
+<text x="34" y="829" font-size="12">Rebase investor tests</text>
+<text x="34" y="845" font-size="12">into production and...</text>
+<text x="34" y="867" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-250" href="https://linear.app/resnovas/issue/EVE-250/decide-controlled-cross-tenant-marketplace-gateway-architecture" xlink:href="https://linear.app/resnovas/issue/EVE-250/decide-controlled-cross-tenant-marketplace-gateway-architecture" tabindex="0" aria-label="EVE-250: Decide controlled cross-tenant marketplace gateway architecture. CURRENT. Captured Linear: In Progress.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-250: Decide controlled cross-tenant marketplace gateway architecture. CURRENT. Captured Linear: In Progress.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="898" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="902" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="916" font-size="12" font-weight="700">EVE-250 | CURRENT</text>
+<text x="34" y="935" font-size="12">Decide controlled</text>
+<text x="34" y="951" font-size="12">cross-tenant...</text>
+<text x="34" y="973" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-251" href="https://linear.app/resnovas/issue/EVE-251/decide-marketplace-service-attestation-and-cryptographic-trust" xlink:href="https://linear.app/resnovas/issue/EVE-251/decide-marketplace-service-attestation-and-cryptographic-trust" tabindex="0" aria-label="EVE-251: Decide marketplace service attestation and cryptographic trust architecture. CURRENT. Captured Linear: In Progress.  0 prerequisites; 1 unlocks. Layer 0."><title>EVE-251: Decide marketplace service attestation and cryptographic trust architecture. CURRENT. Captured Linear: In Progress.  0 prerequisites; 1 unlocks. Layer 0.</title><rect x="24" y="1004" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="1008" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="1022" font-size="12" font-weight="700">EVE-251 | CURRENT</text>
+<text x="34" y="1041" font-size="12">Decide marketplace</text>
+<text x="34" y="1057" font-size="12">service attestation ...</text>
+<text x="34" y="1079" font-size="11">Prerequisites 0 | Unlocks 1 | L0</text></a>
+<a id="EVE-253" href="https://linear.app/resnovas/issue/EVE-253/build-shared-guided-sop-procedures-and-governed-step-execution" xlink:href="https://linear.app/resnovas/issue/EVE-253/build-shared-guided-sop-procedures-and-governed-step-execution" tabindex="0" aria-label="EVE-253: Build shared guided SOP procedures and governed step execution. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-253: Build shared guided SOP procedures and governed step execution. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1110" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1128" font-size="12" font-weight="700">EVE-253 | UPCOMING</text>
+<text x="34" y="1147" font-size="12">Build shared guided SOP</text>
+<text x="34" y="1163" font-size="12">procedures and gover...</text>
+<text x="34" y="1185" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-254" href="https://linear.app/resnovas/issue/EVE-254/define-qlab-class-cue-playback-and-end-to-end-production-control" xlink:href="https://linear.app/resnovas/issue/EVE-254/define-qlab-class-cue-playback-and-end-to-end-production-control" tabindex="0" aria-label="EVE-254: Define QLab-class cue playback and end-to-end production control. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-254: Define QLab-class cue playback and end-to-end production control. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1216" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1234" font-size="12" font-weight="700">EVE-254 | UPCOMING</text>
+<text x="34" y="1253" font-size="12">Define QLab-class cue</text>
+<text x="34" y="1269" font-size="12">playback and end-to-...</text>
+<text x="34" y="1291" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-255" href="https://linear.app/resnovas/issue/EVE-255/build-separate-local-show-playback-and-cue-execution-engine" xlink:href="https://linear.app/resnovas/issue/EVE-255/build-separate-local-show-playback-and-cue-execution-engine" tabindex="0" aria-label="EVE-255: Build separate local show playback and cue execution engine. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-255: Build separate local show playback and cue execution engine. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="1322" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1340" font-size="12" font-weight="700">EVE-255 | UPCOMING</text>
+<text x="34" y="1359" font-size="12">Build separate local</text>
+<text x="34" y="1375" font-size="12">show playback and cu...</text>
+<text x="34" y="1397" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+</svg>

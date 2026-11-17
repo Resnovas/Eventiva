@@ -56,7 +56,12 @@ export interface ActionSchema {
 /** Retain the exact schema while requiring a real, service-free Effect schema. */
 type Portable<S extends ActionSchema> = S & Schema.Schema<Schema.Schema.Type<S>, Schema.Schema.Encoded<S>>;
 
-/** A portable action specification. */
+/**
+ * Describe one discoverable operation without coupling consumers to its handler.
+ * Exact input/output/error schemas survive inference; authorization, approval and
+ * offline metadata travel with the operation across every supported transport.
+ * Registration and invocation, not this portable value, enforce those policies.
+ */
 export interface ActionSpec<
     Name extends string = string,
     In extends ActionSchema = ActionSchema,
@@ -92,7 +97,11 @@ export type Output<S extends ActionSpec> = Schema.Schema.Type<S['output']>;
 export type Failure<S extends ActionSpec> =
     S['error'] extends Option.Option<infer E extends ActionSchema> ? Schema.Schema.Type<E> : never;
 
-/** Declares a portable action specification. Pure: validation happens when a handler is registered. */
+/**
+ * Build a portable specification while retaining the exact supplied schema types.
+ * Omitted approval/risk/sensitivity metadata defaults to routine unconfirmed use;
+ * this pure declaration neither grants permission nor validates registration.
+ */
 export const define = <
     const Name extends string,
     In extends ActionSchema,
@@ -131,5 +140,9 @@ export const define = <
     flag: Option.fromNullable(options.flag),
 });
 
-/** The tool name model providers accept: the canonical name with dots replaced by underscores. */
+/**
+ * Adapt a canonical dotted action name to a model-provider tool identifier.
+ * The caller supplies a validated ActionName; this pure formatter does not
+ * validate arbitrary input or authorize the operation behind the name.
+ */
 export const wireName = (name: string): string => name.replaceAll('.', '_');

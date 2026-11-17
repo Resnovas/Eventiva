@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="1452" viewBox="0 0 380 1452" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 0, group 3</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-31" href="https://linear.app/resnovas/issue/EVE-31/port-voice-input-and-transcription-for-the-agent" xlink:href="https://linear.app/resnovas/issue/EVE-31/port-voice-input-and-transcription-for-the-agent" tabindex="0" aria-label="EVE-31: Port voice input and transcription for the agent. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-31: Port voice input and transcription for the agent. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-31 | UPCOMING</text>
+<text x="34" y="193" font-size="12">Port voice input and</text>
+<text x="34" y="209" font-size="12">transcription for th...</text>
+<text x="34" y="231" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-32" href="https://linear.app/resnovas/issue/EVE-32/port-settings-profiles-navigation-command-menu-and-onboarding" xlink:href="https://linear.app/resnovas/issue/EVE-32/port-settings-profiles-navigation-command-menu-and-onboarding" tabindex="0" aria-label="EVE-32: Port settings, profiles, navigation, command menu and onboarding. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 3 unlocks. Layer 0."><title>EVE-32: Port settings, profiles, navigation, command menu and onboarding. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 3 unlocks. Layer 0.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-32 | UPCOMING</text>
+<text x="34" y="299" font-size="12">Port settings,</text>
+<text x="34" y="315" font-size="12">profiles, navigation...</text>
+<text x="34" y="337" font-size="11">Prerequisites 0 | Unlocks 3 | L0</text></a>
+<a id="EVE-33" href="https://linear.app/resnovas/issue/EVE-33/port-scheduling-primitives-for-availability-bookings-and-rosters" xlink:href="https://linear.app/resnovas/issue/EVE-33/port-scheduling-primitives-for-availability-bookings-and-rosters" tabindex="0" aria-label="EVE-33: Port scheduling primitives for availability, bookings and rosters. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 13 unlocks. Layer 0."><title>EVE-33: Port scheduling primitives for availability, bookings and rosters. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 13 unlocks. Layer 0.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-33 | UPCOMING</text>
+<text x="34" y="405" font-size="12">Port scheduling</text>
+<text x="34" y="421" font-size="12">primitives for...</text>
+<text x="34" y="443" font-size="11">Prerequisites 0 | Unlocks 13 | L0</text></a>
+<a id="EVE-34" href="https://linear.app/resnovas/issue/EVE-34/agent-runs-restart-from-scratch-when-their-shard-moves" xlink:href="https://linear.app/resnovas/issue/EVE-34/agent-runs-restart-from-scratch-when-their-shard-moves" tabindex="0" aria-label="EVE-34: Agent runs restart from scratch when their shard moves. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-34: Agent runs restart from scratch when their shard moves. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="474" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="492" font-size="12" font-weight="700">EVE-34 | UPCOMING</text>
+<text x="34" y="511" font-size="12">Agent runs restart from</text>
+<text x="34" y="527" font-size="12">scratch when their...</text>
+<text x="34" y="549" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-35" href="https://linear.app/resnovas/issue/EVE-35/keep-a-long-agent-run-from-blocking-its-entitys-other-messages" xlink:href="https://linear.app/resnovas/issue/EVE-35/keep-a-long-agent-run-from-blocking-its-entitys-other-messages" tabindex="0" aria-label="EVE-35: Keep a long agent run from blocking its entity&apos;s other messages. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 1 unlocks. Layer 0."><title>EVE-35: Keep a long agent run from blocking its entity&apos;s other messages. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 1 unlocks. Layer 0.</title><rect x="24" y="580" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="598" font-size="12" font-weight="700">EVE-35 | UPCOMING</text>
+<text x="34" y="617" font-size="12">Keep a long agent run</text>
+<text x="34" y="633" font-size="12">from blocking its...</text>
+<text x="34" y="655" font-size="11">Prerequisites 0 | Unlocks 1 | L0</text></a>
+<a id="EVE-36" href="https://linear.app/resnovas/issue/EVE-36/stream-agent-output-from-a-durable-log-not-volatile-rpcs" xlink:href="https://linear.app/resnovas/issue/EVE-36/stream-agent-output-from-a-durable-log-not-volatile-rpcs" tabindex="0" aria-label="EVE-36: Stream agent output from a durable log, not volatile RPCs. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-36: Stream agent output from a durable log, not volatile RPCs. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="686" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="704" font-size="12" font-weight="700">EVE-36 | UPCOMING</text>
+<text x="34" y="723" font-size="12">Stream agent output</text>
+<text x="34" y="739" font-size="12">from a durable log, ...</text>
+<text x="34" y="761" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-37" href="https://linear.app/resnovas/issue/EVE-37/remove-the-shard-manager-process-that-owns-shards-with-no-entities" xlink:href="https://linear.app/resnovas/issue/EVE-37/remove-the-shard-manager-process-that-owns-shards-with-no-entities" tabindex="0" aria-label="EVE-37: Remove the shard-manager process that owns shards with no entities. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0."><title>EVE-37: Remove the shard-manager process that owns shards with no entities. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 0 unlocks. Layer 0.</title><rect x="24" y="792" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="810" font-size="12" font-weight="700">EVE-37 | UPCOMING</text>
+<text x="34" y="829" font-size="12">Remove the</text>
+<text x="34" y="845" font-size="12">shard-manager proces...</text>
+<text x="34" y="867" font-size="11">Prerequisites 0 | Unlocks 0 | L0</text></a>
+<a id="EVE-38" href="https://linear.app/resnovas/issue/EVE-38/cut-runner-loss-failover-from-36s-and-expose-the-cluster-settings-in" xlink:href="https://linear.app/resnovas/issue/EVE-38/cut-runner-loss-failover-from-36s-and-expose-the-cluster-settings-in" tabindex="0" aria-label="EVE-38: Cut runner-loss failover from 36s and expose the cluster settings in config. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 1 unlocks. Layer 0."><title>EVE-38: Cut runner-loss failover from 36s and expose the cluster settings in config. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 1 unlocks. Layer 0.</title><rect x="24" y="898" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="916" font-size="12" font-weight="700">EVE-38 | UPCOMING</text>
+<text x="34" y="935" font-size="12">Cut runner-loss</text>
+<text x="34" y="951" font-size="12">failover from 36s an...</text>
+<text x="34" y="973" font-size="11">Prerequisites 0 | Unlocks 1 | L0</text></a>
+<a id="EVE-39" href="https://linear.app/resnovas/issue/EVE-39/make-every-entity-action-idempotent-and-persisted-by-default" xlink:href="https://linear.app/resnovas/issue/EVE-39/make-every-entity-action-idempotent-and-persisted-by-default" tabindex="0" aria-label="EVE-39: Make every entity action idempotent and persisted by default. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 5 unlocks. Layer 0."><title>EVE-39: Make every entity action idempotent and persisted by default. UPCOMING. Captured Linear: Backlog.  0 prerequisites; 5 unlocks. Layer 0.</title><rect x="24" y="1004" width="320" height="94" rx="6" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="34" y="1022" font-size="12" font-weight="700">EVE-39 | UPCOMING</text>
+<text x="34" y="1041" font-size="12">Make every entity</text>
+<text x="34" y="1057" font-size="12">action idempotent an...</text>
+<text x="34" y="1079" font-size="11">Prerequisites 0 | Unlocks 5 | L0</text></a>
+<a id="EVE-41" href="https://linear.app/resnovas/issue/EVE-41/p12-build-app-config-settings-secrets-and-credentials" xlink:href="https://linear.app/resnovas/issue/EVE-41/p12-build-app-config-settings-secrets-and-credentials" tabindex="0" aria-label="EVE-41: P1.2 Build app config, settings, secrets and credentials. CURRENT. Captured Linear: In Progress.  0 prerequisites; 20 unlocks. Layer 0."><title>EVE-41: P1.2 Build app config, settings, secrets and credentials. CURRENT. Captured Linear: In Progress.  0 prerequisites; 20 unlocks. Layer 0.</title><rect x="24" y="1110" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="1114" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="1128" font-size="12" font-weight="700">EVE-41 | CURRENT</text>
+<text x="34" y="1147" font-size="12">P1.2 Build app config,</text>
+<text x="34" y="1163" font-size="12">settings, secrets an...</text>
+<text x="34" y="1185" font-size="11">Prerequisites 0 | Unlocks 20 | L0</text></a>
+<a id="EVE-43" href="https://linear.app/resnovas/issue/EVE-43/p14-build-identity-and-access-orgs-authorization-user-profiles-and" xlink:href="https://linear.app/resnovas/issue/EVE-43/p14-build-identity-and-access-orgs-authorization-user-profiles-and" tabindex="0" aria-label="EVE-43: P1.4 Build identity and access: orgs, authorization, user profiles and audit. CURRENT / BLOCKED. Captured Linear: In Progress. 2026-11-17T07:22:23.589Z: blocker: Exact-component adoption remains technically blocked: unresolved security, producer-provenance and inventory/licence evidence must close. Candidate readiness is denied; no risk acceptance or architecture change is established. Sources: https://linear.app/resnovas/issue/EVE-43#comment-f95261be-6166-4781-8e5d-f8cbe2a9ec96. 0 prerequisites; 56 unlocks. Layer 0."><title>EVE-43: P1.4 Build identity and access: orgs, authorization, user profiles and audit. CURRENT / BLOCKED. Captured Linear: In Progress. 2026-11-17T07:22:23.589Z: blocker: Exact-component adoption remains technically blocked: unresolved security, producer-provenance and inventory/licence evidence must close. Candidate readiness is denied; no risk acceptance or architecture change is established. Sources: https://linear.app/resnovas/issue/EVE-43#comment-f95261be-6166-4781-8e5d-f8cbe2a9ec96. 0 prerequisites; 56 unlocks. Layer 0.</title><rect x="24" y="1216" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="1217" width="10" height="92" fill="url(#blocked-pattern)"/>
+<rect x="28" y="1220" width="300" height="86" rx="3" fill="none" stroke="#78350f"/>
+<text x="34" y="1234" font-size="12" font-weight="700">EVE-43 | CURRENT / BLOCKED</text>
+<text x="34" y="1253" font-size="12">P1.4 Build identity and</text>
+<text x="34" y="1269" font-size="12">access: orgs,...</text>
+<text x="34" y="1291" font-size="11">Prerequisites 0 | Unlocks 56 | L0</text></a>
+<a id="EVE-45" href="https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change" xlink:href="https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change" tabindex="0" aria-label="EVE-45: P1.6 Build the change flow: domain events and a durable resource change feed. CURRENT. Captured Linear: In Progress.  0 prerequisites; 31 unlocks. Layer 0."><title>EVE-45: P1.6 Build the change flow: domain events and a durable resource change feed. CURRENT. Captured Linear: In Progress.  0 prerequisites; 31 unlocks. Layer 0.</title><rect x="24" y="1322" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="1326" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="1340" font-size="12" font-weight="700">EVE-45 | CURRENT</text>
+<text x="34" y="1359" font-size="12">P1.6 Build the change</text>
+<text x="34" y="1375" font-size="12">flow: domain events ...</text>
+<text x="34" y="1397" font-size="11">Prerequisites 0 | Unlocks 31 | L0</text></a>
+</svg>

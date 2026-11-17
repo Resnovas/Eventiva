@@ -1,0 +1,36 @@
+name: Linear mirror freshness
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 4 * * *'
+
+permissions:
+    contents: read
+
+concurrency:
+    group: linear-mirror-freshness
+    cancel-in-progress: false
+
+jobs:
+    freshness:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+            - name: Check live issue and comment freshness without repository writes
+              env:
+                  LINEAR_API_KEY: ${{ secrets.LINEAR_MIRROR_READ_KEY }}
+              run: |
+                  if [ -z "$LINEAR_API_KEY" ]; then
+                    echo '::error::Linear freshness unavailable: LINEAR_MIRROR_READ_KEY is not configured; no refresh was performed.'
+                    exit 1
+                  fi
+                  node --test tools/documentation/linear-mirror.test.mjs tools/documentation/sync-linear.test.mjs
+                  node tools/documentation/linear-mirror.mjs --check
+                  node tools/documentation/sync-linear.mjs --check-live

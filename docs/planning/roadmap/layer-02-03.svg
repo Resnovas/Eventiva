@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="380" height="498" viewBox="0 0 380 498" role="group" aria-labelledby="roadmap-title roadmap-desc">
+<title id="roadmap-title">Eventiva layer 2, group 3</title>
+<desc id="roadmap-desc">Prerequisite arrows point toward dependent issues. Layers are derived, not approved dates. Labels and border patterns distinguish completed, current, upcoming, closed and blocked work. Every node links to its live issue; Markdown provides full titles, prerequisites and unlocks.</desc>
+<defs><pattern id="blocked-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#78350f" stroke-width="1"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:system-ui,sans-serif;fill:#0f172a}a:focus rect{stroke:#0f172a;stroke-width:5}a:focus{outline:3px solid #0f172a}</style>
+<rect width="100%" height="100%" fill="#fff"/><text x="24" y="30" font-size="18" font-weight="700">Eventiva roadmap detail</text><text x="24" y="54" font-size="12">Derived layers; not deadlines or acceptance.</text>
+<g role="img" aria-label="COMPLETED: solid"><rect x="24" y="67" width="16" height="12" fill="#d1fae5" stroke="#065f46"/><text x="46" y="78" font-size="11">COMPLETED (solid)</text></g>
+<g role="img" aria-label="CURRENT: double"><rect x="194" y="67" width="16" height="12" fill="#dbeafe" stroke="#1e40af"/><rect x="197" y="70" width="10" height="6" fill="none" stroke="#1e40af"/><text x="216" y="78" font-size="11">CURRENT (double)</text></g>
+<g role="img" aria-label="UPCOMING: dashed"><rect x="24" y="87" width="16" height="12" fill="#f1f5f9" stroke="#334155" stroke-dasharray="5 3"/><text x="46" y="98" font-size="11">UPCOMING (dashed)</text></g>
+<g role="img" aria-label="CLOSED: dashed"><rect x="194" y="87" width="16" height="12" fill="#ede9fe" stroke="#5b21b6" stroke-dasharray="5 3"/><text x="216" y="98" font-size="11">CLOSED (dashed)</text></g>
+<g role="img" aria-label="BLOCKED: hatched"><rect x="24" y="107" width="16" height="12" fill="#fef3c7" stroke="#78350f"/><rect x="24" y="107" width="16" height="12" fill="url(#blocked-pattern)"/><text x="46" y="118" font-size="11">BLOCKED (hatched)</text></g>
+<text x="24" y="140" font-size="10">Blocked overrides fill/border; current keeps double.</text>
+<a id="EVE-252" href="https://linear.app/resnovas/issue/EVE-252/implement-effect-cluster-sharding-and-multi-runner-recovery-in-the" xlink:href="https://linear.app/resnovas/issue/EVE-252/implement-effect-cluster-sharding-and-multi-runner-recovery-in-the" tabindex="0" aria-label="EVE-252: Implement Effect Cluster sharding and multi-runner recovery in the fresh Eventiva backend. CURRENT / BLOCKED. Captured Linear: In Progress.  2 prerequisites; 1 unlocks. Layer 2."><title>EVE-252: Implement Effect Cluster sharding and multi-runner recovery in the fresh Eventiva backend. CURRENT / BLOCKED. Captured Linear: In Progress.  2 prerequisites; 1 unlocks. Layer 2.</title><rect x="24" y="156" width="320" height="94" rx="6" fill="#fef3c7" stroke="#78350f" stroke-width="2"/>
+<rect x="332" y="157" width="10" height="92" fill="url(#blocked-pattern)"/>
+<rect x="28" y="160" width="300" height="86" rx="3" fill="none" stroke="#78350f"/>
+<text x="34" y="174" font-size="12" font-weight="700">EVE-252 | CURRENT / BLOCKED</text>
+<text x="34" y="193" font-size="12">Implement Effect</text>
+<text x="34" y="209" font-size="12">Cluster sharding and...</text>
+<text x="34" y="231" font-size="11">Prerequisites 2 | Unlocks 1 | L2</text></a>
+<a id="EVE-257" href="https://linear.app/resnovas/issue/EVE-257/implement-the-composable-module-kernel-and-safe-lifecycleprovider" xlink:href="https://linear.app/resnovas/issue/EVE-257/implement-the-composable-module-kernel-and-safe-lifecycleprovider" tabindex="0" aria-label="EVE-257: Implement the composable module kernel and safe lifecycle/provider contracts. CURRENT. Captured Linear: In Progress.  2 prerequisites; 4 unlocks. Layer 2."><title>EVE-257: Implement the composable module kernel and safe lifecycle/provider contracts. CURRENT. Captured Linear: In Progress.  2 prerequisites; 4 unlocks. Layer 2.</title><rect x="24" y="262" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="266" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="280" font-size="12" font-weight="700">EVE-257 | CURRENT</text>
+<text x="34" y="299" font-size="12">Implement the</text>
+<text x="34" y="315" font-size="12">composable module...</text>
+<text x="34" y="337" font-size="11">Prerequisites 2 | Unlocks 4 | L2</text></a>
+<a id="EVE-258" href="https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration" xlink:href="https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration" tabindex="0" aria-label="EVE-258: Add the database-neutral Resources API and privileged tenant migration adapter. CURRENT. Captured Linear: In Progress.  2 prerequisites; 3 unlocks. Layer 2."><title>EVE-258: Add the database-neutral Resources API and privileged tenant migration adapter. CURRENT. Captured Linear: In Progress.  2 prerequisites; 3 unlocks. Layer 2.</title><rect x="24" y="368" width="320" height="94" rx="6" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+<rect x="28" y="372" width="300" height="86" rx="3" fill="none" stroke="#1e40af"/>
+<text x="34" y="386" font-size="12" font-weight="700">EVE-258 | CURRENT</text>
+<text x="34" y="405" font-size="12">Add the</text>
+<text x="34" y="421" font-size="12">database-neutral...</text>
+<text x="34" y="443" font-size="11">Prerequisites 2 | Unlocks 3 | L2</text></a>
+</svg>

@@ -92,3 +92,6 @@ patches/
 examples/**
 # Preserve upstream source bytes and notices.
 externals/**
+# Preserve authorized historical Linear source prose and deterministic mirror bytes.
+docs/planning/issues/**
+tools/documentation/linear-snapshot.json

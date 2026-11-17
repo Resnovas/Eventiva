@@ -126,7 +126,7 @@ const filesUnder = (dir: string): ReadonlyArray<string> =>
         return entry.isDirectory() ? filesUnder(path) : [path];
     });
 
-describe('package hygiene', () => {
+describe('package hygiene', /** Verify portable package exports and historical-source isolation without importing the archive. */ () => {
     const manifests = filesUnder(join(root, 'packages')).filter((file) => file.endsWith('/package.json'));
 
     it('finds every library package', () => {
@@ -166,14 +166,23 @@ describe('package hygiene', () => {
         }
     );
 
-    it('uses exactly the lowercase top-level archive path on case-sensitive and case-insensitive filesystems', () => {
+    it('uses exactly the lowercase top-level archive path on case-sensitive and case-insensitive filesystems', /** Check stored directory spelling rather than filesystem-dependent lookup behavior. */ () => {
         // Directory entries expose the stored spelling even when path lookup ignores case.
-        expect(readdirSync(root).filter((name) => name.toLowerCase() === 'examples')).toEqual(['examples']);
+        expect(
+            readdirSync(root).filter(
+                /** Select archive-name case variants without changing the stored spelling. */ (name) =>
+                    name.toLowerCase() === 'examples'
+            )
+        ).toEqual(['examples']);
     });
 
-    it('keeps the historical snapshots out of every production import', () => {
-        const sources = ['apps', 'packages'].flatMap((top) => filesUnder(join(root, top)));
+    it('keeps the historical snapshots out of every production import', /** Reject archive references throughout active application and package source. */ () => {
+        const sources = ['apps', 'packages'].flatMap(
+            /** Enumerate active source roots only; historical fixtures are not production. */ (top) =>
+                filesUnder(join(root, top))
+        );
         const offenders = sources.filter(
+            /** Scan import-bearing text case-insensitively so either archive spelling remains forbidden. */
             (file) => /\.(ts|tsx|js|mjs|json)$/.test(file) && /examples\//i.test(readFileSync(file, 'utf8'))
         );
         expect(offenders).toEqual([]);
