@@ -183,10 +183,30 @@ unknown. This completes the scope decision, not the Backlog implementation or it
 dependency gates. The [decision index](decisions.md#tasks-anchor-confirmation)
 records the narrowed supersession of earlier automatic-delay direction.
 
-Two unavailable owner-infrastructure source references remain unresolved. Keep
-strict exhaustive-review acceptance blocked on those sources; do not describe the
-historical mirror as a full live refresh. Next implement EVE-84 only after its
-recorded prerequisites and applicable authorization/confirmation tests are met.
+At that checkpoint two unavailable owner-infrastructure references still blocked
+strict source review. The bounded reconciliation below supersedes that source
+blocker only. Next implement EVE-84 only after its recorded prerequisites and
+applicable authorization/confirmation tests are met.
+
+## Marketplace source reconciliation - 2026-11-17
+
+Jonathan's [Puck instruction](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+designates the existing [architecture index](../architecture/eventiva-platform-and-marketplace.md)
+as the current repository replacement/index for the unavailable historical
+`Eventiva-marketplace-infrastructure-v1.md`. The exact instruction time is unknown.
+Current EVE-250/251 descriptions and their authorized mirrors now point directly
+there and explicitly supersede historical missing-source/archive statements for
+current source status. All 30 existing issue comments are unchanged; the original
+file is still unavailable and unread, not recovered. Only these two issues were
+refreshed, at 13:22:30.954Z and 13:22:32.697Z respectively; the original complete
+enumeration timestamp and all other captured issues remain unchanged.
+
+This resolves the two missing-file source-review blockers, not implementation or
+acceptance. EVE-250/251 remain In Progress. The 2026-11-16 binding architecture and
+provider-neutral authorization govern; concrete crypto/provider/verifier/custody,
+canonicalization/timing, regional/legal/retention, freshness/recovery/reconciliation
+and moderation gates remain where not independently approved. EVE-261, production
+security/ingestion, native/device proof and unrelated blockers are not cleared.
 
 ## Documentation adapter and CI diagnostics checkpoint - 2026-11-17
 

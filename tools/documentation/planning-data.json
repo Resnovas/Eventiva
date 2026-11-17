@@ -1,7 +1,7 @@
 {
     "version": 1,
     "artifacts": ["docs/architecture/eventiva-platform-and-marketplace.md", "docs/architecture/modular-platform.md"],
-    "snapshotHash": "58d40db37edf3b2f31848e6a7056131c9ea779da98720cf5e9a0203a8bfb51f0",
+    "snapshotHash": "3f80608c34b02d629b136d82375b065ab3a65909ba5d1d5fb4a98b91c86751d6",
     "decisions": [
         {
             "id": "portable-topology",
@@ -1661,17 +1661,19 @@
         {
             "id": "architecture-record-source-precedence-and-reconciliation",
             "authority": "settled-requirement",
-            "summary": "Architecture diagrams record decisions rather than make them: preserve linked owner provenance, proposal markings and explicit reconciliation with the missing owner infrastructure document.",
+            "summary": "Architecture diagrams record decisions rather than make them: preserve linked owner provenance, proposal markings and the current repository replacement/index for the unavailable historical infrastructure document.",
             "timestamp": null,
             "scope": ["EVE-13", "EVE-250", "EVE-251"],
             "sources": [
                 "docs/architecture/eventiva-platform-and-marketplace.md",
-                "docs/architecture/modular-platform.md"
+                "docs/architecture/modular-platform.md",
+                "EVE-250/description",
+                "EVE-251/description"
             ],
             "implementation": "Document maintenance contract only; no new owner decision is inferred from diagram color, register labels or implemented APIs.",
-            "parameters": "Marketplace index ranks applicable Linear approvals above the absent owner document, then derivative sheets; modular spec separately ranks its owner's coordination request above issue decisions. Their scopes do not establish one universal precedence rule. The index corrects A1's proposal-versus-approval citation and later envelope-encryption scope resolution. Reconcile derivative diagrams only against accessible exact owner sources, not title keywords.",
+            "parameters": "The 2026-11-17 owner-directed source reconciliation designates docs/architecture/eventiva-platform-and-marketplace.md as the current replacement/index below applicable Linear owner decisions and above derivative sheets. The original remains unavailable and unread, not recovered. Historical missing-source/archive statements are explicitly superseded for current source status, not edited. EVE-250 91db949b and EVE-251 15483735, dated 2026-11-16, govern bounded architecture/provider-neutral implementation. Concrete composition and policy parameters remain gated. The modular spec has its own scoped source hierarchy; no universal precedence rule is invented.",
             "supersededBy": [],
-            "supersessionNote": "Missing higher-ranked artifacts limit reconciliation, not existing independently recorded approvals."
+            "supersessionNote": "Replacement designation resolves the missing-file blocker, not original recovery, new approval, implementation acceptance or production authorization. Source: Jonathan's 2026-11-17 Puck reconciliation instruction; exact instruction time unavailable."
         },
         {
             "id": "single-location-collector-contract",
@@ -8040,8 +8042,8 @@
         {
             "id": "EVE-250/a58060eb-3896-456e-b3ac-79eef83c4a75",
             "hash": "027fdc45c898d930a8ca7e7b81be381220bff43307fe7c578714adc05e8f4116",
-            "disposition": "ambiguous",
-            "reason": "Reports documentation checks and citation corrections, but the named owner infrastructure document is absent from the supplied evidence. Its unseen contents cannot approve parameters; later decisions supersede stale proposal labels."
+            "disposition": "evidence",
+            "reason": "Full unchanged historical comment reread on 2026-11-17. Documentation checks/citation corrections remain historical evidence. Jonathan's source reconciliation and current EVE-250/251 descriptions explicitly supersede its missing-source prerequisite by designating the existing architecture index as current replacement. The absent original remains unread, not recovered or reclassified as reviewed; no unseen approval or completed implementation is inferred."
         },
         {
             "id": "EVE-250/b179847c-6067-4e53-9aab-0a0a62fffa17",
@@ -8069,9 +8071,9 @@
         },
         {
             "id": "EVE-250/description",
-            "hash": "08a23739c07e035984bc213a6e47707450e1dbd7dcaa300a12effbfd61633ac4",
+            "hash": "afe2a9f96b455ce03bea728eba75fd271204018d37523544d5843a273e79132b",
             "disposition": "decision",
-            "reason": "Reconciles architecture selection to the explicit later owner decision while separating settled product requirements, selected topology, remaining parameters and prohibited infrastructure/crypto scope."
+            "reason": "Full updated live description read on 2026-11-17 after the source-status prepend. It names the canonical current replacement/index, explicit limited supersession of unchanged historical/archive statements, original-unavailable status, dated owner decisions and unknown instruction time. The original architecture/product requirements remain; implementation pending and composition/policy gates are not cleared."
         },
         {
             "id": "EVE-250/e529f7f8-ed34-4047-b0be-4a9bc8a23e46",
@@ -8142,8 +8144,8 @@
         {
             "id": "EVE-251/a62ccfbf-0c3f-4a81-b0ea-5f2414298a13",
             "hash": "964917d30dd9be0dcb132cfa3a06b8e9be96b45d66b6c2e182b72761f4df8aaa",
-            "disposition": "ambiguous",
-            "reason": "Documentation report identifies an absent owner infrastructure document and historical citation discrepancies. Its unseen contents remain unavailable; subsequent approvals, not stale register labels, govern reviewed clauses."
+            "disposition": "evidence",
+            "reason": "Full unchanged historical comment reread on 2026-11-17. Its documentation/citation report is preserved, but the current descriptions and owner-directed replacement/index designation explicitly supersede the missing-source prerequisite. This reviews the accessible historical report, not the unavailable original; original recovery, concrete crypto/composition approval and implementation completion are not claimed."
         },
         {
             "id": "EVE-251/a81300d7-254f-4ae7-b2f7-2f8f1204ea27",
@@ -8171,9 +8173,9 @@
         },
         {
             "id": "EVE-251/description",
-            "hash": "bf8f203c800b7bf3c839eedfaa060c351e7a2df897ce8c426487ce0eb731082f",
+            "hash": "b23b34b49e3f7a57553eb542115ff41c2e31649d5f60146ce7c4edc39ea14624",
             "disposition": "decision",
-            "reason": "Reconciliation makes root trust and four release gates binding rather than wholly undecided; exact algorithms, providers, timing, custody composition and residual legal policy remain narrower gated work."
+            "reason": "Full updated live description read on 2026-11-17 after the source-status prepend. Current replacement/index resolves the historical missing-source prerequisite without reading/recovering the original or editing archive comments. Binding EVE-13 security and 2026-11-16 neutral-contract authorization remain separate from concrete composition, timing/custody and residual legal policy. Later stale proposal text is subordinate, not a renewed whole-architecture blocker."
         },
         {
             "id": "EVE-251/e6f460b5-dd07-44c5-ac92-eee2aab1d11c",
@@ -9959,15 +9961,15 @@
         },
         {
             "id": "docs/architecture/eventiva-platform-and-marketplace.md",
-            "hash": "8bd5933a05405e016757fba1a05025f876aa5bc75c659d2ea355a2dd72500fd1",
+            "hash": "21604f1ec92982f0906007545469fa32281098c2527aff45d4edb0dd0a4d1d8a",
             "disposition": "decision",
-            "reason": "Full exact delivered repository artifact reviewed, including decision register, narrative, diagrams and acceptance limits. Public HTTP404 did not prove artifact unavailability: authenticated artifact.read subsequently verified architecture-sheet revision3, foundation-approval revision3, modular-spec revision10 and SQL-evidence revision9. Original owner-thread hold release, narrow reflection exception and Rambo deferral were also verified. The absent standalone owner infrastructure document remains an explicit reconciliation gap; no unseen content is inferred."
+            "reason": "Full changed source reread on 2026-11-17, including preserved four diagram sources, register and revision instructions. Owner-directed replacement/index designation resolves the historical missing-file prerequisite below Linear authority; archive comments stay unchanged and explicitly superseded only for current source status. Exact EVE-250/251 owner comment IDs/creation dates and unknown replacement-instruction time are recorded. Original remains unavailable/unread; concrete composition/policy and acceptance gates remain open. Earlier authenticated artifact review evidence is unchanged, not rerun or expanded here."
         },
         {
             "id": "docs/architecture/modular-platform.md",
             "hash": "d1870064dfb15d08369e7baee00573a918124711d00bd8f3275c3e5150085b0d",
             "disposition": "decision",
-            "reason": "Full exact delivered repository artifact reviewed, including decision register, narrative, diagrams and acceptance limits. Public HTTP404 did not prove artifact unavailability: authenticated artifact.read subsequently verified architecture-sheet revision3, foundation-approval revision3, modular-spec revision10 and SQL-evidence revision9. Original owner-thread hold release, narrow reflection exception and Rambo deferral were also verified. The absent standalone owner infrastructure document remains an explicit reconciliation gap; no unseen content is inferred."
+            "reason": "Full exact delivered repository artifact reviewed, including decision register, narrative, diagrams and acceptance limits. Public HTTP404 did not prove artifact unavailability: authenticated artifact.read subsequently verified architecture-sheet revision3, foundation-approval revision3, modular-spec revision10 and SQL-evidence revision9. Original owner-thread hold release, narrow reflection exception and Rambo deferral were also verified. This source and its digest are unchanged. The separate marketplace index's 2026-11-17 replacement designation resolves the historical missing-file prerequisite without claiming unseen original content or reopening this source's scoped authority."
         }
     ],
     "annotations": [
