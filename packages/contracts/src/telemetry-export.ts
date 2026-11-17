@@ -83,3 +83,63 @@ export class TelemetryExportProvider extends Context.Tag('@eventiva/contracts/Te
         readonly flush: (binding: TelemetryExportBinding) => Effect.Effect<void, TelemetrySinkFailure>;
     }
 >() {}
+
+/** UTC-aligned hourly linkage; token expiry can shorten but never extend this interval. */
+export const correlationEpochMs = 3_600_000;
+
+/** Pseudonyms only: never a credential, raw identity, key locator or arbitrary attribute channel. */
+export const TelemetryCorrelation = Schema.Struct({
+    version: Schema.Literal(1),
+    session: Schema.String.pipe(Schema.pattern(/^[0-9a-f]{64}$/)),
+    person: Schema.String.pipe(Schema.pattern(/^[0-9a-f]{64}$/)),
+    epoch: Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_SAFE_INTEGER)),
+    expiresAt: Schema.Number.pipe(Schema.int(), Schema.between(1, Number.MAX_SAFE_INTEGER)),
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+export type TelemetryCorrelation = typeof TelemetryCorrelation.Type;
+
+/** Trusted issuer client; no raw subject, key or trusting request-carried consent is part of this port. */
+export class CorrelationIssuer extends Context.Tag('@eventiva/contracts/CorrelationIssuer/v1')<
+    CorrelationIssuer,
+    {
+        /** Issue only for an explicitly opted-in request after current identity/consent/release checks. */
+        readonly issue: (optIn: boolean) => Effect.Effect<TelemetryCorrelation, TelemetrySinkFailure>;
+    }
+>() {}
+
+/** Request-scoped policy must bind presented pseudonyms to the current subject/session and exact release scope. */
+export class CorrelationAuthority extends Context.Tag('@eventiva/contracts/CorrelationAuthority/v1')<
+    CorrelationAuthority,
+    {
+        /** Recheck current consent, protection, epoch and complete binding immediately before release. */
+        readonly authorize: (
+            binding: TelemetryExportBinding,
+            correlation: TelemetryCorrelation
+        ) => Effect.Effect<void, TelemetrySinkFailure>;
+    }
+>() {}
+
+/** Missing trusted issuer or consent composition never permits correlation. */
+export const CorrelationDeny = Layer.merge(
+    Layer.succeed(CorrelationIssuer, {
+        /** No fixture or production identity is inferred from a client request. */
+        issue: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
+    }),
+    Layer.succeed(CorrelationAuthority, {
+        /** Pseudonym syntax/possession cannot stand in for a current grant. */
+        authorize: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
+    })
+);
+
+/** Explicit correlated transport: old providers cannot silently ignore a new optional argument. */
+export class CorrelationProvider extends Context.Tag('@eventiva/contracts/CorrelationProvider/v1')<
+    CorrelationProvider,
+    {
+        /** No queue/retry; invoke release after preparation, immediately before dispatch. Logs may explicitly fail unavailable. */
+        readonly write: (
+            binding: TelemetryExportBinding,
+            record: TelemetryRecord,
+            correlation: TelemetryCorrelation,
+            release: Effect.Effect<void, TelemetrySinkFailure>
+        ) => Effect.Effect<void, TelemetrySinkFailure>;
+    }
+>() {}

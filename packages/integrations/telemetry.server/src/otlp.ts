@@ -19,8 +19,14 @@ import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
 import * as HttpClient from '@effect/platform/HttpClient';
 import * as HttpClientRequest from '@effect/platform/HttpClientRequest';
 import { TelemetryRecord, TelemetrySinkFailure } from '@eventiva/contracts/observability';
-import { TelemetryExportBinding, TelemetryExportProvider } from '@eventiva/contracts/telemetry-export';
-import { Cause, Config, Effect, Layer, Option, Redacted, Schema, Stream } from 'effect';
+import {
+    CorrelationProvider,
+    TelemetryCorrelation,
+    TelemetryExportBinding,
+    TelemetryExportProvider,
+    correlationEpochMs,
+} from '@eventiva/contracts/telemetry-export';
+import { Cause, Clock, Config, Context, Effect, Layer, Option, Redacted, Schema, Stream } from 'effect';
 
 /** Trusted composition settings; credentials and destination stay redacted, never record-selected. */
 export interface OtlpOptions {
@@ -63,6 +69,9 @@ const HeaderValues = Schema.Record({
                             'transfer-encoding',
                             'traceparent',
                             'tracestate',
+                            'baggage',
+                            'x-posthog-session-id',
+                            'x-posthog-distinct-id',
                         ].includes(name)
                 )
             );
@@ -91,9 +100,8 @@ const ExportResponse = Schema.parseJson(
 export const otlpTelemetryLayer = (
     binding: TelemetryExportBinding,
     configuration: Config.Config<OtlpOptions> = otlpConfig
-): Layer.Layer<TelemetryExportProvider, TelemetrySinkFailure, HttpClient.HttpClient> =>
-    Layer.scoped(
-        TelemetryExportProvider,
+): Layer.Layer<TelemetryExportProvider | CorrelationProvider, TelemetrySinkFailure, HttpClient.HttpClient> =>
+    Layer.scopedContext(
         Effect.gen(
             /** Capture a single trusted binding and retain no record queue or retry state. */ function* () {
                 const settings = yield* configuration.pipe(
@@ -102,13 +110,17 @@ export const otlpTelemetryLayer = (
                             new TelemetrySinkFailure({ reason: 'configuration' })
                     )
                 );
-                if (!settings.enabled)
-                    return TelemetryExportProvider.of({
+                if (!settings.enabled) {
+                    const disabled = TelemetryExportProvider.of({
                         /** Disabled export deliberately performs no validation, serialization or network work. */
                         write: () => Effect.void,
                         /** A disabled exporter has no retained payloads to drain. */
                         flush: () => Effect.void,
                     });
+                    return Context.make(TelemetryExportProvider, disabled).pipe(
+                        Context.add(CorrelationProvider, { write: disabled.write })
+                    );
+                }
                 // Decode host settings only after opt-in; no process environment/resource attributes are copied.
                 const trusted = yield* Schema.decode(TelemetryExportBinding)(binding).pipe(
                     Effect.mapError(
@@ -186,163 +198,206 @@ export const otlpTelemetryLayer = (
                                 return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                         }
                     );
-                return TelemetryExportProvider.of({
-                    /** Send one minimized span once; logs are outside this trace-only adapter's contract. */
-                    write: (candidate, input) =>
-                        mutex
-                            .withPermitsIfAvailable(1)(
-                                Effect.gen(
-                                    /** Preserve original correlation/timing while dropping text, arbitrary attributes and identity. */ function* () {
-                                        yield* check(candidate);
-                                        const record = yield* Schema.decode(TelemetryRecord)(input, {
-                                            onExcessProperty: 'error',
-                                        }).pipe(
-                                            Effect.mapError(
-                                                /** Never retain the rejected diagnostic payload. */ () =>
-                                                    new TelemetrySinkFailure({ reason: 'invalid-record' })
-                                            )
-                                        );
-                                        if (record.profile !== trusted.profile)
-                                            return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
-                                        if (record.signal !== 'span') return;
-                                        const endMs = Date.parse(record.timestamp);
-                                        if (
-                                            !Number.isSafeInteger(endMs) ||
-                                            endMs < 0 ||
-                                            new Date(endMs).toISOString() !== record.timestamp ||
-                                            !/[1-9a-f]/.test(record.traceId) ||
-                                            !/[1-9a-f]/.test(record.spanId) ||
-                                            (record.parentSpanId !== '' && !/[1-9a-f]/.test(record.parentSpanId))
+                /** Share one serializer/transport while exposing distinct identity-free and correlated provider ports. */
+                const write = (
+                    candidate: TelemetryExportBinding,
+                    input: TelemetryRecord,
+                    correlation?: TelemetryCorrelation,
+                    release: Effect.Effect<void, TelemetrySinkFailure> = Effect.void
+                ) =>
+                    mutex
+                        .withPermitsIfAvailable(1)(
+                            Effect.gen(
+                                /** Preserve original correlation/timing while dropping text, arbitrary attributes and identity. */ function* () {
+                                    yield* check(candidate);
+                                    const record = yield* Schema.decode(TelemetryRecord)(input, {
+                                        onExcessProperty: 'error',
+                                    }).pipe(
+                                        Effect.mapError(
+                                            /** Never retain the rejected diagnostic payload. */ () =>
+                                                new TelemetrySinkFailure({ reason: 'invalid-record' })
                                         )
-                                            return yield* new TelemetrySinkFailure({ reason: 'invalid-record' });
-                                        const end = BigInt(endMs) * 1000000n;
-                                        const duration =
-                                            BigInt(Math.trunc(record.durationMs)) * 1000000n +
-                                            BigInt(Math.round((record.durationMs % 1) * 1000000));
-                                        if (duration > end || end > 18446744073709551615n)
-                                            return yield* new TelemetrySinkFailure({ reason: 'invalid-record' });
-                                        const body = serialization.traces({
-                                            resourceSpans: [
-                                                {
-                                                    resource: {
-                                                        attributes: [
-                                                            { key: 'service.name', value: { stringValue: 'eventiva' } },
-                                                        ],
-                                                    },
-                                                    scopeSpans: [
-                                                        {
-                                                            scope: { name: '@eventiva/integrations.telemetry.server' },
-                                                            spans: [
-                                                                {
-                                                                    traceId: record.traceId,
-                                                                    spanId: record.spanId,
-                                                                    ...(record.parentSpanId === ''
-                                                                        ? {}
-                                                                        : { parentSpanId: record.parentSpanId }),
-                                                                    name: record.code,
-                                                                    kind: 1,
-                                                                    startTimeUnixNano: String(end - duration),
-                                                                    endTimeUnixNano: String(end),
-                                                                    attributes: [],
-                                                                    events: [],
-                                                                    links: [],
-                                                                    status: {
-                                                                        code:
-                                                                            record.outcome === 'failed'
-                                                                                ? 2
-                                                                                : record.outcome === 'succeeded'
-                                                                                  ? 1
-                                                                                  : 0,
-                                                                    },
-                                                                },
-                                                            ],
-                                                        },
+                                    );
+                                    if (record.profile !== trusted.profile)
+                                        return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                    // Correlated logs must not be silently acknowledged by a trace-only collector.
+                                    if (record.signal !== 'span') {
+                                        if (correlation)
+                                            return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                        return;
+                                    }
+                                    const pair =
+                                        correlation === undefined
+                                            ? undefined
+                                            : yield* Schema.decode(TelemetryCorrelation)(correlation).pipe(
+                                                  Effect.mapError(
+                                                      /** Rejected pseudonyms must not be retained in decoder diagnostics. */ () =>
+                                                          new TelemetrySinkFailure({ reason: 'invalid-record' })
+                                                  )
+                                              );
+                                    const endMs = Date.parse(record.timestamp);
+                                    if (
+                                        !Number.isSafeInteger(endMs) ||
+                                        endMs < 0 ||
+                                        new Date(endMs).toISOString() !== record.timestamp ||
+                                        !/[1-9a-f]/.test(record.traceId) ||
+                                        !/[1-9a-f]/.test(record.spanId) ||
+                                        (record.parentSpanId !== '' && !/[1-9a-f]/.test(record.parentSpanId))
+                                    )
+                                        return yield* new TelemetrySinkFailure({ reason: 'invalid-record' });
+                                    const end = BigInt(endMs) * 1000000n;
+                                    const duration =
+                                        BigInt(Math.trunc(record.durationMs)) * 1000000n +
+                                        BigInt(Math.round((record.durationMs % 1) * 1000000));
+                                    if (duration > end || end > 18446744073709551615n)
+                                        return yield* new TelemetrySinkFailure({ reason: 'invalid-record' });
+                                    const body = serialization.traces({
+                                        resourceSpans: [
+                                            {
+                                                resource: {
+                                                    attributes: [
+                                                        { key: 'service.name', value: { stringValue: 'eventiva' } },
                                                     ],
                                                 },
-                                            ],
-                                        });
-                                        // Disable HTTP instrumentation and redirects so endpoint/header secrets never become spans or move hosts.
-                                        const request = HttpClientRequest.post(endpoint, { headers }).pipe(
-                                            HttpClientRequest.setBody(body)
-                                        );
-                                        yield* client.execute(request).pipe(
-                                            Effect.flatMap(
-                                                /** Validate the bounded collector acknowledgement, including OTLP partial failures. */ (
-                                                    response
-                                                ) => {
-                                                    // Fetch response.text ignores Platform's MaxBodySize; cap streamed bytes before decoding.
-                                                    let received = 0;
-                                                    return response.stream.pipe(
-                                                        Stream.mapEffect(
-                                                            /** Reject oversized acknowledgements without retaining the collector's error body. */ (
-                                                                chunk
-                                                            ) => {
-                                                                // Enforce the cumulative byte budget before text decoding can retain an oversized response.
-                                                                received += chunk.byteLength;
-                                                                return received > 16384
-                                                                    ? Effect.fail(
-                                                                          new TelemetrySinkFailure({ reason: 'write' })
-                                                                      )
-                                                                    : Effect.succeed(chunk);
-                                                            }
-                                                        ),
-                                                        Stream.decodeText(),
-                                                        Stream.runFold(
-                                                            '',
-                                                            /** Join only the already bounded UTF-8 acknowledgement. */ (
-                                                                text,
-                                                                chunk
-                                                            ) => text + chunk
-                                                        )
-                                                    );
-                                                }
-                                            ),
-                                            Effect.flatMap(
-                                                /** Empty acknowledgements carry no rejection; nonempty responses must be valid OTLP JSON. */ (
-                                                    text
-                                                ) => Schema.decode(ExportResponse)(text === '' ? '{}' : text)
-                                            ),
-                                            Effect.flatMap(
-                                                /** Fail closed on rejected spans or collector warnings without retaining their text. */ (
-                                                    response
-                                                ) =>
-                                                    Number(response.partialSuccess?.rejectedSpans ?? 0) !== 0 ||
-                                                    (response.partialSuccess?.errorMessage ?? '') !== ''
-                                                        ? Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
-                                                        : Effect.void
-                                            ),
-                                            Effect.provideService(FetchHttpClient.RequestInit, { redirect: 'manual' }),
-                                            Effect.withTracerEnabled(false),
-                                            Effect.timeoutFail({
-                                                duration: settings.timeoutMs,
-                                                /** Timeout acknowledgement is bounded and never includes endpoint or request headers. */
-                                                onTimeout: () => new TelemetrySinkFailure({ reason: 'timeout' }),
-                                            }),
-                                            Effect.catchAllCause(
-                                                /** Strip HTTP/schema diagnostics but preserve caller cancellation and its ownership semantics. */ (
-                                                    cause
-                                                ) =>
-                                                    Cause.isInterruptedOnly(cause)
-                                                        ? Effect.failCause(Cause.stripFailures(cause))
-                                                        : Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
-                                            )
-                                        );
-                                    }
-                                )
+                                                scopeSpans: [
+                                                    {
+                                                        scope: { name: '@eventiva/integrations.telemetry.server' },
+                                                        spans: [
+                                                            {
+                                                                traceId: record.traceId,
+                                                                spanId: record.spanId,
+                                                                ...(record.parentSpanId === ''
+                                                                    ? {}
+                                                                    : { parentSpanId: record.parentSpanId }),
+                                                                name: record.code,
+                                                                kind: 1,
+                                                                startTimeUnixNano: String(end - duration),
+                                                                endTimeUnixNano: String(end),
+                                                                attributes:
+                                                                    pair === undefined
+                                                                        ? []
+                                                                        : [
+                                                                              {
+                                                                                  key: '$session_id',
+                                                                                  value: { stringValue: pair.session },
+                                                                              },
+                                                                              {
+                                                                                  key: 'posthog.distinct_id',
+                                                                                  value: { stringValue: pair.person },
+                                                                              },
+                                                                          ],
+                                                                events: [],
+                                                                links: [],
+                                                                status: {
+                                                                    code:
+                                                                        record.outcome === 'failed'
+                                                                            ? 2
+                                                                            : record.outcome === 'succeeded'
+                                                                              ? 1
+                                                                              : 0,
+                                                                },
+                                                            },
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                        ],
+                                    });
+                                    // Disable HTTP instrumentation and redirects so endpoint/header secrets never become spans or move hosts.
+                                    const request = HttpClientRequest.post(endpoint, { headers }).pipe(
+                                        HttpClientRequest.setBody(body)
+                                    );
+                                    // Nothing asynchronous except the fresh release check may precede this epoch fence and dispatch.
+                                    yield* release;
+                                    const now = yield* Clock.currentTimeMillis;
+                                    if (
+                                        closed ||
+                                        (pair !== undefined &&
+                                            (pair.epoch !== Math.floor(now / correlationEpochMs) ||
+                                                pair.expiresAt <= now ||
+                                                pair.expiresAt > (pair.epoch + 1) * correlationEpochMs))
+                                    )
+                                        return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                    yield* client.execute(request).pipe(
+                                        Effect.flatMap(
+                                            /** Validate the bounded collector acknowledgement, including OTLP partial failures. */ (
+                                                response
+                                            ) => {
+                                                // Fetch response.text ignores Platform's MaxBodySize; cap streamed bytes before decoding.
+                                                let received = 0;
+                                                return response.stream.pipe(
+                                                    Stream.mapEffect(
+                                                        /** Reject oversized acknowledgements without retaining the collector's error body. */ (
+                                                            chunk
+                                                        ) => {
+                                                            // Enforce the cumulative byte budget before text decoding can retain an oversized response.
+                                                            received += chunk.byteLength;
+                                                            return received > 16384
+                                                                ? Effect.fail(
+                                                                      new TelemetrySinkFailure({ reason: 'write' })
+                                                                  )
+                                                                : Effect.succeed(chunk);
+                                                        }
+                                                    ),
+                                                    Stream.decodeText(),
+                                                    Stream.runFold(
+                                                        '',
+                                                        /** Join only the already bounded UTF-8 acknowledgement. */ (
+                                                            text,
+                                                            chunk
+                                                        ) => text + chunk
+                                                    )
+                                                );
+                                            }
+                                        ),
+                                        Effect.flatMap(
+                                            /** Empty acknowledgements carry no rejection; nonempty responses must be valid OTLP JSON. */ (
+                                                text
+                                            ) => Schema.decode(ExportResponse)(text === '' ? '{}' : text)
+                                        ),
+                                        Effect.flatMap(
+                                            /** Fail closed on rejected spans or collector warnings without retaining their text. */ (
+                                                response
+                                            ) =>
+                                                Number(response.partialSuccess?.rejectedSpans ?? 0) !== 0 ||
+                                                (response.partialSuccess?.errorMessage ?? '') !== ''
+                                                    ? Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
+                                                    : Effect.void
+                                        ),
+                                        Effect.provideService(FetchHttpClient.RequestInit, { redirect: 'manual' }),
+                                        Effect.withTracerEnabled(false),
+                                        Effect.timeoutFail({
+                                            duration: settings.timeoutMs,
+                                            /** Timeout acknowledgement is bounded and never includes endpoint or request headers. */
+                                            onTimeout: () => new TelemetrySinkFailure({ reason: 'timeout' }),
+                                        }),
+                                        Effect.catchAllCause(
+                                            /** Strip HTTP/schema diagnostics but preserve caller cancellation and its ownership semantics. */ (
+                                                cause
+                                            ) =>
+                                                Cause.isInterruptedOnly(cause)
+                                                    ? Effect.failCause(Cause.stripFailures(cause))
+                                                    : Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
+                                        )
+                                    );
+                                }
                             )
-                            .pipe(
-                                Effect.flatMap(
-                                    Option.match({
-                                        /** Refuse contention rather than retaining a span whose release grant can expire. */
-                                        onNone: () => Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
-                                        /** Completion means the single request was acknowledged, not durable ingestion. */
-                                        onSome: () => Effect.void,
-                                    })
-                                )
-                            ),
+                        )
+                        .pipe(
+                            Effect.flatMap(
+                                Option.match({
+                                    /** Refuse contention rather than retaining a span whose release grant can expire. */
+                                    onNone: () => Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
+                                    /** Completion means the single request was acknowledged, not durable ingestion. */
+                                    onSome: () => Effect.void,
+                                })
+                            )
+                        );
+                return Context.make(TelemetryExportProvider, {
+                    write,
                     /** A flush is only a current-binding barrier; no retry queue exists to release later. */
                     flush: (candidate) => mutex.withPermits(1)(check(candidate)),
-                });
+                }).pipe(Context.add(CorrelationProvider, { write }));
             }
         )
     ).pipe(Layer.provide(OtlpSerialization.layerJson));

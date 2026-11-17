@@ -6,6 +6,11 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./pseudonym": {
+            "@eventiva/source": "./src/pseudonym.ts",
+            "types": "./dist/pseudonym.d.ts",
+            "default": "./dist/pseudonym.js"
+        },
         "./logger": {
             "@eventiva/source": "./src/logger.ts",
             "types": "./dist/logger.d.ts",

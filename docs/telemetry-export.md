@@ -4,6 +4,132 @@ The extension substrate exists, but the complete extension-platform acceptance g
 
 Audit baseline: `05e07b6dee66cddb594c089959df45bbd9a4c0aa`, inspected on 2026-11-17. Track acceptance on [EVE-257](https://linear.app/resnovas/issue/EVE-257), [EVE-262](https://linear.app/resnovas/issue/EVE-262), [EVE-261](https://linear.app/resnovas/issue/EVE-261), and telemetry on [EVE-44](https://linear.app/resnovas/issue/EVE-44). Historical issue/thread checkpoints and some existing documentation predate combined integration; current source takes precedence for what is present. Approval and acceptance requirements remain on the issues.
 
+## Govern pseudonymous request correlation (EVE-60)
+
+This later checkpoint adds a separate pseudonymous channel; it does not relax
+`TelemetryRecord` or its attribute minimizer. The existing synthetic app wrapper
+is unchanged. The issuer, consent and key providers below are non-production
+fixtures, not authenticated ingress. Keep production denied.
+
+Jonathan selected per-request opt-in, current user consent and exclusion of
+protected profiles at 2026-11-17T13:16:16.737Z. His dedicated correlation-key
+choice at 13:18:55.545Z requires server-only secret-store/KMS custody, separated
+per tenant, destination and purpose. At 15:27:19.582Z he confirmed one-hour
+rotation conditional on automatic client renewal without disrupted actions;
+the 15:27:26.780Z Puck relay specifies UTC-aligned epochs. See the decision
+records on [EVE-60](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e)
+and [EVE-19](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349).
+These select policy and the fixture checkpoint, not provisioning or deployment.
+
+### Keep identifiers and keys server-local
+
+Inject dedicated non-production fixture keys into
+`@eventiva/integrations.telemetry.server/pseudonym`. The adapter uses local
+Node HMAC-SHA-256 with 32-byte keys and canonical UTF-8 JSON arrays containing
+version, environment, tenant, destination, purpose, UTC epoch, person/session
+domain, subject namespace, subject and (for session only) session identifier.
+Opaque strings are neither trimmed nor normalized. Full 64-hex outputs avoid
+truncation and delimiter ambiguity. This is the bounded implementation design,
+not a universal owner-selected crypto standard.
+
+`FixtureCorrelationKeys.get(scope)` must supply matching scope/epoch metadata
+and redacted material; unavailable, mismatched or wrong-size keys deny without
+fallback. Raw preimages never go to a remote HMAC service. Keys remain in the
+server integration and are absent from shared contracts, client tokens, records
+and headers. Only owned temporary key copies are cleared; JavaScript cannot
+guarantee complete memory zeroization. Do not generate production keys, reuse
+authentication/encryption/vendor keys or treat pseudonymization as anonymity.
+
+`fixtureCorrelationLayer(binding, identity, keys, consent)` provides
+`CorrelationIssuer` and `CorrelationAuthority`. Its Config `NODE_ENV` must be
+explicitly `test` or `development`; missing, `production` or other values deny
+at acquisition. This is a fixture safety floor, not a release toggle. Consent is
+an injected live Effect returning the current grant expiry, or failing closed;
+its trusted closure must bind the current user/session, purpose/destination,
+protection and release policy. A request-carried consent boolean is not policy.
+The real identity/issuer/consent/key-store implementations remain absent.
+
+### Compose one optional pipeline per request
+
+Use `CorrelationIssuer.issue(true)` only for explicit opt-in. Present the token
+to the same trusted identity's `CorrelationAuthority`; possession alone cannot
+authorize it. Match every export-binding field and recheck current consent,
+session, protection, key and epoch after key preparation and before release.
+Restricted/Vault and every nonordinary operation always deny. An unknown profile
+fails schema validation rather than becoming Baseline. Sensitive requires its
+own applicable current consent/release policy.
+
+`governedCorrelationSinkLayer(binding, policy, { optIn, correlation })` captures
+an immutable request lease outside the identity-free central telemetry queue.
+The new `telemetry.correlation.pseudonymous.enabled` flag defaults false; existing
+`telemetry.export.enabled` and `telemetry.enabled` remain independent. Neither
+flag grants consent. Each delivered record and flush rechecks current authority;
+the explicit `CorrelationProvider.write(binding, record, correlation, release)`
+must run `release` after asynchronous preparation immediately before dispatch.
+Old providers cannot silently ignore this new channel. Closed request scopes,
+expired tokens and revoked policy fail closed with bounded errors.
+
+The existing `otlpTelemetryLayer` supplies both provider ports through the same
+serializer and bounded transport. Its correlated port emits only `$session_id`
+and `posthog.distinct_id` span attributes from the validated pair, then reruns
+the release check and epoch/scope fence immediately before HTTP dispatch. It
+explicitly rejects correlated logs: this is OTLP Traces, not OTLP Logs. Its
+identity-free port keeps empty span attributes. Configured `traceparent`,
+`tracestate`, `baggage` and raw `X-POSTHOG-SESSION-ID`/`X-POSTHOG-DISTINCT-ID`
+headers reject case-insensitively; inbound SDK headers are never copied.
+
+```typescript
+import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
+import { CorrelationDeny, TelemetryExportDeny } from '@eventiva/contracts/telemetry-export';
+import { governedCorrelationSinkLayer } from '@eventiva/runtime/telemetry-correlation';
+import { Layer } from 'effect';
+
+// binding, policy, optIn and correlation are trusted harness inputs.
+// localProvider is an explicitly injected CorrelationProvider, never a production sink.
+const OptionalCorrelation = governedCorrelationSinkLayer(binding, policy, { optIn, correlation }).pipe(
+    Layer.provide(localProvider),
+    Layer.provide(CorrelationDeny),
+    Layer.provide(TelemetryExportDeny),
+    Layer.provide(FlagsSafeDefaults)
+);
+```
+
+Keep this layer optional to business execution. A denied acquisition, failed
+write or unsuccessful flush must not fail or replay a business action. The
+existing central worker already bounds and counts lossy telemetry failures.
+There is no accepting production composition or public mint endpoint here.
+
+### Refresh without interrupting active work
+
+`correlationSession` is a portable Effect model, not installed web/native SDK
+wiring. It owns a scoped background refresh fiber and in-memory pseudonym cache.
+It issues initially and renews at token expiry (at or before the UTC boundary).
+`current(optIn)` reads without network waiting: false/missing opt-in, expired
+tokens, closed scope and issuer failure return no correlation. It never sends
+raw SDK headers, stores keys on clients, prompts or retries a business request.
+Renewal times out after 1000 ms and retries only optional issuance after 1000 ms;
+these fixed bounds are not user-configurable rollout switches.
+
+Token expiry is the earliest epoch end, trusted session expiry and current
+consent expiry; request disposal independently revokes delivery. At exactly
+expiry the old token denies. New requests use the new pair; an in-flight request
+finishes its action once but drops old telemetry rather than relabelling it.
+No stale-key grace, old/new alias, dual write, backlog or identity merge is added.
+Already-dispatched bytes cannot be recalled after consent revocation.
+
+Run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts` for normal
+coverage. The correlation suite checks independent HMAC outputs, scope/framing,
+live consent/key preparation and dispatch races, token misuse, protected/off
+paths, interleaved central spans/error logs, four automatic epochs, an in-flight
+boundary action, issuer outage/recovery, safe canaries and closed handles.
+The loopback collector test uses real sockets and the actual OTLP serializer
+and FetchHttpClient, checks the exact two attributes in two epochs, and proves
+late/malformed tokens and raw SDK header configuration send no additional bytes.
+Local logs and failed spans do not prove captured exception events, OTLP Logs,
+AI/replay association, real authenticated ingress or native-device lifecycle.
+EVE-58 is unnecessary for this local proof; actual destination provisioning and
+real issuer/consent services still require separate authorization.
+
 ## Findings and implementation order
 
 | Area                                   | Present in current source                                                                                                                                                          | Remaining gate                                                                                                                                                                                                                                                               |
@@ -81,4 +207,4 @@ An `unavailable` error can mean disabled flag, denied grant, excluded scope, exp
 - Current integrated increment: provider-neutral governed exporter contract/runtime, approved-SDK diagnostic adapter, actual package exports/references, focused tests and people/agent documentation. The independent producer journal prerequisite exists without automatic kernel wiring.
 - Upcoming: durable lifecycle mutation-owner integration and acceptance, installed reference-extension proof, approved UI target proof and remaining EVE-261 security/distributed gates. Aggregate and exact-head CI evidence is recorded separately; this timeline claims no production activation.
 
-The central coordinator must mirror the delivered status and evidence into the canonical architecture/timeline and linked Linear issues. This audit does not supersede owner decisions or mark a broader issue Done.
+The delivering lane must mirror the delivered status and evidence into the canonical architecture/timeline and linked Linear issues. This audit does not supersede owner decisions or mark a broader issue Done.

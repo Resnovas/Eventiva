@@ -54,6 +54,20 @@ selection and agent relay timestamps must not be substituted for capture dates.
 
 ## Historical open and superseded information
 
+- **EVE-60 hourly rotation follow-up, 2026-11-17:** Jonathan confirmed one-hour
+  rotation at 15:27:19.582Z in [the authenticated Puck message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo),
+  conditional on automatic client updating without disrupted actions. The
+  separate 15:27:26.780Z relay specifies UTC alignment and tests for in-flight
+  and multi-epoch sessions. [EVE-60](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e)
+  and [EVE-19](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349)
+  retain the decision. This supersedes only the lifetime-pending clause in the
+  historical `correlation-epoch-crypto-proposal` below; HMAC/framing are the
+  bounded implementation design, not new universal owner crypto selections.
+  Production is denied; provisioning, new dependencies and real issuer/consent
+  stores are not authorized. The [export guide](../telemetry-export.md#govern-pseudonymous-request-correlation-eve-60)
+  owns the contract and current limits. The frozen source mirror remains
+  historical; dated planning annotations cite the later evidence separately.
+
 - The 2026-11-15 modular-platform spec and EVE-261 description preserve historical main-integration holds and isolated lane findings. Current coordination owns delivery; this docs lane neither cancels a hold nor pushes independently.
 - Proposed algorithms/providers, native federation/OTA combinations, production trust/ingestion and complete multi-runner acceptance remain governed by their owning issues. Their presence in an architecture diagram is not approval or proof.
 - The earlier platform index recorded `Eventiva-marketplace-infrastructure-v1.md` as unavailable. Jonathan's 2026-11-17 [bounded reconciliation instruction](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) designates the [existing architecture index](../architecture/eventiva-platform-and-marketplace.md#current-source-status-and-preserved-history---2026-11-17) as the current repository replacement/index, not a recovered original. Current descriptions explicitly supersede historical missing-source/archive statements for source status while preserving comments unchanged. The two historical reports are reviewed evidence, not unread original content or new approval. Architecture/provider-neutral implementation remains governed by EVE-250 `91db949b` and EVE-251 `15483735`, dated 2026-11-16; composition/policy and full acceptance gates remain open.

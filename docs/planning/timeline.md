@@ -547,6 +547,48 @@ records signed revisions and remote CI separately. LLMS regeneration is
 byte-unchanged: the generator includes index Markdown and TypeScript examples,
 not sibling Markdown notes; the reserved trust index remains untouched.
 
+## EVE-60 governed correlation follow-up - 2026-11-17
+
+This increment leaves the delivered synthetic wrapper and EVE-34 sources
+unchanged. Jonathan's hourly rotation confirmation is separately recorded in
+the [decision index](decisions.md#historical-open-and-superseded-information)
+and on [EVE-60](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e)
+and [EVE-19](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349).
+The [export guide](../telemetry-export.md#govern-pseudonymous-request-correlation-eve-60)
+owns the detailed fixture contract. The frozen source capture is preserved;
+dated annotations distinguish later owner direction from historical proposals.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Identifier/key/rotation direction | Confirmed | Pseudonyms only, per-request opt-in/current consent, no protected profiles; server-only tenant/destination/purpose keys; hourly UTC renewal without failed/replayed/dropped business actions. Provisioning is not authorized. |
+| Fixture issuer and governed channel | Focused verification passed | Strict separate pair channel, local HMAC with matching key metadata, exact binding/current consent and dispatch checks; production denied. Sixteen focused groups include real loopback OTLP bytes through central instrumentation, exact pair attributes and no raw headers. |
+| Scoped refresh and central worker | Focused verification passed | Four automatic rotations, exact-boundary in-flight action finishes once, issuer outage/recovery, two interleaved span/error-log pipelines and raw canaries. Normal telemetry suite: 67 tests, 97.01% lines / 95.29% branches / 93.37% functions; unchanged gates. |
+| Shared generation and full repository gate | Passed locally; delivery recorded separately | Planning/LLMS and clean-source graph regenerated. Full serial verification on the rebased source passes all 86 aggregate tasks and smoke for three projects with 12 dependencies. Signed direct-main revisions and exact-head CI are recorded on EVE-60; local success is not remote CI success. |
+| Real ingress/devices and production | Upcoming / unaccepted | No real issuer/consent store or keys, SDK propagation, authenticated ingress, captured-error/AI/replay association or native-device proof. EVE-60 remains open; EVE-58 is not a local-proof prerequisite. |
+
+```mermaid
+flowchart LR
+    Policy[Owner pseudonym and hourly renewal policy] --> Fixture[Fixture issuer and governed channel]
+    Synthetic[Delivered synthetic boundary unchanged] --> Fixture
+    Fixture --> Local[Local consent and automatic epoch proof]
+    Local --> Verify[Shared outputs and full repository verification]
+    Verify --> Delivery[Signed main delivery and exact-head CI]
+    Delivery --> Real[Separately authorized real ingress and devices]
+```
+
+Executed above main `6016e99d7c4f49beb8a8cb0efac071b07056771b`:
+`DOCUMENTATION_BASE=6016e99d7c4f49beb8a8cb0efac071b07056771b NX_DAEMON=false bash .amp/in/orb-backup/run-eve60-storage.sh node --run verify`
+exited zero. Normal Nx caching supplied 14 of 86 aggregate tasks and nine smoke
+dependencies; the remaining tasks executed. Two earlier full uncached runs also
+passed before integrating newer main. Source boundaries cover 178 files/641
+edges/28 packages and emitted boundaries 70 files/264 edges, both with zero
+violations/cycles. Root check passes 98 documentation fixtures, 258 issues/692
+planning edges, zero unresolved/stale planning sources and zero documentation
+ratchet violations. The final uncached telemetry lint/typecheck/test targets
+also pass after independent literal-hour and suspended-key epoch controls.
+The disposable PostgreSQL fixture/network were removed. No native-device,
+authenticated-ingress or production acceptance is inferred from these results.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
@@ -559,6 +601,8 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 ### Curated evidence separate from capture
 
 - EVE-39, 2026-11-17, later-status: Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only. Four public-host corrupting trusted-adapter cases failed on unchanged main by returning nested amount 999 instead of approved 20; two controls passed. Private canonical encoded bytes and fresh typed decoding per observer now pass the focused 114 execution/host/type tests, including nested arrays/objects, NumberFromString, retained references during transaction waits and replay. Full checks, storage compatibility and signed delivery evidence are recorded separately on EVE-39. This explicitly volatile fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged. [evidence](https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc), [evidence](https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325).
+- EVE-60, 2026-11-17T15:28:28.416Z, later-status: Live issue and complete terminal comment page rechecked. Jonathan confirmed one-hour rotation at 15:27:19.582Z, conditional on automatic client renewal without disrupted actions; the separate 15:27:26.780Z Puck relay specifies UTC alignment, in-flight boundary and multi-epoch tests. This supersedes the historical lifetime-pending clause, not privacy/consent/protected-profile denial. The governed follow-up uses injected non-production fixture keys only; production, provisioning and real issuer/consent stores remain denied. Source/tests and exact-head aggregate/delivery evidence are recorded separately in the timeline and export guide. Frozen issue capture is unchanged; this is not a full live-source refresh or whole-issue acceptance. [evidence](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).
+- EVE-19, 2026-11-17T15:28:29.172Z, later-status: Live capability-study issue retains historical Done, not EVE-60 implementation acceptance. The later decision records the owner's hourly rotation with automatic trusted-issuer renewal, no user-visible failure or action replay/drop, and UTC boundary/multi-epoch tests. Only pseudonyms may leave the process with per-request opt-in and current consent/release; raw SDK headers remain forbidden. Dedicated server-only tenant/destination/purpose keys are design-authorized, not provisioned; production remains denied. The source capture stays historical and the later cited annotation supersedes only the lifetime-pending proposal. [evidence](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).
 - EVE-261, 2026-11-17, blocker: Bootstrap timeout cause remains unproven. Historical CI output does not distinguish late module/startup work from post-log shutdown delay. Bounded fd3 phase capture is implemented for the next actual occurrence with unchanged 10000 ms child limits, signals, results and existing assertions; executable equivalence, invalid-journal/redaction and synthetic timeout controls exercise diagnostics only. No force-exit, retry, deadline increase, telemetry repair or whole-issue acceptance is established. Source checkpoint predates delivery; exact-head CI is separate evidence, not a refreshed issue snapshot. [evidence](https://linear.app/resnovas/issue/EVE-261#comment-c0e0d66f-9f2c-4009-9164-3695a7413038), [evidence](https://github.com/Resnovas/Eventiva/actions/runs/44096066749/job/134083384961), [evidence](https://ampcode.com/threads/T-1cb8af52-2e52-4924-bb42-cc7c523a6ddc).
 - EVE-262, 2026-11-17, later-status: Slice 2 independently read the live description and terminal comment page: EVE-262 is In Progress (state change recorded 08:14:06.002Z), not the historical Backlog capture. Current bounded work proves hook release reauthorization after claim/revocation/process loss and operator redrive using fixture-persisted policy, with an allowed durable-dedup control. Execution and delivered-head evidence are recorded separately on EVE-262/EVE-45 and in the maintained timeline; this annotation grants no production release or whole-issue acceptance. The complete historical source capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-262), [evidence](https://linear.app/resnovas/issue/EVE-262#comment-4cad4584-11e3-45e2-80cc-afc7df728cec), [evidence](https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51).
 - EVE-258, 2026-11-17, later-status: Slice 1 adds a separate self-asserting declaration migration process-loss target to storage test, preserving the held parent spec and its migrationCrashProof:false default report. SQLite and disposable PostgreSQL pass precommit SIGKILL rollback, postcommit acknowledgement loss, empty repeat history, valid changed-prefix refusal and stale-writer rejection with a current-writer control. This is bounded local G04 evidence, not power loss, distributed fencing, native execution, production least privilege or whole-issue acceptance. Source capture remains historical; later execution and delivery evidence is cited separately. [evidence](https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration#comment-79bf922f), [evidence](https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb).

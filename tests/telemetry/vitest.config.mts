@@ -23,7 +23,9 @@ export default testProject(
         'packages/contracts/src/telemetry-export.ts',
         'packages/runtime/src/telemetry.ts',
         'packages/runtime/src/telemetry-export.ts',
+        'packages/runtime/src/telemetry-correlation.ts',
         'packages/integrations/telemetry.server/src/logger.ts',
+        'packages/integrations/telemetry.server/src/pseudonym.ts',
         'packages/integrations/telemetry.server/src/otlp.ts',
     ],
     import.meta.url

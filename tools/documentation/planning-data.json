@@ -10058,6 +10058,30 @@
             ]
         },
         {
+            "issue": "EVE-60",
+            "kind": "later-status",
+            "date": "2026-11-17T15:28:28.416Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Live issue and complete terminal comment page rechecked. Jonathan confirmed one-hour rotation at 15:27:19.582Z, conditional on automatic client renewal without disrupted actions; the separate 15:27:26.780Z Puck relay specifies UTC alignment, in-flight boundary and multi-epoch tests. This supersedes the historical lifetime-pending clause, not privacy/consent/protected-profile denial. The governed follow-up uses injected non-production fixture keys only; production, provisioning and real issuer/consent stores remain denied. Source/tests and exact-head aggregate/delivery evidence are recorded separately in the timeline and export guide. Frozen issue capture is unchanged; this is not a full live-source refresh or whole-issue acceptance.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo"
+            ]
+        },
+        {
+            "issue": "EVE-19",
+            "kind": "later-status",
+            "date": "2026-11-17T15:28:29.172Z",
+            "status": "Done",
+            "statusType": "completed",
+            "summary": "Live capability-study issue retains historical Done, not EVE-60 implementation acceptance. The later decision records the owner's hourly rotation with automatic trusted-issuer renewal, no user-visible failure or action replay/drop, and UTC boundary/multi-epoch tests. Only pseudonyms may leave the process with per-request opt-in and current consent/release; raw SDK headers remain forbidden. Dedicated server-only tenant/destination/purpose keys are design-authorized, not provisioned; production remains denied. The source capture stays historical and the later cited annotation supersedes only the lifetime-pending proposal.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo"
+            ]
+        },
+        {
             "issue": "EVE-261",
             "kind": "blocker",
             "date": "2026-11-17",

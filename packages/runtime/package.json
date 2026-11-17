@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./telemetry-correlation": {
+            "@eventiva/source": "./src/telemetry-correlation.ts",
+            "types": "./dist/telemetry-correlation.d.ts",
+            "default": "./dist/telemetry-correlation.js"
+        },
         "./telemetry-export": {
             "@eventiva/source": "./src/telemetry-export.ts",
             "types": "./dist/telemetry-export.d.ts",
