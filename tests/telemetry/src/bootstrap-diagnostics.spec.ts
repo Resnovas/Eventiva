@@ -45,6 +45,38 @@ const stableOutput = (output: string) =>
     output.replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<timestamp>').replace(/\b(?:trace|span)=[a-f0-9]+/g, '<correlation>');
 
 describe('bootstrap diagnostic observer', /** Exercise real descriptors and process termination, not mocked lifecycle callbacks. */ () => {
+    it.effect(
+        'exits a failed bootstrap while native workers await main-thread garbage collection',
+        /** Exercise the actual composition and Node teardown under a controlled native allocation stressor. */ () =>
+            Effect.gen(
+                /** Keep the same ten-second process deadline and safe failure contract as ordinary bootstrap tests. */ function* () {
+                    const result = yield* probe(
+                        [
+                            '--v8-pool-size=4',
+                            '--max-old-space-size=512',
+                            '--stress-concurrent-allocation',
+                            '--import',
+                            preload,
+                            '--import',
+                            './tests/telemetry/fixtures/bootstrap-exit-pressure.mjs',
+                            'apps/server/src/main.ts',
+                        ],
+                        { EVENTIVA_CLUSTER_PROFILE: 'SECRET_BAD_JSON' }
+                    );
+                    expect(result.error).toBeUndefined();
+                    expect(result.status).toBe(1);
+                    expect(result.signal).toBeNull();
+                    expect(result.stdout).toContain('bootstrap.failure');
+                    expect(result.stdout).not.toContain('SECRET_BAD_JSON');
+                    expect(result.stderr).toBe('');
+                    expect(result.output[3]).toContain('root-exit:failure');
+                    expect(result.output[3]).toContain('process-before-exit');
+                    expect(result.output[3]).toContain('process-exit-failure');
+                }
+            ),
+        15000
+    );
+
     for (const environment of [
         {},
         { telemetry_enabled: 'false' },

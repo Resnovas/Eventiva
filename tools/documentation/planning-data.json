@@ -10100,8 +10100,10 @@
             "issue": "EVE-261",
             "kind": "blocker",
             "date": "2026-11-17",
-            "summary": "Bootstrap timeout cause remains unproven. Historical CI output does not distinguish late module/startup work from post-log shutdown delay. Bounded fd3 phase capture is implemented for the next actual occurrence with unchanged 10000 ms child limits, signals, results and existing assertions; executable equivalence, invalid-journal/redaction and synthetic timeout controls exercise diagnostics only. No force-exit, retry, deadline increase, telemetry repair or whole-issue acceptance is established. Source checkpoint predates delivery; exact-head CI is separate evidence, not a refreshed issue snapshot.",
+            "summary": "The initial diagnostic checkpoint did not establish cause. Later CI 44136214792 on 3bb0bb5a reached root/Node exit at 1041 ms before timing out at 10031 ms. A real-server reproduction on pinned Node 24.22.3 with finite test-only allocation/crypto pressure and native gdb stacks proves a reachable forced-exit deadlock: main joins V8 workers while a worker awaits main-thread GC, matching nodejs/node issue 64274. Composition now preserves failed-root code 1 through natural drain; success/interruption callback, scopes, signals, original assertions and 10000 ms bounds remain unchanged. The new actual-child regression fails before at 10091 ms and passes after in 3540 ms. CI lacks native stacks to identify its exact job; earlier occurrences and broader acceptance are not proven resolved. Combined verification, delivery and exact-head CI are separate evidence on EVE-261, not a refreshed historical issue snapshot.",
             "sources": [
+                "https://linear.app/resnovas/issue/EVE-261#comment-0a5d61f4-2406-4d01-93ef-bd20b20abac4",
+                "https://github.com/Resnovas/Eventiva/actions/runs/44136214792/job/134226340803",
                 "https://linear.app/resnovas/issue/EVE-261#comment-c0e0d66f-9f2c-4009-9164-3695a7413038",
                 "https://github.com/Resnovas/Eventiva/actions/runs/44096066749/job/134083384961",
                 "https://ampcode.com/threads/T-1cb8af52-2e52-4924-bb42-cc7c523a6ddc"

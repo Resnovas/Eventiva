@@ -210,4 +210,15 @@ const diagnostic: Effect.Effect<void, TelemetrySinkFailure> = program.pipe(
 NodeRuntime.runMain(lifecycle.hasSubscribers ? Effect.zipRight(phase('root-start'), diagnostic) : diagnostic, {
     disableErrorReporting: true,
     disablePrettyLogger: true,
+    /** Preserve the default outcome codes but drain failed roots without Node's forced native worker join. */
+    teardown: (exit, onExit) => {
+        // All application scopes are closed. process.exit() can deadlock V8 workers awaiting main-thread GC
+        // on pinned Node 24 (nodejs/node#64274); natural drain keeps that main thread available.
+        if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
+            process.exitCode = 1;
+            return;
+        }
+        // Retain runMain's original success and signal/interruption behavior, including its signal callback.
+        onExit(0);
+    },
 });
