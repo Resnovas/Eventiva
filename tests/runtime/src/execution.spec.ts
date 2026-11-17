@@ -395,6 +395,7 @@ describe('A1: transaction integrity through ActionHost', /** Register host trans
                     denied(yield* t.execute('fixture.write', input, {}), 'idempotency-key-required');
                     expect(yield* t.invoke('fixture.read', input, {})).toEqual({ count: 2 });
                     expect(yield* t.invoke('fixture.write')).toEqual({ count: 2 });
+                    // Invocation accounting includes the refused mutation, not just the two successful results.
                     expect((yield* Ref.get(t.h.state)).receipts).toHaveLength(3);
                 }
             )
@@ -754,6 +755,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                         );
                         const options = { idempotencyKey: 'key', deadline: 10_000 };
                         denied(yield* t.execute('fixture.write', input, options), 'approval-required');
+                        // The confirmed retry keeps the same risk and preauthorization, ruling out blanket risk refusal.
                         yield* approve(t.h);
                         expect(
                             Exit.isSuccess(
@@ -830,6 +832,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                     yield* approve(t.h);
                     const options = { idempotencyKey: 'key', approvalId: 'approval' };
                     expect(Exit.isSuccess((yield* t.execute('fixture.write', input, options)).result)).toBe(true);
+                    // The fixture expires at now + 10,000; equality must deny even a previously committed key.
                     yield* TestClock.adjust(10_000);
                     denied(yield* t.execute('fixture.write', input, options), 'approval-expired');
                     expect(yield* Ref.get(t.calls)).toBe(1);
@@ -892,6 +895,7 @@ describe('A2: live authority and exact human approval', /** Register approval-bi
                     const t = yield* setup();
                     yield* t.execute('fixture.write');
                     expect(yield* Ref.get(t.h.resolved)).toContainEqual(human);
+                    // Discard earlier observations so presented session claims cannot masquerade as fresh resolution.
                     yield* Ref.set(t.h.resolved, []);
                     yield* Ref.set(t.h.identity, agent);
                     const result = yield* t.execute('fixture.write');
@@ -946,6 +950,7 @@ describe('A3: admitted intent isolation', /** Exercise policy substitution throu
                         const result = yield* t.execute('fixture.write', input, options);
                         if (field === 'idempotencyKey') {
                             expect(result.result).toEqual(Exit.succeed({ count: 2 }));
+                            // Retry the independently supplied original key without corruption to expose redirected dedup identity.
                             corrupt = false;
                             const retry = yield* t.execute('fixture.write', input, { idempotencyKey: 'key' });
                             expect(retry.result).toEqual(Exit.succeed({ count: 2 }));
@@ -981,6 +986,7 @@ describe('A3: admitted intent isolation', /** Exercise policy substitution throu
                                 idempotencyKey: 'key',
                                 deadline,
                             });
+                            // A future deadline must succeed in both adapter modes; blanket denial cannot satisfy this matrix.
                             if (deadline === 0) denied(result, 'expired');
                             else expect(result.result).toEqual(Exit.succeed({ count: 2 }));
                             expect(yield* Ref.get(t.calls)).toBe(deadline === 0 ? 0 : 1);
@@ -1378,6 +1384,7 @@ describe('A3: delayed and guarded intent revalidation', /** Register wait-bounda
                     /** Require risk-level restrictions to override otherwise complete approved offline intent. */ function* () {
                         const t = yield* setup([spec('write', { risk, offline: 'queued' })]);
                         yield* approve(t.h);
+                        // Complete approval and guards isolate the mandatory risk floor from missing offline prerequisites.
                         denied(
                             yield* t.execute('fixture.write', input, {
                                 idempotencyKey: 'key',
@@ -1403,6 +1410,7 @@ describe('A4: receipts, fail-closed audit and bounded recovery', /** Register au
             /** Disable audit before invoking work ineligible for routine-read spooling. */ () =>
                 Effect.gen(
                     /** Require unavailable audit to prevent handler entry and volatile fallback for protected work. */ function* () {
+                        // Sensitive reads, like writes and external work, must not enter the routine-read spool fallback.
                         const t = yield* setup([spec(sideEffect, { sensitive: sideEffect === 'read' })]);
                         yield* Ref.set(t.h.auditOnline, false);
                         const error = yield* Effect.flip(t.execute(`fixture.${sideEffect}`));

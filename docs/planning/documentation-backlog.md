@@ -301,10 +301,26 @@ All nineteen adequate candidates remain visible, not suppressed or grandfathered
 
 Executed `DOCUMENTATION_BASE=6989c0303732c66277079ef10a92c25308ee9e69 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The unchanged serial full gate passes 102 documentation fixtures, 116 boundary/type fixtures, all 86 aggregate Nx tasks (60 cached) and all 15 smoke/dependency tasks (12 cached), including PostgreSQL conformance. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. Disposable database/network cleanup completed. Strict reviewed planning passes; final immutable-base root and clean-source graph checks precede signed publication. Exact-head CI is separate, not inferred green from local evidence.
 
+## Eighth checkpoint: execution test rationale
+
+The seventh checkpoint is delivered as [source](https://github.com/Resnovas/Eventiva/commit/0b3823ed) and [clean-source graph/head](https://github.com/Resnovas/Eventiva/commit/32554535317aded693fa9ac57724578e9684c7df). Its exact-head CI is subscribed, not inferred green. Against that immutable head, semantic review covers all thirty candidates in `tests/runtime/src/execution.spec.ts`. Eight comments resolve eight live candidates, five accepted and three never ledgered. All 10,409 executable/type terminals remain identical. Exact accepted debt prunes 173 to 168 across 39 files; the complete live queue retains 272 across 50 files including 104 never ledgered. No checker correction, behavior/type/assertion change, source exception or exclusion change is included.
+
+| Candidate lines at the immutable base | Documented rationale or adequate retained disposition |
+| --- | --- |
+| 393, 745, 827, 891, 913, 970, 1378, 1405 | Useful comments: refusal earns an invocation receipt; a confirmed retry defeats blanket risk refusal; expiry equality must deny replay; resetting observations isolates fresh identity resolution; an uncorrupted retry under the independently supplied original key exposes dedup redirection; future deadlines are positive controls in both adapter modes; otherwise complete approved intent isolates mandatory online-risk denial; sensitive reads cannot use ordinary-read audit spooling. |
+| 241, 246, 376, 404, 466, 530, 600, 625, 644, 673, 774 | Adequate retained bodies: denial receipt plus typed reason; parameterized case registration; changed-input conflict without rerun; adapter/control registrations; detached observation before deliberate corruption; actual handler-entry count and staged decoded output; invalid-approval/risk registrations; isolated invalid confirmation with independent accounting; equal-aggregate/different-member binding; single policy-bound override; specification approval with a confirmed positive control. Existing contracts already explain these short guards/matrices. |
+| 844, 907, 921, 975, 1109, 1217, 1262, 1331, 1362, 1399, 1422 | Adequate retained bodies: first-party agents still require human approval; scalar/deadline case registrations; one guarded field substitution; one guarded deadline deletion; wait/schedule registrations; current intent validation on a committed key; valid complete schedule; independent offline/production deadline requirements; explicit online-only refusal; audit case registration; post-staging audit loss with all four rollback observations. No hidden extra phase warrants syntax narration. |
+
+All twenty-two adequate candidates remain visible, not suppressed or grandfathered. No source-semantic unknown was established in this packet. Focused ESLint, exact-terminal/prune proof and immutable-base ratchet pass; full combined verification and clean-source graph checks precede publication. `host.spec.ts` stays untouched under the confirmed EVE-258/23 implementation hold; kernel-runtime, declarative-module and marketplace specs also remain reserved. Global review/calibration and D07 strict zero stay open.
+
+Executed `DOCUMENTATION_BASE=32554535317aded693fa9ac57724578e9684c7df NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. Full serial verification passes 102 documentation fixtures, 116 boundary/type fixtures, all 86 aggregate tasks (60 cached) and all 15 smoke/dependency tasks (12 cached). Source and emitted boundary graphs retain zero violations/cycles; disposable PostgreSQL/network cleanup completed. Final immutable-base root, strict reviewed planning and clean-source graph checks precede signed delivery. Exact-head CI remains separate evidence.
+
+Latest-main integration preserves the independently delivered UI protection-floor fix at immutable `b5f689205e66f50b319d9a3b56d272e6113d22ad`. Repeated proof still resolves only these eight documentation findings and preserves all 10,409 terminals. Accepted debt stays 168 across 39 files; six independently added UI candidates make the live queue 278 across 50 files, including 110 never ledgered. No independent implementation receives documentation-resolution credit. Repeated `DOCUMENTATION_BASE=b5f689205e66f50b319d9a3b56d272e6113d22ad NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh` passes: 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (58 cached), 15 smoke/dependency tasks (12 cached), zero source/emitted boundary violations/cycles and completed PostgreSQL cleanup. The seventh checkpoint's final CI event independently reports success for verify, smoke, application/house checks and security workflows; this eighth checkpoint needs its own exact-head subscription.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-173 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 173 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+168 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 168 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -320,7 +336,7 @@ Executed `DOCUMENTATION_BASE=6989c0303732c66277079ef10a92c25308ee9e69 NX_SKIP_NX
 | D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 13 |
+| D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 8 |
 | D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 24 |
 | D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
