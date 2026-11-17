@@ -225,47 +225,60 @@ The final integration base is `6016e99d7c4f49beb8a8cb0efac071b07056771b`, includ
 
 Executed `DOCUMENTATION_BASE=6016e99d7c4f49beb8a8cb0efac071b07056771b NX_SKIP_NX_CACHE=true bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The combined tree passes all 98 documentation fixtures, 95 boundary/type fixtures, 85 aggregate Nx targets and three smoke targets plus 12 dependencies uncached, with the disposable PostgreSQL fixture removed afterward. The repeated twenty-file proof still reports exactly 41,353 unchanged parsed terminals, 36 live removals and 21 accepted removals; focused ESLint and `git diff --check` pass. Source intent is established for this packet, not for the unfinished global queue. Exact-head remote CI follows actual publication and is not implied by local verification.
 
+### Fourth checkpoint: bounded test-scaffolding correction
+
+The runtime packet is delivered as [source](https://github.com/Resnovas/Eventiva/commit/70e0f98624f441fffada4de52b7fd1149ac163c1) and [graph/head](https://github.com/Resnovas/Eventiva/commit/7877c40d74f338899e7d245a914036d6b382ae12). The next packet corrects only generally applicable test-scaffolding classification; it changes no TypeScript source or executable application behavior. Red fixtures reproduced the old classifier's false positives. A second red fixture exposed a plain named re-export escape during implementation. Both are green with lexical import identity and conservative whole-binding escape rejection, including alias extension, `Object.assign`, shorthand exports and direct writes. Callback contract/rationale checks remain independent; no loop, arbitrary setup or evaluated input is exempted.
+
+Semantic review of every removed body's own statements finds 27 registration-only suite bodies and four type-assertion-only bodies. These have no separate execution phase to explain; adding source prose solely to clear them would be filler. The 27 suites are agent-run 229, cluster 62/207, telemetry-correlation 185, contracts action 42/251 and flags 36 and module-manifest 28, provider i18n 29 and OpenFeature-server flags 41 and PostHog-client flags 40 and PostHog-server flags 26/telemetry 61, resources 187/398, runtime host 137/355/745 and parity 44, storage hook-process 24/hook 471/trust 119, and telemetry export 79/OTLP 134/server 127/telemetry 112/541. The four type-assertion bodies are contracts module-manifest 29, runtime kernel-runtime 153 and schema compose 83/172. Locations refer to immutable head 7877c40d and remain unchanged in this packet. Nested implementation findings stay visible.
+
+The frozen-source comparison covers all 186 editable files: exactly 31 rationale findings removed, zero added or reclassified findings, and byte-for-byte identical metadata for every retained finding. Of the 31 classifier corrections, 24 were accepted identities and seven were never ledgered. The exact prune takes 225 to 201 across 39 files. The complete live queue is 269 rationale candidates, including 68 never ledgered; zero attachment/prose findings. No semantic-documentation resolution is credited to this classifier packet. All 75 focused checker/ratchet fixtures, focused ESLint, Prettier and diff checks pass. Full combined verification and clean-source graph generation must pass before delivery; prior packet CI cannot substitute for this gate.
+
+Executed `DOCUMENTATION_BASE=7877c40d74f338899e7d245a914036d6b382ae12 NX_SKIP_NX_CACHE=true bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero, with all 102 documentation fixtures, 95 boundary/type fixtures, 85 aggregate Nx targets and smoke passing uncached. Source/emitted graphs retain zero violations/cycles, and disposable PostgreSQL cleanup completed. An initial attempt stopped at the license check because the frozen checker scratch copy retained its original `@file` path; the existing header fixer corrected only that scratch header before the complete successful rerun. No application gate was weakened. Pre-publication fetch subsequently found independent boundary-alias work through `83ac5f9608c70d91c82efeeea6f6b814160127ae`; preserve it, regenerate shared outputs and repeat full combined verification before shipping.
+
+Combined uncached verification subsequently passed against both `83ac5f9608c70d91c82efeeea6f6b814160127ae` and `6a2699b92c7d7b0e480ce43adf587875f23f1ef4`, preserving the independent boundary-alias and prepared-action input-binding fixes. Each run passes 102 documentation fixtures, 116 boundary/type fixtures, aggregate lint/typecheck/test/build/parity for 28 projects plus dependencies, and all three smoke targets plus dependencies. Disposable PostgreSQL is removed after each run. A repeated 186-file frozen-source comparison at 6a2699b9 still removes exactly 31 candidates with zero additions or retained-metadata changes; only 24 accepted identities prune, 225 to 201. The independent input-binding tests add three never-ledgered candidates: the complete queue is now 272, including 71 never ledgered, not a regression in this correction. Another pre-publication fetch found the independently delivered EVE-60 correlation checkpoint through `d8b529c48d8bbc40c6da4368af1a854d78248d15`; preserve it and repeat combined verification before shipping. Final publication and exact-head CI remain separate from these executed passes.
+
+Executed `DOCUMENTATION_BASE=d8b529c48d8bbc40c6da4368af1a854d78248d15 NX_SKIP_NX_CACHE=true bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The combined tree passes 102 documentation fixtures, 116 boundary/type fixtures, aggregate Nx targets for 28 projects plus dependencies, and all three smoke targets plus dependencies uncached; disposable PostgreSQL cleanup completes. Frozen-source comparison now covers 189 editable files and removes 32 false positives with zero additions or retained-metadata changes. The extra removal is the EVE-60 `correlation-export.spec.ts:146` suite: all sixteen own-body statements register `it.effect`/`it.scoped` callbacks with literal titles, empty parameter lists and no evaluated setup. Its nested implementations remain independently checked. Thus the reviewed correction totals 28 registration-only suites and four type-assertion bodies, including 24 accepted and eight never-ledgered identities; no TypeScript source changes. Exact accepted debt remains 201 across 39 files. The current complete live queue is 306 rationale candidates across 50 files, including 105 never ledgered, with zero missing attachments or prose findings. No unknown source intent is established in the corrected bodies; the remaining queue is unfinished semantic review, not a waiver or strict-zero result. Final root and clean-source graph checks precede guarded direct-main publication; exact-head remote CI is reported separately.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-225 remaining findings across 40 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 225 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+201 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 201 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
-| D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 8 |
+| D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 6 |
 | D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 0 | 0 | 4 |
-| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 9 |
-| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 0 | 0 | 4 |
-| D05 | [tests/contracts/src/module-manifest.spec.ts](../../tests/contracts/src/module-manifest.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 7 |
-| D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 8 |
+| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 2 |
+| D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
+| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 6 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
 | D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 22 |
 | D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 27 |
+| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 24 |
 | D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 12 |
+| D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 11 |
 | D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 7 |
-| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 5 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 7 |
-| D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 0 | 0 | 5 |
 | D05 | [tests/storage/src/identity.spec.ts](../../tests/storage/src/identity.spec.ts) | 0 | 0 | 4 |
 | D05 | [tests/storage/src/marketplace-process.spec.ts](../../tests/storage/src/marketplace-process.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/marketplace.spec.ts](../../tests/storage/src/marketplace.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 2 |
+| D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/telemetry/src/server.spec.ts](../../tests/telemetry/src/server.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 0 | 0 | 15 |
+| D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 0 | 0 | 13 |
 | D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
 | D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
 | D06 | [tools/release/changelog-renderer.ts](../../tools/release/changelog-renderer.ts) | 0 | 0 | 1 |

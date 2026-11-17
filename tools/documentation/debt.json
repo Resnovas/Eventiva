@@ -4,14 +4,6 @@
   "authority": "Jonathan, 2026-11-17: reviewed documentation debt ratchet; tracked under EVE-13/EVE-261",
   "entries": [
     {
-      "id": "c456fc6b1282808045f484a9ba5c59fe715da4e1eead340ef11622916fa3dd8c:0",
-      "file": "apps/server/tests/cluster.spec.ts",
-      "line": 62,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "5985785229110cf603076ce4c3e52bec0c2450eaacd7c614c57ca54189000cf8:0",
       "file": "apps/server/tests/cluster.spec.ts",
       "line": 67,
@@ -32,14 +24,6 @@
       "file": "apps/server/tests/cluster.spec.ts",
       "line": 103,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "3d0329b2534f044b5a15723abd2b10a57e7ba8fa9f9e2bd004fa035097fb7277:0",
-      "file": "apps/server/tests/cluster.spec.ts",
-      "line": 207,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -100,14 +84,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "ead03b577b27b7a17bd41bdd2457ff0fbb32488181877e7581430582bb261477:0",
-      "file": "tests/contracts/src/action.spec.ts",
-      "line": 42,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "21978f715dd0fba744dd079cf61774b663a7f0a552628cbf70485720e105a6fe:0",
       "file": "tests/contracts/src/action.spec.ts",
       "line": 77,
@@ -140,14 +116,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "02513e57e2197bc278f823da9fa2ae6457a84cc34fc7f1fea8246d7770391a0f:0",
-      "file": "tests/contracts/src/action.spec.ts",
-      "line": 251,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "7ab23964282e2a74d1979afc28976ed3e77ca2b70c7ff22deff99e41e0654f33:0",
       "file": "tests/contracts/src/action.spec.ts",
       "line": 255,
@@ -167,14 +135,6 @@
       "id": "56e4f12798b2d01eec244f91af9923f474e33c01e59f7e4819a97c421ea3dd28:0",
       "file": "tests/contracts/src/action.spec.ts",
       "line": 271,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "f23c382c6bf1f9ba1524e8fd6c2cb1d6174c5b44085e2aa8dd370a581885ac21:0",
-      "file": "tests/contracts/src/flags.spec.ts",
-      "line": 36,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -236,30 +196,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "30f968e46a81d174cdd7ec81c282f8534a13ce077ebeacce888ee6b047de3bf6:0",
-      "file": "tests/contracts/src/module-manifest.spec.ts",
-      "line": 28,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "63e6a1aaf62a37b1923a2309611a13d8c95b2a392e825deffba57ae835007b7e:0",
-      "file": "tests/contracts/src/module-manifest.spec.ts",
-      "line": 29,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "7ae36f62581570c38308b5b5ff801957c62c08700fa8642883c23b3e6b353ad3:0",
-      "file": "tests/integrations/formatjs/src/i18n.spec.ts",
-      "line": 29,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "894fc0f5a4fc1b31eef367e9d3a6dc258c02f1d9c4bc48152afacf56d751ac87:0",
       "file": "tests/integrations/formatjs/src/i18n.spec.ts",
       "line": 34,
@@ -303,14 +239,6 @@
       "id": "c0a869794504e2506c829cca05012e22a544afcf6fdd8cd550476bbbc920fa2a:0",
       "file": "tests/integrations/openfeature-client/src/flags.spec.ts",
       "line": 159,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "cbf358e5a8ae6bcf884e063469e6bafdd1017c85697dd0ac74d2128000f947aa:0",
-      "file": "tests/integrations/openfeature-server/src/flags.spec.ts",
-      "line": 41,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -364,14 +292,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "70ecc7cfc4c033ac322943789388355a0149cb1322600ab85eb2302ef688d0ab:0",
-      "file": "tests/integrations/posthog-client/src/flags.spec.ts",
-      "line": 40,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "59bbb02776bd7093baa6eb528f902cf11e2b07beb03809321e0372ea1f6b366d:0",
       "file": "tests/integrations/posthog-client/src/flags.spec.ts",
       "line": 41,
@@ -383,14 +303,6 @@
       "id": "9d7b23d53a7ba86e2db60573f8c071b739293e3811b68c11e279bb8f7da5e78c:0",
       "file": "tests/integrations/posthog-client/src/flags.spec.ts",
       "line": 52,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "4281b4e6d99fd2947fd3fb243ff86c703d6fdba78480a184cdb662764872da26:0",
-      "file": "tests/integrations/posthog-server/src/flags.spec.ts",
-      "line": 26,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -408,22 +320,6 @@
       "file": "tests/integrations/posthog-server/src/flags.spec.ts",
       "line": 42,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "ad8177ed281c75ad29b05e76bc3036f33b356c81999803ec15d2c54f9d1673c4:0",
-      "file": "tests/resources/src/resource.spec.ts",
-      "line": 187,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "704dff5e13833cd4e4aa8d433bddea38195aa06c78a7873feb526ccd0e2be7b0:0",
-      "file": "tests/resources/src/resource.spec.ts",
-      "line": 398,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -486,7 +382,7 @@
     {
       "id": "0581a1fafa46a93b246919bb5b76336a6e6dbf7f3c3ee32702b356b62aa62d3f:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 221,
+      "line": 227,
       "kind": "ArrowFunction",
       "name": "denied",
       "rule": "review-internal-rationale"
@@ -494,7 +390,7 @@
     {
       "id": "3054c1d276c9e3841eea14c3f01ea1bd110d0e7cf596b6bd4761d3bc3c9a9bc7:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 226,
+      "line": 232,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -502,7 +398,7 @@
     {
       "id": "f5546c4f4889e8283fc9a80c1703c617c40716d2b87404469c57d13cdccabdda:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 356,
+      "line": 362,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -510,7 +406,7 @@
     {
       "id": "dd81f3498f89b735730ae3a519a2c503cc64a0abb8f6ad3a35c90a5a47a1450b:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 373,
+      "line": 379,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -518,7 +414,7 @@
     {
       "id": "82dc90bbe3485baa46c42e323bf874fb8a060c6494cb40e6e95707e7243a93a3:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 384,
+      "line": 586,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -526,7 +422,7 @@
     {
       "id": "eb85a37b9e9532a22988a45e4eaa1556d46746ead29b6d2346ba84a35d4c9ad7:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 409,
+      "line": 611,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -534,7 +430,7 @@
     {
       "id": "e5b6aeac94f29a5782b206e563a72a1df0e4f494b417aa480b45fd76e1f5792d:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 428,
+      "line": 630,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -542,7 +438,7 @@
     {
       "id": "88453ad54fedb764cfa3585d48a27a8a4e5317f035fabe3486b04ac7acf796e9:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 457,
+      "line": 659,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -550,7 +446,7 @@
     {
       "id": "d780d9a914364d7d200ef79339e6952854f044487a3d8b78e6ec0e63b7eff255:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 529,
+      "line": 731,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -558,7 +454,7 @@
     {
       "id": "b12072090cfa3b4df9fc2823cb3623a8a6f95954796ed3aa0a761fdd7ab9d6ab:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 558,
+      "line": 760,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -566,7 +462,7 @@
     {
       "id": "5eb95eb510932c3dc902afe4a2a73fd28ceb4c9266770e2643ba96e008ed5682:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 611,
+      "line": 813,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -574,7 +470,7 @@
     {
       "id": "d9d929b6c1b83cb2ec9bab5ab8ac8c0f6a615b447ac1be3b9b865f2ccb930d9b:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 628,
+      "line": 830,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -582,7 +478,7 @@
     {
       "id": "f26c704dcb1191089692281a7ec5aef28d020e939c465e3a3027a8b58d643257:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 675,
+      "line": 877,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -590,7 +486,7 @@
     {
       "id": "d01c047cb1722f67a82b101fb0d36783e1146910755ea549a61e796e1dd4014e:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 691,
+      "line": 893,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -598,7 +494,7 @@
     {
       "id": "4d08f378312a90f7288dc8ad0366ac17e93e1b88d1d8185aaf0d221f2ba3af20:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 799,
+      "line": 1001,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -606,7 +502,7 @@
     {
       "id": "e5055ed048c940ec5282e26f994f4c38cfdbbd810ba6369e244b4f578c80f69c:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 844,
+      "line": 1046,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -614,7 +510,7 @@
     {
       "id": "4a0aebb844cf02c84258ac9e6515e3c51e63a6fadf027b23fd141a0af13d4fb4:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 913,
+      "line": 1115,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -622,7 +518,7 @@
     {
       "id": "57472edb6c501dab89a15704004726cbed172c4b996bdd663f48bcb5df1f1b4e:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 944,
+      "line": 1146,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -630,7 +526,7 @@
     {
       "id": "754a62efbcc64f01f3ead732fc7fd676fe716801a05dfd478945bf93cb11fa07:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 960,
+      "line": 1162,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -638,7 +534,7 @@
     {
       "id": "206eae9fc53219a4966f137f12b5a891cee3f55ce407716ce86d1c3b9c8b43ef:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 981,
+      "line": 1183,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -646,7 +542,7 @@
     {
       "id": "b890bf98711d3096203bcd4f01613161e81d886c1a66b0547ce2f2e49de2fe72:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 987,
+      "line": 1189,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -654,7 +550,7 @@
     {
       "id": "c1f58a83f66265a312e00429922278f8123b62fdb1468f4c5d1e555d060135f5:0",
       "file": "tests/runtime/src/execution.spec.ts",
-      "line": 1004,
+      "line": 1206,
       "kind": "FunctionExpression",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -680,14 +576,6 @@
       "file": "tests/runtime/src/hook.spec.ts",
       "line": 478,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "b9ee7f7760e83307f90d3d118fb3f12f1e55235819004eefdaab73470fef05de:0",
-      "file": "tests/runtime/src/host.spec.ts",
-      "line": 137,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -736,14 +624,6 @@
       "file": "tests/runtime/src/host.spec.ts",
       "line": 316,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "f6c19685dee3d9cc1a009eab384d929db92fd6bf81b6718e8c0c4c1453269af1:0",
-      "file": "tests/runtime/src/host.spec.ts",
-      "line": 355,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -824,14 +704,6 @@
       "file": "tests/runtime/src/host.spec.ts",
       "line": 684,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "125c9104080e9504048639de0025c1cd809db1b3f1a7f938415b3b114b5498b1:0",
-      "file": "tests/runtime/src/host.spec.ts",
-      "line": 745,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -935,14 +807,6 @@
       "id": "464b515ab6b9a09a6735b92022389dbd5e8074bc3138d5ccdee980c4f67f3279:0",
       "file": "tests/runtime/src/kernel-runtime.spec.ts",
       "line": 152,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "315a2015ba25abec2c47933278622c0c574a33e8448b99b715835f786becc4df:0",
-      "file": "tests/runtime/src/kernel-runtime.spec.ts",
-      "line": 153,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -1140,14 +1004,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "84796ac2e89bf341d18819e631bd086f3afa8512729a338c9af3621e601987dd:0",
-      "file": "tests/runtime/src/parity.spec.ts",
-      "line": 44,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "242f2ae28a7a9194060c07ffcd1ff12d9f11baf6f44bd74808e0de713a8e0d0b:0",
       "file": "tests/runtime/src/parity.spec.ts",
       "line": 46,
@@ -1228,14 +1084,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "98f59f523902c792854d7eda2da34151014fc18f1c01d82be352c5090216c6f6:0",
-      "file": "tests/schema/src/compose.spec.ts",
-      "line": 83,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "72d697fd43558f8151b89fa5cbc20afdf33fce6b6e800866e4bea6923da9fdb4:0",
       "file": "tests/schema/src/compose.spec.ts",
       "line": 147,
@@ -1255,14 +1103,6 @@
       "id": "28c52f0fc742731a6deb3532451e0b1b0972d4f88052bf071e7eeaeb35232fbd:0",
       "file": "tests/schema/src/compose.spec.ts",
       "line": 168,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "1673d68ba05902cb7214de22db0d9f41c5d302d3daa31ab2b1e3a2dd405bb104:0",
-      "file": "tests/schema/src/compose.spec.ts",
-      "line": 172,
       "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
@@ -1360,14 +1200,6 @@
       "file": "tests/storage/src/hook.spec.ts",
       "line": 313,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "ceb7ed8c93a8e1119ffd1a483a6909517faa6c4e1d309d129b955275a2e7d9bd:0",
-      "file": "tests/storage/src/hook.spec.ts",
-      "line": 471,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -1476,14 +1308,6 @@
       "rule": "review-internal-rationale"
     },
     {
-      "id": "dec881e27b2f6429529db41faa88148691f5d30a2786bd31df5225a724b2ce5c:0",
-      "file": "tests/storage/src/trust.spec.ts",
-      "line": 119,
-      "kind": "ArrowFunction",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
       "id": "7b93b2807c20d76ff0599e9bd903beddef8ac629b76f4c1bc1117759ad2f2607:0",
       "file": "tests/telemetry/src/server.spec.ts",
       "line": 188,
@@ -1496,14 +1320,6 @@
       "file": "tests/telemetry/src/telemetry.spec.ts",
       "line": 78,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "bb9fcb4574a4b536ee1d394f0b941af1a41d2572592088cf806b403bd5a38f20:0",
-      "file": "tests/telemetry/src/telemetry.spec.ts",
-      "line": 112,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },
@@ -1568,14 +1384,6 @@
       "file": "tests/telemetry/src/telemetry.spec.ts",
       "line": 499,
       "kind": "FunctionExpression",
-      "name": "<anonymous>",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "fd321533e02a94ddd2ff392c1b941e94f56cd32f8825ae0c823d4c609443066f:0",
-      "file": "tests/telemetry/src/telemetry.spec.ts",
-      "line": 541,
-      "kind": "ArrowFunction",
       "name": "<anonymous>",
       "rule": "review-internal-rationale"
     },

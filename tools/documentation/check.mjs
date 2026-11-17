@@ -163,6 +163,164 @@ const valueSelector = (node) => {
     return false;
 };
 
+/** Recognize bounded test declarations/assertions, never arbitrary work hidden in their inputs or callbacks. */
+const testScaffolding = (source) => {
+    const imports = source.statements.flatMap((statement) => {
+        if (
+            !ts.isImportDeclaration(statement) ||
+            !ts.isStringLiteral(statement.moduleSpecifier) ||
+            !['vitest', '@effect/vitest'].includes(statement.moduleSpecifier.text) ||
+            statement.importClause?.isTypeOnly ||
+            !statement.importClause?.namedBindings ||
+            !ts.isNamedImports(statement.importClause.namedBindings)
+        )
+            return [];
+        return statement.importClause.namedBindings.elements
+            .filter((binding) => !binding.isTypeOnly)
+            .map((binding) => ({
+                binding,
+                name: (binding.propertyName ?? binding.name).text,
+                module: statement.moduleSpecifier.text,
+            }));
+    });
+    if (imports.length === 0) return () => false;
+    // Resolve lexical identity in this source only; external declarations cannot supply documentation or aliases.
+    const program = ts.createProgram(
+        [source.fileName],
+        { noLib: true, noResolve: true },
+        {
+            getSourceFile: (file) => (file === source.fileName ? source : undefined),
+            getDefaultLibFileName: () => '',
+            writeFile: () => undefined,
+            getCurrentDirectory: () => '',
+            getDirectories: () => [],
+            fileExists: (file) => file === source.fileName,
+            readFile: () => undefined,
+            getCanonicalFileName: (file) => file,
+            useCaseSensitiveFileNames: () => true,
+            getNewLine: () => '\n',
+        }
+    );
+    const checker = program.getTypeChecker();
+    const bindings = new Map(imports.map((entry) => [checker.getSymbolAtLocation(entry.binding.name), entry]));
+    const escaped = new Set();
+    const imported = (node) => {
+        if (!ts.isIdentifier(node)) return undefined;
+        const symbol = checker.getSymbolAtLocation(node);
+        const entry = bindings.get(symbol);
+        return symbol &&
+            !escaped.has(symbol) &&
+            symbol.declarations?.length === 1 &&
+            symbol.declarations[0] === entry?.binding
+            ? entry
+            : undefined;
+    };
+    const argument = (node) => !ts.isSpreadElement(node) && valueOnly(node);
+    const registration = (node) => {
+        if (
+            !ts.isCallExpression(node) ||
+            node.questionDotToken ||
+            node.arguments.length < 2 ||
+            node.arguments.length > 3
+        )
+            return false;
+        let callee = node.expression;
+        let method;
+        if (ts.isPropertyAccessExpression(callee) && !callee.questionDotToken) {
+            method = callee.name.text;
+            callee = callee.expression;
+        }
+        const entry = imported(callee);
+        const callback = node.arguments[1];
+        return (
+            entry &&
+            ['describe', 'it', 'test'].includes(entry.name) &&
+            (!method ||
+                (entry.module === '@effect/vitest' &&
+                    entry.name === 'it' &&
+                    ['effect', 'scoped', 'live', 'scopedLive'].includes(method))) &&
+            argument(node.arguments[0]) &&
+            (!node.arguments[2] || argument(node.arguments[2])) &&
+            (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) &&
+            callback.parameters.every(valueOnly)
+        );
+    };
+    const matchers = new Map([
+        ['toBe', [1, 1]],
+        ['toEqual', [1, 1]],
+        ['toStrictEqual', [1, 1]],
+        ['toBeDefined', [0, 0]],
+        ['toBeUndefined', [0, 0]],
+        ['toBeNull', [0, 0]],
+        ['toBeTruthy', [0, 0]],
+        ['toBeFalsy', [0, 0]],
+        ['toContain', [1, 1]],
+        ['toHaveLength', [1, 1]],
+        ['toHaveProperty', [1, 2]],
+        ['toMatchObject', [1, 1]],
+        ['toMatch', [1, 1]],
+        ['toBeInstanceOf', [1, 1]],
+        ['toBeTypeOf', [1, 1]],
+    ]);
+    const typeMatchers = new Set(['toEqualTypeOf', 'toMatchTypeOf', 'toExtend', 'toBeAny', 'toBeUnknown', 'toBeNever']);
+    const assertion = (node) => {
+        if (
+            !ts.isCallExpression(node) ||
+            node.questionDotToken ||
+            !ts.isPropertyAccessExpression(node.expression) ||
+            node.expression.questionDotToken
+        )
+            return false;
+        const matcher = node.expression.name.text;
+        let receiver = node.expression.expression;
+        if (ts.isPropertyAccessExpression(receiver) && !receiver.questionDotToken && receiver.name.text === 'not')
+            receiver = receiver.expression;
+        if (!ts.isCallExpression(receiver) || receiver.questionDotToken) return false;
+        const entry = imported(receiver.expression);
+        if (!entry || !receiver.arguments.every(argument) || !node.arguments.every(argument)) return false;
+        if (entry.name === 'expectTypeOf')
+            return receiver.arguments.length <= 1 && node.arguments.length === 0 && typeMatchers.has(matcher);
+        const arity = matchers.get(matcher);
+        return (
+            entry.name === 'expect' &&
+            receiver.arguments.length >= 1 &&
+            receiver.arguments.length <= 2 &&
+            arity &&
+            node.arguments.length >= arity[0] &&
+            node.arguments.length <= arity[1]
+        );
+    };
+    const references = (node) => {
+        if (ts.isImportDeclaration(node)) return;
+        if (ts.isIdentifier(node)) {
+            const symbol = ts.isShorthandPropertyAssignment(node.parent)
+                ? checker.getShorthandAssignmentValueSymbol(node.parent)
+                : ts.isExportSpecifier(node.parent)
+                  ? checker.getExportSpecifierLocalTargetSymbol(node.parent)
+                  : checker.getSymbolAtLocation(node);
+            if (bindings.has(symbol)) {
+                // An alias, argument, write or unknown member can replace the DSL indirectly; reject the entire binding.
+                let operation = node;
+                while (
+                    (ts.isPropertyAccessExpression(operation.parent) || ts.isCallExpression(operation.parent)) &&
+                    operation.parent.expression === operation
+                )
+                    operation = operation.parent;
+                if (!registration(operation) && !assertion(operation)) escaped.add(symbol);
+            }
+        }
+        ts.forEachChild(node, references);
+    };
+    references(source);
+    const statements = (node, operation) => {
+        if (ts.isBlock(node)) return node.statements.every((statement) => statements(statement, operation));
+        if (ts.isVariableStatement(node)) return valueSelector(node);
+        return ts.isExpressionStatement(node) && operation(node.expression);
+    };
+    // Callback bodies are independently visited by inspectSource; a suite never lends its exemption to a scenario.
+    return (body) => statements(body, registration) || statements(body, assertion);
+};
+
 /** Inspect the same declarations in both modes; the internal legacy option exists only for trusted-history reconciliation. */
 export const inspectSource = (file, text, { internalLegacyFingerprint = false } = {}) => {
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -186,6 +344,7 @@ export const inspectSource = (file, text, { internalLegacyFingerprint = false } 
     collect(source);
     const contracts = new Map(declarations.map((node) => [node, documentationRange(node, source, text)]));
     const contractComments = new Set([...contracts.values()].filter(Boolean).map((range) => range.pos));
+    const scaffolding = testScaffolding(source);
     const occurrences = new Map();
     const report = (node, rule, name) => {
         // Token identity survives line shifts and added prose, but never a changed implementation.
@@ -252,7 +411,7 @@ export const inspectSource = (file, text, { internalLegacyFingerprint = false } 
 
         if (!node.body || !ts.isBlock(node.body)) continue;
         const body = node.body;
-        if (valueSelector(body)) continue;
+        if (valueSelector(body) || scaffolding(body)) continue;
         // A one-guard body is not evidence of a meaningful phase boundary.
         if (body.statements.length === 1 && ts.isIfStatement(body.statements[0]) && !body.statements[0].elseStatement) {
             const branch = body.statements[0].thenStatement;

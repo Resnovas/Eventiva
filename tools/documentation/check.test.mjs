@@ -241,6 +241,99 @@ test('callable contracts and JSDoc placeholders never substitute for own-body ra
         );
 });
 
+test('import-bound registrations and value-only assertions need no invented implementation phases', () => {
+    for (const module of ['vitest', '@effect/vitest']) {
+        const imports = `import { describe as suite, it as example, expect as check, expectTypeOf as typeOf } from '${module}';`;
+        for (const body of [
+            `example('one', ${contract} () => 1); example('two', ${contract} () => 2, 5000);`,
+            `const input = { id: 'known' }; example('one', ${contract} () => input); example('two', ${contract} () => 2);`,
+            `check(value.id).toBe('known'); check(value.active).not.toEqual(false);`,
+            `typeOf<string>().toEqualTypeOf<string>(); typeOf<string>().not.toBeAny();`,
+            `typeOf(value).toExtend<string>(); typeOf<string>().not.toExtend<number>();`,
+        ])
+            assert.deepEqual(findings(`${imports} suite('contracts', ${contract} () => { ${body} });`), [], body);
+    }
+    for (const method of ['effect', 'scoped', 'live', 'scopedLive'])
+        assert.deepEqual(
+            findings(`import { it } from '@effect/vitest'; ${contract} function register() {
+                it.${method}('one', ${contract} () => 1); it.${method}('two', ${contract} () => 2, 5000);
+            }`),
+            [],
+            method
+        );
+});
+
+test('test scaffolding cannot borrow contracts or hide nested implementation phases', () => {
+    const result = findings(`import { describe, it, expect } from 'vitest';
+        describe('suite', () => { it('one', () => { const value = decode(); return authorize(value); }); it('two', () => 2); });`);
+    assert.equal(result.filter((finding) => finding.rule === 'missing-jsdoc').length, 3);
+    assert.equal(result.filter((finding) => finding.rule === 'review-internal-rationale').length, 1);
+    assert.ok(
+        findings(`import { expect } from 'vitest'; /** TODO Explain the contract. */ function inspect() {
+            expect(value).toBe(1); expect(other).toBe(2);
+        }`).some((finding) => finding.rule === 'review-jsdoc')
+    );
+});
+
+test('replaced, escaped, shadowed and non-runtime test bindings remain review candidates', () => {
+    const body = 'expect(value).toBe(1); expect(other).toBe(2);';
+    for (const prefix of [
+        '',
+        "import { expect } from 'other';",
+        "import type { expect } from 'vitest';",
+        "import { type expect } from 'vitest';",
+        "import * as api from 'vitest'; const expect = api.expect;",
+        "import { expect } from 'vitest'; expect.toBe = replacement;",
+        "import { expect } from 'vitest'; expect.extend(replacement);",
+        "import { expect } from 'vitest'; const alias = expect; alias.extend(replacement);",
+        "import { expect } from 'vitest'; Object.assign(expect, replacement);",
+        "import { expect } from 'vitest'; const alias = expect.extend; alias(replacement);",
+        "import { expect } from 'vitest'; const object = { expect }; mutate(object);",
+        "import { expect } from 'vitest'; mutate(expect);",
+        "import { expect } from 'vitest'; expect['extend'](replacement);",
+        "import { expect } from 'vitest'; export { expect as escaped };",
+        "import { expect } from 'vitest'; export { expect };",
+    ])
+        assert.ok(
+            findings(`${prefix} ${contract} function inspect() { ${body} }`).some(
+                (finding) => finding.rule === 'review-internal-rationale'
+            ),
+            prefix
+        );
+    for (const parameters of ['expect', '{ expect }'])
+        assert.ok(
+            findings(`import { expect } from 'vitest'; ${contract} function inspect(${parameters}) { ${body} }`).some(
+                (finding) => finding.rule === 'review-internal-rationale'
+            )
+        );
+    assert.deepEqual(
+        findings(`import { expect } from 'vitest'; ${contract} function unrelated(expect) { return expect; }
+            ${contract} function inspect() { ${body} }`),
+        []
+    );
+});
+
+test('test scaffolding never exempts evaluated arguments, unknown matchers or arbitrary setup', () => {
+    for (const body of [
+        'expect(decode()).toBe(value); expect(other).toBe(2);',
+        'expect(value).toBe(encode()); expect(other).toBe(2);',
+        'expect(value).customMatcher(); expect(other).toBe(2);',
+        "expect(value)['toBe'](1); expect(other).toBe(2);",
+        'expect(value).toBe(...values); expect(other).toBe(2);',
+        "const fixture = setup(); it('one', () => fixture); it('two', () => 2);",
+        "for (const value of values) it('case', () => value);",
+        "it(title(), () => 1); it('two', () => 2);",
+        "it('one', () => 1, timeout()); it('two', () => 2);",
+        "const input = { [key()]: 1 }; it('one', () => input); it('two', () => 2);",
+    ])
+        assert.ok(
+            findings(`import { expect, it } from 'vitest'; ${contract} function inspect() { ${body} }`).some(
+                (finding) => finding.rule === 'review-internal-rationale'
+            ),
+            body
+        );
+});
+
 test('exact finding identity survives prose/line shifts but not changed code, names or duplicate additions', () => {
     const first = findings('const read = (value: string) => value;');
     const shifted = findings('\n// Existing surrounding context.\nconst read = (value: string) => value;');
