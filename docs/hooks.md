@@ -383,6 +383,51 @@ next process retries it. This is local consumer crash/reopen evidence only. The
 fixture supplies no public endpoint, native execution, release authorization,
 concurrent-consumer protocol or general exactly-once external-effect guarantee.
 
+### Verify current release permission after restart
+
+Run the existing default process proof after building the workspace:
+
+```sh
+pnpm nx run-many -t build --parallel=1
+node tests/storage/fixtures/hook-process.mjs proof sqlite
+node tests/storage/fixtures/hook-process.mjs proof postgres
+```
+
+Both arguments are required: `proof` selects the self-asserting scenario and the
+dialect is `sqlite` or `postgres`; neither has a default. PostgreSQL requires the
+approved disposable loopback fixture and `STORAGE_TEST_POSTGRES_URL` described in
+[storage conformance](storage.md#run-conformance). Never target a real database.
+The unchanged storage test target also runs these assertions; no extra mode,
+flag, dependency or production policy implementation is introduced.
+
+The fixture commits one permitted metadata fact and its origin receipt, pauses a
+worker after its durable claim, then revokes permission through an independent
+connection before killing that worker with SIGKILL. After actual database-clock
+lease expiry, a fresh process uses the real dispatcher: current release denial
+retains a `dead-letter` settlement with reason `denied`, without invoking the
+synthetic sink. The pre-crash claim cannot settle the reclaimed delivery.
+
+An explicitly authorized synthetic operator then replays that dead letter. A
+further fresh worker checks the still-revoked policy again and retains another
+denied terminal delivery. Replay history preserves the previous denied attempt;
+retrying the operator request changes neither history nor terminal state. The
+fixture compares exact origin, receipt and fact rows across both denials and
+verifies the unchanged event/projection through the public tenant feed.
+
+The independent allowed control still reaches the sink twice after a lost
+acknowledgement, using one stable idempotency key and leaving exactly one durable
+application. Persisted policy-check rows distinguish these two allowed checks
+from the two denied checks. A failed assertion exits nonzero before the existing
+JSON success report; that report and its original scenario counts are unchanged.
+
+This is local independent-process SQL evidence with fixture-persisted synthetic
+policy, not a production grant store or revocation service. It proves a fresh
+check before delivery after reclaim/redrive, not cancellation of a sink already
+executing when permission changes. It does not authorize protected payloads,
+native release, distributed drain, general exactly-once effects or complete
+EVE-262/EVE-45 acceptance. If denial is expected, inspect retained delivery and
+operator history; do not bypass policy, change a lease or rerun the origin.
+
 ## Inspect worker telemetry
 
 The real dispatcher emits fixed spans for dispatch, claim, release, delivery and

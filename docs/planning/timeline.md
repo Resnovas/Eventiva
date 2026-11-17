@@ -20,22 +20,22 @@ Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or th
 | [EVE-257](https://linear.app/resnovas/issue/EVE-257) kernel                                                                                                                               | In Progress                                                        | Controlled transitions, exact providers, scoped cleanup and serving generations; distributed recovery is a separate gate.                                                                                                                                                                                                 |
 | [EVE-258](https://linear.app/resnovas/issue/EVE-258) Resources                                                                                                                            | In Progress                                                        | Privileged tenant-bound migrations, unchanged features/provider composition, immutable revision/history and SQL boundaries.                                                                                                                                                                                               |
 | [EVE-41](https://linear.app/resnovas/issue/EVE-41), [EVE-43](https://linear.app/resnovas/issue/EVE-43), [EVE-44](https://linear.app/resnovas/issue/EVE-44) config, identity and telemetry | In Progress                                                        | Redaction, authorization/audit and correlated bootstrap/runtime evidence. EVE-43 adoption remains blocked. Exporter contract and documentation checkpoints do not prove production ingestion/security or complete adoption.                                                                                               |
-| [EVE-45](https://linear.app/resnovas/issue/EVE-45) explicit SQL producer journal                                                                                                          | In Progress                                                        | The tested trusted-host journal persists fresh incarnations and unresolved intent, reconciles authoritative status and atomically confirms into the existing feed. It is a prerequisite, not automatic kernel mutation-owner wiring. See the checkpoint evidence below; broader acceptance remains open.                  |
-| [EVE-262](https://linear.app/resnovas/issue/EVE-262) governed dispatch                                                                                                                    | Backlog                                                            | Governs observation-only subscriptions/protected release; EVE-45 owns durable producers/feed. Source may exist while the issue remains unaccepted.                                                                                                                                                                        |
+| [EVE-45](https://linear.app/resnovas/issue/EVE-45) durable producers and feed | In Progress | Delivered journal and actual kernel mutation-owner/cascade/disposal wiring retain authoritative committed facts. Slice 2 adds restart/redrive release-policy evidence; full governed-consumer and distributed/production acceptance remain open. |
+| [EVE-262](https://linear.app/resnovas/issue/EVE-262) governed dispatch | In Progress, independently read 2026-11-17 | Slice 2 proves current synthetic release policy after claim/revocation/restart and authorized redrive. EVE-45 owns durable producers/feed; broad governed-consumer acceptance remains open. |
 | [EVE-259](https://linear.app/resnovas/issue/EVE-259), [EVE-50](https://linear.app/resnovas/issue/EVE-50) declarative UI/screen context                                                    | In Progress                                                        | Data-only schema plus action/projection parity; native/UI end-to-end acceptance is not proven here.                                                                                                                                                                                                                       |
 | [EVE-263](https://linear.app/resnovas/issue/EVE-263) exact types/acyclic graphs                                                                                                           | Backlog, binding quality gate                                      | Review actual source/declarations/export graphs and runtime admission; do not treat old isolated audit counts as current clearance.                                                                                                                                                                                       |
-| [EVE-261](https://linear.app/resnovas/issue/EVE-261) coordinated integration                                                                                                              | In Progress                                                        | Coordinator reserves shared manifests/root checks/LLMS/graph/final delivery. All required G01-G15 evidence must be explicit.                                                                                                                                                                                              |
+| [EVE-261](https://linear.app/resnovas/issue/EVE-261) integration | In Progress | Each lane independently rebases, regenerates affected shared outputs, verifies and ships its work under Jonathan's later direction. Exact overlapping source reservations still apply; all G01-G15 evidence remains explicit. |
 | Documentation governance (under EVE-13/261)                                                                                                                                               | Implementation/review in progress, not a new approved Linear issue | This checkpoint publishes only the human timeline and decisions. The complete source mirror is frozen pending a verified canonical commit-hook correction for exact generated paths. The approved documentation-debt ratchet remains a separate reviewed delivery; no checker activation or global compliance is claimed. |
 
 ## Upcoming sequence
 
-1. Review/freeze isolated contracts and focused evidence under the coordinator's path reservations. Clear applicable EVE-263 type/boundary findings without widening contracts or weakening checks.
-2. Retain the tested explicit EVE-45 producer journal protocol while integrating its trusted mutation owners. Do not infer automatic production from the journal's crash/retry/status evidence.
-3. Integrate automatic kernel producers at actual mutations, dependency cascades, disposal and lifecycle callbacks with stable callback idempotency keys. Snapshot comparison or successful method-return wrappers cannot establish committed transitions or authoritative provenance.
+1. Respect exact active source reservations while each lane develops and ships independently. Clear applicable EVE-263 type/boundary findings without widening contracts or weakening checks; there is no central delivery gate.
+2. Retain the delivered EVE-45 producer journal and actual kernel mutation-owner/cascade/disposal integration documented below. Its presence is not complete governed-consumer or production acceptance.
+3. Extend durable governed-consumer evidence with bounded process-loss/revocation/replay slices. Preserve callback idempotency and authoritative provenance; snapshots and successful method returns cannot establish committed transitions.
 4. Combine kernel/resources/config/identity/telemetry with durable governed hooks; prove pinned workflows, cleanup, readiness and protected-release boundaries on the actual composed system.
 5. Complete declarative UI/action/screen parity and [EVE-260](https://linear.app/resnovas/issue/EVE-260) (Backlog) exact archived word-art reference only after verified ready and telemetry. No invented banner or physical exactly-once claim.
 6. Complete target-specific [EVE-16](https://linear.app/resnovas/issue/EVE-16) federation/OTA and [EVE-252](https://linear.app/resnovas/issue/EVE-252) multi-runner recovery evidence (both In Progress), and [EVE-240](https://linear.app/resnovas/issue/EVE-240) native-iOS follow-up (Backlog). Independent portable work need not wait for every broad issue; full platform acceptance does.
-7. Reconcile evidence/decisions on Linear and Markdown, regenerate docs/graph in the coordinated window, run full gates and deliver only through the coordinator. Keep EVE-45/EVE-261 open until their own complete acceptance is demonstrated. No deployment or production readiness is authorized by this sequence.
+7. Reconcile each lane's evidence on Linear and Markdown, rebase onto latest origin/main, regenerate affected shared outputs, run full gates and push signed commits directly to main. Rebase/regenerate/reverify a raced push. Keep EVE-45/EVE-261 open until full acceptance; no deployment or production readiness is authorized.
 
 ## Producer and exporter checkpoint - 2026-11-17
 
@@ -143,12 +143,14 @@ flowchart TD
     J --> P["EVE-45: actual mutation/cascade/disposal producers"]
     C --> P
     P --> H["EVE-262: durable governed delivery integration"]
+    H --> HR["EVE-262/45 slice 2: restart/redrive release proof"]
     K --> U["EVE-259 + EVE-50: UI and screen parity"]
     H --> B["EVE-260: verified ready / exact banner"]
     U --> B
     C --> B
     B --> I["EVE-261: full acceptance remains open"]
     T["EVE-263: exact types and acyclic boundaries"] --> I
+    HR -.-> I
     N["EVE-16 / EVE-240: target and device evidence"] -.-> I
     D["EVE-252: distributed recovery evidence"] -.-> I
     DOC_A["D01 complete; D02 attachments complete"] --> DOC_B["D03: adapter packets current; SQL next"]
@@ -162,6 +164,7 @@ flowchart TD
     click J "https://linear.app/resnovas/issue/EVE-45"
     click P "https://linear.app/resnovas/issue/EVE-45"
     click H "https://linear.app/resnovas/issue/EVE-262"
+    click HR "https://linear.app/resnovas/issue/EVE-262"
     click U "https://linear.app/resnovas/issue/EVE-259"
     click B "https://linear.app/resnovas/issue/EVE-260"
     click I "https://linear.app/resnovas/issue/EVE-261"
@@ -339,10 +342,50 @@ smoke with the approved disposable PostgreSQL fixture. The fixture and its
 network were removed. This is local combined evidence, not exact-head CI or a
 verified runtime repair.
 
+## Hook release reauthorization slice 2 - 2026-11-17
+
+This independently delivered EVE-262/EVE-45 slice starts at main
+`c3a541b9172c7ce22ecde7cd118df5a1cc10e2df`. The
+[reservation and execution thread](https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51)
+owns only the hook process fixture and corresponding Markdown sources, plus its
+affected shared generated outputs. Jonathan's later independent-delivery direction
+supersedes coordinator-window language in historical checkpoints above; no new
+product/security/production decision is introduced.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Default hook-process extension | Completed focused verification | Four existing wrapper tests passed on SQLite and approved disposable loopback PostgreSQL. Revocation after durable claim and before SIGKILL yields a denied terminal delivery after actual lease expiry; a pre-crash claim cannot settle it. |
+| Authorized redrive and allowed control | Completed focused verification | A further fresh worker rechecks revoked permission after operator replay: two denied policy checks, zero sink calls. Exact origin/receipt/fact/projection and retained replay history stay unchanged; the independent allowed control has two sink attempts but one durable application. |
+| Negative control | Executed and rejected | Temporarily bypassing fixture policy denial made the unchanged SQLite proof fail with actual `delivered`, expected `dead-letter`. The bypass was removed before verification/delivery. |
+| Shared outputs and aggregate gates | Passed locally; outputs regenerated | Root check, storage Nx tests, full verify and strict reviewed-source planning check passed. Planning/LLMS and clean-source Graphify are regenerated. Signed delivery revisions and exact-head CI are recorded separately on both owning issues; local results do not establish CI success. |
+| Governed consumers and release | Upcoming / unaccepted | EVE-262 and EVE-45 remain In Progress. Production grants/sink, protected payloads, cancellation of an already-running sink, native targets, distributed drain and full platform acceptance remain separate. |
+
+The [people guide](../hooks.md#verify-current-release-permission-after-restart)
+and [agent guide](../../ai-docs/src/18_hooks/03_release-recovery.md) specify the
+default self-asserting command and retained evidence. Existing JSON/parser,
+consumer-cursor cases and 60-second subprocess bound are unchanged; no storage
+project wiring or other slice's fixture changed. The complete source mirror
+remains historical. A separately dated roadmap annotation records the live
+EVE-262 In Progress status read through the connected MCP, not a silent rewrite
+of captured Backlog or a full live freshness claim.
+
+Final aggregate execution rebased onto immutable main
+`970e44851983a15ef8f2130c930ffafc15b0c129`:
+`NX_DAEMON=false bash .amp/in/orb-backup/run-hook-storage.sh node --run verify`
+exited zero. Root checks passed, including 98 documentation fixtures; all 85
+aggregate Nx tasks passed (49 cache hits), including the storage suite. The
+separate uncached storage target passed all 201 tests with 96.32% lines/92.66%
+branches before this final documentation-only base increment. All three smoke
+targets and 12 dependencies passed (12 cache hits). Source boundaries cover 175
+files/627 edges/28 packages; emitted boundaries cover 68 files/259 edges, both
+with zero violations/cycles. Strict planning reports 258 issues/692 edges, zero
+unresolved decision sources and zero stale outputs. The disposable PostgreSQL
+fixture/network were removed; Android export is not native-device execution.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
-Snapshot enumeration: 2026-11-17T07:42:41.684Z; 258 issues, 692 prerequisite edges. Planning counts after explicitly cited annotations: completed 20; current 17; upcoming 219; closed without implementation 2; additionally blocked 175. Captured Linear status is retained in every detail table and accessible SVG node; later evidence is never a silent source refresh.
+Snapshot enumeration: 2026-11-17T07:42:41.684Z; 258 issues, 692 prerequisite edges. Planning counts after explicitly cited annotations: completed 20; current 18; upcoming 218; closed without implementation 2; additionally blocked 175. Captured Linear status is retained in every detail table and accessible SVG node; later evidence is never a silent source refresh.
 
 Layers use longest prerequisite distance, not a newly approved delivery order, deadline or priority. P/F prefixes are preserved as recorded phase labels; unnumbered work is not assigned an invented phase. Only completed prerequisites satisfy recorded edges; canceled/duplicate closure alone does not. Completed status is not independent acceptance proof. No structured blocker does not establish readiness: prose/security/native/device gates still apply. See each complete issue's acceptance criteria and comments before choosing work.
 
@@ -351,6 +394,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 ### Curated evidence separate from capture
 
 - EVE-261, 2026-11-17, blocker: Bootstrap timeout cause remains unproven. Historical CI output does not distinguish late module/startup work from post-log shutdown delay. Bounded fd3 phase capture is implemented for the next actual occurrence with unchanged 10000 ms child limits, signals, results and existing assertions; executable equivalence, invalid-journal/redaction and synthetic timeout controls exercise diagnostics only. No force-exit, retry, deadline increase, telemetry repair or whole-issue acceptance is established. Source checkpoint predates delivery; exact-head CI is separate evidence, not a refreshed issue snapshot. [evidence](https://linear.app/resnovas/issue/EVE-261#comment-c0e0d66f-9f2c-4009-9164-3695a7413038), [evidence](https://github.com/Resnovas/Eventiva/actions/runs/44096066749/job/134083384961), [evidence](https://ampcode.com/threads/T-1cb8af52-2e52-4924-bb42-cc7c523a6ddc).
+- EVE-262, 2026-11-17, later-status: Slice 2 independently read the live description and terminal comment page: EVE-262 is In Progress (state change recorded 08:14:06.002Z), not the historical Backlog capture. Current bounded work proves hook release reauthorization after claim/revocation/process loss and operator redrive using fixture-persisted policy, with an allowed durable-dedup control. Execution and delivered-head evidence are recorded separately on EVE-262/EVE-45 and in the maintained timeline; this annotation grants no production release or whole-issue acceptance. The complete historical source capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-262), [evidence](https://linear.app/resnovas/issue/EVE-262#comment-4cad4584-11e3-45e2-80cc-afc7df728cec), [evidence](https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51).
 - EVE-84, 2026-11-17T12:31:56.867Z, later-status: Live description and complete comment list independently reviewed: EVE-84 covers general Event planning, not MDT only. Jonathan's conditional 2026-11-17 decision therefore selects option B: confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically. Exact owner-selection time is unknown; this date is the Amp Linear relay, not the owner-selection or capture time. Baseline/history, absolute/completed-date exclusions, manual locks, authorization and readiness remain. The prior source ambiguity is resolved, but implementation prerequisites and whole-issue acceptance remain open. Frozen capture is unchanged; this is not a complete live roadmap refresh. [evidence](https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
 - EVE-22, 2026-11-17T12:15:01.148Z, later-status: Live MCP recheck retains In Progress. Human TGTGamer merged house PR 47 at 12:14:25Z as squash commit 983ce5595b75f1d485446b320fdc85b322c80dd4; GitHub state was independently checked. The tested downstream architecture references and house summary now align with Eventiva's 16 intersecting ESLint rows, without changing lint/runtime behavior. Eventiva combined verification/delivery and exact-head CI remain separate evidence; the historical mirror is not silently refreshed and whole-issue acceptance is not inferred from the house merge. [evidence](https://github.com/Resnovas/.github/pull/47), [evidence](https://github.com/Resnovas/.github/commit/983ce5595b75f1d485446b320fdc85b322c80dd4), [evidence](https://linear.app/resnovas/issue/EVE-22#comment-9b58885c-134f-49a6-aed2-59bfb9a1ef60).
 - EVE-34, 2026-11-17T12:03:57.576Z, later-status: Bounded EVE-34 refresh retains Backlog and includes the checkpoint plus source-lane evidence. Central immutable-d771b366 verification on 2026-11-17 passed completed-Activity SIGKILL/drain/restart controls, all 85 aggregate Nx tasks and smoke with disposable PostgreSQL. Both new modules remain in normal coverage: AgentRun branches 42/44 and combined server branches 84/86, above the unchanged 90% gate after public-contract tests closed the initial gap. Exact-head CI remains separate. EVE-35/36 consume the run model; EVE-52 and EVE-54 module pin/fence/full lifecycle acceptance remain separate. No production activation or whole-issue completion. [evidence](https://linear.app/resnovas/issue/EVE-34#comment-01bffbbf-3f7b-433e-9397-e964b555037c), [evidence](https://ampcode.com/threads/T-5a85c8b5-cf76-429d-b85e-30bc35c680a4), [evidence](https://ampcode.com/threads/T-66e90dd6-0f21-4bf7-809b-fb3bb8b9eb9c).

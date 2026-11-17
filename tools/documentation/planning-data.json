@@ -10057,6 +10057,19 @@
             ]
         },
         {
+            "issue": "EVE-262",
+            "kind": "later-status",
+            "date": "2026-11-17",
+            "status": "In Progress",
+            "statusType": "started",
+            "summary": "Slice 2 independently read the live description and terminal comment page: EVE-262 is In Progress (state change recorded 08:14:06.002Z), not the historical Backlog capture. Current bounded work proves hook release reauthorization after claim/revocation/process loss and operator redrive using fixture-persisted policy, with an allowed durable-dedup control. Execution and delivered-head evidence are recorded separately on EVE-262/EVE-45 and in the maintained timeline; this annotation grants no production release or whole-issue acceptance. The complete historical source capture is unchanged.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-262",
+                "https://linear.app/resnovas/issue/EVE-262#comment-4cad4584-11e3-45e2-80cc-afc7df728cec",
+                "https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51"
+            ]
+        },
+        {
             "issue": "EVE-84",
             "kind": "later-status",
             "date": "2026-11-17T12:31:56.867Z",

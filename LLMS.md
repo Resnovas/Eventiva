@@ -745,6 +745,12 @@ Public feed.read remains outside the sink transaction. Do not generalize this
 sequential fixture to concurrent consumers, native targets, release policy or
 arbitrary external effects; none is activated by the fixture.
 
+The same default fixture now proves fresh synthetic SQL release authorization
+after claim/revocation/SIGKILL/reclaim and after explicitly authorized operator
+redrive, with zero revoked sink calls and an independent durable-dedup control.
+Read [release recovery](03_release-recovery.md) for commands, retained evidence
+and limits; this adds no production policy or release authority.
+
 ## Real worker spans
 
 `HookDispatcherLive` emits fixed dispatch/claim/release/deliver/settle spans with

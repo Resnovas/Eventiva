@@ -28,6 +28,7 @@ import { Flags } from '@eventiva/contracts/flags';
 import {
     HookChangeFeed,
     HookDeclaration,
+    HookDenied,
     HookEvent,
     HookOperatorPolicy,
     HookOutbox,
@@ -117,6 +118,21 @@ if (role === 'worker') {
     const feed = Context.get(context, HookChangeFeed);
     const tasks = await run(FiberSet.make());
     const runFork = await run(FiberSet.runtime(tasks)());
+    // Fixture state is shared by independent connections, not captured in a
+    // worker's registration or claim. It grants no production release authority.
+    const releasePolicy = {
+        /** Read and retain the current synthetic decision on every dispatcher attempt. */
+        authorize: (selected, fact) =>
+            Effect.gen(function* () {
+                assert.deepEqual(selected.pin, declaration.pin);
+                assert.equal(fact.tenant, tenant);
+                const [permission] =
+                    yield* sql`SELECT allowed FROM hook_process_release_policy WHERE event_id = ${fact.id}`;
+                const allowed = permission !== undefined && Number(permission.allowed) === 1;
+                yield* sql`INSERT INTO hook_process_release_check (event_id, allowed) VALUES (${fact.id}, ${allowed ? 1 : 0})`;
+                if (!allowed) return yield* new HookDenied({ reason: 'policy-denied' });
+            }),
+    };
     const barrier = (name, value) =>
         Effect.gen(function* () {
             process.send({ barrier: name, value, pid: process.pid });
@@ -200,7 +216,7 @@ if (role === 'worker') {
                                             fallback: false,
                                         }),
                                 }),
-                                Layer.succeed(HookReleasePolicy, { authorize: () => Effect.void }),
+                                Layer.succeed(HookReleasePolicy, releasePolicy),
                                 Layer.succeed(HookSink, {
                                     deliver: (_d, fact, key) =>
                                         Effect.gen(function* () {
@@ -355,6 +371,9 @@ if (role === 'worker') {
         await run(sql`CREATE TABLE hook_process_origin (id text PRIMARY KEY)`);
         await run(sql`CREATE TABLE hook_process_sink (key text PRIMARY KEY, event_id text NOT NULL)`);
         await run(sql`CREATE TABLE hook_process_attempt (key text NOT NULL)`);
+        await run(sql`CREATE TABLE hook_process_release_policy (event_id text PRIMARY KEY, allowed integer NOT NULL)`);
+        await run(sql`CREATE TABLE hook_process_release_check (event_id text NOT NULL, allowed integer NOT NULL)`);
+        await run(sql`INSERT INTO hook_process_release_policy (event_id, allowed) VALUES (${event.id}, 1)`);
         const origin = store.commit(
             { key: 'process-origin', inputHash: 'one' },
             Effect.gen(function* () {
@@ -399,8 +418,8 @@ if (role === 'worker') {
             while (Date.now() < deadline) {
                 const [row] = await run(
                     dialect === 'postgres'
-                        ? sql`SELECT lease_until, CAST(EXTRACT(EPOCH FROM clock_timestamp()) * 1000 AS bigint) AS now FROM hook_delivery`
-                        : sql`SELECT lease_until, CAST((julianday('now') - 2440587.5) * 86400000 AS integer) AS now FROM hook_delivery`
+                        ? sql`SELECT lease_until, CAST(EXTRACT(EPOCH FROM clock_timestamp()) * 1000 AS bigint) AS now FROM hook_delivery WHERE state = 'running'`
+                        : sql`SELECT lease_until, CAST((julianday('now') - 2440587.5) * 86400000 AS integer) AS now FROM hook_delivery WHERE state = 'running'`
                 );
                 if (Number(row.now) >= Number(row.lease_until)) return;
                 await delay(20);
@@ -646,6 +665,139 @@ if (role === 'worker') {
                 { tenant, consumer, event_id: replayEvent.id, cursor: 2 },
             ],
         });
+
+        // A permitted committed fact is claimed, then revoked through the
+        // parent's independent connection before SIGKILL. Neither reclaim nor
+        // explicitly authorized operator replay may reuse the earlier permission.
+        const revokedEvent = { ...event, id: id(13), commit: id(23), sequence: 3 };
+        await run(sql`INSERT INTO hook_process_release_policy (event_id, allowed) VALUES (${revokedEvent.id}, 1)`);
+        const revokedOrigin = store.commit(
+            { key: 'revoked-origin', inputHash: 'three' },
+            Effect.gen(function* () {
+                yield* sql`INSERT INTO hook_process_origin (id) VALUES ('three')`;
+                yield* outbox.stage(revokedEvent, [declaration]);
+                return { output: null, receipt: { committed: true } };
+            })
+        );
+        assert.equal((await run(revokedOrigin)).replayed, false);
+        const retainedFacts = await run(sql`SELECT * FROM hook_event ORDER BY cursor`);
+        const retainedOrigins = await run(sql`SELECT * FROM hook_process_origin ORDER BY id`);
+        const retainedReceipts = await run(sql`SELECT * FROM action_commit ORDER BY key`);
+        const revokedWorker = await launch(database);
+        const lostRevokedClaim = request(revokedWorker, { command: 'dispatch', phase: 'claim' }).catch((error) => ({
+            error,
+        }));
+        const revokedClaim = (await waitFor(revokedWorker, (value) => value.barrier === 'claimed')).value;
+        assert.equal(revokedClaim.event.id, revokedEvent.id);
+        assert.equal(revokedClaim.attempt, 1);
+        assert.equal(
+            Number(
+                (await run(sql`SELECT allowed FROM hook_process_release_policy WHERE event_id = ${revokedEvent.id}`))[0]
+                    .allowed
+            ),
+            1
+        );
+        assert.deepEqual(
+            await run(sql`SELECT * FROM hook_process_release_check WHERE event_id = ${revokedEvent.id}`),
+            []
+        );
+        await run(sql`UPDATE hook_process_release_policy SET allowed = 0 WHERE event_id = ${revokedEvent.id}`);
+        assert.equal(
+            Number(
+                (await run(sql`SELECT allowed FROM hook_process_release_policy WHERE event_id = ${revokedEvent.id}`))[0]
+                    .allowed
+            ),
+            0
+        );
+        const revokedDelivery = () =>
+            run(sql`SELECT * FROM hook_delivery WHERE idempotency_key = ${revokedClaim.idempotencyKey}`);
+        assert.equal((await revokedDelivery())[0].lease, revokedClaim.lease);
+        await stop(revokedWorker);
+        assert.match((await lostRevokedClaim).error.message, /Worker exited at IPC barrier: null\/SIGKILL/);
+        await expire();
+
+        const deniedWorker = await launch(database);
+        assert.notEqual(deniedWorker.pid, revokedWorker.pid);
+        assert.equal(await request(deniedWorker, { command: 'dispatch', phase: 'finish' }), 'dead-letter');
+        const deniedClaim = (await waitFor(deniedWorker, (value) => value.barrier === 'reclaimed')).value;
+        assert.equal(deniedClaim.idempotencyKey, revokedClaim.idempotencyKey);
+        assert.notEqual(deniedClaim.lease, revokedClaim.lease);
+        assert.equal(deniedClaim.attempt, 2);
+        const [denied] = await revokedDelivery();
+        assert.equal(denied.state, 'dead-letter');
+        assert.deepEqual(JSON.parse(denied.settlement), { state: 'dead-letter', reason: 'denied' });
+        assert.equal(Number(denied.attempt), 2);
+        assert.equal(await request(deniedWorker, { command: 'settle', claim: revokedClaim }), 'lease-lost');
+
+        // Operator authorization permits redrive, never metadata release. Keep
+        // the retained denied attempt and exact fact while resetting its budget.
+        const revokedReplay = { command: 'replay', key: revokedClaim.idempotencyKey, requestId: id(92) };
+        assert.equal(await request(operatorReplacement, revokedReplay), true);
+        const deniedHistory = await run(
+            sql`SELECT * FROM hook_redrive WHERE idempotency_key = ${revokedClaim.idempotencyKey}`
+        );
+        assert.equal(deniedHistory.length, 1);
+        assert.equal(deniedHistory[0].request_id, id(92));
+        assert.equal(deniedHistory[0].reason, 'denied');
+        assert.equal(Number(deniedHistory[0].attempt), 2);
+        const [redriven] = await revokedDelivery();
+        assert.equal(redriven.state, 'pending');
+        assert.equal(Number(redriven.attempt), 0);
+        assert.equal(redriven.lease, null);
+        await stop(deniedWorker);
+        const replayWorker = await launch(database);
+        assert.notEqual(replayWorker.pid, deniedWorker.pid);
+        assert.equal(await request(replayWorker, { command: 'dispatch', phase: 'finish' }), 'dead-letter');
+        const replayClaim = (await waitFor(replayWorker, (value) => value.barrier === 'reclaimed')).value;
+        assert.equal(replayClaim.idempotencyKey, revokedClaim.idempotencyKey);
+        assert.deepEqual(replayClaim.event, revokedEvent);
+        assert.equal(replayClaim.attempt, 1);
+        assert.notEqual(replayClaim.lease, deniedClaim.lease);
+        const terminalRevoked = await revokedDelivery();
+        assert.equal(terminalRevoked[0].state, 'dead-letter');
+        assert.deepEqual(JSON.parse(terminalRevoked[0].settlement), { state: 'dead-letter', reason: 'denied' });
+        assert.equal(Number(terminalRevoked[0].attempt), 1);
+        assert.equal(await request(operatorReplacement, revokedReplay), false);
+        assert.deepEqual(await revokedDelivery(), terminalRevoked);
+        assert.deepEqual(
+            await run(sql`SELECT * FROM hook_redrive WHERE idempotency_key = ${revokedClaim.idempotencyKey}`),
+            deniedHistory
+        );
+        assert.deepEqual(
+            (await run(sql`SELECT allowed FROM hook_process_release_check WHERE event_id = ${revokedEvent.id}`)).map(
+                (row) => Number(row.allowed)
+            ),
+            [0, 0]
+        );
+        assert.deepEqual(
+            await run(sql`SELECT * FROM hook_process_attempt WHERE key = ${revokedClaim.idempotencyKey}`),
+            []
+        );
+        assert.deepEqual(await run(sql`SELECT * FROM hook_process_sink WHERE event_id = ${revokedEvent.id}`), []);
+        assert.equal((await run(revokedOrigin)).replayed, true);
+        assert.deepEqual(await run(sql`SELECT * FROM hook_event ORDER BY cursor`), retainedFacts);
+        assert.deepEqual(await run(sql`SELECT * FROM hook_process_origin ORDER BY id`), retainedOrigins);
+        assert.deepEqual(await run(sql`SELECT * FROM action_commit ORDER BY key`), retainedReceipts);
+        const feed = Context.get(context, HookChangeFeed);
+        assert.deepEqual(await run(feed.read(2, 10)), { cursor: 3, events: [{ cursor: 3, event: revokedEvent }] });
+
+        // The independent allowed control already lost its sink acknowledgement
+        // and retried with the same stable key. Recheck its retained evidence
+        // after revocation to rule out a fixture that simply denies everything.
+        assert.deepEqual(await run(sql`SELECT key, event_id FROM hook_process_sink`), [
+            { key: claim1.idempotencyKey, event_id: event.id },
+        ]);
+        assert.deepEqual(
+            (await run(sql`SELECT key FROM hook_process_attempt`)).map((row) => row.key),
+            [claim1.idempotencyKey, claim1.idempotencyKey]
+        );
+        assert.deepEqual(
+            (await run(sql`SELECT allowed FROM hook_process_release_check WHERE event_id = ${event.id}`)).map((row) =>
+                Number(row.allowed)
+            ),
+            [1, 1]
+        );
+        assert.deepEqual(await consumerState(), finalConsumerState);
         console.log(
             JSON.stringify({
                 event: 'hook-process-recovery-passed',

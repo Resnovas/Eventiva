@@ -212,3 +212,11 @@ Delivered directly to main under the owner's standing authorization. Exact indep
 ## Repository context (human-maintained)
 
 Add implementation notes here, with source links. This section never grants owner approval.
+
+2026-11-17 EVE-262/EVE-45 slice 2 adds fixture-only current release policy after
+restart and authorized redrive. Original state/receipt/fact content remains
+committed once; denied work reaches no sink, while an independent allowed control
+retains durable key deduplication. See [the hook guide](../../hooks.md#verify-current-release-permission-after-restart)
+and [timeline checkpoint](../timeline.md#hook-release-reauthorization-slice-2---2026-11-17)
+for execution evidence and remaining limits. EVE-45 remains In Progress;
+production release and broader governed-consumer acceptance remain separate.
