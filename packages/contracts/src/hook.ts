@@ -300,3 +300,115 @@ export const hookFlag = {
     safeDefault: false,
     description: 'Enable authorized post-commit metadata observations and additive dispatch.',
 };
+
+/** Trusted producer intent, not evidence that the callback or transition committed. */
+export const HookProducerTarget = Schema.Union(
+    Schema.Struct({
+        kind: Schema.Literal('module.lifecycle'),
+        module: Name,
+        operation: Schema.Literal(
+            'register',
+            'validate',
+            'install',
+            'activate',
+            'ready',
+            'deactivate',
+            'unregister',
+            'retire',
+            'update',
+            'recover'
+        ),
+    }).annotations(strict),
+    Schema.Struct({ kind: Schema.Literal('platform.ready'), generation: Version }).annotations(strict)
+);
+export type HookProducerTarget = typeof HookProducerTarget.Type;
+export const HookProducerBinding = Schema.Struct({
+    purpose: Name,
+    profile: SecurityProfile,
+    operation: HookEvent.fields.operation,
+    // Reuse the exact lifecycle/ready schemas without admitting execution or domain facts in the type.
+    projection: Schema.Union(HookObservation.members[0], HookObservation.members[1]),
+}).annotations(strict);
+export type HookProducerBinding = typeof HookProducerBinding.Type;
+export const HookProducerAttempt = Schema.Struct({
+    id: Schema.UUID,
+    tenant: TenantId,
+    runtime: Name,
+    incarnation: Schema.UUID,
+    target: HookProducerTarget,
+    binding: HookProducerBinding,
+}).annotations(strict);
+export type HookProducerAttempt = typeof HookProducerAttempt.Type;
+export const HookProducerStatus = Schema.Literal('unresolved', 'committed', 'abandoned');
+export type HookProducerStatus = typeof HookProducerStatus.Type;
+
+/** Core-owned provenance/status authority. No plugin or caller-supplied classification fallback.
+ * Reconciliation queries authoritative idempotency/status evidence; it MUST NOT invoke the callback.
+ * A failed callback is not by itself evidence of no side effect. Default is denial, never replay.
+ */
+export class HookProducerPolicy extends Context.Tag('@eventiva/contracts/HookProducerPolicy')<
+    HookProducerPolicy,
+    {
+        /** Bind captured tenant/runtime identity to a transition derived from authoritative core state. */
+        readonly bind: (
+            tenant: TenantId,
+            runtime: string,
+            incarnation: string,
+            target: HookProducerTarget
+        ) => Effect.Effect<HookProducerBinding, HookDenied>;
+        /** Recheck current access to an immutable retained attempt before releasing metadata or settling it. */
+        readonly authorize: (
+            attempt: HookProducerAttempt,
+            operation: 'inspect' | 'confirm' | 'reconcile'
+        ) => Effect.Effect<void, HookDenied>;
+        /** Query status by retained idempotency key without invoking the original callback. */
+        readonly reconcile: (attempt: HookProducerAttempt) => Effect.Effect<HookProducerStatus, HookDenied>;
+    }
+>() {}
+export const HookProducerDeny = Layer.succeed(HookProducerPolicy, {
+    /** Missing core provenance authority never admits a callback intent. */
+    bind: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
+    /** Retained attempts remain private until a live core authority is supplied. */
+    authorize: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
+    /** Missing status evidence never turns ambiguity into a replay or committed fact. */
+    reconcile: () => Effect.fail(new HookDenied({ reason: 'policy-denied' })),
+});
+
+/** Durable producer prerequisite. A fresh layer build persists a fresh incarnation, never resumes one.
+ * begin commits unresolved intent BEFORE the callback. Only fresh:true permits its first invocation;
+ * a duplicate request must be inspected/reconciled, never blindly re-executed, even after restart.
+ * confirm is for the trusted mutation owner after commit, NOT a successful public method wrapper.
+ * It atomically confirms the attempt and stages the policy-bound fact in the existing outbox/feed.
+ * These APIs do not reconstruct kernel state, invoke callbacks or grant observer release authority.
+ */
+export class HookProducer extends Context.Tag('@eventiva/contracts/HookProducer')<
+    HookProducer,
+    {
+        readonly runtime: { readonly logical: string; readonly incarnation: string };
+        /** Persist unresolved intent; only fresh:true authorizes its first callback invocation. */
+        readonly begin: (
+            request: string,
+            target: HookProducerTarget
+        ) => Effect.Effect<
+            { readonly fresh: boolean; readonly attempt: HookProducerAttempt; readonly status: HookProducerStatus },
+            HookDenied | HookOutboxFailure,
+            HookProducerPolicy
+        >;
+        /** Return retained status after live authorization, without inferring a callback outcome. */
+        readonly inspect: (
+            request: string
+        ) => Effect.Effect<
+            { readonly attempt: HookProducerAttempt; readonly status: HookProducerStatus },
+            HookDenied | HookOutboxFailure,
+            HookProducerPolicy
+        >;
+        /** Atomically publish the mutation owner's confirmed transition from this incarnation only. */
+        readonly confirm: (
+            request: string
+        ) => Effect.Effect<HookProducerStatus, HookDenied | HookOutboxFailure, HookProducerPolicy>;
+        /** Settle authoritative status evidence without replay, including after incarnation loss. */
+        readonly reconcile: (
+            request: string
+        ) => Effect.Effect<HookProducerStatus, HookDenied | HookOutboxFailure, HookProducerPolicy>;
+    }
+>() {}

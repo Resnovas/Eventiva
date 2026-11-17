@@ -327,6 +327,44 @@ export const stage = (receipt: Receipt & { readonly version: number }) =>
     });
 ```
 
+### hook_producer
+
+```ts
+import { HookDenied, HookProducer, HookProducerDeny, type HookProducerTarget } from '@eventiva/contracts/hook';
+import { hookProducer } from '@eventiva/integrations.sql/hook-producer';
+import { Effect } from 'effect';
+
+/** Supply authenticated CurrentTenant and SqlClient after migration 0008; build once per restart. */
+export const journal = hookProducer('sqlite', 'platform.primary');
+
+/** Only the trusted mutation owner supplies this callback and its authoritative policy binding.
+ * The callback must use the retained request UUID for idempotency/status reconciliation.
+ * An error leaves the attempt unresolved: failure is not proof of no external effect.
+ */
+export const commitTransition = <A, E, R>(
+    request: string,
+    target: HookProducerTarget,
+    commit: (idempotencyKey: string) => Effect.Effect<A, E, R>
+) =>
+    Effect.gen(function* () {
+        const producer = yield* HookProducer;
+        const attempt = yield* producer.begin(request, target);
+        if (!attempt.fresh) return yield* new HookDenied({ reason: 'unavailable' });
+        const value = yield* commit(attempt.attempt.id);
+        yield* producer.confirm(request);
+        return value;
+    });
+
+/** Inspect/reconcile instead of reinvoking after a crash or lost confirmation acknowledgement.
+ * This example is deliberately denied until a core status authority is supplied.
+ */
+export const reconcile = (request: string) =>
+    Effect.gen(function* () {
+        const producer = yield* HookProducer;
+        return yield* producer.reconcile(request);
+    }).pipe(Effect.provide(HookProducerDeny));
+```
+
 ---
 
 ## Mandatory Cluster composition (EVE-252)
@@ -537,12 +575,31 @@ are not rewound; consumers must handle historical redelivery idempotently. No hi
 update/delete API is exposed; grant only INSERT/SELECT to runtime, not owner rights.
 This history is not the platform's mandatory tamper-evident audit.
 
-Do not synthesize automatic receipt/lifecycle events from snapshots: the action
-host has no trusted generation/classification binding, and local Kernel ReadyReceipt
-uses a named runtime while hook readiness requires durable UUID provenance. Owner
-incarnation/recovery and interrupted-callback reconciliation contracts are pending.
-No native/UI consumer, production sink/release policy or exactly-once lifecycle
-publication is claimed by operator recovery or a synthetic process fixture.
+The owner approved a fresh persisted incarnation UUID per restart linked to the
+logical runtime, unresolved callback ambiguity reconciled via idempotency/status,
+and lifecycle facts meaning committed transitions with authoritative provenance.
+Migration 0008 and integrations.sql/hook-producer implement the explicit host-only
+journal prerequisite. See [the compiling storage example](../13_storage/02_hook_producer.ts).
+Build once per incarnation. begin(request,target) persists unresolved intent before
+callbacks; fresh:false forbids replay. Policy.bind receives captured tenant, logical
+runtime, incarnation and target, and supplies the immutable projection/purpose/profile.
+Default policy denies. confirm stages that fact and terminal status atomically with
+the existing feed, with no observers automatically enrolled. Old-incarnation confirm
+fails; reconcile consults authoritative policy status, never invokes callbacks, and
+leaves unknown outcomes unresolved. Terminal retries are idempotent. Platform-ready
+deduplication is incarnation/generation, not a cast of the logical runtime name.
+All operations reject ambient transactions; policy authorization is fresh per call.
+SQL-error/defect handling never releases private error text. This library capability
+is explicit opt-in, not a new application toggle; hook dispatch stays default-off.
+Retain all additive tables on rollback and do not run migrations remotely here.
+
+Do not synthesize automatic receipt/lifecycle events from snapshots: the action host
+still lacks a trusted generation/classification binding; KernelLive remains unwired.
+The follow-on must capture actual mutation owners, implicit cascades/disposal,
+publication-before-cleanup failures and stable callback context. Local ReadyReceipt
+keeps its named runtime. No automatic kernel production, native/UI consumer,
+production sink/release policy or exactly-once lifecycle delivery is claimed by
+the journal's trusted synthetic crash/reopen fixture. Keep EVE-45/261 open.
 
 The committed hook-process fixture separately proves a trusted synthetic feed
 consumer can atomically store local metadata application markers plus its cursor,

@@ -271,19 +271,79 @@ history but supplies no history-update/delete API; grant runtime INSERT/SELECT o
 on `hook_redrive`. This is not a tamper-evident audit or protection against the SQL
 owner. Inspect/replay reject ambient SQL transactions and sanitize storage errors.
 
-## Producer acceptance is still blocked
+## Persist producer attempts before callbacks
 
-Automatic action-receipt and lifecycle production are not supplied by manually
-staging synthetic facts. The action host lacks an authoritative module/version/
-generation and event classification binding. Kernel `ReadyReceipt.runtimeId` is a
-named `ModuleId`, while the hook event requires a UUID; generations are currently
-process-local. Snapshot differences cannot establish durable publication provenance.
-The owner must define whether restart starts a new durable runtime incarnation or
-resumes fenced ownership, and how to reconcile callback success followed by a crash
-before journal commit. Nontransactional callbacks must not be blindly rerun.
-Until that contract exists, do not claim durable lifecycle production or exactly
-one `platform.ready` event per durable generation. Native/UI consumer and production
-release/sink acceptance also remain separate from these host-only recovery APIs.
+The approved producer protocol creates a fresh durable runtime-incarnation UUID
+on each restart, linked to the stable logical runtime name. An invocation attempt
+is not a lifecycle fact. Callback success followed by a crash before confirmation
+remains unresolved until an authoritative status query establishes what committed;
+never infer failure or rerun the callback from the missing acknowledgement.
+
+Apply additive migration `0008.sql` for the selected dialect before building
+`hookProducer(dialect, logicalRuntime)` from `@eventiva/integrations.sql/hook-producer`.
+Supply the already authenticated `CurrentTenant` and captured `SqlClient`.
+Both arguments are required: dialect is `postgres` or `sqlite`; logicalRuntime is
+a lower-case dotted/hyphenated name up to 128 characters, with no default. Build
+one layer per running incarnation, not per operation. A fresh build always creates
+a new persisted UUID; it does not resume ownership or fence another incarnation.
+Retain the additive tables on application rollback; disable the opting-in producer,
+not the existing feed or its history. No migration is run against production here.
+
+Use the trusted-host `HookProducer` capability in this order:
+
+1. Supply `HookProducerPolicy`. Its `bind(tenant, runtime, incarnation, target)`
+   establishes the intended module/version/generation, purpose, security profile
+   and transition from authoritative core state, never caller fields or snapshots.
+   The tenant is captured by the adapter, not accepted from the request. The
+   default `HookProducerDeny` rejects every operation.
+2. Call `begin(requestUuid, target)` before the callback. The target is either
+   `{ kind: 'module.lifecycle', module, operation }` or
+   `{ kind: 'platform.ready', generation }`; generation must be a positive safe
+   integer. Retain the UUID as the callback's idempotency/status key. Only
+   `fresh: true` permits the first invocation. A duplicate returns `fresh: false`
+   and the original attempt/status, including after a restart; conflicting
+   content fails. Never invoke again merely because status is unresolved.
+3. Let the actual mutation owner call `confirm(requestUuid)` only after the bound
+   transition commits. Successful return from an arbitrary public method is not
+   that evidence. Confirmation on a predecessor's incarnation is refused.
+4. On any ambiguous result, call `inspect(requestUuid)` and then
+   `reconcile(requestUuid)`. The latter asks policy for authoritative status using
+   the persisted attempt/key, outside SQL transactions. `unresolved` retains the
+   attempt without publication. `abandoned` is terminal, publishes nothing and
+   requires positive evidence that the intended transition did not commit.
+   `committed` confirms the original immutable binding. Terminal retries are
+   idempotent; contradictory resolutions conflict. Reconciliation never invokes
+   the original callback.
+
+Confirmation stages a metadata-only fact in the existing `HookOutbox` and commits
+its status and sequence atomically. Feed failure rolls them all back, leaving the
+attempt unresolved. Confirmation acknowledgement loss can be retried without a
+second fact. Platform-ready facts are unique per incarnation/generation, not per
+logical runtime name. Every fact uses the original attempt UUID as event/commit ID,
+the incarnation as resource ID and the `kernel.lifecycle` stream. Purpose, profile
+and operation classification all remain policy-bound, including protected/emergency
+classes; confirmation cannot downgrade them. This API does not publish business execution events.
+The producer persists observer-independent facts with no subscriptions; it does not
+automatically enroll observers. Existing default-off dispatch and default-deny
+release policy still apply, including before releasing protected metadata.
+
+All operations reject ambient SQL transactions. Policy authorization is rechecked
+on inspection, confirmation and reconciliation. Missing and out-of-scope attempts
+return policy denial without disclosing another tenant/runtime's request existence.
+Keep the policy, producer and raw
+feed capability inside the trusted host, never client/plugin context. Policy and
+SQL defects become bounded typed failures, with no supplied error text projected.
+See the compiling example in `ai-docs/src/13_storage/02_hook_producer.ts`.
+
+`KernelLive` and `ActionHost` are **not automatically wired** by this prerequisite.
+The kernel still has process-local generations; its named `ReadyReceipt.runtimeId`
+stays unchanged. A public-method wrapper would miss disposal/dependent cascades and
+mutations preceding a failed cleanup. The next integration must capture those
+actual mutation owners, propagate callback keys and retain authoritative
+provenance, rather than diff snapshots or translate telemetry spans. Until then,
+do not claim automatic durable lifecycle/platform-ready production. The distinct-
+process fixture proves this journal protocol with a trusted synthetic mutation
+owner, not native/UI consumers, production release or full EVE-45/EVE-261 acceptance.
 
 ## Diagnose failures
 

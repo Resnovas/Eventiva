@@ -6,6 +6,11 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./hook-producer": {
+            "@eventiva/source": "./src/hook-producer.ts",
+            "types": "./dist/hook-producer.d.ts",
+            "default": "./dist/hook-producer.js"
+        },
         "./marketplace": {
             "@eventiva/source": "./src/marketplace.ts",
             "types": "./dist/marketplace.d.ts",

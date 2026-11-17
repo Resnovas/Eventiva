@@ -65,4 +65,38 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             expect(report.trustedSyntheticConsumer.pids).toHaveLength(3);
             expect(new Set(report.trustedSyntheticConsumer.pids).size).toBe(3);
         }, 65000);
+
+        it('retains unresolved producer callbacks across SIGKILL and reconciles without replay', /** Verify crash recovery in distinct emitted-code processes, without replaying the mutation. */ async () => {
+            // Separate processes prevent in-memory state from masquerading as durable intent or reconciliation.
+            const stdout = await new Promise<string>(
+                /** Run the crash proof and retain diagnostics if any child process fails. */ (resolve, reject) => {
+                    execFile(
+                        process.execPath,
+                        [
+                            fileURLToPath(new URL('../fixtures/hook-producer-process.mjs', import.meta.url)),
+                            'proof',
+                            dialect,
+                        ],
+                        { timeout: 60000, maxBuffer: 1024 * 1024 },
+                        /** Surface child failure output or return the completed producer recovery report. */
+                        (error, stdout, stderr) => {
+                            if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
+                            else resolve(stdout);
+                        }
+                    );
+                }
+            );
+            expect(JSON.parse(stdout.trim())).toEqual({
+                event: 'hook-producer-process-passed',
+                dialect,
+                processes: 3,
+                distinctIncarnations: 3,
+                unresolvedBeforeReconcile: true,
+                callbackExecutions: 1,
+                committedFacts: 1,
+                confirmationAcknowledgementLost: true,
+                automaticKernelProduction: false,
+                productionRelease: false,
+            });
+        }, 65000);
     });
