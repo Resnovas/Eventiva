@@ -11,11 +11,18 @@
             "types": "./dist/logger.d.ts",
             "default": "./dist/logger.js"
         },
+        "./otlp": {
+            "@eventiva/source": "./src/otlp.ts",
+            "types": "./dist/otlp.d.ts",
+            "default": "./dist/otlp.js"
+        },
         "./package.json": "./package.json"
     },
     "dependencies": {
         "@eventiva/contracts": "workspace:*",
-        "@effect/platform": "0.97.3"
+        "@effect/opentelemetry": "0.64.2",
+        "@effect/platform": "0.97.3",
+        "@opentelemetry/api": "1.9.0"
     },
     "peerDependencies": {
         "effect": "catalog:"

@@ -1,6 +1,69 @@
-# Central local telemetry
+# Central telemetry
 
-EVE-44 provides structured Effect logs and correlated spans with bounded local sinks, composed into the diagnostic server in `apps/server/src/main.ts`. It does not provide security audit, an OTLP protocol adapter, production ingestion, a ready event, or the banner extension. Shared package exports, package/project metadata and combined verification belong to the integration coordinator. Passing source-alias tests is not a combined package build.
+EVE-44 provides structured Effect logs and correlated spans with bounded local sinks, composed into the diagnostic server in `apps/server/src/main.ts`. EVE-21 adds an explicitly configured, default-off OTLP/HTTP JSON span adapter below the existing governed export boundary. Neither provides security audit, production ingestion authorization, a ready event, or the banner extension. Shared package exports, package/project metadata and combined verification belong to the integration coordinator. Source-condition tests are not a combined package build.
+
+## EVE-21 scope after the foundation reset
+
+[EVE-21](https://linear.app/resnovas/issue/EVE-21) names the retired `packages/core` tracing implementation. Its active equivalents are `@eventiva/runtime/telemetry`, the neutral `@eventiva/contracts/observability` sink contract and `@eventiva/integrations.telemetry.server/logger`. Runtime imports no vendor SDK and the server adapter imports no runtime code. The server composition supplies the sink. The 2026-11-17 reconciliation found no Sentry references in `packages`, `apps` or `pnpm-lock.yaml`; the historical snapshots are not active implementation targets.
+
+The existing tests demonstrate a sample span reaching an in-memory sink and the actual diagnostic executable persisting a correlated startup span to local JSONL before process exit. They also exercise main telemetry disabled, bootstrap failure diagnostics retained, and sink failures isolated from business work. No duplicate exporter or removal shim is needed for those criteria. Reproduce the focused proof with `pnpm exec vitest run --config tests/telemetry/vitest.config.mts`; the relevant cases are "correlates action -> resource -> asynchronous observer without feature exporters", "retains safe span metadata, durations and an explicit asynchronous handoff parent", "flushes the real file layer before process exit and releases its scoped lock" and "optional telemetry opt-out cannot turn off bootstrap failure diagnostics".
+
+Jonathan approved the original OTLP scope on 2026-11-17. `integrations.telemetry.server/otlp` uses `@effect/opentelemetry` 0.64.2, compatible with pinned Effect 3.22.4 and Platform 0.97.3. Runtime remains vendor-neutral. The separate PostHog diagnostic-event adapter is not OTLP. The new tests exercise actual nested Effect spans through runtime, the governed sink and the real Fetch HTTP adapter into an in-memory collector. This is wire/export evidence, not production collector acceptance or permission to close EVE-21. Replace the obsolete `--projects=core` command with checks on runtime, telemetry.server and their telemetry test project.
+
+## Opt in to governed OTLP spans
+
+Use `otlpTelemetryLayer(binding, configuration?)` only in trusted server composition. It returns `Layer<TelemetryExportProvider, TelemetrySinkFailure, HttpClient>`. Keep it below `governedTelemetrySinkLayer`, which requires a fresh flag and release-authority decision for each write and flush. A configured endpoint alone grants nothing. Never install this tenant-bound pipeline as a mixed-tenant global logger, or let feature code acquire its provider. Existing diagnostic-main/local routing is unchanged.
+
+This complete denied-by-default example needs no credentials or network. The synthetic binding is not a production grant; `FlagsSafeDefaults` and `TelemetryExportDeny` deliberately prevent release even if OTLP is later configured on:
+
+```typescript
+import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
+import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
+import { TenantId } from '@eventiva/contracts/ids';
+import { TelemetryExportDeny, type TelemetryExportBinding } from '@eventiva/contracts/telemetry-export';
+import { otlpTelemetryLayer } from '@eventiva/integrations.telemetry.server/otlp';
+import { telemetryLayer } from '@eventiva/runtime/telemetry';
+import { governedTelemetrySinkLayer } from '@eventiva/runtime/telemetry-export';
+import { Effect, Layer, Schema } from 'effect';
+
+const binding: TelemetryExportBinding = {
+    tenantId: Schema.decodeSync(TenantId)('11111111-1111-4111-8111-111111111111'),
+    moduleId: 'example.logger',
+    moduleVersion: '1.0.0',
+    generation: 1,
+    profile: 'baseline',
+    operation: 'ordinary',
+    purpose: 'diagnostics',
+    destinationId: '99999999-9999-4999-8999-999999999999',
+};
+const policy = { messages: { 'sample.completed': 'Completed.' } };
+const OptionalSink = governedTelemetrySinkLayer(binding, policy).pipe(
+    Layer.provide(otlpTelemetryLayer(binding)),
+    Layer.provide(FetchHttpClient.layer),
+    Layer.provide(FlagsSafeDefaults),
+    Layer.provide(TelemetryExportDeny)
+);
+const program = Effect.void.pipe(
+    Effect.withSpan('sample.completed'),
+    Effect.provide(telemetryLayer({ ...policy, attributes: {} }).pipe(Layer.provide(OptionalSink)))
+);
+```
+
+To permit an authorized test destination, inject configuration through the host's Effect ConfigProvider and supply the real approved flag/authority services. Do not paste credentials into source, shell history, issues or logs. Endpoints and header JSON use `Config.redacted`; errors retain only closed reason codes, never the HTTP request/response, credential or decoder cause.
+
+| Config path                | Default                           | Accepted value                                                                                                                                                                                           |
+| -------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `telemetry.otlp.enabled`   | `false`                           | Boolean; additional provider opt-in, not a release flag                                                                                                                                                  |
+| `telemetry.otlp.endpoint`  | `http://127.0.0.1:4318/v1/traces` | Full trace URL, HTTPS or HTTP loopback only; no userinfo, query or fragment                                                                                                                              |
+| `telemetry.otlp.headers`   | `{}`                              | Redacted JSON string object, at most 16 unique case-insensitive names of 1..64 characters and printable values of at most 2048 characters; no transport/framing/content-type/trace-propagation overrides |
+| `telemetry.otlp.timeoutMs` | `1000`                            | Integer 1..10000; bounds request and acknowledgement                                                                                                                                                     |
+| `telemetry.export.enabled` | `false`                           | Existing live feature flag, not Config; still requires current release authority                                                                                                                         |
+
+With the default environment ConfigProvider, names are case-sensitive and underscore-separated, for example `telemetry_otlp_enabled`, `telemetry_otlp_endpoint`, `telemetry_otlp_headers`, `telemetry_otlp_timeoutMs`. Other providers may map the same paths differently. Missing values require no secret. Disabled providers send nothing. Even when enabled, Restricted/Vault and non-ordinary bindings reject; record profile and every authority-bearing binding field must match.
+
+The adapter sends one span per request, with original validated trace/span/parent IDs, catalog code, start/end derived from record timestamp and duration, and succeeded/failed status. Resource metadata contains only static `service.name=eventiva`; text, attributes, identities, events, links and failure payloads are dropped. Logs are not an OTLP signal in this adapter. The existing runtime queue is the only queue; export has no batching, retry/backlog or shutdown replay. Direct provider contention fails rather than queueing under an aging grant. Flush is a current-binding barrier, not a resend.
+
+Effect's OTLP JSON serializer is used without its automatic exporter: its buffering/retry and swallowed delivery failures do not meet the existing live-grant/no-retained-backlog contract. Inject an un-retried client such as FetchHttpClient. HTTP tracing and redirects are disabled. Non-2xx, malformed/oversized acknowledgements (over 16 KiB), rejected spans, warnings, transport failures and timeouts return safe failures. Cancellation aborts the cooperative HTTP transport; closed handles cannot send. A successful acknowledgement proves an attempted delivery, not durable ingestion or exactly-once output. Scope release, SDK presence and fixture success are not kernel-installed-exporter or production evidence. See [the governed release contract](telemetry-export.md).
 
 ## Instrument features
 
@@ -40,7 +103,7 @@ const program = Effect.logInfo('app.ready').pipe(
 );
 ```
 
-`NodeFileSystem` is the already pinned `@effect/platform-node/NodeFileSystem` implementation. No packages are installed by this lane. Choose that implementation only in a Node composition. Browser/native targets can inject a supported sink through the same neutral port; filesystem support for those targets is not claimed. Catch/map application failure before the outer runMain/reporting boundary too: a logger cannot prevent a caller from separately printing an escaped raw Cause. Do not let a generic outer failure reporter serialize protected failures.
+`NodeFileSystem` is the already pinned `@effect/platform-node/NodeFileSystem` implementation. Choose that implementation only in a Node composition. Browser/native targets can inject a supported sink through the same neutral port; filesystem support for those targets is not claimed. Catch/map application failure before the outer runMain/reporting boundary too: a logger cannot prevent a caller from separately printing an escaped raw Cause. Do not let a generic outer failure reporter serialize protected failures.
 
 Use one central Layer value per composition. Effect memoization shares repeated builds within one graph. Nested central installation replaces the logger set and unwraps the central tracer before installing its own exporter, preventing duplicate records. Do not assume a completed Layer build restores the consuming fiber's instrumentation: Effect propagates Layer FiberRef patches. In particular, joining a child imports its now-closed logger/tracer. `Fiber.await` returns its Exit without importing those patches, so the parent retains the live bootstrap logger for fallback diagnostics. Independent compositions have independent queues, policies and lifetimes. None of this deduplicates business events or physical output across process crashes.
 
@@ -66,7 +129,7 @@ Configuration is read through the injected Effect ConfigProvider, never direct e
 | `telemetryFile.maxFiles`      | `7`                   | Integer 1..1024 managed segments total, not per day                                                                        |
 | `telemetryFile.retentionDays` | `7`                   | Integer 1..365 UTC calendar dates, including today                                                                         |
 
-Bootstrap deliberately uses fixed enabled=true, capacity=32, timeoutMs=1000 rather than reading the main descriptor. File paths use Config.redacted/Redacted and failure fields contain only fixed reason codes. No credential, endpoint, exporter provider, sampling switch or production destination is accepted. Local sampling is none: every enabled accepted record is attempted once.
+Bootstrap deliberately uses fixed enabled=true, capacity=32, timeoutMs=1000 rather than reading the main descriptor. File paths use Config.redacted/Redacted and failure fields contain only fixed reason codes. These local descriptors accept no credential, endpoint, exporter provider, sampling switch or production destination; the optional OTLP descriptor above is separate and is not installed in diagnostic main. Local sampling is none: every enabled accepted record is attempted once.
 
 The dropping FIFO queue never waits for exporters in a feature's log/span callback. Its bound is capacity records plus one in flight; a validated record is conservatively below 64 KiB encoded. A full queue drops the newest record. A single scoped worker serializes writes. `health` reports accepted/completed/dropped/failed counts, closed and shutdownFailed; no error object is retained. Worker defects/timeouts count as failures without recursive logging. A failed record is not retried; file/console delivery can therefore be partial. Business success never depends on optional telemetry delivery. Callback implementations must not log recursively or perform uninterruptible work.
 
@@ -91,6 +154,8 @@ pnpm exec eslint apps/server/src/main.ts packages/contracts/src/observability.ts
 ```
 
 An unregistered message means the composition catalog is missing the code; never restore unrestricted string formatting. A configuration failure means a missing/redacted path, invalid bounds, insecure directory, stale lock or filesystem acquisition failure; diagnose through the outer bootstrap console without dumping Config/Cause. Increasing capacity trades bounded memory for burst tolerance, not reliability. A failed drain means telemetry loss, never permission to skip mandatory audit.
+
+For OTLP-only iteration, run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts src/otlp.spec.ts --coverage.enabled=false` for wire/gating/failure fixtures. This is not coverage evidence: run the full suite without the selector or coverage override for the unchanged 90% gate. No request usually means default-off provider, denied export flag/authority, a protected binding, or main telemetry opt-out; check those independently without weakening any gate. A write failure may be a non-2xx/rejected/invalid acknowledgement, timeout or transport outage; do not print the collector body or retry an old record after a grant changes. Verify a real authorized collector separately before claiming production ingestion.
 
 The focused tests cover types, compiler-resolved direct/transitive/type-only/alias/reexport cycles including the diagnostic-main closure, console/file formatting, correlation, all profiles, redaction canaries, opt-out, audit independence, UTC boundaries, limits, outage, timeout, interruption, flush and repeated acquisition. One audit test uses an independent denial fixture; the composed-server suite also checks the real production `FailClosed` Audit service. Neither is production tamper-evident audit. Mandatory security/audit receipts retain their existing fail-closed transaction rules regardless of telemetry.enabled or sink availability. Root cycle CI, actual package exports, full platform bootstrap, durable propagation, native adapters, cryptographic audit/provider choices and production ingestion remain separate gates.
 
