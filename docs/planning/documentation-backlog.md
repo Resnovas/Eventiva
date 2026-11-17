@@ -260,24 +260,50 @@ Combined verification against `e1c0e3a2b99dbc1c3bcfdd22288998b796105975` subsequ
 
 Executed latest-base `DOCUMENTATION_BASE=355b1182f4ee5ca732feac1dfd2b4bd0bb252b5b NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`. The first attempt failed only cluster-conformance startup: a child could not bind 127.0.0.1:34562 with EADDRINUSE; the conflicting listener was gone at inspection, so its owner/cause is unknown. Server tests and smoke did not run after that dependency failure. After confirming both fixed runner ports were free, an unchanged full repeat passed: 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (65 cached), all 15 smoke/dependency tasks (12 cached), source graph 178 files/641 edges and emitted graph 70 files/264 edges with zero violations/cycles. PostgreSQL cleanup completed. No runtime, harness, port, timeout or assertion was changed. This successful repeat does not erase either the failed local attempt or earlier failed remote CI.
 
+## Sixth checkpoint: contract, provider, resource and schema rationale
+
+Semantic review against immutable `71ef9f65e5a24910942c65e57197f1272bd6e217` covers all 49 candidates in the thirteen files below. Thirteen useful comments across eight files resolve thirteen live findings: twelve accepted identities and one never ledgered. All 24,756 executable/type terminals in the edited sources remain identical; assertions and runtime behavior are unchanged. Checker corrections, source exceptions and exclusion changes are zero. Exact pruning takes accepted debt from 188 to 176 across 39 files; the complete live queue is 287 across 50 files, including 111 never ledgered. These numbers include review candidates, not established semantic violations.
+
+Candidate lines below refer to the immutable base. Adequate dispositions stay visible under their exact identities; neither review nor retention grants strict-zero acceptance.
+
+| Source | Documented rationale | Adequate candidates retained and reason |
+| --- | --- | --- |
+| `tests/contracts/src/action.spec.ts` | 77: wire formatting assumes canonical validation; the assertions cover separate contracts. | 108, 123, 245, 255, 264, 271: attached contracts already distinguish overlay shape from governed provenance, literal span/key names, independent caller corruption, identifier brands and strict profile ordering. The governed suite introduces literal metadata without a hidden acquisition phase. |
+| `tests/contracts/src/flags.spec.ts` | 45: valid independent metadata isolates expiry/description errors. 54: interleaved priorities and equal-ranked emergencies distinguish sorting from stability. | 37: the short dotted-key literal matrix already states its contract. |
+| `tests/contracts/src/inventory.spec.ts` | 74: canonical provider enumeration prevents a second coverage list. 265: real Effect schema nodes must be refused before wire publication. | 117, 135: snapshot projection preserves each schema owner; the duplicate-name assertion has independent versioned attribution. Neither needs a separate implementation phase comment. |
+| `tests/integrations/formatjs/src/i18n.spec.ts` | None. | 34, 47, 63: existing contracts explain catalogue/default plural strings, interpolation and missing-key fallback. The French entry and descriptor both equal `Incident`; do not claim this assertion discriminates catalogue retention. Test changes are outside this comment-only packet. |
+| `tests/integrations/openfeature-client/src/flags.spec.ts` | 71: a public error tag alone does not prove private-message/raw-cause redaction. | 146, 159: existing contracts explain declared fallback despite conflicting resolution, and a successful value with absent reason normalized to UNKNOWN. No hidden lifecycle phase. |
+| `tests/integrations/openfeature-server/src/flags.spec.ts` | 75: inspect private-message/raw-cause absence independently of bounded diagnostic tags. | 122, 181, 213, 225, 258: contracts distinguish unknown/static keys, absent reason/evaluation failure, startup/evaluation failure and the live positive control before disposal. The disposal assertion is outside candidate 258. |
+| `tests/integrations/posthog-client/src/flags.spec.ts` | None. | 41, 52: short mapping matrices already distinguish polarity/variants and absent-key/incompatible-type errors while preserving defaults. |
+| `tests/integrations/posthog-server/src/flags.spec.ts` | None. | 31, 42: contracts explain optional acquisition and explicit secret access versus ordinary redacted rendering; endpoint defaults are independent. |
+| `tests/integrations/posthog-server/src/telemetry.spec.ts` | 388: a bounded write reason does not prove absence of private SDK text. | 55, 86, 266: contracts explain global fetch/spy cleanup, provider-scope ownership of writes/flush, and synchronous abort marking/rejection. No asynchronous ordering or broader queue-flush guarantee is inferred. |
+| `tests/resources/src/resource.spec.ts` | 601: acquisition resolves capability while readiness executes the authorized read. 1254: failed explicit flush cannot undo successful create. 1520: retaining the first provider with different same-ID rows exposes ambient-client reuse. | 1345, 1425, 1549: short effects already explain output/receipt matching, tenant-routed read delegation and SQL-independent feature work. Surrounding owner/replay and provider-isolation phases must not be duplicated or overclaimed inside them. |
+| `tests/resources/src/types.ts` | None. | 44: the contract accurately describes positive typed call-site evidence, not executed database work. |
+| `tests/schema/src/compose.spec.ts` | 147: strings preserve decimal scale/trailing-separator validation. 168: object and canonical-name contribution targets are both exercised. | 80, 158, 354: shared row-codec setup, straight-line metadata assertions and optional-resource/name controls already have precise contracts. Evaluated codec construction is not classified as registration-only. |
+| `tests/schema/src/manifest.spec.ts` | None. | 31, 34, 40: existing contracts explain shared decoder construction, transport round-trip and independently malformed fields with the single-segment positive control. No arbitrary-call registration exemption. |
+
+The 36 adequate candidates above are retained, not waived or suppressed. No source-semantic unknown was established in this scope. Focused ESLint, exact-terminal/prune proof and the immutable-base ratchet pass. Reserved kernel, declarative-module and marketplace sources/specs and their people/agent docs remain outside this packet until those implementation lanes deliver. D07 and the complete global review remain open.
+
+Executed `DOCUMENTATION_BASE=71ef9f65e5a24910942c65e57197f1272bd6e217 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The unchanged serial full gate passes 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (50 cached) and all 15 smoke/dependency tasks (12 cached), including PostgreSQL conformance. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. Disposable database/network cleanup completed. Strict reviewed planning also passes. Final immutable-base root and clean-source graph checks precede signed delivery; asynchronous exact-head CI remains separate evidence.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-188 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 188 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+176 remaining findings across 39 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 176 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 7 |
-| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 1 |
+| D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 2 |
+| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 5 |
 | D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
 | D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 13 |
 | D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 3 |
@@ -288,7 +314,7 @@ Executed latest-base `DOCUMENTATION_BASE=355b1182f4ee5ca732feac1dfd2b4bd0bb252b5
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 7 |
-| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 5 |
+| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 7 |
 | D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 0 | 0 | 5 |

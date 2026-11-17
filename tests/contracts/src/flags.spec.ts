@@ -43,6 +43,7 @@ describe('flag keys and definitions', /** Cover portable flag naming and lifecyc
     });
 
     it('requires an ISO date for expiry', /** Reject non-ISO expiry text and blank descriptions on otherwise valid flag definitions. */ () => {
+        // Keep key, ownership and fallback valid so expiry and description failures cannot mask one another.
         const decode = Schema.decodeUnknownEither(FlagDefinition);
         expect(decode({ ...flag('a.b', false), expires: '2027-01-31' })._tag).toBe('Right');
         expect(decode({ ...flag('a.b', false), expires: '31/01/2027' })._tag).toBe('Left');
@@ -52,6 +53,7 @@ describe('flag keys and definitions', /** Cover portable flag naming and lifecyc
 
 describe('byPrecedence', /** Cover policy source ordering independently of flag evaluation. */ () => {
     it('puts higher sources first and keeps the given order within a source', /** Verify source priority preserves the original order of equally ranked emergency policies. */ () => {
+        // Interleaved priorities expose input-order sorting; two emergency entries also expose reversed ties.
         const ordered = byPrecedence([
             { source: 'targeting', id: 1 },
             { source: 'remote', id: 2 },

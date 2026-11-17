@@ -69,6 +69,7 @@ describe('OpenFeature client flags', /** Register browser flag fallback, precede
                     /** Inspect acquisition diagnostics after the fallback assertion succeeds. */ () =>
                         Effect.sync(
                             /** Require bounded error metadata without vendor exception contents. */ () => {
+                                // A public error tag alone cannot prove redaction of the serialized private message or raw cause.
                                 const diagnostics = messages.join('\n');
                                 expect(diagnostics).toContain('FlagProviderError');
                                 expect(diagnostics).toContain('initialize');

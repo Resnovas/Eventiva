@@ -599,6 +599,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 KernelModule,
                                                 Effect.gen(
                                                     /** Resolve the consumer's declared resource requirement from its kernel environment. */ function* () {
+                                                        // Resolve the capability during acquisition, but defer the authorized read to module readiness.
                                                         const environment = yield* KernelEnvironment;
                                                         const capability = yield* environment.resolve(
                                                             'records',
@@ -1252,6 +1253,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 );
                                 yield* Effect.gen(
                                     /** Verify exporter health reports failure while the resource create still commits. */ function* () {
+                                        // Flush exposes the queued sink failure; it cannot retroactively undo the successful create.
                                         expect((yield* api.create(resource, id(4), data)).revision).toBe(1);
                                         expect(
                                             Exit.isFailure(yield* Effect.exit((yield* TelemetryControl).flush))
@@ -1518,6 +1520,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                     auth(
                         Effect.gen(
                             /** Seed a first provider before running identical feature work under a second physical database. */ function* () {
+                                // Retain the first provider so same-id rows in the second database expose accidental ambient-client reuse.
                                 const resource = yield* base();
                                 yield* migrateResources(dialect, tenant, [resource], policy);
                                 const first = yield* resourceProvider(dialect, tenant, identity, [resource]);

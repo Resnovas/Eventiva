@@ -109,6 +109,7 @@ describe('portable action inventory', /** Cover schema-free published metadata, 
             )
     );
 
+    // Enumerating the contract keeps newly supported providers in snapshot coverage without a second provider list.
     for (const provider of Provider.literals) {
         it.effect(
             `snapshots read, write and external schemas for ${provider}`,
@@ -281,6 +282,7 @@ describe('conservative provider JSON Schema', /** Cover the intentionally bounde
             )
     );
 
+    // Construct real Effect schema nodes: conversion must reject runtime-only shapes before publishing wire JSON.
     for (const [label, schema] of [
         ['root object union', Schema.Union(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String }))],
         ['root enum', Schema.Literal('a', 'b')],

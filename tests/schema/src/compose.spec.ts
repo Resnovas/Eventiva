@@ -145,6 +145,7 @@ describe('fields', /** Cover field type inference, metadata immutability and wir
     });
 
     it('bound text and exact decimals at their limits', /** Verify decimal precision and scale independently of text maximum-length boundaries. */ () => {
+        // Keep decimals as strings: numeric coercion would erase the trailing separator and scale being validated.
         const price = Schema.is(Event.fields.price.schema);
         expect(price('999.99')).toBe(true);
         expect(price('1000.5')).toBe(false);
@@ -166,6 +167,7 @@ describe('fields', /** Cover field type inference, metadata immutability and wir
 });
 
 describe('compose', /** Cover deterministic resource merging, contribution ownership and classification floors. */ () => {
+    // Exercise object and canonical-name targets so contribution coverage does not depend solely on resource identity.
     const tickets = contribute(Event, 'tickets', { ticketLimit: Field.integer() });
     const venueLink = contribute('events.event', 'venues', { venue: Field.reference('venues.venue') });
 

@@ -75,6 +75,7 @@ describe('action specifications', /** Cover declarative action metadata independ
     });
 
     it('validates canonical names and derives provider-safe wire names', /** Distinguish dotted canonical identifiers from their provider-safe underscore encoding. */ () => {
+        // Wire formatting does not validate names; canonical rejection and provider spelling are separate contracts.
         const valid = Schema.is(ActionName);
         expect(valid('events.tickets.create')).toBe(true);
         expect(valid('events')).toBe(false);

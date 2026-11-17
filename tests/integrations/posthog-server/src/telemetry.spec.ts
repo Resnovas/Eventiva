@@ -386,6 +386,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                         .mockRejectedValue(new Error('private-sdk-canary'));
                     yield* Effect.gen(
                         /** Inspect the typed delivery failure while the scoped provider is still available. */ function* () {
+                            // The bounded write reason and absence of private SDK text are independent error-boundary requirements.
                             const remote = yield* TelemetryExportProvider;
                             const failure = yield* Effect.flip(remote.write(binding, record));
                             expect(failure.reason).toBe('write');
