@@ -102,7 +102,8 @@ export const resourceRuntime = (
                                     'schema-mismatch',
                                     'Only the active composed declaration can access resources'
                                 );
-                            return definition;
+                            // Give drivers the detached validated request, never the catalogue that admits later calls.
+                            return requested;
                         }
                     );
                 /** Join the provider's storage transaction, sanitizing storage errors while preserving domain failures. */

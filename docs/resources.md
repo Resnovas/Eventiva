@@ -36,6 +36,10 @@ Authenticate before `TenantRouter.run`. The trusted router resolver returns `pro
 
 Each database is permanently bound to one tenant. Named provider instances may coexist, but cannot inherit each other's transactions. The pinned Effect SQL client uses a global transaction connection tag: the resource adapter explicitly refuses foreign or unowned ambient transactions instead of changing databases or pretending to preserve atomicity. Use `provider.storage.transaction` or Resources.transaction to open an owned transaction; an independently constructed Storage/raw SQL transaction is not a supported outer boundary, even when it appears to target the same database.
 
+The runtime's validated active catalogue stays private. Each request is validated and compared canonically with that catalogue; drivers receive the detached, equal request definition, never the retained catalogue entry. Changes a query or write adapter makes to its argument cannot make later legitimate declarations fail or admit a widened declaration. This isolation changes no provider/driver contract or configuration default, and does not make an arbitrary driver trustworthy for persistence.
+
+For example, if an adapter makes required `title` optional and adds `secret` to its argument, later calls with the real declaration still succeed. A create using the altered declaration and `{ secret: 'smuggled' }` fails with `schema-mismatch` before the driver can store a record or revision. Current get/query/write results still pass the active field decoder; retained history remains undecoded.
+
 Use Integrity.commit through the existing `durable` runtime for action mutations. Its execute effect and nested Resources writes share the provider's transaction: resource data, revisions, operational history, outbox, idempotency and success receipt commit or roll back together. Never open another client or detach work inside that effect. Independent providers cannot form a distributed transaction.
 
 ## Queries and retained data

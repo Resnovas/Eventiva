@@ -184,6 +184,158 @@ const withDatabase = <A, E, R>(dialect: Dialect, effect: Effect.Effect<A, E, R |
         )
     );
 
+describe('resource runtime catalogue isolation', /** Register public adapter-isolation regressions without changing the driver contract. */ () => {
+    // Each adapter gets its own database so the untouched control cannot conceal catalogue corruption.
+    for (const mutation of ['control', 'query', 'write'] as const) {
+        it.effect(
+            `preserves admitted declarations after ${mutation} driver access`,
+            /** Compare legitimate writes with an undeclared widening after the selected driver callback runs. */ () =>
+                withDatabase(
+                    'sqlite',
+                    auth(
+                        Effect.gen(
+                            /** Let an adapter alter its declaration argument, then inspect public outcomes and actual persistence. */ function* () {
+                                const resource = yield* declareResource({
+                                    id: 'probe.record',
+                                    owner: 'app.probe',
+                                    moduleVersion: '1.0.0',
+                                    fields: { title: { type: 'text', optional: false } },
+                                });
+                                const widened = yield* validateDefinition({
+                                    ...resource,
+                                    fields: {
+                                        title: { type: 'text', optional: true },
+                                        secret: { type: 'text', optional: true },
+                                    },
+                                    owners: {
+                                        ...resource.owners,
+                                        secret: { module: 'app.probe', version: '1.0.0' },
+                                    },
+                                });
+                                yield* migrateResources('sqlite', tenant, [resource], policy);
+                                const provider = yield* resourceProvider('sqlite', tenant, identity, [resource]);
+                                /** Simulate an in-process adapter rewriting nested fields and ownership without a type escape. */
+                                const widen = (definition: ResourceDefinition) => {
+                                    // A matching owner keeps this a valid but unadmitted declaration, not malformed input.
+                                    Object.defineProperty(definition.fields['title'], 'optional', { value: true });
+                                    Object.defineProperty(definition.fields, 'secret', {
+                                        value: { type: 'text', optional: true },
+                                        enumerable: true,
+                                        configurable: true,
+                                    });
+                                    Object.defineProperty(definition.owners, 'secret', {
+                                        value: { module: 'app.probe', version: '1.0.0' },
+                                        enumerable: true,
+                                        configurable: true,
+                                    });
+                                };
+                                const api = yield* bind({
+                                    ...provider,
+                                    driver: {
+                                        ...provider.driver,
+                                        /** Mutate only the adapter argument; use the known physical declaration for SQL access. */
+                                        query: (definition, query) =>
+                                            Effect.sync(
+                                                /** Model a query adapter retaining and modifying the supplied schema. */ () => {
+                                                    if (mutation === 'query') widen(definition);
+                                                }
+                                            ).pipe(Effect.andThen(provider.driver.query(resource, query))),
+                                        /** Persist through the real transaction while testing runtime admission independently of SQL schema checks. */
+                                        write: (definition, recordId, revision, value) =>
+                                            Effect.sync(
+                                                /** Model a write adapter rewriting the supplied definition before returning. */ () => {
+                                                    if (mutation === 'write') widen(definition);
+                                                }
+                                            ).pipe(
+                                                Effect.andThen(
+                                                    provider.driver.write(resource, recordId, revision, value)
+                                                )
+                                            ),
+                                    },
+                                });
+                                // Prime query and write independently before attempting either declaration again.
+                                if (mutation === 'write') yield* api.create(resource, id(1), { title: 'seed' });
+                                else yield* api.query(resource, { limit: 10 });
+                                const legitimate = yield* Effect.either(api.create(resource, id(2), { title: 'kept' }));
+                                const updated = yield* Effect.either(
+                                    api.update(resource, id(2), 1, { title: 'updated' })
+                                );
+                                const smuggled = yield* Effect.either(
+                                    api.create(widened, id(3), { secret: 'smuggled' })
+                                );
+                                const stored = yield* provider.driver.get(resource.id, id(3));
+                                const history = yield* provider.driver.history(resource.id, id(3));
+                                expect.soft(legitimate).toMatchObject({
+                                    _tag: 'Right',
+                                    right: { revision: 1, value: { title: 'kept' } },
+                                });
+                                expect.soft(updated).toMatchObject({
+                                    _tag: 'Right',
+                                    right: { revision: 2, value: { title: 'updated' } },
+                                });
+                                expect.soft(smuggled).toMatchObject({ left: { reason: 'schema-mismatch' } });
+                                expect.soft(stored).toBeUndefined();
+                                expect.soft(history).toEqual([]);
+                            }
+                        )
+                    )
+                )
+        );
+    }
+    it.effect(
+        'decodes current driver values but preserves historical payloads',
+        /** Keep output validation and transaction rollback distinct from undecoded historical revisions. */ () =>
+            withDatabase(
+                'sqlite',
+                auth(
+                    Effect.gen(
+                        /** Return a historical-only shape from current operations and verify rejection without rewriting history. */ function* () {
+                            const resource = yield* base();
+                            yield* migrateResources('sqlite', tenant, [resource], policy);
+                            const provider = yield* resourceProvider('sqlite', tenant, identity, [resource]);
+                            const historical = {
+                                id: id(1),
+                                revision: 1,
+                                schemaVersion: 1,
+                                value: { legacy: 'retained' },
+                            };
+                            const api = yield* bind({
+                                ...provider,
+                                driver: {
+                                    ...provider.driver,
+                                    /** Expose a shape invalid under the active declaration at the current-read boundary. */
+                                    get: () => Effect.succeed(historical),
+                                    /** Query results must pass the same active-schema decoder as individual reads. */
+                                    query: () => Effect.succeed([historical]),
+                                    /** Make a real tentative write before returning an invalid current value. */
+                                    write: (definition, recordId, revision, value) =>
+                                        provider.driver
+                                            .write(definition, recordId, revision, value)
+                                            .pipe(Effect.as(historical)),
+                                    /** Retained history deliberately need not conform to today's required fields. */
+                                    history: () => Effect.succeed([historical]),
+                                },
+                            });
+                            // Current-value validation must fail the transaction, not silently retain the tentative write.
+                            expect(yield* Effect.either(api.get(resource, id(1)))).toMatchObject({
+                                left: { reason: 'invalid-value' },
+                            });
+                            expect(yield* Effect.either(api.query(resource, { limit: 10 }))).toMatchObject({
+                                left: { reason: 'invalid-value' },
+                            });
+                            expect(yield* Effect.either(api.create(resource, id(1), data))).toMatchObject({
+                                left: { reason: 'invalid-value' },
+                            });
+                            expect(yield* provider.driver.get(resource.id, id(1))).toBeUndefined();
+                            expect(yield* provider.driver.history(resource.id, id(1))).toEqual([]);
+                            expect(yield* api.history(resource, id(1))).toEqual([historical]);
+                        }
+                    )
+                )
+            )
+    );
+});
+
 describe('portable resource declarations', /** Register database-free declaration, codec and migration-planning contracts. */ () => {
     it.effect(
         'strict schemas reject unpinned versions, unknown keys, invalid owners and lossy values',
