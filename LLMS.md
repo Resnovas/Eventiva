@@ -292,6 +292,8 @@ Bounded Neon development validation passed 16 direct/pooled connectivity, verifi
 
 The owner accepted the exact pinned PG17.12 Bookworm image's residual scan findings for disposable synthetic local/CI tests only, expiring 2026-11-22 UTC or earlier on a relevant exploit/input/fix/rebuild trigger. The scan remains 4 critical/140 high/231 medium/190 low/11 unknown, with no suppression or production waiver. Follow `docs/storage.md`: dedicated bridge network, loopback only, SCRAM with generated per-run test credentials, non-superuser CREATEDB fixture login, bounded resources/time and complete teardown; no host networking, privileged mode, unrelated mounts, cloud credentials or unreviewed inputs. CI fails closed on expiry and PR/dispatch events rather than skipping conformance. Trixie is not approved; later image acceptance must address event coverage and the outstanding findings.
 
+Read `docs/planning/timeline.md` and `docs/planning/decisions.md` for the producer/export checkpoint and remaining acceptance boundaries. The trusted-host journal is tested on PostgreSQL/SQLite, including separate-process crash recovery, but does not automatically integrate kernel mutation owners. Fixture-intercepted diagnostic exports do not prove production ingestion. Keep EVE-45/EVE-261 open until their complete acceptance is demonstrated; EVE-260 still requires verified readiness. The full Linear mirror and documentation ratchet are separate held deliveries, not implied by these human planning records.
+
 ### Commit an action with its outbox command
 
 Provide the same tenant-scoped Storage service to Integrity and handlers.
