@@ -5,7 +5,25 @@
     "tags": ["type:test", "layer:backend", "capability:test"],
     "implicitDependencies": ["@eventiva/resource-tests"],
     "targets": {
-        "test": { "cache": false },
+        "test": { "cache": false, "dependsOn": ["migration-proof"] },
+        "migration-proof": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "options": {
+                "commands": [
+                    "node tests/storage/fixtures/resource-process.mjs migration-proof sqlite",
+                    "node tests/storage/fixtures/resource-process.mjs migration-proof postgres"
+                ],
+                "parallel": false,
+                "cwd": "{workspaceRoot}"
+            },
+            "dependsOn": [
+                {
+                    "target": "build",
+                    "projects": ["@eventiva/contracts", "@eventiva/runtime", "@eventiva/integrations.sql"]
+                }
+            ]
+        },
         "typecheck": {
             "executor": "nx:run-commands",
             "options": { "command": "tsc -p tests/storage/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },

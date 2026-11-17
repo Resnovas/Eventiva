@@ -10070,6 +10070,30 @@
             ]
         },
         {
+            "issue": "EVE-258",
+            "kind": "later-status",
+            "date": "2026-11-17",
+            "status": "In Progress",
+            "statusType": "started",
+            "summary": "Slice 1 adds a separate self-asserting declaration migration process-loss target to storage test, preserving the held parent spec and its migrationCrashProof:false default report. SQLite and disposable PostgreSQL pass precommit SIGKILL rollback, postcommit acknowledgement loss, empty repeat history, valid changed-prefix refusal and stale-writer rejection with a current-writer control. This is bounded local G04 evidence, not power loss, distributed fencing, native execution, production least privilege or whole-issue acceptance. Source capture remains historical; later execution and delivery evidence is cited separately.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration#comment-79bf922f",
+                "https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb"
+            ]
+        },
+        {
+            "issue": "EVE-42",
+            "kind": "later-status",
+            "date": "2026-11-17",
+            "status": "In Progress",
+            "statusType": "started",
+            "summary": "The EVE-258 migration process-loss slice executes on both SQL dialects through the existing public migrator with fixture-only barriers and three distinct SIGKILL workers. Two asymmetric records, exact declaration bytes/checksums and five original revisions survive rollback/retry and acknowledgement loss; repeat history applies nothing and stale writers fail closed. No adapter policy, dependency, secret or production change. Deferred Drizzle/device/provider least-privilege and complete storage acceptance remain open. This dated checkpoint does not silently refresh the captured issue discussion or infer completion.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-42/p13-build-the-storage-layer-drizzle-on-postgres-and-sqlite-state#comment-b23c70d9",
+                "https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb"
+            ]
+        },
+        {
             "issue": "EVE-84",
             "kind": "later-status",
             "date": "2026-11-17T12:31:56.867Z",

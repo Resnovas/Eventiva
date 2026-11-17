@@ -70,6 +70,20 @@ Kernel MigrationDeclaration remains exactly `{ id, kind, online }`. It is metada
 
 The PostgreSQL/SQLite conformance test rejects version 3 only after version 2 is visible inside the same migration attempt. The resulting `storage` failure must leave the original schema definitions/checksums, records and revisions intact, with the old provider still usable. Removing that fixture-only failure permits a retry applying exactly versions 2 and 3; repeating it applies nothing, and stale writers remain fenced. This proves SQL-error rollback/retry, not migration process-crash or power-loss recovery.
 
+### Verify migration process-loss recovery
+
+After building the public packages and starting the approved disposable database from [Storage conformance](storage.md#run-conformance), run:
+
+```sh
+pnpm nx run @eventiva/storage-tests:migration-proof --skip-nx-cache
+```
+
+This independently executable, uncached target builds the required packages and runs `node tests/storage/fixtures/resource-process.mjs migration-proof sqlite`, then the same command with `postgres`. The existing storage `test` target depends on it, so `node --run verify` and the existing CI test gate execute the assertions without changing the transaction-process parent spec. The PostgreSQL URL uses the existing `STORAGE_TEST_POSTGRES_URL` fixture setting and disposable-loopback validation; a missing fixture fails rather than skipping that dialect. There are no new options or runtime defaults. For a SQLite-only development probe, build the public packages first and run the first Node command directly; that is not both-dialect acceptance.
+
+The mode seeds two v1 records with different values and revision counts. A migration child pauses with v2/v3 declarations written inside the real public `migrateResources` transaction. Another connection sees only the exact v1 definitions/checksums and unchanged record/revision rows. After SIGKILL, a new process verifies that same state; an old-provider write succeeds. Retrying the complete history applies exactly v2 and v3. A separate SIGKILL after commit but before acknowledgement retains both versions and every original record/revision. A third worker reopens and repeats the history twice, applying nothing. A valid but edited applied prefix fails with `unsafe-migration`, a retained v1 writer fails with `schema-mismatch`, and a freshly composed v3 writer succeeds without rewriting historical revisions or the unrelated record.
+
+Assertions run before the success report and fail the target on disagreement. The report includes distinct worker PIDs, actual SIGKILL exits and the six asserted outcomes. Fixture-only transaction barriers delegate the production migration implementation and its connection; no production failpoint or alternate migration engine is added. The original `proof` mode still reports `migrationCrashProof: false` because its migrations finish before its record-transaction crashes. The separate mode proves local declaration migration process-loss recovery only, not power-loss durability, distributed migration/lease fencing, native-device execution or production least privilege. EVE-258/EVE-42 and the broader G04 acceptance remain open.
+
 Use a privileged migration role separately from runtime credentials. Runtime roles must not own tables, truncate, disable triggers, DDL or alter schema history. These functions do not create roles or grant privileges. SQLite's file owner remains a trust boundary. A database owner can bypass triggers; this is not cryptographic tamper evidence. PostgreSQL migration locks briefly block resource writers; schedule migration under the kernel admission/drain gate and keep transactions short. Deactivation/unregister only closes active registration, never removes stored definitions or records. Recover by verifying history and repairing forward, not by down-migrating or replaying an edited declaration.
 
 ## Verify and integrate
