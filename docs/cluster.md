@@ -109,6 +109,51 @@ Security probes reject changed-input retries, forged tenant claims, unknown acti
 
 This proves process failure and SQL-backed recovery on one local host, not host/network partitions, restricted-role DML/RLS, autosuspend, managed-pooler behavior, CDC, cross-project isolation, an external outbox dispatcher, autoscaling or an operational SLA. The fixture stages outbox intents; it does not execute external effects. PostgreSQL driver query-concurrency deprecation warnings remain visible and are not a clean-security claim.
 
+## Bounded AgentRun checkpoint (EVE-34 / EVE-54)
+
+An agent run is a Workflow, not a long entity RPC. `apps/server/src/agent-run.ts` registers `EventivaAgentRun-v1` on the existing SQL-backed ClusterWorkflowEngine and a separate `EventivaAgentRunControl-v1` entity per `[tenant, runId]`. Its Start handler persists acceptance and submits with `discard: true`; Status polls and Interrupt signals the Workflow. None waits for the run lifetime. Register both through `registerAgentRuns` inside the existing `registerWorkflows` callback, before readiness opens. Obtain the internal client with `yield* agentRuns` from the backend's Sharding context. Do not expose that client or raw execution ids as public ingress.
+
+Supply `AgentRunModel` and `AgentRunAccess` explicitly as well as the existing IdentityResolver, TenantRouter and ClusterActions. Missing model/access adapters fail registration with `AgentRunDenied: unavailable`; there is no model SDK, default provider or permissive policy. AgentRunAccess must enforce current run/resource permissions and model approval, deadlines and state; the model adapter remains responsible for its live provider boundary. It receives the reference, operation (`start`, `status`, `interrupt` or `step`) and, for steps, the 1-based index. Both orchestration and Activity entry recheck live identity/access; tool calls additionally enter ClusterActions -> ActionHost -> routed tenant Storage and all existing action gates. No cached output grants authority to a new request.
+
+Use a fresh UUIDv7 `runId`, reserved as the accepted run's operational record id in its tenant database. Acceptance stores the complete caller, `scripted-v1` definition and ordered steps in existing Storage with state `agent-run.accepted-v1`. Unique insertion plus canonical input comparison binds that id before submitting the Workflow. Repeating identical input returns the same execution id; changed input gives a typed conflict, including after total runner restart. After an acceptance-before-submission crash, retry identical Start. Cross-principal access is denied; another tenant's same id cannot select the original tenant's storage. This checkpoint binds the original session as part of caller identity; session migration is not implemented.
+
+Each step selects either literal JSON or the previous step's JSON output. The first step cannot select Previous. A Model step invokes exactly one injected model call; an Action step invokes one ClusterActions action. The following complete input illustrates the wire contract (trusted composition supplies the adapters separately):
+
+```json
+{
+    "caller": {
+        "subject": "019b0000-0000-7000-8000-000000000011",
+        "session": "019b0000-0000-7000-8000-000000000021",
+        "tenant": "019b0000-0000-7000-8000-000000000001",
+        "kind": "human"
+    },
+    "runId": "019b0000-0000-7000-8000-000000002001",
+    "definition": "scripted-v1",
+    "steps": [
+        {
+            "_tag": "Model",
+            "input": { "_tag": "Literal", "value": { "id": "019b0000-0000-7000-8000-000000003001", "seed": 11 } }
+        },
+        { "_tag": "Action", "action": "fixture.change", "entityKey": "order:example", "input": { "_tag": "Previous" } },
+        { "_tag": "Model", "input": { "_tag": "Previous" } }
+    ]
+}
+```
+
+The synthetic fixture's model returns `{ id, value }` for the registered `fixture.change` action; a real adapter must return the registered action's validated input. All wire inputs/results are JSON, not functions or provider objects. Action steps require `action` and `entityKey`; optional `approvalId`, `deadline`, `expectedState` and `expectedVersion` default to absent and pass unchanged to ActionHost. They cannot supply their own business idempotency key. No retry count, topology, provider, module pin or rollout switch is part of this input. Only `definition: scripted-v1` is supported. Status returns `pending`, `succeeded` with JSON output, or `failed` without confidential failure detail. Interrupt acknowledges submission of the engine's persisted internal signal, not cancellation completion. In the pinned engine a busy run may continue until a suspension boundary; the fixture checks signal submission while blocked, not immediate cancellation. The full EVE-54 cancellation lifecycle and EVE-35 latency guarantee remain separate.
+
+Step numbering is **1-based** and immutable. Activity names are `step:1:Model`, `step:2:Action`, etc. Keep those names stable across runner placement and retries: the engine persists each Activity reply under its execution/name/attempt. Separately pass the literal business/provider key `runId:stepIndex`, scoped by tenant. Never put the PID or retry attempt into it; intentional later calls allocate new indices. Upstream Activity.idempotencyKey hashes execution/name and is not this literal key. Do not use either business key as a control RPC primary key: each new control invocation must reauthorize and compare input rather than read a cached transport response.
+
+### Execution-count proof and limits
+
+Run the same uncached cluster-conformance and server:test targets described above. `agent-run.spec.ts` covers the typed protocol and mandatory services with explicitly volatile fixtures; `two-runners.mjs` supplies the independent-process SQL proof using the real AgentRun source. No extra fixture provisioning or dependency approval is introduced; the existing image exception, expiry, resource caps, synthetic loopback-only URL checks and unconditional teardown remain required.
+
+The named scenario is `agent-run resumes after SIGKILL between completed steps 2 and 3 without re-executing completed Activities`. A three-step Model/Action/Model run computes seed 11 -> value 34 -> answer 172. The fixture appends every raw executor entry before business deduplication to a separate coordination table with tenant/run/step, sequence, PID and business key. It pauses in the injected next-step access check after Activity 2 has returned to orchestration, inspects its successful persisted SQL reply, and asserts counts `[1,1,0]`. It externally kills the checkpoint owner, requires the survivor to reach that boundary automatically without Start/resume/victim restart, releases it, and asserts `[1,1,1]`, ordered output equal to the no-fault control, a different final-step PID and one complete domain/history/outbox/dedup/success-receipt set for the writing step. It repeats for SIGTERM and resumes an in-flight run after all processes restart into Community mode. Counts and duplicate-start identity also persist.
+
+Negative cases cover changed input, forged/foreign tenant access, invalid steps/definitions, missing execution ports, and identity/permission revocation or newly required approval between steps. Revoked callers cannot read cached output, repeat Start or interrupt; the next protected effect fails with no additional business write. The existing commit-before-Activity-reply crash scenario remains separate: an unfinished Activity may execute again while A1 commits its business mutation once. Append-only counters deliberately do not deduplicate, so restarting completed calls would fail the assertions even if A1 hid duplicate writes.
+
+This is the fixed-definition prerequisite portion of [EVE-34](https://linear.app/resnovas/issue/EVE-34), not full [EVE-54](https://linear.app/resnovas/issue/EVE-54) or [EVE-47](https://linear.app/resnovas/issue/EVE-47) acceptance. Module-bound production definitions are rejected, not silently resolved to latest. Persisted module/provider/schema resolution and distributed fencing, real EVE-52 agent turns, public ingress, streaming, schedule/reaping and cross-transport cancellation remain unimplemented here. There is no second run engine. Completed-Activity recovery does not prove exactly-once external model spending, email or physical output, nor a production failover SLA.
+
 ## Troubleshooting
 
 - `unavailable` in server smoke is intentional for the inventory diagnostic. Compose the backend with trusted adapters to run business requests; do not replace them with memory services.
@@ -116,3 +161,4 @@ This proves process failure and SQL-backed recovery on one local host, not host/
 - No local shards while peers respond can indicate assignment convergence or unsafe topology mismatch. Inspect every runner's profile and acquired shards.
 - Startup DDL permission failure is a bootstrap/runtime-role gate, not a reason to grant administrator privileges to a runner.
 - A process exiting before ready or a convergence deadline fails the harness. Inspect sanitized child logs and the isolated SQL database; do not count it as recovery evidence.
+- `AgentRunDenied: unavailable` at registration means a required execution port is absent; inject reviewed adapters rather than adding a permissive fallback. A conflict means the run id is already bound; retry identical input or allocate a fresh id for intentional new work. A denied Status/Interrupt requires fresh authorization, not a raw Workflow.poll bypass.

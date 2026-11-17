@@ -65,6 +65,72 @@ The adapter sends one span per request, with original validated trace/span/paren
 
 Effect's OTLP JSON serializer is used without its automatic exporter: its buffering/retry and swallowed delivery failures do not meet the existing live-grant/no-retained-backlog contract. Inject an un-retried client such as FetchHttpClient. HTTP tracing and redirects are disabled. Non-2xx, malformed/oversized acknowledgements (over 16 KiB), rejected spans, warnings, transport failures and timeouts return safe failures. Cancellation aborts the cooperative HTTP transport; closed handles cannot send. A successful acknowledgement proves an attempted delivery, not durable ingestion or exactly-once output. Scope release, SDK presence and fixture success are not kernel-installed-exporter or production evidence. See [the governed release contract](telemetry-export.md).
 
+## Synthetic local request correlation (EVE-60 checkpoint)
+
+Use `withRequestCorrelation(headers, policy, innerRequest)` from `apps/server/src/telemetry-correlation.ts` only in trusted local composition. This app-owned Effect wrapper creates `request.received`, closes scoped children before returning, and emits the fixed ERROR code `request.failed` on failure without logging the Cause. The original value, typed failure or interruption remains unchanged. Log and span annotations are installed before request-span construction and cover nested spans, scoped fibers and failure logging, then restore the caller's context. Detached/daemon work is unsupported.
+
+Pass header entries without discarding duplicate names. Names are case-insensitive: `X-POSTHOG-DISTINCT-ID` and `X-POSTHOG-SESSION-ID`, matching the installed `@posthog/core` 1.64.1 tracing-header constants. A normalized comma join also rejects. Both values must be present exactly once, nonempty, 1..96 characters from `[a-zA-Z0-9._-]`, and individually declared in the same static `TelemetryPolicy.attributes` passed to `telemetryLayer`. Empty, partial, malformed, control-containing, duplicated, overlong or unallowlisted pairs add neither annotation and do not fail business work or emit decoder diagnostics. Do not derive an allowlist from headers. This deliberately narrow synthetic subset is not a production identifier specification.
+
+The local keys are `posthog.distinct_id` and `posthog.session_id`. The session key is a schema-compatible local alias, not verified PostHog `$session_id` linkage. Declare only reviewed synthetic tokens. Jonathan's [2026-11-17 identifier decision](https://linear.app/resnovas/issue/EVE-60#comment-55507185-3858-42e4-b1f9-e868357b54f7) permits only pseudonymous correlation under per-request opt-in, current user consent and protected-profile exclusion; his [dedicated-key choice](https://linear.app/resnovas/issue/EVE-60#comment-9cb2d84b-90b0-41b8-aeb9-1253346d5f39) selects separate tenant/destination/purpose custody and rotation, not a concrete lifetime or algorithm. Those choices do not activate real identifiers here: raw SDK tracing headers and production export remain prohibited. These untrusted synthetic hints never establish Caller, authenticated session, tenant, authorization, grants or delegation. Protected profiles remain authoritative: Restricted/Vault and invalid explicit profiles discard application attributes through the existing minimizer.
+
+The exported `correlationFlag` declares `telemetry.correlation.enabled` with `safeDefault: false` and owner `Eventiva server`. Inject `Flags`; `FlagsSafeDefaults` keeps this capability off when the flag is absent. An explicit false also disables it. Existing Effect Config `telemetry.enabled` (default true) independently prevents identifier installation when false; an invalid value fails correlation closed. There is no new environment switch. Optional sink opt-out does not disable bootstrap diagnostics or mandatory audit. This wrapper is not installed in diagnostic main and activates no listener or production ingress.
+
+This complete local composition enables only the synthetic checkpoint and supplies the existing neutral sink in memory. Use `FlagsSafeDefaults` instead of `LocalFlags` to retain the default-off behavior. No exporter, credentials or external request are involved:
+
+```typescript
+import { Flags } from '@eventiva/contracts/flags';
+import { TelemetryRecord, TelemetrySink } from '@eventiva/contracts/observability';
+import { telemetryLayer, type TelemetryPolicy } from '@eventiva/runtime/telemetry';
+import { ConfigProvider, Effect, Layer } from 'effect';
+import { correlationFlag, withRequestCorrelation } from '../apps/server/src/telemetry-correlation.ts';
+
+const policy: TelemetryPolicy = {
+    messages: { 'request.received': 'Synthetic request.', 'request.failed': 'Request failed.' },
+    attributes: {
+        'posthog.distinct_id': ['synthetic-person-a'],
+        'posthog.session_id': ['synthetic-session-101'],
+    },
+};
+const records: TelemetryRecord[] = [];
+const LocalSink = Layer.succeed(TelemetrySink, {
+    /** Collect only records already filtered by the central minimizer. */
+    write: (record) =>
+        Effect.sync(
+            /** Retain fixture evidence, not raw annotations or payloads. */
+            () => {
+                records.push(record);
+            }
+        ),
+    flush: Effect.void,
+});
+const LocalFlags = Layer.succeed(Flags, {
+    /** Enable this finite synthetic fixture only; all other flags retain their safe defaults. */
+    evaluate: (flag) =>
+        Effect.succeed({
+            flag: flag.key,
+            value: flag.key === correlationFlag.key || flag.safeDefault,
+            reason: 'STATIC',
+            fallback: false,
+        }),
+});
+const program = withRequestCorrelation(
+    [
+        ['X-POSTHOG-DISTINCT-ID', 'synthetic-person-a'],
+        ['X-POSTHOG-SESSION-ID', 'synthetic-session-101'],
+    ],
+    policy,
+    Effect.succeed('safe-response')
+).pipe(
+    Effect.provide(Layer.merge(telemetryLayer(policy).pipe(Layer.provide(LocalSink)), LocalFlags)),
+    Effect.withConfigProvider(ConfigProvider.fromMap(new Map([['telemetry.enabled', 'true']]))),
+    Effect.scoped
+);
+```
+
+Run `pnpm exec vitest run --config apps/server/vitest.config.mts tests/telemetry-correlation.spec.ts --coverage.include=apps/server/src/telemetry-correlation.ts` from the root for focused iteration. Normal server coverage also includes this module and AgentRun; run `pnpm nx run @eventiva/server:test` with the approved disposable PostgreSQL fixture for the unchanged aggregate gate and process conformance. The six acceptance groups exercise real ephemeral loopback HTTP via the pinned FetchHttpClient/Node server, deterministic interleaving, typed failure/interruption and child cleanup, schema boundaries, independent annotation opt-out probes, protected profiles/identity preservation/canaries, and lossy rejection/outage through the existing bounded worker. Control-character inputs are tested directly at the wrapper boundary because HTTP libraries reject those bytes before sending. Fixture senders are SDK-shaped synthetic requests, not actual web/native SDK execution.
+
+If correlation is missing, check both opt-outs, the complete unique pair, exact static allowlists and the trusted profile before inspecting sink health. Never print rejected headers or raw decoder errors. Sink write/flush failures remain lossy and cannot change the business result; no retry, backlog or side sink is added. Failed-span and ERROR-log evidence is not a captured exception event. Actual browser/native propagation, authenticated HTTP/RPC ingress, agent-run fallback, AI spans, PostHog association, real identifier/OTLP log export and production ingestion/release remain unproven and out of scope. EVE-60 stays open.
+
 ## Instrument features
 
 Use `Effect.logInfo('inventory.completed')`, `Effect.annotateLogs` and `Effect.withSpan('action.inventory')`. Register these codes and their static readable text in the composition-owned `TelemetryPolicy.messages` catalog first. Features must not acquire `TelemetrySink`, manufacture exporters or perform console/file IO. Existing `contracts/telemetry.ts` semantic constants remain unchanged.

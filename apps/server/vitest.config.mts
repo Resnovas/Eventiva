@@ -18,7 +18,12 @@ import { testProject } from '../../vitest.shared.ts';
 
 const config = testProject(
     'server-cluster',
-    ['apps/server/src/cluster*.ts', 'apps/server/src/backend.ts'],
+    [
+        'apps/server/src/cluster*.ts',
+        'apps/server/src/backend.ts',
+        'apps/server/src/agent-run.ts',
+        'apps/server/src/telemetry-correlation.ts',
+    ],
     import.meta.url
 );
 const serverConfig: ReturnType<typeof testProject> = {

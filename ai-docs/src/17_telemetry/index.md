@@ -14,6 +14,53 @@ Only ordinary Baseline/Sensitive spans with matching trusted binding/profile can
 
 Run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts src/otlp.spec.ts --coverage.enabled=false` for OTLP-only iteration with the real FetchHttpClient in-memory collector fixtures. This selector is not coverage evidence; run the full suite without selector/override for the unchanged 90% gate. Tests inspect wire timing/correlation/redaction and run actual nested Effect spans through runtime plus governed sink, independent opt-outs, authority denial, protocol/transport errors and cooperative timeout/closed-handle behavior. Run built-package checks for combined evidence too. A missing request is often a safe default or denied release gate, not a reason to bypass policy; inspect safe health/failure codes without dumping collector responses or Config causes.
 
+## EVE-60 synthetic local-only request boundary
+
+`apps/server/src/telemetry-correlation.ts` exports `correlationFlag: Flag` (`telemetry.correlation.enabled`, safeDefault=false, owner=Eventiva server) and `withRequestCorrelation<A,E,R>(headers: Iterable<readonly [string,string]>, policy: TelemetryPolicy, request: Effect<A,E,R>): Effect<A,E,Exclude<R,Scope>|Flags>`. The app-owned wrapper reads the injected Effect Config path telemetry.enabled (default true); false or invalid values prevent identifier installation. Evaluate through injected Flags, not a new environment switch or SDK. Missing flags use FlagsSafeDefaults. No main/listener/exporter/authentication wiring is installed.
+
+Keep duplicate-preserving header entries until the boundary. Case-insensitively match X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID (installed @posthog/core 1.64.1 constants). Schema requires exactly one complete pair with nonempty 1..96 `[a-zA-Z0-9._-]` characters and exact membership in the composition-owned TelemetryPolicy.attributes used by telemetryLayer. Partial, duplicate/comma-joined, empty, malformed/control-containing, 97-character and unallowlisted inputs discard both values without failing business work or emitting decoder diagnostics. Never derive allowlists from request data. The permitted token set is synthetic only; it does not specify production SDK identifier formats.
+
+Annotations use local keys posthog.distinct_id and posthog.session_id. The latter is a local alias, not a verified mapping to PostHog $session_id. Headers never create Caller/session/tenant/permissions/delegation. Jonathan's authenticated 2026-11-17 choices permit only pseudonymous correlation with per-request opt-in, current user consent, protected-profile exclusion and dedicated tenant/destination/purpose-separated rotating key custody; see EVE-60 comments 55507185 and 9cb2d84b. No concrete lifetime/algorithm or provisioning was selected. Real identifier admission/export stays held; raw SDK tracing headers are prohibited outside this finite synthetic fixture. Apply log/span annotations outside span construction and fixed failure logging; the wrapper emits request.received, taps failures with ERROR request.failed, and preserves the original business value/error/interruption. Its fresh scope closes scoped children before return. Child spans/fibers inherit the pair, while caller FiberRefs restore on exit. Detached/daemon work is unsupported. Existing Restricted/Vault/invalid-profile minimization stays unchanged; no parallel logger, raw sink or alternative record is introduced.
+
+The [people guide](../../../docs/telemetry.md#synthetic-local-request-correlation-eve-60-checkpoint) contains a complete enabled synthetic in-memory composition. This complete default-off example uses the same callable boundary and central layer; enable only by replacing FlagsSafeDefaults with an explicitly injected fixture Flags service:
+
+```typescript
+import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
+import { TelemetrySink } from '@eventiva/contracts/observability';
+import { telemetryLayer, type TelemetryPolicy } from '@eventiva/runtime/telemetry';
+import { ConfigProvider, Effect, Layer } from 'effect';
+import { withRequestCorrelation } from '../../../apps/server/src/telemetry-correlation.ts';
+
+const policy: TelemetryPolicy = {
+    messages: { 'request.received': 'Synthetic request.', 'request.failed': 'Request failed.' },
+    attributes: {
+        'posthog.distinct_id': ['synthetic-person-a'],
+        'posthog.session_id': ['synthetic-session-101'],
+    },
+};
+const LocalSink = Layer.succeed(TelemetrySink, {
+    /** Discard minimized records only; this fixture deliberately proves no delivery. */
+    write: () => Effect.void,
+    flush: Effect.void,
+});
+const program = withRequestCorrelation(
+    [
+        ['X-POSTHOG-DISTINCT-ID', 'synthetic-person-a'],
+        ['X-POSTHOG-SESSION-ID', 'synthetic-session-101'],
+    ],
+    policy,
+    Effect.succeed('safe-response')
+).pipe(
+    Effect.provide(Layer.merge(telemetryLayer(policy).pipe(Layer.provide(LocalSink)), FlagsSafeDefaults)),
+    Effect.withConfigProvider(ConfigProvider.fromMap(new Map([['telemetry.enabled', 'true']]))),
+    Effect.scoped
+);
+```
+
+Run `pnpm exec vitest run --config apps/server/vitest.config.mts tests/telemetry-correlation.spec.ts --coverage.include=apps/server/src/telemetry-correlation.ts` for focused iteration. The normal server coverage settings include both this module and AgentRun; `pnpm nx run @eventiva/server:test` with the approved disposable PostgreSQL fixture retains the unchanged aggregate thresholds and process conformance. The six public-boundary acceptance groups cover: real loopback Node HTTP/FetchHttpClient synthetic senders, exact paired request/nested/child/error records and parentage; barrier-interleaved isolation, following headerless/outside logs and restoration/child cleanup after success/failure/interruption; header case/shape/duplicate/length/allowlist boundaries; absent/false flag and telemetry.enabled opt-out with independent log/span annotation probes; all profiles, trusted Caller/CurrentTenant preservation and payload/credential/failure canaries; lossy rejection/outage with bounded existing worker/flush and unchanged business outcomes. HTTP-invalid control bytes are tested directly at the wrapper boundary. Planning/mirror updates, LLMS/Graphify and combined delivery remain centrally coordinated.
+
+No additional retry, backlog, exporter or production listener exists. Bootstrap diagnostics and mandatory audit retain their independent contracts. A failed span plus ERROR log is not a captured exception event. SDK-shaped fixture requests do not prove web/native SDK execution, device/Hermes lifecycle, CORS/redirect safety, authenticated HTTP/RPC ingress, agent-run fallback, AI generation linkage, PostHog association, real-identity/OTLP log export or production release/ingestion. Keep EVE-60 open; this is only its bounded synthetic prerequisite checkpoint.
+
 ## Ownership and types
 
 - `packages/contracts/src/observability.ts`: `TelemetryRecord` Schema/type with wire version 1, `TelemetrySink` Context.Tag keyed `/v1`, `TelemetrySinkFailure` Data.TaggedError with a closed safe reason union. The record carries log/span, bounded timestamp/level/code/static text, four profiles, trace/span/parent IDs, finite attributes, duration and outcome. No Cause/config/payload field exists.

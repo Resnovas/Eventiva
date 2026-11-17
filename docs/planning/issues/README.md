@@ -7,7 +7,7 @@ Generated from the owner-authorized normalized snapshot in `tools/documentation/
 
 ## Completeness
 
-Captured 2026-11-17. 258 unique EVE issues including archived items, 258 per-issue pages, 587 comments. Full pagination (250/page, creation order) and an independent enumeration (100/page, update order) reached terminal pages and returned identical ID sets. SHA-256 of numerically ordered IDs: `63c82c8d548871ac91ee60e593c440e111dafee1b4fe14376db29fff08b3e0ee`. This proves completeness for the connected key's visible EVE set, not administrator-only/deleted issues the service cannot expose.
+Captured 2026-11-17. 258 unique EVE issues including archived items, 258 per-issue pages, 593 comments. Full pagination (250/page, creation order) and an independent enumeration (100/page, update order) reached terminal pages and returned identical ID sets. SHA-256 of numerically ordered IDs: `63c82c8d548871ac91ee60e593c440e111dafee1b4fe14376db29fff08b3e0ee`. This proves completeness for the connected key's visible EVE set, not administrator-only/deleted issues the service cannot expose.
 
 Metadata/relations unavailable: none in this snapshot. Descriptions and comments are mirrored under Jonathan's explicit publication instruction on 2026-11-17. There is no independent server total endpoint in the connected MCP schema; two full enumerations provide the count cross-check. Live changes during acquisition can require a retry; this is not an atomic Linear snapshot.
 

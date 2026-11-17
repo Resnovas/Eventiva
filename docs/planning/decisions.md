@@ -62,7 +62,7 @@ selection and agent relay timestamps must not be substituted for capture dates.
 <!-- planning:generated:start -->
 ## Generated decision and evidence inventory
 
-395 curated public-safe decision records; 847 source records covered; **0 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
+398 curated public-safe decision records; 853 source records covered; **0 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
 
 [Every source and review disposition](roadmap/decision-sources.md). Source changes invalidate exact digests. New decision summaries never copy raw private source bodies/comments. Existing owner-authorized issue pages retain their separate publication policy.
 
@@ -463,6 +463,9 @@ selection and agent relay timestamps must not be substituted for capture dates.
 | [platform-observer-dispatch-spec](#platform-observer-dispatch-spec) | Deliver immutable after-commit observations through a governed registry and current scoped release policy, with additive effects only through separately authorized canonical actions. | Unknown | settled-requirement |
 | [platform-acyclic-exact-types-direction](#platform-acyclic-exact-types-direction) | Reject static, type-only, generated and runtime manifest/provider cycles and preserve precise Effect contracts without erased types, unsafe casts or suppressed diagnostics. | Unknown | recorded-owner-direction |
 | [platform-declaration-checker-callback-direction](#platform-declaration-checker-callback-direction) | Approve emitted-declaration traversal/checker strengthening and only existing required private Effect Logger/Tracer opaque callbacks that are immediately narrowed or discarded. | 2026-11-17T05:59:38.706Z | recorded-owner-direction |
+| [pseudonymous-request-correlation](#pseudonymous-request-correlation) | Only pseudonymous session and user correlation is selected, with per-request opt-in, current user consent and protected-profile exclusion; raw identifier export is not authorized. | 2026-11-17T13:17:48.704Z | recorded-owner-direction |
+| [dedicated-correlation-key-custody](#dedicated-correlation-key-custody) | Use a dedicated secret-store/KMS correlation key separated per tenant, destination and purpose, retaining cross-server linkability only until rotation. | 2026-11-17T13:23:58.129Z | recorded-owner-direction |
+| [correlation-epoch-crypto-proposal](#correlation-epoch-crypto-proposal) | The analysis lane recommends one-hour UTC-aligned epochs and local HMAC-SHA-256 with separately scoped 256-bit keys, without an old-key alias bridge; this is not owner-selected. | 2026-11-17T13:23:58.129Z | proposal |
 
 ### portable-topology
 
@@ -5203,4 +5206,40 @@ Approve emitted-declaration traversal/checker strengthening and only existing re
 - Implementation: Explicit owner approval reported with exact checker/fixture evidence; latest delivery is not broad EVE-263 completion or all remote CI passed.
 - Concrete outstanding parameters: No new explicit opaque type, public erasure, unsafe cast/suppression or expanded checker exception. Traverse exported declaration imports/reexports/type queries; fail missing declarations or nondeclaration fallback. Source/manifest/security gates remain intact.
 - Superseded by: None explicitly established in this record. Supersedes earlier absent-review concern for these exact required private callbacks only. Central separately owns original-thread provenance and reflection exception reconciliation.
+
+### pseudonymous-request-correlation
+
+Only pseudonymous session and user correlation is selected, with per-request opt-in, current user consent and protected-profile exclusion; raw identifier export is not authorized.
+
+- Authority: **recorded-owner-direction**. This records evidence, not a new approval.
+- Source timestamp: 2026-11-17T13:17:48.704Z. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
+- Scope: [EVE-60](issues/EVE-60.md), [EVE-19](issues/EVE-19.md).
+- Evidence: [EVE-60/55507185-3858-42e4-b1f9-e868357b54f7](https://linear.app/resnovas/issue/EVE-60/telemetry-f4-propagate-session-and-person-context-from-clients-into#comment-55507185-3858-42e4-b1f9-e868357b54f7).
+- Implementation: Authenticated owner selection was at 2026-11-17T13:16:16.737Z; this record timestamp is the later Amp Linear relay. Synthetic local admission remains the implemented prerequisite, not production ingress or identity export.
+- Concrete outstanding parameters: Current consent/issuer/ingress/export enforcement, client/native replay compatibility, captured-error/AI linkage and release remain unproved. The agent relay additionally prohibits raw SDK tracing headers; it is not quoted owner wording.
+- Superseded by: None explicitly established in this record. Narrows the historical EVE-19/EVE-60 raw-header sketch for actual identities without changing the finite synthetic fixture.
+
+### dedicated-correlation-key-custody
+
+Use a dedicated secret-store/KMS correlation key separated per tenant, destination and purpose, retaining cross-server linkability only until rotation.
+
+- Authority: **recorded-owner-direction**. This records evidence, not a new approval.
+- Source timestamp: 2026-11-17T13:23:58.129Z. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
+- Scope: [EVE-60](issues/EVE-60.md), [EVE-19](issues/EVE-19.md).
+- Evidence: [EVE-60/9cb2d84b-90b0-41b8-aeb9-1253346d5f39](https://linear.app/resnovas/issue/EVE-60/telemetry-f4-propagate-session-and-person-context-from-clients-into#comment-9cb2d84b-90b0-41b8-aeb9-1253346d5f39).
+- Implementation: Authenticated choice completed at 2026-11-17T13:18:55.545Z; the record timestamp is the later agent relay. Design-only authority provisions no key/secret and enables no production path.
+- Concrete outstanding parameters: Concrete rotation lifetime and algorithm were not selected. Server-only custody, no existing-key reuse/dependencies and injected fixture keys are separately recorded agent constraints, not additional human selections.
+- Superseded by: None explicitly established in this record. Refines pseudonymous-request-correlation key ownership, not a provisioning or release approval.
+
+### correlation-epoch-crypto-proposal
+
+The analysis lane recommends one-hour UTC-aligned epochs and local HMAC-SHA-256 with separately scoped 256-bit keys, without an old-key alias bridge; this is not owner-selected.
+
+- Authority: **proposal**. This records evidence, not a new approval.
+- Source timestamp: 2026-11-17T13:23:58.129Z. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
+- Scope: [EVE-60](issues/EVE-60.md).
+- Evidence: [EVE-60/9cb2d84b-90b0-41b8-aeb9-1253346d5f39](https://linear.app/resnovas/issue/EVE-60/telemetry-f4-propagate-session-and-person-context-from-clients-into#comment-9cb2d84b-90b0-41b8-aeb9-1253346d5f39).
+- Implementation: No crypto/export implementation, key generation/provisioning or production transport is included in the synthetic checkpoint.
+- Concrete outstanding parameters: Owner must confirm the rotation lifetime before real-identity follow-up. Algorithm/framing/domain separation, grant-expiry and queued-dispatch controls still require bounded implementation and proof, not inference from this proposal.
+- Superseded by: None explicitly established in this record. No approval or replacement of unresolved choices is inferred from a recommendation.
 <!-- planning:generated:end -->

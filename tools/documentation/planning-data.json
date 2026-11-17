@@ -1,7 +1,7 @@
 {
     "version": 1,
     "artifacts": ["docs/architecture/eventiva-platform-and-marketplace.md", "docs/architecture/modular-platform.md"],
-    "snapshotHash": "3f80608c34b02d629b136d82375b065ab3a65909ba5d1d5fb4a98b91c86751d6",
+    "snapshotHash": "260d973ea34a37d723044f243a1a27faac916d9f81acf6a7d3327f37e82c716d",
     "decisions": [
         {
             "id": "portable-topology",
@@ -4886,9 +4886,57 @@
             "parameters": "No new explicit opaque type, public erasure, unsafe cast/suppression or expanded checker exception. Traverse exported declaration imports/reexports/type queries; fail missing declarations or nondeclaration fallback. Source/manifest/security gates remain intact.",
             "supersededBy": [],
             "supersessionNote": "Supersedes earlier absent-review concern for these exact required private callbacks only. Central separately owns original-thread provenance and reflection exception reconciliation."
+        },
+        {
+            "id": "pseudonymous-request-correlation",
+            "authority": "recorded-owner-direction",
+            "summary": "Only pseudonymous session and user correlation is selected, with per-request opt-in, current user consent and protected-profile exclusion; raw identifier export is not authorized.",
+            "timestamp": "2026-11-17T13:17:48.704Z",
+            "scope": ["EVE-60", "EVE-19"],
+            "sources": ["EVE-60/55507185-3858-42e4-b1f9-e868357b54f7"],
+            "implementation": "Authenticated owner selection was at 2026-11-17T13:16:16.737Z; this record timestamp is the later Amp Linear relay. Synthetic local admission remains the implemented prerequisite, not production ingress or identity export.",
+            "parameters": "Current consent/issuer/ingress/export enforcement, client/native replay compatibility, captured-error/AI linkage and release remain unproved. The agent relay additionally prohibits raw SDK tracing headers; it is not quoted owner wording.",
+            "supersededBy": [],
+            "supersessionNote": "Narrows the historical EVE-19/EVE-60 raw-header sketch for actual identities without changing the finite synthetic fixture."
+        },
+        {
+            "id": "dedicated-correlation-key-custody",
+            "authority": "recorded-owner-direction",
+            "summary": "Use a dedicated secret-store/KMS correlation key separated per tenant, destination and purpose, retaining cross-server linkability only until rotation.",
+            "timestamp": "2026-11-17T13:23:58.129Z",
+            "scope": ["EVE-60", "EVE-19"],
+            "sources": ["EVE-60/9cb2d84b-90b0-41b8-aeb9-1253346d5f39"],
+            "implementation": "Authenticated choice completed at 2026-11-17T13:18:55.545Z; the record timestamp is the later agent relay. Design-only authority provisions no key/secret and enables no production path.",
+            "parameters": "Concrete rotation lifetime and algorithm were not selected. Server-only custody, no existing-key reuse/dependencies and injected fixture keys are separately recorded agent constraints, not additional human selections.",
+            "supersededBy": [],
+            "supersessionNote": "Refines pseudonymous-request-correlation key ownership, not a provisioning or release approval."
+        },
+        {
+            "id": "correlation-epoch-crypto-proposal",
+            "authority": "proposal",
+            "summary": "The analysis lane recommends one-hour UTC-aligned epochs and local HMAC-SHA-256 with separately scoped 256-bit keys, without an old-key alias bridge; this is not owner-selected.",
+            "timestamp": "2026-11-17T13:23:58.129Z",
+            "scope": ["EVE-60"],
+            "sources": ["EVE-60/9cb2d84b-90b0-41b8-aeb9-1253346d5f39"],
+            "implementation": "No crypto/export implementation, key generation/provisioning or production transport is included in the synthetic checkpoint.",
+            "parameters": "Owner must confirm the rotation lifetime before real-identity follow-up. Algorithm/framing/domain separation, grant-expiry and queued-dispatch controls still require bounded implementation and proof, not inference from this proposal.",
+            "supersededBy": [],
+            "supersessionNote": "No approval or replacement of unresolved choices is inferred from a recommendation."
         }
     ],
     "sources": [
+        {
+            "id": "docs/architecture/eventiva-platform-and-marketplace.md",
+            "hash": "21604f1ec92982f0906007545469fa32281098c2527aff45d4edb0dd0a4d1d8a",
+            "disposition": "decision",
+            "reason": "Full changed source reread on 2026-11-17, including preserved four diagram sources, register and revision instructions. Owner-directed replacement/index designation resolves the historical missing-file prerequisite below Linear authority; archive comments stay unchanged and explicitly superseded only for current source status. Exact EVE-250/251 owner comment IDs/creation dates and unknown replacement-instruction time are recorded. Original remains unavailable/unread; concrete composition/policy and acceptance gates remain open. Earlier authenticated artifact review evidence is unchanged, not rerun or expanded here."
+        },
+        {
+            "id": "docs/architecture/modular-platform.md",
+            "hash": "d1870064dfb15d08369e7baee00573a918124711d00bd8f3275c3e5150085b0d",
+            "disposition": "decision",
+            "reason": "Full exact delivered repository artifact reviewed, including decision register, narrative, diagrams and acceptance limits. Public HTTP404 did not prove artifact unavailability: authenticated artifact.read subsequently verified architecture-sheet revision3, foundation-approval revision3, modular-spec revision10 and SQL-evidence revision9. Original owner-thread hold release, narrow reflection exception and Rambo deferral were also verified. This source and its digest are unchanged. The separate marketplace index's 2026-11-17 replacement designation resolves the historical missing-file prerequisite without claiming unseen original content or reopening this source's scoped authority."
+        },
         {
             "id": "EVE-100/7a6b78cd-ecbe-46d2-a224-e8c994bba829",
             "hash": "a9b48f4019b5285696edf670ef4f5b1fc7c606ce1ac5b6fee0cf597d12763af4",
@@ -8658,10 +8706,22 @@
             "reason": "Defines reusable scheduling, DST and offline-conflict requirements; the offline booking example is preparation/conflict evidence, not authority to confirm scarce resources offline."
         },
         {
+            "id": "EVE-34/01bffbbf-3f7b-433e-9397-e964b555037c",
+            "hash": "1289712179cb5727c8d0dc2487dc479f2142f10826a464eb422fb72ce5396eee",
+            "disposition": "evidence",
+            "reason": "Read the complete agent-authored proposed checkpoint, current seams and acceptance boundaries. It scopes scripted run recovery before session/stream/full lifecycle work; it is not owner approval, executed evidence or production pin/fence acceptance."
+        },
+        {
             "id": "EVE-34/8353a937-8688-4b53-87e7-edabeb9aece4",
             "hash": "b5bf84cd205b710aedb416252f1f2b942cdf7be1235fb5112dc4bb823c85fcdb",
             "disposition": "evidence",
             "reason": "Run-recovery GitHub mirror notice, not crash-test evidence."
+        },
+        {
+            "id": "EVE-34/b52be1a7-b8d8-426f-877a-296deb20d658",
+            "hash": "13aa4babd51e4cdb15f8b46e817d0dd3b2e1a5a6f1dff45ebcfede65e36a5b5a",
+            "disposition": "evidence",
+            "reason": "Read the complete source-lane evidence: completed Activity entry counts, process recovery and security negatives are bounded reported results. Coordinator integration and combined coverage remain separate; no whole-issue, cancellation-latency or external-effect exactly-once acceptance."
         },
         {
             "id": "EVE-34/description",
@@ -9330,16 +9390,40 @@
             "reason": "Specifies cross-runtime Early Access parity through the Flags service and a permission-checked server list; expected vendor event fields require source/golden verification before implementation."
         },
         {
+            "id": "EVE-60/55507185-3858-42e4-b1f9-e868357b54f7",
+            "hash": "7a07ecd4f87d239921f131bef87363a8316c5f7f0e65d3076d7f19e714dbff59",
+            "disposition": "decision",
+            "reason": "Read the complete relay and independently checked its authenticated human source: pseudonymous session/user correlation, per-request opt-in, current consent and protected exclusion were selected at 13:16:16.737Z. Later agent constraints and provisioning hold are separate from owner wording."
+        },
+        {
             "id": "EVE-60/7f7ecc12-701e-425c-86c4-d949875c97eb",
             "hash": "6df4399fa430561ab5a50359577c55d37e21aa6a4a52b68c5e074f1b5720feb1",
             "disposition": "evidence",
             "reason": "Synchronization notice links EVE-60 to repository issue #827; no substantive owner direction or implementation acceptance."
         },
         {
+            "id": "EVE-60/9cb2d84b-90b0-41b8-aeb9-1253346d5f39",
+            "hash": "4a362fd6ac358ce83fa9266572890d606bcf4742ca1fb4a69634c1f8769d72c8",
+            "disposition": "decision",
+            "reason": "Read the complete key-design relay and independently checked authenticated custody selection at 13:18:55.545Z. Dedicated separated rotating key custody is chosen; one-hour epochs/HMAC-SHA-256/256-bit keys are proposals, with lifetime and production provisioning unresolved."
+        },
+        {
             "id": "EVE-60/description",
             "hash": "3d85045e92a54ed61565dcde75c7e5ead687f56dd2c333f9956e4227ab62bc4e",
             "disposition": "evidence",
             "reason": "Instrumentation for propagating client session/person context into server/AI telemetry; specification, not owner approval."
+        },
+        {
+            "id": "EVE-60/ed4d2185-de8f-48cf-bd7d-ec3741619162",
+            "hash": "49516b96054e8739d1c04b8cf4f5e4d4f2baa988fe44353dc8d7c0577efd47cd",
+            "disposition": "evidence",
+            "reason": "Read the complete readiness analysis, six synthetic acceptance groups and exact scope. No production identity/header/export authorization, SDK/device evidence, tests or delivery is established by that analysis."
+        },
+        {
+            "id": "EVE-60/f1fbb53f-8bc1-433b-abbe-679e8419dfc2",
+            "hash": "d49a5c738c802e04cd29f9f76975031a5a661876a8d905341af48630afe6b7ea",
+            "disposition": "evidence",
+            "reason": "Read all synthetic source/test/coverage evidence and limitations. Six groups and full local telemetry suite are lane-reported, not central combined acceptance; the historical pending-owner wording is narrowed by the separately captured authenticated pseudonym/key choices, with production still held."
         },
         {
             "id": "EVE-61/520911f5-3094-45c2-a3ac-05a788700a2d",
@@ -9958,18 +10042,6 @@
             "hash": "32281ff695f4f1fa35b51a0b7709fb133b01c465afa2def24ad5ad1e823c80b3",
             "disposition": "evidence",
             "reason": "Duplicate suggestions, confirmed merge/unmerge and import/export controls are requirements, not automatic shared-email merge approval."
-        },
-        {
-            "id": "docs/architecture/eventiva-platform-and-marketplace.md",
-            "hash": "21604f1ec92982f0906007545469fa32281098c2527aff45d4edb0dd0a4d1d8a",
-            "disposition": "decision",
-            "reason": "Full changed source reread on 2026-11-17, including preserved four diagram sources, register and revision instructions. Owner-directed replacement/index designation resolves the historical missing-file prerequisite below Linear authority; archive comments stay unchanged and explicitly superseded only for current source status. Exact EVE-250/251 owner comment IDs/creation dates and unknown replacement-instruction time are recorded. Original remains unavailable/unread; concrete composition/policy and acceptance gates remain open. Earlier authenticated artifact review evidence is unchanged, not rerun or expanded here."
-        },
-        {
-            "id": "docs/architecture/modular-platform.md",
-            "hash": "d1870064dfb15d08369e7baee00573a918124711d00bd8f3275c3e5150085b0d",
-            "disposition": "decision",
-            "reason": "Full exact delivered repository artifact reviewed, including decision register, narrative, diagrams and acceptance limits. Public HTTP404 did not prove artifact unavailability: authenticated artifact.read subsequently verified architecture-sheet revision3, foundation-approval revision3, modular-spec revision10 and SQL-evidence revision9. Original owner-thread hold release, narrow reflection exception and Rambo deferral were also verified. This source and its digest are unchanged. The separate marketplace index's 2026-11-17 replacement designation resolves the historical missing-file prerequisite without claiming unseen original content or reopening this source's scoped authority."
         }
     ],
     "annotations": [
@@ -10004,10 +10076,11 @@
             "date": "2026-11-17T12:03:57.576Z",
             "status": "Backlog",
             "statusType": "backlog",
-            "summary": "Live MCP recheck retains Backlog. The later agent-authored packet scopes EVE-34 as EVE-54's first server-local durable run/step checkpoint, not a competing run manager or complete production-agent acceptance. It requires completed-Activity entry counts across between-step SIGKILL/drain/restart, current access checks and stable tenant/run/step keys. EVE-35/36 consume the settled run model; EVE-52 loop and EVE-54 persisted module pins/fencing remain separate. Source-only implementation paths were reserved through current coordination; no tests or delivery are claimed for this new lane. Historical capture is unchanged.",
+            "summary": "Bounded EVE-34 refresh retains Backlog and includes the checkpoint plus source-lane evidence. Central immutable-d771b366 verification on 2026-11-17 passed completed-Activity SIGKILL/drain/restart controls, all 85 aggregate Nx tasks and smoke with disposable PostgreSQL. Both new modules remain in normal coverage: AgentRun branches 42/44 and combined server branches 84/86, above the unchanged 90% gate after public-contract tests closed the initial gap. Exact-head CI remains separate. EVE-35/36 consume the run model; EVE-52 and EVE-54 module pin/fence/full lifecycle acceptance remain separate. No production activation or whole-issue completion.",
             "sources": [
                 "https://linear.app/resnovas/issue/EVE-34#comment-01bffbbf-3f7b-433e-9397-e964b555037c",
-                "https://ampcode.com/threads/T-5a85c8b5-cf76-429d-b85e-30bc35c680a4"
+                "https://ampcode.com/threads/T-5a85c8b5-cf76-429d-b85e-30bc35c680a4",
+                "https://ampcode.com/threads/T-66e90dd6-0f21-4bf7-809b-fb3bb8b9eb9c"
             ]
         },
         {
