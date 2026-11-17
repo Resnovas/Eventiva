@@ -57,6 +57,7 @@ Jonathan's later direction, relayed in the [slice 1 assignment](https://ampcode.
 | [EVE-41](https://linear.app/resnovas/issue/EVE-41), [EVE-43](https://linear.app/resnovas/issue/EVE-43), [EVE-44](https://linear.app/resnovas/issue/EVE-44) config, identity and telemetry | In Progress                                                        | Redaction, authorization/audit and correlated bootstrap/runtime evidence. EVE-43 adoption remains blocked. Exporter contract and documentation checkpoints do not prove production ingestion/security or complete adoption.                                                                                               |
 | [EVE-45](https://linear.app/resnovas/issue/EVE-45) durable producers and feed | In Progress | Delivered journal and actual kernel mutation-owner/cascade/disposal wiring retain authoritative committed facts. Slice 2 adds restart/redrive release-policy evidence; full governed-consumer and distributed/production acceptance remain open. |
 | [EVE-262](https://linear.app/resnovas/issue/EVE-262) governed dispatch | In Progress, independently read 2026-11-17 | Slice 2 proves current synthetic release policy after claim/revocation/restart and authorized redrive. EVE-45 owns durable producers/feed; broad governed-consumer acceptance remains open. |
+| [EVE-35](https://linear.app/resnovas/issue/EVE-35) busy controls | Backlog, independently read 2026-11-17 | Slice 3 measures persisted Interrupt submission below 1,000 ms on healthy SQL runners. Full conversation/input/approval orchestration and EVE-54 interrupt-to-failed lifecycle remain open; acknowledgement is not immediate cancellation. |
 | [EVE-259](https://linear.app/resnovas/issue/EVE-259), [EVE-50](https://linear.app/resnovas/issue/EVE-50) declarative UI/screen context                                                    | In Progress                                                        | Data-only schema plus action/projection parity; native/UI end-to-end acceptance is not proven here.                                                                                                                                                                                                                       |
 | [EVE-263](https://linear.app/resnovas/issue/EVE-263) exact types/acyclic graphs                                                                                                           | Backlog, binding quality gate                                      | Review actual source/declarations/export graphs and runtime admission; do not treat old isolated audit counts as current clearance.                                                                                                                                                                                       |
 | [EVE-261](https://linear.app/resnovas/issue/EVE-261) integration | In Progress | Each lane independently rebases, regenerates affected shared outputs, verifies and ships its work under Jonathan's later direction. Exact overlapping source reservations still apply; all G01-G15 evidence remains explicit. |
@@ -215,6 +216,9 @@ flowchart TD
     M["EVE-250: existing metadata grants/outbox"] --> MR["EVE-250: unsettled revocation process-loss proof"]
     MR --> MA["EVE-250: remaining saga/security/policy acceptance"]
     MA -.-> I
+    AR["EVE-34: scripted durable runs present"] --> BC["EVE-35 slice 3: measured busy-control submission"]
+    BC --> AL["EVE-35/54: session and cancellation lifecycle acceptance"]
+    AL -.-> I
     DOC_A["D01 complete; D02 attachments complete"] --> DOC_B["D03: adapter packets current; SQL next"]
     DOC_B --> DOC_C["D04-D06: remaining documentation"]
     HOUSE_DOC["House PR48 accepted; 13 tool copies synced"] --> DOC_C
@@ -238,6 +242,9 @@ flowchart TD
     click M "https://linear.app/resnovas/issue/EVE-250"
     click MR "https://linear.app/resnovas/issue/EVE-250"
     click MA "https://linear.app/resnovas/issue/EVE-250"
+    click AR "https://linear.app/resnovas/issue/EVE-34"
+    click BC "https://linear.app/resnovas/issue/EVE-35"
+    click AL "https://linear.app/resnovas/issue/EVE-54"
 ```
 
 ## Acceptance ledger
@@ -590,6 +597,41 @@ also pass after independent literal-hour and suspended-key epoch controls.
 The disposable PostgreSQL fixture/network were removed. No native-device,
 authenticated-ingress or production acceptance is inferred from these results.
 
+## Measured busy-control slice 3 - 2026-11-17
+
+The bounded [EVE-35 checkpoint](../cluster.md#measured-busy-control-checkpoint-eve-35)
+uses the existing per-run control entity and approved disposable loopback SQL
+fixture, without production source, dependency or public transport changes.
+Two runs with the exact same caller/session remain pending behind deterministic
+step-2 barriers. Unauthorized Interrupt requests leave both unsignalled. One
+authorized attempt must acknowledge in less than 1,000 ms and already have its
+exact persisted signal, without implying completed cancellation. Each released
+run succeeds with output 172, executor counts [1,1,1] and one complete business
+commit/receipt set, unchanged from the no-fault control.
+
+Revision 4 of the [slice brief](https://ampcode.com/artifacts/eventiva-next-parallel-slices-current-main-readiness-f4c31b8c-2405-4743-ad32-bedc11c633a5)
+incorrectly claimed an existing failed snapshot. The first SQL probe measured
+16.22 ms and then failed that proposed assertion with actual succeeded/output
+172. Pinned Cluster 0.60.5 reads InterruptSignal on suspension/failure; waiting
+for its deferred reply while holding execution instead reached the existing
+convergence deadline. This is a test-accuracy correction, not a product decision.
+Interrupt-to-failed termination stays with EVE-54. The later
+[clarification](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+and [EVE-35 evidence](https://linear.app/resnovas/issue/EVE-35#comment-b06cb0d8-09d1-4d31-bdb2-7e75ca7f274e)
+retain this distinction; the issue remains Backlog, not Done.
+
+Focused protocol validation passed seven tests. The uncached server target
+passed 25 tests with 99.09% lines/97.67% branches and SQL cluster conformance;
+the measured authorized acknowledgement was 24.03 ms. Coupling Interrupt to
+the still-held step made the negative control fail at the unchanged 1,000 ms
+bound; the temporary production mutation was removed. Full `node --run verify`
+passed root checks (98 documentation fixtures, zero ratchet violations),
+aggregate Nx targets and all three smoke targets. Strict reviewed planning
+passed 258 issues/692 edges with zero unresolved sources and stale outputs.
+Final rebased-head checks and signed delivery are recorded on EVE-35, not
+inferred from an earlier head. The complete historical mirror is unchanged;
+a dated planning annotation cites this bounded live issue read.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
@@ -604,6 +646,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 - EVE-39, 2026-11-17, later-status: Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only. Four public-host corrupting trusted-adapter cases failed on unchanged main by returning nested amount 999 instead of approved 20; two controls passed. Private canonical encoded bytes and fresh typed decoding per observer now pass the focused 114 execution/host/type tests, including nested arrays/objects, NumberFromString, retained references during transaction waits and replay. Full checks, storage compatibility and signed delivery evidence are recorded separately on EVE-39. This explicitly volatile fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged. [evidence](https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc), [evidence](https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325).
 - EVE-60, 2026-11-17T15:28:28.416Z, later-status: Live issue and complete terminal comment page rechecked. Jonathan confirmed one-hour rotation at 15:27:19.582Z, conditional on automatic client renewal without disrupted actions; the separate 15:27:26.780Z Puck relay specifies UTC alignment, in-flight boundary and multi-epoch tests. This supersedes the historical lifetime-pending clause, not privacy/consent/protected-profile denial. The governed follow-up uses injected non-production fixture keys only; production, provisioning and real issuer/consent stores remain denied. Source/tests and exact-head aggregate/delivery evidence are recorded separately in the timeline and export guide. Frozen issue capture is unchanged; this is not a full live-source refresh or whole-issue acceptance. [evidence](https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).
 - EVE-19, 2026-11-17T15:28:29.172Z, later-status: Live capability-study issue retains historical Done, not EVE-60 implementation acceptance. The later decision records the owner's hourly rotation with automatic trusted-issuer renewal, no user-visible failure or action replay/drop, and UTC boundary/multi-epoch tests. Only pseudonyms may leave the process with per-request opt-in and current consent/release; raw SDK headers remain forbidden. Dedicated server-only tenant/destination/purpose keys are design-authorized, not provisioned; production remains denied. The source capture stays historical and the later cited annotation supersedes only the lifetime-pending proposal. [evidence](https://linear.app/resnovas/issue/EVE-19#comment-f9740a5b-d126-4a55-8000-12bf9971a349), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo).
+- EVE-35, 2026-11-17T15:45:43.910Z, later-status: Bounded live description and terminal comment-page review retains Backlog. Slice 3 adds a single-attempt under-1000-ms authorized Interrupt measurement on healthy registered SQL runners, exact persisted-signal attribution, same-session independent-run and foreign-tenant denial controls. Acknowledgement means persisted signal submission, not cancellation completion. Revision 4's failed-snapshot claim was contradicted by pinned Cluster 0.60.5: after release both runs succeed with output 172 and exact once-only business counts; interrupt-to-failed termination remains EVE-54 work. Execution and signed delivery evidence are separately recorded on EVE-35 and in the maintained timeline; full conversation/user-input/approval orchestration and EVE-54 lifecycle acceptance remain open. No production authorization or complete live snapshot refresh is implied. [evidence](https://linear.app/resnovas/issue/EVE-35#comment-b06cb0d8-09d1-4d31-bdb2-7e75ca7f274e), [evidence](https://ampcode.com/threads/T-01a1ea29-6178-7380-a38b-2ad341f4da81).
 - EVE-261, 2026-11-17, blocker: Bootstrap timeout cause remains unproven. Historical CI output does not distinguish late module/startup work from post-log shutdown delay. Bounded fd3 phase capture is implemented for the next actual occurrence with unchanged 10000 ms child limits, signals, results and existing assertions; executable equivalence, invalid-journal/redaction and synthetic timeout controls exercise diagnostics only. No force-exit, retry, deadline increase, telemetry repair or whole-issue acceptance is established. Source checkpoint predates delivery; exact-head CI is separate evidence, not a refreshed issue snapshot. [evidence](https://linear.app/resnovas/issue/EVE-261#comment-c0e0d66f-9f2c-4009-9164-3695a7413038), [evidence](https://github.com/Resnovas/Eventiva/actions/runs/44096066749/job/134083384961), [evidence](https://ampcode.com/threads/T-1cb8af52-2e52-4924-bb42-cc7c523a6ddc).
 - EVE-262, 2026-11-17, later-status: Slice 2 independently read the live description and terminal comment page: EVE-262 is In Progress (state change recorded 08:14:06.002Z), not the historical Backlog capture. Current bounded work proves hook release reauthorization after claim/revocation/process loss and operator redrive using fixture-persisted policy, with an allowed durable-dedup control. Execution and delivered-head evidence are recorded separately on EVE-262/EVE-45 and in the maintained timeline; this annotation grants no production release or whole-issue acceptance. The complete historical source capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-262), [evidence](https://linear.app/resnovas/issue/EVE-262#comment-4cad4584-11e3-45e2-80cc-afc7df728cec), [evidence](https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51).
 - EVE-258, 2026-11-17, later-status: Slice 1 adds a separate self-asserting declaration migration process-loss target to storage test, preserving the held parent spec and its migrationCrashProof:false default report. SQLite and disposable PostgreSQL pass precommit SIGKILL rollback, postcommit acknowledgement loss, empty repeat history, valid changed-prefix refusal and stale-writer rejection with a current-writer control. This is bounded local G04 evidence, not power loss, distributed fencing, native execution, production least privilege or whole-issue acceptance. Source capture remains historical; later execution and delivery evidence is cited separately. [evidence](https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration#comment-79bf922f), [evidence](https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb).

@@ -593,6 +593,62 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
         15000
     );
     it.scopedLive(
+        'keeps busy-run controls authorized and independent within one session',
+        /** Volatile protocol proof complements, but cannot replace, the measured SQL process checkpoint. */
+        () =>
+            Effect.gen(
+                /** Hold actual executor work while invoking the public per-run controls. */ function* () {
+                    const entered = yield* Deferred.make<void>();
+                    const release = yield* Deferred.make<void>();
+                    const h = yield* fixture({
+                        model: {
+                            /** Hold only the selected run; another run in the same session must finish independently. */
+                            call: (request) =>
+                                request.runId === input.runId
+                                    ? Deferred.succeed(entered, undefined).pipe(
+                                          Effect.zipRight(Deferred.await(release)),
+                                          Effect.as(19)
+                                      )
+                                    : Effect.succeed(73),
+                        },
+                    });
+                    yield* h.runs.start(input);
+                    yield* Deferred.await(entered).pipe(Effect.timeout('10 seconds'));
+                    expect(yield* h.runs.status(input).pipe(Effect.timeout('1 second'))).toEqual({ state: 'pending' });
+                    // Same-tenant but different session cannot signal the accepted run using its id.
+                    const foreign = Schema.decodeUnknownSync(CallerIdentity)({
+                        ...caller,
+                        session: '019b0000-0000-7000-8000-000000000099',
+                    });
+                    expect(yield* h.runs.interrupt({ ...input, caller: foreign }).pipe(Effect.either)).toMatchObject({
+                        left: { _tag: 'AgentRunDenied', reason: 'denied' },
+                    });
+                    const independent: AgentRunInput = {
+                        ...input,
+                        runId: '019b0000-0000-7000-8000-000000001002',
+                    };
+                    yield* h.runs.start(independent).pipe(Effect.timeout('1 second'));
+                    expect(
+                        yield* h.runs.status(independent).pipe(
+                            Effect.delay('10 millis'),
+                            Effect.repeat({
+                                /** Completion must not wait for the first run's still-closed executor barrier. */
+                                until: (snapshot) => snapshot.state !== 'pending',
+                            }),
+                            Effect.timeout('10 seconds')
+                        )
+                    ).toEqual({ state: 'succeeded', output: 73 });
+                    yield* h.runs.interrupt(input).pipe(Effect.timeout('1 second'));
+                    // A short signal reply must not be mistaken for a terminal cancellation snapshot.
+                    expect(yield* h.runs.status(input)).toEqual({ state: 'pending' });
+                    expect(yield* Deferred.isDone(release)).toBe(false);
+                    expect(yield* h.runs.status(independent)).toEqual({ state: 'succeeded', output: 73 });
+                    yield* Deferred.succeed(release, undefined);
+                }
+            ),
+        15000
+    );
+    it.scopedLive(
         'returns pending without awaiting a model and denies the next effect after live revocation',
         /** A completed Activity output must not authorize dispatch of a later protected effect. */
         () =>

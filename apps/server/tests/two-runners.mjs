@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { Effect, Exit, Scope } from 'effect';
@@ -404,25 +405,84 @@ try {
         );
     }
     const interrupted = agentInput(++record);
+    const independent = agentInput(++record);
+    assert.deepEqual(independent.caller, interrupted.caller);
+    assert.notEqual(independent.runId, interrupted.runId);
     await gateAgent(interrupted, 2);
+    await gateAgent(independent, 2);
     const interruptedId = await request(b, { command: 'agentStart', request: interrupted });
+    const independentId = await request(a, { command: 'agentStart', request: independent });
     await agentEvent(interrupted);
-    // This must return while execution is still busy, before the fixture gate is released.
-    await request(a, { command: 'agentInterrupt', request: interrupted });
-    // The pinned engine persists a signal, not an immediate cancellation acknowledgement.
-    await until(
-        () =>
-            run(
-                fixture.sql
-                    .c`SELECT payload FROM cluster_messages WHERE entity_type = 'Workflow/EventivaAgentRun-v1' AND entity_id = ${interruptedId} AND tag = 'deferred' AND payload::jsonb ->> 'name' = 'Workflow/InterruptSignal'`
-            ),
-        (rows) => rows.length > 0
+    await agentEvent(independent);
+    const interruptSignals = () =>
+        run(
+            fixture.sql
+                .c`SELECT entity_id, payload FROM cluster_messages WHERE entity_type = 'Workflow/EventivaAgentRun-v1' AND entity_id IN (${interruptedId}, ${independentId}) AND tag = 'deferred' AND payload::jsonb ->> 'name' = 'Workflow/InterruptSignal'`
+        );
+    // Warm routing and establish healthy membership before timing, never retry a slow measurement.
+    assert.ok(distributed(await snapshots(a, b)));
+    for (const input of [interrupted, independent]) {
+        assert.deepEqual(await request(a, { command: 'agentStatus', request: input }), { state: 'pending' });
+        await assert.rejects(
+            request(b, {
+                command: 'agentInterrupt',
+                request: { ...input, caller: { ...input.caller, tenant: id(2) } },
+            }),
+            /denied/
+        );
+    }
+    assert.deepEqual(await interruptSignals(), []);
+    const started = performance.now();
+    let deadline;
+    let interruptAcknowledgementMs;
+    try {
+        // Bound the real authorized IPC -> RPC -> persisted signal -> reply, not a local mock.
+        await Promise.race([
+            request(a, { command: 'agentInterrupt', request: interrupted }),
+            new Promise((_, reject) => {
+                deadline = setTimeout(() => reject(new Error('Busy Interrupt acknowledgement exceeded 1000 ms')), 1000);
+            }),
+        ]);
+        interruptAcknowledgementMs = performance.now() - started;
+        assert.ok(interruptAcknowledgementMs < 1000, `Busy Interrupt acknowledged in ${interruptAcknowledgementMs} ms`);
+    } finally {
+        clearTimeout(deadline);
+    }
+    // Acknowledgement means signal submission persisted for this exact run, not completed cancellation.
+    const signals = await interruptSignals();
+    assert.equal(signals.length, 1);
+    assert.equal(signals[0].entity_id, interruptedId);
+    for (const input of [interrupted, independent]) {
+        assert.deepEqual(counts(await agentEntries(input)), [1, 0, 0]);
+        assert.deepEqual(await request(b, { command: 'agentStatus', request: input }), { state: 'pending' });
+    }
+    console.log(
+        JSON.stringify({
+            event: 'agent-run-busy-control-responsive',
+            interruptAcknowledgementMs,
+            boundMs: 1000,
+            signalExecutionId: interruptedId,
+            independentExecutionId: independentId,
+            beforeRelease: [1, 0, 0],
+            acknowledgement: 'persisted-signal-submission-not-cancellation-completion',
+        })
     );
-    assert.deepEqual(counts(await agentEntries(interrupted)), [1, 0, 0]);
+    // The other run in the identical session remains usable and commits its business effect once.
+    await releaseAgent(independent);
+    await assertAgent(a, independent);
+    // Cluster 0.60.5 reads the signal on suspension/failure, not by cancelling busy work.
     await releaseAgent(interrupted);
-    await until(
-        () => request(b, { command: 'agentStatus', request: interrupted }),
-        (value) => value.state !== 'pending'
+    assert.deepEqual(await assertAgent(b, interrupted), noFault);
+    assert.deepEqual(await request(b, { command: 'agentStatus', request: independent }), noFault);
+    assert.deepEqual(counts(await agentEntries(independent)), [1, 1, 1]);
+    console.log(
+        JSON.stringify({
+            event: 'agent-run-busy-control-release-passed',
+            state: 'succeeded',
+            output: 172,
+            signalledCounts: counts(await agentEntries(interrupted)),
+            independentCounts: counts(await agentEntries(independent)),
+        })
     );
     for (const signal of ['SIGTERM', 'SIGKILL']) {
         const states = await snapshots(a, b);

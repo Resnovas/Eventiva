@@ -10082,6 +10082,18 @@
             ]
         },
         {
+            "issue": "EVE-35",
+            "kind": "later-status",
+            "date": "2026-11-17T15:45:43.910Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Bounded live description and terminal comment-page review retains Backlog. Slice 3 adds a single-attempt under-1000-ms authorized Interrupt measurement on healthy registered SQL runners, exact persisted-signal attribution, same-session independent-run and foreign-tenant denial controls. Acknowledgement means persisted signal submission, not cancellation completion. Revision 4's failed-snapshot claim was contradicted by pinned Cluster 0.60.5: after release both runs succeed with output 172 and exact once-only business counts; interrupt-to-failed termination remains EVE-54 work. Execution and signed delivery evidence are separately recorded on EVE-35 and in the maintained timeline; full conversation/user-input/approval orchestration and EVE-54 lifecycle acceptance remain open. No production authorization or complete live snapshot refresh is implied.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-35#comment-b06cb0d8-09d1-4d31-bdb2-7e75ca7f274e",
+                "https://ampcode.com/threads/T-01a1ea29-6178-7380-a38b-2ad341f4da81"
+            ]
+        },
+        {
             "issue": "EVE-261",
             "kind": "blocker",
             "date": "2026-11-17",
