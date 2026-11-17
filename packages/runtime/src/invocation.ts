@@ -23,10 +23,12 @@ import { type Cause, Context, Data, Effect, Either, type Exit, Layer } from 'eff
 
 export type { Receipt } from '@eventiva/contracts/receipt';
 
+/** Bind a safe platform denial reason to the requested action without retaining input or credentials. */
 interface InvocationDeniedFields {
     readonly action: string;
     readonly reason: string;
 }
+/** Construct an exact yieldable denial without exporting the vendor's open error constructor generic. */
 const InvocationDeniedBase: new (args: InvocationDeniedFields) => Cause.YieldableError &
     InvocationDeniedFields & {
         readonly _tag: 'InvocationDenied';
@@ -34,13 +36,16 @@ const InvocationDeniedBase: new (args: InvocationDeniedFields) => Cause.Yieldabl
 /** A platform gate failed. Reasons are safe identifiers, never input or credentials. */
 export class InvocationDenied extends InvocationDeniedBase {}
 
+/** Identify which action could not satisfy mandatory audit durability without exposing persistence diagnostics. */
 interface AuditUnavailableFields {
     readonly action: string;
 }
+/** Construct the bounded audit-unavailability error while keeping arbitrary vendor fields private. */
 const AuditUnavailableBase: new (args: AuditUnavailableFields) => Cause.YieldableError &
     AuditUnavailableFields & {
         readonly _tag: 'AuditUnavailable';
     } = Data.TaggedError('AuditUnavailable');
+/** Fail the outer invocation when required receipt persistence is unavailable, never report an unaudited success. */
 export class AuditUnavailable extends AuditUnavailableBase {}
 
 /** Caller-supplied execution intent, not proof of authorization or approval. */
@@ -56,6 +61,7 @@ export interface InvokeOptions {
     readonly expectedState?: string | undefined;
 }
 
+/** Preserve the executed Exit and its persisted invocation receipt, distinguishing durable mutation replay from a new execution. */
 export interface InvocationResult<E = PlatformError | InvocationDenied | AuditUnavailable, A = JsonValue> {
     readonly result: Exit.Exit<A, E>;
     readonly receipt: Receipt;
@@ -66,15 +72,24 @@ export interface InvocationResult<E = PlatformError | InvocationDenied | AuditUn
 /** Refresh identity, session and delegation from trusted state for every invocation/discovery. */
 export class IdentityResolver extends Context.Tag('@eventiva/runtime/IdentityResolver')<
     IdentityResolver,
-    { readonly resolve: (caller: CallerIdentity) => Effect.Effect<CallerIdentity, InvocationDenied> }
+    {
+        /** Resolve trusted current authority from presented identity, rejecting stale or unavailable identity state. */ readonly resolve: (
+            caller: CallerIdentity
+        ) => Effect.Effect<CallerIdentity, InvocationDenied>
+    }
 >() {}
 
 /** A cryptographic digest, supplied by the platform boundary (SHA-256 or stronger). */
 export class InputDigest extends Context.Tag('@eventiva/runtime/InputDigest')<
     InputDigest,
-    { readonly digest: (canonical: string) => Effect.Effect<string> }
+    {
+        /** Hash canonical input bytes deterministically with the host's cryptographic digest, never a transport-provided hash. */ readonly digest: (
+            canonical: string
+        ) => Effect.Effect<string>
+    }
 >() {}
 
+/** Trusted human approval pinned to principal, tenant, action/version, input hash, limits and a finite validity window. */
 export interface Approval {
     readonly principal: string;
     readonly tenant: string | undefined;
@@ -92,9 +107,14 @@ export interface Approval {
 /** Never accepts an approval object from a transport: the transport supplies only an opaque id. */
 export class Approvals extends Context.Tag('@eventiva/runtime/Approvals')<
     Approvals,
-    { readonly get: (id: string) => Effect.Effect<Approval, InvocationDenied> }
+    {
+        /** Look up trusted approval evidence by opaque id; the executor validates its exact live binding and bounds. */ readonly get: (
+            id: string
+        ) => Effect.Effect<Approval, InvocationDenied>
+    }
 >() {}
 
+/** Trusted policy observations that can raise approval floors and constrain current state, capacity and dependencies. */
 export interface ExecutionRequirements {
     /** Tenant policy can only raise the specification and risk floor. */
     readonly approval: ApprovalPolicy;
@@ -112,6 +132,7 @@ export interface ExecutionRequirements {
 export class ExecutionPolicy extends Context.Tag('@eventiva/runtime/ExecutionPolicy')<
     ExecutionPolicy,
     {
+        /** Inspect decoded action input and current trusted state; caller intent cannot supply its own readiness or approval evidence. */
         readonly inspect: <S extends ActionSpec>(
             caller: CallerIdentity,
             spec: S,
@@ -130,7 +151,9 @@ export class ExecutionPolicy extends Context.Tag('@eventiva/runtime/ExecutionPol
 export class Audit extends Context.Tag('@eventiva/runtime/Audit')<
     Audit,
     {
+        /** Require durable audit availability before a protected invocation starts; a later record/commit can still fail closed. */
         readonly ready: (action: string) => Effect.Effect<void, AuditUnavailable>;
+        /** Persist this invocation receipt, permitting only an explicitly allowed durable bounded spool fallback. */
         readonly record: (
             receipt: Receipt,
             allowSpool: boolean
@@ -138,6 +161,7 @@ export class Audit extends Context.Tag('@eventiva/runtime/Audit')<
     }
 >() {}
 
+/** Host-derived deduplication identity and exact input binding for one tenant/principal/action-version mutation. */
 export interface IntegrityRequest {
     readonly key: string;
     readonly inputHash: string;
@@ -146,6 +170,7 @@ export interface IntegrityRequest {
     readonly version: number;
 }
 
+/** Successful atomic mutation result and its original durable receipt, with an explicit replay marker. */
 export interface Committed {
     readonly output: JsonValue;
     readonly receipt: Receipt;
@@ -165,6 +190,7 @@ export interface Committed {
 export class Integrity extends Context.Tag('@eventiva/runtime/Integrity')<
     Integrity,
     {
+        /** Serialize the request key, reject changed input and commit callback output/receipt atomically with its domain writes. */
         readonly commit: <E, Value>(
             request: IntegrityRequest,
             execute: Effect.Effect<{ readonly output: Value; readonly receipt: Receipt }, E>
@@ -174,7 +200,9 @@ export class Integrity extends Context.Tag('@eventiva/runtime/Integrity')<
 
 /** JSON canonicalization rejects non-JSON values rather than hashing ambiguous coercions. */
 export const canonicalJson = <Value>(value: Value): Either.Either<string, string> => {
+    // Track only the active traversal path: shared acyclic children are valid, while an ancestor reference is a cycle.
     const ancestors = new Set<object>();
+    /** Encode finite JSON primitives, ordered array slots or sorted plain-object data properties; reject ancestor cycles and accessors. */
     const visit = <Item>(item: Item): Either.Either<string, string> => {
         if (item === null) return Either.right('null');
         if (typeof item === 'string' || typeof item === 'boolean') return Either.right(JSON.stringify(item));
@@ -186,7 +214,13 @@ export const canonicalJson = <Value>(value: Value): Either.Either<string, string
         ancestors.add(item);
         const parts: Array<string> = [];
         const keys = Array.isArray(item)
-            ? Array.from({ length: item.length }, (_, index) => String(index))
+            ? Array.from(
+                  { length: item.length },
+                  /** Name array slots in numeric order so traversal validates holes instead of skipping them. */ (
+                      _,
+                      index
+                  ) => String(index)
+              )
             : Object.keys(item).sort();
         for (const key of keys) {
             const descriptor = Object.getOwnPropertyDescriptor(item, key);
@@ -207,20 +241,26 @@ export const canonicalJson = <Value>(value: Value): Either.Either<string, string
 /** Safe server defaults until trusted identity/policy and durable adapters are wired. */
 export const FailClosed = Layer.mergeAll(
     Layer.succeed(IdentityResolver, {
+        /** Deny identity resolution rather than trust presented authority without a production resolver. */
         resolve: () => Effect.fail(new InvocationDenied({ action: '<identity>', reason: 'identity-unavailable' })),
     }),
     Layer.succeed(Approvals, {
+        /** Refuse opaque approval ids until a trusted evidence store is composed. */
         get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
     }),
     Layer.succeed(ExecutionPolicy, {
+        /** Reject execution when no live resource/readiness policy is available. */
         inspect: (_caller, spec) =>
             Effect.fail(new InvocationDenied({ action: spec.name, reason: 'policy-unavailable' })),
     }),
     Layer.succeed(Audit, {
+        /** Prevent protected execution without a durable audit readiness implementation. */
         ready: (action) => Effect.fail(new AuditUnavailable({ action })),
+        /** Refuse receipt acknowledgment rather than substitute a volatile or best-effort audit sink. */
         record: (receipt) => Effect.fail(new AuditUnavailable({ action: receipt.action })),
     }),
     Layer.succeed(Integrity, {
+        /** Never execute the mutation callback when no atomic deduplication/storage owner is composed. */
         commit: (request) =>
             Effect.fail(new InvocationDenied({ action: request.action, reason: 'integrity-unavailable' })),
     })

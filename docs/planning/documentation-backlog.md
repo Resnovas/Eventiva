@@ -89,10 +89,25 @@ The bounded classifier refinement accepts standalone own-body JSDoc and value-on
 
 Executed combined verification above immutable base `9af03961801dc6e6376da030332d92e11684f178`: `node --run verify` exited zero under the approved disposable PostgreSQL fixture, with cache disabled. Root checks and all 89 documentation fixtures passed; all 85 Nx tasks, source/declaration boundary audits and all three smoke targets plus 12 dependencies passed. Both boundary graphs have zero violations/cycles. The fixture/network were removed. Exact-head CI and signed source/graph revisions are separate asynchronous delivery evidence on the owning issues; this passing ratchet is not global documentation compliance.
 
+## First D02 semantic checkpoint - 2026-11-17
+
+This packet integrates the coordinator's delivered kernel/OTLP head `82320fc5bfbe2f0cb620604b1a6ec756d76e33da` before pruning. The four reserved runtime sources retain exact parsed TypeScript terminal kind/text sequences against that immutable base and have zero live findings. Documentation resolves 129 missing attachments and 12 rationale candidates; checker corrections are zero. No source-semantic unknown was established. The checker, exclusions, runtime behavior and callback contracts are unchanged.
+
+| Reviewed runtime source | Semantic evidence and boundary | Ledger removals |
+| --- | --- | --- |
+| `action.ts` | Registered handlers retain their exact input/output/error schemas; registration and wire encoding do not grant caller authority or expose raw runtime errors. | 21 attachments |
+| `execution.ts` | Refresh caller identity and bind approvals to the exact invocation; revalidate after transaction waits/replays and atomically commit receipts with durable state. | 17 attachments, 4 rationale |
+| `host.ts` | Validate complete module ownership and registration before publication; unregister handlers before releasing their scoped layers so consumers cannot reach released resources. | 66 attachments, 7 rationale |
+| `invocation.ts` | Canonical transport values and sanitized failure encoding preserve the wire boundary rather than trusting arbitrary caller objects or provider failures. | 25 attachments, 1 rationale |
+
+The prune removes exactly 141 accepted identities: 3,597 to 3,456 retained identities, comprising 2,706 attachments and 750 rationale candidates. Completed: per-file semantic review, exact parsed-token proof, runtime lint/typecheck/build (7 tasks), runtime tests (16 files, 470 tests) and parity/typecheck (7 tasks). Current: separate clean-source graph delivery after full verification. Upcoming: the seven prepared runtime sources and reserved hook source in the next D02 packet, then D03-D06 and D07. Seven adequate candidates in that following packet and two read-only reviewed kernel bodies remain explicitly review-only; strict rationale activation is not authorized. Exact execution/delivery evidence is recorded on [EVE-13](https://linear.app/resnovas/issue/EVE-13) and [EVE-261](https://linear.app/resnovas/issue/EVE-261). D01's final CI rollup passed every executed check, including Code Quality; skipped release jobs did not deploy anything.
+
+Executed `DOCUMENTATION_BASE=82320fc5bfbe2f0cb620604b1a6ec756d76e33da NX_SKIP_NX_CACHE=true node --run verify` under the approved disposable PostgreSQL fixture: exit zero, all 85 Nx tasks, all three smoke targets plus 12 dependencies, 89 documentation fixtures and 95 resource/boundary/type fixtures passed. Source and declaration graphs report zero violations/cycles. The fixture/network were removed. The initial attempt lacked the newly delivered approved OpenTelemetry package; `pnpm install --frozen-lockfile` repaired the orb installation without tracked dependency changes, then the identical uncached gate passed. Nx retained that earlier failure in its local flaky-task history; no failed target was suppressed or retried by a cloud service. No UI behavior changed and no deployment ran. This packet's checker remains unchanged; clean-source graph and exact-head CI follow separately.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3597 remaining findings across 111 files: 2835 mechanically missing JSDoc; 0 prose-review candidates; 762 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+3456 remaining findings across 107 files: 2706 mechanically missing JSDoc; 0 prose-review candidates; 750 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -135,12 +150,8 @@ Executed combined verification above immutable base `9af03961801dc6e6376da030332
 | D03 | [packages/integrations/sql/src/trust.ts](../../packages/integrations/sql/src/trust.ts) | 11 | 0 | 0 |
 | D03 | [packages/integrations/sql/src/values.ts](../../packages/integrations/sql/src/values.ts) | 4 | 0 | 0 |
 | D03 | [packages/integrations/telemetry.server/src/logger.ts](../../packages/integrations/telemetry.server/src/logger.ts) | 28 | 0 | 1 |
-| D02 | [packages/runtime/src/action.ts](../../packages/runtime/src/action.ts) | 21 | 0 | 0 |
-| D02 | [packages/runtime/src/execution.ts](../../packages/runtime/src/execution.ts) | 17 | 0 | 4 |
 | D02 | [packages/runtime/src/hook.ts](../../packages/runtime/src/hook.ts) | 30 | 0 | 3 |
-| D02 | [packages/runtime/src/host.ts](../../packages/runtime/src/host.ts) | 66 | 0 | 7 |
 | D02 | [packages/runtime/src/identity.ts](../../packages/runtime/src/identity.ts) | 53 | 0 | 12 |
-| D02 | [packages/runtime/src/invocation.ts](../../packages/runtime/src/invocation.ts) | 25 | 0 | 1 |
 | D02 | [packages/runtime/src/kernel-runtime.ts](../../packages/runtime/src/kernel-runtime.ts) | 0 | 0 | 2 |
 | D02 | [packages/runtime/src/marketplace.ts](../../packages/runtime/src/marketplace.ts) | 15 | 0 | 5 |
 | D02 | [packages/runtime/src/resource.ts](../../packages/runtime/src/resource.ts) | 29 | 0 | 10 |

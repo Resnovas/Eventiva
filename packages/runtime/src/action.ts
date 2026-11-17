@@ -37,16 +37,19 @@ import {
 export interface Implementation<S extends ActionSpec, R = never> extends ActionBinding<R> {
     readonly _tag: 'Implementation';
     readonly spec: S;
+    /** Implement the exact decoded specification types; the host owns authorization, execution gates and wire encoding. */
     readonly handler: (input: Input<S>) => Effect.Effect<Output<S>, Failure<S>, R>;
 }
 
 /** A decoded invocation captured without erasing the handler's schema types. */
 export interface PreparedAction<R = never> {
     readonly canonicalInput: Effect.Effect<string, InvalidInput>;
+    /** Authorize the captured decoded target using the host's freshly resolved caller and trusted authorizer. */
     readonly authorize: (
         authorizer: typeof Authorizer.Service,
         caller: CallerIdentity
     ) => Effect.Effect<void, Forbidden>;
+    /** Derive live execution requirements from the decoded target and untrusted intent, not from transport claims. */
     readonly inspect: (
         policy: typeof ExecutionPolicy.Service,
         caller: CallerIdentity,
@@ -58,6 +61,7 @@ export interface PreparedAction<R = never> {
 /** Heterogeneous registry capability, not an erased input/output handler. */
 export interface ActionBinding<R = never> {
     readonly spec: ActionSpec;
+    /** Decode wire input and capture typed operations without executing the handler or granting invocation authority. */
     readonly prepare: <Wire>(input: Wire) => Effect.Effect<PreparedAction<R>, InvalidInput>;
 }
 
@@ -74,48 +78,88 @@ export const implement = <S extends ActionSpec, R = never>(
             Schema.Schema<Failure<S>, Schema.Schema.Encoded<Option.Option.Value<S['error']>>>
         >;
     },
+    /** Bind decoded input/output/error types without allowing the handler to widen the specification inferred from spec. */
     handler: (input: Input<NoInfer<S>>) => Effect.Effect<Output<NoInfer<S>>, Failure<NoInfer<S>>, R>
 ): Implementation<S, R> => ({
     _tag: 'Implementation',
     spec,
     handler,
+    /** Reject excess wire properties before any target policy or handler can observe decoded input. */
     prepare: (input) =>
         Schema.decodeUnknown(spec.input)(input, { onExcessProperty: 'error' }).pipe(
-            Effect.mapError(() => new InvalidInput({ action: spec.name, message: 'Input does not match its schema.' })),
-            Effect.map((decoded): PreparedAction<R> => ({
-                canonicalInput: Schema.encode(spec.input)(decoded).pipe(
-                    Effect.catchAll(() => Effect.dieMessage('Action input cannot be encoded.')),
-                    Effect.flatMap(canonicalJson),
-                    Effect.mapError(
-                        () => new InvalidInput({ action: spec.name, message: 'Input must encode as JSON.' })
-                    )
-                ),
-                authorize: (authorizer, caller) => authorizer.check<S>(caller, spec, decoded),
-                inspect: (policy, caller, intent) => policy.inspect<S>(caller, spec, decoded, intent),
-                run: Effect.suspend(() => handler(decoded)).pipe(
-                    Effect.catchAllDefect(() => Effect.dieMessage('Action handler defect.')),
-                    Effect.catchAll((error) =>
-                        Option.match(spec.error, {
-                            onNone: () => Effect.dieMessage('Undeclared action failure.'),
-                            onSome: (schema) =>
-                                Schema.encode(schema)(error).pipe(
+            Effect.mapError(
+                /** Hide decoder details and rejected values behind the fixed public invalid-input message. */ () =>
+                    new InvalidInput({ action: spec.name, message: 'Input does not match its schema.' })
+            ),
+            Effect.map(
+                /** Capture one decoded value for hashing, target authorization, live policy and eventual handler execution. */ (
+                    decoded
+                ): PreparedAction<R> => ({
+                    canonicalInput: Schema.encode(spec.input)(decoded).pipe(
+                        Effect.catchAll(
+                            /** Treat a broken declared input encoder as a sanitized implementation defect, not a caller failure. */ () =>
+                                Effect.dieMessage('Action input cannot be encoded.')
+                        ),
+                        Effect.flatMap(canonicalJson),
+                        Effect.mapError(
+                            /** Refuse non-JSON input hashes without exposing the rejected encoded value. */ () =>
+                                new InvalidInput({ action: spec.name, message: 'Input must encode as JSON.' })
+                        )
+                    ),
+                    /** Check target-level permission on the decoded schema type rather than the wire representation. */
+                    authorize: (authorizer, caller) => authorizer.check<S>(caller, spec, decoded),
+                    /** Keep the specification's exact decoded type when querying trusted live execution policy. */
+                    inspect: (policy, caller, intent) => policy.inspect<S>(caller, spec, decoded, intent),
+                    run: Effect.suspend(
+                        /** Defer handler construction until the host has completed its live gates and transaction selection. */ () =>
+                            handler(decoded)
+                    ).pipe(
+                        Effect.catchAllDefect(
+                            /** Replace arbitrary handler defects before they can retain implementation or input details. */ () =>
+                                Effect.dieMessage('Action handler defect.')
+                        ),
+                        Effect.catchAll(
+                            /** Publish declared errors only after encoding and JSON validation; undeclared failures are defects. */ (
+                                error
+                            ) =>
+                                Option.match(spec.error, {
+                                    /** Refuse typed failure output when the specification declares no error codec. */
+                                    onNone: () => Effect.dieMessage('Undeclared action failure.'),
+                                    /** Encode only through the declared error schema before exposing an ActionFailed wire payload. */
+                                    onSome: (schema) =>
+                                        Schema.encode(schema)(error).pipe(
+                                            Effect.flatMap(canonicalJson),
+                                            Effect.flatMap(Schema.decode(Json)),
+                                            Effect.catchAll(
+                                                /** Treat error-codec or JSON incompatibility as a sanitized defect, never unchecked error output. */ () =>
+                                                    Effect.dieMessage('Action error cannot be encoded.')
+                                            ),
+                                            Effect.flatMap(
+                                                /** Wrap only the validated JSON representation, not the original handler error object. */ (
+                                                    encodedError
+                                                ) =>
+                                                    Effect.fail(
+                                                        new ActionFailed({ action: spec.name, error: encodedError })
+                                                    )
+                                            )
+                                        ),
+                                })
+                        ),
+                        Effect.flatMap(
+                            /** Encode successful values through the exact declared schema and reject non-JSON transport output. */ (
+                                output
+                            ) =>
+                                Schema.encode(spec.output)(output).pipe(
                                     Effect.flatMap(canonicalJson),
                                     Effect.flatMap(Schema.decode(Json)),
-                                    Effect.catchAll(() => Effect.dieMessage('Action error cannot be encoded.')),
-                                    Effect.flatMap((encodedError) =>
-                                        Effect.fail(new ActionFailed({ action: spec.name, error: encodedError }))
+                                    Effect.catchAll(
+                                        /** Do not turn invalid implementation output into an apparently successful unchecked response. */ () =>
+                                            Effect.dieMessage('Action output cannot be encoded.')
                                     )
-                                ),
-                        })
-                    ),
-                    Effect.flatMap((output) =>
-                        Schema.encode(spec.output)(output).pipe(
-                            Effect.flatMap(canonicalJson),
-                            Effect.flatMap(Schema.decode(Json)),
-                            Effect.catchAll(() => Effect.dieMessage('Action output cannot be encoded.'))
+                                )
                         )
-                    )
-                ),
-            }))
+                    ),
+                })
+            )
         ),
 });
