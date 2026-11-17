@@ -223,6 +223,21 @@ Run `pnpm install --frozen-lockfile`, `pnpm nx sync:check`, and `node --run veri
 
 Run `node tools/resources/boundaries.mjs --declarations` after building to check emitted public dependency graphs as well as the existing source, manifest and declaration-type checks. The emitted graph starts at every exported `types` entrypoint and follows local imports, type queries and re-exports, including aliases and private declaration helpers. It reports closed cycle paths and rejects missing declarations or aliases that resolve back to non-declaration source. Resolution disables the development-only `@eventiva/source` condition so clean source cannot hide a cycle in generated declarations. The flag defaults to off; `verify` already enables it after builds. Fix the declaration dependency or export rather than removing the check. This adds no runtime behavior or vendor-type exception.
 
+### Erased schema import aliases (EVE-263)
+
+The type-escape audit identifies Effect imports by their module and lexical binding, not only the spelling `Schema`. In source and declaration mode it rejects renamed `Schema` imports from `effect`, namespace imports from `effect/Schema`, named `Unknown`/`Any` imports and re-exports from `effect/Schema`, and their type references or import-type queries. The pinned vendor exposes `AnyNoContext` inside the `Schema` type namespace, not as a top-level named export; that erased type remains rejected too.
+
+For example, `import { Schema as S } from 'effect'; export const payload = S.Unknown;` and `export { Unknown as Payload } from 'effect/Schema';` both report `Erased schema contract`. Replace erasure with a precise contract:
+
+```ts
+import { Schema as S } from 'effect';
+
+export const payload = S.Struct({ name: S.String, count: S.Number });
+export type Payload = typeof payload.Type;
+```
+
+Unrelated application exports named `Unknown`, `Any` or `AnyNoContext`, local objects named `Schema`, and lexical shadows are not Effect schema references. The existing unbound direct `Schema.Unknown` diagnostic is retained. This is a file-local import-origin check, not whole-program value-flow analysis or a replacement for the resolved dependency graph and compiler gates. It adds no option, dependency, runtime flag or policy exception. Run `node --test tools/resources/boundaries.test.mjs` for alias/re-export negatives and typed/shadowing controls in both modes; run the source and `--declarations` CLI gates after builds. If an alias is rejected, fix the schema rather than changing its import spelling or broadening the reflection approval below.
+
 ### Approved private reflection ingress (EVE-263)
 
 Owner message1982 in thread `T-01a189ae-399d-7162-9765-4488b9600016` approves only a private TypeScript `PropertyDescriptor` reflection value typed `unknown`, immediately recursively validated and never exposed as a public value or type. The source gate implements that approval only for `const child: unknown = descriptor.value; const encoded = visit(child);` in the private recursive visitor inside `canonicalJson` in `packages/runtime/src/invocation.ts`.

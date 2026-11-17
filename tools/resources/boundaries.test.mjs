@@ -268,6 +268,58 @@ test('allows exact generics, safe narrowing and const preservation', () =>
         (_boundary, _graph, _workspace, types) => assert.deepEqual(types.findings, [])
     ));
 
+for (const syntax of [
+    `import { Schema as S } from 'effect'; export const payload = S.Unknown;`,
+    `import { Schema as S } from 'effect'; export const payload = S.Any;`,
+    `import * as S from 'effect/Schema'; export const payload = S.Unknown;`,
+    `import { Unknown as Payload } from 'effect/Schema'; export { Payload };`,
+    `import { Any as Payload } from 'effect/Schema'; export { Payload as Public };`,
+    `export { Unknown as Payload } from 'effect/Schema';`,
+    `export { Any as Payload } from 'effect/Schema';`,
+    `import type { Schema as S } from 'effect'; export type Payload = S.Schema.AnyNoContext;`,
+    `import type { Schema as S } from 'effect/Schema'; export type Payload = S.AnyNoContext;`,
+    `export type Payload = import('effect/Schema').Schema.AnyNoContext;`,
+    `import type { Unknown as Payload } from 'effect/Schema'; export type Public = Payload;`,
+    `import * as E from 'effect'; export const payload = E.Schema.Unknown;`,
+])
+    test(`rejects erased Effect schema aliases in source and declarations: ${syntax}`, () =>
+        fixture(
+            {
+                'feature.ts': syntax,
+                'packages/a/package.json': JSON.stringify({ exports: { './api': { types: './dist/api.d.ts' } } }),
+                'packages/a/dist/api.d.ts': syntax,
+            },
+            (_boundary, _graph, _workspace, types, declarations) => {
+                for (const result of [types, declarations])
+                    assert.ok(result.findings.some(({ reason }) => reason === 'Erased schema contract'));
+            }
+        ));
+
+for (const syntax of [
+    `import { Schema as S } from 'effect'; export const payload = S.Struct({ name: S.String, count: S.Number }); export type Payload = typeof payload.Type;`,
+    `import { String as Text } from 'effect/Schema'; export { Text };`,
+    `import { Unknown as Payload, Any } from './application.js'; export { Payload, Any };`,
+    `export { Unknown, Any, AnyNoContext } from './application.js';`,
+    `const Schema = { Unknown: 'domain', Any: 2, AnyNoContext: true }; export const payload = Schema.Unknown;`,
+    `import { Schema as S } from 'effect'; function read(S: { Unknown: string }) { return S.Unknown; } export { read };`,
+    `import { Unknown as Payload } from 'effect/Schema'; function read(Payload: string) { return Payload; } export { read };`,
+    `import { Schema as S } from 'effect'; namespace Domain { export namespace S { export type AnyNoContext = string; } export type Payload = S.AnyNoContext; }`,
+    `import { Schema as S } from 'effect'; const domain = { S: { Unknown: 'domain' } }; export const payload = domain.S.Unknown;`,
+])
+    test(`allows typed schemas, unrelated names and lexical shadows: ${syntax}`, () =>
+        fixture(
+            {
+                'feature.ts': syntax,
+                'application.ts': `export const Unknown = 'domain'; export const Any = 2; export type AnyNoContext = string;`,
+                'packages/a/package.json': JSON.stringify({ exports: { './api': { types: './dist/api.d.ts' } } }),
+                'packages/a/dist/api.d.ts': syntax,
+            },
+            (_boundary, _graph, _workspace, types, declarations) => {
+                assert.deepEqual(types.findings, []);
+                assert.deepEqual(declarations.findings, []);
+            }
+        ));
+
 test('missing declarations fail closed instead of silently skipping unbuilt APIs', () =>
     fixture(
         {

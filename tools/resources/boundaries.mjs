@@ -275,6 +275,58 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
         }
         const text = readFileSync(path, 'utf8');
         const ast = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+        // The approved fingerprint covers parser flags. Binding annotates those
+        // flags, so evaluate the unchanged exception before TypeScript binds.
+        const reflectionApprovals = new Set();
+        const reviewReflection = (node) => {
+            if (
+                node.kind === ts.SyntaxKind.UnknownKeyword &&
+                approvedReflectionIngress(node, ast, relative(root, path), declarations)
+            )
+                reflectionApprovals.add(node);
+            ts.forEachChild(node, reviewReflection);
+        };
+        reviewReflection(ast);
+        // Bind this file without loading vendor declarations: import provenance, not
+        // assignability or vendor-internal erased types, defines this syntax gate.
+        const options = { noResolve: true, noLib: true, target: ts.ScriptTarget.Latest };
+        const host = ts.createCompilerHost(options);
+        host.getSourceFile = (name) => (name === path ? ast : undefined);
+        const checker = ts.createProgram([path], options, host).getTypeChecker();
+        const moduleOrigin = (name) => (name === 'effect' ? 'effect' : name === 'effect/Schema' ? 'schema' : 'other');
+        const memberOrigin = (origin, name) => {
+            if ((origin === 'effect' || origin === 'schema') && name === 'Schema') return 'schema';
+            if (origin === 'schema' && ['Unknown', 'Any', 'AnyNoContext'].includes(name)) return 'erased';
+            return undefined;
+        };
+        const symbolOrigin = (symbol) => {
+            for (const binding of symbol?.declarations ?? []) {
+                if (!ts.isImportSpecifier(binding) && !ts.isNamespaceImport(binding)) continue;
+                let declaration = binding.parent;
+                while (declaration && !ts.isImportDeclaration(declaration)) declaration = declaration.parent;
+                if (!declaration || !ts.isStringLiteralLike(declaration.moduleSpecifier)) continue;
+                const origin = moduleOrigin(declaration.moduleSpecifier.text);
+                return ts.isNamespaceImport(binding)
+                    ? origin
+                    : memberOrigin(origin, (binding.propertyName ?? binding.name).text);
+            }
+            return undefined;
+        };
+        const schemaOrigin = (node, origin) => {
+            if (ts.isIdentifier(node)) {
+                if (origin) return memberOrigin(origin, node.text);
+                const symbol = checker.getSymbolAtLocation(node);
+                // Keep the existing unbound direct-form diagnostic; a real local
+                // Schema binding (including a lexical shadow) is not Effect.
+                return symbolOrigin(symbol) ?? (!symbol?.declarations && node.text === 'Schema' ? 'schema' : undefined);
+            }
+            if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node))
+                return memberOrigin(
+                    schemaOrigin(ts.isQualifiedName(node) ? node.left : node.expression, origin),
+                    (ts.isQualifiedName(node) ? node.right : node.name).text
+                );
+            return undefined;
+        };
         const report = (node, reason) =>
             findings.push({
                 path: relative(root, path),
@@ -282,18 +334,35 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
                 reason,
             });
         const visit = (node) => {
+            if (ts.isImportDeclaration(node)) return;
+            if (ts.isExportSpecifier(node)) {
+                const declaration = node.parent.parent;
+                const origin = declaration.moduleSpecifier
+                    ? memberOrigin(
+                          moduleOrigin(declaration.moduleSpecifier.text),
+                          (node.propertyName ?? node.name).text
+                      )
+                    : symbolOrigin(checker.getExportSpecifierLocalTargetSymbol(node));
+                if (origin === 'erased') report(node, 'Erased schema contract');
+                return;
+            }
+            if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && node.qualifier) {
+                if (schemaOrigin(node.qualifier, moduleOrigin(node.argument.literal.text)) === 'erased')
+                    report(node, 'Erased schema contract');
+                for (const argument of node.typeArguments ?? []) visit(argument);
+                return;
+            }
             if (
                 node.kind === ts.SyntaxKind.AnyKeyword ||
-                (node.kind === ts.SyntaxKind.UnknownKeyword &&
-                    !approvedReflectionIngress(node, ast, relative(root, path), declarations))
+                (node.kind === ts.SyntaxKind.UnknownKeyword && !reflectionApprovals.has(node))
             )
                 report(node, 'Erased any/unknown type');
             if ((ts.isAsExpression(node) && node.type.getText(ast) !== 'const') || ts.isTypeAssertionExpression(node))
                 report(node, 'Unchecked type assertion');
             if (ts.isNonNullExpression(node)) report(node, 'Unchecked non-null assertion');
             if (
-                (ts.isPropertyAccessExpression(node) || ts.isTypeReferenceNode(node)) &&
-                /\bSchema\.(?:Any|Unknown|AnyNoContext)\b/.test(node.getText(ast))
+                (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node) || ts.isIdentifier(node)) &&
+                schemaOrigin(node) === 'erased'
             )
                 report(node, 'Erased schema contract');
             ts.forEachChild(node, visit);
