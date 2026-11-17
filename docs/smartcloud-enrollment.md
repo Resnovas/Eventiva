@@ -6,7 +6,7 @@ Eventiva extends `Resnovas/.github/smartcloud/house-base.yml@main` through `.git
 
 The house preset supplies governance, policies, skills, prompts, MCP sources, dev surfaces, issue forms, Dependabot, review configuration, shared tools and ten workflows. Existing `house:local` sections remain repository-owned. Enrollment pinned Node 24.22.2 and pnpm 9.14.2 with no application dependencies; EVE-244 later moved them to Node 24.22.3 and pnpm 12.18.0 for the application foundation.
 
-Enrollment created no Nx/Expo/React Native/Effect application foundation, application tests, coverage, deployment environment or release configuration; EVE-244 added the foundation and its tests (see [the foundation guide](foundation.md)), still with no deployment environment or release configuration. Release and nightly workflows skip without `release.config.json`. Generic Test actions remain unavailable rather than calling placeholder tests. Graphify, CodeQL and licence checking exclude `Examples/`; the archived private tests gitlink is not initialized.
+Enrollment created no Nx/Expo/React Native/Effect application foundation, application tests, coverage, deployment environment or release configuration; EVE-244 added the foundation and its tests (see [the foundation guide](foundation.md)), still with no deployment environment or release configuration. Release and nightly workflows skip without `release.config.json`. Generic Test actions remain unavailable rather than calling placeholder tests. Graphify, CodeQL and licence checking exclude `examples/`; the archived private tests gitlink is not initialized.
 
 ## Dry-run effects
 
@@ -16,7 +16,7 @@ The additions include the canonical `.github/smartcloud.yml`, ten house workflow
 
 The only `LICENSE` change is `Copyright 2024 Eventiva` to `Copyright 2026 Jonathan Stevens trading as Resnovas`; the FCL-1.0-MIT terms are unchanged. Nine original governance files missing from EVE-242's archive are preserved byte-for-byte from the manual baseline `ae54174aa209be4c21f00226eebae8a01ed04df6`: conduct, governance, DCO, security, support and cooperation AsciiDoc files, CODEOWNERS, FUNDING.yml and LICENSE. No existing archive file is overwritten. The obsolete root AsciiDoc compatibility links have since been removed; canonical Markdown policies and archived originals remain, without revoking earlier commitments. The obsolete root CODEOWNERS with non-GitHub role names and duplicate root FUNDING.yml are removed in favor of their canonical `.github/` files.
 
-The licence-header checker preserves the existing third-party Nx `monitor-ci` scripts in `.cursor/skills/` and `.opencode/skills/` instead of relabelling them as Resnovas-authored source. Those exact imported paths and `Examples/` are listed in `tools/license/ignore`; current house and repository tooling remains checked.
+The licence-header checker preserves the existing third-party Nx `monitor-ci` scripts in `.cursor/skills/` and `.opencode/skills/` instead of relabelling them as Resnovas-authored source. Those exact imported paths and `examples/` are listed in `tools/license/ignore`; current house and repository tooling remains checked.
 
 ## Direct-to-main delivery
 
@@ -70,7 +70,23 @@ To end the exception, remove the lines above, point `extends` back at `house.yml
 
 ## Checkout fix
 
-`actions/checkout` failed in every job that checks out code with `No url found for submodule path 'Examples/cluster-docker' in .gitmodules`. That gitlink was committed in April 2026 without a `.gitmodules` entry, and it is removed. The archived `Examples/eventiva-before-amp/tests` submodule stays declared, inactive and not updated.
+`actions/checkout` failed in every job that checks out code with `No url found for submodule path 'Examples/cluster-docker' in .gitmodules`. That gitlink was committed in April 2026 without a `.gitmodules` entry, and it is removed. This quoted error retains its historical spelling. The archived `examples/eventiva-before-amp/tests` submodule stays declared, inactive and not updated.
+
+## Archive path timeline (EVE-264)
+
+[EVE-264](https://linear.app/resnovas/issue/EVE-264) records the owner's 2026-11-17 casing decision, authorization and delivery evidence; [EVE-261](https://linear.app/resnovas/issue/EVE-261) receives the coordinated acceptance link, not rename ownership.
+
+- Completed: inventory and coordination, the two-step Git rename, active-reference updates, identical archive tree/mode/gitlink proof, and the lowercase spelling regression red/green. Full `node --run verify` passed with the disposable PostgreSQL fixture: 85 lint/typecheck/test/build/parity tasks, zero graph violations/cycles, and all three smoke projects plus their dependencies.
+- Current at this repository checkpoint: direct-main delivery and remote tree/CI confirmation. EVE-264 holds the final commit links, CI results and live completion status after this checkpoint.
+- Upcoming: the coordinator rebases its separate integration work onto the delivered rename, preserves quoted historical issue data, and uses lowercase archive paths in new active documentation and checks.
+
+```mermaid
+flowchart LR
+    A[Case-safe parent rename] --> B[Archive identity and regression proof]
+    B --> C[Full repository verification]
+    C --> D[Direct main delivery and remote CI]
+    D --> E[EVE-264 acceptance and coordinator handoff]
+```
 
 ## Owner completion steps
 

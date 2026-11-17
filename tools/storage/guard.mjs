@@ -26,7 +26,7 @@ Dependency-free EVE-42 forward-only migration policy check. Never executes SQL
 or commands, connects to a database, or writes a checksum ledger.
 
 --root DIR        Repository to scan for package.json scripts (default: cwd).
-                  Skips hidden, archived Examples, vendored and build directories.
+                  Skips hidden, archived examples, vendored and build directories.
 --migrations DIR  Recursively check every .sql file, relative to --root.
 --applied FILE    Required with --migrations: trusted JSON object mapping applied
                   relative SQL paths to lowercase SHA-256 hashes of exact bytes.
@@ -66,7 +66,7 @@ Exit 0: checked inputs pass. Exit 1: policy violation or invalid/unreadable inpu
 `;
 
 const ignored = new Set([
-    'Examples',
+    'examples',
     'externals',
     'node_modules',
     'dist',

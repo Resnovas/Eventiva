@@ -48,4 +48,4 @@ Amp orbs run `.agents/setup` (Node, corepack pnpm, `scripts/agent-setup`, Chromi
 - Generate the graph viewer with `sh tools/graphify/graphify update` before using Graph: open viewer; delete `dist`, `.expo` and `test-output` first.
 - Smartcloud administration or app-token failures: follow `docs/smartcloud-enrollment.md`; local setup cannot grant GitHub permissions. Never add secrets to tracked files.
 
-The original setup instructions and private tests gitlink are preserved under `Examples/eventiva-before-amp`. Its `.gitmodules` is historical; the current root `.gitmodules` disables automatic updates of that gitlink. No default command fetches it.
+The original setup instructions and private tests gitlink are preserved under `examples/eventiva-before-amp`. Its `.gitmodules` is historical; the current root `.gitmodules` disables automatic updates of that gitlink. No default command fetches it.

@@ -81,4 +81,4 @@ externals/
 # Repository rules go below this line; the house sync keeps them.
 # house:local
 # Historical snapshots are inspected explicitly, not indexed as current code.
-Examples/**
+examples/**

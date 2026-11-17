@@ -166,10 +166,15 @@ describe('package hygiene', () => {
         }
     );
 
+    it('uses exactly the lowercase top-level archive path on case-sensitive and case-insensitive filesystems', () => {
+        // Directory entries expose the stored spelling even when path lookup ignores case.
+        expect(readdirSync(root).filter((name) => name.toLowerCase() === 'examples')).toEqual(['examples']);
+    });
+
     it('keeps the historical snapshots out of every production import', () => {
         const sources = ['apps', 'packages'].flatMap((top) => filesUnder(join(root, top)));
         const offenders = sources.filter(
-            (file) => /\.(ts|tsx|js|mjs|json)$/.test(file) && /Examples\//.test(readFileSync(file, 'utf8'))
+            (file) => /\.(ts|tsx|js|mjs|json)$/.test(file) && /examples\//i.test(readFileSync(file, 'utf8'))
         );
         expect(offenders).toEqual([]);
     });

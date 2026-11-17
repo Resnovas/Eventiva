@@ -182,7 +182,7 @@ for (const command of [
 
 test('scans nested active package scripts, not archive, vendor, hidden or build output', (t) => {
     const f = fixture(t, { scripts: { migrate: 'drizzle-kit migrate', generate: 'drizzle-kit generate && git push' } });
-    for (const dir of ['Examples/old', 'node_modules/vendor', 'dist', '.git', 'externals/vendor']) {
+    for (const dir of ['examples/old', 'node_modules/vendor', 'dist', '.git', 'externals/vendor']) {
         f.put(`${dir}/package.json`, '{not even valid JSON');
     }
     passes(f.run('--command', 'git push', '--command', 'prisma migrate deploy'));

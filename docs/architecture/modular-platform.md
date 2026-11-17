@@ -14,7 +14,7 @@ Authority, highest first:
 
 Inspected baseline: `Resnovas/Eventiva` local `main` and `origin/main` both pointed to `58f05d5d8eee26f1987cb733ecb27abf84482fb1`. The fresh contracts/schema/runtime packages, authorized ActionHost, tenant-routed SQL Storage, identity primitives and cluster integration are the baseline, not the archived application. Source review establishes their presence, not that every acceptance gate below passes. Current server-only inventory proof is not UI/agent/native parity.
 
-`Examples/eventiva-before-amp` and `Examples/packages-old` are historical evidence only. Do not import them, restore their architecture, run active checks against them or initialize private archive tests. EVE-23/40/244 remain Done; this work adds increments rather than reopening their completed foundation.
+`examples/eventiva-before-amp` and `examples/packages-old` are historical evidence only. Do not import them, restore their architecture, run active checks against them or initialize private archive tests. EVE-23/40/244 remain Done; this work adds increments rather than reopening their completed foundation.
 
 This specification lane changes docs and Linear planning only. It does not write production code, add dependencies, choose cryptographic algorithms/providers, change settings, provision services or push. Existing isolated implementation may continue where already authorized. **No push/merge to main before owner approval of the detailed implementation brief and review gates.** Approval to plan does not approve new package versions, images, external components, paid services, production migrations or ingestion.
 
@@ -272,7 +272,7 @@ Recovery integration places the unchanged registry/interpreter responsibility in
 
 ## 11. First reference extension: historical startup banner
 
-The first extension is a clean, small, comprehensively commented human/AI-readable template, not a word-art editor. Inspect historical `Examples/eventiva-before-amp/packages/extensions/copyright-notice/src/copyright-notice-layer.ts`, `wordart.ts` and `packages/core/src/runtime/run-core-startup.ts`. Preserve the Eventiva/by-Resnovas word-art and copyright bytes/layout where permitted. Do not import archive files or restore old HookRegistry/onLoad startup behavior.
+The first extension is a clean, small, comprehensively commented human/AI-readable template, not a word-art editor. Inspect historical `examples/eventiva-before-amp/packages/extensions/copyright-notice/src/copyright-notice-layer.ts`, `wordart.ts` and `packages/core/src/runtime/run-core-startup.ts`. Preserve the Eventiva/by-Resnovas word-art and copyright bytes/layout where permitted. Do not import archive files or restore old HookRegistry/onLoad startup behavior.
 
 Template acceptance:
 

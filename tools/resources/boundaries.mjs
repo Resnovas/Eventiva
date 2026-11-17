@@ -33,7 +33,7 @@ const ignored = new Set([
     '.expo',
     '.git',
     '.nx',
-    'Examples',
+    'examples',
 ]);
 const source = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const files = (directory) =>

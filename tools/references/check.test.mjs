@@ -123,7 +123,7 @@ for (const [label, change, expected] of [
     ['missing workspace exclusion', ({ write }) => write('.nxignore', ''), /exclusions are missing/],
     [
         'missing CodeQL reference exclusion',
-        ({ write }) => write('.github/codeql/codeql-config.yml', 'paths-ignore:\n  - Examples/**\n'),
+        ({ write }) => write('.github/codeql/codeql-config.yml', 'paths-ignore:\n  - examples/**\n'),
         /CodeQL reference exclusion is missing/,
     ],
 ])

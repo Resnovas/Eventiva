@@ -107,7 +107,7 @@ const nodeBuiltins = [
 // Source globs per tag, read from each project.json when the config loads, so
 // the rules follow tags rather than directory names.
 const root = dirname(fileURLToPath(import.meta.url));
-const skip = new Set(['node_modules', 'dist', '.git', '.nx', 'Examples', 'graphify-out', 'test-output', '.expo']);
+const skip = new Set(['node_modules', 'dist', '.git', '.nx', 'examples', 'graphify-out', 'test-output', '.expo']);
 const projects = [];
 const walk = (dir) => {
     for (const entry of readdirSync(dir)) {
@@ -140,7 +140,7 @@ export default [
             '**/playwright-report',
             '**/.expo',
             '**/vitest.config.*.timestamp*',
-            'Examples/**',
+            'examples/**',
             'externals/**',
             'graphify-out/**',
             // Boundary fixtures break the rules on purpose; tests/boundaries lints them.

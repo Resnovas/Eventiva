@@ -1,4 +1,4 @@
 # The EVE-242 snapshots are historical, not current source. Do not rewrite them.
-^Examples/
+^examples/
 # Existing third-party Nx monitor-ci skills retain their upstream notices.
 ^\.(cursor|opencode)/skills/monitor-ci/

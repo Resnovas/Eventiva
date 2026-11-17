@@ -2,7 +2,7 @@
 
 Eventiva is an open-source platform for event planning and production logistics. After the full reset in [EVE-242](https://linear.app/resnovas/issue/EVE-242), the repository holds the fresh application foundation from [EVE-244](https://linear.app/resnovas/issue/EVE-244): a PNPM and Nx workspace with an Effect backend shell, an Expo client and the `@eventiva/contracts`, `@eventiva/schema` and `@eventiva/runtime` packages, with tests and smoke runs. **It has no product features yet.** Read [the foundation guide](docs/foundation.md). House governance, security and synchronization workflows are enrolled under [EVE-243](https://linear.app/resnovas/issue/EVE-243); release workflows remain inert without a release configuration.
 
-The sections from here to [Rebuild order](#rebuild-order) restore the project introduction and mission from the [historical README](Examples/eventiva-before-amp/README.adoc). They describe what Eventiva sets out to become. **None of the features they name is implemented in this repository today.**
+The sections from here to [Rebuild order](#rebuild-order) restore the project introduction and mission from the [historical README](examples/eventiva-before-amp/README.adoc). They describe what Eventiva sets out to become. **None of the features they name is implemented in this repository today.**
 
 ## What Eventiva is
 
@@ -58,7 +58,7 @@ node --run verify
 
 `setup` installs the house commit hook and registers available editor actions. `check` is the house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current; locally it also checks that the commit hook is installed. `verify` runs `check`, then the Nx `lint`, `typecheck`, `test`, `build` and `parity` targets, then the `smoke` targets. The `house check` and `application check` CI jobs run the same gates. Run `node --run parity` for the action inventory gate alone; read [the action host guide](docs/actions.md) for invocation services, approval and receipt guarantees. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required.
 
-`pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `Examples/**` and `externals/**` so recursive commands never discover archived or upstream reference manifests.
+`pnpm-workspace.yaml` selects `apps/*`, `packages/*`, `packages/integrations/*`, `tests/*` and `tests/integrations/*`, and explicitly excludes `examples/**` and `externals/**` so recursive commands never discover archived or upstream reference manifests.
 
 Amp orbs use [`.agents/setup`](.agents/setup) to provision the pinned toolchain, dependencies and Chromium, and [`.agents/resume`](.agents/resume) for a fast readiness check. There is no development server to start. Old `pnpm dev`, `platform:*`, cluster and declaration-doc commands from the archive do not exist here.
 
@@ -78,9 +78,11 @@ The Markdown governance files and `LICENSE` are canonical. Obsolete root AsciiDo
 
 ## Historical reference
 
-- [`Examples/eventiva-before-amp`](Examples/eventiva-before-amp/README.md) preserves the manual workspace, packages, tests reference, tooling, documentation and CI configuration from main at `ae54174aa209be4c21f00226eebae8a01ed04df6`.
-- [`Examples/packages-old`](Examples/packages-old) is a separate, older snapshot. It has not been merged with or overwritten by the new archive.
+- [`examples/eventiva-before-amp`](examples/eventiva-before-amp/README.md) preserves the manual workspace, packages, tests reference, tooling, documentation and CI configuration from main at `ae54174aa209be4c21f00226eebae8a01ed04df6`.
+- [`examples/packages-old`](examples/packages-old) is a separate, older snapshot. It has not been merged with or overwritten by the new archive.
 
 Inspect both for behaviour and lessons, not as code to copy into the new implementation. Neither is an active workspace or production dependency. The archived private tests gitlink is preserved at its original revision and disabled for automatic submodule updates; no private test source was fetched or deleted.
+
+[EVE-264](https://linear.app/resnovas/issue/EVE-264) lowercases the archive parent path only; historical file bytes, AsciiDoc and the private-tests revision stay unchanged. The package-hygiene tests require exactly the lowercase top-level spelling and reject archive imports regardless of case. Quoted old checkout errors retain their original spelling; use lowercase paths for current commands and links.
 
 Read current [AGENTS.md](AGENTS.md) before working. Historical instructions, commands and configuration inside the archives do not govern the rebuild. The application workspace is the EVE-244 foundation described in [docs/foundation.md](docs/foundation.md).
