@@ -7,6 +7,15 @@ Every Resnovas repository follows the same standards. This section is synced fro
 `coding-preferences`, and those documents win if this summary ever disagrees
 with them. The sections after this one describe this repository itself.
 
+### Agent checkout isolation
+
+Use a dedicated task branch in a Git worktree for repository changes. Reuse a
+host-provided task checkout. Prefer T3 or Orca managed worktrees when working
+through those hosts; otherwise use native worktree support or `git worktree`.
+Use ordinary Git for commits and pushes and explicit PR head/base branches.
+GitButler remains the user's personal tool; leave its checkout and metadata
+untouched. The synced `git-worktrees` skill contains the workflow.
+
 ### Code
 
 - **Effect-TS v3 first.** TypeScript is the primary language, written with
