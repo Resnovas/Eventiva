@@ -22,7 +22,7 @@ import { describe, expect, it } from '@effect/vitest';
 // condition. The normal verify pipeline builds workspace dependencies first.
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} hook process recovery`, () => {
-        it('survives SIGKILL before delivery, after sink acceptance and after operator replay commit with stale fencing', async () => {
+        it('survives SIGKILL with stale delivery fencing, operator replay and trusted synthetic consumer cursor recovery', async () => {
             const stdout = await new Promise<string>((resolve, reject) => {
                 execFile(
                     process.execPath,
@@ -34,7 +34,8 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                     }
                 );
             });
-            expect(JSON.parse(stdout.trim())).toMatchObject({
+            const report = JSON.parse(stdout.trim());
+            expect(report).toMatchObject({
                 event: 'hook-process-recovery-passed',
                 dialect,
                 attempts: 3,
@@ -47,6 +48,21 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                     terminalAttempts: 4,
                     preservedAttempt: 2,
                 },
+                trustedSyntheticConsumer: {
+                    scope: 'trusted synthetic consumer proof only',
+                    acknowledgementLost: true,
+                    resumedAfter: 1,
+                    beforeCommitRollback: true,
+                    retriedEvent: '019b0000-0000-7000-8000-00000000000c',
+                    cursor: 2,
+                    applied: 2,
+                    duplicateApplications: 0,
+                    metadataOnly: true,
+                    productionNativeRelease: false,
+                    generalExactlyOnce: false,
+                },
             });
+            expect(report.trustedSyntheticConsumer.pids).toHaveLength(3);
+            expect(new Set(report.trustedSyntheticConsumer.pids).size).toBe(3);
         }, 65000);
     });

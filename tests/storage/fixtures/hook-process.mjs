@@ -26,6 +26,7 @@ import { SqlClient } from '@effect/sql';
 import { SqliteClient } from '@effect/sql-sqlite-node';
 import { Flags } from '@eventiva/contracts/flags';
 import {
+    HookChangeFeed,
     HookDeclaration,
     HookEvent,
     HookOperatorPolicy,
@@ -46,6 +47,7 @@ import { Cause, ConfigProvider, Context, Deferred, Effect, Exit, FiberSet, Layer
 // Its deduplication is not a general exactly-once delivery guarantee.
 const id = (n) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const tenant = TenantId.make(id(1));
+const consumer = 'trusted-synthetic-consumer';
 const identity = { module: 'fixture', version: '1.0.0', generation: 1 };
 const declaration = Schema.decodeUnknownSync(HookDeclaration)({
     format: 1,
@@ -112,6 +114,7 @@ if (role === 'worker') {
     const context = await run(services(dialect, sql));
     const outbox = Context.get(context, HookOutbox);
     const recovery = Context.get(context, HookRecovery);
+    const feed = Context.get(context, HookChangeFeed);
     const tasks = await run(FiberSet.make());
     const runFork = await run(FiberSet.runtime(tasks)());
     const barrier = (name, value) =>
@@ -120,6 +123,41 @@ if (role === 'worker') {
             // Only SIGKILL releases these barriers. No delivery/ack can run ahead
             // of the parent proving durable state at the named crash boundary.
             yield* Deferred.await(yield* Deferred.make());
+        });
+    // Trusted host synthetic consumer only: no lifecycle producer, transport
+    // authorization, production/native release or general exactly-once claim.
+    const consume = (phase) =>
+        Effect.gen(function* () {
+            const [checkpoint] =
+                yield* sql`SELECT cursor FROM hook_process_consumer_cursor WHERE tenant = ${tenant} AND consumer = ${consumer}`;
+            const after = checkpoint === undefined ? 0 : Number(checkpoint.cursor);
+            // Public feed.read must run outside an ambient SQL transaction.
+            // Only the subsequent local metadata sink uses this exact client.
+            const page = yield* feed.read(after, 1);
+            const result = {
+                after,
+                cursor: page.cursor,
+                eventIds: page.events.map(({ event }) => event.id),
+                applied: 0,
+            };
+            if (page.events.length === 0) return result;
+            yield* sql.withTransaction(
+                Effect.gen(function* () {
+                    for (const entry of page.events) {
+                        assert.equal(entry.event.tenant, tenant);
+                        assert.equal(entry.event.projection.kind, 'domain.change');
+                        const inserted =
+                            yield* sql`INSERT INTO hook_process_consumer_application (tenant, consumer, event_id, cursor) VALUES (${tenant}, ${consumer}, ${entry.event.id}, ${entry.cursor}) ON CONFLICT (tenant, consumer, event_id) DO NOTHING RETURNING event_id`;
+                        result.applied += inserted.length;
+                    }
+                    yield* sql`INSERT INTO hook_process_consumer_cursor (tenant, consumer, cursor) VALUES (${tenant}, ${consumer}, ${page.cursor}) ON CONFLICT (tenant, consumer) DO UPDATE SET cursor = excluded.cursor`;
+                    if (phase === 'before-commit') yield* barrier('consumer-before-commit', result);
+                })
+            );
+            // The cursor and idempotent application marker committed together;
+            // the coordinator may kill this process before its IPC acknowledgement.
+            if (phase === 'after-commit') yield* barrier('consumer-committed', result);
+            return result;
         });
     const dispatch = (phase) =>
         Effect.gen(function* () {
@@ -211,7 +249,9 @@ if (role === 'worker') {
                       ? outbox
                             .settle(message.claim, message.settlement ?? { state: 'delivered' })
                             .pipe(Effect.match({ onFailure: (error) => error.reason, onSuccess: () => 'settled' }))
-                      : Effect.die('Unknown process proof command');
+                      : message.command === 'consume'
+                        ? consume(message.phase)
+                        : Effect.die('Unknown process proof command');
         runFork(
             operation.pipe(
                 Effect.matchCause({
@@ -515,6 +555,97 @@ if (role === 'worker') {
         // This direct outbox/recovery scenario never calls the synthetic accepting sink.
         assert.equal((await run(sql`SELECT * FROM hook_process_sink`)).length, 1);
         assert.equal((await run(sql`SELECT * FROM hook_process_attempt`)).length, 2);
+
+        // Consume the already committed synthetic domain.change facts, without
+        // inventing lifecycle producers or treating observation as release authority.
+        // These two tables contain metadata only, never projected domain payloads.
+        await run(
+            sql`CREATE TABLE hook_process_consumer_cursor (tenant text NOT NULL, consumer text NOT NULL, cursor integer NOT NULL, PRIMARY KEY (tenant, consumer))`
+        );
+        await run(
+            sql`CREATE TABLE hook_process_consumer_application (tenant text NOT NULL, consumer text NOT NULL, event_id text NOT NULL, cursor integer NOT NULL, PRIMARY KEY (tenant, consumer, event_id))`
+        );
+        const consumerState = async () => ({
+            cursors: (await run(sql`SELECT tenant, consumer, cursor FROM hook_process_consumer_cursor`)).map((row) => ({
+                ...row,
+                cursor: Number(row.cursor),
+            })),
+            applications: (
+                await run(
+                    sql`SELECT tenant, consumer, event_id, cursor FROM hook_process_consumer_application ORDER BY cursor`
+                )
+            ).map((row) => ({ ...row, cursor: Number(row.cursor) })),
+        });
+        const consumerFirst = await launch(database);
+        assert.notEqual(consumerFirst.pid, process.pid);
+        const consumerLostAck = request(consumerFirst, { command: 'consume', phase: 'after-commit' }).catch(
+            (error) => ({ error })
+        );
+        const consumerCommitMessageId = sequence;
+        const firstPage = { after: 0, cursor: 1, eventIds: [event.id], applied: 1 };
+        assert.deepEqual(
+            (await waitFor(consumerFirst, (value) => value.barrier === 'consumer-committed')).value,
+            firstPage
+        );
+        const firstConsumerState = {
+            cursors: [{ tenant, consumer, cursor: 1 }],
+            applications: [{ tenant, consumer, event_id: event.id, cursor: 1 }],
+        };
+        assert.deepEqual(await consumerState(), firstConsumerState);
+        assert.equal(
+            messages.some((entry) => entry.child === consumerFirst && entry.value.id === consumerCommitMessageId),
+            false
+        );
+        await stop(consumerFirst);
+        assert.match((await consumerLostAck).error.message, /Worker exited at IPC barrier: null\/SIGKILL/);
+        assert.equal(
+            messages.some((entry) => entry.child === consumerFirst && entry.value.id === consumerCommitMessageId),
+            false
+        );
+
+        const consumerBeforeCommit = await launch(database);
+        assert.notEqual(consumerBeforeCommit.pid, consumerFirst.pid);
+        assert.notEqual(consumerBeforeCommit.pid, process.pid);
+        const consumerRolledBack = request(consumerBeforeCommit, { command: 'consume', phase: 'before-commit' }).catch(
+            (error) => ({ error })
+        );
+        const consumerRollbackMessageId = sequence;
+        const secondPage = { after: 1, cursor: 2, eventIds: [replayEvent.id], applied: 1 };
+        // A distinct process reopened at the committed cursor, not at event one.
+        assert.deepEqual(
+            (await waitFor(consumerBeforeCommit, (value) => value.barrier === 'consumer-before-commit')).value,
+            secondPage
+        );
+        assert.deepEqual(await consumerState(), firstConsumerState);
+        await stop(consumerBeforeCommit);
+        assert.match((await consumerRolledBack).error.message, /Worker exited at IPC barrier: null\/SIGKILL/);
+        assert.equal(
+            messages.some(
+                (entry) => entry.child === consumerBeforeCommit && entry.value.id === consumerRollbackMessageId
+            ),
+            false
+        );
+        assert.deepEqual(await consumerState(), firstConsumerState);
+
+        const consumerRetry = await launch(database);
+        assert.notEqual(consumerRetry.pid, consumerBeforeCommit.pid);
+        assert.notEqual(consumerRetry.pid, consumerFirst.pid);
+        assert.notEqual(consumerRetry.pid, process.pid);
+        assert.deepEqual(await request(consumerRetry, { command: 'consume', phase: 'finish' }), secondPage);
+        assert.deepEqual(await request(consumerRetry, { command: 'consume', phase: 'finish' }), {
+            after: 2,
+            cursor: 2,
+            eventIds: [],
+            applied: 0,
+        });
+        const finalConsumerState = await consumerState();
+        assert.deepEqual(finalConsumerState, {
+            cursors: [{ tenant, consumer, cursor: 2 }],
+            applications: [
+                { tenant, consumer, event_id: event.id, cursor: 1 },
+                { tenant, consumer, event_id: replayEvent.id, cursor: 2 },
+            ],
+        });
         console.log(
             JSON.stringify({
                 event: 'hook-process-recovery-passed',
@@ -530,6 +661,20 @@ if (role === 'worker') {
                     historyRecords: committedHistory.length,
                     terminalAttempts: terminalClaim.attempt,
                     preservedAttempt: fresh.attempt,
+                },
+                trustedSyntheticConsumer: {
+                    scope: 'trusted synthetic consumer proof only',
+                    pids: [consumerFirst.pid, consumerBeforeCommit.pid, consumerRetry.pid],
+                    acknowledgementLost: true,
+                    resumedAfter: secondPage.after,
+                    beforeCommitRollback: true,
+                    retriedEvent: replayEvent.id,
+                    cursor: finalConsumerState.cursors[0].cursor,
+                    applied: finalConsumerState.applications.length,
+                    duplicateApplications: finalConsumerState.applications.length - 2,
+                    metadataOnly: true,
+                    productionNativeRelease: false,
+                    generalExactlyOnce: false,
                 },
             })
         );

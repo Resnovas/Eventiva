@@ -88,3 +88,11 @@ uses a named runtime while hook readiness requires durable UUID provenance. Owne
 incarnation/recovery and interrupted-callback reconciliation contracts are pending.
 No native/UI consumer, production sink/release policy or exactly-once lifecycle
 publication is claimed by operator recovery or a synthetic process fixture.
+
+The committed hook-process fixture separately proves a trusted synthetic feed
+consumer can atomically store local metadata application markers plus its cursor,
+lose the acknowledgement after commit and reopen without duplicate application.
+A SIGKILL before sink commit preserves the old cursor and retries the fact.
+Public feed.read remains outside the sink transaction. Do not generalize this
+sequential fixture to concurrent consumers, native targets, release policy or
+arbitrary external effects; none is activated by the fixture.

@@ -305,3 +305,13 @@ retries, capacity races, exact pins, tenants, stale/expired fences, connection l
 and post-commit observer failure. Separate local SIGKILL probes verify real process
 loss after sink acceptance with no finalizers, followed by expiry/reclaim and
 deduplicated acceptance. None enables a production service.
+
+The same `tests/storage/fixtures/hook-process.mjs` proof also runs a trusted
+synthetic feed consumer in distinct processes. It reads committed facts outside
+SQL transactions, then atomically persists tenant-scoped metadata application
+markers and its cursor in a local sink transaction. SIGKILL after that commit
+loses the acknowledgement; reopen resumes without reapplying the accepted fact.
+A kill before the next sink commit rolls back both its marker and cursor, so the
+next process retries it. This is local consumer crash/reopen evidence only. The
+fixture supplies no public endpoint, native execution, release authorization,
+concurrent-consumer protocol or general exactly-once external-effect guarantee.
