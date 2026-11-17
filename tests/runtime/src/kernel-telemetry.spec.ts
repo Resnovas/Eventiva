@@ -82,6 +82,7 @@ const canaries = [
     caller.subject,
     caller.session,
 ];
+/** Build private-canary manifest metadata with scenario-specific lifecycle constraints. */
 const manifest = (id: string, extra: Partial<KernelManifest> = {}): KernelManifest => ({
     id,
     version: '1.0.0',
@@ -95,12 +96,15 @@ const manifest = (id: string, extra: Partial<KernelManifest> = {}): KernelManife
     ...extra,
 });
 const authority = Layer.succeed(KernelAuthority, {
+    /** Admit fixture provenance without an external attestation dependency. */
     admit: () => Effect.void,
+    /** Permit lifecycle operations only for the expected fixture subject. */
     authorize: (identity) =>
         identity.subject === caller.subject
             ? Effect.void
             : Effect.fail(new KernelError({ module: '<policy>', reason: 'denied' })),
 });
+/** Build tracked module hooks with optional defects or readiness overrides. */
 const definition = (
     spec: KernelManifest,
     events: Array<string>,
@@ -111,13 +115,15 @@ const definition = (
     validate: Effect.void,
     layer: Layer.scoped(
         KernelModule,
-        Effect.gen(function* () {
+        Effect.gen(/** Track resource ownership separately from public lifecycle hook execution. */ function* () {
+            // Independent acquisition/release evidence detects telemetry that changes cleanup behavior.
             yield* Effect.acquireRelease(
-                Effect.sync(() => events.push(`acquire:${spec.id}:${spec.version}`)),
-                () => Effect.sync(() => events.push(`release:${spec.id}:${spec.version}`))
+                Effect.sync(/** Record acquisition with exact module version identity. */ () => events.push(`acquire:${spec.id}:${spec.version}`)),
+                /** Finalize the resource at module scope exit. */ () => Effect.sync(/** Record finalization even when lifecycle hooks fail. */ () => events.push(`release:${spec.id}:${spec.version}`))
             );
+            /** Build an observable lifecycle hook without external effects. */
             const record = (operation: string) =>
-                Effect.sync(() => {
+                Effect.sync(/** Record the hook's operation and module version for exact-count assertions. */ () => {
                     events.push(`${operation}:${spec.id}:${spec.version}`);
                 });
             return KernelModule.of({
@@ -131,27 +137,32 @@ const definition = (
         })
     ),
 });
+/** Select exact module versions without adding capability bindings. */
 const composition = (specs: ReadonlyArray<KernelManifest>): PlatformComposition => ({
-    modules: specs.map(({ id, version }) => ({ id, version })),
+    modules: specs.map(/** Project only identity and version into composition selections. */ ({ id, version }) => ({ id, version })),
     bindings: [],
 });
+/** Drive one module through public startup transitions to readiness. */
 const start = (kernel: typeof Kernel.Service, module: ModuleDefinition) =>
-    Effect.gen(function* () {
+    Effect.gen(/** Exercise real transition spans rather than manually constructing telemetry. */ function* () {
+        // Public lifecycle calls establish the trace hierarchy against actual state transitions.
         const spec = yield* kernel.register(module);
         yield* kernel.validate(spec.id);
         yield* kernel.install(spec.id);
         yield* kernel.activate(spec.id);
         return yield* kernel.ready;
     });
+/** Capture kernel telemetry through scope cleanup under enabled, disabled or failing-sink modes. */
 const collect = <A, E>(
     effect:
         | Effect.Effect<A, E, Kernel | Caller | Scope.Scope>
-        | ((
+        | (/** Build a scenario that can flush and inspect telemetry while the kernel is still live. */ (
               snapshot: Effect.Effect<ReadonlyArray<TelemetryRecord>, never, TelemetryControl>
           ) => Effect.Effect<A, E, Kernel | Caller | Scope.Scope | TelemetryControl>),
     mode: 'enabled' | 'disabled' | 'outage' = 'enabled'
 ) =>
-    Effect.gen(function* () {
+    Effect.gen(/** Install an observable sink without allowing exporter failure to replace lifecycle outcomes. */ function* () {
+        // Capture before injecting sink failure so outage mode can compare the same projected records with lifecycle results.
         const records = yield* Ref.make<ReadonlyArray<TelemetryRecord>>([]);
         const telemetry = telemetryLayer(
             { messages, attributes: { 'eventiva.kernel.outcome': outcomes } },
@@ -159,8 +170,9 @@ const collect = <A, E>(
         ).pipe(
             Layer.provide(
                 Layer.succeed(TelemetrySink, {
+                    /** Retain each attempted export and optionally report sink unavailability. */
                     write: (record) =>
-                        Ref.update(records, (all) => [...all, record]).pipe(
+                        Ref.update(records, /** Preserve emission order for parent/child and lifecycle assertions. */ (all) => [...all, record]).pipe(
                             Effect.zipRight(
                                 mode === 'outage'
                                     ? Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
@@ -171,8 +183,10 @@ const collect = <A, E>(
                 })
             )
         );
-        return yield* Effect.gen(function* () {
-            const snapshot = Effect.gen(function* () {
+        return yield* Effect.gen(/** Close the kernel before the final telemetry drain and health observation. */ function* () {
+            // Module finalizers emit release spans, so the final snapshot must be taken after kernel scope closure.
+            const snapshot = Effect.gen(/** Drain pending records before returning an in-scenario telemetry snapshot. */ function* () {
+                // Tolerate a failing drain in outage mode while retaining records for structural assertions.
                 const control = yield* TelemetryControl;
                 yield* Effect.either(control.flush);
                 return yield* Ref.get(records);
@@ -187,10 +201,14 @@ const collect = <A, E>(
             return { value, records: yield* Ref.get(records), health: yield* control.health, flushed };
         }).pipe(Effect.provide(telemetry), Effect.scoped);
     });
+/** Select one allowlisted operation without changing its recorded emission order. */
 const spansFor = (records: ReadonlyArray<TelemetryRecord>, code: keyof typeof messages) =>
-    records.filter((record) => record.code === code);
+    records.filter(/** Match only the requested lifecycle operation code. */ (record) => record.code === code);
+/** Extract bounded outcome metadata while tolerating an absent expected span. */
 const outcomeOf = (record: TelemetryRecord | undefined) => record?.attributes['eventiva.kernel.outcome'];
+/** Require bounded span projection and reject every private fixture canary. */
 const sanitized = (records: ReadonlyArray<TelemetryRecord>) => {
+    // Validate the whole projection, not just canary absence, so unexpected metadata keys cannot escape unnoticed.
     expect(records.length).toBeGreaterThan(0);
     for (const record of records) {
         expect(record.signal).toBe('span');
@@ -202,8 +220,9 @@ const sanitized = (records: ReadonlyArray<TelemetryRecord>) => {
 };
 
 for (const mode of ['enabled', 'disabled', 'outage'] as const) {
-    it.effect(`observes private provider selection and authorized resolution with telemetry ${mode}`, () =>
-        Effect.gen(function* () {
+    it.effect(`observes private provider selection and authorized resolution with telemetry ${mode}`, /** Exercise capability resolution under this exporter mode. */ () =>
+        Effect.gen(/** Verify provider selection traces disclose outcomes without private binding metadata. */ function* () {
+            // Keep secret service contents and binding names distinct so projection checks cover both data and metadata.
             const events: Array<string> = [];
             const base = manifest('private-base', {
                 provides: [{ name: 'private-instance', capability: 'private-capability', version: '1.0.0' }],
@@ -219,8 +238,9 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
             };
             const provider = yield* kernelProvider(Schema.String, 'PRIVATE_SECRET');
             const { records, health, flushed } = yield* collect(
-                (snapshot) =>
-                    Effect.gen(function* () {
+                /** Inspect selection traces before final kernel disposal adds cleanup spans. */ (snapshot) =>
+                    Effect.gen(/** Compare internal selection, denied access and authorized public resolution. */ function* () {
+                        // Snapshot before denied access so authorization failure must add no provider-selection trace.
                         const kernel = yield* Kernel;
                         yield* kernel.compose({ ...composition([feature, base]), bindings: [binding] }, [
                             definition(base, events, { providers: new Map([['private-instance', provider]]) }),
@@ -228,7 +248,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
                                 ...definition(feature, events),
                                 layer: Layer.effect(
                                     KernelModule,
-                                    Effect.gen(function* () {
+                                    Effect.gen(/** Resolve a private service through the consumer's injected capability environment. */ function* () {
                                         const environment = yield* KernelEnvironment;
                                         expect(yield* environment.resolve('private-requirement', Schema.String)).toBe(
                                             'PRIVATE_SECRET'
@@ -288,19 +308,21 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
 }
 
 for (const mode of ['enabled', 'disabled', 'outage'] as const) {
-    it.effect(`observes scoped lease admission and exactly one owning-scope release with telemetry ${mode}`, () =>
-        Effect.gen(function* () {
+    it.effect(`observes scoped lease admission and exactly one owning-scope release with telemetry ${mode}`, /** Trace workflow lease ownership under this exporter mode. */ () =>
+        Effect.gen(/** Verify lease spans and real resource releases remain consistent across exporter health. */ function* () {
+            // Compare tracked module finalizers with telemetry to detect behavioral coupling to sink availability.
             const events: Array<string> = [];
             const spec = manifest('private-feature');
             const { records, health, flushed } = yield* collect(
-                (snapshot) =>
-                    Effect.gen(function* () {
+                /** Allow exact span snapshots around lease scope closure. */ (snapshot) =>
+                    Effect.gen(/** Start a serving version before testing independent workflow ownership. */ function* () {
                         const kernel = yield* Kernel;
                         const before = yield* start(kernel, definition(spec, events));
                         const candidate = definition({ ...spec, version: '1.0.1' }, events);
                         yield* Effect.scoped(
-                            Effect.gen(function* () {
-                                const owner = yield* Effect.acquireRelease(Scope.make(), (scope) =>
+                            Effect.gen(/** Verify repeated scope closure releases a lease once and permits replacement. */ function* () {
+                                // Own the lease in a separate scope so explicit closure can be observed before replacement.
+                                const owner = yield* Effect.acquireRelease(Scope.make(), /** Ensure the independently created owner closes even on assertion failure. */ (scope) =>
                                     Scope.close(scope, Exit.void)
                                 );
                                 const lease = yield* kernel
@@ -335,7 +357,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
                     }),
                 mode
             );
-            expect(events.filter((event) => event.startsWith('release:')).sort()).toEqual([
+            expect(events.filter(/** Compare resource releases for old and replacement versions. */ (event) => event.startsWith('release:')).sort()).toEqual([
                 'release:private-feature:1.0.0',
                 'release:private-feature:1.0.1',
             ]);
@@ -355,17 +377,18 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
 }
 
 for (const scenario of ['denied', 'not-ready'] as const) {
-    it.effect(`observes rejected ${scenario} lease admission without a release or leaked lease`, () =>
-        Effect.gen(function* () {
+    it.effect(`observes rejected ${scenario} lease admission without a release or leaked lease`, /** Attempt lease admission with denied authority or a nonready module. */ () =>
+        Effect.gen(/** Verify rejected admission emits failure without creating lease ownership. */ function* () {
             const events: Array<string> = [];
             const spec = manifest('private-feature');
-            const { records } = yield* collect((snapshot) =>
-                Effect.gen(function* () {
+            const { records } = yield* collect(/** Observe rejection before its temporary scope closes. */ (snapshot) =>
+                Effect.gen(/** Arrange the precise admission failure while keeping subsequent cleanup authorized. */ function* () {
+                    // Denial uses a serving module; invalid-state rejection uses only registration, isolating the two gates.
                     const kernel = yield* Kernel;
                     if (scenario === 'denied') yield* start(kernel, definition(spec, events));
                     else yield* kernel.register(definition(spec, events));
                     yield* Effect.scoped(
-                        Effect.gen(function* () {
+                        Effect.gen(/** Verify rejected admission does not pin module mutation until scope exit. */ function* () {
                             const attempt = kernel.workflow(spec.id);
                             expect(
                                 yield* Effect.either(
@@ -404,16 +427,17 @@ for (const scenario of ['denied', 'not-ready'] as const) {
     );
 }
 
-it.effect('traces real compose descendants without invented registration and closes every module once', () =>
-    Effect.gen(function* () {
+it.effect('traces real compose descendants without invented registration and closes every module once', /** Compose and dispose a dependent pair through public APIs. */ () =>
+    Effect.gen(/** Verify actual compose child spans and exactly-once module finalization. */ function* () {
+        // Compare telemetry hierarchy with independently tracked hooks so synthetic spans cannot substitute for real transitions.
         const events: Array<string> = [];
         const base = manifest('private-base');
         const feature = manifest('private-feature', { dependencies: [{ id: base.id, version: base.version }] });
         const { records } = yield* collect(
-            Effect.gen(function* () {
+            Effect.gen(/** Verify nested composition scope removal before the final telemetry snapshot. */ function* () {
                 const kernel = yield* Kernel;
                 const initial = yield* Effect.scoped(
-                    Effect.gen(function* () {
+                    Effect.gen(/** Compare emitted and repeated readiness while both modules remain registered. */ function* () {
                         const receipt = yield* kernel.compose(composition([feature, base]), [
                             definition(feature, events),
                             definition(base, events),
@@ -434,8 +458,8 @@ it.effect('traces real compose descendants without invented registration and clo
         );
         for (const spec of [base, feature]) {
             for (const operation of ['acquire', 'install', 'activate', 'deactivate', 'release'])
-                expect(events.filter((event) => event === `${operation}:${spec.id}:${spec.version}`)).toHaveLength(1);
-            expect(events.filter((event) => event === `ready:${spec.id}:${spec.version}`)).toHaveLength(2);
+                expect(events.filter(/** Count this exact lifecycle hook for one module version. */ (event) => event === `${operation}:${spec.id}:${spec.version}`)).toHaveLength(1);
+            expect(events.filter(/** Count explicit and repeated readiness checks independently of startup. */ (event) => event === `ready:${spec.id}:${spec.version}`)).toHaveLength(2);
         }
         sanitized(records);
         const roots = spansFor(records, 'kernel.compose');
@@ -462,12 +486,13 @@ it.effect('traces real compose descendants without invented registration and clo
 );
 
 for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as const) {
-    it.effect(`reports ${scenario} from a real update without inventing candidate transition operations`, () =>
-        Effect.gen(function* () {
+    it.effect(`reports ${scenario} from a real update without inventing candidate transition operations`, /** Exercise an actual update outcome rather than fabricated trace input. */ () =>
+        Effect.gen(/** Verify update traces agree with resource acquisition, release and serving generation. */ function* () {
             const events: Array<string> = [];
             const spec = manifest('private-feature');
             const { records } = yield* collect(
-                Effect.gen(function* () {
+                Effect.gen(/** Compare candidate update outcomes against the original serving receipt. */ function* () {
+                    // Candidate readiness failure must release only the candidate; restart-only metadata must never acquire it.
                     const kernel = yield* Kernel;
                     const before = yield* start(kernel, definition(spec, events));
                     const candidate = definition(
@@ -480,7 +505,7 @@ for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as co
                         expect(result).toEqual(
                             Either.left(new KernelError({ module: spec.id, reason: 'module-failed' }))
                         );
-                        expect(events.filter((event) => event === `release:${spec.id}:1.0.1`)).toHaveLength(1);
+                        expect(events.filter(/** Isolate failed candidate finalization. */ (event) => event === `release:${spec.id}:1.0.1`)).toHaveLength(1);
                     } else {
                         expect(result).toEqual(
                             Either.right(
@@ -490,7 +515,7 @@ for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as co
                             )
                         );
                     }
-                    expect(events.filter((event) => event === `release:${spec.id}:1.0.0`)).toHaveLength(
+                    expect(events.filter(/** Detect premature or missing cleanup of the original serving version. */ (event) => event === `release:${spec.id}:1.0.0`)).toHaveLength(
                         scenario === 'updated' ? 1 : 0
                     );
                     expect(yield* kernel.snapshot).toEqual([
@@ -507,12 +532,12 @@ for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as co
                     } else expect(after).toEqual({ ...before, emitted: false });
                 })
             );
-            expect(events.filter((event) => event.startsWith('release:')).sort()).toEqual(
+            expect(events.filter(/** Collect final cleanup across original and candidate versions. */ (event) => event.startsWith('release:')).sort()).toEqual(
                 scenario === 'restart-required'
                     ? [`release:${spec.id}:1.0.0`]
                     : [`release:${spec.id}:1.0.0`, `release:${spec.id}:1.0.1`]
             );
-            expect(events.filter((event) => event.startsWith('acquire:')).sort()).toEqual(
+            expect(events.filter(/** Distinguish restart-only staging from actual candidate acquisition. */ (event) => event.startsWith('acquire:')).sort()).toEqual(
                 scenario === 'restart-required'
                     ? [`acquire:${spec.id}:1.0.0`]
                     : [`acquire:${spec.id}:1.0.0`, `acquire:${spec.id}:1.0.1`]
@@ -534,12 +559,13 @@ for (const scenario of ['updated', 'restart-required', 'candidate-failed'] as co
 }
 
 for (const scenario of ['denied', 'invalid-config'] as const) {
-    it.effect(`rejects ${scenario} before compose publication or acquisition`, () =>
-        Effect.gen(function* () {
+    it.effect(`rejects ${scenario} before compose publication or acquisition`, /** Exercise composition authorization or configuration preflight rejection. */ () =>
+        Effect.gen(/** Verify failed composition traces contain no fabricated startup or cleanup operations. */ function* () {
             const events: Array<string> = [];
             const spec = manifest('private-feature');
             const { records } = yield* collect(
-                Effect.gen(function* () {
+                Effect.gen(/** Fail before module publication using denied authority or invalid configuration. */ function* () {
+                    // Keep the module implementation valid so failure must occur in the selected pre-acquisition gate.
                     const kernel = yield* Kernel;
                     const module = {
                         ...definition(spec, events),
@@ -548,7 +574,7 @@ for (const scenario of ['denied', 'invalid-config'] as const) {
                             secret: Config.redacted('SECRET'),
                         }).pipe(
                             Effect.asVoid,
-                            Effect.mapError(() => new KernelError({ module: spec.id, reason: 'invalid-config' }))
+                            Effect.mapError(/** Replace private configuration diagnostics with a bounded module error. */ () => new KernelError({ module: spec.id, reason: 'invalid-config' }))
                         ),
                     };
                     const attempt = kernel.compose(composition([spec]), [module]);
@@ -599,11 +625,12 @@ for (const scenario of ['denied', 'invalid-config'] as const) {
     );
 }
 
-it.effect('keeps interrupted validation an interruption and never acquires a module', () =>
-    Effect.gen(function* () {
+it.effect('keeps interrupted validation an interruption and never acquires a module', /** Interrupt validation only after its preflight body enters. */ () =>
+    Effect.gen(/** Verify interruption trace outcomes preserve cancellation and avoid resource acquisition. */ function* () {
         const events: Array<string> = [];
         const { records } = yield* collect(
-            Effect.gen(function* () {
+            Effect.gen(/** Suspend validation with observable finalization before canceling its fiber. */ function* () {
+                // The entry barrier ensures interruption exercises an active validator rather than canceling before admission.
                 const kernel = yield* Kernel;
                 const entered = yield* Deferred.make<void>();
                 const finalized = yield* Ref.make(false);
@@ -641,18 +668,19 @@ it.effect('keeps interrupted validation an interruption and never acquires a mod
 
 it.effect(
     'traces recovery children while retrying the failed install and releasing both acquisitions exactly once',
-    () =>
-        Effect.gen(function* () {
+    /** Fail installation once before recovering through public lifecycle operations. */ () =>
+        Effect.gen(/** Verify recovery child spans correlate with real install retry and resource cleanup. */ function* () {
             const events: Array<string> = [];
             const { records } = yield* collect(
-                Effect.gen(function* () {
+                Effect.gen(/** Inspect failed installation state before retrying recovery. */ function* () {
+                    // Count attempts independently of spans so recovery must execute installation again rather than only report success.
                     const kernel = yield* Kernel;
                     const attempts = yield* Ref.make(0);
                     const spec = manifest('private-feature');
                     yield* kernel.register(
                         definition(spec, events, {
-                            install: Ref.updateAndGet(attempts, (count) => count + 1).pipe(
-                                Effect.flatMap((count) => (count === 1 ? Effect.die('PRIVATE_ERROR') : Effect.void))
+                            install: Ref.updateAndGet(attempts, /** Count every installation attempt, including the defective first one. */ (count) => count + 1).pipe(
+                                Effect.flatMap(/** Defect only on the first attempt to require a genuine recovery retry. */ (count) => (count === 1 ? Effect.die('PRIVATE_ERROR') : Effect.void))
                             ),
                         })
                     );
@@ -663,7 +691,7 @@ it.effect(
                     expect(yield* kernel.snapshot).toEqual([
                         { module: spec.id, version: spec.version, state: 'failed' },
                     ]);
-                    expect(events.filter((event) => event.startsWith('release:'))).toEqual([
+                    expect(events.filter(/** Observe cleanup of the failed first acquisition before recovery. */ (event) => event.startsWith('release:'))).toEqual([
                         `release:${spec.id}:1.0.0`,
                     ]);
                     yield* kernel.recover(spec.id);
@@ -674,11 +702,11 @@ it.effect(
                     expect((yield* kernel.ready).emitted).toBe(true);
                 })
             );
-            expect(events.filter((event) => event.startsWith('acquire:'))).toEqual([
+            expect(events.filter(/** Require a fresh acquisition for recovery of the failed install. */ (event) => event.startsWith('acquire:'))).toEqual([
                 'acquire:private-feature:1.0.0',
                 'acquire:private-feature:1.0.0',
             ]);
-            expect(events.filter((event) => event.startsWith('release:'))).toEqual([
+            expect(events.filter(/** Match finalization to both independently owned acquisitions. */ (event) => event.startsWith('release:'))).toEqual([
                 'release:private-feature:1.0.0',
                 'release:private-feature:1.0.0',
             ]);
@@ -696,11 +724,12 @@ it.effect(
         })
 );
 
-it.effect('observes failed release without losing resource cleanup, unregistration or retirement results', () =>
-    Effect.gen(function* () {
+it.effect('observes failed release without losing resource cleanup, unregistration or retirement results', /** Defect deactivation while retaining observable resource finalizers. */ () =>
+    Effect.gen(/** Verify failed release spans do not prevent unregistration or independent retirement. */ function* () {
         const events: Array<string> = [];
         const { records } = yield* collect(
-            Effect.gen(function* () {
+            Effect.gen(/** Exercise failed deactivation cleanup before retiring an independent module. */ function* () {
+                // Check cleanup immediately after failed deactivation so later unregistration cannot conceal a leaked resource.
                 const kernel = yield* Kernel;
                 const feature = manifest('private-feature');
                 yield* start(kernel, definition(feature, events, { deactivate: Effect.die('PRIVATE_ERROR') }));
@@ -710,7 +739,7 @@ it.effect('observes failed release without losing resource cleanup, unregistrati
                 expect(yield* kernel.snapshot).toEqual([
                     { module: feature.id, version: feature.version, state: 'inactive' },
                 ]);
-                expect(events.filter((event) => event.startsWith('release:'))).toEqual([`release:${feature.id}:1.0.0`]);
+                expect(events.filter(/** Isolate cleanup that must occur despite failed deactivation. */ (event) => event.startsWith('release:'))).toEqual([`release:${feature.id}:1.0.0`]);
                 yield* kernel.unregister(feature.id);
                 expect(yield* kernel.snapshot).toEqual([]);
                 const base = manifest('private-base');
@@ -721,7 +750,7 @@ it.effect('observes failed release without losing resource cleanup, unregistrati
                 expect(yield* kernel.snapshot).toEqual([{ module: base.id, version: base.version, state: 'retired' }]);
             })
         );
-        expect(events.filter((event) => event.startsWith('release:')).sort()).toEqual([
+        expect(events.filter(/** Compare final cleanup for failing and successfully retired modules. */ (event) => event.startsWith('release:')).sort()).toEqual([
             'release:private-base:1.0.0',
             'release:private-feature:1.0.0',
         ]);
@@ -737,13 +766,13 @@ it.effect('observes failed release without losing resource cleanup, unregistrati
     })
 );
 
-it.effect('rolls back a partially installed composition and exposes its failed child and root', () =>
-    Effect.gen(function* () {
+it.effect('rolls back a partially installed composition and exposes its failed child and root', /** Fail dependent installation after its prerequisite starts. */ () =>
+    Effect.gen(/** Verify rollback telemetry distinguishes successful prerequisite work from the failed composition. */ function* () {
         const events: Array<string> = [];
         const base = manifest('private-base');
         const feature = manifest('private-feature', { dependencies: [{ id: base.id, version: base.version }] });
         const { records } = yield* collect(
-            Effect.gen(function* () {
+            Effect.gen(/** Verify installation failure leaves no registered composition members. */ function* () {
                 const kernel = yield* Kernel;
                 expect(
                     yield* Effect.either(
@@ -756,11 +785,11 @@ it.effect('rolls back a partially installed composition and exposes its failed c
                 expect(yield* kernel.snapshot).toEqual([]);
             })
         );
-        expect(events.filter((event) => event.startsWith('release:')).sort()).toEqual([
+        expect(events.filter(/** Require resource finalization for both acquired composition members. */ (event) => event.startsWith('release:')).sort()).toEqual([
             'release:private-base:1.0.0',
             'release:private-feature:1.0.0',
         ]);
-        expect(events.filter((event) => event.startsWith('acquire:')).sort()).toEqual([
+        expect(events.filter(/** Confirm rollback covers genuinely acquired modules rather than unstarted selections. */ (event) => event.startsWith('acquire:')).sort()).toEqual([
             'acquire:private-base:1.0.0',
             'acquire:private-feature:1.0.0',
         ]);
@@ -774,11 +803,12 @@ it.effect('rolls back a partially installed composition and exposes its failed c
 );
 
 for (const mode of ['enabled', 'disabled', 'outage'] as const) {
-    it.effect(`preserves real lifecycle results and finalizers with telemetry ${mode}`, () =>
-        Effect.gen(function* () {
+    it.effect(`preserves real lifecycle results and finalizers with telemetry ${mode}`, /** Compare actual lifecycle behavior under this exporter mode. */ () =>
+        Effect.gen(/** Verify telemetry health changes neither readiness receipts nor exactly-once finalizers. */ function* () {
+            // Assert business outcomes before exporter health so a sink outage cannot stand in for a lifecycle failure.
             const events: Array<string> = [];
             const { records, value, health, flushed } = yield* collect(
-                Effect.gen(function* () {
+                Effect.gen(/** Return readiness only after its short registration scope has finalized. */ function* () {
                     const kernel = yield* Kernel;
                     const spec = manifest('private-feature');
                     const receipt = yield* Effect.scoped(start(kernel, definition(spec, events)));
@@ -790,7 +820,7 @@ for (const mode of ['enabled', 'disabled', 'outage'] as const) {
             expect(value).toMatchObject({ runtimeId: 'private-runtime', emitted: true });
             expect(value.generation).toBeGreaterThan(0);
             for (const operation of ['acquire', 'install', 'activate', 'deactivate', 'release'])
-                expect(events.filter((event) => event === `${operation}:private-feature:1.0.0`)).toHaveLength(1);
+                expect(events.filter(/** Count each exact lifecycle hook independently of telemetry delivery. */ (event) => event === `${operation}:private-feature:1.0.0`)).toHaveLength(1);
             expect(health.dropped).toBe(0);
             if (mode === 'disabled') {
                 expect(records).toEqual([]);

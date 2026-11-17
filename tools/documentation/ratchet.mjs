@@ -163,11 +163,49 @@ export const history = (root, input) => {
     const base = git(['rev-parse', '--verify', `${input}^{commit}`]).trim();
     git(['merge-base', '--is-ancestor', base, 'HEAD']);
     const paths = git(['ls-tree', '-rz', '--name-only', base]).split('\0');
-    const previousFindings = paths
-        .filter(isEditableTypeScript)
-        .flatMap((file) => inspectSource(file, git(['show', `${base}:${file}`])));
+    const previousFindings = [];
+    const legacyPairs = new Map();
+    const canonicalPairs = new Map();
+    const fingerprintChanges = [];
+    for (const file of paths.filter(isEditableTypeScript)) {
+        // Both identities come from the exact same trusted bytes and declaration order, never candidate source.
+        const text = git(['show', `${base}:${file}`]);
+        const canonical = inspectSource(file, text);
+        const legacy = inspectSource(file, text, { internalLegacyFingerprint: true });
+        if (canonical.length !== legacy.length) throw new Error('Fingerprint reconciliation changed finding count');
+        for (const [index, current] of canonical.entries()) {
+            const previous = legacy[index];
+            const metadata = (entry) =>
+                JSON.stringify(entryKeys.filter((key) => key !== 'id').map((key) => entry[key]));
+            if (metadata(current) !== metadata(previous))
+                throw new Error('Fingerprint reconciliation changed finding metadata or order');
+            if (!current.id && !previous.id) continue;
+            if (!current.id || !previous.id || legacyPairs.has(previous.id) || canonicalPairs.has(current.id))
+                throw new Error('Ambiguous fingerprint reconciliation');
+            legacyPairs.set(previous.id, current);
+            canonicalPairs.set(current.id, current);
+            if (previous.id !== current.id) fingerprintChanges.push({ previous, current });
+        }
+        previousFindings.push(...canonical);
+    }
+    for (const [id, current] of legacyPairs) {
+        if (canonicalPairs.has(id) && canonicalPairs.get(id).id !== current.id)
+            throw new Error('Overlapping legacy and canonical fingerprint identities');
+    }
+    // Keep the mapping private to this trusted history; callers cannot supply a map or broaden accepted debt.
+    const normalizeLedger = (ledger) => {
+        validateLedger(ledger);
+        const entries = ledger.entries.map((entry) => {
+            const current = legacyPairs.get(entry.id) ?? canonicalPairs.get(entry.id);
+            if (!current) return entry;
+            if (identity({ ...entry, id: current.id }) !== identity(current))
+                throw new Error('Fingerprint reconciliation cannot reassign declaration metadata');
+            return { ...entry, id: current.id };
+        });
+        return validateLedger({ ...ledger, entries });
+    };
     const previousLedger = paths.includes(ledgerPath)
-        ? validateLedger(JSON.parse(git(['show', `${base}:${ledgerPath}`])))
+        ? normalizeLedger(JSON.parse(git(['show', `${base}:${ledgerPath}`])))
         : null;
     const touched = [
         ...new Set([
@@ -178,7 +216,7 @@ export const history = (root, input) => {
     const added = new Map(
         touched.map((file) => [file, addedRanges(git(['diff', '--no-ext-diff', '--unified=0', base, '--', file]))])
     );
-    return { base, previousFindings, previousLedger, touched, added };
+    return { base, previousFindings, previousLedger, touched, added, normalizeLedger, fingerprintChanges };
 };
 
 /** Prune resolved entries only; bootstrap may record only exact findings that already exist at the trusted source base. */
@@ -210,7 +248,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     );
     const result = inspectRepository(root);
     const path = join(root, ledgerPath);
-    const prior = existsSync(path) ? validateLedger(JSON.parse(readFileSync(path, 'utf8'))) : null;
+    const prior = existsSync(path) ? trusted.normalizeLedger(JSON.parse(readFileSync(path, 'utf8'))) : null;
     if (!prior && trusted.previousLedger) throw new Error('The accepted debt ledger cannot be deleted or reset');
     const update = process.argv.includes('--update-ledger');
     if (!prior && !update)

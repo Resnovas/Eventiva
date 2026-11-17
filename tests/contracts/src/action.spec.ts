@@ -39,8 +39,8 @@ import { Attributes, actionSpan } from '@eventiva/contracts/telemetry';
 import { describe, expect, it } from '@effect/vitest';
 import { Option, Schema } from 'effect';
 
-describe('action specifications', () => {
-    it('hold metadata without a handler and record an optional flag and error schema', () => {
+describe('action specifications', /** Cover declarative action metadata independently of runtime handler registration. */ () => {
+    it('hold metadata without a handler and record an optional flag and error schema', /** Verify explicit optional metadata and absent defaults without embedding executable handlers. */ () => {
         const Failure = Schema.TaggedStruct('LimitReached', { limit: Schema.Int });
         const spec = define('events.create', {
             version: 2,
@@ -60,6 +60,7 @@ describe('action specifications', () => {
         expect(Option.getOrNull(spec.error)).toBe(Failure);
         expect(Object.keys(spec)).not.toContain('handler');
 
+        // A separate minimal definition proves omitted fields remain absent rather than inheriting prior metadata.
         const read = define('events.get', {
             version: 1,
             description: 'Read an event.',
@@ -73,7 +74,7 @@ describe('action specifications', () => {
         expect(Option.isNone(read.error)).toBe(true);
     });
 
-    it('validates canonical names and derives provider-safe wire names', () => {
+    it('validates canonical names and derives provider-safe wire names', /** Distinguish dotted canonical identifiers from their provider-safe underscore encoding. */ () => {
         const valid = Schema.is(ActionName);
         expect(valid('events.tickets.create')).toBe(true);
         expect(valid('events')).toBe(false);
@@ -83,8 +84,8 @@ describe('action specifications', () => {
     });
 });
 
-describe('platform errors', () => {
-    it('round-trip through their wire encoding', () => {
+describe('platform errors', /** Cover transport preservation of each platform failure variant. */ () => {
+    it('round-trip through their wire encoding', /** Verify JSON-safe error payloads restore their original concrete error class and fields. */ () => {
         const errors = [
             new UnknownAction({ action: 'a.b' }),
             new InvalidInput({ action: 'a.b', message: 'Expected string' }),
@@ -92,6 +93,7 @@ describe('platform errors', () => {
             new Forbidden({ action: 'a.b', reason: 'missing permission a.b' }),
             new ActionFailed({ action: 'a.b', error: { _tag: 'LimitReached', limit: 3 } }),
         ];
+        // JSON compatibility alone is insufficient: decoding must also restore the tagged error's class.
         for (const error of errors) {
             const wire = Schema.encodeSync(PlatformError)(error);
             expect(JSON.parse(JSON.stringify(wire))).toEqual(wire);
@@ -102,8 +104,8 @@ describe('platform errors', () => {
     });
 });
 
-describe('message keys and terminology packs', () => {
-    it('validate keys, locales and overlays', () => {
+describe('message keys and terminology packs', /** Cover the basic overlay vocabulary without governed provenance requirements. */ () => {
+    it('validate keys, locales and overlays', /** Verify canonical locale defaults and reject malformed overlay keys, locales and versions. */ () => {
         expect(canonicalLocale).toBe('en-GB');
         expect(Schema.is(MessageKey)('client.shell.title')).toBe(true);
         expect(Schema.is(MessageKey)('title')).toBe(false);
@@ -118,7 +120,7 @@ describe('message keys and terminology packs', () => {
     });
 });
 
-describe('governed terminology metadata', () => {
+describe('governed terminology metadata', /** Cover synthetic provenance and immutable version references without asserting external authority approval. */ () => {
     const pack = {
         id: 'eventiva-training',
         version: 1,
@@ -135,12 +137,13 @@ describe('governed terminology metadata', () => {
     };
     const decode = Schema.decodeUnknownEither(GovernedTerminologyPack);
 
-    it('roundtrips governed overlays and exact profile/version references without changing the basic overlay', () => {
+    it('roundtrips governed overlays and exact profile/version references without changing the basic overlay', /** Verify governed metadata round trips while historical references remain pinned and basic overlays remain usable. */ () => {
         const decoded = Schema.decodeUnknownSync(GovernedTerminologyPack)(pack);
         expect(Schema.encodeSync(GovernedTerminologyPack)(decoded)).toEqual(pack);
         const reference = { id: decoded.id, version: decoded.version };
         const historic = Schema.decodeUnknownSync(TerminologyProfileReference)(reference);
         expect(Schema.encodeSync(TerminologyProfileReference)(historic)).toEqual(reference);
+        // Publishing a revision must not retarget an already decoded historical reference.
         const revised = Schema.decodeUnknownSync(GovernedTerminologyPack)({ ...pack, version: 2 });
         expect(revised.version).toBe(2);
         expect(historic).toEqual({ id: pack.id, version: 1 });
@@ -154,7 +157,8 @@ describe('governed terminology metadata', () => {
         ).toBe('Right');
     });
 
-    it('requires every provenance field to be nonblank and already trimmed', () => {
+    it('requires every provenance field to be nonblank and already trimmed', /** Verify every required provenance field rejects omission, coercion and whitespace normalization. */ () => {
+        // Vary one field at a time so another valid provenance field cannot conceal a missing requirement.
         for (const field of [
             'id',
             'authority',
@@ -176,7 +180,8 @@ describe('governed terminology metadata', () => {
         expect(decode({ ...pack, mappingConfidence: 0.9 })._tag).toBe('Left');
     });
 
-    it('rejects unknown fields instead of silently stripping policy or selection claims', () => {
+    it('rejects unknown fields instead of silently stripping policy or selection claims', /** Ensure unsupported verification and selection claims cannot survive as apparently accepted metadata. */ () => {
+        // Strict decoding must reject invented claims rather than silently endorse them by dropping extra fields.
         for (const extra of [{ verified: true }, { selectedBy: 'individual' }, { provenance: {} }]) {
             expect(decode({ ...pack, ...extra })._tag).toBe('Left');
         }
@@ -187,7 +192,8 @@ describe('governed terminology metadata', () => {
         expect(reference({ id: ' ', version: 1 })._tag).toBe('Left');
     });
 
-    it('requires positive finite safe integer versions for packs and references', () => {
+    it('requires positive finite safe integer versions for packs and references', /** Apply identical exact-version bounds to published packs and historical references. */ () => {
+        // Packs and references share bounds so a valid reference cannot name an unrepresentable pack version.
         for (const version of [0, -1, 1.5, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1, '1', 'latest']) {
             expect(decode({ ...pack, version })._tag).toBe('Left');
             expect(Schema.decodeUnknownEither(TerminologyProfileReference)({ id: pack.id, version })._tag).toBe('Left');
@@ -200,7 +206,8 @@ describe('governed terminology metadata', () => {
         }
     });
 
-    it('validates calendar dates without imposing activation or a current-date policy', () => {
+    it('validates calendar dates without imposing activation or a current-date policy', /** Distinguish valid proleptic calendar dates from invalid dates without consulting the clock. */ () => {
+        // Distant valid dates prevent date validation from accidentally becoming an activation policy.
         for (const effectiveDate of ['0001-01-01', '2000-02-29', '2024-02-29', '9999-12-31']) {
             expect(decode({ ...pack, effectiveDate })._tag, effectiveDate).toBe('Right');
         }
@@ -223,7 +230,8 @@ describe('governed terminology metadata', () => {
         }
     });
 
-    it('rejects invalid message keys, values and locales while allowing empty overlays', () => {
+    it('rejects invalid message keys, values and locales while allowing empty overlays', /** Verify governed provenance does not relax message syntax or require nonempty overlay content. */ () => {
+        // An empty overlay is valid; malformed entries must fail rather than being treated as absent.
         for (const key of ['Bad', 'incident', '', 'training..incident', 'training.incident ']) {
             expect(decode({ ...pack, messages: { ...pack.messages, [key]: 'Invalid' } })._tag, key).toBe('Left');
         }
@@ -233,18 +241,18 @@ describe('governed terminology metadata', () => {
     });
 });
 
-describe('telemetry names', () => {
-    it('name action spans and attributes consistently', () => {
+describe('telemetry names', /** Cover stable public instrumentation naming conventions. */ () => {
+    it('name action spans and attributes consistently', /** Pin action span prefixes and the feature-flag attribute key for telemetry consumers. */ () => {
         expect(actionSpan('events.create')).toBe('action.events.create');
         expect(Attributes.flagKey).toBe('feature_flag.key');
     });
 });
 
-describe('callers and identifiers', () => {
+describe('callers and identifiers', /** Cover caller wire identities using UUID-shaped subject and session fixtures. */ () => {
     const subject = '0193a4f0-0000-7000-8000-000000000001';
     const session = '0193a4f0-0000-7000-8000-000000000002';
 
-    it('decode a delegated agent caller and refuse malformed ids or kinds', () => {
+    it('decode a delegated agent caller and refuse malformed ids or kinds', /** Verify delegated agent identity round trips and reject invalid subjects and unsupported caller kinds. */ () => {
         const decode = Schema.decodeUnknownEither(CallerIdentity);
         const agent = { subject, kind: 'external-agent', tenant: subject, onBehalfOf: session, session };
         expect(Schema.decodeUnknownSync(CallerIdentity)(agent)).toEqual(agent);
@@ -253,14 +261,14 @@ describe('callers and identifiers', () => {
         expect(decode({ ...agent, kind: 'admin' })._tag).toBe('Left');
     });
 
-    it('brand ids by kind', () => {
+    it('brand ids by kind', /** Verify identifier brands retain UUID validation rather than accepting prefixed arbitrary strings. */ () => {
         expect(Schema.is(TenantId)(subject)).toBe(true);
         expect(Schema.is(SubjectId)('ten_123')).toBe(false);
     });
 });
 
-describe('security profiles', () => {
-    it('order profiles from baseline to vault', () => {
+describe('security profiles', /** Cover the closed security ordering used by classification comparisons. */ () => {
+    it('order profiles from baseline to vault', /** Pin profile ordering and require strictly weaker comparisons to exclude equality. */ () => {
         expect(SecurityProfile.literals).toEqual(['baseline', 'sensitive', 'restricted', 'vault']);
         expect(isWeaker('baseline', 'restricted')).toBe(true);
         expect(isWeaker('vault', 'restricted')).toBe(false);
@@ -268,8 +276,9 @@ describe('security profiles', () => {
     });
 });
 
-describe('portable receipts', () => {
-    it('roundtrips denied unknown-action evidence and rejects invalid durations and versions', () => {
+describe('portable receipts', /** Cover portable denial evidence independently of action-name validity. */ () => {
+    it('roundtrips denied unknown-action evidence and rejects invalid durations and versions', /** Preserve the rejected action text with a null version while enforcing receipt duration and outcome constraints. */ () => {
+        // Denial evidence must retain even a noncanonical attempted action, which has no resolved version.
         const receipt = {
             id: 'receipt-1',
             caller: {

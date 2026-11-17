@@ -19,19 +19,26 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from '@effect/vitest';
 
 for (const dialect of ['sqlite', 'postgres'] as const)
-    describe(`${dialect} trust replay process recovery`, () => {
-        it('rolls back before commit and refuses a consumed nonce after SIGKILL and reopen', async () => {
-            const stdout = await new Promise<string>((resolve, reject) => {
-                execFile(
-                    process.execPath,
-                    [fileURLToPath(new URL('../fixtures/trust-process.mjs', import.meta.url)), 'proof', dialect],
-                    { timeout: 60000, maxBuffer: 1024 * 1024 },
-                    (error, stdout, stderr) => {
-                        if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
-                        else resolve(stdout);
-                    }
-                );
-            });
+    describe(`${dialect} trust replay process recovery`, /** Register nonce durability proofs for both SQL dialects. */ () => {
+        it('rolls back before commit and refuses a consumed nonce after SIGKILL and reopen', /** Verify process loss never resurrects a committed nonce or retains an uncommitted claim. */ async () => {
+            // A fresh process must consult persisted nonce evidence, not a surviving verifier cache.
+            const stdout = await new Promise<string>(
+                /** Execute the bounded trust crash harness and retain diagnostic output. */ (resolve, reject) => {
+                    execFile(
+                        process.execPath,
+                        [fileURLToPath(new URL('../fixtures/trust-process.mjs', import.meta.url)), 'proof', dialect],
+                        { timeout: 60000, maxBuffer: 1024 * 1024 },
+                        /** Reject failed crash proofs with captured streams or resolve their completed report. */ (
+                            error,
+                            stdout,
+                            stderr
+                        ) => {
+                            if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
+                            else resolve(stdout);
+                        }
+                    );
+                }
+            );
             expect(JSON.parse(stdout.trim())).toEqual({
                 event: 'trust-process-recovery-passed',
                 dialect,

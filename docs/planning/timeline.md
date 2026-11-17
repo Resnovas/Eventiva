@@ -267,10 +267,10 @@ Jonathan/Puck ended central shared-output windows. Documentation batches now del
 
 | Step | State | Evidence / remaining boundary |
 | --- | --- | --- |
-| Identity-independent Eventiva sources | Full serial verification passed; signed delivery current | 976 attachment fixes and 207 live rationale improvements; 1,155 accepted entries removed, with no checker or behavior change. Uncached gates passed at c3a541b9 and rebased416ef0aa: 85 aggregate Nx tasks, 89 documentation fixtures, 95 boundary/type fixtures and all smoke. |
-| Nineteen retained-ID source files | Parked for next delivery | Exact parser-terminal proof passes; legacy template-context hashing must be corrected and reconciled from identical trusted historical source, without new debt. |
+| Identity-independent Eventiva sources | Delivered | Signed [source](https://github.com/Resnovas/Eventiva/commit/44078885a4136e5403415e506e9c207369d28d87) and [clean-source graph/head](https://github.com/Resnovas/Eventiva/commit/b5837844e68a28e5031f76d60006b1d4728f20ba). Documentation resolves 976 attachments and 207 live rationale candidates; exact debt shrinks by 1,155. Uncached full serial gates passed at both immutable bases; exact-head CI remains separate. |
+| Nineteen retained-ID source files | Full serial verification passed; signed delivery current | Documentation resolves 1,308 attachments and 248 rationale candidates. Trusted-byte parser reconciliation normalizes 395 accepted IDs without changing count or admitting debt; separate pruning takes 1,894 to 338. All 98 documentation fixtures, 95 boundary/type fixtures, aggregate targets and smoke passed uncached against immutable b5837844. |
 | Canonical synced tools | Authorized house delivery lane | Thirteen-source patch and parser proof transferred; downstream edits stay parked until normal sync. Missing contracts remain visible. |
-| Remaining live rationale / D07 | Upcoming | Include all 340 retained candidates from the combined source review, including newer code not ledgered. Do not activate strict mode before complete remediation/calibration and an empty strict scan. |
+| Remaining live rationale / D07 | Upcoming | Include all 345 live candidates, including newer code not ledgered and five net timeout-diagnostic additions beyond the earlier 340 inventory. Do not activate strict mode before complete remediation/calibration and an empty strict scan. |
 
 ```mermaid
 flowchart LR

@@ -20,19 +20,30 @@ import { describe, expect, it } from '@effect/vitest';
 
 // Real child processes reopen the database. Normal verification resolves emitted public subpaths.
 for (const dialect of ['sqlite', 'postgres'] as const)
-    describe(`${dialect} marketplace process recovery`, () => {
-        it('survives SIGKILL before commit, after stage/settle commit and while leased; reauthorizes durable replay', async () => {
-            const stdout = await new Promise<string>((resolve, reject) => {
-                execFile(
-                    process.execPath,
-                    [fileURLToPath(new URL('../fixtures/marketplace-process.mjs', import.meta.url)), 'proof', dialect],
-                    { timeout: 60000, maxBuffer: 1024 * 1024 },
-                    (error, stdout, stderr) => {
-                        if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
-                        else resolve(stdout);
-                    }
-                );
-            });
+    describe(`${dialect} marketplace process recovery`, /** Register emitted-code crash proofs for both database implementations. */ () => {
+        it('survives SIGKILL before commit, after stage/settle commit and while leased; reauthorizes durable replay', /** Verify committed marketplace evidence survives process loss without bypassing live authorization. */ async () => {
+            // Distinct child processes distinguish durable recovery from coordinator memory.
+            const stdout = await new Promise<string>(
+                /** Execute the bounded crash harness and preserve failure diagnostics. */ (resolve, reject) => {
+                    execFile(
+                        process.execPath,
+                        [
+                            fileURLToPath(new URL('../fixtures/marketplace-process.mjs', import.meta.url)),
+                            'proof',
+                            dialect
+                        ],
+                        { timeout: 60000, maxBuffer: 1024 * 1024 },
+                        /** Reject unsuccessful proof execution with both captured streams; accept only its completed report. */ (
+                            error,
+                            stdout,
+                            stderr
+                        ) => {
+                            if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
+                            else resolve(stdout);
+                        }
+                    );
+                }
+            );
             const result = JSON.parse(stdout.trim());
             expect(result).toMatchObject({
                 event: 'marketplace-process-recovery-passed',

@@ -163,8 +163,8 @@ const valueSelector = (node) => {
     return false;
 };
 
-/** Parse one source independently of compilation so malformed code and anonymous syntax cannot escape the gate. */
-export const inspectSource = (file, text) => {
+/** Inspect the same declarations in both modes; the internal legacy option exists only for trusted-history reconciliation. */
+export const inspectSource = (file, text, { internalLegacyFingerprint = false } = {}) => {
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const findings = [];
     const comments = new Map();
@@ -189,9 +189,25 @@ export const inspectSource = (file, text) => {
     const occurrences = new Map();
     const report = (node, rule, name) => {
         // Token identity survives line shifts and added prose, but never a changed implementation.
-        const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, source.languageVariant, node.getText(source));
         const tokens = [];
-        while (scanner.scan() !== ts.SyntaxKind.EndOfFileToken) tokens.push(scanner.getTokenText());
+        if (internalLegacyFingerprint) {
+            const scanner = ts.createScanner(
+                ts.ScriptTarget.Latest,
+                true,
+                source.languageVariant,
+                node.getText(source)
+            );
+            while (scanner.scan() !== ts.SyntaxKind.EndOfFileToken) tokens.push(scanner.getTokenText());
+        } else {
+            const collectTokens = (child) => {
+                // Parser context distinguishes template tails, regular expressions and JSX from punctuation.
+                if (child.kind === ts.SyntaxKind.JSDocComment) return;
+                if (ts.isToken(child)) {
+                    if (child.kind !== ts.SyntaxKind.EndOfFileToken) tokens.push(child.getText(source));
+                } else child.getChildren(source).forEach(collectTokens);
+            };
+            collectTokens(node);
+        }
         const hash = createHash('sha256')
             .update(JSON.stringify([file, node.kind, name, rule, tokens]))
             .digest('hex');

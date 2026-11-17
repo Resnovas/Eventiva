@@ -186,10 +186,31 @@ Nineteen additional source files are parked for the separate parser-context fing
 
 Focused package lint/typechecks/tests passed as recorded in the source-lane evidence. Earlier overlapping checks exited 137/Killed and one PostgreSQL test hit its existing deadline; neither establishes a cause or a passing aggregate. After writers settled, uncached full serial `DOCUMENTATION_BASE=c3a541b9172c7ce22ecde7cd118df5a1cc10e2df node --run verify` passed with the approved disposable PostgreSQL fixture: 89 documentation fixtures, 95 boundary/type fixtures, all 85 aggregate Nx tasks and smoke for three projects plus 12 dependencies. The first attempt stopped at scratch-file licence headers before application verification; standard headers corrected only private proof files. Remote main advanced during verification, so delivery rebased and regenerated against `416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`. The second uncached full serial run against that exact ancestor also exited zero with the same fixture/task totals and zero source/emitted boundary violations or cycles. Both fixtures/networks were removed. No deadline/retry adjustment or timeout-lane runtime change is authored by this packet. Signed delivery and asynchronous exact-head CI links are recorded on EVE-13/EVE-261; local passing evidence does not claim CI or strict-zero success.
 
+## D03-D06 parser-reconciled source checkpoint - 2026-11-17
+
+The first independent source batch is delivered as signed [44078885](https://github.com/Resnovas/Eventiva/commit/44078885a4136e5403415e506e9c207369d28d87) with clean-source graph/head [b5837844](https://github.com/Resnovas/Eventiva/commit/b5837844e68a28e5031f76d60006b1d4728f20ba). Its exact-head CI is subscribed and separate from local verification. This following packet compares against that immutable head and restores exactly nineteen previously parked source files.
+
+Documentation resolves 1,308 attachments and 248 rationale candidates, all accepted entries. The exact ledger shrinks from 1,894 to 338: 72 missing contracts in canonical synced tools, zero prose-quality findings and 266 retained rationale candidates. The raw scanner has 345 rationale candidates, including newer delivered identities never accepted as debt; all remain in D03-D07 scope. The timeout-diagnostics delivery adds five net candidates to the earlier combined 340-candidate inventory, not five new accepted entries.
+
+| Reviewed source packet | Semantic evidence |
+| --- | --- |
+| SQL `marketplace.ts` | Durable install, tenant routing, version/pin comparisons and transaction ownership do not confer marketplace authority. |
+| Boundary and contract `action`/`inventory` tests | Compile-time/type/lint assertions are distinct from runtime admission; provider projections and whole-registry rejection retain independent negative controls. Compiler-input strings are executable fixtures and remain unchanged. |
+| Resource tests | Router identity and provider lifetimes remain caller-owned; failure observations do not undo committed resource writes or establish production exporter acceptance. |
+| Runtime `execution`, `hook`, `host`, `identity`, `kernel-runtime`, `kernel-telemetry` tests | Current policy, replay and lease boundaries, callback interruption, generation invalidation, cleanup ownership and deterministic barriers retain their actual scope. |
+| Storage `conformance`, `hook`, `identity`, `marketplace`, three process tests | Explain shared transaction roots, atomic record/outbox/receipt evidence, post-lock revocation, process recovery and preserved child failure diagnostics without promising general exactly-once effects. |
+| Telemetry tests | Explain independent minimization, failure and sink controls; no transport activation or production-readiness guarantee is inferred. |
+
+The scanner correction fixes context-free fingerprinting after interpolated templates, and for contextual regex/JSX terminals. It does not change which findings exist or their classifications. Red/green parser fixtures reproduce comment-only identity drift and preserve changed-literal/executable negatives. `history()` derives a private one-to-one legacy/canonical map only from identical trusted source bytes with identical finding count/order/metadata. No source proximity, candidate map, wildcard, suppression, changed-code acceptance or provenance reset is allowed. `evaluate()` and pruning policy are unchanged. At this actual base, 395 accepted IDs normalize from legacy to canonical representation with count 1,894 unchanged and zero unmatched entries; 75 of those remapped identities remain after the separate documentation prune. The correction itself resolves zero semantic findings and admits zero new debt. Read the [reconciliation contract](../documentation-standard.md#parser-context-fingerprint-reconciliation).
+
+Exact parsed terminal kind/text equality passes for all nineteen documentation-only files. All 71 focused checker/ratchet fixtures pass, including forged debt, rewritten metadata/provenance, ledger deletion and copied callbacks on actually added lines. No source-semantic unknown was established, but adequate composition/assertion/barrier candidates remain review work, not automatic violations. Canonical tool sync and complete live-rationale remediation/calibration still block D07 strict zero. Signed delivery and asynchronous exact-head CI are tracked on EVE-13/EVE-261; pending is not passing.
+
+Executed `DOCUMENTATION_BASE=b5837844e68a28e5031f76d60006b1d4728f20ba NX_SKIP_NX_CACHE=true bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. The wrapper ran unmodified `node --run verify` serially with the approved disposable PostgreSQL fixture. All 98 documentation fixtures, 95 boundary/type fixtures, aggregate Nx lint/typecheck/test/build/parity tasks and three smoke targets plus 12 dependencies passed uncached. The source graph has 175 files and 627 edges with zero violations/cycles; the emitted graph has 68 files and 259 edges with zero violations/cycles. Fixture/network cleanup completed. Focused tooling ESLint and Prettier checks also passed. No deadline, retry, coverage or exclusion changed. The complete 72-contract/20-rationale canonical-tool inventory was transferred to the authorized house delivery owner; no downstream tooling copy was edited.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-1894 remaining findings across 65 files: 1380 mechanically missing JSDoc; 0 prose-review candidates; 514 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+338 remaining findings across 65 files: 72 mechanically missing JSDoc; 0 prose-review candidates; 266 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -199,7 +220,7 @@ Focused package lint/typechecks/tests passed as recorded in the source-lane evid
 | D04 | [apps/server/src/cluster.ts](../../apps/server/src/cluster.ts) | 0 | 0 | 1 |
 | D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 8 |
 | D03 | [packages/integrations/sql/src/hook.ts](../../packages/integrations/sql/src/hook.ts) | 0 | 0 | 1 |
-| D03 | [packages/integrations/sql/src/marketplace.ts](../../packages/integrations/sql/src/marketplace.ts) | 65 | 0 | 19 |
+| D03 | [packages/integrations/sql/src/marketplace.ts](../../packages/integrations/sql/src/marketplace.ts) | 0 | 0 | 1 |
 | D03 | [packages/integrations/sql/src/resource.ts](../../packages/integrations/sql/src/resource.ts) | 0 | 0 | 2 |
 | D03 | [packages/integrations/sql/src/storage.ts](../../packages/integrations/sql/src/storage.ts) | 0 | 0 | 1 |
 | D03 | [packages/integrations/sql/src/transaction.ts](../../packages/integrations/sql/src/transaction.ts) | 0 | 0 | 1 |
@@ -210,39 +231,39 @@ Focused package lint/typechecks/tests passed as recorded in the source-lane evid
 | D02 | [packages/runtime/src/telemetry.ts](../../packages/runtime/src/telemetry.ts) | 0 | 0 | 1 |
 | D02 | [packages/runtime/src/testing.ts](../../packages/runtime/src/testing.ts) | 0 | 0 | 1 |
 | D06 | [packages/ui-modules/src/declarative-registry.ts](../../packages/ui-modules/src/declarative-registry.ts) | 0 | 0 | 2 |
-| D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 46 | 0 | 11 |
-| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 23 | 0 | 18 |
+| D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 9 |
 | D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 4 |
-| D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 33 | 0 | 11 |
+| D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 0 | 0 | 4 |
 | D05 | [tests/contracts/src/module-manifest.spec.ts](../../tests/contracts/src/module-manifest.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 4 |
 | D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 7 |
 | D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 99 | 0 | 25 |
+| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 8 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 101 | 0 | 37 |
-| D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 80 | 0 | 17 |
-| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 115 | 0 | 32 |
-| D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 49 | 0 | 10 |
-| D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 170 | 0 | 52 |
-| D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 84 | 0 | 30 |
+| D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 0 | 0 | 22 |
+| D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 0 | 0 | 27 |
+| D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 0 | 0 | 12 |
+| D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 12 |
 | D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 7 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 58 | 0 | 26 |
-| D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 125 | 0 | 28 |
-| D05 | [tests/storage/src/identity.spec.ts](../../tests/storage/src/identity.spec.ts) | 39 | 0 | 10 |
-| D05 | [tests/storage/src/marketplace-process.spec.ts](../../tests/storage/src/marketplace-process.spec.ts) | 4 | 0 | 2 |
-| D05 | [tests/storage/src/marketplace.spec.ts](../../tests/storage/src/marketplace.spec.ts) | 74 | 0 | 17 |
-| D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 5 | 0 | 2 |
-| D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 4 | 0 | 2 |
+| D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 0 | 0 | 6 |
+| D05 | [tests/storage/src/identity.spec.ts](../../tests/storage/src/identity.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/storage/src/marketplace-process.spec.ts](../../tests/storage/src/marketplace-process.spec.ts) | 0 | 0 | 1 |
+| D05 | [tests/storage/src/marketplace.spec.ts](../../tests/storage/src/marketplace.spec.ts) | 0 | 0 | 1 |
+| D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 0 | 0 | 1 |
+| D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/telemetry/src/server.spec.ts](../../tests/telemetry/src/server.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 134 | 0 | 40 |
+| D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 0 | 0 | 15 |
 | D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
 | D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
 | D06 | [tools/ci/coverage-goal.ts](../../tools/ci/coverage-goal.ts) | 8 | 0 | 2 |

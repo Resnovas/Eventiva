@@ -15,6 +15,9 @@
  */
 
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { inspectSource } from './check.mjs';
 import { addedRanges, evaluate, history, refreshLedger, renderInventory, validateLedger } from './ratchet.mjs';
@@ -145,4 +148,170 @@ test('uncalibrated rationale candidates require semantic review but cannot be mi
     assert.deepEqual(refreshLedger([...original, ...adequate], accepted, base), accepted);
     const missing = inspectSource('packages/new.ts', 'function flush() { authorize(); barrier(); }');
     assert.match(check([...original, ...missing]).join('\n'), /New or changed undocumented syntax/);
+});
+
+const contextualSource =
+    'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };\nconst write = () => 2;\n';
+
+/** Build an isolated, disposable history so reconciliation never trusts candidate source or synthetic maps. */
+const historicalFixture = (t, text = contextualSource) => {
+    const scratch = resolve('.amp/in/orb-backup');
+    mkdirSync(scratch, { recursive: true });
+    const root = mkdtempSync(join(scratch, 'fingerprint-history-'));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    const git = (...args) =>
+        execFileSync(
+            'git',
+            ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false', ...args],
+            { cwd: root, encoding: 'utf8' }
+        ).trim();
+    const file = 'packages/a.ts';
+    mkdirSync(join(root, 'packages'), { recursive: true });
+    mkdirSync(join(root, 'tools/documentation'), { recursive: true });
+    mkdirSync(join(root, 'docs/planning'), { recursive: true });
+    for (const name of ['check.mjs', 'ratchet.mjs'])
+        copyFileSync(resolve('tools/documentation', name), join(root, 'tools/documentation', name));
+    writeFileSync(join(root, file), text);
+    git('init', '--quiet');
+    git('add', '.');
+    git('commit', '--quiet', '-m', 'fixture source');
+    const initialBase = git('rev-parse', 'HEAD');
+    const findings = inspectSource(file, text, { internalLegacyFingerprint: true });
+    const ledger = refreshLedger(findings, null, initialBase);
+    const writeLedger = (value) => {
+        writeFileSync(join(root, 'tools/documentation/debt.json'), `${JSON.stringify(value, null, 2)}\n`);
+        writeFileSync(join(root, 'docs/planning/documentation-backlog.md'), renderInventory(value));
+    };
+    writeLedger(ledger);
+    git('add', '.');
+    git('commit', '--quiet', '-m', 'fixture accepted ledger');
+    const base = git('rev-parse', 'HEAD');
+    const run = (...args) =>
+        spawnSync(process.execPath, ['tools/documentation/ratchet.mjs', '--base', base, ...args], {
+            cwd: root,
+            encoding: 'utf8',
+            env: { ...process.env, DOCUMENTATION_BASE: base },
+        });
+    return { root, file, base, ledger, writeLedger, run, git };
+};
+
+test('trusted history reconciles exact legacy pairs without changing provenance, metadata or classification', (t) => {
+    const fixture = historicalFixture(t);
+    const trusted = history(fixture.root, fixture.base);
+    const canonical = inspectSource(fixture.file, contextualSource);
+    assert.notEqual(fixture.ledger.entries[0].id, canonical[0].id);
+    assert.deepEqual(trusted.previousFindings, canonical);
+    assert.deepEqual(trusted.previousLedger, { ...fixture.ledger, entries: canonical });
+    assert.deepEqual(trusted.normalizeLedger(fixture.ledger), trusted.previousLedger);
+    assert.deepEqual(trusted.normalizeLedger(trusted.previousLedger), trusted.previousLedger);
+    assert.deepEqual(fixture.ledger.entries.at(-1), canonical.at(-1));
+    assert.equal(fixture.run().status, 0);
+    assert.equal(fixture.run('--update-ledger').status, 0);
+    const written = JSON.parse(readFileSync(join(fixture.root, 'tools/documentation/debt.json'), 'utf8'));
+    assert.deepEqual(written, trusted.previousLedger);
+    assert.deepEqual(evaluate({ findings: canonical, ledger: written, ...trusted }), []);
+});
+
+test('same-node comment and line shifts keep canonical identity while touched debt must still decrease', (t) => {
+    const fixture = historicalFixture(t);
+    const shifted = contextualSource.replace(
+        '; return',
+        ';\n/* Retain query ownership through finalization. */\nreturn'
+    );
+    writeFileSync(join(fixture.root, fixture.file), shifted);
+    const trusted = history(fixture.root, fixture.base);
+    const current = inspectSource(fixture.file, shifted);
+    assert.equal(current[0].id, trusted.previousFindings[0].id);
+    // Internal rationale has genuinely been supplied, reducing this file's accepted review queue only.
+    const normalized = trusted.normalizeLedger(fixture.ledger);
+    const ledger = refreshLedger(current, normalized, fixture.base);
+    const errors = evaluate({ findings: current, ledger, ...trusted });
+    assert.ok(!errors.some((error) => /New or changed undocumented syntax/.test(error)), errors.join('\n'));
+    assert.ok(
+        errors.some((error) => /Touched file must reduce debt/.test(error)),
+        errors.join('\n')
+    );
+    assert.notEqual(fixture.run('--update-ledger').status, 0);
+});
+
+test('comment-only remapping permits real contract remediation without erasing an independent rationale candidate', (t) => {
+    const text = contextualSource
+        .replace('const read', '/** Retain query identity through row projection. */ const read')
+        .replace('return finish(query)', 'const rows = values.map(value => value.id); return finish(query, rows)');
+    const fixture = historicalFixture(t, text);
+    const documented = text.replace('value =>', '\n/** Project existing row identifiers in source order. */\nvalue =>');
+    writeFileSync(join(fixture.root, fixture.file), documented);
+    const trusted = history(fixture.root, fixture.base);
+    const current = inspectSource(fixture.file, documented);
+    const before = trusted.previousFindings.find((entry) => entry.rule === 'review-internal-rationale');
+    assert.ok(current.some((entry) => entry.id === before.id));
+    const result = fixture.run('--update-ledger');
+    assert.equal(result.status, 0, result.stderr);
+    const written = JSON.parse(readFileSync(join(fixture.root, 'tools/documentation/debt.json'), 'utf8'));
+    assert.ok(written.entries.some((entry) => entry.id === before.id));
+    assert.equal(written.entries.filter((entry) => entry.rule === 'missing-jsdoc').length, 1);
+});
+
+test('migration never maps changed code, renamed contracts or candidate-provided debt into accepted history', (t) => {
+    const fixture = historicalFixture(t);
+    for (const changed of [
+        contextualSource.replace('${table}', '${otherTable}'),
+        contextualSource.replace('where id =', 'where key ='),
+        contextualSource.replace('const read', 'const renamed'),
+    ]) {
+        writeFileSync(join(fixture.root, fixture.file), changed);
+        const result = fixture.run('--update-ledger');
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr, /New or changed undocumented syntax/);
+        fixture.writeLedger(refreshLedger(inspectSource(fixture.file, changed), null, fixture.ledger.initialBase));
+        const forged = fixture.run();
+        assert.notEqual(forged.status, 0);
+        assert.match(forged.stderr, /Debt addition or mutation/);
+        fixture.writeLedger(fixture.ledger);
+    }
+});
+
+test('reconciliation rejects malformed entries, metadata reassignment, duplicates and provenance resets', (t) => {
+    const fixture = historicalFixture(t);
+    const trusted = history(fixture.root, fixture.base);
+    assert.equal(typeof trusted.normalizeLedger, 'function');
+    for (const mutate of [
+        (ledger) => {
+            ledger.entries[0].name = 'write';
+        },
+        (ledger) => {
+            ledger.entries[0].file = 'packages/unrelated.ts';
+        },
+        (ledger) => {
+            ledger.entries[0].rule = 'review-jsdoc';
+        },
+        (ledger) => {
+            ledger.entries.push({ ...ledger.entries[0], id: trusted.previousFindings[0].id });
+        },
+        (ledger) => {
+            ledger.mapping = { [ledger.entries[0].id]: trusted.previousFindings[0].id };
+        },
+    ]) {
+        const malformed = structuredClone(fixture.ledger);
+        mutate(malformed);
+        assert.throws(() => trusted.normalizeLedger(malformed));
+    }
+    const reset = { ...fixture.ledger, initialBase: '2'.repeat(40) };
+    fixture.writeLedger(reset);
+    assert.match(fixture.run().stderr, /provenance/);
+    rmSync(join(fixture.root, 'tools/documentation/debt.json'));
+    assert.match(fixture.run('--update-ledger').stderr, /cannot be deleted or reset/);
+});
+
+test('duplicate substitutions on added lines cannot inherit a reconciled legacy identity', (t) => {
+    const first = 'values.map(value => `id:${value.id}`);';
+    const second = 'values.map(value => `other:${value.id}`);';
+    const third = 'values.map(value => `last:${value.id}`);';
+    const fixture = historicalFixture(t, `${first}\n${second}\n${third}\n`);
+    // Retain the original, delete another and replace the remaining callback with a copy: a lower total is insufficient.
+    writeFileSync(join(fixture.root, fixture.file), `${first}\n${first}\n`);
+    const result = fixture.run('--update-ledger');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /New or changed undocumented syntax/);
+    assert.match(result.stderr, /Changed source must comply immediately/);
 });

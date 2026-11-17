@@ -251,6 +251,45 @@ test('exact finding identity survives prose/line shifts but not changed code, na
     assert.notEqual(duplicate[0].id, duplicate[1].id);
 });
 
+test('finding identity uses parser context across interpolated template tails', () => {
+    const before = 'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };';
+    const shifted = before.replace('; return', ';\n/* Context retained for the next review. */\nreturn');
+    const id = findings(before).find((finding) => finding.rule === 'missing-jsdoc').id;
+    assert.equal(id, findings(shifted).find((finding) => finding.rule === 'missing-jsdoc').id);
+    for (const changed of [
+        before.replace('${table}', '${otherTable}'),
+        before.replace('where id =', 'where key ='),
+        before.replace('${id}', '${id + 1}'),
+        before.replace('return finish(query)', 'return finish(query, 1)'),
+    ])
+        assert.notEqual(id, findings(changed).find((finding) => finding.rule === 'missing-jsdoc').id);
+});
+
+test('parser-context identities ignore nested contracts but retain contextual literal contents', () => {
+    for (const [file, before, changed] of [
+        ['fixture.ts', 'const read = () => /[/*]/gu.test(value);', 'const read = () => /[/*]/g.test(value);'],
+        ['fixture.tsx', 'const read = () => <Text>{value}</Text>;', 'const read = () => <Text>{other}</Text>;'],
+        ['fixture.ts', 'const read = () => `${`${value}`}`;', 'const read = () => `${`${other}`}`;'],
+    ]) {
+        const id = inspectSource(file, before)[0].id;
+        const documented = before.replace('() =>', '() => /* Retain the original contextual tokens. */');
+        assert.equal(id, inspectSource(file, documented)[0].id);
+        assert.notEqual(id, inspectSource(file, changed)[0].id);
+    }
+    const before = 'const read = () => values.map(value => value.id);';
+    const documented = before.replace('value =>', `${contract} value =>`);
+    assert.equal(findings(before)[0].id, findings(documented)[0].id);
+});
+
+test('internal legacy fingerprints change only identities, never classification or order', () => {
+    const source = 'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };';
+    const current = inspectSource('fixture.ts', source);
+    const legacy = inspectSource('fixture.ts', source, { internalLegacyFingerprint: true });
+    const metadata = (entries) => entries.map(({ id: _id, ...entry }) => entry);
+    assert.deepEqual(metadata(current), metadata(legacy));
+    assert.notEqual(current[0].id, legacy[0].id);
+});
+
 test('parses TSX and rejects malformed TypeScript without skipping its declarations', () => {
     assert.deepEqual(inspectSource('fixture.tsx', `${contract} const View = () => <Text>Content</Text>;`), []);
     assert.ok(findings('const read = ( => 1;').some((f) => f.rule === 'parse-error'));

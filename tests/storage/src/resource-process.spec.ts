@@ -21,19 +21,26 @@ import { Schema } from 'effect';
 
 // Child Node processes use emitted public package subpaths, never source aliases.
 for (const dialect of ['sqlite', 'postgres'] as const)
-    describe(`${dialect} resource process recovery`, () => {
-        it('rolls back SIGKILL before the outer resource commit and replays a lost acknowledgement in a new process', async () => {
-            const stdout = await new Promise<string>((resolve, reject) => {
-                execFile(
-                    process.execPath,
-                    [fileURLToPath(new URL('../fixtures/resource-process.mjs', import.meta.url)), 'proof', dialect],
-                    { timeout: 60000, maxBuffer: 1024 * 1024 },
-                    (error, stdout, stderr) => {
-                        if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
-                        else resolve(stdout);
-                    }
-                );
-            });
+    describe(`${dialect} resource process recovery`, /** Register local resource transaction recovery proofs against emitted packages. */ () => {
+        it('rolls back SIGKILL before the outer resource commit and replays a lost acknowledgement in a new process', /** Verify local transaction evidence across process loss, without claiming external-effect or migration recovery. */ async () => {
+            // Reopening from independent processes rules out in-memory deduplication as recovery evidence.
+            const stdout = await new Promise<string>(
+                /** Execute the crash harness with bounded runtime and captured diagnostics. */ (resolve, reject) => {
+                    execFile(
+                        process.execPath,
+                        [fileURLToPath(new URL('../fixtures/resource-process.mjs', import.meta.url)), 'proof', dialect],
+                        { timeout: 60000, maxBuffer: 1024 * 1024 },
+                        /** Preserve child failure diagnostics or resolve the completed proof report. */ (
+                            error,
+                            stdout,
+                            stderr
+                        ) => {
+                            if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
+                            else resolve(stdout);
+                        }
+                    );
+                }
+            );
             const result: unknown = JSON.parse(stdout.trim());
             expect(result).toMatchObject({
                 event: 'resource-process-recovery-passed',
@@ -58,6 +65,14 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             )(result);
             expect(processes.pids).toHaveLength(3);
             expect(new Set([...processes.pids, processes.coordinatorPid, process.pid]).size).toBe(5);
-            expect(processes.exits).toEqual(processes.pids.map((pid) => ({ pid, code: null, signal: 'SIGKILL' })));
+            expect(processes.exits).toEqual(
+                processes.pids.map(
+                    /** Bind each reported crash to its actual child PID and expected kill signal. */ (pid) => ({
+                        pid,
+                        code: null,
+                        signal: 'SIGKILL'
+                    })
+                )
+            );
         }, 65000);
     });
