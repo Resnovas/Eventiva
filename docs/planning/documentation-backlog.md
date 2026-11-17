@@ -364,10 +364,24 @@ Latest-main integration at `bbd214c25561628c10442f68030a4c925cdb4f1b` preserves 
 
 Executed combined `DOCUMENTATION_BASE=bbd214c25561628c10442f68030a4c925cdb4f1b NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate Nx tasks (49 cached) and 15 smoke/dependency tasks (12 cached) pass. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. PostgreSQL/network cleanup completed. Root and clean-source graph checks precede publication; exact-head CI remains separate. House PR49's exact-head tests, render, graph, security and replacement Smartcloud pass; its superseded Smartcloud was cancelled. Automation marked it ready, but the human attribution/review attestations and merge remain human actions, not supplied by this agent.
 
+## Eleventh checkpoint: telemetry and released marketplace strict-zero follow-through
+
+Against immutable delivered main `ee9c58f599313159ec4a9515e40ff6f86f3b2cdd`, six telemetry specs and the released runtime marketplace spec receive 82 useful rationale additions. Counts are bootstrap diagnostics five, correlation export 28, export 13, OTLP eleven, server seven, central telemetry thirteen and marketplace five. Comments explain actual wire observation, isolated release controls, scoped ownership, ambient-tracer privacy, deterministic overlap, synthetic-work limits, bootstrap noninterference and detached authority/persistence views. The fixed-clock comment distinguishes retained-handle refusal from the separate forged-schema rejection. No assertion, type or runtime behavior changes.
+
+Parsed comparison preserves all 28,590 executable/type terminals; all seven edited files scan clean. Documentation clears 82 live candidates: seventeen accepted and 65 never ledgered. Checker corrections: zero. Exact accepted debt prunes 102 to 85 across 29 files; the complete live queue retains 109 rationale candidates, including 24 never ledgered. Zero attachment/prose findings and zero ratchet violations remain. No source-semantic unknown was established. Focused ESLint passes. Full combined verification and signed source/clean-graph delivery are current, not yet passing evidence.
+
+House PR49's latest comment independently reports zero errors and two AI-21 human-attestation warnings after automation marked it ready. Executed CI passed, including the replacement Smartcloud run; the superseded run was cancelled. Human attestations/merge and downstream sync remain external prerequisites for the final five tool candidates. Strict rationale is not live. Current next work is the remaining application/contracts/provider/storage/UI queue, then strict activation at both exact zeros.
+
+Executed `DOCUMENTATION_BASE=ee9c58f599313159ec4a9515e40ff6f86f3b2cdd NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero, 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (58 cached), 15 smoke/dependency tasks (12 cached), no boundary violations/cycles and completed PostgreSQL cleanup. This is the original packet's gate, not evidence for later remote changes.
+
+Remote main subsequently advanced to `29de96345c711028fbdd128371c01066e6f4c9b7` with independent EVE-60/EVE-44 export/correlation isolation. Preserve that implementation and reread all nine new test candidates. Useful comments explain untouched matrix controls, pre-mutation observations, separate immediate/retained adapter lifetimes and successful deliveries bracketing live-flag revocation. One preexisting production reader candidate also gains the UTC cached-lease invariant; it does not claim a consent check in the client cache. The expanded eight-file packet resolves 92 live candidates (seventeen accepted, 75 never ledgered), preserves all 30,920 parsed terminals and leaves all edited files clean. Exact accepted debt remains 85 across 29 files; complete live queue is 108 including 23 never ledgered. Zero checker changes or source-semantic unknowns. Focused lint/proof/prune pass; repeated full combined verification is required before delivery.
+
+Executed combined `DOCUMENTATION_BASE=29de96345c711028fbdd128371c01066e6f4c9b7 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (49 cached) and 15 smoke/dependency tasks (12 cached) pass, with zero source/emitted boundary violations/cycles and completed PostgreSQL/network cleanup. Strict reviewed planning reports 258 issues/692 edges, zero unresolved sources/stale outputs. Final immutable-base root and clean-source graph checks gate publication. Tenth exact-head CI at ee9c58f5 now independently passed all executed checks, including verify/smoke/application/house/security; eleventh-head CI remains separate.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-102 remaining findings across 32 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 102 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+85 remaining findings across 29 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 85 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
@@ -383,7 +397,6 @@ Executed combined `DOCUMENTATION_BASE=bbd214c25561628c10442f68030a4c925cdb4f1b N
 | D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
@@ -395,8 +408,6 @@ Executed combined `DOCUMENTATION_BASE=bbd214c25561628c10442f68030a4c925cdb4f1b N
 | D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/telemetry/src/server.spec.ts](../../tests/telemetry/src/server.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 0 | 0 | 13 |
 | D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
 | D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
 | D06 | [tools/release/changelog-renderer.ts](../../tools/release/changelog-renderer.ts) | 0 | 0 | 1 |

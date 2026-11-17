@@ -126,6 +126,7 @@ const launchFailureContext = (result: LaunchResult): string => {
 
 describe('bounded bootstrap journal validation', /** Reject diagnostic data independently of bootstrap success or failure. */ () => {
     it('accepts only closed phases and integer timestamps', /** Preserve safe timing while excluding arbitrary child data. */ () => {
+        // One valid journal anchors the rejection matrix; invalid data must collapse to a closed state, not echo input.
         expect(journalSummary('["child-start",100]\n["root-exit:failure",251]\n')).toEqual({
             state: 'captured',
             phases: [
@@ -187,6 +188,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                         const result = yield* Effect.gen(
                             /** Observe the audit failure as an Exit so telemetry cannot hide it behind successful startup. */ function* () {
                                 const audit = yield* Audit;
+                                // Capture denial inside the telemetry setting's scope rather than after its services are disposed.
                                 return yield* Effect.exit(audit.ready('platform.status'));
                             }
                         ).pipe(
@@ -223,6 +225,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
         /** Run the executable without optional configuration to verify its diagnostic-only contract. */ () =>
             Effect.gen(
                 /** Require one correlated startup trace and registration diagnostics, never a readiness claim. */ function* () {
+                    // Observe the real child to distinguish diagnostic registration from a claim that the platform is ready.
                     const result = yield* launch();
                     expect(result.error, launchFailureContext(result)).toBeUndefined();
                     expect(launchFailureContext(result)).toContain('"state":"captured"');
@@ -312,6 +315,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
         /** Exercise an invalid profile whose contents must never appear in bootstrap diagnostics. */ () =>
             Effect.gen(
                 /** Require sanitized failure and startup-span output without configuration or raw Effect errors. */ function* () {
+                    // The escaped newline probes private-data leakage and line injection through decoded diagnostics.
                     const result = yield* launch({
                         EVENTIVA_CLUSTER_PROFILE: '{"edition":"SECRET_PROFILE_CANARY\\nFORGED"}',
                     });
@@ -333,6 +337,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
         /** Fail main telemetry configuration to verify the independent bootstrap sink remains usable. */ () =>
             Effect.gen(
                 /** Require a bootstrap failure record rather than leaking the invalid capacity or parsing failure. */ function* () {
+                    // Fail the main telemetry layer itself; fallback diagnostics cannot depend on its Config acquisition.
                     const result = yield* launch({ telemetry_capacity: 'SECRET_CAPACITY_CANARY' });
                     expect(result.error, launchFailureContext(result)).toBeUndefined();
                     expect(result.status).toBe(1);
@@ -349,6 +354,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
         /** Reject a relative file-sink directory before use without losing bootstrap reporting. */ () =>
             Effect.gen(
                 /** Require sanitized fallback output when the configured main sink cannot acquire. */ function* () {
+                    // A relative path fails sink acquisition, exercising a different fallback boundary from invalid Config.
                     const result = yield* launch({ telemetryFile_directory: 'SECRET_RELATIVE_PATH_CANARY' });
                     expect(result.error, launchFailureContext(result)).toBeUndefined();
                     expect(result.status).toBe(1);
@@ -365,6 +371,7 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
         /** Compare opted-out normal startup with invalid-profile failure under the same telemetry setting. */ () =>
             Effect.gen(
                 /** Require silence for successful opt-out but one sanitized bootstrap record when startup fails. */ function* () {
+                    // The successful control proves opt-out is applied; only mandatory failure reporting must survive it.
                     const disabled = yield* launch({ telemetry_enabled: 'false' });
                     expect(disabled.error, launchFailureContext(disabled)).toBeUndefined();
                     expect(disabled.status).toBe(0);

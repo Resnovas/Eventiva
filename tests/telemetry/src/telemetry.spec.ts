@@ -76,6 +76,7 @@ const policy: TelemetryPolicy = {
 /** Inject queue, opt-out and timeout limits without depending on process configuration. */
 const config = (capacity = 256, enabled = true, timeoutMs = 1000) => Config.succeed({ enabled, capacity, timeoutMs });
 const collector = Effect.gen(/** Capture exported records in emission order for privacy and correlation assertions. */ function* () {
+    // Keep observations in a Ref outside the exporter scope so final drain remains visible after disposal.
     const records = yield* Ref.make<ReadonlyArray<TelemetryRecord>>([]);
     const sink = Layer.succeed(TelemetrySink, {
         /** Retain one projected record without introducing exporter failures. */
@@ -112,9 +113,10 @@ class CanaryFailure extends Data.TaggedError('CanaryFailure')<{ readonly payload
 describe('central Effect telemetry', /** Register central projection, isolation and lifecycle regression cases. */ () => {
     it.effect('correlates action -> resource -> asynchronous observer without feature exporters', /** Emit nested synchronous and forked observer work. */ () =>
         Effect.gen(/** Verify logs and spans share trace ancestry across the asynchronous handoff. */ function* () {
-            // Join the fork before draining so correlation assertions include the observer's completed span.
+            // Capture outside the provided telemetry scope so assertions include its final module-span drain.
             const capture = yield* collector;
             yield* Effect.gen(/** Emit resource and observer descendants under one module span. */ function* () {
+                // Explicitly join the observer before flush; otherwise missing ancestry could be an unfinished child.
                 yield* Effect.logInfo('app.ready').pipe(
                     Effect.withSpan('resource.write'),
                     Effect.withSpan('action.run')
@@ -161,6 +163,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
             const capture = yield* collector;
             const canary = 'SECRET_CANARY_4739';
             yield* Effect.gen(/** Exercise raw logging, profile annotations and failed-span redaction in one exporter scope. */ function* () {
+                // Unknown raw messages must redact independently of profile-approved catalog entries.
                 yield* Effect.logInfo(canary, new Error(canary), Redacted.make(canary), { payload: canary });
                 yield* Effect.logError(Cause.fail(new Error(canary)));
                 yield* Effect.logInfo('app.ready').pipe(
@@ -178,6 +181,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
                     );
                 }
                 yield* Effect.gen(/** Place private values in span annotations, events and a typed failure. */ function* () {
+                    // Span events and failure causes are separate leak routes from ordinary span attributes.
                     yield* Effect.annotateCurrentSpan('secret', canary);
                     const span = yield* Effect.currentSpan;
                     span.event(canary, 0n, { payload: canary });
@@ -219,6 +223,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
                 context: (f) => f(),
                 /** Inspect sanitized tracer inputs before delegating native span construction. */
                 span: (name, parent, supplied, links, start, kind, options) => {
+                    // Check before native delegation: later exporter redaction cannot undo an ambient tracer's access.
                     calls++;
                     expect(Option.isNone(Context.getOption(supplied, Secret))).toBe(true);
                     expect(links).toEqual([]);
@@ -257,6 +262,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
             const external = Tracer.externalSpan({ traceId: rootTrace, spanId: '1234567890abcdef' });
             const started = yield* Deferred.make<void>();
             const fiber = yield* Effect.gen(/** Emit one child per profile, then hold the parent open for a measured interval. */ function* () {
+                // Signal only after all profile variants emit, giving TestClock a deterministic duration boundary.
                 for (const profile of ['baseline', 'sensitive', 'restricted', 'vault', 'invalid']) {
                     yield* Effect.logInfo('app.ready').pipe(
                         Effect.annotateLogs({ 'eventiva.profile': profile, 'eventiva.module.id': 'inventory' }),
@@ -342,6 +348,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
 
     it.effect('bounds concurrent producers and never waits on an unavailable exporter', /** Saturate a bounded queue while its worker is blocked. */ () =>
         Effect.gen(/** Verify producers complete with bounded acceptance and counted drops. */ function* () {
+            // A barrier-held sink makes queue saturation deterministic without timing producer latency.
             const started = yield* Deferred.make<void>();
             const release = yield* Deferred.make<void>();
             const sink = Layer.succeed(TelemetrySink, {
@@ -368,6 +375,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
 
     it.effect('reports sink errors/defects without serializing them or failing business work', /** Exercise typed exporter failures and defects through the same boundary. */ () =>
         Effect.gen(/** Verify failed drain diagnostics are bounded and do not fail the logging producer. */ function* () {
+            // Typed failure and defect must share the same containment boundary, not merely the same sanitized text.
             for (const failure of [
                 Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
                 Effect.die(new Error('SECRET_DEFECT')),
@@ -497,6 +505,7 @@ describe('central Effect telemetry', /** Register central projection, isolation 
 
     it.effect('rejects invalid injected limits without acquiring a worker', /** Inject boundary and fractional queue/timeout limits. */ () =>
         Effect.gen(/** Verify invalid configuration fails acquisition without exporting records. */ function* () {
+            // Keep a valid sink available; an unrelated sink failure must not masquerade as limit validation.
             const capture = yield* collector;
             for (const invalid of [config(0), config(4097), config(1, true, 0), config(1, true, 10001), config(1.5)]) {
                 const result = yield* Effect.void.pipe(
@@ -637,6 +646,7 @@ describe('Node local sink', /** Register disposable filesystem regression cases 
             const first = serverLoggerLayer(Config.succeed(fileOptions(directory)), /** Silence the first owner's console without affecting disk ownership. */ () => Effect.void);
             const second = serverLoggerLayer(Config.succeed(fileOptions(directory)), /** Silence the competing owner's console independently. */ () => Effect.void);
             yield* Effect.gen(/** Attempt competing acquisition while the first owner remains usable. */ function* () {
+                // A failed competitor must neither steal nor release the first scope's directory ownership.
                 const result = yield* Effect.void.pipe(Effect.provide(second), Effect.exit);
                 expect(Exit.isFailure(result)).toBe(true);
                 yield* (yield* TelemetrySink).write(record);
@@ -685,6 +695,7 @@ describe('Node local sink', /** Register disposable filesystem regression cases 
             yield* TestClock.setTime(new Date('2026-11-15T12:00:00Z'));
             const live = serverLoggerLayer(Config.succeed(fileOptions(directory)));
             yield* Effect.gen(/** Check invalid record rejection and startup retention before a valid disk write. */ function* () {
+                // Retention is an acquisition duty; it must not depend on the first record passing validation.
                 const sink = yield* TelemetrySink;
                 expect(Exit.isFailure(yield* Effect.exit(sink.write({ ...record, text: 'bad\rFORGED' })))).toBe(true);
                 expect(yield* fs.exists(`${directory}/1970-01-01.000000.jsonl`)).toBe(false);
@@ -694,6 +705,7 @@ describe('Node local sink', /** Register disposable filesystem regression cases 
                 Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' }))
             );
             yield* Effect.gen(/** Verify console write failure and unsafe control text rejection without a file layer. */ function* () {
+                // A payload-free flush remains valid despite the console writer's typed failure.
                 const sink = yield* TelemetrySink;
                 expect(Exit.isFailure(yield* Effect.exit(sink.write(record)))).toBe(true);
                 expect(Exit.isFailure(yield* Effect.exit(sink.write({ ...record, text: '\u001b[2J' })))).toBe(true);
@@ -882,6 +894,7 @@ it('resolves all local import/type/reexport edges and proves the telemetry diamo
     });
     expect(ts.getPreEmitDiagnostics(program)).toHaveLength(0);
     const emitted = program.emit(undefined, /** Capture declaration output in memory without writing build artifacts. */ (file, text) => {
+        // Only consumer-visible declarations belong in the surface audit, not incidental JavaScript output.
         if (file.endsWith('.d.ts')) declarations.set(file, text);
     });
     expect(emitted.emitSkipped).toBe(false);

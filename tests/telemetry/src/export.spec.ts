@@ -77,6 +77,7 @@ const provider = (records: Array<TelemetryRecord>) =>
     });
 
 describe('governed telemetry export', /** Register vendor-independent export authorization and privacy regressions. */ () => {
+    // Cross both adapter boundaries with both operations; the untouched control prevents vacuous universal denial.
     for (const adapter of ['control', 'authority', 'provider'] as const) {
         for (const operation of ['write', 'flush'] as const) {
             it.effect(
@@ -84,6 +85,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                 /** Adapter-owned views cannot widen later records or replace the original baseline scope. */ () =>
                     Effect.gen(
                         /** Compare asymmetric profiles and all delivered bindings through the public sink. */ function* () {
+                            // Collect outside the sink scope so shutdown cannot conceal a late widened release.
                             const records: TelemetryRecord[] = [];
                             const observed: TelemetryExportBinding[] = [];
                             let changed = false;
@@ -132,6 +134,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                                                 write: (scope, projected) =>
                                                     Effect.sync(
                                                         /** The mutation happens after the first release, not during setup. */ () => {
+                                                            // Record before mutating the adapter view to distinguish release from subsequent reuse.
                                                             records.push(projected);
                                                             inspect(scope, 'provider', 'write');
                                                         }
@@ -168,6 +171,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise the same safe projection for logs and spans. */ () =>
             Effect.gen(
                 /** Verify only catalog text and correlation survive delivery to an arbitrary provider. */ function* () {
+                    // Both signals carry the same private canary, exposing signal-specific projection bypasses.
                     for (const signal of ['log', 'span'] as const) {
                         const records: Array<TelemetryRecord> = [];
                         yield* Effect.gen(
@@ -197,6 +201,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise independent flag and authority denials. */ () =>
             Effect.gen(
                 /** Verify enabling one gate cannot bypass the other's safe default. */ function* () {
+                    // Enable the other prerequisite in each case so an unrelated denial cannot mask this gate.
                     for (const dependencies of [
                         Layer.merge(FlagsSafeDefaults, allow),
                         Layer.merge(enabled, TelemetryExportDeny),
@@ -205,6 +210,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                         yield* Effect.gen(
                             /** Attempt both release paths while one required gate remains denied. */ function* () {
                                 const sink = yield* TelemetrySink;
+                                // Flush is independently authorized even when no write has been admitted.
                                 expect((yield* Effect.flip(sink.write(record))).reason).toBe('unavailable');
                                 expect((yield* Effect.flip(sink.flush)).reason).toBe('unavailable');
                             }
@@ -227,6 +233,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise classification downgrade resistance. */ () =>
             Effect.gen(
                 /** Bind protected contexts while submitting a baseline record that must not escape. */ function* () {
+                    // Keep the caller's record ordinary; only the immutable binding supplies the protected floor.
                     const denied: ReadonlyArray<TelemetryExportBinding> = [
                         ...(['restricted', 'vault'] as const).map(
                             /** Vary the bound protection profile without changing the record. */ (profile) => ({
@@ -248,6 +255,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                         yield* Effect.gen(
                             /** Confirm neither write nor flush can release this protected binding. */ function* () {
                                 const sink = yield* TelemetrySink;
+                                // A blocked record must not leave a usable flush path on the same protected handle.
                                 expect((yield* Effect.flip(sink.write(record))).reason).toBe('unavailable');
                                 expect((yield* Effect.flip(sink.flush)).reason).toBe('unavailable');
                             }
@@ -271,10 +279,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise record validation before transport access. */ () =>
             Effect.gen(
                 /** Keep a recording provider available to detect accidental release of rejected records. */ function* () {
+                    // Observe outside the sink's scope so disposal cannot hide a late or partial delivery.
                     const records: Array<TelemetryRecord> = [];
                     yield* Effect.gen(
                         /** Submit an unknown code, mismatched profile and malformed correlation identifier. */ function* () {
                             const sink = yield* TelemetrySink;
+                            // Valid wire shape can still be unavailable by policy; malformed identity has a distinct failure.
                             expect((yield* Effect.flip(sink.write({ ...record, code: 'unregistered' }))).reason).toBe(
                                 'unavailable'
                             );
@@ -304,6 +314,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise revocation on an already acquired sink. */ () =>
             Effect.gen(
                 /** Revoke each live gate after one permitted delivery without rebuilding the sink. */ function* () {
+                    // Mutable fixture decisions expose acquisition-time caching while the binding and handle stay fixed.
                     let authorized = true;
                     let flagEnabled = true;
                     const records: Array<TelemetryRecord> = [];
@@ -312,6 +323,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                         authorize: (current) =>
                             Effect.suspend(
                                 /** Read mutable permission at operation time to expose stale authorization caching. */ () => {
+                                    // A permissive boolean is insufficient if the sink substitutes another tenant or generation.
                                     expect(current).toEqual(binding);
                                     return authorized
                                         ? Effect.void
@@ -361,6 +373,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise disposal fencing on retained sink references. */ () =>
             Effect.gen(
                 /** Acquire a sink in a completed scope before attempting either release path. */ function* () {
+                    // Effect.provide closes the layer before returning; the retained reference is deliberately escaped.
                     const records: Array<TelemetryRecord> = [];
                     const sink = yield* TelemetrySink.pipe(
                         Effect.provide(
@@ -392,6 +405,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                         write: (_binding, value) =>
                             Effect.gen(
                                 /** Signal provider entry and wait for the test to permit completion. */ function* () {
+                                    // Admission precedes suspension, separating this in-flight write from later queued work.
                                     yield* Deferred.succeed(started, undefined);
                                     yield* Deferred.await(finish);
                                     records.push(value);
@@ -421,6 +435,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                         /** Queue behind an in-flight delivery, revoke the grant, then await the worker's failure. */ function* () {
                             yield* Effect.logInfo('sample.completed');
                             yield* Deferred.await(started);
+                            // The second record is accepted locally but must face the revoked grant at dispatch.
                             yield* Effect.logInfo('sample.completed');
                             authorized = false;
                             yield* Deferred.succeed(finish, undefined);
@@ -440,6 +455,7 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         /** Exercise acquisition-time validation of trusted export configuration. */ () =>
             Effect.gen(
                 /** Reject malformed bindings and unsafe catalog text before a sink can be used. */ function* () {
+                    // All release gates are enabled below, isolating trusted-configuration validation from policy denial.
                     for (const [current, catalog] of [
                         [{ ...binding, generation: -1 }, policy],
                         [binding, { messages: { 'sample.completed': '\u001bsecret' } }],

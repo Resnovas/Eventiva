@@ -45,11 +45,13 @@ const stableOutput = (output: string) =>
     output.replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<timestamp>').replace(/\b(?:trace|span)=[a-f0-9]+/g, '<correlation>');
 
 describe('bootstrap diagnostic observer', /** Exercise real descriptors and process termination, not mocked lifecycle callbacks. */ () => {
+    // These real children distinguish normal drain, diagnostic noninterference and forced termination; none implies the others.
     it.effect(
         'exits a failed bootstrap while native workers await main-thread garbage collection',
         /** Exercise the actual composition and Node teardown under a controlled native allocation stressor. */ () =>
             Effect.gen(
                 /** Keep the same ten-second process deadline and safe failure contract as ordinary bootstrap tests. */ function* () {
+                    // Finite native pressure exercises teardown while preserving the ordinary failed-bootstrap deadline.
                     const result = yield* probe(
                         [
                             '--v8-pool-size=4',
@@ -88,6 +90,7 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
             /** Compare observed and unobserved execution without relaxing existing server assertions. */ () =>
                 Effect.gen(
                     /** Keep the observer's side channel independent from stdout, stderr and process results. */ function* () {
+                        // Independent executions require timestamp/ID normalization, not relaxed business-output assertions.
                         const original = yield* probe(['apps/server/src/main.ts'], environment, false);
                         const observed = yield* probe(['--import', preload, 'apps/server/src/main.ts'], environment);
                         expect(original.error).toBeUndefined();
@@ -135,6 +138,7 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
         /** Diagnostic failure cannot change a child's successful business result. */ () =>
             Effect.gen(
                 /** Flood the actual subscriber with untrusted values and keep one closed phase. */ function* () {
+                    // Repeated valid phases accompany hostile payloads, exposing both reflection leaks and unbounded journals.
                     const script = `import { channel } from 'node:diagnostics_channel';
                 const lifecycle = channel('eventiva.bootstrap.lifecycle');
                 for (let i = 0; i < 10000; i++) {
@@ -172,6 +176,7 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
         /** A deliberately stuck control must retain evidence without catching or changing SIGTERM. */ () =>
             Effect.gen(
                 /** Use a synthetic keepalive, not a modified production bootstrap, to prove timeout capture. */ function* () {
+                    // A deliberate live timer separates preserved last-phase evidence from successful process completion.
                     const result = yield* probe([
                         '--import',
                         preload,

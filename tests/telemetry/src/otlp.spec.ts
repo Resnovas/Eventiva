@@ -73,6 +73,7 @@ const catalog = { messages: { 'sample.completed': 'Completed.', 'sample.root': '
 
 /** Capture serialized HTTP requests through the real FetchHttpClient without permitting network access. */
 const transport = (status = 200, response = '{}') => {
+    // Replace Fetch, not the provider, so serialization and request policy still run without external IO.
     const requests: Array<{
         readonly url: string;
         readonly body: string;
@@ -84,6 +85,7 @@ const transport = (status = 200, response = '{}') => {
             url,
             options
         ) => {
+            // Decode the actual request body before acknowledging; inspecting provider inputs would miss wire leaks.
             requests.push({
                 url: String(url),
                 body: await new Response(options?.body).text(),
@@ -142,6 +144,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                     yield* Effect.gen(
                         /** Flush/shutdown must not resend an already acknowledged span or export log records. */ function* () {
                             const provider = yield* TelemetryExportProvider;
+                            // The later request-count assertion distinguishes a span send from unsupported log or flush sends.
                             yield* provider.write(binding, record);
                             yield* provider.write(binding, { ...record, signal: 'log' });
                             yield* provider.flush(binding);
@@ -198,6 +201,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
         /** Prove nested instrumentation reaches the in-memory OTLP collector through current package subpaths. */ () =>
             Effect.gen(
                 /** Check parent correlation and success without relying on random ID values. */ function* () {
+                    // Native nested spans must survive both minimization layers; fabricated provider records would bypass them.
                     const http = transport();
                     const sink = governedTelemetrySinkLayer(binding, catalog).pipe(
                         Layer.provide(otlpTelemetryLayer(binding, Config.succeed(settings))),
@@ -235,9 +239,11 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
         /** Test each disabled gate with all other prerequisites enabled. */ () =>
             Effect.gen(
                 /** A default or denial must not create requests during writes, flush or disposal. */ function* () {
+                    // One recording transport spans independent denial cases, including scope finalization.
                     const http = transport();
                     yield* Effect.gen(
                         /** Default Config requires no secret/header/destination settings. */ function* () {
+                            // Disabled acquisition must stay usable without consulting optional destination configuration.
                             const provider = yield* TelemetryExportProvider;
                             yield* provider.write(binding, record);
                             yield* provider.flush(binding);
@@ -256,6 +262,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                         yield* Effect.gen(
                             /** Both write and flush must fail under an independently denied release gate. */ function* () {
                                 const sink = yield* TelemetrySink;
+                                // Explicit drain is not a policy bypass when ordinary delivery is denied.
                                 expect(Exit.isFailure(yield* Effect.exit(sink.write(record)))).toBe(true);
                                 expect(Exit.isFailure(yield* Effect.exit(sink.flush))).toBe(true);
                             }
@@ -308,6 +315,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                         yield* Effect.gen(
                             /** Inspect the bounded typed failure before any later barrier is allowed. */ function* () {
                                 const provider = yield* TelemetryExportProvider;
+                                // Inspect the write's own failure before flush can obscure the rejected acknowledgement.
                                 const result = yield* Effect.exit(provider.write(binding, record));
                                 expect(Exit.isFailure(result)).toBe(true);
                                 expect(JSON.stringify(result)).not.toMatch(/PRIVATE|FIXTURE_SECRET|collector.invalid/);
@@ -344,6 +352,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
         /** Exercise rejected settings and records at the actual provider boundary. */ () =>
             Effect.gen(
                 /** Verify validation never releases a partial request or exposes rejected configuration. */ function* () {
+                    // Reuse the transport across acquisition and record failures to expose even a single premature request.
                     const http = transport();
                     for (const invalid of [
                         { ...settings, endpoint: Redacted.make('http://collector.invalid/v1/traces') },
@@ -379,6 +388,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                     yield* Effect.gen(
                         /** Check tenant/generation and wire validity before admitting a send. */ function* () {
                             const provider = yield* TelemetryExportProvider;
+                            // Keep the provider acquired under valid settings; these failures must occur per operation.
                             expect(
                                 Exit.isFailure(
                                     yield* Effect.exit(provider.write({ ...binding, generation: 4 }, record))
@@ -420,6 +430,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                                     options?.signal?.addEventListener(
                                         'abort',
                                         /** Model cancellable network IO at the Fetch boundary. */ () => {
+                                            // Reject the pending IO as well as recording abort, so cancellation cannot appear complete early.
                                             aborted = true;
                                             reject(new Error('PRIVATE_ABORT'));
                                         }

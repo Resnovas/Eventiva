@@ -144,6 +144,7 @@ const sinkLayer = (
     );
 
 describe('fixture-only pseudonymous correlation', /** Exercise public issuer, request lease and optional refresh contracts. */ () => {
+    // The untouched adapter follows the same pair/lease matrix, ruling out an always-denied corruption control.
     for (const adapter of ['control', 'authority', 'provider'] as const) {
         for (const mutation of ['pair', 'lease'] as const) {
             it.effect(
@@ -151,6 +152,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                 /** Previously released adapter views cannot relabel the next write or extend an hourly lease. */ () =>
                     Effect.gen(
                         /** Mutate retained references only after successful dispatch, then cross the exact UTC boundary. */ function* () {
+                            // Keep expected scalars separate from adapter views so retained writes cannot rewrite the oracle.
                             const token: TelemetryCorrelation = {
                                 version: 1,
                                 session: 'a'.repeat(64),
@@ -193,6 +195,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                                     Effect.zipRight(
                                                         Effect.sync(
                                                             /** Snapshots assert visible delivery independently of later reference corruption. */ () => {
+                                                                // Capture before retaining: later mutations must not relabel observed earlier delivery.
                                                                 scopes.push({ ...scope });
                                                                 received.push({ ...pair });
                                                                 if (adapter === 'provider') retained.push(pair);
@@ -208,6 +211,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                                 authorize: (scope, pair) =>
                                                     Effect.sync(
                                                         /** Retain the token for later corruption and rewrite only this binding view now. */ () => {
+                                                            // Alter scope immediately but retain pair aliases for a later operation, exercising both lifetimes.
                                                             scopes.push({ ...scope });
                                                             if (adapter === 'authority') {
                                                                 retained.push(pair);
@@ -235,6 +239,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Disabling either flag revokes an existing sink, while reenabling it cannot change its request token. */ () =>
             Effect.gen(
                 /** Use a permissive authority so only the runtime flag fence can deny delivery. */ function* () {
+                    // Each gate gets a fresh sink and mutable decision; revoking one must not rely on the other being off.
                     const token: TelemetryCorrelation = {
                         version: 1,
                         session: 'a'.repeat(64),
@@ -261,6 +266,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         });
                         yield* Effect.gen(
                             /** Both delivery paths must deny during revocation and recover only in the original epoch. */ function* () {
+                                // Positive deliveries bracket revocation, distinguishing live reauthorization from a permanently closed handle.
                                 const sink = yield* TelemetrySink;
                                 yield* sink.write(record);
                                 yield* Ref.set(active, false);
@@ -309,11 +315,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                 /** Bind only an ephemeral loopback port; no external destination is contacted. */ () =>
                                     new Promise<ReturnType<typeof createServer>>(
                                         /** Resolve only once the collector can accept a real socket. */ (resolve) => {
+                                            // Await listen completion so a refused socket cannot masquerade as export denial.
                                             const collector = createServer(
                                                 /** Acknowledge only after retaining the complete synthetic request. */ (
                                                     request,
                                                     response
                                                 ) => {
+                                                    // Accumulate the complete body; chunk-local assertions could miss split private values.
                                                     const chunks: Buffer[] = [];
                                                     request.on(
                                                         'data',
@@ -324,6 +332,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                                     request.on(
                                                         'end',
                                                         /** Retain wire output, not serializer arguments. */ () => {
+                                                            // Acknowledge after capture so successful delivery necessarily has observable wire evidence.
                                                             writes.push({
                                                                 body: Buffer.concat(chunks).toString('utf8'),
                                                                 headers: JSON.stringify(request.headers),
@@ -350,6 +359,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                     /** Close idle keep-alive sockets as part of fixture ownership. */ () =>
                                         new Promise<void>(
                                             /** Await the Node server's completion callback. */ (resolve) => {
+                                                // Force-close keep-alive sockets as well as the listener so fixture ownership cannot escape.
                                                 server.close(
                                                     /** No request survives the scoped test. */ () => resolve()
                                                 );
@@ -376,6 +386,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             const sink = sinkLayer(token, transport);
                             yield* Effect.gen(
                                 /** Drive actual central instrumentation before examining bytes received on the socket. */ function* () {
+                                    // A real failed span exercises error minimization before the transport sees the correlation pair.
                                     yield* Effect.fail('RAW-ERROR-CANARY').pipe(
                                         Effect.withSpan('request.failed'),
                                         Effect.ignore
@@ -393,6 +404,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             yield* Effect.gen(
                                 /** Reject unsupported log export explicitly rather than falsely acknowledging it. */ function* () {
                                     const provider = yield* TelemetrySink;
+                                    // An unsupported signal must fail without poisoning the provider's payload-free drain.
                                     expect(Exit.isFailure(yield* Effect.exit(provider.write(record)))).toBe(true);
                                     yield* provider.flush;
                                 }
@@ -440,6 +452,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         expect(writes[0]?.body).not.toBe(writes[1]?.body);
                         yield* Effect.gen(
                             /** Expiry after transport preparation must prevent any new socket write. */ function* () {
+                                // Delay at the final transport boundary, beyond issuance and initial authorization.
                                 const provider = yield* CorrelationProvider;
                                 const token = yield* issue;
                                 const late = yield* Effect.exit(
@@ -487,6 +500,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Fixed expected values were calculated with Python hmac/hashlib, not the implementation formatter. */ () =>
             Effect.gen(
                 /** Compare fixture issuance with an independently computed wire token. */ function* () {
+                    // Fixed external HMAC vectors detect shared implementation mistakes that comparing two issued tokens would miss.
                     expect(correlationEpochMs).toBe(hour);
                     const token = yield* issue;
                     expect(token).toEqual({
@@ -506,6 +520,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Asymmetric fixture identities distinguish a session hash from a person hash and delimiter concatenation. */ () =>
             Effect.gen(
                 /** Domain changes must alter only their intended linkage dimensions. */ function* () {
+                    // Same-person/new-session controls distinguish domain separation from simply randomizing every issuance.
                     const original = yield* issue.pipe(Effect.provide(fixture));
                     const same = yield* issue.pipe(
                         Effect.provide(fixtureCorrelationLayer(binding, identity, keys, consent))
@@ -569,6 +584,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** A permissive consent fixture must never waive the hard host floor. */ () =>
             Effect.gen(
                 /** Exercise the deployment floor independently of consent policy. */ function* () {
+                    // Consent remains permissive in every case, so it cannot hide a missing environment or protection floor.
                     for (const env of [new Map<string, string>(), new Map([['NODE_ENV', 'production']])]) {
                         expect(
                             Exit.isFailure(
@@ -607,6 +623,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Negative controls use valid pseudonym syntax so rejection cannot hide behind malformed inputs. */ () =>
             Effect.gen(
                 /** Fail closed on unavailable fixture authority rather than selecting a fallback. */ function* () {
+                    // Vary authority, lifetime and key validity separately; no substitute key or cached opt-in is acceptable.
                     expect(Exit.isFailure(yield* issue.pipe(Effect.provide(CorrelationDeny), Effect.exit))).toBe(true);
                     for (const layer of [
                         fixtureCorrelationLayer(binding, identity, keys, Effect.succeed(0)),
@@ -648,6 +665,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Test substitution, replay and shortened consent through the authority's public interface. */ () =>
             Effect.gen(
                 /** Current consent changes remain visible inside an already-issued request lease. */ function* () {
+                    // Keep one authority scope alive so revocation cannot be explained by disposal or reacquisition.
                     const granted = yield* Ref.make(10 * hour);
                     const live = fixtureCorrelationLayer(binding, identity, keys, Ref.get(granted));
                     yield* Effect.gen(
@@ -716,6 +734,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Revoke or rotate during key access; an earlier grant or epoch cannot authorize completed derivation. */ () =>
             Effect.gen(
                 /** Suspend preparation at a real Effect barrier before revoking its policy. */ function* () {
+                    // Both races occur after key access starts, exposing stale admission state rather than ordinary initial denial.
                     for (const race of ['consent', 'epoch'] as const) {
                         const started = yield* Deferred.make<void>();
                         const resume = yield* Deferred.make<void>();
@@ -747,6 +766,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Generic record attributes remain stripped; only the separate pair channel can carry correlation. */ () =>
             Effect.gen(
                 /** Verify secret canaries in observable output, not private helper calls. */ function* () {
+                    // A successful delivery anchors the opt-out controls; an always-denied sink would fail this case.
                     const token = yield* issue;
                     const output = collector();
                     const use = Effect.flatMap(
@@ -774,15 +794,18 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** The transport's final check detects changes after worker admission. */ () =>
             Effect.gen(
                 /** Revoke between worker authorization and transport dispatch. */ function* () {
+                    // Share mutable consent with the live issuer so dispatch sees a change without rebuilding request authority.
                     const grant = yield* Ref.make(10 * hour);
                     const live = fixtureCorrelationLayer(binding, identity, keys, Ref.get(grant));
                     yield* Effect.gen(
                         /** Hold a valid issuer while invalidating its current consent. */ function* () {
                             const token = yield* issue;
+                            // The collector's pre-dispatch hook, not a pre-issuance denial, invalidates this otherwise valid token.
                             const output = collector(Ref.set(grant, 0));
                             yield* Effect.gen(
                                 /** A barrier must not replay the denied write under a stale grant. */ function* () {
                                     const sink = yield* TelemetrySink;
+                                    // Test drain on the same failed handle, ruling out deferred delivery under the earlier grant.
                                     expect(Exit.isFailure(yield* sink.write(record).pipe(Effect.exit))).toBe(true);
                                     expect(Exit.isFailure(yield* sink.flush.pipe(Effect.exit))).toBe(true);
                                 }
@@ -799,6 +822,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Advancing Clock, not request reads, triggers issuance; each boundary resets linkage only. */ () =>
             Effect.gen(
                 /** Advance background issuance alongside synthetic work, not an ActionHost integration or latency probe. */ function* () {
+                    // Advance Clock before reading; reads alone must not be what drives scheduled epoch renewal.
                     const session = yield* correlationSession;
                     yield* TestClock.adjust(0);
                     const first = yield* session.current(true);
@@ -823,6 +847,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Synthetic work executes once; its old telemetry fails closed while the next request uses the new epoch. */ () =>
             Effect.gen(
                 /** Suspend synthetic business work over the exact UTC boundary; this does not invoke ActionHost. */ function* () {
+                    // Capture the old pair before crossing expiry, then compare old-work omission with fresh-request delivery.
                     const session = yield* correlationSession;
                     yield* TestClock.adjust(hour - 1);
                     const old = Option.getOrThrow(yield* session.current(true));
@@ -833,6 +858,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     const work = Effect.gen(
                         /** Complete one business action even when its optional old telemetry expires. */ function* () {
                             const sink = yield* TelemetrySink;
+                            // Hold after handle capture; business completion must not inherit optional telemetry's expiry failure.
                             yield* Deferred.succeed(prepared, undefined);
                             yield* Deferred.await(continueRequest);
                             yield* Ref.update(
@@ -866,6 +892,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Renewal is bounded to one second; a stale token is never used during timeout/recovery. */ () =>
             Effect.gen(
                 /** Cache expiry is independent of a stalled issuer and successful user work. */ function* () {
+                    // Stall renewal only after an initial token exists, exposing stale-cache reuse as well as recovery.
                     const down = yield* Ref.make(false);
                     const realIssuer = yield* CorrelationIssuer;
                     const session = yield* correlationSession.pipe(
@@ -900,6 +927,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Closing ownership revokes even retained references; token syntax is never authority. */ () =>
             Effect.gen(
                 /** Scope disposal revokes retained readers without remote cleanup work. */ function* () {
+                    // Clock stays fixed so retained-handle refusals prove ownership closure, not time expiry.
                     const token = yield* issue.pipe(Effect.provide(fixture));
                     expect(
                         Exit.isFailure(
@@ -922,6 +950,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Invalid runtime inputs are rejected without leaking their identity-bearing decoder details. */ () =>
             Effect.gen(
                 /** Probe public boundaries with structurally typed but semantically invalid values. */ function* () {
+                    // Correctly sized key bytes are insufficient when their scope or epoch metadata belongs elsewhere.
                     for (const layer of [
                         fixtureCorrelationLayer({ ...binding, generation: -1 }, identity, keys, consent),
                         fixtureCorrelationLayer(binding, { ...identity, subject: Redacted.make('') }, keys, consent),
@@ -947,6 +976,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         expect(Exit.isFailure(yield* issue.pipe(Effect.provide(layer), Effect.exit))).toBe(true);
                     yield* Effect.gen(
                         /** Keep valid policy ownership while rejecting malformed presentation. */ function* () {
+                            // Acquire a real token first so later malformed inputs are not obscured by missing issuer authority.
                             const token = yield* issue;
                             const authority = yield* CorrelationAuthority;
                             expect(
@@ -1003,6 +1033,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Failing issuer requests must not escape into the action path or keep an old token alive. */ () =>
             Effect.gen(
                 /** Background failures are contained and do not require a prompt or client retry. */ function* () {
+                    // Observe both initial denial and a scheduled retry; neither may surface a failed request or stale pair.
                     const session = yield* correlationSession.pipe(Effect.provide(CorrelationDeny));
                     yield* TestClock.adjust(0);
                     expect(Option.isNone(yield* session.current(true))).toBe(true);
@@ -1017,6 +1048,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         /** Distinct request-scoped pipelines never lend one caller's pair to another's queued record. */ () =>
             Effect.gen(
                 /** Use real central logging/tracing rather than invoking transport helpers directly. */ function* () {
+                    // Distinct subjects and sessions make any cross-request pair substitution observable after interleaving.
                     const outputs = [collector(), collector()];
                     const left = yield* issue.pipe(Effect.provide(fixture));
                     const second = fixtureCorrelationLayer(
@@ -1041,8 +1073,10 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     ) =>
                         Effect.gen(
                             /** Log an error and close a child span before draining this request's worker. */ function* () {
+                                // Closing the child before flush includes its span summary alongside the queued error log.
                                 yield* Effect.gen(
                                     /** Interleave both request fibers before diagnostic collection. */ function* () {
+                                        // Each request waits for the other to enter, ruling out a merely sequential isolation pass.
                                         yield* Deferred.succeed(mine, undefined);
                                         yield* Deferred.await(theirs);
                                         yield* Effect.logError('request.failed').pipe(

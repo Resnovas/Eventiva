@@ -115,6 +115,7 @@ export const correlationSession = Effect.gen(
                         if (closed || optIn !== true) return Option.none<TelemetryCorrelation>();
                         const token = yield* Ref.get(cache);
                         if (Option.isNone(token)) return token;
+                        // A stalled refresh cannot extend cached linkage; validate the UTC lease again at each request read.
                         return yield* currentToken(token.value).pipe(Effect.option);
                     }
                 ),

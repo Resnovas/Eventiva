@@ -214,6 +214,7 @@ for (const [field, value] of [
 ] as const) {
     it.effect(`denies a mismatched ${field} without leaking a reference or staging`, /** Substitute one scope dimension without changing the grant. */ () =>
         Effect.gen(/** Verify exact scope binding rejects the substituted reference before persistence. */ function* () {
+            // Keep the grant valid and alter only the command, distinguishing scope substitution from expired authority.
             const f = yield* fixture;
             const result = yield* f
                 .run(stageExchange({ ...command, scope: { ...command.scope, [field]: value } }))
@@ -325,6 +326,7 @@ it.effect('checks exact expiry, live identity and live metadata policy even on r
 
 it.effect('denies a grant that expires while the independent metadata gate is running', /** Advance trusted time inside the metadata authorization boundary. */ () =>
     Effect.gen(/** Verify expiry is checked again after an otherwise successful metadata gate. */ function* () {
+        // The adapter returns successfully after expiry; denial must come from the post-adapter lifetime check.
         const f = yield* fixture;
         const result = yield* f
             .run(
@@ -429,6 +431,7 @@ for (const action of ['read', 'stage'] as const) {
                         authorize: (identity, reference, action) =>
                             Effect.sync(
                                 /** Rewrite only the values supplied to this adapter. */ () => {
+                                    // Mutating both principal and nested scope exposes shallow copies at the authority boundary.
                                     Object.assign(identity, { subject: SubjectId.make(id(92)) });
                                     Object.assign(reference.scope, { purpose: 'authority-rewrite' });
                                     if (action === 'read') Object.assign(reference, { sourceVersion: 2 });
@@ -474,6 +477,7 @@ for (const direction of ['insert', 'enqueue'] as const) {
         /** Let one persistence port rewrite its argument after saving its row. */ () =>
             Effect.gen(
                 /** Verify nested and principal rewrites cannot cross the intent/outbox boundary. */ function* () {
+                    // Saving before mutation distinguishes detached rows from accidental aliasing across writes and replay.
                     const f = yield* fixture;
                     f.state.mutateWrite = direction;
                     const saved = yield* f.run(stageExchange(command));
@@ -568,6 +572,7 @@ it.effect('rejects private fields, weakened classification and malformed or cros
 
 it.effect('defaults off, denies without trusted authority/store, and never releases private payloads', /** Substitute fail-closed flag, policy and storage layers independently. */ () =>
     Effect.gen(/** Verify missing integration authority remains unavailable and stages no intent. */ function* () {
+        // Substitute one prerequisite at a time so no default denial conceals another missing integration boundary.
         const f = yield* fixture;
         expect(
             (yield* f.run(stageExchange(command).pipe(Effect.provide(FlagsSafeDefaults))).pipe(Effect.flip)).reason
