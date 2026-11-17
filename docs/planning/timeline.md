@@ -2,6 +2,30 @@
 
 Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Exact admitted action input checkpoint - 2026-11-17
+
+[EVE-39](https://linear.app/resnovas/issue/EVE-39) remains Backlog, independently
+read with its terminal comment page. The [batch 3 slice 2 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-current-main-readiness-f4c31b8c-2405-4743-ad32-bedc11c633a5)
+revision 5 applies the already approved A1/A2 binding, not a new API or policy.
+Detailed lifetime/codec behavior stays in [the action guide](../actions.md).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Original mutable preparation | Reproduced on unchanged main 50668875 | Four corrupting trusted-authorizer/policy cases returned nested amount 999 and substituted batch items instead of approved 20; both unchanged controls passed. This is a volatile in-process fixture, not an external exploit or payment. |
+| Preparation-only isolation | Focused verification passed | Private canonical encoded bytes, lazily decoded independently for every resource check, policy inspection and handler. All 114 execution/host/type tests pass, including nested arrays/objects, NumberFromString, retained-reference transaction waits and replay. |
+| Independent verification and delivery | Full local gates passed; signed delivery evidence tracked separately | Above immutable main 7877c40d, root `check`, full `verify` (all 86 aggregate targets, 34 cached; all three smoke targets plus 12 dependencies, nine cached) and strict reviewed-source planning pass. Separate uncached storage compatibility passes 201 tests plus both-dialect migration proofs. Rebase/regenerate/reverify any newer main before pushing; final base, signed revisions and results are recorded on the [owning issue checkpoint](https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc). Pending CI is not passed evidence. |
+| Broader EVE-39 acceptance | Upcoming / open | No durable SQL/crash or real financial proof is supplied by this regression. Host, execution, invocation, testing and contracts are unchanged. No dependency, secret or production change is authorized. |
+
+```mermaid
+flowchart LR
+    A["Approved A1/A2 exact binding"] --> R["EVE-39: public red regression"]
+    R --> P["Preparation isolates typed observer inputs"]
+    P --> V["Host, storage, type and full compatibility gates"]
+    V --> B["Broader EVE-39 acceptance remains open"]
+    click R "https://linear.app/resnovas/issue/EVE-39"
+    click B "https://linear.app/resnovas/issue/EVE-39"
+```
+
 ## Independent migration recovery checkpoint - 2026-11-17
 
 Jonathan's later direction, relayed in the [slice 1 assignment](https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb), ends the coordinator delivery gate. Each lane respects actual source reservations, rebases onto current main, regenerates affected shared outputs, verifies and pushes its own signed work. Older coordinated-window statements below are historical, not current ownership constraints. This does not authorize production or change G01-G15 acceptance.
@@ -534,6 +558,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 
 ### Curated evidence separate from capture
 
+- EVE-39, 2026-11-17, later-status: Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only. Four public-host corrupting trusted-adapter cases failed on unchanged main by returning nested amount 999 instead of approved 20; two controls passed. Private canonical encoded bytes and fresh typed decoding per observer now pass the focused 114 execution/host/type tests, including nested arrays/objects, NumberFromString, retained references during transaction waits and replay. Full checks, storage compatibility and signed delivery evidence are recorded separately on EVE-39. This explicitly volatile fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged. [evidence](https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc), [evidence](https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325).
 - EVE-261, 2026-11-17, blocker: Bootstrap timeout cause remains unproven. Historical CI output does not distinguish late module/startup work from post-log shutdown delay. Bounded fd3 phase capture is implemented for the next actual occurrence with unchanged 10000 ms child limits, signals, results and existing assertions; executable equivalence, invalid-journal/redaction and synthetic timeout controls exercise diagnostics only. No force-exit, retry, deadline increase, telemetry repair or whole-issue acceptance is established. Source checkpoint predates delivery; exact-head CI is separate evidence, not a refreshed issue snapshot. [evidence](https://linear.app/resnovas/issue/EVE-261#comment-c0e0d66f-9f2c-4009-9164-3695a7413038), [evidence](https://github.com/Resnovas/Eventiva/actions/runs/44096066749/job/134083384961), [evidence](https://ampcode.com/threads/T-1cb8af52-2e52-4924-bb42-cc7c523a6ddc).
 - EVE-262, 2026-11-17, later-status: Slice 2 independently read the live description and terminal comment page: EVE-262 is In Progress (state change recorded 08:14:06.002Z), not the historical Backlog capture. Current bounded work proves hook release reauthorization after claim/revocation/process loss and operator redrive using fixture-persisted policy, with an allowed durable-dedup control. Execution and delivered-head evidence are recorded separately on EVE-262/EVE-45 and in the maintained timeline; this annotation grants no production release or whole-issue acceptance. The complete historical source capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-262), [evidence](https://linear.app/resnovas/issue/EVE-262#comment-4cad4584-11e3-45e2-80cc-afc7df728cec), [evidence](https://ampcode.com/threads/T-01a1e9e1-a727-7765-932d-bd55c3f03d51).
 - EVE-258, 2026-11-17, later-status: Slice 1 adds a separate self-asserting declaration migration process-loss target to storage test, preserving the held parent spec and its migrationCrashProof:false default report. SQLite and disposable PostgreSQL pass precommit SIGKILL rollback, postcommit acknowledgement loss, empty repeat history, valid changed-prefix refusal and stale-writer rejection with a current-writer control. This is bounded local G04 evidence, not power loss, distributed fencing, native execution, production least privilege or whole-issue acceptance. Source capture remains historical; later execution and delivery evidence is cited separately. [evidence](https://linear.app/resnovas/issue/EVE-258/add-the-database-neutral-resources-api-and-privileged-tenant-migration#comment-79bf922f), [evidence](https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb).

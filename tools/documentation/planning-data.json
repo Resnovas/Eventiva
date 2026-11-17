@@ -10046,6 +10046,18 @@
     ],
     "annotations": [
         {
+            "issue": "EVE-39",
+            "kind": "later-status",
+            "date": "2026-11-17",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Batch 3 slice 2 preserves the already approved A1/A2 exact-input binding in action preparation only. Four public-host corrupting trusted-adapter cases failed on unchanged main by returning nested amount 999 instead of approved 20; two controls passed. Private canonical encoded bytes and fresh typed decoding per observer now pass the focused 114 execution/host/type tests, including nested arrays/objects, NumberFromString, retained references during transaction waits and replay. Full checks, storage compatibility and signed delivery evidence are recorded separately on EVE-39. This explicitly volatile fixture is not an external exploit, payment, durable SQL/crash proof, production authorization or whole-issue completion. The historical issue capture remains unchanged.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-39#comment-7f7ed992-bf10-4c34-9161-7afb155f51fc",
+                "https://ampcode.com/threads/T-01a1ea44-9e01-725c-9b01-9126c260a325"
+            ]
+        },
+        {
             "issue": "EVE-261",
             "kind": "blocker",
             "date": "2026-11-17",

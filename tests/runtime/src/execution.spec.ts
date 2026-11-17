@@ -15,13 +15,19 @@
  */
 
 import { type ActionSpec, define, type Risk, type SideEffect } from '@eventiva/contracts/action';
-import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
+import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import type { JsonValue } from '@eventiva/contracts/storage';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
-import { type Approval, canonicalJson, type InvocationResult, type InvokeOptions } from '@eventiva/runtime/invocation';
+import {
+    type Approval,
+    canonicalJson,
+    ExecutionPolicy,
+    type InvocationResult,
+    type InvokeOptions,
+} from '@eventiva/runtime/invocation';
 import { makeTestOnlyHarness, testOnlyDigest } from '@eventiva/runtime/testing';
 import { describe, expect, it } from '@effect/vitest';
 import {
@@ -379,6 +385,202 @@ describe('A1: transaction integrity through ActionHost', /** Register host trans
                 }
             )
     );
+});
+
+describe('A1/A2: admitted input isolation', /** Register corrupting trusted-adapter controls, not external exploit scenarios. */ () => {
+    for (const adapter of ['control', 'authorizer', 'policy'] as const) {
+        for (const late of [false, true]) {
+            it.scoped(
+                `binds nested transformed input through ${adapter} ${late ? 'retained-reference wait' : 'immediate mutation'} and replay`,
+                /** Keep approval, hash, handler and volatile domain state tied to the original asymmetric target. */ () =>
+                    Effect.gen(
+                        /** Exercise the public host with independently fixed approval bytes and a deterministic transaction barrier. */ function* () {
+                            // The wire amount is a string; each observer must still receive the schema's decoded number.
+                            const Target = Schema.Struct({
+                                targets: Schema.Array(
+                                    Schema.Struct({
+                                        amount: Schema.NumberFromString,
+                                        items: Schema.Array(Schema.Struct({ id: Schema.String })),
+                                    })
+                                ),
+                            });
+                            const wire = {
+                                targets: [{ amount: '20', items: [{ id: 'ticket-a' }, { id: 'ticket-b' }] }],
+                            };
+                            const admitted = {
+                                targets: [{ amount: 20, items: [{ id: 'ticket-a' }, { id: 'ticket-b' }] }],
+                            };
+                            const expectedHash = testOnlyDigest(
+                                '{"targets":[{"amount":"20","items":[{"id":"ticket-a"},{"id":"ticket-b"}]}]}'
+                            );
+                            const action = define('fixture.write', {
+                                version: 2,
+                                description: 'Test exact financial target binding without a payment provider.',
+                                input: Target,
+                                output: Target,
+                                permission: 'fixture.write',
+                                sideEffect: 'write',
+                                offline: 'online-only',
+                                risk: 'financial',
+                            });
+                            const h = yield* makeTestOnlyHarness(agent);
+                            yield* Ref.update(
+                                h.policy,
+                                /** Keep the deliberately corrupting fixture's claimed bound fixed at twenty. */ (
+                                    p
+                                ) => ({ ...p, bounds: { amount: 20 } })
+                            );
+                            yield* approve(h, action.name, wire, { inputHash: expectedHash, limits: { amount: 20 } });
+                            const retained = yield* Ref.make<Option.Option<typeof Target.Type>>(Option.none());
+                            const observations = yield* Ref.make<ReadonlyArray<typeof Target.Type>>([]);
+                            /** Corrupt both nested objects and array membership without a compile-time mutable cast. */
+                            const corrupt = (value: typeof Target.Type) => {
+                                // Deliberately model a broken trusted adapter, not a real authorization implementation.
+                                for (const target of value.targets) {
+                                    Object.defineProperty(target, 'amount', { value: 999, configurable: true });
+                                    for (const item of target.items)
+                                        Object.defineProperty(item, 'id', { value: 'substituted', configurable: true });
+                                    Object.defineProperty(target.items, '2', {
+                                        value: { id: 'extra' },
+                                        configurable: true,
+                                    });
+                                }
+                            };
+                            /** Retain only this action's typed decoded target and optionally corrupt it before returning. */
+                            const observe = <Value>(value: Value, selected: boolean) =>
+                                Effect.gen(
+                                    /** Record an independent value copy so later retained-reference writes cannot rewrite evidence. */ function* () {
+                                        if (Schema.is(Target)(value)) {
+                                            yield* Ref.update(
+                                                observations,
+                                                /** Preserve each observer's entry state as decoded data. */ (seen) => [
+                                                    ...seen,
+                                                    Schema.decodeSync(Schema.parseJson(Target))(
+                                                        Schema.encodeSync(Schema.parseJson(Target))(value)
+                                                    ),
+                                                ]
+                                            );
+                                            if (selected) {
+                                                yield* Ref.set(retained, Option.some(value));
+                                                if (!late) corrupt(value);
+                                            }
+                                        }
+                                    }
+                                );
+                            const services = yield* Layer.build(h.TestOnly);
+                            const authorizer = Context.get(services, Authorizer);
+                            const policy = Context.get(services, ExecutionPolicy);
+                            const context = yield* Layer.build(
+                                ActionHostLive.pipe(
+                                    Layer.provide(
+                                        Layer.succeed(Authorizer, {
+                                            ...authorizer,
+                                            /** Delegate actual permission after exposing only this callback's input to corruption. */
+                                            check: (caller, spec, value) =>
+                                                observe(value, adapter === 'authorizer').pipe(
+                                                    Effect.zipRight(authorizer.check(caller, spec, value))
+                                                ),
+                                        })
+                                    ),
+                                    Layer.provide(
+                                        Layer.succeed(ExecutionPolicy, {
+                                            /** Return existing live fixture policy after the deliberate target-substitution attempt. */
+                                            inspect: (caller, spec, value, intent) =>
+                                                observe(value, adapter === 'policy').pipe(
+                                                    Effect.zipRight(policy.inspect(caller, spec, value, intent))
+                                                ),
+                                        })
+                                    ),
+                                    Layer.provide(h.TestOnly),
+                                    Layer.provide(FlagsSafeDefaults)
+                                )
+                            );
+                            const host = Context.get(context, ActionHost);
+                            const calls = yield* Ref.make(0);
+                            yield* host.register({
+                                manifest: {
+                                    format: 1,
+                                    id: 'binding',
+                                    version: '1.0.0',
+                                    description: 'Volatile binding fixture.',
+                                    actions: [action.name],
+                                    flags: [],
+                                },
+                                actions: [
+                                    implement(
+                                        action,
+                                        /** Stage and return exactly the decoded target that the handler actually receives. */ (
+                                            value
+                                        ) =>
+                                            Effect.gen(
+                                                /** Count real work separately from receipts and replay release. */ function* () {
+                                                    yield* Ref.update(
+                                                        calls,
+                                                        /** Count only handler entry, never replay. */ (count) =>
+                                                            count + 1
+                                                    );
+                                                    yield* h.ledger.stage('domain', value);
+                                                    return value;
+                                                }
+                                            )
+                                    ),
+                                ],
+                            });
+                            /** Execute with fixed approval and a case-local independent idempotency key. */
+                            const execute = (value = wire) =>
+                                host
+                                    .execute(action.name, value, {
+                                        idempotencyKey: `${adapter}-${late}`,
+                                        approvalId: 'approval',
+                                    })
+                                    .pipe(Effect.provideService(Caller, agent));
+                            for (const replay of [false, true]) {
+                                const entered = yield* Deferred.make<void>();
+                                const release = yield* Deferred.make<void>();
+                                if (late)
+                                    yield* Ref.set(
+                                        h.beforeIntegrity,
+                                        Deferred.succeed(entered, undefined).pipe(
+                                            Effect.zipRight(Deferred.await(release))
+                                        )
+                                    );
+                                const pending = yield* execute().pipe(Effect.fork);
+                                if (late) {
+                                    yield* Deferred.await(entered);
+                                    const reference = yield* Ref.get(retained);
+                                    if (Option.isSome(reference)) corrupt(reference.value);
+                                    // Also mutate caller-owned arrays while preparation is suspended in transaction admission.
+                                    wire.targets[0]?.items.push({ id: 'caller-extra' });
+                                    yield* Deferred.succeed(release, undefined);
+                                }
+                                const result = yield* Fiber.join(pending);
+                                expect(result.result).toEqual(
+                                    Exit.succeed({
+                                        targets: [{ amount: '20', items: [{ id: 'ticket-a' }, { id: 'ticket-b' }] }],
+                                    })
+                                );
+                                expect(result.receipt.inputHash).toBe(expectedHash);
+                                expect(result.replayed).toBe(replay);
+                                expect((yield* Ref.get(h.state)).domain).toEqual([admitted]);
+                                expect(yield* Ref.get(calls)).toBe(1);
+                                wire.targets[0]?.items.splice(2);
+                            }
+                            const seen = yield* Ref.get(observations);
+                            expect(seen.length).toBeGreaterThan(0);
+                            for (const value of seen) expect(value).toEqual(admitted);
+                            yield* Ref.set(h.beforeIntegrity, Effect.void);
+                            denied(
+                                yield* execute({
+                                    targets: [{ amount: '999', items: [{ id: 'ticket-a' }, { id: 'ticket-b' }] }],
+                                }),
+                                'approval-binding'
+                            );
+                            expect(yield* Ref.get(calls)).toBe(1);
+                        }
+                    )
+            );
+        }
+    }
 });
 
 describe('A2: live authority and exact human approval', /** Register approval-binding and refreshed-authority cases, including replay. */ () => {
