@@ -719,6 +719,125 @@ for (const dialect of ['postgres', 'sqlite'] as const)
         );
 
         it.effect(
+            'rolls back a failed multi-version migration and retries each pending version exactly once',
+            () =>
+                withDatabase(
+                    dialect,
+                    auth(
+                        Effect.gen(function* () {
+                            const resource = yield* base();
+                            const extended = yield* contributeFields(resource, extra);
+                            const latest = yield* contributeFields(extended, {
+                                owner: 'app.support',
+                                moduleVersion: '1.0.0',
+                                fields: { note: { type: 'text', optional: true } },
+                            });
+                            yield* migrateResources(dialect, tenant, [resource], policy);
+                            const oldApi = yield* bind(yield* resourceProvider(dialect, tenant, identity, [resource]));
+                            const original = yield* oldApi.create(resource, id(1), data);
+                            const originalHistory = yield* oldApi.history(resource, id(1));
+                            expect(originalHistory).toEqual([original]);
+                            const sql = yield* SqlClient.SqlClient;
+                            const schemaRows = sql<{
+                                resource: string;
+                                version: number;
+                                definition: string;
+                                checksum: string;
+                            }>`SELECT resource, version, definition, checksum FROM resource_schema ORDER BY resource, version`;
+                            const before = yield* schemaRows;
+                            expect(before).toHaveLength(1);
+
+                            // Fail only when v3 observes v2 already written in this migration attempt.
+                            // The database is disposable; no production failpoint or immutability bypass is needed.
+                            if (dialect === 'postgres') {
+                                yield* sql.unsafe(
+                                    `CREATE FUNCTION fixture_reject_resource_v3() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.resource = 'crm.contact' AND NEW.version = 3 AND EXISTS (SELECT 1 FROM resource_schema WHERE resource = NEW.resource AND version = 2) THEN RAISE EXCEPTION 'fixture rejects v3 after v2'; END IF; RETURN NEW; END $$`
+                                );
+                                yield* sql.unsafe(
+                                    `CREATE TRIGGER fixture_reject_resource_v3 BEFORE INSERT ON resource_schema FOR EACH ROW EXECUTE FUNCTION fixture_reject_resource_v3()`
+                                );
+                            } else
+                                yield* sql.unsafe(
+                                    `CREATE TRIGGER fixture_reject_resource_v3 BEFORE INSERT ON resource_schema WHEN NEW.resource = 'crm.contact' AND NEW.version = 3 AND EXISTS (SELECT 1 FROM resource_schema WHERE resource = NEW.resource AND version = 2) BEGIN SELECT RAISE(ABORT, 'fixture rejects v3 after v2'); END`
+                                );
+
+                            const failed = yield* Effect.either(
+                                migrateResources(dialect, tenant, [resource, extended, latest], policy)
+                            );
+                            expect(failed).toMatchObject({
+                                _tag: 'Left',
+                                left: { _tag: 'ResourceFailure', reason: 'storage' },
+                            });
+                            if (Either.isLeft(failed)) expect(failed.left).toBeInstanceOf(ResourceFailure);
+                            expect(yield* schemaRows).toEqual(before);
+                            expect(yield* oldApi.get(resource, id(1))).toEqual(original);
+                            expect(yield* oldApi.history(resource, id(1))).toEqual(originalHistory);
+                            const usable = yield* oldApi.update(resource, id(1), 1, { name: 'usable after rollback' });
+                            const retainedHistory = [original, usable];
+                            expect(yield* oldApi.history(resource, id(1))).toEqual(retainedHistory);
+
+                            if (dialect === 'postgres') {
+                                yield* sql.unsafe(`DROP TRIGGER fixture_reject_resource_v3 ON resource_schema`);
+                                yield* sql.unsafe(`DROP FUNCTION fixture_reject_resource_v3()`);
+                            } else yield* sql.unsafe(`DROP TRIGGER fixture_reject_resource_v3`);
+
+                            const expectedChecksums = [resource, extended, latest].map((definition) => ({
+                                resource: definition.id,
+                                version: definition.version,
+                                checksum: createHash('sha256').update(canonicalDefinition(definition)).digest('hex'),
+                            }));
+                            const retried = yield* migrateResources(
+                                dialect,
+                                tenant,
+                                [resource, extended, latest],
+                                policy
+                            );
+                            expect(retried).toMatchObject({
+                                status: 'applied',
+                                migrations: expectedChecksums.slice(1).map(({ version, checksum }) => ({
+                                    from: version - 1,
+                                    to: version,
+                                    checksum,
+                                })),
+                            });
+                            const after = yield* schemaRows;
+                            expect(after.slice(0, 1)).toEqual(before);
+                            expect(
+                                after.map(({ resource, version, checksum }) => ({ resource, version, checksum }))
+                            ).toEqual(expectedChecksums);
+                            expect(
+                                yield* migrateResources(dialect, tenant, [resource, extended, latest], policy)
+                            ).toEqual({
+                                status: 'applied',
+                                migrations: [],
+                            });
+                            expect(yield* schemaRows).toEqual(after);
+                            const currentApi = yield* bind(
+                                yield* resourceProvider(dialect, tenant, identity, [latest])
+                            );
+                            expect(yield* currentApi.get(latest, id(1))).toEqual(usable);
+                            expect(yield* currentApi.history(latest, id(1))).toEqual(retainedHistory);
+                            expect(
+                                yield* Effect.either(oldApi.update(resource, id(1), 2, { name: 'stale' }))
+                            ).toMatchObject({ left: { reason: 'schema-mismatch' } });
+                            const updated = yield* currentApi.update(latest, id(1), 2, {
+                                campaign: 'retained',
+                                note: 'new field',
+                            });
+                            expect(updated).toEqual({
+                                id: id(1),
+                                revision: 3,
+                                schemaVersion: 3,
+                                value: { ...usable.value, campaign: 'retained', note: 'new field' },
+                            });
+                            expect(yield* currentApi.history(latest, id(1))).toEqual([...retainedHistory, updated]);
+                        })
+                    )
+                ),
+            20000
+        );
+
+        it.effect(
             'real resource spans preserve correlation, redaction, failures and transaction atomicity',
             () =>
                 withDatabase(
