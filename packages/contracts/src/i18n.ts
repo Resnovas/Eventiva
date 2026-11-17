@@ -66,3 +66,49 @@ export const TerminologyPack = Schema.Struct({
     }),
 });
 export type TerminologyPack = typeof TerminologyPack.Type;
+
+const ProfileVersion = Schema.Int.pipe(Schema.between(1, Number.MAX_SAFE_INTEGER));
+
+/** A calendar date, not an activation timestamp or proof that a source is current. */
+const EffectiveDate = Schema.String.pipe(
+    Schema.pattern(/^\d{4}-\d{2}-\d{2}$/),
+    Schema.filter((value) => {
+        const year = Number(value.slice(0, 4));
+        const month = Number(value.slice(5, 7));
+        const day = Number(value.slice(8, 10));
+        const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+        const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        return year >= 1 && day >= 1 && day <= (days[month - 1] ?? 0);
+    })
+);
+
+/**
+ * Descriptive provenance for a governed profile. Decoding validates metadata,
+ * not authority, licensing, mapping quality, permission to select or activation.
+ * Only tenant administrators select governed profiles; locale preference is separate.
+ */
+export const GovernedTerminologyPack = Schema.Struct({
+    ...TerminologyPack.fields,
+    version: ProfileVersion,
+    authority: Schema.NonEmptyTrimmedString,
+    source: Schema.NonEmptyTrimmedString,
+    sourceVersion: Schema.NonEmptyTrimmedString,
+    jurisdiction: Schema.NonEmptyTrimmedString,
+    effectiveDate: EffectiveDate,
+    licenceOrReuseBasis: Schema.NonEmptyTrimmedString,
+    intendedContext: Schema.NonEmptyTrimmedString,
+    // Descriptive assessment, not an invented official scale or verification claim.
+    mappingConfidence: Schema.NonEmptyTrimmedString,
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+export type GovernedTerminologyPack = typeof GovernedTerminologyPack.Type;
+
+/**
+ * Exact, readonly profile identity for historical records. Retain this version
+ * when tenant selection changes; never reinterpret it as a moving "latest" alias.
+ * Storage must preserve the referenced revision; this schema does not enforce persistence.
+ */
+export const TerminologyProfileReference = Schema.Struct({
+    id: Schema.NonEmptyTrimmedString,
+    version: ProfileVersion,
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+export type TerminologyProfileReference = typeof TerminologyProfileReference.Type;

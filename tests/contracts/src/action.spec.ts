@@ -27,7 +27,14 @@ import {
 import { SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { Receipt } from '@eventiva/contracts/receipt';
 import { isWeaker, SecurityProfile } from '@eventiva/contracts/security';
-import { canonicalLocale, LocaleTag, MessageKey, TerminologyPack } from '@eventiva/contracts/i18n';
+import {
+    canonicalLocale,
+    GovernedTerminologyPack,
+    LocaleTag,
+    MessageKey,
+    TerminologyPack,
+    TerminologyProfileReference,
+} from '@eventiva/contracts/i18n';
 import { Attributes, actionSpan } from '@eventiva/contracts/telemetry';
 import { describe, expect, it } from '@effect/vitest';
 import { Option, Schema } from 'effect';
@@ -108,6 +115,121 @@ describe('message keys and terminology packs', () => {
         ).toBe('Right');
         expect(decode({ id: 'jesip', version: 0, locale: 'en-GB', messages: {} })._tag).toBe('Left');
         expect(decode({ id: 'jesip', version: 1, locale: 'en-GB', messages: { Bad: 'x' } })._tag).toBe('Left');
+    });
+});
+
+describe('governed terminology metadata', () => {
+    const pack = {
+        id: 'eventiva-training',
+        version: 1,
+        locale: 'en-GB',
+        messages: { 'training.incident': 'Practice incident' },
+        authority: 'Eventiva synthetic training team',
+        source: 'Eventiva fictional training vocabulary',
+        sourceVersion: 'Training edition A',
+        jurisdiction: 'Fictional training jurisdiction only',
+        effectiveDate: '2026-11-17',
+        licenceOrReuseBasis: 'Synthetic example text authored for Eventiva documentation',
+        intendedContext: 'Training exercises, not operational guidance',
+        mappingConfidence: 'Unassessed synthetic mapping; no external authority review',
+    };
+    const decode = Schema.decodeUnknownEither(GovernedTerminologyPack);
+
+    it('roundtrips governed overlays and exact profile/version references without changing the basic overlay', () => {
+        const decoded = Schema.decodeUnknownSync(GovernedTerminologyPack)(pack);
+        expect(Schema.encodeSync(GovernedTerminologyPack)(decoded)).toEqual(pack);
+        const reference = { id: decoded.id, version: decoded.version };
+        const historic = Schema.decodeUnknownSync(TerminologyProfileReference)(reference);
+        expect(Schema.encodeSync(TerminologyProfileReference)(historic)).toEqual(reference);
+        const revised = Schema.decodeUnknownSync(GovernedTerminologyPack)({ ...pack, version: 2 });
+        expect(revised.version).toBe(2);
+        expect(historic).toEqual({ id: pack.id, version: 1 });
+        expect(
+            Schema.decodeUnknownEither(TerminologyPack)({
+                id: pack.id,
+                version: pack.version,
+                locale: pack.locale,
+                messages: pack.messages,
+            })._tag
+        ).toBe('Right');
+    });
+
+    it('requires every provenance field to be nonblank and already trimmed', () => {
+        for (const field of [
+            'id',
+            'authority',
+            'source',
+            'sourceVersion',
+            'jurisdiction',
+            'effectiveDate',
+            'licenceOrReuseBasis',
+            'intendedContext',
+            'mappingConfidence',
+        ] as const) {
+            const { [field]: omitted, ...missing } = pack;
+            expect(omitted).toBeDefined();
+            expect(decode(missing)._tag, field).toBe('Left');
+            for (const value of ['', '   ', '\t\n', ` ${pack[field]} `, `${pack[field]}\n`, undefined, null, 42]) {
+                expect(decode({ ...pack, [field]: value })._tag, field).toBe('Left');
+            }
+        }
+        expect(decode({ ...pack, mappingConfidence: 0.9 })._tag).toBe('Left');
+    });
+
+    it('rejects unknown fields instead of silently stripping policy or selection claims', () => {
+        for (const extra of [{ verified: true }, { selectedBy: 'individual' }, { provenance: {} }]) {
+            expect(decode({ ...pack, ...extra })._tag).toBe('Left');
+        }
+        const reference = Schema.decodeUnknownEither(TerminologyProfileReference);
+        expect(reference({ id: pack.id, version: 1, locale: 'en-GB' })._tag).toBe('Left');
+        expect(reference({ id: pack.id, version: 1, latest: true })._tag).toBe('Left');
+        expect(reference({ id: pack.id })._tag).toBe('Left');
+        expect(reference({ id: ' ', version: 1 })._tag).toBe('Left');
+    });
+
+    it('requires positive finite safe integer versions for packs and references', () => {
+        for (const version of [0, -1, 1.5, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1, '1', 'latest']) {
+            expect(decode({ ...pack, version })._tag).toBe('Left');
+            expect(Schema.decodeUnknownEither(TerminologyProfileReference)({ id: pack.id, version })._tag).toBe('Left');
+        }
+        for (const version of [1, Number.MAX_SAFE_INTEGER]) {
+            expect(decode({ ...pack, version })._tag).toBe('Right');
+            expect(Schema.decodeUnknownEither(TerminologyProfileReference)({ id: pack.id, version })._tag).toBe(
+                'Right'
+            );
+        }
+    });
+
+    it('validates calendar dates without imposing activation or a current-date policy', () => {
+        for (const effectiveDate of ['0001-01-01', '2000-02-29', '2024-02-29', '9999-12-31']) {
+            expect(decode({ ...pack, effectiveDate })._tag, effectiveDate).toBe('Right');
+        }
+        for (const effectiveDate of [
+            '0000-01-01',
+            '10000-01-01',
+            '1900-02-29',
+            '2100-02-29',
+            '2026-02-29',
+            '2026-04-31',
+            '2026-00-01',
+            '2026-13-01',
+            '2026-01-00',
+            '2026-01-32',
+            '2026-1-01',
+            '2026-11-17T00:00:00Z',
+            'not-a-date',
+        ]) {
+            expect(decode({ ...pack, effectiveDate })._tag, effectiveDate).toBe('Left');
+        }
+    });
+
+    it('rejects invalid message keys, values and locales while allowing empty overlays', () => {
+        for (const key of ['Bad', 'incident', '', 'training..incident', 'training.incident ']) {
+            expect(decode({ ...pack, messages: { ...pack.messages, [key]: 'Invalid' } })._tag, key).toBe('Left');
+        }
+        expect(decode({ ...pack, messages: { 'training.incident': 3 } })._tag).toBe('Left');
+        expect(decode({ ...pack, locale: 'english' })._tag).toBe('Left');
+        expect(decode({ ...pack, messages: {} })._tag).toBe('Right');
     });
 });
 
