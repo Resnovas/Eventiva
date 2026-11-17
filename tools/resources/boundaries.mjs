@@ -79,6 +79,16 @@ const optionsFor = (root, path, overrides) => {
         : {};
 };
 
+const declarationEntries = (root) =>
+    files(join(root, 'packages'))
+        .filter((path) => path.endsWith('/package.json'))
+        .flatMap((path) => {
+            const manifest = JSON.parse(readFileSync(path, 'utf8'));
+            return Object.values(manifest.exports ?? {}).flatMap((target) =>
+                typeof target === 'object' && target.types ? [resolve(dirname(path), target.types)] : []
+            );
+        });
+
 /** Resource-rooted resolved graph audit, not a replacement for the coordinator's complete Nx/TS graph gate. */
 export const checkResourceGraph = (
     root,
@@ -89,6 +99,7 @@ export const checkResourceGraph = (
             'packages/integrations/sql/src/resource.ts',
         ],
         compilerOptions,
+        declarations = false,
         permitted = {
             contracts: ['contracts'],
             runtime: ['contracts', 'runtime'],
@@ -104,13 +115,22 @@ export const checkResourceGraph = (
     const visit = (path, chain) => {
         path = resolve(path);
         if (active.has(path)) {
-            findings.push({ path: relative(root, path), reason: 'Resolved dependency cycle', chain });
+            findings.push({
+                path: relative(root, path),
+                reason: 'Resolved dependency cycle',
+                chain: chain.slice(chain.indexOf(relative(root, path))),
+            });
             return;
         }
         if (seen.has(path)) return;
         seen.add(path);
+        if (declarations && !existsSync(path)) {
+            findings.push({ path: relative(root, path), reason: 'Missing emitted public declaration', chain });
+            return;
+        }
         active.add(path);
         const ast = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+        const options = optionsFor(root, path, compilerOptions);
         references(ast, (specifier) => {
             if (!ts.isStringLiteralLike(specifier)) {
                 findings.push({ path: relative(root, path), reason: 'Nonliteral dependency', chain });
@@ -120,7 +140,14 @@ export const checkResourceGraph = (
             const resolved = ts.resolveModuleName(
                 name,
                 path,
-                optionsFor(root, path, compilerOptions),
+                declarations
+                    ? {
+                          ...options,
+                          customConditions: (options.customConditions ?? []).filter(
+                              (condition) => condition !== '@eventiva/source'
+                          ),
+                      }
+                    : options,
                 ts.sys
             ).resolvedModule;
             if (!resolved) {
@@ -151,12 +178,20 @@ export const checkResourceGraph = (
                     chain: next,
                 });
             if (target.includes('/node_modules/')) return;
+            if (declarations && !/\.d\.[cm]?ts$/.test(target)) {
+                findings.push({
+                    path: relative(root, path),
+                    reason: 'Emitted declaration dependency resolves to non-declaration source',
+                    chain: next,
+                });
+                return;
+            }
             edges.push([relative(root, path), relative(root, target)]);
             visit(target, next);
         });
         active.delete(path);
     };
-    for (const path of entries) visit(resolve(root, path), [path]);
+    for (const path of entries) visit(resolve(root, path), [relative(root, resolve(root, path))]);
     return { scanned: seen.size, edges, findings };
 };
 
@@ -228,14 +263,7 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
     const paths =
         entries?.map((path) => resolve(root, path)) ??
         (declarations
-            ? files(join(root, 'packages'))
-                  .filter((path) => path.endsWith('/package.json'))
-                  .flatMap((path) => {
-                      const manifest = JSON.parse(readFileSync(path, 'utf8'));
-                      return Object.values(manifest.exports ?? {}).flatMap((target) =>
-                          typeof target === 'object' && target.types ? [resolve(dirname(path), target.types)] : []
-                      );
-                  })
+            ? declarationEntries(root)
             : ['packages', 'apps']
                   .flatMap((top) => files(join(root, top)))
                   .filter((path) => /\/src\/.*\.[cm]?tsx?$/.test(path) && !/\/(?:tests|fixtures)\//.test(path)));
@@ -278,10 +306,12 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
 };
 
 /** Audit every active source and the declared package graph, including packages with no incoming imports. */
-export const checkWorkspaceGraph = (root) => {
+export const checkWorkspaceGraph = (root, { declarations = false } = {}) => {
     const all = ['packages', 'apps', 'tests', 'ai-docs'].flatMap((top) => files(join(root, top)));
-    const entries = all.filter((path) => source.test(path) && !path.includes('/fixtures/'));
-    const result = checkResourceGraph(root, { entries, permitted: {} });
+    const entries = declarations
+        ? declarationEntries(root)
+        : all.filter((path) => source.test(path) && !path.includes('/fixtures/'));
+    const result = checkResourceGraph(root, { entries, permitted: {}, declarations });
     const manifests = all
         .filter((path) => path.endsWith('/package.json'))
         .map((path) => ({
@@ -402,6 +432,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const graph = checkResourceGraph(root);
     const workspace = checkWorkspaceGraph(root);
     const types = checkTypeEscapes(root, { declarations: process.argv.includes('--declarations') });
+    const emitted = process.argv.includes('--declarations')
+        ? checkWorkspaceGraph(root, { declarations: true })
+        : undefined;
     for (const finding of result.findings)
         console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
     for (const finding of graph.findings)
@@ -410,6 +443,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
     for (const cycle of workspace.packageCycles) console.error(`Package cycle: ${cycle.join(' -> ')}`);
     for (const finding of types.findings) console.error(`${finding.path}:${finding.line ?? 1}: ${finding.reason}`);
+    for (const finding of emitted?.findings ?? [])
+        console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
+    for (const cycle of emitted?.packageCycles ?? []) console.error(`Emitted package cycle: ${cycle.join(' -> ')}`);
     console.log(`Type boundaries: ${types.scanned} files, ${types.findings.length} violations`);
     console.log(`Resource boundaries: ${result.scanned} feature files, ${result.findings.length} violations`);
     console.log(
@@ -420,12 +456,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
             `${workspace.packages} packages, ${workspace.findings.length} source violations, ` +
             `${workspace.packageCycles.length} package cycles`
     );
+    if (emitted)
+        console.log(
+            `Emitted graph: ${emitted.scanned} files, ${emitted.edges.length} declaration edges, ` +
+                `${emitted.findings.length} violations, ${emitted.packageCycles.length} package cycles`
+        );
     process.exitCode =
         result.findings.length ||
         graph.findings.length ||
         workspace.findings.length ||
         workspace.packageCycles.length ||
-        types.findings.length
+        types.findings.length ||
+        emitted?.findings.length ||
+        emitted?.packageCycles.length
             ? 1
             : 0;
 }

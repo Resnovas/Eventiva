@@ -15,7 +15,7 @@
  */
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -44,12 +44,21 @@ const fixture = (sources, run) => {
             mkdirSync(dirname(join(root, path)), { recursive: true });
             writeFileSync(join(root, path), text);
         }
+        for (const [path, text] of Object.entries(sources)) {
+            if (!path.endsWith('/package.json') || !path.startsWith('packages/')) continue;
+            const { name } = JSON.parse(text);
+            if (!name) continue;
+            const link = join(root, 'node_modules', name);
+            mkdirSync(dirname(link), { recursive: true });
+            symlinkSync(dirname(join(root, path)), link, 'dir');
+        }
         run(
             checkResourceBoundaries(root, { entries: ['feature.ts'] }),
             checkResourceGraph(root, { entries: ['feature.ts'] }),
             checkWorkspaceGraph(root),
             checkTypeEscapes(root, { entries: ['feature.ts'] }),
-            checkTypeEscapes(root, { declarations: true })
+            checkTypeEscapes(root, { declarations: true }),
+            checkWorkspaceGraph(root, { declarations: true })
         );
     } finally {
         rmSync(root, { recursive: true, force: true });
@@ -265,8 +274,10 @@ test('missing declarations fail closed instead of silently skipping unbuilt APIs
             'feature.ts': 'export {}',
             'packages/a/package.json': JSON.stringify({ exports: { './api': { types: './dist/api.d.ts' } } }),
         },
-        (_boundary, _graph, _workspace, _types, declarations) =>
-            assert.equal(declarations.findings[0].reason, 'Missing emitted public declaration')
+        (_boundary, _graph, _workspace, _types, declarations, emitted) => {
+            assert.equal(declarations.findings[0].reason, 'Missing emitted public declaration');
+            assert.equal(emitted.findings[0].reason, 'Missing emitted public declaration');
+        }
     ));
 
 test('emitted constructor erasure is rejected even when authored roots are clean', () =>
@@ -279,6 +290,149 @@ test('emitted constructor erasure is rejected even when authored roots are clean
         (_boundary, _graph, _workspace, types, declarations) => {
             assert.deepEqual(types.findings, []);
             assert.equal(declarations.findings[0].reason, 'Erased any/unknown type');
+        }
+    ));
+
+const declarationPackage = (name) =>
+    JSON.stringify({
+        name,
+        type: 'module',
+        exports: {
+            './api': {
+                '@eventiva/source': './src/api.ts',
+                types: './dist/api.d.ts',
+                default: './dist/api.js',
+            },
+        },
+    });
+
+for (const [label, declarations, cycle] of [
+    [
+        'direct',
+        { 'api.d.ts': `export type { B } from './b.js'`, 'b.d.ts': `import type { A } from './api.js'` },
+        ['api', 'b', 'api'],
+    ],
+    [
+        'transitive type-only',
+        {
+            'api.d.ts': `export type { A } from './a.js'`,
+            'a.d.ts': `export type A = import('./b.js').B`,
+            'b.d.ts': `export type { C as B } from './c.js'`,
+            'c.d.ts': `import type { A } from './a.js'; export type C = A`,
+        },
+        ['a', 'b', 'c', 'a'],
+    ],
+])
+    test(`emitted declaration graph rejects ${label} cycles with clean source`, () =>
+        fixture(
+            {
+                'feature.ts': 'export {}',
+                'packages/a/package.json': declarationPackage('@eventiva/a'),
+                'packages/a/src/api.ts': 'export type A = string',
+                ...Object.fromEntries(
+                    Object.entries(declarations).map(([path, text]) => [`packages/a/dist/${path}`, text])
+                ),
+            },
+            (_boundary, _graph, workspace, _types, _declarations, emitted) => {
+                assert.deepEqual(workspace.findings, []);
+                assert.equal(emitted.findings.length, 1);
+                assert.match(emitted.findings[0].reason, /cycle/);
+                assert.deepEqual(
+                    emitted.findings[0].chain,
+                    cycle.map((name) => `packages/a/dist/${name}.d.ts`)
+                );
+            }
+        ));
+
+test('emitted declaration resolution follows types instead of the active source condition', () =>
+    fixture(
+        {
+            'tsconfig.base.json': JSON.stringify({
+                compilerOptions: {
+                    module: 'nodenext',
+                    moduleResolution: 'nodenext',
+                    customConditions: ['@eventiva/source'],
+                },
+            }),
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/b/package.json': declarationPackage('@eventiva/b'),
+            'packages/a/src/api.ts': 'export type A = string',
+            'packages/b/src/api.ts': 'export type B = number',
+            'packages/a/dist/api.d.ts': `export type { B as A } from '@eventiva/b/api'`,
+            'packages/b/dist/api.d.ts': `export type B = import('@eventiva/a/api').A`,
+        },
+        (_boundary, _graph, workspace, _types, _declarations, emitted) => {
+            assert.deepEqual(workspace.findings, []);
+            assert.equal(emitted.findings.length, 1);
+            assert.match(emitted.findings[0].reason, /cycle/);
+            assert.deepEqual(emitted.findings[0].chain, [
+                'packages/a/dist/api.d.ts',
+                'packages/b/dist/api.d.ts',
+                'packages/a/dist/api.d.ts',
+            ]);
+        }
+    ));
+
+test('emitted declarations allow a shared-contract diamond through aliases and re-exports', () =>
+    fixture(
+        {
+            'tsconfig.base.json': JSON.stringify({
+                compilerOptions: {
+                    module: 'nodenext',
+                    moduleResolution: 'nodenext',
+                    paths: { '@shared': ['./packages/a/dist/shared.d.ts'] },
+                },
+            }),
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/a/src/api.ts': 'export type A = string',
+            'packages/a/dist/api.d.ts': `export type { Left } from './left.js'; export type { Right } from './right.js'`,
+            'packages/a/dist/left.d.ts': `export type { Shared as Left } from '@shared'`,
+            'packages/a/dist/right.d.ts': `export type Right = import('@shared').Shared`,
+            'packages/a/dist/shared.d.ts': 'export type Shared = string',
+        },
+        (_boundary, _graph, _workspace, _types, _declarations, emitted) => {
+            assert.deepEqual(emitted.findings, []);
+            assert.equal(emitted.scanned, 4);
+            assert.equal(emitted.edges.length, 4);
+        }
+    ));
+
+test('emitted declaration aliases cannot silently fall back to source', () =>
+    fixture(
+        {
+            'tsconfig.base.json': JSON.stringify({
+                compilerOptions: {
+                    module: 'nodenext',
+                    moduleResolution: 'nodenext',
+                    paths: { '@shared': ['./packages/a/src/api.ts'] },
+                },
+            }),
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/a/src/api.ts': 'export type A = string',
+            'packages/a/dist/api.d.ts': `export type { A } from '@shared'`,
+        },
+        (_boundary, _graph, workspace, _types, _declarations, emitted) => {
+            assert.deepEqual(workspace.findings, []);
+            assert.equal(emitted.findings.length, 1);
+            assert.match(emitted.findings[0].reason, /resolves to non-declaration source/);
+            assert.deepEqual(emitted.findings[0].chain, ['packages/a/dist/api.d.ts', 'packages/a/src/api.ts']);
+        }
+    ));
+
+test('unresolved transitive emitted declarations fail closed', () =>
+    fixture(
+        {
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/a/src/api.ts': 'export type A = string',
+            'packages/a/dist/api.d.ts': `export type { A } from './missing.js'`,
+        },
+        (_boundary, _graph, _workspace, _types, _declarations, emitted) => {
+            assert.equal(emitted.findings.length, 1);
+            assert.equal(emitted.findings[0].reason, 'Unresolved workspace dependency: ./missing.js');
         }
     ));
 
