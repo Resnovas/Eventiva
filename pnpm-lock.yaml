@@ -479,6 +479,9 @@ importers:
 
   packages/integrations/posthog-server:
     dependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
       '@openfeature/core':
         specifier: 1.12.0
         version: 1.12.0
@@ -647,12 +650,18 @@ importers:
 
   tests/integrations/posthog-server:
     devDependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../../packages/contracts
       '@eventiva/integrations.posthog.server':
         specifier: workspace:*
         version: link:../../../packages/integrations/posthog-server
       '@posthog/openfeature-node-provider':
         specifier: 0.1.3
         version: 0.1.3(@openfeature/core@1.12.0)(@openfeature/server-sdk@1.23.0(@openfeature/core@1.12.0))(posthog-node@5.63.1)
+      posthog-node:
+        specifier: 5.63.1
+        version: 5.63.1
 
   tests/resources:
     devDependencies:

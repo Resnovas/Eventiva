@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./telemetry": {
+            "@eventiva/source": "./src/telemetry.ts",
+            "types": "./dist/telemetry.d.ts",
+            "default": "./dist/telemetry.js"
+        },
         "./flags": {
             "@eventiva/source": "./src/flags.ts",
             "types": "./dist/flags.d.ts",
@@ -15,6 +20,7 @@
         "./package.json": "./package.json"
     },
     "dependencies": {
+        "@eventiva/contracts": "workspace:*",
         "@openfeature/core": "1.12.0",
         "@openfeature/server-sdk": "1.23.0",
         "@posthog/openfeature-node-provider": "0.1.3",

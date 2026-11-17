@@ -10,6 +10,9 @@
     "references": [
         {
             "path": "../../../packages/integrations/posthog-server"
+        },
+        {
+            "path": "../../../packages/contracts"
         }
     ]
 }

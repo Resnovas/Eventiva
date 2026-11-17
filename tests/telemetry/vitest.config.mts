@@ -20,7 +20,9 @@ export default testProject(
     'telemetry-tests',
     [
         'packages/contracts/src/observability.ts',
+        'packages/contracts/src/telemetry-export.ts',
         'packages/runtime/src/telemetry.ts',
+        'packages/runtime/src/telemetry-export.ts',
         'packages/integrations/telemetry.server/src/logger.ts',
     ],
     import.meta.url

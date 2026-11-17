@@ -5,12 +5,12 @@
         "outDir": "dist",
         "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
         "emitDeclarationOnly": false,
-        "types": [
-            "node"
-        ]
+        "types": ["node"]
     },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "references": []
+    "include": ["src/**/*.ts"],
+    "references": [
+        {
+            "path": "../../contracts/tsconfig.build.json"
+        }
+    ]
 }

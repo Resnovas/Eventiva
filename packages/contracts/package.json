@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./telemetry-export": {
+            "@eventiva/source": "./src/telemetry-export.ts",
+            "types": "./dist/telemetry-export.d.ts",
+            "default": "./dist/telemetry-export.js"
+        },
         "./module-manifest": {
             "@eventiva/source": "./src/module-manifest.ts",
             "types": "./dist/module-manifest.d.ts",

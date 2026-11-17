@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./telemetry-export": {
+            "@eventiva/source": "./src/telemetry-export.ts",
+            "types": "./dist/telemetry-export.d.ts",
+            "default": "./dist/telemetry-export.js"
+        },
         "./kernel-runtime": {
             "@eventiva/source": "./src/kernel-runtime.ts",
             "types": "./dist/kernel-runtime.d.ts",
