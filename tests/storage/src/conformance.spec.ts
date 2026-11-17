@@ -727,6 +727,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                     dialect,
                     Effect.gen(
                         /** Seed the first database before constructing a second isolated routing target. */ function* () {
+                            // Retain the first capability: the nested store reuses its ID with different data to expose ambient-store reads.
                             const a = yield* Storage;
                             yield* a.create(record(70));
                             return yield* withStore(

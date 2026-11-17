@@ -111,6 +111,7 @@ export const fixtureCorrelationLayer = (
                         )
                             return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                         const expiry = yield* consent;
+                        // Consent can suspend across expiry or scope disposal; both checks need post-consent state.
                         const now = yield* Clock.currentTimeMillis;
                         if (closed || !Number.isSafeInteger(expiry) || expiry <= now || principal.expiresAt <= now)
                             return yield* new TelemetrySinkFailure({ reason: 'unavailable' });

@@ -272,6 +272,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                 )
                             )(writes[epoch]?.body ?? '{}');
                             const exported = wire.resourceSpans[0]?.scopeSpans[0]?.spans[0];
+                            // Raw body inequality can also come from fresh trace IDs; compare each epoch's exact pair.
                             expect(exported?.attributes).toEqual([
                                 { key: '$session_id', value: { stringValue: token.session } },
                                 { key: 'posthog.distinct_id', value: { stringValue: token.person } },
@@ -512,6 +513,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                     Exit.isFailure(yield* authority.authorize(candidate, token).pipe(Effect.exit))
                                 ).toBe(true);
                             }
+                            // Person/session forgeries retain valid-length syntax, distinguishing binding checks from decoding.
                             for (const forged of [
                                 { ...token, person: 'a'.repeat(64) },
                                 { ...token, session: 'b'.repeat(64) },
@@ -643,7 +645,7 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         'automatically refreshes a long-running session across four UTC epochs without blocking actions',
         /** Advancing Clock, not request reads, triggers issuance; each boundary resets linkage only. */ () =>
             Effect.gen(
-                /** Background issuance must advance without any request-triggered refresh. */ function* () {
+                /** Advance background issuance alongside synthetic work, not an ActionHost integration or latency probe. */ function* () {
                     const session = yield* correlationSession;
                     yield* TestClock.adjust(0);
                     const first = yield* session.current(true);
@@ -665,9 +667,9 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.scoped(
         'lets a request in flight finish across rotation without relabeling its old telemetry',
-        /** A user action executes exactly once; its old dispatch fails closed while the next request uses the new epoch. */ () =>
+        /** Synthetic work executes once; its old telemetry fails closed while the next request uses the new epoch. */ () =>
             Effect.gen(
-                /** Model an admitted business request suspended over the exact UTC boundary. */ function* () {
+                /** Suspend synthetic business work over the exact UTC boundary; this does not invoke ActionHost. */ function* () {
                     const session = yield* correlationSession;
                     yield* TestClock.adjust(hour - 1);
                     const old = Option.getOrThrow(yield* session.current(true));

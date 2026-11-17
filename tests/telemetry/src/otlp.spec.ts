@@ -300,6 +300,7 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                         [200, '{"partialSuccess":{"rejectedSpans":"0","errorMessage":"PRIVATE_WARNING"}}'],
                         [200, 'not-json'],
                         [200, '{}' + ' '.repeat(16383)],
+                        // This fits the character count but exceeds 16,384 UTF-8 bytes, exposing text-length bounds.
                         [200, '{"ignored":"' + '\u00e9'.repeat(8192) + '"}'],
                         [302, '{}'],
                     ] as const) {

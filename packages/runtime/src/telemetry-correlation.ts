@@ -101,6 +101,7 @@ export const correlationSession = Effect.gen(
                     yield* refresh;
                     const token = yield* Ref.get(cache);
                     const now = yield* Clock.currentTimeMillis;
+                    // Expiry can pass before this clock read; a positive sleep floor prevents a hot renewal loop.
                     const delay = Option.isSome(token) ? Math.max(1, token.value.expiresAt - now) : 1000;
                     yield* Effect.sleep(delay);
                 }
@@ -146,6 +147,7 @@ export const governedCorrelationSinkLayer = (
                                     new TelemetrySinkFailure({ reason: 'configuration' })
                             )
                         );
+                        // Rotation may authorize later requests, never relabel this request's queued records with a fresh pair.
                         const token = yield* currentToken(request.correlation);
                         const optIn = request.optIn === true;
                         const authority = yield* CorrelationAuthority;
