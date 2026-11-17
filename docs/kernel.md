@@ -116,6 +116,15 @@ Standalone `register` still publishes a registered entry without running Config;
 call `validate` explicitly before `install`. Update and recovery validation are
 unchanged.
 
+## Lifecycle diagnostics
+
+Read [Kernel telemetry](kernel-telemetry.md) to observe actual lifecycle,
+composition, replacement and cleanup spans through the existing central telemetry
+layer. Fixed outcome attributes distinguish unchanged readiness and
+restart-required updates from new receipts and applied replacements. Optional
+diagnostics do not change authority, lifecycle results or scoped ownership and
+are not durable transition events.
+
 ## Troubleshoot and verify
 
 - Fix an `invalid-contract` provider error by checking the producer's decoded

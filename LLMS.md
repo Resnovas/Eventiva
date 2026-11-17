@@ -1006,6 +1006,12 @@ are supplied by trusted composition, not a permissive policy default. The same
 feature is used with two explicit provider choices. Tests also keep two named
 instances per provider live simultaneously and verify each finalizer once.
 
+Read [lifecycle telemetry](02_telemetry.md) before instrumenting kernel work.
+The real private boundaries emit fixed operation spans through central telemetry,
+with finite `eventiva.kernel.outcome` values and no identifiers or configuration.
+Readiness receipts and restart-required updates retain distinct outcomes; these
+diagnostics are not durable lifecycle facts or distributed fencing.
+
 No new dependency, export map, Nx setting, generated file or main push belongs to
 this lane. Shared exports, whole-repository source/package graphs, LLMS generation
 and Graphify refresh are held by the coordinator. Isolated aliases and emitted

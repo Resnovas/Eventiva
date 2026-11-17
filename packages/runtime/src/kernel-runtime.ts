@@ -146,6 +146,28 @@ const dependencies = (manifest: KernelManifest, bindings: ReadonlyArray<Provider
     ...bindings.filter(({ consumer }) => consumer === manifest.id).map(({ provider }) => provider),
 ];
 
+type KernelOutcome = 'succeeded' | 'failed' | 'interrupted' | 'emitted' | 'unchanged' | 'updated' | 'restart-required';
+
+// Operation observations only; central telemetry sanitizes Exit causes before export.
+const kernelSpan = <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    name: `kernel.${LifecycleOperation | 'compose' | 'preflight' | 'release'}`,
+    outcome: (value: A) => KernelOutcome = () => 'succeeded'
+) =>
+    effect.pipe(
+        Effect.onExit((exit) =>
+            Effect.annotateCurrentSpan(
+                'eventiva.kernel.outcome',
+                Exit.isSuccess(exit)
+                    ? outcome(exit.value)
+                    : Cause.isInterruptedOnly(exit.cause)
+                      ? 'interrupted'
+                      : 'failed'
+            )
+        ),
+        Effect.withSpan(name, { captureStackTrace: false })
+    );
+
 /**
  * One independent registry per built layer; no globals or ambient singleton.
  * Leases and ready receipts are process-local, not durable fencing or outbox delivery.
@@ -296,7 +318,8 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                                     : 'invalid-config'
                             )
                         );
-                    })
+                    }),
+                    (effect) => kernelSpan(effect, 'kernel.preflight')
                 );
             const release = (id: string, running: Running) =>
                 Effect.uninterruptibleMask((restore) =>
@@ -306,7 +329,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         if (Exit.isFailure(result)) return yield* result;
                         if (Exit.isFailure(closed)) return yield* closed;
                     })
-                );
+                ).pipe((effect) => kernelSpan(effect, 'kernel.release'));
             const cleanup = (id: string, running: Running) =>
                 release(id, running).pipe(
                     Effect.catchAll(() =>
@@ -400,7 +423,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         );
                     yield* publish(entry);
                     return manifest;
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.register'));
             const validate = (id: string) =>
                 Effect.gen(function* () {
                     const entry = yield* lookup(id);
@@ -411,7 +434,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     yield* admitted(entry.manifest);
                     yield* preflight(entry);
                     entry.state = 'validated';
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.validate'));
             const build = (entry: Entry) =>
                 Effect.gen(function* () {
                     // Kernel and registration finalizers drain leases before closing these private scopes.
@@ -470,7 +493,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     );
                     entry.installed = true;
                     entry.state = 'installed';
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.install'));
             const activate = (id: string) =>
                 Effect.gen(function* () {
                     const entry = yield* lookup(id);
@@ -495,7 +518,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     ).pipe(Effect.onError(() => markFailed(entry)));
                     entry.state = 'active';
                     changed();
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.activate'));
             const ready = Effect.gen(function* () {
                 if (closing) return yield* error('<platform>', 'invalid-state');
                 const order = yield* plan();
@@ -510,7 +533,9 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 for (const id of order) (yield* lookup(id)).state = 'ready';
                 readyGeneration = generation;
                 return { runtimeId, generation, emitted: true };
-            });
+            }).pipe((effect) =>
+                kernelSpan(effect, 'kernel.ready', (receipt) => (receipt.emitted ? 'emitted' : 'unchanged'))
+            );
             const stop = (id: string, operation: 'deactivate' | 'unregister' | 'retire') =>
                 Effect.gen(function* () {
                     const entry = yield* lookup(id);
@@ -526,7 +551,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     if (operation === 'unregister') entries.delete(id);
                     if (operation === 'retire') entry.state = 'retired';
                     changed();
-                });
+                }).pipe((effect) => kernelSpan(effect, `kernel.${operation}`));
             const update = (id: string, definition: ModuleDefinition): Operation<UpdateResult> =>
                 Effect.gen(function* () {
                     const entry = yield* lookup(id);
@@ -546,9 +571,10 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     yield* authorize(candidate, 'update');
                     yield* admitted(manifest);
                     if (manifest.version === entry.manifest.version) return yield* error(id, 'duplicate');
-                    if (manifest.restartRequired) return { status: 'restart-required', reason: 'declared' };
+                    if (manifest.restartRequired)
+                        return { status: 'restart-required', reason: 'declared' } satisfies UpdateResult;
                     if (manifest.migrations.some(({ kind, online }) => kind === 'staged' || !online))
-                        return { status: 'restart-required', reason: 'migration' };
+                        return { status: 'restart-required', reason: 'migration' } satisfies UpdateResult;
                     // Exact dependencies stay pinned. No inferred range, downgrade or major compatibility.
                     const retained = <A>(before: ReadonlyArray<A>, after: ReadonlyArray<A>) =>
                         before.every((item) => after.some((other) => JSON.stringify(item) === JSON.stringify(other)));
@@ -565,13 +591,14 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             entry.manifest.version.split('.').map(BigInt)
                         ) <= 0
                     )
-                        return { status: 'restart-required', reason: 'incompatible' };
+                        return { status: 'restart-required', reason: 'incompatible' } satisfies UpdateResult;
                     const compatible = yield* Effect.either(plan(candidate));
-                    if (compatible._tag === 'Left') return { status: 'restart-required', reason: 'incompatible' };
+                    if (compatible._tag === 'Left')
+                        return { status: 'restart-required', reason: 'incompatible' } satisfies UpdateResult;
                     const checked = yield* Effect.either(preflight(candidate));
                     if (checked._tag === 'Left') {
                         if (checked.left.reason === 'migration-required')
-                            return { status: 'restart-required', reason: 'migration' };
+                            return { status: 'restart-required', reason: 'migration' } satisfies UpdateResult;
                         return yield* checked.left;
                     }
                     const running = yield* build(candidate);
@@ -603,8 +630,8 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         // Release old code only after the candidate is ready. Cleanup failure is visible.
                         yield* release(id, previous);
                     }
-                    return { status: 'updated', version: manifest.version };
-                });
+                    return { status: 'updated', version: manifest.version } satisfies UpdateResult;
+                }).pipe((effect) => kernelSpan(effect, 'kernel.update', (result) => result.status));
             const recover = (id: string) =>
                 Effect.gen(function* () {
                     const entry = yield* lookup(id);
@@ -628,7 +655,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             })
                         )
                     );
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.recover'));
             const compose = (input: PlatformComposition, definitions: ReadonlyArray<ModuleDefinition>) =>
                 Effect.gen(function* () {
                     yield* mutable();
@@ -701,7 +728,9 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             })
                         )
                     );
-                });
+                }).pipe((effect) =>
+                    kernelSpan(effect, 'kernel.compose', (receipt) => (receipt.emitted ? 'emitted' : 'unchanged'))
+                );
             yield* Effect.addFinalizer(() =>
                 Effect.forEach([...entries].reverse(), ([id, entry]) => dispose(id, entry), { discard: true })
             );
