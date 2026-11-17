@@ -26,6 +26,17 @@ Workload evidence must meet the explicit policy plus mandatory floors: Sensitive
 
 All checks precede atomic replay consumption. All successful results remain `{ decision: 'metadata-preflight-only', release: 'denied', audit: { identity, resource, workload, broker, replay } }`, with UUID references only. Never pass the result to a real release endpoint as authority. Concrete custody/client-release policy, atomic replay-plus-release, handle lifetime/scope, algorithms, formats, providers and production audit remain approval-gated.
 
-`TrustFailure` has an exact Data.TaggedError constructor exposing only finite `gate` and `reason`; no arbitrary causes, identifiers or payload. No `any`, public `unknown`, type suppression or unchecked cast is authored. Adapters must sanitize failure channels and keep protected evidence/audit lookup access controlled. Do not serialize whole requests or raw Schema parse failures into telemetry. Schema checks do not make all valid UUIDs safe public data.
+`TrustFailure` has an exact Data.TaggedError constructor exposing only finite `gate` and `reason`; `TrustFailureReason` is the shared reason schema. Runtime sanitizes verifier/replay defects, synchronous throws and malformed reasons to the expected gate's `unavailable`; pure interruption stays interruption. Later gates never run after refusal. Signing/encryption UUID inequality is case-insensitive and does not establish physical independence. No `any`, public `unknown`, type suppression or unchecked cast is authored. Adapters must sanitize failure channels and keep protected evidence/audit lookup access controlled. Do not serialize whole requests or raw Schema parse failures into telemetry. Schema checks do not make all valid UUIDs safe public data.
 
 Tests live in `tests/runtime/src/trust.spec.ts` and use `@effect/vitest`. They cover every missing/denied/unavailable/revoked gate, all binding fields on all four evidence gates, timing, A1-A5/profile/operation combinations, stricter policy, atomic in-process nonce races, rotations and secret-canary errors/audit serialization. These fixtures are not cryptographic, provider, SQL or crash proofs. See [the people guide](../../../docs/trust.md) for setup, every input and limitations. The coordinator owns public export wiring, LLMS generation, Graphify and aggregate validation; do not add aliases to bypass a missing public subpath.
+
+The separate `@eventiva/integrations.sql/trust` subpath supplies unactivated
+`trustReplay` over the captured SqlClient. Migration 0007 stores nonce, exact
+request metadata, explicit consumption time and opaque audit reference. Nonce
+uniqueness is case-insensitive within one physical database; changed bindings
+cannot reuse it. Every ambient transaction is refused to avoid acknowledging
+a savepoint as a durable commit. No cleanup or retention policy is selected.
+See `docs/trust-replay.md` and the compiling example below. Storage conformance
+tests cover both dialects; the separate trust-process fixture kills before and
+after commit and reopens a fresh process. These are bounded persistence proofs,
+not actual verifier, custody, live revocation or release conformance.

@@ -6,6 +6,16 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./marketplace": {
+            "@eventiva/source": "./src/marketplace.ts",
+            "types": "./dist/marketplace.d.ts",
+            "default": "./dist/marketplace.js"
+        },
+        "./trust": {
+            "@eventiva/source": "./src/trust.ts",
+            "types": "./dist/trust.d.ts",
+            "default": "./dist/trust.js"
+        },
         "./hook": {
             "@eventiva/source": "./src/hook.ts",
             "types": "./dist/hook.d.ts",

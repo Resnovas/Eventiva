@@ -70,6 +70,8 @@ Version numbers support algorithm-independent rotation references, not rollover 
 
 `TrustFailure` contains only a closed `gate` and `reason`. Reasons are `invalid`, `unavailable`, `denied`, `binding`, `stale`, `revoked`, `replay`, `assurance`, and `vault`. Errors contain no request, target identifiers, raw provider cause or payload. Evidence and audit schemas reject extra fields. UUID references are still sensitive lookup references: do not publish them into ordinary telemetry or permit lookup without authorization.
 
+The preflight boundary also sanitizes verifier/replay defects, synchronous throws and malformed failure reasons to the current gate's `unavailable` failure. Later gates are not invoked. Interruption remains interruption, not an outage receipt; cancellation never returns successful preflight. Signing and encryption authority UUIDs must identify different authorities regardless of letter casing. This metadata inequality does not prove physical custody independence.
+
 - For `unavailable`, supply approved live services and durable replay storage; do not substitute booleans or enable a bypass.
 - For `binding`, check all exact target, nonce and key-version fields. Do not broaden matching to tenant-only or resource-type-only.
 - For `stale` or `revoked`, obtain newly verified live evidence under the current trusted policy. Do not extend timestamps or ignore revocation locally.

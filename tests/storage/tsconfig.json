@@ -12,7 +12,9 @@
         "src/**/*.ts",
         "vitest.config.mts",
         "../../ai-docs/src/13_storage/**/*.ts",
-        "../../ai-docs/src/15_identity/**/*.ts"
+        "../../ai-docs/src/15_identity/**/*.ts",
+        "../../ai-docs/src/23_marketplace/02_durable.ts",
+        "../../ai-docs/src/24_trust/02_replay.ts"
     ],
     "references": [
         { "path": "../../packages/contracts" },

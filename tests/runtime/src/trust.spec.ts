@@ -32,7 +32,7 @@ import {
     type TrustVerifier,
 } from '@eventiva/contracts/trust';
 import { trustPreflight } from '@eventiva/runtime/trust';
-import { Effect, Either, Layer, Ref, Schema } from 'effect';
+import { Effect, Either, Exit, Layer, Ref, Schema } from 'effect';
 import { inspect } from 'node:util';
 
 const uuid = (n: number): string => `019b0000-0000-7000-8000-${n.toString().padStart(12, '0')}`;
@@ -67,6 +67,8 @@ const gates = ['identity', 'resource', 'workload', 'broker', 'replay'] as const;
 type Options = {
     readonly missing?: TrustGate;
     readonly failed?: TrustGate;
+    readonly defective?: TrustGate;
+    readonly interrupted?: TrustGate;
     readonly reason?: TrustFailure['reason'];
     readonly change?: (evidence: TrustEvidence) => TrustEvidence;
     readonly assurance?: Assurance;
@@ -82,6 +84,8 @@ const fixture = (options: Options = {}) =>
             verify: (input) =>
                 Effect.gen(function* () {
                     yield* Ref.update(calls, (all) => [...all, gate]);
+                    if (options.defective === gate) return yield* Effect.die('PRIVATE-PROVIDER-CANARY');
+                    if (options.interrupted === gate) return yield* Effect.interrupt;
                     if (options.failed === gate)
                         return yield* Effect.fail(new TrustFailure({ gate, reason: options.reason ?? 'denied' }));
                     const evidence: TrustEvidence = {
@@ -100,6 +104,8 @@ const fixture = (options: Options = {}) =>
             consume: () =>
                 Effect.gen(function* () {
                     yield* Ref.update(calls, (all): ReadonlyArray<TrustGate> => [...all, 'replay']);
+                    if (options.defective === 'replay') return yield* Effect.die('PRIVATE-PROVIDER-CANARY');
+                    if (options.interrupted === 'replay') return yield* Effect.interrupt;
                     if (options.failed === 'replay')
                         return yield* Effect.fail(
                             new TrustFailure({ gate: 'replay', reason: options.reason ?? 'unavailable' })
@@ -117,12 +123,29 @@ const fixture = (options: Options = {}) =>
             options.missing === 'replay' ? Layer.empty : Layer.succeed(TrustReplay, replay)
         );
         return {
+            layer,
             run: (input = request, settings = policy) => trustPreflight(input, settings).pipe(Effect.provide(layer)),
             calls,
         };
     });
 
 for (const gate of gates) {
+    it.effect(`sanitizes ${gate} defects without invoking later gates`, () =>
+        Effect.gen(function* () {
+            const f = yield* fixture({ defective: gate });
+            const result = yield* Effect.exit(f.run());
+            expect(result).toEqual(Exit.fail(new TrustFailure({ gate, reason: 'unavailable' })));
+            expect(inspect(result)).not.toContain('PRIVATE-PROVIDER-CANARY');
+            expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
+        })
+    );
+    it.effect(`preserves ${gate} interruption without invoking later gates`, () =>
+        Effect.gen(function* () {
+            const f = yield* fixture({ interrupted: gate });
+            expect(Exit.isInterrupted(yield* Effect.exit(f.run()))).toBe(true);
+            expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
+        })
+    );
     it.effect(`fails closed with missing ${gate}`, () =>
         Effect.gen(function* () {
             const f = yield* fixture({ missing: gate });
@@ -140,6 +163,36 @@ for (const gate of gates) {
         );
     }
 }
+
+it.effect('sanitizes synchronous provider throws and malformed failure reasons', () =>
+    Effect.gen(function* () {
+        const canary = 'PRIVATE-PROVIDER-FAILURE';
+        const f = yield* fixture();
+        const ports: ReadonlyArray<TrustVerifier> = [
+            {
+                verify: () => {
+                    throw new Error(canary);
+                },
+            },
+            {
+                verify: () =>
+                    Effect.fail(
+                        Object.assign(new TrustFailure({ gate: 'broker', reason: 'denied' }), { reason: canary })
+                    ),
+            },
+        ];
+        for (const port of ports) {
+            const result = yield* Effect.exit(
+                trustPreflight(request, policy).pipe(
+                    Effect.provide(Layer.merge(f.layer, Layer.succeed(IdentityGate, port)))
+                )
+            );
+            expect(result).toEqual(Exit.fail(new TrustFailure({ gate: 'identity', reason: 'unavailable' })));
+            expect(inspect(result)).not.toContain(canary);
+        }
+        expect(yield* Ref.get(f.calls)).toEqual([]);
+    })
+);
 
 it.effect('safe default and absent services deny without defects', () =>
     Effect.gen(function* () {
@@ -285,6 +338,12 @@ it.effect('rotation metadata is algorithm agnostic and versions remain exact', (
         expect(Schema.is(TrustKeyVersion)({ ...request.keys, dekVersion: 0 })).toBe(false);
         expect(
             Schema.is(TrustKeyVersion)({ ...request.keys, signingAuthority: request.keys.encryptionAuthority })
+        ).toBe(false);
+        expect(
+            Schema.is(TrustKeyVersion)({
+                ...request.keys,
+                encryptionAuthority: request.keys.signingAuthority.toUpperCase(),
+            })
         ).toBe(false);
     })
 );

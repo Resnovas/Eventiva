@@ -56,7 +56,7 @@ export const TrustKeyVersion = Schema.Struct({
     dekVersion: Version,
 })
     .annotations(strict)
-    .pipe(Schema.filter((v) => v.signingAuthority !== v.encryptionAuthority));
+    .pipe(Schema.filter((v) => v.signingAuthority.toLowerCase() !== v.encryptionAuthority.toLowerCase()));
 export type TrustKeyVersion = typeof TrustKeyVersion.Type;
 
 export const TrustRequest = Schema.Struct({
@@ -91,10 +91,20 @@ export const TrustPolicy = Schema.Struct({
 }).annotations(strict);
 export type TrustPolicy = typeof TrustPolicy.Type;
 
+export const TrustFailureReason = Schema.Literal(
+    'invalid',
+    'unavailable',
+    'denied',
+    'binding',
+    'stale',
+    'revoked',
+    'replay',
+    'assurance',
+    'vault'
+);
 interface TrustFailureFields {
     readonly gate: TrustGate;
-    readonly reason:
-        'invalid' | 'unavailable' | 'denied' | 'binding' | 'stale' | 'revoked' | 'replay' | 'assurance' | 'vault';
+    readonly reason: typeof TrustFailureReason.Type;
 }
 const TrustFailureBase: new (fields: TrustFailureFields) => Cause.YieldableError &
     TrustFailureFields & {

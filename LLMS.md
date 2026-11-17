@@ -542,6 +542,14 @@ incarnation/recovery and interrupted-callback reconciliation contracts are pendi
 No native/UI consumer, production sink/release policy or exactly-once lifecycle
 publication is claimed by operator recovery or a synthetic process fixture.
 
+The committed hook-process fixture separately proves a trusted synthetic feed
+consumer can atomically store local metadata application markers plus its cursor,
+lose the acknowledgement after commit and reopen without duplicate application.
+A SIGKILL before sink commit preserves the old cursor and retries the fact.
+Public feed.read remains outside the sink transaction. Do not generalize this
+sequential fixture to concurrent consumers, native targets, release policy or
+arbitrary external effects; none is activated by the fixture.
+
 ### composition
 
 ```ts
@@ -912,6 +920,25 @@ manifest and provider cycles reject before acquisition; diamonds remain valid.
 Preserve authorization, state transitions, generation invalidation, leases,
 candidate cleanup/recovery and additive migration preflight while changing types.
 
+Composition uses a private candidate registry and explicit candidate bindings for
+topology planning. Decode and pin every manifest, authorize the lifecycle, admit
+trust, plan the full graph and run all non-mutating Config preflights before
+publishing entries, bindings or Layers. Run preflights once in dependency order;
+publish their entries directly as `validated`, rather than calling public
+`validate` again. Reject staged/offline migrations before publication too.
+Install/activate/ready retain their normal authorization checks during startup.
+
+During preflight, `snapshot` returns an empty registry without waiting on the
+lifecycle mutex; nonempty snapshots retain serialization. Failed Config or
+defective validation publishes nothing; preserve secret-safe `invalid-config`
+mapping and interruption, including validator finalizers. Retry must succeed on
+the same Kernel after failure, defect or interruption. After publication, keep
+the existing reverse scoped cleanup and binding restoration on startup failure.
+This does not roll back arbitrary install side effects. Standalone register and
+validate, update and recovery retain their original behavior. The dependent-module
+regressions verify no acquisition/install/activate before all preflights, empty
+snapshots during validation, single successful validation and cleanup on retry.
+
 `01_kernel.ts` is a complete typed composition example. Its authority and caller
 are supplied by trusted composition, not a permissive policy default. The same
 feature is used with two explicit provider choices. Tests also keep two named
@@ -1117,6 +1144,27 @@ import { Effect } from 'effect';
 export const privateReleaseResult = privateExchangeUnavailable.pipe(Effect.either);
 ```
 
+### Record local marketplace metadata only
+
+Apply migration 0006 before composing the captured trusted marketplace client.
+Caller, CurrentTenant, live MarketplaceOperatorPolicy and MarketplaceAuthority
+remain required. No policy defaults, external invocation or payload release.
+
+```ts
+import { MarketplaceOutbox, type ClaimExchange } from '@eventiva/contracts/marketplace-durable';
+import { marketplace } from '@eventiva/integrations.sql/marketplace';
+import type { Dialect } from '@eventiva/integrations.sql/migrations';
+import { Effect } from 'effect';
+
+/** Explicit lease/retry bounds come from approved policy, never this example. */
+export const recordLocalMetadata = (dialect: Dialect, input: ClaimExchange) =>
+    Effect.gen(function* () {
+        const outbox = yield* MarketplaceOutbox;
+        const claim = yield* outbox.claim(input);
+        if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
+    }).pipe(Effect.provide(marketplace(dialect)));
+```
+
 ---
 
 # Provider-neutral trust preflight
@@ -1147,9 +1195,20 @@ Workload evidence must meet the explicit policy plus mandatory floors: Sensitive
 
 All checks precede atomic replay consumption. All successful results remain `{ decision: 'metadata-preflight-only', release: 'denied', audit: { identity, resource, workload, broker, replay } }`, with UUID references only. Never pass the result to a real release endpoint as authority. Concrete custody/client-release policy, atomic replay-plus-release, handle lifetime/scope, algorithms, formats, providers and production audit remain approval-gated.
 
-`TrustFailure` has an exact Data.TaggedError constructor exposing only finite `gate` and `reason`; no arbitrary causes, identifiers or payload. No `any`, public `unknown`, type suppression or unchecked cast is authored. Adapters must sanitize failure channels and keep protected evidence/audit lookup access controlled. Do not serialize whole requests or raw Schema parse failures into telemetry. Schema checks do not make all valid UUIDs safe public data.
+`TrustFailure` has an exact Data.TaggedError constructor exposing only finite `gate` and `reason`; `TrustFailureReason` is the shared reason schema. Runtime sanitizes verifier/replay defects, synchronous throws and malformed reasons to the expected gate's `unavailable`; pure interruption stays interruption. Later gates never run after refusal. Signing/encryption UUID inequality is case-insensitive and does not establish physical independence. No `any`, public `unknown`, type suppression or unchecked cast is authored. Adapters must sanitize failure channels and keep protected evidence/audit lookup access controlled. Do not serialize whole requests or raw Schema parse failures into telemetry. Schema checks do not make all valid UUIDs safe public data.
 
 Tests live in `tests/runtime/src/trust.spec.ts` and use `@effect/vitest`. They cover every missing/denied/unavailable/revoked gate, all binding fields on all four evidence gates, timing, A1-A5/profile/operation combinations, stricter policy, atomic in-process nonce races, rotations and secret-canary errors/audit serialization. These fixtures are not cryptographic, provider, SQL or crash proofs. See [the people guide](../../../docs/trust.md) for setup, every input and limitations. The coordinator owns public export wiring, LLMS generation, Graphify and aggregate validation; do not add aliases to bypass a missing public subpath.
+
+The separate `@eventiva/integrations.sql/trust` subpath supplies unactivated
+`trustReplay` over the captured SqlClient. Migration 0007 stores nonce, exact
+request metadata, explicit consumption time and opaque audit reference. Nonce
+uniqueness is case-insensitive within one physical database; changed bindings
+cannot reuse it. Every ambient transaction is refused to avoid acknowledging
+a savepoint as a durable commit. No cleanup or retention policy is selected.
+See `docs/trust-replay.md` and the compiling example below. Storage conformance
+tests cover both dialects; the separate trust-process fixture kills before and
+after commit and reopens a fresh process. These are bounded persistence proofs,
+not actual verifier, custody, live revocation or release conformance.
 
 ### Refuse preflight without approved verifiers
 
@@ -1165,3 +1224,38 @@ import { Effect } from 'effect';
 export const refusedPreflight = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     trustPreflight(request, trustedPolicy).pipe(Effect.provide(TrustUnavailable));
 ```
+
+### Compose standalone durable nonce consumption
+
+Apply storage migrations through 0007 before building this unactivated adapter.
+Run only outside ambient SQL transactions, after independent trusted checks.
+The receipt is an opaque reference, not release authority or revocation proof.
+There are no retention, cleanup, activation or policy defaults.
+See docs/trust-replay.md for failure handling and deployment limitations.
+
+```ts
+import { TrustReplay, type TrustPolicy, type TrustRequest } from '@eventiva/contracts/trust';
+import { trustReplay } from '@eventiva/integrations.sql/trust';
+import { Effect } from 'effect';
+
+/** The returned Effect still requires the intended trust database's SqlClient. */
+export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
+    TrustReplay.pipe(
+        Effect.flatMap((replay) => replay.consume(request, trustedPolicy)),
+        Effect.provide(trustReplay)
+    );
+```
+
+---
+
+# Governed terminology contracts
+
+EVE-28's metadata-only contract lives in `packages/contracts/src/i18n.ts`, on the existing `@eventiva/contracts/i18n` subpath. Read `docs/terminology.md` for every required field, date/version bounds, a complete Effect decoding example and troubleshooting. `tests/contracts/src/action.spec.ts` provides executable public-import roundtrip, provenance, unknown-field, version/date-boundary and message-key examples. Existing FormatJS tests protect basic overlay consumers.
+
+Keep the existing `TerminologyPack` schema and consumers compatible. `GovernedTerminologyPack` reuses its fields, constrains the profile version to 1..Number.MAX_SAFE_INTEGER and requires authority, source, sourceVersion, jurisdiction, effectiveDate, licenceOrReuseBasis, intendedContext and mappingConfidence. All descriptive values are nonempty, already-trimmed strings. The effective date is a valid Gregorian YYYY-MM-DD in years 0001..9999, checked with pure calendar arithmetic. It is not a clock-dependent activation decision. Source editions remain descriptive strings rather than being confused with numeric profile revisions. No field has a default.
+
+`TerminologyProfileReference` is an exact readonly `{ id, version }` pair, not an alias or locale preference. Both new object schemas reject excess fields. Messages retain the existing namespaced key and string-value contract, including invalid-key rejection. Neither schema adds authority verification, licensing decisions, a confidence scale, reference existence checks or JavaScript object freezing.
+
+Apply owner correction 1c4b2cd5-0fc0-481d-9a08-02ebf0fa272c over the earlier personal-selection plan: only tenant administrators select governed profiles; individual locale remains independent. Historical records retain the exact profile/version and the referenced revision must remain available. This metadata contract cannot enforce authorization, activation or durable immutability. Do not claim a successful decode proves those properties. The provenance requirements originate in owner comment 0e12aa2d-1d85-42a7-940a-31a3e4835b4c. Examples are synthetic Eventiva text, not copied restricted standards.
+
+This pure contract has no runtime feature rollout and therefore no feature flag. There are no new dependencies, manifests, export paths, settings, services, UI, persistence or marketplace/trust/kernel coupling. Central integration owns generated LLMS, graph updates, combined verification and delivery; do not infer full EVE-28 acceptance from metadata tests alone.

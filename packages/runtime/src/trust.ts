@@ -21,14 +21,16 @@ import {
     ResourceGate,
     TrustEvidence,
     TrustFailure,
+    TrustFailureReason,
     TrustPolicy,
     TrustPreflight,
     TrustReplay,
     TrustRequest,
     WorkloadGate,
+    type TrustGate,
     type TrustVerifier,
 } from '@eventiva/contracts/trust';
-import { Effect, Option, Schema } from 'effect';
+import { Cause, Effect, Option, Schema } from 'effect';
 
 const sameRequest = (a: TrustRequest, b: TrustRequest): boolean =>
     a.nonce === b.nonce &&
@@ -48,6 +50,25 @@ const sameRequest = (a: TrustRequest, b: TrustRequest): boolean =>
     a.keys.dek === b.keys.dek &&
     a.keys.dekVersion === b.keys.dekVersion;
 
+const observe = <A>(gate: TrustGate, check: () => Effect.Effect<A, TrustFailure>) =>
+    Effect.suspend(check).pipe(
+        Effect.catchAllCause((cause) => {
+            if (Cause.isInterruptedOnly(cause)) return Effect.interrupt;
+            const failure = Cause.failureOption(cause);
+            return Effect.fail(
+                new TrustFailure({
+                    gate,
+                    reason:
+                        Option.isSome(failure) &&
+                        failure.value instanceof TrustFailure &&
+                        Schema.is(TrustFailureReason)(failure.value.reason)
+                            ? failure.value.reason
+                            : 'unavailable',
+                })
+            );
+        })
+    );
+
 const verify = (
     gate: TrustEvidence['gate'],
     port: TrustVerifier,
@@ -55,10 +76,8 @@ const verify = (
     policy: TrustPolicy
 ): Effect.Effect<TrustEvidence, TrustFailure> =>
     Effect.gen(function* () {
-        const observed = yield* port.verify(request, policy).pipe(
-            // Do not propagate adapter-controlled identifiers, messages or gate labels.
-            Effect.mapError((failure) => new TrustFailure({ gate, reason: failure.reason }))
-        );
+        // Do not propagate adapter-controlled causes, identifiers or gate labels.
+        const observed = yield* observe(gate, () => port.verify(request, policy));
         const evidence = yield* Schema.decodeUnknown(TrustEvidence)(observed).pipe(
             Effect.mapError(() => new TrustFailure({ gate, reason: 'invalid' }))
         );
@@ -129,9 +148,7 @@ export const trustPreflight = (
         if (rank(workload.assurance) < Math.max(rank(mandatory), rank(policy.minimumAssurance))) {
             return yield* Effect.fail(new TrustFailure({ gate: 'workload', reason: 'assurance' }));
         }
-        const replay = yield* replayPort.value
-            .consume(request, policy)
-            .pipe(Effect.mapError((failure) => new TrustFailure({ gate: 'replay', reason: failure.reason })));
+        const replay = yield* observe('replay', () => replayPort.value.consume(request, policy));
         return yield* Schema.decodeUnknown(TrustPreflight)({
             decision: 'metadata-preflight-only',
             release: 'denied',

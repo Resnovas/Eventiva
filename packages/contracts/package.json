@@ -52,6 +52,11 @@
             "types": "./dist/marketplace.d.ts",
             "default": "./dist/marketplace.js"
         },
+        "./marketplace-durable": {
+            "@eventiva/source": "./src/marketplace-durable.ts",
+            "types": "./dist/marketplace-durable.d.ts",
+            "default": "./dist/marketplace-durable.js"
+        },
         "./storage": {
             "@eventiva/source": "./src/storage.ts",
             "types": "./dist/storage.d.ts",
