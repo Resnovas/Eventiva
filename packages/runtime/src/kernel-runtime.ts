@@ -170,9 +170,9 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 readyGeneration = -1;
                 for (const entry of entries.values()) if (entry.state === 'ready') entry.state = 'active';
             };
-            const lookup = (id: string) =>
+            const lookup = (id: string, registry: ReadonlyMap<string, Entry> = entries) =>
                 Effect.suspend(() => {
-                    const entry = entries.get(id);
+                    const entry = registry.get(id);
                     return entry === undefined ? Effect.fail(error(id, 'missing')) : Effect.succeed(entry);
                 });
             const authorize = (entry: Entry, operation: LifecycleOperation) =>
@@ -204,12 +204,13 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                 consumer: string,
                 requirement: string,
                 candidate?: Entry,
-                registry: ReadonlyMap<string, Entry> = entries
+                registry: ReadonlyMap<string, Entry> = entries,
+                selectionBindings: ReadonlyArray<ProviderBinding> = bindings
             ) =>
                 Effect.gen(function* () {
                     const entry = candidate ?? (yield* lookup(consumer));
                     const required = entry.manifest.requires.find(({ name }) => name === requirement);
-                    const matches = bindings.filter(
+                    const matches = selectionBindings.filter(
                         (binding) => binding.consumer === consumer && binding.requirement === requirement
                     );
                     if (required === undefined) return yield* error(consumer, 'undeclared-dependency');
@@ -224,11 +225,15 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         return yield* error(consumer, 'capability-version');
                     return { binding, provider };
                 });
-            const plan = (candidate?: Entry) =>
+            const plan = (
+                candidate?: Entry,
+                registry: ReadonlyMap<string, Entry> = entries,
+                plannedBindings: ReadonlyArray<ProviderBinding> = bindings
+            ) =>
                 Effect.gen(function* () {
-                    const all = new Map(entries);
+                    const all = new Map(registry);
                     if (candidate !== undefined) all.set(candidate.manifest.id, candidate);
-                    for (const binding of bindings) {
+                    for (const binding of plannedBindings) {
                         const consumer = all.get(binding.consumer);
                         if (
                             consumer === undefined ||
@@ -260,9 +265,10 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                                     return yield* error(id, 'dependency-version');
                             }
                             for (const requirement of entry.manifest.requires) {
-                                yield* selected(id, requirement.name, entry, all);
+                                yield* selected(id, requirement.name, entry, all, plannedBindings);
                             }
-                            for (const dependency of dependencies(entry.manifest, bindings)) yield* visit(dependency);
+                            for (const dependency of dependencies(entry.manifest, plannedBindings))
+                                yield* visit(dependency);
                             path.pop();
                             visiting.delete(id);
                             visited.add(id);
@@ -364,6 +370,15 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             )
                         );
                 });
+            const publish = (entry: Entry) =>
+                Effect.acquireRelease(
+                    Effect.sync(() => {
+                        entries.set(entry.manifest.id, entry);
+                        changed();
+                        return entry;
+                    }),
+                    () => dispose(entry.manifest.id, entry)
+                );
             const register = (definition: ModuleDefinition) =>
                 Effect.gen(function* () {
                     yield* mutable();
@@ -383,14 +398,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             manifest.id,
                             previous.manifest.version === manifest.version ? 'duplicate' : 'incompatible'
                         );
-                    yield* Effect.acquireRelease(
-                        Effect.sync(() => {
-                            entries.set(manifest.id, entry);
-                            changed();
-                            return entry;
-                        }),
-                        () => dispose(manifest.id, entry)
-                    );
+                    yield* publish(entry);
                     return manifest;
                 });
             const validate = (id: string) =>
@@ -630,30 +638,54 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                         return yield* error('<platform>', 'duplicate');
                     if (!unique(composition.bindings.map(({ consumer, requirement }) => `${consumer}/${requirement}`)))
                         return yield* error('<platform>', 'provider-ambiguous');
+                    const decoded = yield* Effect.forEach(definitions, (definition) =>
+                        decode(KernelManifest, definition.manifest).pipe(
+                            Effect.map((manifest) => ({ manifest, definition }))
+                        )
+                    );
+                    if (
+                        !unique(decoded.map(({ manifest }) => manifest.id)) ||
+                        decoded.length !== composition.modules.length
+                    )
+                        return yield* error('<platform>', 'invalid-contract');
+                    // Plan and preflight private candidates; no registration or layer is published yet.
+                    const candidates = new Map<string, Entry>();
+                    for (const pin of composition.modules) {
+                        const selected = decoded.find(
+                            ({ manifest }) => manifest.id === pin.id && manifest.version === pin.version
+                        );
+                        if (selected === undefined) return yield* error(pin.id, 'incompatible');
+                        candidates.set(pin.id, {
+                            ...selected,
+                            state: 'registered',
+                            running: undefined,
+                            installed: false,
+                        });
+                    }
+                    for (const entry of candidates.values()) {
+                        yield* authorize(entry, 'register');
+                        yield* admitted(entry.manifest);
+                        yield* authorize(entry, 'validate');
+                        yield* authorize(entry, 'install');
+                        yield* authorize(entry, 'activate');
+                        yield* authorize(entry, 'ready');
+                    }
+                    const order = yield* plan(undefined, candidates, composition.bindings);
+                    for (const id of order) {
+                        const entry = yield* lookup(id, candidates);
+                        yield* preflight(entry);
+                        if (entry.manifest.migrations.some(({ kind, online }) => kind === 'staged' || !online))
+                            return yield* error(id, 'migration-required');
+                    }
                     const scope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential);
                     const previous = bindings;
-                    bindings = composition.bindings;
                     const start = Effect.gen(function* () {
-                        const decoded = yield* Effect.forEach(definitions, (definition) =>
-                            decode(KernelManifest, definition.manifest).pipe(
-                                Effect.map((manifest) => ({ manifest, definition }))
-                            )
-                        );
-                        if (
-                            !unique(decoded.map(({ manifest }) => manifest.id)) ||
-                            decoded.length !== composition.modules.length
-                        )
-                            return yield* error('<platform>', 'invalid-contract');
-                        for (const pin of composition.modules) {
-                            const selected = decoded.find(
-                                ({ manifest }) => manifest.id === pin.id && manifest.version === pin.version
-                            );
-                            if (selected === undefined) return yield* error(pin.id, 'incompatible');
-                            yield* register(selected.definition);
+                        bindings = composition.bindings;
+                        for (const entry of candidates.values()) {
+                            entry.state = 'validated';
+                            yield* publish(entry);
                         }
-                        const order = yield* plan();
                         for (const id of order) {
-                            yield* validate(id);
                             yield* install(id);
                             yield* activate(id);
                         }
@@ -716,14 +748,19 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                             );
                         })
                     ),
-                snapshot: mutex.withPermits(1)(
-                    Effect.sync(() =>
-                        [...entries.values()].map(({ manifest, state }) => ({
-                            module: manifest.id,
-                            version: manifest.version,
-                            state,
-                        }))
-                    )
+                snapshot: Effect.suspend(() =>
+                    // Empty preflight state is observable without waiting for its lifecycle lock.
+                    entries.size === 0
+                        ? Effect.succeed([])
+                        : mutex.withPermits(1)(
+                              Effect.sync(() =>
+                                  [...entries.values()].map(({ manifest, state }) => ({
+                                      module: manifest.id,
+                                      version: manifest.version,
+                                      state,
+                                  }))
+                              )
+                          )
                 ),
             });
         })

@@ -31,6 +31,25 @@ manifest and provider cycles reject before acquisition; diamonds remain valid.
 Preserve authorization, state transitions, generation invalidation, leases,
 candidate cleanup/recovery and additive migration preflight while changing types.
 
+Composition uses a private candidate registry and explicit candidate bindings for
+topology planning. Decode and pin every manifest, authorize the lifecycle, admit
+trust, plan the full graph and run all non-mutating Config preflights before
+publishing entries, bindings or Layers. Run preflights once in dependency order;
+publish their entries directly as `validated`, rather than calling public
+`validate` again. Reject staged/offline migrations before publication too.
+Install/activate/ready retain their normal authorization checks during startup.
+
+During preflight, `snapshot` returns an empty registry without waiting on the
+lifecycle mutex; nonempty snapshots retain serialization. Failed Config or
+defective validation publishes nothing; preserve secret-safe `invalid-config`
+mapping and interruption, including validator finalizers. Retry must succeed on
+the same Kernel after failure, defect or interruption. After publication, keep
+the existing reverse scoped cleanup and binding restoration on startup failure.
+This does not roll back arbitrary install side effects. Standalone register and
+validate, update and recovery retain their original behavior. The dependent-module
+regressions verify no acquisition/install/activate before all preflights, empty
+snapshots during validation, single successful validation and cleanup on retry.
+
 `01_kernel.ts` is a complete typed composition example. Its authority and caller
 are supplied by trusted composition, not a permissive policy default. The same
 feature is used with two explicit provider choices. Tests also keep two named

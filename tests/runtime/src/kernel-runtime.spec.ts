@@ -638,6 +638,138 @@ describe('isolated modular kernel', () => {
         )
     );
 
+    it.effect('preflights every module before publishing or starting a composition', () =>
+        run(
+            Effect.gen(function* () {
+                const kernel = yield* Kernel;
+                const events: Array<string> = [];
+                const first = manifest('first');
+                const second = manifest('second', { dependencies: [{ id: 'first', version: '1.0.0' }] });
+                const validations: Array<string> = [];
+                const modules = [first, second].map((spec) => ({
+                    ...definition(spec, events),
+                    validate: Effect.gen(function* () {
+                        validations.push(spec.id);
+                        expect(events).toEqual([]);
+                        expect(yield* kernel.snapshot).toEqual([]);
+                        yield* Config.integer(spec.id).pipe(
+                            Effect.mapError(() => new KernelError({ module: spec.id, reason: 'invalid-config' }))
+                        );
+                    }),
+                }));
+                const invalid = yield* Effect.either(
+                    kernel.compose(composition([second, first]), modules).pipe(
+                        Effect.withConfigProvider(
+                            ConfigProvider.fromMap(
+                                new Map([
+                                    ['first', '17'],
+                                    ['second', 'private-invalid-value'],
+                                ])
+                            )
+                        )
+                    )
+                );
+                expect(invalid).toEqual(Either.left(new KernelError({ module: 'second', reason: 'invalid-config' })));
+                expect(JSON.stringify(invalid)).not.toContain('private');
+                expect(validations).toEqual(['first', 'second']);
+                expect(events).toEqual([]);
+                expect(yield* kernel.snapshot).toEqual([]);
+                validations.length = 0;
+                expect(
+                    (yield* kernel.compose(composition([second, first]), modules).pipe(
+                        Effect.withConfigProvider(
+                            ConfigProvider.fromMap(
+                                new Map([
+                                    ['first', '17'],
+                                    ['second', '23'],
+                                ])
+                            )
+                        )
+                    )).emitted
+                ).toBe(true);
+                expect(validations).toEqual(['first', 'second']);
+                expect(events).toEqual([
+                    'acquire:first:1.0.0',
+                    'install:first:1.0.0',
+                    'activate:first:1.0.0',
+                    'acquire:second:1.0.0',
+                    'install:second:1.0.0',
+                    'activate:second:1.0.0',
+                ]);
+            })
+        )
+    );
+
+    it.effect('interrupts composition preflight without publication and allows retry', () =>
+        run(
+            Effect.gen(function* () {
+                const kernel = yield* Kernel;
+                const events: Array<string> = [];
+                const first = manifest('first');
+                const second = manifest('second', { dependencies: [{ id: 'first', version: '1.0.0' }] });
+                const entered = yield* Deferred.make<void>();
+                const finalized = yield* Ref.make(false);
+                const modules = [definition(first, events), definition(second, events)] as const;
+                const composing = yield* kernel
+                    .compose(composition([second, first]), [
+                        modules[0],
+                        {
+                            ...modules[1],
+                            validate: Deferred.succeed(entered, undefined).pipe(
+                                Effect.andThen(Effect.never),
+                                Effect.ensuring(Ref.set(finalized, true))
+                            ),
+                        },
+                    ])
+                    .pipe(Effect.fork);
+                yield* Deferred.await(entered);
+                expect(yield* kernel.snapshot).toEqual([]);
+                expect(Exit.isInterrupted(yield* Fiber.interrupt(composing))).toBe(true);
+                expect(yield* Ref.get(finalized)).toBe(true);
+                expect(events).toEqual([]);
+                expect(yield* kernel.snapshot).toEqual([]);
+                yield* Effect.scoped(kernel.compose(composition([second, first]), modules));
+                expect(yield* kernel.snapshot).toEqual([]);
+                expect(events.filter((event) => event.startsWith('release:'))).toEqual([
+                    'release:second:1.0.0',
+                    'release:first:1.0.0',
+                ]);
+            })
+        )
+    );
+
+    it.effect('redacts composition preflight defects without publication and allows retry', () =>
+        run(
+            Effect.gen(function* () {
+                const kernel = yield* Kernel;
+                const events: Array<string> = [];
+                const first = manifest('first');
+                const second = manifest('second', { dependencies: [{ id: 'first', version: '1.0.0' }] });
+                const invalid = yield* Effect.either(
+                    kernel.compose(composition([first, second]), [
+                        definition(first, events),
+                        { ...definition(second, events), validate: Effect.die('private-config-value') },
+                    ])
+                );
+                expect(invalid).toEqual(Either.left(new KernelError({ module: 'second', reason: 'invalid-config' })));
+                expect(JSON.stringify(invalid)).not.toContain('private');
+                expect(events).toEqual([]);
+                expect(yield* kernel.snapshot).toEqual([]);
+                yield* Effect.scoped(
+                    kernel.compose(composition([first, second]), [
+                        definition(first, events),
+                        definition(second, events),
+                    ])
+                );
+                expect(yield* kernel.snapshot).toEqual([]);
+                expect(events.filter((event) => event.startsWith('release:'))).toEqual([
+                    'release:second:1.0.0',
+                    'release:first:1.0.0',
+                ]);
+            })
+        )
+    );
+
     it.effect('registration scope closes and removes its module', () =>
         run(
             Effect.gen(function* () {
@@ -651,7 +783,7 @@ describe('isolated modular kernel', () => {
         )
     );
 
-    it.effect('checks dependency versions and cycles before acquiring modules', () =>
+    it.effect('checks dependency versions, cycles and migrations before acquiring modules', () =>
         run(
             Effect.gen(function* () {
                 const kernel = yield* Kernel;
@@ -665,6 +797,28 @@ describe('isolated modular kernel', () => {
                     [
                         [manifest('feature', { dependencies: [{ id: 'base', version: '1.0.1' }] }), manifest('base')],
                         'dependency-version',
+                        undefined,
+                    ],
+                    [
+                        [
+                            manifest('base'),
+                            manifest('feature', {
+                                dependencies: [{ id: 'base', version: '1.0.0' }],
+                                migrations: [{ id: 'staged', kind: 'staged', online: true }],
+                            }),
+                        ],
+                        'migration-required',
+                        undefined,
+                    ],
+                    [
+                        [
+                            manifest('base'),
+                            manifest('feature', {
+                                dependencies: [{ id: 'base', version: '1.0.0' }],
+                                migrations: [{ id: 'offline', kind: 'additive', online: false }],
+                            }),
+                        ],
+                        'migration-required',
                         undefined,
                     ],
                     [

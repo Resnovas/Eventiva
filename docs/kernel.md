@@ -88,6 +88,34 @@ Shared dependencies and diamonds are valid. Existing lifecycle states, ready
 generation invalidation, authorization, conservative busy refusal, candidate
 failure recovery, migration preflight and lease-aware shutdown are unchanged.
 
+## Composition preflight
+
+`Kernel.compose` admits the whole requested graph before publishing registrations
+or acquiring module Layers. It strictly decodes manifests and exact pins, checks
+lifecycle authorization and trust, validates dependencies and provider bindings,
+then runs each module's non-mutating `validate` once in dependency order. Staged
+or offline migrations also reject before publication. Only after every preflight
+succeeds does it publish validated entries and install/activate in dependency
+order. Install, activate and ready still recheck their operation's authorization.
+
+Keep `ModuleDefinition.validate` limited to Config, secret-safe admission and
+resource compatibility checks. Do not acquire services or mutate storage there.
+For example, if valid module A is a dependency of module B and B is missing a
+required Config value, neither module's Layer, install hook or activate hook runs.
+The registry stays empty, including snapshots requested while validation is in
+progress. Empty snapshots do not wait for the lifecycle lock; nonempty snapshots
+retain lifecycle serialization.
+
+A preflight failure or defect leaves no registrations or bindings to roll back;
+defects become secret-safe `invalid-config` errors. Interruption remains
+interruption and runs the validator's finalizers. Retry `compose` after fixing
+the configuration or interruption. Successful validation is not repeated during
+that composition's startup. This is not a transaction for module install side
+effects: failures after publication retain the existing scoped rollback behavior.
+Standalone `register` still publishes a registered entry without running Config;
+call `validate` explicitly before `install`. Update and recovery validation are
+unchanged.
+
 ## Troubleshoot and verify
 
 - Fix an `invalid-contract` provider error by checking the producer's decoded
@@ -96,6 +124,8 @@ failure recovery, migration preflight and lease-aware shutdown are unchanged.
   provider lifecycle. Do not substitute another available instance implicitly.
 - Fix `cycle` by removing a dependency edge or extracting a shared lower-level
   contract; do not weaken missing-node or admission checks.
+- Fix `invalid-config` by supplying the module's required Config values, then
+  retry composition. Errors deliberately omit the rejected values and secrets.
 - Treat ready receipts and leases as process-local only. They do not prove durable
   publication, cross-runner fencing or persisted crash recovery.
 
