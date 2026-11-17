@@ -19,32 +19,48 @@ import { describe, expect, it } from '@effect/vitest';
 import { PostHogServerProvider } from '@posthog/openfeature-node-provider';
 import { ConfigProvider, Effect, Option, Redacted } from 'effect';
 
+/** Replace ambient configuration with deterministic fixture values for one test effect. */
 const withConfig = (values: Record<string, string>) =>
     Effect.withConfigProvider(ConfigProvider.fromMap(new Map(Object.entries(values))));
 
-describe('PostHog server provider', () => {
-    it.effect('stays off without a project key', () =>
-        Effect.gen(function* () {
-            expect(Option.isNone(yield* options)).toBe(true);
-            expect(Option.isNone(yield* Effect.scoped(fromConfig))).toBe(true);
-        }).pipe(withConfig({}))
+describe('PostHog server provider', /** Register optional configuration, redaction and scoped construction regressions. */ () => {
+    it.effect(
+        'stays off without a project key',
+        /** Supply no configuration so acquisition remains optional. */ () =>
+            Effect.gen(
+                /** Verify absent credentials disable both parsed options and provider acquisition. */ function* () {
+                    expect(Option.isNone(yield* options)).toBe(true);
+                    expect(Option.isNone(yield* Effect.scoped(fromConfig))).toBe(true);
+                }
+            ).pipe(withConfig({}))
     );
 
-    it.effect('reads the key as a secret and defaults to the EU host', () =>
-        Effect.gen(function* () {
-            const settings = Option.getOrThrow(yield* options);
-            expect(Redacted.value(settings.apiKey)).toBe('phc_test');
-            expect(String(settings.apiKey)).not.toContain('phc_test');
-            expect(settings.host).toBe('https://eu.i.posthog.com');
-        }).pipe(withConfig({ POSTHOG_API_KEY: 'phc_test' }))
+    it.effect(
+        'reads the key as a secret and defaults to the EU host',
+        /** Supply only a fixture key to exercise redaction and the default endpoint. */ () =>
+            Effect.gen(
+                /** Verify explicit secret access works while ordinary rendering conceals the key. */ function* () {
+                    const settings = Option.getOrThrow(yield* options);
+                    expect(Redacted.value(settings.apiKey)).toBe('phc_test');
+                    expect(String(settings.apiKey)).not.toContain('phc_test');
+                    expect(settings.host).toBe('https://eu.i.posthog.com');
+                }
+            ).pipe(withConfig({ POSTHOG_API_KEY: 'phc_test' }))
     );
 
-    it.effect('builds an OpenFeature provider whose client lives as long as the scope', () =>
-        Effect.gen(function* () {
-            const built = yield* Effect.scoped(provider({ apiKey: Redacted.make('phc_test'), host: 'http://127.0.0.1:9' }));
-            expect(built).toBeInstanceOf(PostHogServerProvider);
-            const configured = yield* Effect.scoped(fromConfig);
-            expect(Option.isSome(configured)).toBe(true);
-        }).pipe(withConfig({ POSTHOG_API_KEY: 'phc_test', POSTHOG_HOST: 'http://127.0.0.1:9' }))
+    it.effect(
+        'builds an OpenFeature provider whose client lives as long as the scope',
+        /** Compare explicit and configuration-driven scoped provider acquisition. */ () =>
+            Effect.gen(
+                /** Verify both construction routes acquire a provider and complete their scopes. */ function* () {
+                    // Close each acquisition without evaluating flags; this checks construction rather than remote delivery.
+                    const built = yield* Effect.scoped(
+                        provider({ apiKey: Redacted.make('phc_test'), host: 'http://127.0.0.1:9' })
+                    );
+                    expect(built).toBeInstanceOf(PostHogServerProvider);
+                    const configured = yield* Effect.scoped(fromConfig);
+                    expect(Option.isSome(configured)).toBe(true);
+                }
+            ).pipe(withConfig({ POSTHOG_API_KEY: 'phc_test', POSTHOG_HOST: 'http://127.0.0.1:9' }))
     );
 });

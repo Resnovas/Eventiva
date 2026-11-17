@@ -174,83 +174,65 @@ Delivered first-D03 head [285fc569](https://github.com/Resnovas/Eventiva/commit/
 
 Executed combined `DOCUMENTATION_BASE=17631eaf5712d422376e5d3d2f0bbfd939773959 NX_SKIP_NX_CACHE=true node --run verify` under the approved disposable PostgreSQL fixture: exit zero. All 85 Nx lint/typecheck/test/build/parity tasks and all three smoke targets plus 12 dependencies passed uncached, alongside 89 documentation fixtures and 95 resource/boundary/type fixtures. Source graph: 169 files and 596 edges, zero violations/cycles; emitted graph: 68 files and 259 edges, zero violations/cycles. Strict planning independently reports 258 issues, 692 edges, zero unresolved decision sources and zero stale outputs for the inherited reconciled source inventory; this is not platform acceptance or complete live freshness. The fixture/network were removed. Completed: exact-token and 55-only prune proofs, focused checks and full local verification. Current: immutable-base post-evidence root check and separate signed source/clean-graph delivery; exact-head CI is asynchronous, not presumed passed. No runtime/test path or classifier is changed, and the earlier timeout remains assigned to its separate lane.
 
+## D03-D06 identity-independent source checkpoint - 2026-11-17
+
+This packet starts at independently fetched remote main `c3a541b9172c7ce22ecde7cd118df5a1cc10e2df`. Jonathan/Puck ended the central delivery windows; each lane now regenerates and ships its own verified work. Canonical house-template ownership remains unchanged. The 13 synced tooling edits are parked downstream and transferred to the authorized house lane, with independent proof of 7,194 unchanged parsed terminals. They are not silently exempted from Eventiva's remaining debt.
+
+The identity-independent packet documents SQL transaction/storage/hook/resource/trust adapters, application and compiling-example composition, UI registry/screen ownership, and contract/schema/vendor/runtime/storage/UI tests. It resolves 976 missing contracts and 207 live rationale candidates through documentation; 179 of those rationale identities were accepted debt, so the ledger shrinks by exactly 1,155 entries. Initially that was 3,062 to 1,907. Rebase onto the separately delivered timeout-diagnostics head `416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2` preserves that lane's 13 independent removals: this packet now takes 3,049 to 1,894 (1,380 attachments and 514 rationale candidates). The additional 28 live rationale reductions were never accepted debt. No checker correction is included in this packet. Exact parsed terminal kind/text equality holds for every changed TypeScript/TSX source against both immutable bases; assertions, signatures, deadlines, retries and coverage thresholds are unchanged.
+
+Contracts distinguish tenant routing from authorization, paired transaction ownership from ambient connections, immutable declaration/pin identity from current permission, and scope/finalizer ownership from borrowed SDK or host resources. Test contracts identify independent negative controls and deterministic barriers; internal comments explain real admission, transaction, privacy and lifecycle boundaries rather than narrating assertions. Straight-line composition/assertion candidates with adequate contracts remain visible for the next generally applicable classifier review. Semantic review establishes no missing source intent in this packet; it does not establish every retained candidate is a violation.
+
+Nineteen additional source files are parked for the separate parser-context fingerprint correction and exact trusted-history reconciliation. Comments after interpolated templates can change legacy scanner fingerprints despite identical parsed terminals. That correction must preserve every finding's rule/file/kind/name and derive mappings only from identical trusted historical bytes, never from candidate-source proximity. It may not admit replacement or new debt. All remaining live rationale candidates, including newer delivered code absent from the ledger, remain in D03-D07 scope. Strict-zero activation remains pending the complete review, canonical tool sync and strict scanner success.
+
+Focused package lint/typechecks/tests passed as recorded in the source-lane evidence. Earlier overlapping checks exited 137/Killed and one PostgreSQL test hit its existing deadline; neither establishes a cause or a passing aggregate. After writers settled, uncached full serial `DOCUMENTATION_BASE=c3a541b9172c7ce22ecde7cd118df5a1cc10e2df node --run verify` passed with the approved disposable PostgreSQL fixture: 89 documentation fixtures, 95 boundary/type fixtures, all 85 aggregate Nx tasks and smoke for three projects plus 12 dependencies. The first attempt stopped at scratch-file licence headers before application verification; standard headers corrected only private proof files. Remote main advanced during verification, so delivery rebased and regenerated against `416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`. The second uncached full serial run against that exact ancestor also exited zero with the same fixture/task totals and zero source/emitted boundary violations or cycles. Both fixtures/networks were removed. No deadline/retry adjustment or timeout-lane runtime change is authored by this packet. Signed delivery and asynchronous exact-head CI links are recorded on EVE-13/EVE-261; local passing evidence does not claim CI or strict-zero success.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-3049 remaining findings across 96 files: 2356 mechanically missing JSDoc; 0 prose-review candidates; 693 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+1894 remaining findings across 65 files: 1380 mechanically missing JSDoc; 0 prose-review candidates; 514 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
-| D06 | [ai-docs/src/13_storage/01_transaction.ts](../../ai-docs/src/13_storage/01_transaction.ts) | 3 | 0 | 1 |
-| D06 | [ai-docs/src/15_identity/01_host.ts](../../ai-docs/src/15_identity/01_host.ts) | 1 | 0 | 1 |
-| D06 | [ai-docs/src/18_hooks/composition.ts](../../ai-docs/src/18_hooks/composition.ts) | 5 | 0 | 0 |
-| D06 | [ai-docs/src/18_resources/01_resource.ts](../../ai-docs/src/18_resources/01_resource.ts) | 5 | 0 | 1 |
-| D06 | [ai-docs/src/19_declarative-modules/02_screen-context.ts](../../ai-docs/src/19_declarative-modules/02_screen-context.ts) | 2 | 0 | 0 |
-| D06 | [ai-docs/src/21_kernel/01_kernel.ts](../../ai-docs/src/21_kernel/01_kernel.ts) | 10 | 0 | 3 |
-| D06 | [ai-docs/src/23_marketplace/02_durable.ts](../../ai-docs/src/23_marketplace/02_durable.ts) | 1 | 0 | 1 |
-| D06 | [ai-docs/src/24_trust/01_preflight.ts](../../ai-docs/src/24_trust/01_preflight.ts) | 1 | 0 | 0 |
-| D06 | [ai-docs/src/24_trust/02_replay.ts](../../ai-docs/src/24_trust/02_replay.ts) | 1 | 0 | 0 |
-| D04 | [apps/client-e2e/src/shell.spec.ts](../../apps/client-e2e/src/shell.spec.ts) | 3 | 0 | 1 |
-| D04 | [apps/client/src/App.tsx](../../apps/client/src/App.tsx) | 3 | 0 | 1 |
-| D04 | [apps/client/src/i18n.ts](../../apps/client/src/i18n.ts) | 2 | 0 | 0 |
-| D04 | [apps/server/src/access.ts](../../apps/server/src/access.ts) | 3 | 0 | 0 |
-| D04 | [apps/server/src/backend.ts](../../apps/server/src/backend.ts) | 6 | 0 | 3 |
-| D04 | [apps/server/src/cluster-actions.ts](../../apps/server/src/cluster-actions.ts) | 12 | 0 | 2 |
-| D04 | [apps/server/src/cluster-profile.ts](../../apps/server/src/cluster-profile.ts) | 3 | 0 | 0 |
-| D04 | [apps/server/src/cluster.ts](../../apps/server/src/cluster.ts) | 14 | 0 | 4 |
-| D04 | [apps/server/src/status.ts](../../apps/server/src/status.ts) | 3 | 0 | 0 |
-| D04 | [apps/server/tests/backend.spec.ts](../../apps/server/tests/backend.spec.ts) | 12 | 0 | 1 |
-| D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 37 | 0 | 16 |
-| D03 | [packages/integrations/sql/src/hook.ts](../../packages/integrations/sql/src/hook.ts) | 39 | 0 | 9 |
-| D03 | [packages/integrations/sql/src/identity.ts](../../packages/integrations/sql/src/identity.ts) | 31 | 0 | 7 |
+| D06 | [ai-docs/src/21_kernel/01_kernel.ts](../../ai-docs/src/21_kernel/01_kernel.ts) | 0 | 0 | 1 |
+| D04 | [apps/client-e2e/src/shell.spec.ts](../../apps/client-e2e/src/shell.spec.ts) | 0 | 0 | 1 |
+| D04 | [apps/client/src/App.tsx](../../apps/client/src/App.tsx) | 0 | 0 | 1 |
+| D04 | [apps/server/src/cluster.ts](../../apps/server/src/cluster.ts) | 0 | 0 | 1 |
+| D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 8 |
+| D03 | [packages/integrations/sql/src/hook.ts](../../packages/integrations/sql/src/hook.ts) | 0 | 0 | 1 |
 | D03 | [packages/integrations/sql/src/marketplace.ts](../../packages/integrations/sql/src/marketplace.ts) | 65 | 0 | 19 |
-| D03 | [packages/integrations/sql/src/migrations.ts](../../packages/integrations/sql/src/migrations.ts) | 10 | 0 | 2 |
-| D03 | [packages/integrations/sql/src/resource.ts](../../packages/integrations/sql/src/resource.ts) | 33 | 0 | 7 |
-| D03 | [packages/integrations/sql/src/router.ts](../../packages/integrations/sql/src/router.ts) | 4 | 0 | 1 |
-| D03 | [packages/integrations/sql/src/sqlite.ts](../../packages/integrations/sql/src/sqlite.ts) | 1 | 0 | 0 |
-| D03 | [packages/integrations/sql/src/storage.ts](../../packages/integrations/sql/src/storage.ts) | 40 | 0 | 10 |
-| D03 | [packages/integrations/sql/src/transaction.ts](../../packages/integrations/sql/src/transaction.ts) | 18 | 0 | 3 |
-| D03 | [packages/integrations/sql/src/trust.ts](../../packages/integrations/sql/src/trust.ts) | 11 | 0 | 0 |
-| D03 | [packages/integrations/sql/src/values.ts](../../packages/integrations/sql/src/values.ts) | 4 | 0 | 0 |
+| D03 | [packages/integrations/sql/src/resource.ts](../../packages/integrations/sql/src/resource.ts) | 0 | 0 | 2 |
+| D03 | [packages/integrations/sql/src/storage.ts](../../packages/integrations/sql/src/storage.ts) | 0 | 0 | 1 |
+| D03 | [packages/integrations/sql/src/transaction.ts](../../packages/integrations/sql/src/transaction.ts) | 0 | 0 | 1 |
 | D02 | [packages/runtime/src/identity.ts](../../packages/runtime/src/identity.ts) | 0 | 0 | 3 |
 | D02 | [packages/runtime/src/kernel-runtime.ts](../../packages/runtime/src/kernel-runtime.ts) | 0 | 0 | 2 |
 | D02 | [packages/runtime/src/marketplace.ts](../../packages/runtime/src/marketplace.ts) | 0 | 0 | 1 |
 | D02 | [packages/runtime/src/resource.ts](../../packages/runtime/src/resource.ts) | 0 | 0 | 1 |
 | D02 | [packages/runtime/src/telemetry.ts](../../packages/runtime/src/telemetry.ts) | 0 | 0 | 1 |
 | D02 | [packages/runtime/src/testing.ts](../../packages/runtime/src/testing.ts) | 0 | 0 | 1 |
-| D06 | [packages/ui-modules/src/DeclarativeModule.tsx](../../packages/ui-modules/src/DeclarativeModule.tsx) | 6 | 0 | 2 |
-| D06 | [packages/ui-modules/src/declarative-registry.ts](../../packages/ui-modules/src/declarative-registry.ts) | 51 | 0 | 10 |
-| D06 | [packages/ui-modules/src/screen-context.ts](../../packages/ui-modules/src/screen-context.ts) | 18 | 0 | 4 |
+| D06 | [packages/ui-modules/src/declarative-registry.ts](../../packages/ui-modules/src/declarative-registry.ts) | 0 | 0 | 2 |
 | D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 46 | 0 | 11 |
 | D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 23 | 0 | 18 |
-| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 10 | 0 | 5 |
-| D05 | [tests/contracts/src/hook.spec.ts](../../tests/contracts/src/hook.spec.ts) | 6 | 0 | 3 |
-| D05 | [tests/contracts/src/identity.spec.ts](../../tests/contracts/src/identity.spec.ts) | 2 | 0 | 1 |
+| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 4 |
 | D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 33 | 0 | 11 |
-| D05 | [tests/contracts/src/module-manifest.spec.ts](../../tests/contracts/src/module-manifest.spec.ts) | 8 | 0 | 5 |
-| D05 | [tests/contracts/src/storage.spec.ts](../../tests/contracts/src/storage.spec.ts) | 5 | 0 | 2 |
-| D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 9 | 0 | 5 |
-| D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 29 | 0 | 6 |
-| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 31 | 0 | 11 |
-| D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 11 | 0 | 3 |
-| D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 8 | 0 | 4 |
+| D05 | [tests/contracts/src/module-manifest.spec.ts](../../tests/contracts/src/module-manifest.spec.ts) | 0 | 0 | 2 |
+| D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 4 |
+| D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 99 | 0 | 25 |
 | D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/action-types.spec.ts](../../tests/runtime/src/action-types.spec.ts) | 11 | 0 | 0 |
 | D05 | [tests/runtime/src/execution.spec.ts](../../tests/runtime/src/execution.spec.ts) | 101 | 0 | 37 |
-| D05 | [tests/runtime/src/hook-telemetry.spec.ts](../../tests/runtime/src/hook-telemetry.spec.ts) | 24 | 0 | 3 |
 | D05 | [tests/runtime/src/hook.spec.ts](../../tests/runtime/src/hook.spec.ts) | 80 | 0 | 17 |
 | D05 | [tests/runtime/src/host.spec.ts](../../tests/runtime/src/host.spec.ts) | 115 | 0 | 32 |
 | D05 | [tests/runtime/src/identity.spec.ts](../../tests/runtime/src/identity.spec.ts) | 49 | 0 | 10 |
 | D05 | [tests/runtime/src/kernel-runtime.spec.ts](../../tests/runtime/src/kernel-runtime.spec.ts) | 170 | 0 | 52 |
 | D05 | [tests/runtime/src/kernel-telemetry.spec.ts](../../tests/runtime/src/kernel-telemetry.spec.ts) | 84 | 0 | 30 |
-| D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 53 | 0 | 14 |
-| D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 24 | 0 | 9 |
-| D05 | [tests/runtime/src/storage.spec.ts](../../tests/runtime/src/storage.spec.ts) | 26 | 0 | 2 |
-| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 72 | 0 | 21 |
-| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 26 | 0 | 15 |
-| D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 3 | 0 | 3 |
-| D05 | [tests/schema/src/storage.spec.ts](../../tests/schema/src/storage.spec.ts) | 1 | 0 | 1 |
+| D05 | [tests/runtime/src/marketplace.spec.ts](../../tests/runtime/src/marketplace.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 3 |
+| D05 | [tests/runtime/src/trust.spec.ts](../../tests/runtime/src/trust.spec.ts) | 0 | 0 | 12 |
+| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 7 |
+| D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
 | D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 58 | 0 | 26 |
 | D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 125 | 0 | 28 |
 | D05 | [tests/storage/src/identity.spec.ts](../../tests/storage/src/identity.spec.ts) | 39 | 0 | 10 |
@@ -258,11 +240,11 @@ Executed combined `DOCUMENTATION_BASE=17631eaf5712d422376e5d3d2f0bbfd939773959 N
 | D05 | [tests/storage/src/marketplace.spec.ts](../../tests/storage/src/marketplace.spec.ts) | 74 | 0 | 17 |
 | D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 5 | 0 | 2 |
 | D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 4 | 0 | 2 |
-| D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 28 | 0 | 8 |
+| D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 2 |
 | D05 | [tests/telemetry/src/server.spec.ts](../../tests/telemetry/src/server.spec.ts) | 0 | 0 | 1 |
 | D05 | [tests/telemetry/src/telemetry.spec.ts](../../tests/telemetry/src/telemetry.spec.ts) | 134 | 0 | 40 |
-| D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 149 | 0 | 48 |
-| D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 46 | 0 | 14 |
+| D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
+| D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
 | D06 | [tools/ci/coverage-goal.ts](../../tools/ci/coverage-goal.ts) | 8 | 0 | 2 |
 | D06 | [tools/ci/flaky-tests.ts](../../tools/ci/flaky-tests.ts) | 9 | 0 | 0 |
 | D06 | [tools/dev/docs.ts](../../tools/dev/docs.ts) | 1 | 0 | 0 |
@@ -276,5 +258,4 @@ Executed combined `DOCUMENTATION_BASE=17631eaf5712d422376e5d3d2f0bbfd939773959 N
 | D06 | [tools/release/release.ts](../../tools/release/release.ts) | 6 | 0 | 2 |
 | D06 | [tools/release/sourcemaps.ts](../../tools/release/sourcemaps.ts) | 3 | 0 | 1 |
 | D06 | [tools/typecheck/tests.ts](../../tools/typecheck/tests.ts) | 2 | 0 | 0 |
-| D06 | [vitest.shared.ts](../../vitest.shared.ts) | 1 | 0 | 0 |
 <!-- documentation:inventory:end -->

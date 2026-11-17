@@ -58,36 +58,44 @@ const event = {
     sequence: 1,
     projection: { kind: 'domain.change', identity, change: 'updated', revision: 1 },
 };
+/** Test unknown wire input against a hook schema without throwing or coercing the validation outcome. */
 const valid = <A, I, Input>(schema: Schema.Schema<A, I>, value: Input) =>
     Schema.decodeUnknownEither(schema)(value)._tag === 'Right';
 
-it.effect('fails closed without a durable outbox or an authorized release policy', () =>
-    Effect.gen(function* () {
-        const outbox = yield* HookOutbox;
-        const policy = yield* HookReleasePolicy;
-        const observer = Schema.decodeUnknownSync(HookDeclaration)(declaration);
-        const fact = Schema.decodeUnknownSync(HookEvent)(event);
-        const claim = {
-            lease: uuid,
-            idempotencyKey: uuid,
-            pin: observer.pin,
-            event: fact,
-            attempt: 1,
-        };
-        for (const operation of [
-            outbox.stage(fact, [observer]),
-            outbox.claim(observer, 1000),
-            outbox.settle(claim, { state: 'delivered' }),
-        ]) {
-            const failure = yield* Effect.flip(operation);
-            expect(failure).toMatchObject({ _tag: 'HookOutboxFailure', reason: 'unavailable' });
-        }
-        const denied = yield* Effect.flip(policy.authorize(observer, fact, hookReleaseRequirements(fact)));
-        expect(denied).toMatchObject({ _tag: 'HookDenied', reason: 'policy-denied' });
-    }).pipe(Effect.provide([HookOutboxUnavailable, HookReleaseDeny]))
+it.effect(
+    'fails closed without a durable outbox or an authorized release policy',
+    /** Isolate unavailable persistence and deny-all release layers from real hook delivery infrastructure. */ () =>
+        Effect.gen(
+            /** Verify every outbox operation fails unavailable and release authorization independently denies the event. */ function* () {
+                // A valid declaration and event ensure failures reflect missing capabilities rather than malformed fixtures.
+                const outbox = yield* HookOutbox;
+                const policy = yield* HookReleasePolicy;
+                const observer = Schema.decodeUnknownSync(HookDeclaration)(declaration);
+                const fact = Schema.decodeUnknownSync(HookEvent)(event);
+                const claim = {
+                    lease: uuid,
+                    idempotencyKey: uuid,
+                    pin: observer.pin,
+                    event: fact,
+                    attempt: 1,
+                };
+                for (const operation of [
+                    outbox.stage(fact, [observer]),
+                    outbox.claim(observer, 1000),
+                    outbox.settle(claim, { state: 'delivered' }),
+                ]) {
+                    const failure = yield* Effect.flip(operation);
+                    expect(failure).toMatchObject({ _tag: 'HookOutboxFailure', reason: 'unavailable' });
+                }
+                // Persistence unavailability does not replace the separate fail-closed release policy boundary.
+                const denied = yield* Effect.flip(policy.authorize(observer, fact, hookReleaseRequirements(fact)));
+                expect(denied).toMatchObject({ _tag: 'HookDenied', reason: 'policy-denied' });
+            }
+        ).pipe(Effect.provide([HookOutboxUnavailable, HookReleaseDeny]))
 );
 
-it('seals profiles and declarations, rejects before/mutating hooks and ambiguous pins', () => {
+it('seals profiles and declarations, rejects before/mutating hooks and ambiguous pins', /** Verify declarations permit only bounded post-commit capabilities with exact owner pins. */ () => {
+    // Mutations vary one declaration property so forbidden execution authority cannot hide in an otherwise valid pin.
     expect(SecurityProfile.literals).toEqual(['baseline', 'sensitive', 'restricted', 'vault']);
     expect(valid(HookDeclaration, declaration)).toBe(true);
     for (const patch of [
@@ -117,7 +125,7 @@ it('seals profiles and declarations, rejects before/mutating hooks and ambiguous
     ).toBe(true);
 });
 
-it('uses the frozen kernel lifecycle and all execution/step phases without payload slots', () => {
+it('uses the frozen kernel lifecycle and all execution/step phases without payload slots', /** Verify lifecycle vocabulary and execution phase metadata without implying transition validation or payload access. */ () => {
     expect(valid(HookModuleIdentity, { ...identity, generation: 0 })).toBe(true);
     expect(valid(HookModuleIdentity, { ...identity, generation: -1 })).toBe(false);
     expect(
@@ -175,6 +183,7 @@ it('uses the frozen kernel lifecycle and all execution/step phases without paylo
         })
     ).toBe(false);
     expect(valid(HookObservation, { kind: 'platform.ready', runtimeId: uuid, generation: 2 })).toBe(true);
+    // Execution observations have no step identifier; step observations require one and neither accepts payload input.
     for (const phase of ['start', 'finish', 'fail', 'retry', 'cancel', 'pause', 'resume']) {
         for (const kind of ['execution', 'step']) {
             const observation = { kind, phase, identity, execution: uuid, step: kind === 'step' ? 'verify' : null };
@@ -185,7 +194,8 @@ it('uses the frozen kernel lifecycle and all execution/step phases without paylo
     }
 });
 
-it('releases only typed metadata for Restricted/Vault; rejects plaintext and secret-bearing shapes', () => {
+it('releases only typed metadata for Restricted/Vault; rejects plaintext and secret-bearing shapes', /** Verify profile-specific release requirements never grant decryption or admit secret-bearing event fields. */ () => {
+    // Check envelope and projection independently because either could otherwise become a secret release channel.
     for (const profile of SecurityProfile.literals) {
         const source = { ...event, profile };
         const decoded = Schema.decodeUnknownSync(HookEvent)(source);

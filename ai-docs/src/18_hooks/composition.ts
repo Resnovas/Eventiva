@@ -37,32 +37,41 @@ export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(FlagsSafeDefaults)
 );
 
+/** Stage trusted, minimized event metadata and approved observer pins atomically in the existing storage scope. */
 export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDeclaration>) =>
-    Effect.gen(function* () {
-        const store = yield* Storage;
-        const outbox = yield* HookOutbox;
-        // Include the real domain write in this transaction before staging.
-        yield* store.transaction(outbox.stage(event, observers));
-    });
+    Effect.gen(
+        /** Enlist hook outbox staging in the same transaction that should contain the domain write. */ function* () {
+            const store = yield* Storage;
+            const outbox = yield* HookOutbox;
+            // Include the real domain write in this transaction before staging.
+            yield* store.transaction(outbox.stage(event, observers));
+        }
+    );
 
 /** Trusted host only; release policy is still required before exposing facts to a consumer. */
 export const resume = (savedCursor: number) =>
-    Effect.gen(function* () {
-        const feed = yield* HookChangeFeed;
-        // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
-        return yield* feed.read(savedCursor, 50);
-    });
+    Effect.gen(
+        /** Fetch a bounded batch after the consumer's durable cursor, without advancing it here. */ function* () {
+            const feed = yield* HookChangeFeed;
+            // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
+            return yield* feed.read(savedCursor, 50);
+        }
+    );
 
 /** Inspection releases metadata too; this example remains deliberately denied. */
 export const inspectDeadLetters = (declaration: HookDeclaration) =>
-    Effect.gen(function* () {
-        const recovery = yield* HookRecovery;
-        return yield* recovery.deadLetters(declaration, null, 25);
-    }).pipe(Effect.provide(HookOperatorDeny));
+    Effect.gen(
+        /** Request the first dead-letter metadata page under the deliberately denying operator policy. */ function* () {
+            const recovery = yield* HookRecovery;
+            return yield* recovery.deadLetters(declaration, null, 25);
+        }
+    ).pipe(Effect.provide(HookOperatorDeny));
 
 /** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
 export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
-    Effect.gen(function* () {
-        const recovery = yield* HookRecovery;
-        return yield* recovery.replay(declaration, key, requestId);
-    }).pipe(Effect.provide(HookOperatorDeny));
+    Effect.gen(
+        /** Reuse the caller-retained replay identifier; the denying policy prevents this sample from resetting work. */ function* () {
+            const recovery = yield* HookRecovery;
+            return yield* recovery.replay(declaration, key, requestId);
+        }
+    ).pipe(Effect.provide(HookOperatorDeny));

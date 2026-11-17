@@ -56,21 +56,31 @@ const Venue = Resource.make('venues.venue', {
     fields: { id: Field.id().pipe(Field.classify('restricted')) },
 });
 
+/** Project successful composition into ordered owner-qualified field names while preserving composition failures. */
 const names = (composed: Either.Either<{ readonly resources: ReadonlyArray<Resource.Resource | object> }, unknown>) =>
-    Either.map(composed, ({ resources }) =>
-        resources.map((resource) =>
-            'fields' in resource && Array.isArray(resource.fields)
-                ? resource.fields.map(
-                      (field: { readonly module: string; readonly name: string }) => `${field.module}:${field.name}`
-                  )
-                : []
-        )
+    Either.map(
+        composed,
+        /** Preserve resource order when reducing a successful composition to its field ownership evidence. */ ({
+            resources
+        }) =>
+            resources.map(
+                /** Extract composed array-form fields; uncomposed or opaque resources contribute no names. */ (
+                    resource
+                ) =>
+                    'fields' in resource && Array.isArray(resource.fields)
+                        ? resource.fields.map(
+                              /** Qualify each field with its owning module so contributed fields remain distinguishable. */
+                              (field: { readonly module: string; readonly name: string }) =>
+                                  `${field.module}:${field.name}`
+                          )
+                        : []
+            )
     );
 
-describe('fields', () => {
+describe('fields', /** Cover field type inference, metadata immutability and wire transformations on a concrete event row. */ () => {
     const row = Resource.row(Event);
 
-    it('retains each decoded and encoded field type without a mapped assertion', () => {
+    it('retains each decoded and encoded field type without a mapped assertion', /** Pin row inference for dates, nullable values and nested JSON without widening concrete schema fields. */ () => {
         expectTypeOf<Schema.Schema.Type<typeof row>>().toEqualTypeOf<Resource.Row<typeof Event>>();
         expectTypeOf<Schema.Schema.Type<typeof row>['startsAt']>().toEqualTypeOf<Date>();
         expectTypeOf<Schema.Schema.Encoded<typeof row>['startsAt']>().toEqualTypeOf<string>();
@@ -80,7 +90,8 @@ describe('fields', () => {
         expectTypeOf(Event.fields.meta.schema.fields.tags).toEqualTypeOf<Schema.Array$<typeof Schema.String>>();
     });
 
-    it('uses concrete field schemas directly without mutating their source schema', () => {
+    it('uses concrete field schemas directly without mutating their source schema', /** Verify field decoration preserves source identity and transformations without modifying the source schema. */ () => {
+        // The wrapper must retain date codecs while keeping field-specific metadata off the caller's source schema.
         const source = Schema.Struct({ at: Schema.Date });
         const value = Field.json(source).pipe(Field.classify('vault'), Field.label('events.event.meta'));
         const at = new Date('2026-11-15T02:40:00.125Z');
@@ -92,7 +103,8 @@ describe('fields', () => {
         expect(value.pipe()).toBe(value);
     });
 
-    it('keeps nullable metadata and transformations without changing the original field', () => {
+    it('keeps nullable metadata and transformations without changing the original field', /** Verify nullable decoration retains reference metadata and date transformations without mutating the original field. */ () => {
+        // Nullability is additive: it must not erase ownership-related metadata or weaken non-null value validation.
         const original = Field.reference('venues.venue').pipe(
             Field.classify('restricted'),
             Field.conflict('server-authoritative'),
@@ -114,7 +126,8 @@ describe('fields', () => {
         expect(Schema.encodeSync(optionalTime)(null)).toBeNull();
     });
 
-    it('round-trip a record whose wire form differs from its decoded form', () => {
+    it('round-trip a record whose wire form differs from its decoded form', /** Verify row decoding transforms timestamps to Date while encoding restores exact millisecond wire precision. */ () => {
+        // Boundary values and empty fields ensure the round trip preserves falsy data, not just populated records.
         const wire = {
             id: '0193a4f0-0000-7000-8000-000000000001',
             title: '',
@@ -131,7 +144,7 @@ describe('fields', () => {
         expect(Schema.encodeSync(row)(decoded)).toEqual(wire);
     });
 
-    it('bound text and exact decimals at their limits', () => {
+    it('bound text and exact decimals at their limits', /** Verify decimal precision and scale independently of text maximum-length boundaries. */ () => {
         const price = Schema.is(Event.fields.price.schema);
         expect(price('999.99')).toBe(true);
         expect(price('1000.5')).toBe(false);
@@ -142,7 +155,7 @@ describe('fields', () => {
         expect(Schema.is(Event.fields.title.schema)('123456')).toBe(false);
     });
 
-    it('carry their metadata', () => {
+    it('carry their metadata', /** Verify labels, conflicts, nullability, reference targets and baseline classification remain visible. */ () => {
         expect(Event.fields.title.label).toEqual(Option.some('events.event.title'));
         expect(Event.fields.seats.conflict).toBe('server-authoritative');
         expect(Event.fields.notes.nullable).toBe(true);
@@ -152,11 +165,11 @@ describe('fields', () => {
     });
 });
 
-describe('compose', () => {
+describe('compose', /** Cover deterministic resource merging, contribution ownership and classification floors. */ () => {
     const tickets = contribute(Event, 'tickets', { ticketLimit: Field.integer() });
     const venueLink = contribute('events.event', 'venues', { venue: Field.reference('venues.venue') });
 
-    it('exposes concrete required constructor fields for every composition error', () => {
+    it('exposes concrete required constructor fields for every composition error', /** Pin typed error constructor payloads so diagnostic context cannot disappear through type erasure. */ () => {
         expectTypeOf<ConstructorParameters<typeof DuplicateResource>>().toEqualTypeOf<
             [fields: { readonly resource: string; readonly modules: ReadonlyArray<string> }]
         >();
@@ -182,55 +195,74 @@ describe('compose', () => {
         >();
     });
 
-    it.effect('keeps composition errors tagged, field-bearing and yieldable', () =>
-        Effect.gen(function* () {
-            const errors = [
-                new DuplicateResource({ resource: 'events.event', modules: ['events', 'other'] }),
-                new DuplicateField({ resource: 'events.event', field: 'title', modules: ['events', 'other'] }),
-                new UnknownTarget({ resource: 'events.event', module: 'events', target: 'venues.venue' }),
-                new WeakerClassification({
-                    resource: 'events.event',
-                    field: 'title',
-                    module: 'events',
-                    profile: 'baseline',
-                    floor: 'restricted',
-                }),
-                new InvalidName({ module: 'events', name: 'Event' }),
-            ];
-            expect(errors.map((error) => error._tag)).toEqual([
-                'DuplicateResource',
-                'DuplicateField',
-                'UnknownTarget',
-                'WeakerClassification',
-                'InvalidName',
-            ]);
-            for (const error of errors) {
-                expect(error).toBeInstanceOf(Error);
-                expect(
-                    yield* Effect.either(
-                        Effect.gen(function* () {
-                            return yield* error;
-                        })
-                    )
-                ).toEqual(Either.left(error));
-            }
-            expect(errors.map((error) => ({ ...error }))).toMatchObject([
-                { resource: 'events.event', modules: ['events', 'other'] },
-                { resource: 'events.event', field: 'title', modules: ['events', 'other'] },
-                { resource: 'events.event', module: 'events', target: 'venues.venue' },
-                {
-                    resource: 'events.event',
-                    field: 'title',
-                    module: 'events',
-                    profile: 'baseline',
-                    floor: 'restricted',
-                },
-                { module: 'events', name: 'Event' },
-            ]);
-        })
+    it.effect(
+        'keeps composition errors tagged, field-bearing and yieldable',
+        /** Exercise each composition error as both a diagnostic object and an Effect failure. */ () =>
+            Effect.gen(
+                /** Verify errors retain tags and enumerable diagnostic fields when yielded into the typed failure channel. */ function* () {
+                    // Constructor typing alone does not prove runtime Error identity, diagnostic payloads or Effect yieldability.
+                    const errors = [
+                        new DuplicateResource({ resource: 'events.event', modules: ['events', 'other'] }),
+                        new DuplicateField({ resource: 'events.event', field: 'title', modules: ['events', 'other'] }),
+                        new UnknownTarget({ resource: 'events.event', module: 'events', target: 'venues.venue' }),
+                        new WeakerClassification({
+                            resource: 'events.event',
+                            field: 'title',
+                            module: 'events',
+                            profile: 'baseline',
+                            floor: 'restricted',
+                        }),
+                        new InvalidName({ module: 'events', name: 'Event' }),
+                    ];
+                    expect(
+                        errors.map(
+                            /** Expose discriminants in fixture order to pin the closed error vocabulary. */ (error) =>
+                                error._tag
+                        )
+                    ).toEqual([
+                        'DuplicateResource',
+                        'DuplicateField',
+                        'UnknownTarget',
+                        'WeakerClassification',
+                        'InvalidName',
+                    ]);
+                    for (const error of errors) {
+                        expect(error).toBeInstanceOf(Error);
+                        expect(
+                            yield* Effect.either(
+                                Effect.gen(
+                                    /** Yield the error itself to prove tagged errors enter the typed failure channel unchanged. */ function* () {
+                                        return yield* error;
+                                    }
+                                )
+                            )
+                        ).toEqual(Either.left(error));
+                    }
+                    expect(
+                        errors.map(
+                            /** Inspect enumerable diagnostic payloads independently of Error prototype properties. */ (
+                                error
+                            ) => ({ ...error })
+                        )
+                    ).toMatchObject([
+                        { resource: 'events.event', modules: ['events', 'other'] },
+                        { resource: 'events.event', field: 'title', modules: ['events', 'other'] },
+                        { resource: 'events.event', module: 'events', target: 'venues.venue' },
+                        {
+                            resource: 'events.event',
+                            field: 'title',
+                            module: 'events',
+                            profile: 'baseline',
+                            floor: 'restricted',
+                        },
+                        { module: 'events', name: 'Event' },
+                    ]);
+                }
+            )
     );
 
-    it('gives the same result whatever order modules arrive in', () => {
+    it('gives the same result whatever order modules arrive in', /** Verify resource and contribution permutations produce identical canonically ordered owned fields. */ () => {
+        // Reversing both inputs proves ordering is composition policy rather than incidental caller order.
         const a = compose([Event, Venue], [tickets, venueLink]);
         const b = compose([Venue, Event], [venueLink, tickets]);
         expect(a).toEqual(b);
@@ -253,7 +285,8 @@ describe('compose', () => {
         );
     });
 
-    it('reports the same duplicate field in every order', () => {
+    it('reports the same duplicate field in every order', /** Verify duplicate diagnostics sort contribution owners and also detect collisions with base resource fields. */ () => {
+        // Deterministic diagnostics matter for both contribution/contribution and contribution/base collisions.
         const again = contribute(Event, 'badges', { ticketLimit: Field.text() });
         const one = compose([Event], [tickets, again]);
         const two = compose([Event], [again, tickets]);
@@ -272,7 +305,8 @@ describe('compose', () => {
         expect(Either.getLeft(own)).toEqual(Option.some(expect.objectContaining({ modules: ['events', 'tickets'] })));
     });
 
-    it('lets a contribution raise a profile but never lower it below the resource', () => {
+    it('lets a contribution raise a profile but never lower it below the resource', /** Verify contribution security honors the resource floor while allowing stronger field classification. */ () => {
+        // The stronger control distinguishes a floor constraint from a blanket ban on classified contributions.
         const weaker = compose([Venue], [contribute(Venue, 'crm', { notes: Field.text() })]);
         expect(Either.getLeft(weaker)).toEqual(
             Option.some(
@@ -291,9 +325,16 @@ describe('compose', () => {
         expect(Either.isRight(stronger)).toBe(true);
     });
 
-    it('refuses unknown targets, duplicate resources and names that are not canonical', () => {
+    it('refuses unknown targets, duplicate resources and names that are not canonical', /** Verify missing targets and malformed or duplicate identities yield stable typed composition errors. */ () => {
+        /** Select the failure tag without turning successful composition into an error. */
         const left = (result: Either.Either<unknown, { readonly _tag: string }>) =>
-            Either.getLeft(result).pipe(Option.map((error) => error._tag));
+            Either.getLeft(result).pipe(
+                Option.map(
+                    /** Reduce diagnostic details to the discriminant asserted by this failure matrix. */ (error) =>
+                        error._tag
+                )
+            );
+        // Missing referenced resources and missing contribution targets are distinct routes to UnknownTarget.
         expect(left(compose([Event], [venueLink]))).toEqual(Option.some('UnknownTarget'));
         expect(left(compose([], [tickets]))).toEqual(Option.some('UnknownTarget'));
         expect(left(compose([Event, Resource.make('events.event', { ...Event, module: 'other' })], []))).toEqual(
@@ -309,8 +350,8 @@ describe('compose', () => {
     });
 });
 
-describe('manifest resources', () => {
-    it('are optional and must be canonical resource names', () => {
+describe('manifest resources', /** Cover optional resource declarations on module manifest wire data. */ () => {
+    it('are optional and must be canonical resource names', /** Verify omitted resources remain compatible while supplied entries require qualified canonical names. */ () => {
         const manifest = { format: 1, id: 'events', version: '1.0.0', description: 'Events.', actions: [], flags: [] };
         const decode = Schema.decodeUnknownEither(ModuleManifest);
         expect(decode(manifest)._tag).toBe('Right');

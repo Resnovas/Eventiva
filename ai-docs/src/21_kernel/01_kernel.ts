@@ -29,13 +29,17 @@ import {
 import { Effect, Layer, Schema } from 'effect';
 
 // A neutral, trusted callable service contract, shared by providers and consumer.
+/** Example in-process message capability; the captured provider prefix makes selected bindings observable. */
 class Messages {
-    readonly read: (key: string) => Effect.Effect<string>;
+    /** Produce a deterministic message without IO or access to another provider's state. */
+    readonly read: /** Read a key without IO; the result carries this instance's provider prefix. */ (key: string) => Effect.Effect<string>;
+    /** Bind this instance's immutable prefix for all subsequent reads. */
     constructor(prefix: string) {
-        this.read = (key) => Effect.succeed(`${prefix}:${key}`);
+        this.read = /** Format a key using only this provider's captured prefix. */ (key) => Effect.succeed(`${prefix}:${key}`);
     }
 }
 const MessagesSchema = Schema.instanceOf(Messages);
+/** Build a minimal example manifest with no implicit dependencies or migration work. */
 const manifest = (id: string): KernelManifest => ({
     id,
     version: '1.0.0',
@@ -48,21 +52,24 @@ const manifest = (id: string): KernelManifest => ({
     restartRequired: false,
 });
 
+/** Publish one typed messages instance under an explicit capability/version declaration. */
 const provider = (id: string): ModuleDefinition => ({
     manifest: { ...manifest(id), provides: [{ name: 'Tenant A', capability: 'messages', version: '1.0.0' }] },
     validate: Effect.void,
     layer: Layer.effect(
         KernelModule,
-        Effect.gen(function* () {
-            const service = yield* kernelProvider(MessagesSchema, new Messages(id));
-            return KernelModule.of({
-                providers: new Map([['Tenant A', service]]),
-                install: Effect.void,
-                activate: Effect.void,
-                ready: Effect.void,
-                deactivate: Effect.void,
-            });
-        })
+        Effect.gen(
+            /** Wrap the trusted service instance for kernel admission and publish it under the manifest's instance name. */ function* () {
+                const service = yield* kernelProvider(MessagesSchema, new Messages(id));
+                return KernelModule.of({
+                    providers: new Map([['Tenant A', service]]),
+                    install: Effect.void,
+                    activate: Effect.void,
+                    ready: Effect.void,
+                    deactivate: Effect.void,
+                });
+            }
+        )
     ),
 });
 const feature: ModuleDefinition = {
@@ -70,17 +77,20 @@ const feature: ModuleDefinition = {
     validate: Effect.void,
     layer: Layer.effect(
         KernelModule,
-        Effect.gen(function* () {
-            const environment = yield* KernelEnvironment;
-            const messages = yield* environment.resolve('startup', MessagesSchema);
-            return KernelModule.of({
-                providers: new Map<string, KernelProvider>(),
-                install: Effect.void,
-                activate: messages.read('hello').pipe(Effect.asVoid),
-                ready: Effect.void,
-                deactivate: Effect.void,
-            });
-        })
+        Effect.gen(
+            /** Resolve only the declared startup binding and use it during feature activation. */ function* () {
+                // Resolution stays in the kernel environment so choosing a provider cannot become ambient global lookup.
+                const environment = yield* KernelEnvironment;
+                const messages = yield* environment.resolve('startup', MessagesSchema);
+                return KernelModule.of({
+                    providers: new Map<string, KernelProvider>(),
+                    install: Effect.void,
+                    activate: messages.read('hello').pipe(Effect.asVoid),
+                    ready: Effect.void,
+                    deactivate: Effect.void,
+                });
+            }
+        )
     ),
 };
 
@@ -90,17 +100,27 @@ export const runKernelExample = (
     authority: Layer.Layer<KernelAuthority>,
     selected: 'local' | 'regional'
 ) =>
-    Effect.gen(function* () {
-        const kernel = yield* Kernel;
-        const selectedProvider = provider(selected);
-        return yield* kernel.compose(
-            {
-                modules: [feature.manifest, selectedProvider.manifest].map(({ id, version }) => ({ id, version })),
-                bindings: [{ consumer: 'feature', requirement: 'startup', provider: selected, instance: 'Tenant A' }],
-            },
-            [feature, selectedProvider]
-        );
-    }).pipe(
+    Effect.gen(
+        /** Compose the chosen provider and consumer with an exact instance binding in the authorized kernel scope. */ function* () {
+            // Pin both module identities and the binding; a capability name alone does not select an implementation.
+            const kernel = yield* Kernel;
+            const selectedProvider = provider(selected);
+            return yield* kernel.compose(
+                {
+                    modules: [feature.manifest, selectedProvider.manifest].map(
+                        /** Admit the exact module versions used by this composition. */ ({ id, version }) => ({
+                            id,
+                            version
+                        })
+                    ),
+                    bindings: [
+                        { consumer: 'feature', requirement: 'startup', provider: selected, instance: 'Tenant A' }
+                    ],
+                },
+                [feature, selectedProvider]
+            );
+        }
+    ).pipe(
         Effect.provideService(Caller, caller),
         Effect.provide(KernelLive('example-runtime').pipe(Layer.provide(authority))),
         Effect.scoped

@@ -19,8 +19,9 @@ import { RunnerAddress } from '@effect/cluster/RunnerAddress';
 import { defaults, type ShardingConfig } from '@effect/cluster/ShardingConfig';
 
 const positiveInt = Schema.Int.pipe(Schema.between(1, 2147483647));
+/** Supply a schema-validated setting when omitted; explicit invalid values still fail decoding. */
 const defaulted = <A, I>(schema: Schema.Schema<A, I>, value: A) =>
-    Schema.optionalWith(schema, { default: () => value });
+    Schema.optionalWith(schema, { /** Reuse the configured fallback only for missing input. */ default: () => value });
 
 const settings = {
     host: defaulted(Schema.NonEmptyTrimmedString, '127.0.0.1'),
@@ -54,10 +55,11 @@ export const DeploymentProfile = Schema.Union(
         ...settings,
     }).annotations({ parseOptions: { onExcessProperty: 'error' } })
 ).pipe(
-    Schema.filter((profile) =>
-        profile.lockExpiryMs > profile.lockRefreshMs * 3 && profile.shards >= profile.expectedRunners
-            ? true
-            : 'Require lockExpiryMs > 3 * lockRefreshMs and shards >= expectedRunners'
+    Schema.filter(
+        /** Leave lease-refresh headroom and at least one shard per expected runner. */ (profile) =>
+            profile.lockExpiryMs > profile.lockRefreshMs * 3 && profile.shards >= profile.expectedRunners
+                ? true
+                : 'Require lockExpiryMs > 3 * lockRefreshMs and shards >= expectedRunners'
     )
 );
 export type DeploymentProfile = typeof DeploymentProfile.Type;

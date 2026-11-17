@@ -31,11 +31,13 @@ import type { WorkflowEngine } from '@effect/workflow/WorkflowEngine';
 import { ClusterActionsLive } from './cluster-actions.ts';
 import { type DeploymentProfile, shardingConfig } from './cluster-profile.ts';
 
+/** Observe this runner and its compute group without exposing runner storage mutations. */
 export class ClusterStatus extends Context.Tag('@eventiva/server/ClusterStatus')<
     ClusterStatus,
     { readonly snapshot: Effect.Effect<ClusterSnapshot> }
 >() {}
 
+/** Point-in-time local ownership and group health; unavailable distinguishes storage failure from zero healthy peers. */
 export interface ClusterSnapshot {
     readonly status: 'healthy' | 'degraded' | 'draining' | 'unavailable';
     readonly expectedRunners: number;
@@ -51,57 +53,74 @@ export interface ClusterSnapshot {
 export const clusterStatus = (profile: DeploymentProfile) =>
     Layer.effect(
         ClusterStatus,
-        Effect.gen(function* () {
-            const storage = yield* RunnerStorage;
-            const health = yield* RunnerHealth.RunnerHealth;
-            const sharding = yield* Sharding;
-            return {
-                snapshot: Effect.gen(function* () {
-                    const draining = yield* sharding.isShutdown;
-                    const ownedShards = Array.from({ length: profile.shards }, (_, i) => i + 1).filter((id) =>
-                        sharding.hasShardId(ShardId.make('eventiva-actions', id))
-                    );
-                    const activeEntities = yield* sharding.activeEntityCount;
-                    const base = {
-                        expectedRunners: profile.expectedRunners,
-                        ownedShards,
-                        activeEntities,
-                        mailboxCapacity: profile.mailboxCapacity,
-                        shardWeight: profile.weight,
-                    };
-                    return yield* Effect.gen(function* () {
-                        const registered = (yield* storage.getRunners).filter(([runner]) =>
-                            runner.groups.includes('eventiva-actions')
-                        );
-                        const alive = yield* Effect.forEach(
-                            registered,
-                            ([runner, healthy]) => (healthy ? health.isAlive(runner.address) : Effect.succeed(false)),
-                            { concurrency: 8 }
-                        );
-                        const healthyRunners = alive.filter(Boolean).length;
-                        return {
-                            ...base,
-                            registeredRunners: registered.length,
-                            healthyRunners,
-                            status: draining
-                                ? ('draining' as const)
-                                : healthyRunners >= profile.expectedRunners && ownedShards.length > 0
-                                  ? ('healthy' as const)
-                                  : ('degraded' as const),
-                        };
-                    }).pipe(
-                        Effect.catchAll(() =>
-                            Effect.succeed({
-                                ...base,
-                                status: 'unavailable' as const,
-                                registeredRunners: 0,
-                                healthyRunners: 0,
-                            })
-                        )
-                    );
-                }).pipe(Effect.withSpan('cluster.status')),
-            };
-        })
+        Effect.gen(
+            /** Capture storage, transport health and local shard ownership services for repeated snapshots. */ function* () {
+                const storage = yield* RunnerStorage;
+                const health = yield* RunnerHealth.RunnerHealth;
+                const sharding = yield* Sharding;
+                return {
+                    snapshot: Effect.gen(
+                        /** Sample local state, then bound peer health checks; convert storage failures to unavailable status. */ function* () {
+                            // Preserve local ownership data even if shared membership storage cannot be queried.
+                            const draining = yield* sharding.isShutdown;
+                            const ownedShards = Array.from(
+                                { length: profile.shards },
+                                /** Cluster shard identifiers start at one. */ (_, i) => i + 1
+                            ).filter(
+                                /** Restrict ownership to the configured action group on this runner. */ (id) =>
+                                    sharding.hasShardId(ShardId.make('eventiva-actions', id))
+                            );
+                            const activeEntities = yield* sharding.activeEntityCount;
+                            const base = {
+                                expectedRunners: profile.expectedRunners,
+                                ownedShards,
+                                activeEntities,
+                                mailboxCapacity: profile.mailboxCapacity,
+                                shardWeight: profile.weight,
+                            };
+                            return yield* Effect.gen(
+                                /** Probe only action-group members marked healthy in storage, with bounded concurrency. */ function* () {
+                                    // Membership alone is not liveness; storage health and a live transport probe must both succeed.
+                                    const registered = (yield* storage.getRunners).filter(
+                                        /** Other shard groups do not contribute to action capacity. */ ([runner]) =>
+                                            runner.groups.includes('eventiva-actions')
+                                    );
+                                    const alive = yield* Effect.forEach(
+                                        registered,
+                                        /** Avoid probing runners already declared unhealthy by shared membership storage. */ ([
+                                            runner,
+                                            healthy
+                                        ]) => (healthy ? health.isAlive(runner.address) : Effect.succeed(false)),
+                                        { concurrency: 8 }
+                                    );
+                                    const healthyRunners = alive.filter(Boolean).length;
+                                    return {
+                                        ...base,
+                                        registeredRunners: registered.length,
+                                        healthyRunners,
+                                        status: draining
+                                            ? ('draining' as const)
+                                            : healthyRunners >= profile.expectedRunners && ownedShards.length > 0
+                                              ? ('healthy' as const)
+                                              : ('degraded' as const),
+                                    };
+                                }
+                            ).pipe(
+                                Effect.catchAll(
+                                    /** Fail status closed while retaining the separately sampled local metrics. */ () =>
+                                        Effect.succeed({
+                                            ...base,
+                                            status: 'unavailable' as const,
+                                            registeredRunners: 0,
+                                            healthyRunners: 0,
+                                        })
+                                )
+                            );
+                        }
+                    ).pipe(Effect.withSpan('cluster.status')),
+                };
+            }
+        )
     );
 
 /**
@@ -114,45 +133,56 @@ export const clusterRunner = <E = never, R = never>(
     registerWorkflows: Effect.Effect<void, E, R | WorkflowEngine | Scope.Scope> = Effect.void
 ) =>
     Layer.unwrapEffect(
-        Effect.gen(function* () {
-            const ready = yield* Deferred.make<void>();
-            const config = ShardingConfig.layer(shardingConfig(profile));
-            const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(config));
-            const health = RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol));
-            // Sharding starts its background loops during acquisition. Do not advertise
-            // or acquire work until both action and workflow handlers are registered.
-            const runners = Layer.effect(
-                RunnerStorage,
-                Effect.map(RunnerStorage, (storage) => ({
-                    ...storage,
-                    register: (runner, healthy) =>
-                        Deferred.await(ready).pipe(Effect.zipRight(storage.register(runner, healthy))),
-                    getRunners: Deferred.await(ready).pipe(Effect.zipRight(storage.getRunners)),
-                }))
-            ).pipe(Layer.provide(SqlRunnerStorage.layer));
-            const storage = Layer.mergeAll(runners, SqlMessageStorage.layer).pipe(Layer.provide(config));
-            const transport = SocketRunner.layer.pipe(
-                Layer.provide(NodeClusterSocket.layerSocketServer),
-                Layer.provideMerge(health),
-                Layer.provide(protocol),
-                Layer.provideMerge(storage),
-                Layer.provide(config),
-                Layer.provide(RpcSerialization.layerNdjson)
-            );
-            const services = ClusterActionsLive.pipe(
-                Layer.provideMerge(
-                    Layer.mergeAll(clusterStatus(profile), ClusterWorkflowEngine.layer).pipe(
-                        Layer.provideMerge(transport)
+        Effect.gen(
+            /** Compose SQL-backed transport and gate runner advertisement on handler registration. */ function* () {
+                const ready = yield* Deferred.make<void>();
+                const config = ShardingConfig.layer(shardingConfig(profile));
+                const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(config));
+                const health = RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol));
+                // Sharding starts its background loops during acquisition. Do not advertise
+                // or acquire work until both action and workflow handlers are registered.
+                const runners = Layer.effect(
+                    RunnerStorage,
+                    Effect.map(
+                        RunnerStorage,
+                        /** Delay membership operations until action and workflow registration completes. */ (
+                            storage
+                        ) => ({
+                            ...storage,
+                            /** Prevent this runner from advertising capacity before its handlers exist. */
+                            register: (runner, healthy) =>
+                                Deferred.await(ready).pipe(Effect.zipRight(storage.register(runner, healthy))),
+                            getRunners: Deferred.await(ready).pipe(Effect.zipRight(storage.getRunners)),
+                        })
                     )
-                )
-            );
-            return Layer.scopedContext(
-                Effect.gen(function* () {
-                    const context = yield* Layer.build(services);
-                    yield* registerWorkflows.pipe(Effect.provide(context));
-                    yield* Deferred.succeed(ready, undefined);
-                    return context;
-                })
-            );
-        })
+                ).pipe(Layer.provide(SqlRunnerStorage.layer));
+                const storage = Layer.mergeAll(runners, SqlMessageStorage.layer).pipe(Layer.provide(config));
+                const transport = SocketRunner.layer.pipe(
+                    Layer.provide(NodeClusterSocket.layerSocketServer),
+                    Layer.provideMerge(health),
+                    Layer.provide(protocol),
+                    Layer.provideMerge(storage),
+                    Layer.provide(config),
+                    Layer.provide(RpcSerialization.layerNdjson)
+                );
+                const services = ClusterActionsLive.pipe(
+                    Layer.provideMerge(
+                        Layer.mergeAll(clusterStatus(profile), ClusterWorkflowEngine.layer).pipe(
+                            Layer.provideMerge(transport)
+                        )
+                    )
+                );
+                return Layer.scopedContext(
+                    Effect.gen(
+                        /** Acquire handlers and workflow registrations before releasing the runner readiness barrier. */ function* () {
+                            // A registration failure must leave readiness closed, so background sharding cannot acquire work.
+                            const context = yield* Layer.build(services);
+                            yield* registerWorkflows.pipe(Effect.provide(context));
+                            yield* Deferred.succeed(ready, undefined);
+                            return context;
+                        }
+                    )
+                );
+            }
+        )
     );

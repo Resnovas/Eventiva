@@ -23,6 +23,7 @@ import { describe, expect, it } from '@effect/vitest';
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} hook process recovery`, /** Verify emitted SQL recovery protocols in independent processes for each supported dialect. */ () => {
         it('survives SIGKILL with stale delivery fencing, operator replay and trusted synthetic consumer cursor recovery', /** Assert durable delivery and consumer recovery without treating in-memory state as evidence. */ async () => {
+            // This proves retained SQL recovery across process loss, not general exactly-once delivery or production release.
             const stdout = await new Promise<string>(
                 /** Run the existing child-process proof and preserve its failure diagnostics. */ (resolve, reject) => {
                     execFile(

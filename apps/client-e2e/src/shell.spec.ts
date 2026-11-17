@@ -16,12 +16,20 @@
 
 import { expect, test } from '@playwright/test';
 
-test('the exported web client renders the localised shell with safe flag defaults', async ({ page }) => {
+test('the exported web client renders the localised shell with safe flag defaults', /** Verify the exported bundle localizes ICU messages without browser errors or an enabled optional banner. */ async ({
+    page
+}) => {
     const errors: Array<string> = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text());
-    });
+    page.on(
+        'pageerror',
+        /** Retain uncaught browser failures for the final assertion. */ (error) => errors.push(error.message)
+    );
+    page.on(
+        'console',
+        /** Treat error-level console output as a shell regression, ignoring routine diagnostics. */ (message) => {
+            if (message.type() === 'error') errors.push(message.text());
+        }
+    );
 
     await page.goto('/');
 

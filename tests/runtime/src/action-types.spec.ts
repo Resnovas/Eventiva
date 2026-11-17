@@ -18,7 +18,8 @@ import { fileURLToPath } from 'node:url';
 import { expect, it } from '@effect/vitest';
 import ts from 'typescript';
 
-it('preserves schema and service inference and rejects incompatible action implementations without suppressions', () => {
+it('preserves schema and service inference and rejects incompatible action implementations without suppressions', /** Compile positive and negative action bindings together so each rejected contract has a real diagnostic. */ () => {
+    // Keep fixture text unchanged: line offsets below attribute one diagnostic to each negative case.
     const root = fileURLToPath(new URL('../../../', import.meta.url));
     const filename = `${root}tests/runtime/src/action-type-fixture.ts`;
     const positive = `
@@ -89,7 +90,13 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
     ];
     const source =
         positive +
-        negatives.map((expression) => (expression.startsWith('const ') ? expression : `void ${expression}`)).join('\n');
+        negatives
+            .map(
+                /** Preserve declarations while making rejected expression fixtures valid statements. */ (
+                    expression
+                ) => (expression.startsWith('const ') ? expression : `void ${expression}`)
+            )
+            .join('\n');
     const parsed = ts.parseJsonSourceFileConfigFileContent(
         ts.readJsonConfigFile(`${root}tsconfig.base.json`, ts.sys.readFile),
         ts.sys,
@@ -108,29 +115,56 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
     const compiler = ts.createCompilerHost(options);
     const read = compiler.readFile;
     const exists = compiler.fileExists;
-    compiler.readFile = (path) => (path === filename ? source : read(path));
-    compiler.fileExists = (path) => path === filename || exists(path);
+    compiler.readFile =
+        /** Overlay only the virtual fixture; dependencies still resolve through the real compiler host. */ (path) =>
+            (path === filename ? source : read(path));
+    compiler.fileExists = /** Advertise the virtual fixture without masking real dependency existence checks. */ (
+        path
+    ) => path === filename || exists(path);
     const program = ts.createProgram([filename], options, compiler);
     const diagnostics = ts.getPreEmitDiagnostics(program);
-    const observed = diagnostics.map((diagnostic) => ({
-        line: diagnostic.file?.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line,
-        code: diagnostic.code,
-        text: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-    }));
-    const firstNegative = positive.split('\n').length - 1;
-    expect(observed.filter((diagnostic) => diagnostic.line === undefined || diagnostic.line < firstNegative)).toEqual(
-        []
+    const observed = diagnostics.map(
+        /** Retain line attribution, code and readable compiler text for fixture assertions. */ (diagnostic) => ({
+            line: diagnostic.file?.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line,
+            code: diagnostic.code,
+            text: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+        })
     );
-    const standard = observed.filter((diagnostic) => diagnostic.code >= 1000);
-    expect(standard.map((diagnostic) => diagnostic.code)).toEqual([
+    const firstNegative = positive.split('\n').length - 1;
+    expect(
+        observed.filter(
+            /** Catch configuration errors and regressions in the positive contract examples. */ (diagnostic) =>
+                diagnostic.line === undefined || diagnostic.line < firstNegative
+        )
+    ).toEqual([]);
+    const standard = observed.filter(
+        /** Separate TypeScript diagnostics from the patched Effect compiler's low-numbered checks. */ (diagnostic) =>
+            diagnostic.code >= 1000
+    );
+    expect(
+        standard.map(
+            /** Compare compiler codes in source order without coupling to message wording. */ (diagnostic) =>
+                diagnostic.code
+        )
+    ).toEqual([
         2345, 2375, 2375, 2375, 2345, 2322, 2375, 2322, 2322, 2322, 2322, 2322, 2322, 2345, 2375,
     ]);
     // The patched compiler additionally diagnoses missing Effect errors/environments.
-    expect(observed.filter((diagnostic) => diagnostic.code < 1000).map((diagnostic) => diagnostic.code)).toEqual([
+    expect(
+        observed
+            .filter(
+                /** Select Effect-specific missing error/environment diagnostics. */ (diagnostic) =>
+                    diagnostic.code < 1000
+            )
+            .map(/** Preserve the patched compiler's diagnostic ordering. */ (diagnostic) => diagnostic.code)
+    ).toEqual([
         1, 1, 1,
     ]);
     for (const [index, expression] of negatives.entries()) {
-        const errors = standard.filter((diagnostic) => diagnostic.line === firstNegative + index);
+        const errors = standard.filter(
+            /** Bind this negative source line to its diagnostic rather than relying only on totals. */ (diagnostic) =>
+                diagnostic.line === firstNegative + index
+        );
         expect(errors, expression).toHaveLength(1);
     }
     expect(standard).toHaveLength(negatives.length);

@@ -34,58 +34,67 @@ export const composeExample = (
     policy: ResourceMigrationPolicy,
     authorize: Parameters<typeof resourceRuntime>[1]
 ) =>
-    Effect.gen(function* () {
-        const initial = yield* declareResource({
-            id: 'example.receipt',
-            owner: 'example',
-            moduleVersion: '1.0.0',
-            fields: {
-                message: { type: 'text', optional: false },
-            },
-        });
-        const annotated = yield* contributeFields(initial, {
-            owner: 'annotation',
-            moduleVersion: '1.2.3',
-            fields: {
-                annotation: { type: 'text', optional: true },
-            },
-        });
-        // The kernel must fence real workflow leases before this privileged execution call.
-        const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
-        if (migration.status === 'restart-required') return migration;
-        const provider = yield* resourceHookProvider(
-            dialect,
-            tenant,
-            { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
-            [annotated]
-        );
-        const feature = (id: string, message: string) =>
-            Effect.gen(function* () {
-                const resources = yield* Resources;
-                return yield* resources.create(annotated, id, {
-                    message,
-                    annotation: 'Contributed without changing the original resource fields',
-                });
+    Effect.gen(
+        /** Declare a contributed resource, apply the approved migration policy and expose unactivated composition helpers. */ function* () {
+            const initial = yield* declareResource({
+                id: 'example.receipt',
+                owner: 'example',
+                moduleVersion: '1.0.0',
+                fields: {
+                    message: { type: 'text', optional: false },
+                },
             });
-        // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
-        const writeAndStage = (
-            id: string,
-            message: string,
-            event: HookEvent,
-            observers: ReadonlyArray<HookDeclaration>
-        ) =>
-            provider.storage.transaction(
-                Effect.gen(function* () {
-                    const record = yield* feature(id, message);
-                    yield* provider.outbox.stage(event, observers);
-                    return record;
-                })
+            const annotated = yield* contributeFields(initial, {
+                owner: 'annotation',
+                moduleVersion: '1.2.3',
+                fields: {
+                    annotation: { type: 'text', optional: true },
+                },
+            });
+            // The kernel must fence real workflow leases before this privileged execution call.
+            const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
+            if (migration.status === 'restart-required') return migration;
+            const provider = yield* resourceHookProvider(
+                dialect,
+                tenant,
+                { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
+                [annotated]
             );
-        return {
-            status: 'prepared',
-            provider,
-            layer: resourceRuntime(provider, authorize),
-            feature,
-            writeAndStage,
-        } as const;
-    });
+            /** Create an annotated record through the injected authorized resource runtime. */
+            const feature = (id: string, message: string) =>
+                Effect.gen(
+                    /** Use the contributed schema without mutating the original resource declaration. */ function* () {
+                        const resources = yield* Resources;
+                        return yield* resources.create(annotated, id, {
+                            message,
+                            annotation: 'Contributed without changing the original resource fields',
+                        });
+                    }
+                );
+            // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
+            /** Atomically couple a resource write and trusted event staging using this provider's storage transaction. */
+            const writeAndStage = (
+                id: string,
+                message: string,
+                event: HookEvent,
+                observers: ReadonlyArray<HookDeclaration>
+            ) =>
+                provider.storage.transaction(
+                    Effect.gen(
+                        /** Stage observers only after the domain create succeeds, rolling both back on failure. */ function* () {
+                            // Sharing the provider transaction prevents an event from describing a resource write that never committed.
+                            const record = yield* feature(id, message);
+                            yield* provider.outbox.stage(event, observers);
+                            return record;
+                        }
+                    )
+                );
+            return {
+                status: 'prepared',
+                provider,
+                layer: resourceRuntime(provider, authorize),
+                feature,
+                writeAndStage,
+            } as const;
+        }
+    );

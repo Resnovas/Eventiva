@@ -34,6 +34,7 @@ import { IdentityResolver, InvocationDenied } from '@eventiva/runtime/invocation
 import { privateExchangeUnavailable, readSnapshot, stageExchange } from '@eventiva/runtime/marketplace';
 import { Deferred, Effect, Exit, Fiber, Layer, Schema, TestClock } from 'effect';
 
+/** Generate deterministic distinct UUID-shaped fixture references. */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const owner = TenantId.make(id(1));
 const recipient = TenantId.make(id(2));
@@ -68,12 +69,15 @@ const grant: ParticipantGrant = {
 };
 const request = { grant: grant.id, snapshot: snapshot.id, scope: snapshot.scope };
 const command = { ...request, command: id(11), expectedVersion: 3 };
+/** Build the bounded expected authorization failure. */
 const denied = () => new MarketplaceFailure({ reason: 'denied' });
+/** Build the bounded injected persistence failure. */
 const unavailable = () => new MarketplaceFailure({ reason: 'unavailable' });
 type Fault = 'none' | 'before-insert' | 'after-insert' | 'after-enqueue' | 'defect' | 'interrupt';
 
 /** Volatile transactional conformance fixture. Not a SQL adapter or a process-crash durability proof. */
-const fixture = Effect.gen(function* () {
+const fixture = Effect.gen(/** Model serialized copy-on-success transactions and independently revocable authority. */ function* () {
+    // Revocation uses the same mutex as transactions so tests can distinguish committed evidence from partial state.
     yield* TestClock.setTime(1000);
     const mutex = yield* Effect.makeSemaphore(1);
     const entered = yield* Deferred.make<void>();
@@ -87,25 +91,33 @@ const fixture = Effect.gen(function* () {
         policyAllows: true,
     };
     const store = MarketplaceStore.of({
+        /** Serialize the callback and publish both working maps only on success. */
         transaction: (use) =>
             mutex.withPermits(1)(
-                Effect.gen(function* () {
+                Effect.gen(/** Isolate tentative intent/outbox changes until the callback completes. */ function* () {
                     const intents = new Map(state.intents);
                     const outbox = new Map(state.outbox);
                     const tx: MarketplaceTransaction = {
-                        grant: (key) => Effect.sync(() => (key === state.grant.id ? state.grant : undefined)),
-                        snapshot: (key) => Effect.sync(() => (key === state.snapshot.id ? state.snapshot : undefined)),
-                        intent: (key) => Effect.sync(() => intents.get(key)),
+                        /** Resolve only the fixture's current grant reference. */
+                        grant: (key) => Effect.sync(/** Observe live revocation state at lookup time. */ () => (key === state.grant.id ? state.grant : undefined)),
+                        /** Resolve only the fixture's current snapshot reference. */
+                        snapshot: (key) => Effect.sync(/** Observe the current stored metadata rather than request data. */ () => (key === state.snapshot.id ? state.snapshot : undefined)),
+                        /** Read tentative or previously committed intent state by command. */
+                        intent: (key) => Effect.sync(/** Inspect the transaction-local intent map. */ () => intents.get(key)),
+                        /** Insert uniquely with controllable failure before or after tentative mutation. */
                         insertIntent: (value) =>
-                            Effect.gen(function* () {
+                            Effect.gen(/** Expose rollback boundaries around unique intent insertion. */ function* () {
+                                // Mutate only the working copy so injected post-insert failure must not publish an orphan intent.
                                 if (state.fault === 'before-insert') return yield* unavailable();
                                 if (intents.has(value.command))
                                     return yield* new MarketplaceFailure({ reason: 'conflict' });
                                 intents.set(value.command, value);
                                 if (state.fault === 'after-insert') return yield* unavailable();
                             }),
+                        /** Stage outbox state with typed failure, defect or interruption injection. */
                         enqueue: (value) =>
-                            Effect.gen(function* () {
+                            Effect.gen(/** Suspend or fail after tentative enqueue to test transaction rollback. */ function* () {
+                                // Signal interruption only after both tentative writes exist, exercising rollback rather than no-op cancellation.
                                 outbox.set(value.command, value);
                                 if (state.fault === 'after-enqueue') return yield* unavailable();
                                 if (state.fault === 'defect') return yield* Effect.dieMessage('injected-store-defect');
@@ -128,29 +140,33 @@ const fixture = Effect.gen(function* () {
         Layer.succeed(Caller, caller),
         Layer.succeed(CurrentTenant, { id: owner }),
         Layer.succeed(IdentityResolver, {
+            /** Revalidate the supplied identity against the live fixture switch. */
             resolve: (value) =>
                 state.identityActive
                     ? Effect.succeed(value)
                     : Effect.fail(new InvocationDenied({ action: '<test>', reason: 'revoked' })),
         }),
         Layer.succeed(MarketplaceAuthority, {
+            /** Evaluate metadata policy independently of participant grants. */
             authorize: () => (state.policyAllows ? Effect.void : Effect.fail(denied())),
         }),
         Layer.succeed(Flags, {
+            /** Enable marketplace behavior explicitly for conformance scenarios. */
             evaluate: (flag) => Effect.succeed({ flag: flag.key, value: true, fallback: false, reason: 'TEST' }),
         })
     );
+    /** Install fixture dependencies while preserving any unprovided requirements. */
     const run = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.provide(dependencies));
     const revoke = mutex.withPermits(1)(
-        Effect.sync(() => {
+        Effect.sync(/** Mark the grant revoked while holding the transaction serialization permit. */ () => {
             state.grant = { ...state.grant, revoked: true };
         })
     );
     return { state, run, revoke, entered };
 });
 
-it.effect('reads only exact authorized references and stages one pending intent/outbox across concurrent retries', () =>
-    Effect.gen(function* () {
+it.effect('reads only exact authorized references and stages one pending intent/outbox across concurrent retries', /** Exercise read authorization and concurrent command idempotency. */ () =>
+    Effect.gen(/** Verify concurrent and later retries converge on one committed intent/outbox pair. */ function* () {
         const f = yield* fixture;
         f.state.grant.action = 'read';
         expect(yield* f.run(readSnapshot(request))).toEqual(snapshot);
@@ -184,8 +200,8 @@ for (const [field, value] of [
     ['resource', id(80)],
     ['purpose', 'different-purpose'],
 ] as const) {
-    it.effect(`denies a mismatched ${field} without leaking a reference or staging`, () =>
-        Effect.gen(function* () {
+    it.effect(`denies a mismatched ${field} without leaking a reference or staging`, /** Substitute one scope dimension without changing the grant. */ () =>
+        Effect.gen(/** Verify exact scope binding rejects the substituted reference before persistence. */ function* () {
             const f = yield* fixture;
             const result = yield* f
                 .run(stageExchange({ ...command, scope: { ...command.scope, [field]: value } }))
@@ -198,8 +214,9 @@ for (const [field, value] of [
 }
 
 for (const kind of ['human', 'service', 'first-party-agent', 'external-agent'] as const) {
-    it.effect(`requires both participant grant and independent policy for ${kind}`, () =>
-        Effect.gen(function* () {
+    it.effect(`requires both participant grant and independent policy for ${kind}`, /** Exercise participant and policy requirements for this caller kind. */ () =>
+        Effect.gen(/** Verify a previously authorized principal cannot bypass subsequently denied metadata policy. */ function* () {
+            // Reuse the same command after denial so idempotent replay must still reauthorize.
             const f = yield* fixture;
             const identity: CallerIdentity = {
                 ...caller,
@@ -215,8 +232,9 @@ for (const kind of ['human', 'service', 'first-party-agent', 'external-agent'] a
     );
 }
 
-it.effect('revokes reads, new commands and identical replay while preserving already committed evidence', () =>
-    Effect.gen(function* () {
+it.effect('revokes reads, new commands and identical replay while preserving already committed evidence', /** Revoke after committing one authorized exchange intent. */ () =>
+    Effect.gen(/** Verify revocation blocks replay and new access without deleting historical evidence. */ function* () {
+        // Preserve committed state as a control: revocation denies further authority, not the existence of prior evidence.
         const f = yield* fixture;
         const saved = yield* f.run(stageExchange(command));
         yield* f.revoke;
@@ -229,8 +247,9 @@ it.effect('revokes reads, new commands and identical replay while preserving alr
     })
 );
 
-it.effect('allows the exact recipient grant but denies a reference from a sibling exchange or participant', () =>
-    Effect.gen(function* () {
+it.effect('allows the exact recipient grant but denies a reference from a sibling exchange or participant', /** Exercise recipient authority against stored scope substitutions. */ () =>
+    Effect.gen(/** Verify recipient membership cannot authorize sibling exchange or participant metadata. */ function* () {
+        // First authorize the recipient, then replace stored scope to test exact binding rather than generic tenant membership.
         const f = yield* fixture;
         f.state.grant.participantTenant = recipient;
         const invoke = stageExchange(command).pipe(
@@ -249,11 +268,13 @@ it.effect('allows the exact recipient grant but denies a reference from a siblin
     })
 );
 
-it.effect('authorizes the stored classified metadata, not a requester-selected weaker profile', () =>
-    Effect.gen(function* () {
+it.effect('authorizes the stored classified metadata, not a requester-selected weaker profile', /** Require the policy to inspect persisted classification and scope. */ () =>
+    Effect.gen(/** Verify changing stored classification changes authorization without changing the request. */ function* () {
+        // Keep the request constant while changing persisted metadata to expose authorization of requester-selected substitutes.
         const f = yield* fixture;
         const invoke = stageExchange(command).pipe(
             Effect.provideService(MarketplaceAuthority, {
+                /** Accept only the expected principal, sensitive stored snapshot and stage operation. */
                 authorize: (actualCaller, reference, action) =>
                     actualCaller.subject === caller.subject &&
                     reference.classification === 'sensitive' &&
@@ -271,8 +292,9 @@ it.effect('authorizes the stored classified metadata, not a requester-selected w
     })
 );
 
-it.effect('checks exact expiry, live identity and live metadata policy even on replay', () =>
-    Effect.gen(function* () {
+it.effect('checks exact expiry, live identity and live metadata policy even on replay', /** Replay a committed command while independently revoking each authority source. */ () =>
+    Effect.gen(/** Verify expiry is exclusive and cached results never bypass live identity or policy checks. */ function* () {
+        // Restore time and identity between controls so every denied replay isolates one live authority check.
         const f = yield* fixture;
         yield* f.run(stageExchange(command));
         yield* TestClock.setTime(1999);
@@ -289,13 +311,14 @@ it.effect('checks exact expiry, live identity and live metadata policy even on r
     })
 );
 
-it.effect('denies a grant that expires while the independent metadata gate is running', () =>
-    Effect.gen(function* () {
+it.effect('denies a grant that expires while the independent metadata gate is running', /** Advance trusted time inside the metadata authorization boundary. */ () =>
+    Effect.gen(/** Verify expiry is checked again after an otherwise successful metadata gate. */ function* () {
         const f = yield* fixture;
         const result = yield* f
             .run(
                 stageExchange(command).pipe(
                     Effect.provideService(MarketplaceAuthority, {
+                        /** Complete policy evaluation only after the grant's exact expiry. */
                         authorize: () => TestClock.setTime(2000),
                     })
                 )
@@ -307,8 +330,9 @@ it.effect('denies a grant that expires while the independent metadata gate is ru
     })
 );
 
-it.effect('denies unrelated tenants, substituted principals, wrong action and wrong participant', () =>
-    Effect.gen(function* () {
+it.effect('denies unrelated tenants, substituted principals, wrong action and wrong participant', /** Exercise independent principal and participant binding failures. */ () =>
+    Effect.gen(/** Verify mismatched caller, tenant, action and resolved identity cannot stage intents. */ function* () {
+        // Each effect changes one authority dimension while sharing the otherwise valid command and grant.
         const f = yield* fixture;
         const deniedEffects: ReadonlyArray<
             Effect.Effect<
@@ -330,11 +354,13 @@ it.effect('denies unrelated tenants, substituted principals, wrong action and wr
             readSnapshot(request),
             stageExchange(command).pipe(
                 Effect.provideService(IdentityResolver, {
+                    /** Substitute a different resolved session to expose principal binding checks. */
                     resolve: () => Effect.succeed({ ...caller, session: SessionId.make(id(50)) }),
                 })
             ),
             stageExchange(command).pipe(
                 Effect.provideService(IdentityResolver, {
+                    /** Substitute delegation absent from the original caller identity. */
                     resolve: () => Effect.succeed({ ...caller, onBehalfOf: SubjectId.make(id(50)) }),
                 })
             ),
@@ -344,8 +370,8 @@ it.effect('denies unrelated tenants, substituted principals, wrong action and wr
     })
 );
 
-it.effect('rejects changed expected version and command reuse with another authorized snapshot or grant', () =>
-    Effect.gen(function* () {
+it.effect('rejects changed expected version and command reuse with another authorized snapshot or grant', /** Reuse a committed command under conflicting version or metadata bindings. */ () =>
+    Effect.gen(/** Verify command identity cannot overwrite previously committed exchange evidence. */ function* () {
         const f = yield* fixture;
         const saved = yield* f.run(stageExchange(command));
         expect(yield* f.run(stageExchange({ ...command, expectedVersion: 2 })).pipe(Effect.flip)).toEqual(
@@ -367,8 +393,9 @@ it.effect('rejects changed expected version and command reuse with another autho
 );
 
 for (const fault of ['before-insert', 'after-insert', 'after-enqueue', 'defect'] as const) {
-    it.effect(`rolls back ${fault} and retries without duplicate or orphan outbox`, () =>
-        Effect.gen(function* () {
+    it.effect(`rolls back ${fault} and retries without duplicate or orphan outbox`, /** Inject this fault before retrying the identical command. */ () =>
+        Effect.gen(/** Verify failed tentative writes publish neither map and later retries commit exactly once. */ function* () {
+            // Remove the fault only after checking both maps; successful retry must not conceal leaked partial state.
             const f = yield* fixture;
             f.state.fault = fault;
             expect(Exit.isFailure(yield* f.run(stageExchange(command)).pipe(Effect.exit))).toBe(true);
@@ -383,8 +410,9 @@ for (const fault of ['before-insert', 'after-insert', 'after-enqueue', 'defect']
     );
 }
 
-it.effect('interruption before local commit exposes no partial state and does not block revocation', () =>
-    Effect.gen(function* () {
+it.effect('interruption before local commit exposes no partial state and does not block revocation', /** Interrupt a transaction after tentative enqueue but before publication. */ () =>
+    Effect.gen(/** Verify cancellation rolls back both maps and releases the permit needed for revocation. */ function* () {
+        // Wait for tentative enqueue before interrupting, then revoke through the same mutex to prove permit release.
         const f = yield* fixture;
         f.state.fault = 'interrupt';
         const fiber = yield* f.run(stageExchange(command)).pipe(Effect.fork);
@@ -398,8 +426,8 @@ it.effect('interruption before local commit exposes no partial state and does no
     })
 );
 
-it.effect('rejects private fields, weakened classification and malformed or cross-party scope', () =>
-    Effect.gen(function* () {
+it.effect('rejects private fields, weakened classification and malformed or cross-party scope', /** Exercise strict input schemas and validation of stored metadata. */ () =>
+    Effect.gen(/** Verify neither request nor persistence output can introduce private payload fields. */ function* () {
         const f = yield* fixture;
         for (const input of [
             { ...command, privatePrice: 300 },
@@ -417,8 +445,8 @@ it.effect('rejects private fields, weakened classification and malformed or cros
     })
 );
 
-it.effect('defaults off, denies without trusted authority/store, and never releases private payloads', () =>
-    Effect.gen(function* () {
+it.effect('defaults off, denies without trusted authority/store, and never releases private payloads', /** Substitute fail-closed flag, policy and storage layers independently. */ () =>
+    Effect.gen(/** Verify missing integration authority remains unavailable and stages no intent. */ function* () {
         const f = yield* fixture;
         expect(
             (yield* f.run(stageExchange(command).pipe(Effect.provide(FlagsSafeDefaults))).pipe(Effect.flip)).reason

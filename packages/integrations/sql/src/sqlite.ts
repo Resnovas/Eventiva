@@ -21,8 +21,10 @@ import { Effect, Layer } from 'effect';
 /** Node conformance only. Uses the package's bundled prebuild, never a build-script allowance. */
 export const memory = () =>
     Layer.effectDiscard(
-        Effect.gen(function* () {
-            const sql = yield* SqlClient.SqlClient;
-            yield* sql`PRAGMA foreign_keys = ON`;
-        })
+        Effect.gen(
+            /** Enable referential integrity on the in-memory conformance connection before exposing it. */ function* () {
+                const sql = yield* SqlClient.SqlClient;
+                yield* sql`PRAGMA foreign_keys = ON`;
+            }
+        )
     ).pipe(Layer.provideMerge(SqliteClient.layer({ filename: ':memory:' })));

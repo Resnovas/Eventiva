@@ -43,39 +43,57 @@ import type { DeploymentProfile } from './cluster-profile.ts';
  */
 export const backend = <E, WE = never, WR = never>(
     profile: DeploymentProfile,
+    /** Register tenant-bound handlers in the routed storage scope before dispatching each invocation. */
     initialize: (host: ActionHost['Type']) => Effect.Effect<void, E, Storage | CurrentTenant | Scope.Scope>,
     registerWorkflows: Effect.Effect<void, WE, WR | WorkflowEngine | Scope.Scope> = Effect.void
 ) =>
     Layer.scopedContext(
-        Effect.gen(function* () {
-            const dependencies = (yield* Effect.context<
-                Flags | Authorizer | IdentityResolver | InputDigest | ExecutionPolicy | Approvals
-            >()).pipe(Context.omit(Caller, Storage, CurrentTenant, Scope.Scope, SqlClient.TransactionConnection));
-            const routing = yield* TenantRouter;
-            const execute: ClusterActionExecutor['Type']['execute'] = (action, input, intent) =>
-                Effect.gen(function* () {
-                    const caller = yield* Caller;
-                    if (caller.tenant === undefined) return yield* new AuditUnavailable({ action });
-                    return yield* routing
-                        .run(
-                            caller.tenant,
-                            Effect.gen(function* () {
-                                const hostContext = yield* Layer.build(ActionHostLive.pipe(Layer.provide(durable)));
-                                const host = Context.get(hostContext, ActionHost);
-                                yield* initialize(host);
-                                return yield* host.execute(action, input, intent);
-                            })
-                        )
-                        .pipe(
-                            Effect.scoped,
-                            Effect.provide(dependencies),
-                            Effect.mapError(() => new AuditUnavailable({ action }))
-                        );
-                }).pipe(Effect.mapInputContext(Context.omit(Storage, CurrentTenant, SqlClient.TransactionConnection)));
-            return yield* Layer.build(
-                clusterRunner(profile, registerWorkflows).pipe(
-                    Layer.provide(Layer.succeed(ClusterActionExecutor, { execute }))
-                )
-            );
-        })
+        Effect.gen(
+            /** Capture shared policy services and install the routed executor in the Cluster runner layer. */ function* () {
+                // Never retain a tenant, caller or transaction from the layer's acquisition context across requests.
+                const dependencies = (yield* Effect.context<
+                    Flags | Authorizer | IdentityResolver | InputDigest | ExecutionPolicy | Approvals
+                >()).pipe(Context.omit(Caller, Storage, CurrentTenant, Scope.Scope, SqlClient.TransactionConnection));
+                const routing = yield* TenantRouter;
+                /** Require an authenticated tenant, rebuild its host inside routing, and fail closed on execution setup errors. */
+                const execute: ClusterActionExecutor['Type']['execute'] = (action, input, intent) =>
+                    Effect.gen(
+                        /** Isolate each invocation's storage scope from the caller's ambient storage services. */ function* () {
+                            // The tenant comes from resolved identity, never a compute entity key or inherited connection.
+                            const caller = yield* Caller;
+                            if (caller.tenant === undefined) return yield* new AuditUnavailable({ action });
+                            return yield* routing
+                                .run(
+                                    caller.tenant,
+                                    Effect.gen(
+                                        /** Bind host integrity and module initialization to the router-selected storage. */ function* () {
+                                            // Constructing inside the route keeps writes and host integrity on the same tenant service.
+                                            const hostContext = yield* Layer.build(
+                                                ActionHostLive.pipe(Layer.provide(durable))
+                                            );
+                                            const host = Context.get(hostContext, ActionHost);
+                                            yield* initialize(host);
+                                            return yield* host.execute(action, input, intent);
+                                        }
+                                    )
+                                )
+                                .pipe(
+                                    Effect.scoped,
+                                    Effect.provide(dependencies),
+                                    Effect.mapError(
+                                        /** Conceal routing/setup details behind the host's audit-unavailable boundary. */ () =>
+                                            new AuditUnavailable({ action })
+                                    )
+                                );
+                        }
+                    ).pipe(
+                        Effect.mapInputContext(Context.omit(Storage, CurrentTenant, SqlClient.TransactionConnection))
+                    );
+                return yield* Layer.build(
+                    clusterRunner(profile, registerWorkflows).pipe(
+                        Layer.provide(Layer.succeed(ClusterActionExecutor, { execute }))
+                    )
+                );
+            }
+        )
     );

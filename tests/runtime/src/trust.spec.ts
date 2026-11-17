@@ -35,6 +35,7 @@ import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect, Either, Exit, Layer, Ref, Schema } from 'effect';
 import { inspect } from 'node:util';
 
+/** Generate stable distinct references for request and evidence bindings. */
 const uuid = (n: number): string => `019b0000-0000-7000-8000-${n.toString().padStart(12, '0')}`;
 const request = Schema.decodeUnknownSync(TrustRequest)({
     scope: {
@@ -70,6 +71,7 @@ type Options = {
     readonly defective?: TrustGate;
     readonly interrupted?: TrustGate;
     readonly reason?: TrustFailure['reason'];
+    /** Mutate fixture evidence after construction without changing the requested binding. */
     readonly change?: (evidence: TrustEvidence) => TrustEvidence;
     readonly assurance?: Assurance;
     readonly receipt?: string;
@@ -77,13 +79,17 @@ type Options = {
 
 /** VOLATILE FIXTURE ONLY. Ref atomicity is not SQL/crash/custody/provider conformance. */
 const fixture = (options: Options = {}) =>
-    Effect.gen(function* () {
+    Effect.gen(/** Build observable gate ports and one atomic in-memory nonce consumption cell. */ function* () {
+        // Keep call order separate from nonce state so early gate failures can prove replay was never reached.
         const consumed = yield* Ref.make(false);
         const calls = yield* Ref.make<ReadonlyArray<TrustGate>>([]);
+        /** Build one gate's metadata verifier with independently injectable failure behavior. */
         const port = (gate: TrustEvidence['gate']): TrustVerifier => ({
+            /** Record gate entry before applying faults or returning request-bound evidence. */
             verify: (input) =>
-                Effect.gen(function* () {
-                    yield* Ref.update(calls, (all) => [...all, gate]);
+                Effect.gen(/** Produce matching metadata unless this scenario injects a gate fault or mutation. */ function* () {
+                    // Record admission even for faults so later-gate suppression is independently observable.
+                    yield* Ref.update(calls, /** Append this gate without discarding previous admission order. */ (all) => [...all, gate]);
                     if (options.defective === gate) return yield* Effect.die('PRIVATE-PROVIDER-CANARY');
                     if (options.interrupted === gate) return yield* Effect.interrupt;
                     if (options.failed === gate)
@@ -101,9 +107,11 @@ const fixture = (options: Options = {}) =>
                 }),
         });
         const replay = TrustReplay.of({
+            /** Consume the fixture nonce at most once after optional replay-port fault injection. */
             consume: () =>
-                Effect.gen(function* () {
-                    yield* Ref.update(calls, (all): ReadonlyArray<TrustGate> => [...all, 'replay']);
+                Effect.gen(/** Model atomic nonce consumption, not durable replay protection. */ function* () {
+                    // Fault injection precedes consumption; the atomic swap arbitrates concurrent successful preflights.
+                    yield* Ref.update(calls, /** Record replay admission after all verification gates. */ (all): ReadonlyArray<TrustGate> => [...all, 'replay']);
                     if (options.defective === 'replay') return yield* Effect.die('PRIVATE-PROVIDER-CANARY');
                     if (options.interrupted === 'replay') return yield* Effect.interrupt;
                     if (options.failed === 'replay')
@@ -124,14 +132,15 @@ const fixture = (options: Options = {}) =>
         );
         return {
             layer,
+            /** Run metadata preflight with this fixture's optional gate services. */
             run: (input = request, settings = policy) => trustPreflight(input, settings).pipe(Effect.provide(layer)),
             calls,
         };
     });
 
 for (const gate of gates) {
-    it.effect(`sanitizes ${gate} defects without invoking later gates`, () =>
-        Effect.gen(function* () {
+    it.effect(`sanitizes ${gate} defects without invoking later gates`, /** Inject a private defect at the selected gate. */ () =>
+        Effect.gen(/** Verify bounded failure translation and exact early-stop gate ordering. */ function* () {
             const f = yield* fixture({ defective: gate });
             const result = yield* Effect.exit(f.run());
             expect(result).toEqual(Exit.fail(new TrustFailure({ gate, reason: 'unavailable' })));
@@ -139,23 +148,23 @@ for (const gate of gates) {
             expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
         })
     );
-    it.effect(`preserves ${gate} interruption without invoking later gates`, () =>
-        Effect.gen(function* () {
+    it.effect(`preserves ${gate} interruption without invoking later gates`, /** Interrupt the selected verifier rather than failing it. */ () =>
+        Effect.gen(/** Verify interruption remains cancellation and suppresses later gates. */ function* () {
             const f = yield* fixture({ interrupted: gate });
             expect(Exit.isInterrupted(yield* Effect.exit(f.run()))).toBe(true);
             expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
         })
     );
-    it.effect(`fails closed with missing ${gate}`, () =>
-        Effect.gen(function* () {
+    it.effect(`fails closed with missing ${gate}`, /** Omit exactly one required service from the fixture layer. */ () =>
+        Effect.gen(/** Verify missing-service preflight rejects before any provider is invoked. */ function* () {
             const f = yield* fixture({ missing: gate });
             expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason: 'unavailable' }));
             expect(yield* Ref.get(f.calls)).toEqual([]);
         })
     );
     for (const reason of ['denied', 'unavailable', 'revoked'] as const) {
-        it.effect(`preserves safe ${gate} ${reason} failure and stops`, () =>
-            Effect.gen(function* () {
+        it.effect(`preserves safe ${gate} ${reason} failure and stops`, /** Inject a typed safe failure at this gate. */ () =>
+            Effect.gen(/** Verify safe reason preservation and no later verification work. */ function* () {
                 const f = yield* fixture({ failed: gate, reason });
                 expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason }));
                 expect(yield* Ref.get(f.calls)).toEqual(gates.slice(0, gates.indexOf(gate) + 1));
@@ -164,17 +173,20 @@ for (const gate of gates) {
     }
 }
 
-it.effect('sanitizes synchronous provider throws and malformed failure reasons', () =>
-    Effect.gen(function* () {
+it.effect('sanitizes synchronous provider throws and malformed failure reasons', /** Exercise failures outside the ordinary typed provider contract. */ () =>
+    Effect.gen(/** Verify thrown or malformed private causes normalize to bounded gate unavailability. */ function* () {
+        // Override the first gate so malformed failures cannot be hidden by successful later verification.
         const canary = 'PRIVATE-PROVIDER-FAILURE';
         const f = yield* fixture();
         const ports: ReadonlyArray<TrustVerifier> = [
             {
+                /** Throw before returning an Effect to exercise synchronous vendor failure handling. */
                 verify: () => {
                     throw new Error(canary);
                 },
             },
             {
+                /** Return a deliberately malformed safe-error instance with private reason text. */
                 verify: () =>
                     Effect.fail(
                         Object.assign(new TrustFailure({ gate: 'broker', reason: 'denied' }), { reason: canary })
@@ -194,8 +206,8 @@ it.effect('sanitizes synchronous provider throws and malformed failure reasons',
     })
 );
 
-it.effect('safe default and absent services deny without defects', () =>
-    Effect.gen(function* () {
+it.effect('safe default and absent services deny without defects', /** Compare absent services with the explicit unavailable layer. */ () =>
+    Effect.gen(/** Verify both unconfigured paths fail closed with the same typed identity failure. */ function* () {
         expect(yield* Effect.flip(trustPreflight(request, policy))).toEqual(
             new TrustFailure({ gate: 'identity', reason: 'unavailable' })
         );
@@ -205,8 +217,9 @@ it.effect('safe default and absent services deny without defects', () =>
     })
 );
 
-it.effect('every safe-default port individually refuses verification or consumption', () =>
-    Effect.gen(function* () {
+it.effect('every safe-default port individually refuses verification or consumption', /** Probe each unavailable service directly rather than only preflight's first failure. */ () =>
+    Effect.gen(/** Verify every verification and replay default independently refuses authority. */ function* () {
+        // Direct calls expose unsafe later defaults that an early identity rejection would otherwise mask.
         const identity = yield* IdentityGate;
         const resource = yield* ResourceGate;
         const workload = yield* WorkloadGate;
@@ -229,33 +242,33 @@ it.effect('every safe-default port individually refuses verification or consumpt
     }).pipe(Effect.provide(TrustUnavailable))
 );
 
-const mismatches: ReadonlyArray<readonly [string, (r: TrustRequest) => TrustRequest]> = [
-    ['tenant', (r) => Schema.decodeUnknownSync(TrustRequest)({ ...r, scope: { ...r.scope, tenant: uuid(99) } })],
-    ['subject', (r) => Schema.decodeUnknownSync(TrustRequest)({ ...r, scope: { ...r.scope, subject: uuid(99) } })],
-    ['audience', (r) => ({ ...r, scope: { ...r.scope, audience: 'other.server' } })],
-    ['resource', (r) => ({ ...r, scope: { ...r.scope, resource: 'other.record' } })],
-    ['record', (r) => ({ ...r, scope: { ...r.scope, resourceId: uuid(99) } })],
-    ['purpose', (r) => ({ ...r, scope: { ...r.scope, purpose: 'other.read' } })],
-    ['profile', (r) => ({ ...r, scope: { ...r.scope, profile: 'baseline' } })],
-    ['operation', (r) => ({ ...r, scope: { ...r.scope, operation: 'server-decrypt' } })],
-    ['nonce', (r) => ({ ...r, nonce: uuid(99) })],
+const mismatches: ReadonlyArray<readonly [string, /** Substitute one evidence request dimension while retaining all others. */ (r: TrustRequest) => TrustRequest]> = [
+    ['tenant', /** Substitute a different schema-validated tenant binding. */ (r) => Schema.decodeUnknownSync(TrustRequest)({ ...r, scope: { ...r.scope, tenant: uuid(99) } })],
+    ['subject', /** Substitute a different schema-validated subject binding. */ (r) => Schema.decodeUnknownSync(TrustRequest)({ ...r, scope: { ...r.scope, subject: uuid(99) } })],
+    ['audience', /** Bind evidence to a different server audience. */ (r) => ({ ...r, scope: { ...r.scope, audience: 'other.server' } })],
+    ['resource', /** Bind evidence to another resource type. */ (r) => ({ ...r, scope: { ...r.scope, resource: 'other.record' } })],
+    ['record', /** Bind evidence to another record reference. */ (r) => ({ ...r, scope: { ...r.scope, resourceId: uuid(99) } })],
+    ['purpose', /** Bind evidence to a different access purpose. */ (r) => ({ ...r, scope: { ...r.scope, purpose: 'other.read' } })],
+    ['profile', /** Weaken only the evidence request's classification profile. */ (r) => ({ ...r, scope: { ...r.scope, profile: 'baseline' } })],
+    ['operation', /** Change metadata access into a server-decrypt evidence binding. */ (r) => ({ ...r, scope: { ...r.scope, operation: 'server-decrypt' } })],
+    ['nonce', /** Bind otherwise identical evidence to a different nonce. */ (r) => ({ ...r, nonce: uuid(99) })],
     ...(['root', 'signingAuthority', 'encryptionAuthority', 'kek', 'dek'] as const).map(
-        (key): readonly [string, (r: TrustRequest) => TrustRequest] => [
+        /** Build an independent key-reference substitution case. */ (key): readonly [string, /** Replace the selected key reference only. */ (r: TrustRequest) => TrustRequest] => [
             key,
-            (r) => ({ ...r, keys: { ...r.keys, [key]: uuid(99) } }),
+            /** Preserve all key metadata except the selected authority reference. */ (r) => ({ ...r, keys: { ...r.keys, [key]: uuid(99) } }),
         ]
     ),
-    ...(['kekVersion', 'dekVersion'] as const).map((key): readonly [string, (r: TrustRequest) => TrustRequest] => [
+    ...(['kekVersion', 'dekVersion'] as const).map(/** Build an independent key-version mismatch case. */ (key): readonly [string, /** Replace the selected version without rotating its key reference. */ (r: TrustRequest) => TrustRequest] => [
         key,
-        (r) => ({ ...r, keys: { ...r.keys, [key]: 2 } }),
+        /** Change only this version to expose nonexact evidence matching. */ (r) => ({ ...r, keys: { ...r.keys, [key]: 2 } }),
     ]),
 ];
 for (const gate of ['identity', 'resource', 'workload', 'broker'] as const) {
     for (const [name, change] of mismatches) {
-        it.effect(`rejects ${gate} mismatched ${name}`, () =>
-            Effect.gen(function* () {
+        it.effect(`rejects ${gate} mismatched ${name}`, /** Inject this binding substitution at one verification gate. */ () =>
+            Effect.gen(/** Verify mismatched evidence is denied before nonce consumption. */ function* () {
                 const f = yield* fixture({
-                    change: (e) => (e.gate === gate ? { ...e, request: change(e.request) } : e),
+                    /** Mutate only the selected gate's evidence request. */ change: (e) => (e.gate === gate ? { ...e, request: change(e.request) } : e),
                 });
                 expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason: 'binding' }));
                 expect(yield* Ref.get(f.calls)).not.toContain('replay');
@@ -269,9 +282,9 @@ for (const gate of ['identity', 'resource', 'workload', 'broker'] as const) {
         { revocationCheckedAt: 89 },
         { revocationCheckedAt: 101 },
     ]) {
-        it.effect(`rejects ${gate} stale/future metadata ${JSON.stringify(patch)}`, () =>
-            Effect.gen(function* () {
-                const f = yield* fixture({ change: (e) => (e.gate === gate ? { ...e, ...patch } : e) });
+        it.effect(`rejects ${gate} stale/future metadata ${JSON.stringify(patch)}`, /** Inject one timestamp boundary violation at this gate. */ () =>
+            Effect.gen(/** Verify stale or future evidence cannot satisfy preflight freshness. */ function* () {
+                const f = yield* fixture({ /** Alter timestamps only for the selected verifier. */ change: (e) => (e.gate === gate ? { ...e, ...patch } : e) });
                 expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate, reason: 'stale' }));
             })
         );
@@ -281,8 +294,9 @@ for (const gate of ['identity', 'resource', 'workload', 'broker'] as const) {
 for (const assurance of Assurance.literals) {
     for (const profile of ['baseline', 'sensitive', 'restricted', 'vault'] as const) {
         for (const operation of ['metadata', 'server-decrypt'] as const) {
-            it.effect(`${profile}/${operation}/${assurance} floor`, () =>
-                Effect.gen(function* () {
+            it.effect(`${profile}/${operation}/${assurance} floor`, /** Exercise this profile, operation and assurance combination. */ () =>
+                Effect.gen(/** Compare the assurance matrix with metadata-only success and absolute vault denial. */ function* () {
+                    // Vault decryption is categorically denied; other cases compare evidence assurance with the operation-specific floor.
                     const f = yield* fixture({ assurance });
                     const result = yield* Effect.either(
                         f.run({ ...request, scope: { ...request.scope, profile, operation } })
@@ -307,8 +321,8 @@ for (const assurance of Assurance.literals) {
     }
 }
 
-it.effect('tenant policy can tighten to A5; current evidence cannot weaken it', () =>
-    Effect.gen(function* () {
+it.effect('tenant policy can tighten to A5; current evidence cannot weaken it', /** Raise policy above the fixture's default evidence assurance. */ () =>
+    Effect.gen(/** Verify caller-supplied evidence cannot lower the trusted tenant assurance minimum. */ function* () {
         const f = yield* fixture();
         expect(yield* Effect.flip(f.run(request, { ...policy, minimumAssurance: 'A5' }))).toEqual(
             new TrustFailure({ gate: 'workload', reason: 'assurance' })
@@ -316,21 +330,22 @@ it.effect('tenant policy can tighten to A5; current evidence cannot weaken it', 
     })
 );
 
-it.effect('consumes once atomically under concurrent preflights', () =>
-    Effect.gen(function* () {
+it.effect('consumes once atomically under concurrent preflights', /** Race two preflights against one volatile replay cell. */ () =>
+    Effect.gen(/** Verify one admission succeeds and the competitor receives replay denial. */ function* () {
+        // Share the same fixture and nonce so concurrency tests atomic consumption rather than independent requests.
         const f = yield* fixture();
         const results = yield* Effect.all([Effect.either(f.run()), Effect.either(f.run())], {
             concurrency: 'unbounded',
         });
         expect(results.filter(Either.isRight)).toHaveLength(1);
-        expect(results.filter(Either.isLeft).map((r) => r.left)).toEqual([
+        expect(results.filter(Either.isLeft).map(/** Extract the losing preflight's bounded failure. */ (r) => r.left)).toEqual([
             new TrustFailure({ gate: 'replay', reason: 'replay' }),
         ]);
     })
 );
 
-it.effect('rotation metadata is algorithm agnostic and versions remain exact', () =>
-    Effect.gen(function* () {
+it.effect('rotation metadata is algorithm agnostic and versions remain exact', /** Exercise version rotation and strict key metadata schemas. */ () =>
+    Effect.gen(/** Verify metadata rotation grants no release and malformed or aliased authorities remain invalid. */ function* () {
         const f = yield* fixture();
         const rotated = { ...request, keys: { ...request.keys, kekVersion: 300, dekVersion: 900 } };
         expect((yield* f.run(rotated)).release).toBe('denied');
@@ -348,8 +363,9 @@ it.effect('rotation metadata is algorithm agnostic and versions remain exact', (
     })
 );
 
-it.effect('rejects payloads and does not serialize secret canaries in errors/audit', () =>
-    Effect.gen(function* () {
+it.effect('rejects payloads and does not serialize secret canaries in errors/audit', /** Inject private request and receipt fields into otherwise valid preflights. */ () =>
+    Effect.gen(/** Verify error renderings and metadata-only audit results exclude private payloads and resource identifiers. */ function* () {
+        // Inspect several renderers and the success path so hiding a canary in just JSON errors is insufficient.
         const canary = 'SECRET-CANARY-DO-NOT-EXPOSE';
         const f = yield* fixture();
         const bad = { ...request, plaintext: canary };
@@ -365,11 +381,11 @@ it.effect('rejects payloads and does not serialize secret canaries in errors/aud
     })
 );
 
-it.effect('rejects wrong gate, invalid evidence and invalid trusted time policy', () =>
-    Effect.gen(function* () {
-        const wrong = yield* fixture({ change: (e) => ({ ...e, gate: 'broker' }) });
+it.effect('rejects wrong gate, invalid evidence and invalid trusted time policy', /** Exercise independent gate, schema and trusted-time failures. */ () =>
+    Effect.gen(/** Verify malformed evidence and policy receive the expected bounded failure categories. */ function* () {
+        const wrong = yield* fixture({ /** Mislabel identity evidence as a different verifier's result. */ change: (e) => ({ ...e, gate: 'broker' }) });
         expect(yield* Effect.flip(wrong.run())).toEqual(new TrustFailure({ gate: 'identity', reason: 'binding' }));
-        const invalid = yield* fixture({ change: (e) => ({ ...e, expiresAt: -1 }) });
+        const invalid = yield* fixture({ /** Make expiry structurally invalid rather than merely stale. */ change: (e) => ({ ...e, expiresAt: -1 }) });
         expect(yield* Effect.flip(invalid.run())).toEqual(new TrustFailure({ gate: 'identity', reason: 'invalid' }));
         const f = yield* fixture();
         expect(
@@ -378,16 +394,17 @@ it.effect('rejects wrong gate, invalid evidence and invalid trusted time policy'
     })
 );
 
-it.effect('checks revocation ordering even when both timestamps are within the freshness window', () =>
-    Effect.gen(function* () {
-        const f = yield* fixture({ change: (e) => ({ ...e, issuedAt: 95, revocationCheckedAt: 94 }) });
+it.effect('checks revocation ordering even when both timestamps are within the freshness window', /** Supply fresh timestamps with revocation checked before evidence issuance. */ () =>
+    Effect.gen(/** Verify freshness alone cannot satisfy revocation ordering or consume the nonce. */ function* () {
+        const f = yield* fixture({ /** Reverse issuance/revocation order while keeping both inside the trusted window. */ change: (e) => ({ ...e, issuedAt: 95, revocationCheckedAt: 94 }) });
         expect(yield* Effect.flip(f.run())).toEqual(new TrustFailure({ gate: 'identity', reason: 'stale' }));
         expect(yield* Ref.get(f.calls)).not.toContain('replay');
     })
 );
 
-it.effect('valid metadata is not cryptographic proof and safe-default examples remain unavailable', () =>
-    Effect.gen(function* () {
+it.effect('valid metadata is not cryptographic proof and safe-default examples remain unavailable', /** Round-trip metadata before testing default and fixture-backed authority. */ () =>
+    Effect.gen(/** Verify schema validity neither supplies missing verifiers nor authorizes payload release. */ function* () {
+        // Compare decoded input with and without fixture verifiers; successful metadata preflight still explicitly denies release.
         const decodedRequest = yield* Schema.decodeUnknown(Schema.parseJson(TrustRequest))(JSON.stringify(request));
         const decodedPolicy = yield* Schema.decodeUnknown(Schema.parseJson(TrustPolicy))(JSON.stringify(policy));
         expect(yield* Effect.flip(trustPreflight(decodedRequest, decodedPolicy))).toEqual(
@@ -400,13 +417,13 @@ it.effect('valid metadata is not cryptographic proof and safe-default examples r
     })
 );
 
-it.effect('invalid policy metadata and evidence payloads fail without consuming a nonce', () =>
-    Effect.gen(function* () {
+it.effect('invalid policy metadata and evidence payloads fail without consuming a nonce', /** Exercise strict policy and provider-evidence validation. */ () =>
+    Effect.gen(/** Verify invalid metadata fails before replay and private evidence contents stay redacted. */ function* () {
         const f = yield* fixture();
         expect(yield* Effect.flip(f.run(request, { ...policy, now: -1 }))).toEqual(
             new TrustFailure({ gate: 'preflight', reason: 'invalid' })
         );
-        const evidencePayload = yield* fixture({ change: (e) => ({ ...e, plaintext: 'SECRET-EVIDENCE-CANARY' }) });
+        const evidencePayload = yield* fixture({ /** Add a forbidden evidence payload field without changing its valid bindings. */ change: (e) => ({ ...e, plaintext: 'SECRET-EVIDENCE-CANARY' }) });
         const failure = yield* Effect.flip(evidencePayload.run());
         expect(failure).toEqual(new TrustFailure({ gate: 'identity', reason: 'invalid' }));
         expect(inspect(failure)).not.toContain('SECRET-EVIDENCE-CANARY');

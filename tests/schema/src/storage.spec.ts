@@ -19,7 +19,8 @@ import { columns, type SyncDeclaration } from '@eventiva/schema/storage';
 import { expect, it } from '@effect/vitest';
 import { Schema } from 'effect';
 
-it('declares typed raw canonical sync columns separately from JSON projections', () => {
+it('declares typed raw canonical sync columns separately from JSON projections', /** Verify raw canonical column metadata and statically forbid storing canonical records as JSON projections. */ () => {
+    // A JSON-valued column is legal in raw storage; that differs from assigning the entire canonical record JSON storage.
     const declaration: SyncDeclaration = {
         kind: 'canonical',
         storage: 'raw',

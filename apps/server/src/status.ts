@@ -34,6 +34,7 @@ export const Status = define('platform.status', {
     offline: 'local',
 });
 
+/** Build a read-only module whose status handler samples the supplied registered-action effect at invocation. */
 export const platformModule = (actions: Effect.Effect<ReadonlyArray<string>>): ServerModule => ({
     manifest: {
         format: 1,
@@ -44,6 +45,16 @@ export const platformModule = (actions: Effect.Effect<ReadonlyArray<string>>): S
         flags: [],
     },
     actions: [
-        implement(Status, () => Effect.map(actions, (names) => ({ runtime: 'eventiva' as const, actions: names }))),
+        implement(
+            Status,
+            /** Report the current registry rather than caching names at module creation. */ () =>
+                Effect.map(
+                    actions,
+                    /** Preserve registry ordering in the status response. */ (names) => ({
+                        runtime: 'eventiva' as const,
+                        actions: names
+                    })
+                )
+        ),
     ],
 });

@@ -39,25 +39,39 @@ const receipt: Receipt = {
     durationMs: 0,
 };
 const unavailable = Effect.fail(new StorageFailure({ operation: 'unavailable' }));
+/** Provide only commit/audit behavior; unrelated driver operations deliberately fail closed. */
 const fixture = (overrides: Partial<Storage['Type']> = {}): Storage['Type'] =>
     Storage.of({
         capabilities: { transactions: true, compareAndSet: true, appendOnlyLedger: true, device: false },
         ready: Effect.void,
+        /** Preserve the supplied effect without simulating driver atomicity. */
         transaction: (effect) => effect,
-        commit: (_request, execute) => Effect.map(execute, (result) => ({ ...result, replayed: false })),
+        /** Execute once and mark evidence as newly committed, not replayed. */
+        commit: (_request, execute) => Effect.map(execute, /** Preserve handler output and receipt while adding commit status. */ (result) => ({ ...result, replayed: false })),
+        /** Accept audit persistence unless the scenario overrides this port. */
         audit: () => Effect.void,
+        /** Refuse entity creation outside this bridge fixture's scope. */
         create: () => unavailable,
+        /** Refuse entity lookup without a driver. */
         get: () => unavailable,
+        /** Refuse entity mutation without a driver. */
         compareAndSet: () => unavailable,
+        /** Refuse stock writes without a driver. */
         stock: () => unavailable,
+        /** Refuse inventory queries without a driver. */
         available: () => unavailable,
+        /** Refuse reservation writes without a driver. */
         reserve: () => unavailable,
+        /** Refuse reservation settlement without a driver. */
         settle: () => unavailable,
         expire: unavailable,
+        /** Refuse reconciliation without a driver. */
         reconcile: () => unavailable,
+        /** Refuse outbox writes without a driver. */
         enqueue: () => unavailable,
         ...overrides,
     });
+/** Install the durable bridge with the fixture tenant and selected storage behavior. */
 const run = <A, E>(effect: Effect.Effect<A, E, Audit | Integrity>, storage = fixture()) =>
     effect.pipe(
         Effect.provide(durable),
@@ -65,9 +79,10 @@ const run = <A, E>(effect: Effect.Effect<A, E, Audit | Integrity>, storage = fix
         Effect.provideService(CurrentTenant, { id: caller.tenant! })
     );
 
-it.effect('durable bridge validates successful evidence and JSON output without a driver', () =>
+it.effect('durable bridge validates successful evidence and JSON output without a driver', /** Exercise bridge validation independently of persistence implementation. */ () =>
     run(
-        Effect.gen(function* () {
+        Effect.gen(/** Reject substituted receipt bindings and non-JSON results while accepting valid evidence. */ function* () {
+            // Start with valid evidence, then vary each binding independently so rejection cannot hide an unchecked field.
             const integrity = yield* Integrity;
             const audit = yield* Audit;
             const request = { key: 'key', inputHash: 'hash', caller, action: receipt.action, version: 1 };
@@ -122,29 +137,30 @@ it.effect('durable bridge validates successful evidence and JSON output without 
     )
 );
 
-it.effect('durable bridge preserves handler errors and translates storage failures without a spool fallback', () =>
-    Effect.gen(function* () {
+it.effect('durable bridge preserves handler errors and translates storage failures without a spool fallback', /** Exercise driver failures separately from handler failures. */ () =>
+    Effect.gen(/** Verify storage error translation does not reinterpret a handler's similarly named error. */ function* () {
+        // Inject each failure at its owning port to distinguish storage translation from handler error preservation.
         const request = { key: 'key', inputHash: 'hash', caller, action: receipt.action, version: 1 };
-        const invoke = Effect.flatMap(Integrity, (i) => i.commit(request, Effect.succeed({ output: null, receipt })));
-        expect(yield* Effect.either(run(invoke, fixture({ commit: () => unavailable })))).toMatchObject({
+        const invoke = Effect.flatMap(Integrity, /** Commit valid evidence so only the injected storage behavior can fail. */ (i) => i.commit(request, Effect.succeed({ output: null, receipt })));
+        expect(yield* Effect.either(run(invoke, fixture({ /** Model unavailable persistence before any successful commit. */ commit: () => unavailable })))).toMatchObject({
             left: { _tag: 'AuditUnavailable' },
         });
         expect(
             yield* Effect.either(
                 run(
                     invoke,
-                    fixture({ commit: () => Effect.fail(new Conflict({ id: 'key', reason: 'input-changed' })) })
+                    fixture({ /** Model storage idempotency conflict rather than a handler error. */ commit: () => Effect.fail(new Conflict({ id: 'key', reason: 'input-changed' })) })
                 )
             )
         ).toMatchObject({ left: { _tag: 'InvocationDenied', reason: 'input-changed' } });
         const handlerError = { _tag: 'StorageConflict', detail: 'not a storage exception' };
         expect(
-            yield* Effect.either(run(Effect.flatMap(Integrity, (i) => i.commit(request, Effect.fail(handlerError)))))
+            yield* Effect.either(run(Effect.flatMap(Integrity, /** Fail inside the handler before evidence can commit. */ (i) => i.commit(request, Effect.fail(handlerError)))))
         ).toMatchObject({ _tag: 'Left', left: handlerError });
         expect(
             yield* Effect.either(
                 run(
-                    Effect.flatMap(Audit, (a) => a.ready('test.write')),
+                    Effect.flatMap(Audit, /** Probe mandatory audit readiness through the durable bridge. */ (a) => a.ready('test.write')),
                     fixture({ ready: unavailable })
                 )
             )
@@ -152,8 +168,8 @@ it.effect('durable bridge preserves handler errors and translates storage failur
         expect(
             yield* Effect.either(
                 run(
-                    Effect.flatMap(Audit, (a) => a.record(receipt, true)),
-                    fixture({ audit: () => unavailable })
+                    Effect.flatMap(Audit, /** Attempt durable audit persistence with valid evidence. */ (a) => a.record(receipt, true)),
+                    fixture({ /** Reject audit persistence independently of readiness. */ audit: () => unavailable })
                 )
             )
         ).toMatchObject({ left: { _tag: 'AuditUnavailable' } });

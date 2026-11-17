@@ -88,6 +88,7 @@ if (!['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname) || endpoint
 const fixture = (dialect: Dialect) =>
     Effect.gen(
         /** Allocate scoped storage and expose policy controls for restart and revocation scenarios. */ function* () {
+            // Multiple clients share only this fixture's files; their independent acquisitions model restart identity.
             const directory = yield* Effect.acquireRelease(
                 Effect.sync(
                     /** Keep SQLite state disposable while allowing multiple connections during a test. */ () => {
@@ -166,6 +167,7 @@ const fixture = (dialect: Dialect) =>
                 bind: (capturedTenant, _runtime, incarnation, target) =>
                     Effect.gen(
                         /** Apply live denial before supplying either the normal or deliberately altered binding. */ function* () {
+                            // Retain captured tenant attribution even for denial, without deriving it from ambient caller state.
                             yield* Ref.update(
                                 binds,
                                 /** Count binding decisions to detect accidental rebinding on replay. */ (n) => n + 1
@@ -228,6 +230,7 @@ interface KernelCallbackEvidence {
 const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, contradictoryInstall = false) =>
     Effect.gen(
         /** Capture host services at layer construction, keeping later caller context out of provenance decisions. */ function* () {
+            // Admission, mutation callbacks and finalization are observed separately: none alone proves durable publication.
             const confirmationFails = yield* Ref.make(false);
             const forcedRequest = yield* Ref.make<string | undefined>(undefined);
             const requests = yield* Ref.make(1000);
@@ -453,6 +456,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Verify callback admission, retained provenance and ready incarnation identity on the real SQL feed. */ () =>
                 Effect.gen(
                     /** Public kernel state, callback observations and SQL facts must describe the same transitions. */ function* () {
+                        // Callback-time unresolved intent must later agree with committed feed order and actual kernel generations.
                         const f = yield* fixture(dialect);
                         const k = yield* kernelFixture(f);
                         yield* k.start(k.definition());
@@ -543,6 +547,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Cancellation may stop a hook, never the resource finalizers or the actual inactive transition. */ () =>
                 Effect.gen(
                     /** Interrupt only after the hook starts so this exercises the owned-release boundary. */ function* () {
+                        // Cancellation must not transfer resource ownership back to an unfinished deactivation hook.
                         const f = yield* fixture(dialect);
                         const k = yield* kernelFixture(f);
                         const started = yield* Deferred.make<void>();
@@ -705,6 +710,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Trigger a provider health failure after its consumer is active and inspect cascade evidence. */ () =>
                 Effect.gen(
                     /** Failure transitions can commit while the failed ready intents remain explicitly unresolved. */ function* () {
+                        // Arm health failure only after both modules are active so dependent-first physical cleanup is observable.
                         const f = yield* fixture(dialect);
                         const k = yield* kernelFixture(f);
                         const failHealth = yield* Ref.make(false);
@@ -773,6 +779,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                 /** Distinguish public cleanup failure from a committed swap, including independent confirmation loss. */ () =>
                     Effect.gen(
                         /** Old finalizers must run after the state write even when neither later acknowledgement succeeds. */ function* () {
+                            // A failed public update can still have swapped active code; inspect state and journal independently.
                             const f = yield* fixture(dialect);
                             const k = yield* kernelFixture(f);
                             yield* k.start(k.definition('fixture', {}, { deactivate: true }));
@@ -839,6 +846,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                 /** Reject admission before module effects, then prove permission restoration does not authorize replay. */ () =>
                     Effect.gen(
                         /** A duplicate retained attempt is status evidence only, including when it was never committed. */ function* () {
+                            // Restoring policy must not turn sticky recovery state into permission to replay module callbacks.
                             const f = yield* fixture(dialect);
                             const k = yield* kernelFixture(f, admission === 'contradictory');
                             yield* k.run(k.kernel.register(k.definition()));
@@ -992,6 +1000,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Exercise status reconciliation without replaying a mutation after restart. */ () =>
                 Effect.gen(
                     /** Verify terminal facts cannot change when the synthetic authority later changes its answer. */ function* () {
+                        // Reconciliation consults authority only for unresolved attempts; terminal replay cannot reclassify evidence.
                         const f = yield* fixture(dialect);
                         for (const request of [id(10), id(11), id(12)])
                             yield* f.run(f.producer.begin(request, lifecycle));
@@ -1027,6 +1036,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Exercise immutable classification and tenant/runtime isolation. */ () =>
                 Effect.gen(
                     /** Change live policy after begin and verify the original binding remains the published fact. */ function* () {
+                        // Confirmation publishes the admitted snapshot, while live authorization remains independently revocable.
                         const f = yield* fixture(dialect);
                         const started = yield* f.run(f.producer.begin(id(10), lifecycle));
                         yield* Ref.set(f.override, {
@@ -1087,6 +1097,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Exercise ready-fact uniqueness separately from restart identity. */ () =>
                 Effect.gen(
                     /** Compare duplicate requests, new generations and new incarnations against the feed. */ function* () {
+                        // Request uniqueness is weaker than ready identity: separate requests cannot publish the same incarnation/generation twice.
                         const f = yield* fixture(dialect);
                         for (const request of [id(10), id(11)]) yield* f.run(f.producer.begin(request, ready()));
                         yield* f.run(f.producer.confirm(id(10)));
@@ -1176,6 +1187,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
             /** Exercise live revocation for both unresolved and terminal attempts. */ () =>
                 Effect.gen(
                     /** Revoke authority around confirmation to prove replay never bypasses permission checks. */ function* () {
+                        // Test denial both before and after a terminal commit so retained status cannot act as authorization.
                         const f = yield* fixture(dialect);
                         yield* f.run(f.producer.begin(id(10), lifecycle));
                         yield* Ref.set(f.allowed, false);

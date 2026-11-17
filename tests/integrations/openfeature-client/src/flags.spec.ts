@@ -22,126 +22,185 @@ import { ErrorCode, OpenFeature, type Provider } from '@openfeature/web-sdk';
 import { Effect, Layer, Logger } from 'effect';
 import { vi } from 'vitest';
 
+/** Build a portable flag fixture with an explicit caller-selected fallback. */
 const flag = (key: string, safeDefault: boolean) => ({ key, description: 'Test.', owner: 'test', safeDefault });
 
 // What PostHog has cached on the device.
 const cached: Record<string, boolean | string> = { 'a.baseline': true, 'a.remote': 'variant-b' };
 const postHog = new PostHogClientProvider({
+    /** Expose only the device's cached values, leaving unknown flags absent. */
     getFeatureFlag: (key) => cached[key],
-    onFeatureFlags: () => () => undefined,
+    /** Supply an inert subscription because this fixture never refreshes its cache. */
+    onFeatureFlags: () => /** No listener was installed, so disposal has nothing to release. */ () => undefined,
 });
 
-describe('OpenFeature client flags', () => {
-    it.effect('keeps vendor secrets out of public startup diagnostics and preserves defaults', () => {
-        const secret = 'flag-client-secret-canary';
-        const messages: string[] = [];
-        const bind = vi
-            .spyOn(OpenFeature, 'setProviderAndWait')
-            .mockRejectedValueOnce(Object.assign(new Error(secret), { secret }));
-        return Effect.gen(function* () {
-            expect(yield* (yield* Flags).evaluate(flag('a.secret', true))).toMatchObject({
-                value: true,
-                fallback: true,
-            });
-        }).pipe(
-            Effect.provide(
-                layer([], { domain: 'client-secret' }).pipe(
-                    Layer.provideMerge(
-                        Logger.replace(
-                            Logger.defaultLogger,
-                            Logger.make(({ message }) => messages.push(JSON.stringify(message)))
+describe('OpenFeature client flags', /** Register browser flag fallback, precedence and lifecycle regressions. */ () => {
+    it.effect(
+        'keeps vendor secrets out of public startup diagnostics and preserves defaults',
+        /** Inject a canary-bearing initialization rejection and inspect sanitized diagnostics. */ () => {
+            // Capture the logger at layer acquisition, where provider startup errors are converted to safe defaults.
+            const secret = 'flag-client-secret-canary';
+            const messages: string[] = [];
+            const bind = vi
+                .spyOn(OpenFeature, 'setProviderAndWait')
+                .mockRejectedValueOnce(Object.assign(new Error(secret), { secret }));
+            return Effect.gen(
+                /** Verify failed startup still serves the declared safe default. */ function* () {
+                    expect(yield* (yield* Flags).evaluate(flag('a.secret', true))).toMatchObject({
+                        value: true,
+                        fallback: true,
+                    });
+                }
+            ).pipe(
+                Effect.provide(
+                    layer([], { domain: 'client-secret' }).pipe(
+                        Layer.provideMerge(
+                            Logger.replace(
+                                Logger.defaultLogger,
+                                Logger.make(
+                                    /** Retain public log payloads for canary and raw-cause checks. */ ({ message }) =>
+                                        messages.push(JSON.stringify(message))
+                                )
+                            )
                         )
                     )
+                ),
+                Effect.tap(
+                    /** Inspect acquisition diagnostics after the fallback assertion succeeds. */ () =>
+                        Effect.sync(
+                            /** Require bounded error metadata without vendor exception contents. */ () => {
+                                const diagnostics = messages.join('\n');
+                                expect(diagnostics).toContain('FlagProviderError');
+                                expect(diagnostics).toContain('initialize');
+                                expect(diagnostics).not.toContain(secret);
+                                expect(diagnostics).not.toContain('cause');
+                            }
+                        )
+                ),
+                Effect.ensuring(
+                    Effect.sync(
+                        /** Restore the global provider binder even if an assertion fails. */ () => bind.mockRestore()
+                    )
                 )
-            ),
-            Effect.tap(() =>
-                Effect.sync(() => {
-                    const diagnostics = messages.join('\n');
-                    expect(diagnostics).toContain('FlagProviderError');
-                    expect(diagnostics).toContain('initialize');
-                    expect(diagnostics).not.toContain(secret);
-                    expect(diagnostics).not.toContain('cause');
-                })
-            ),
-            Effect.ensuring(Effect.sync(() => bind.mockRestore()))
-        );
-    });
+            );
+        }
+    );
 
-    it.effect('combines the Git baseline and PostHog in precedence order', () =>
-        Effect.gen(function* () {
-            const flags = yield* Flags;
-            // The baseline outranks remote rollout, so its false wins over PostHog's true.
-            expect((yield* flags.evaluate(flag('a.baseline', true))).value).toBe(false);
-            // Only PostHog knows this one; a served variant means on.
-            expect(yield* flags.evaluate(flag('a.remote', false))).toMatchObject({ value: true, fallback: false });
-            // Nobody knows this one, offline or not.
-            expect(yield* flags.evaluate(flag('a.unknown', true))).toMatchObject({ value: true, fallback: true });
-        }).pipe(
-            Effect.provide(
-                layer(
-                    [
-                        { source: 'remote', provider: postHog },
-                        { source: 'git-baseline', provider: staticValues({ 'a.baseline': false }) },
-                    ],
-                    { domain: 'client-precedence', context: { targetingKey: 'device-1' } }
+    it.effect(
+        'combines the Git baseline and PostHog in precedence order',
+        /** Provide competing baseline and cached remote values in reverse priority order. */ () =>
+            Effect.gen(
+                /** Verify baseline priority, remote variants and unknown-key fallback independently. */ function* () {
+                    const flags = yield* Flags;
+                    // The baseline outranks remote rollout, so its false wins over PostHog's true.
+                    expect((yield* flags.evaluate(flag('a.baseline', true))).value).toBe(false);
+                    // Only PostHog knows this one; a served variant means on.
+                    expect(yield* flags.evaluate(flag('a.remote', false))).toMatchObject({
+                        value: true,
+                        fallback: false
+                    });
+                    // Nobody knows this one, offline or not.
+                    expect(yield* flags.evaluate(flag('a.unknown', true))).toMatchObject({
+                        value: true,
+                        fallback: true
+                    });
+                }
+            ).pipe(
+                Effect.provide(
+                    layer(
+                        [
+                            { source: 'remote', provider: postHog },
+                            { source: 'git-baseline', provider: staticValues({ 'a.baseline': false }) },
+                        ],
+                        { domain: 'client-precedence', context: { targetingKey: 'device-1' } }
+                    )
                 )
             )
-        )
     );
 
     // OpenFeature keeps a provider that failed to start bound (its ERROR state is
     // recoverable), so it still answers for the flags it knows and the rest fall back.
-    it.effect('answers with safe defaults when a provider fails to start', () => {
-        const failing: Provider = {
-            metadata: { name: 'failing' },
-            runsOn: 'client',
-            initialize: () => Promise.reject(new Error('no network')),
-            resolveBooleanEvaluation: (_key, value) => ({
-                value: !value,
-                reason: 'ERROR',
-                errorCode: ErrorCode.FLAG_NOT_FOUND,
-            }),
-            resolveStringEvaluation: (_key, value) => ({ value }),
-            resolveNumberEvaluation: (_key, value) => ({ value }),
-            resolveObjectEvaluation: (_key, value) => ({ value }),
-        };
-        return Effect.gen(function* () {
-            const flags = yield* Flags;
-            expect(yield* flags.evaluate(flag('a.flag', false))).toMatchObject({ value: false, fallback: true });
-        }).pipe(Effect.provide(layer([{ source: 'remote', provider: failing }], { domain: 'client-start' })));
-    });
+    it.effect(
+        'answers with safe defaults when a provider fails to start',
+        /** Bind a recoverably failed provider that also returns an evaluation error. */ () => {
+            // An inverted value makes accidentally trusting an error resolution visible instead of matching the fallback.
+            const failing: Provider = {
+                metadata: { name: 'failing' },
+                runsOn: 'client',
+                /** Simulate failed remote initialization without performing network IO. */
+                initialize: () => Promise.reject(new Error('no network')),
+                /** Return an erroneous opposite value to expose unsafe fallback handling. */
+                resolveBooleanEvaluation: (_key, value) => ({
+                    value: !value,
+                    reason: 'ERROR',
+                    errorCode: ErrorCode.FLAG_NOT_FOUND,
+                }),
+                /** Preserve string defaults for the unused provider capability. */
+                resolveStringEvaluation: (_key, value) => ({ value }),
+                /** Preserve numeric defaults for the unused provider capability. */
+                resolveNumberEvaluation: (_key, value) => ({ value }),
+                /** Preserve object defaults for the unused provider capability. */
+                resolveObjectEvaluation: (_key, value) => ({ value }),
+            };
+            return Effect.gen(
+                /** Verify an error resolution cannot override the declared false default. */ function* () {
+                    const flags = yield* Flags;
+                    expect(yield* flags.evaluate(flag('a.flag', false))).toMatchObject({
+                        value: false,
+                        fallback: true
+                    });
+                }
+            ).pipe(Effect.provide(layer([{ source: 'remote', provider: failing }], { domain: 'client-start' })));
+        }
+    );
 
-    it.effect('reports UNKNOWN when a provider gives no reason', () => {
-        const terse: Provider = {
-            metadata: { name: 'terse' },
-            runsOn: 'client',
-            resolveBooleanEvaluation: () => ({ value: true }),
-            resolveStringEvaluation: (_key, value) => ({ value }),
-            resolveNumberEvaluation: (_key, value) => ({ value }),
-            resolveObjectEvaluation: (_key, value) => ({ value }),
-        };
-        return Effect.gen(function* () {
-            expect(yield* (yield* Flags).evaluate(flag('a.flag', false))).toMatchObject({
-                value: true,
-                reason: 'UNKNOWN',
-            });
-        }).pipe(Effect.provide(layer([{ source: 'remote', provider: terse }], { domain: 'client-terse' })));
-    });
+    it.effect(
+        'reports UNKNOWN when a provider gives no reason',
+        /** Bind a successful but reasonless provider to exercise reason normalization. */ () => {
+            const terse: Provider = {
+                metadata: { name: 'terse' },
+                runsOn: 'client',
+                /** Supply a successful boolean resolution with deliberately absent reason metadata. */
+                resolveBooleanEvaluation: () => ({ value: true }),
+                /** Preserve string defaults without adding reason metadata. */
+                resolveStringEvaluation: (_key, value) => ({ value }),
+                /** Preserve numeric defaults without adding reason metadata. */
+                resolveNumberEvaluation: (_key, value) => ({ value }),
+                /** Preserve object defaults without adding reason metadata. */
+                resolveObjectEvaluation: (_key, value) => ({ value }),
+            };
+            return Effect.gen(
+                /** Verify missing reason metadata becomes UNKNOWN without discarding the resolved value. */ function* () {
+                    expect(yield* (yield* Flags).evaluate(flag('a.flag', false))).toMatchObject({
+                        value: true,
+                        reason: 'UNKNOWN',
+                    });
+                }
+            ).pipe(Effect.provide(layer([{ source: 'remote', provider: terse }], { domain: 'client-terse' })));
+        }
+    );
 
-    it.effect('unbinds its providers when the layer closes', () =>
-        Effect.gen(function* () {
-            yield* Effect.scoped(
-                Effect.gen(function* () {
-                    expect((yield* (yield* Flags).evaluate(flag('a.on', false))).value).toBe(true);
-                }).pipe(
-                    Effect.provide(
-                        layer([{ source: 'git-baseline', provider: staticValues({ 'a.on': true }) }], {
-                            domain: 'client-close',
-                        })
-                    )
-                )
-            );
-            expect(OpenFeature.getClient('client-close').getBooleanValue('a.on', false)).toBe(false);
-        })
+    it.effect(
+        'unbinds its providers when the layer closes',
+        /** Exercise a domain before and after its provider scope ends. */ () =>
+            Effect.gen(
+                /** Verify disposed domain access falls back rather than retaining its static provider. */ function* () {
+                    // Exit the inner scope before consulting the SDK directly so the second read tests finalization.
+                    yield* Effect.scoped(
+                        Effect.gen(
+                            /** Establish that the live provider overrides the false fallback before disposal. */ function* () {
+                                expect((yield* (yield* Flags).evaluate(flag('a.on', false))).value).toBe(true);
+                            }
+                        ).pipe(
+                            Effect.provide(
+                                layer([{ source: 'git-baseline', provider: staticValues({ 'a.on': true }) }], {
+                                    domain: 'client-close',
+                                })
+                            )
+                        )
+                    );
+                    expect(OpenFeature.getClient('client-close').getBooleanValue('a.on', false)).toBe(false);
+                }
+            )
     );
 });

@@ -21,43 +21,72 @@ import { Effect } from 'effect';
 
 const count = { id: 'events.count', defaultMessage: '{n, plural, one {# event} other {# events}}' };
 const incident = { id: 'mdt.incident', defaultMessage: 'Incident' };
-const catalogue = { 'events.count': '{n, plural, one {# event today} other {# events today}}', 'mdt.incident': 'Incident' };
+const catalogue = {
+    'events.count': '{n, plural, one {# event today} other {# events today}}',
+    'mdt.incident': 'Incident'
+};
 
-describe('FormatJS I18n', () => {
-    it.effect('formats ICU plurals from the catalogue, not the default message', () =>
-        Effect.gen(function* () {
-            const i18n = yield* I18n;
-            expect(i18n.locale).toBe('en-GB');
-            expect(i18n.format(count, { n: 1 })).toBe('1 event today');
-            expect(i18n.format(count, { n: 2 })).toBe('2 events today');
-        }).pipe(Effect.provide(layer({ locale: 'en-GB', catalogue })))
+describe('FormatJS I18n', /** Register catalogue, fallback and terminology isolation regressions. */ () => {
+    it.effect(
+        'formats ICU plurals from the catalogue, not the default message',
+        /** Supply the translated British catalogue for plural evaluation. */ () =>
+            Effect.gen(
+                /** Verify singular and plural branches both use translated rather than default text. */ function* () {
+                    const i18n = yield* I18n;
+                    expect(i18n.locale).toBe('en-GB');
+                    expect(i18n.format(count, { n: 1 })).toBe('1 event today');
+                    expect(i18n.format(count, { n: 2 })).toBe('2 events today');
+                }
+            ).pipe(Effect.provide(layer({ locale: 'en-GB', catalogue })))
     );
 
-    it.effect('falls back to the default message for a key the catalogue lacks', () =>
-        Effect.gen(function* () {
-            const i18n = yield* I18n;
-            expect(i18n.format({ id: 'events.missing', defaultMessage: 'Fallback {name}' }, { name: 'A' })).toBe('Fallback A');
-            expect(i18n.format({ id: 'events.missing', defaultMessage: 'Fallback {name}' }, { name: 'B' })).toBe('Fallback B');
-        }).pipe(Effect.provide(layer({ locale: 'en-GB', catalogue: {} })))
+    it.effect(
+        'falls back to the default message for a key the catalogue lacks',
+        /** Provide an empty catalogue to force descriptor fallback. */ () =>
+            Effect.gen(
+                /** Verify fallback interpolation varies with each call instead of retaining earlier values. */ function* () {
+                    const i18n = yield* I18n;
+                    expect(
+                        i18n.format({ id: 'events.missing', defaultMessage: 'Fallback {name}' }, { name: 'A' })
+                    ).toBe('Fallback A');
+                    expect(
+                        i18n.format({ id: 'events.missing', defaultMessage: 'Fallback {name}' }, { name: 'B' })
+                    ).toBe('Fallback B');
+                }
+            ).pipe(Effect.provide(layer({ locale: 'en-GB', catalogue: {} })))
     );
 
-    it.effect('falls back to the en-GB default when another locale lacks a translation', () =>
-        Effect.gen(function* () {
-            const i18n = yield* I18n;
-            const missing = { id: 'events.missing', defaultMessage: '{n, plural, one {# day} other {# days}}' };
-            expect(i18n.format(missing, { n: 1 })).toBe('1 day');
-            expect(i18n.format(missing, { n: 3 })).toBe('3 days');
-            expect(i18n.format(incident)).toBe('Incident');
-        }).pipe(Effect.provide(layer({ locale: 'fr-FR', catalogue: { 'mdt.incident': 'Incident' } })))
+    it.effect(
+        'falls back to the en-GB default when another locale lacks a translation',
+        /** Provide French translations with a deliberately absent plural key. */ () =>
+            Effect.gen(
+                /** Verify missing-key English plurals coexist with a present French catalogue entry. */ function* () {
+                    const i18n = yield* I18n;
+                    const missing = { id: 'events.missing', defaultMessage: '{n, plural, one {# day} other {# days}}' };
+                    expect(i18n.format(missing, { n: 1 })).toBe('1 day');
+                    expect(i18n.format(missing, { n: 3 })).toBe('3 days');
+                    expect(i18n.format(incident)).toBe('Incident');
+                }
+            ).pipe(Effect.provide(layer({ locale: 'fr-FR', catalogue: { 'mdt.incident': 'Incident' } })))
     );
 
-    it.effect('applies a terminology pack for the same locale only', () =>
-        Effect.gen(function* () {
-            const pack = { id: 'jesip', version: 1, locale: 'en-GB', messages: { 'mdt.incident': 'Major incident' } };
-            const gb = yield* Effect.provide(I18n, layer({ locale: 'en-GB', catalogue, terminology: pack }));
-            const us = yield* Effect.provide(I18n, layer({ locale: 'en-US', catalogue, terminology: pack }));
-            expect(gb.format(incident)).toBe('Major incident');
-            expect(us.format(incident)).toBe('Incident');
-        })
+    it.effect(
+        'applies a terminology pack for the same locale only',
+        /** Compare terminology application across matching and mismatched locale layers. */ () =>
+            Effect.gen(
+                /** Verify locale-specific terminology cannot override another locale's catalogue. */ function* () {
+                    // Use the same catalogue in both layers so only the pack's locale controls the override.
+                    const pack = {
+                        id: 'jesip',
+                        version: 1,
+                        locale: 'en-GB',
+                        messages: { 'mdt.incident': 'Major incident' }
+                    };
+                    const gb = yield* Effect.provide(I18n, layer({ locale: 'en-GB', catalogue, terminology: pack }));
+                    const us = yield* Effect.provide(I18n, layer({ locale: 'en-US', catalogue, terminology: pack }));
+                    expect(gb.format(incident)).toBe('Major incident');
+                    expect(us.format(incident)).toBe('Incident');
+                }
+            )
     );
 });

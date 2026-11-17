@@ -22,6 +22,7 @@ import { StorageFailure } from '@eventiva/contracts/storage';
 import { Effect } from 'effect';
 
 export type Dialect = 'postgres' | 'sqlite';
+/** A named SQL file with the SHA-256 of its exact bytes; migration execution rejects changed applied entries. */
 export interface Migration {
     readonly name: string;
     readonly sql: string;
@@ -31,61 +32,88 @@ export interface Migration {
 /** Exact bytes, not normalized SQL. Files are reviewed by tools/storage/guard.mjs before execution. */
 export const load = (directory: string) =>
     Effect.try({
+        /** Read SQL files in lexical order; filesystem failures become a closed storage failure. */
         // effect-boundary: local migration files and SHA-256 are Node integration IO
         try: () =>
             readdirSync(directory)
-                .filter((name) => name.endsWith('.sql'))
+                .filter(
+                    /** Ignore non-SQL entries without interpreting their contents as migrations. */ (name) =>
+                        name.endsWith('.sql')
+                )
                 .sort()
-                .map((name) => {
-                    const bytes = readFileSync(join(directory, name));
-                    return {
-                        name,
-                        sql: bytes.toString('utf8'),
-                        checksum: createHash('sha256').update(bytes).digest('hex'),
-                    };
-                }),
+                .map(
+                    /** Preserve file text and its raw-byte checksum without rewriting SQL or line endings. */ (
+                        name
+                    ) => {
+                        // Hash the bytes that were read, not a normalized SQL representation.
+                        const bytes = readFileSync(join(directory, name));
+                        return {
+                            name,
+                            sql: bytes.toString('utf8'),
+                            checksum: createHash('sha256').update(bytes).digest('hex'),
+                        };
+                    }
+                ),
+        /** Omit filesystem paths and underlying exception contents from the loading failure. */
         catch: () => new StorageFailure({ operation: 'load-migrations', reason: 'filesystem' }),
     });
 
 /** Serializes migrations and verifies the entire applied prefix. No down, reset or schema-push API. */
 export const migrate = (dialect: Dialect, migrations: ReadonlyArray<Migration>) =>
-    Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient;
-        yield* sql.withTransaction(
-            Effect.gen(function* () {
-                if (dialect === 'postgres') yield* sql`SELECT pg_advisory_xact_lock(4217001)`;
-                yield* sql`CREATE TABLE IF NOT EXISTS storage_migration (name text PRIMARY KEY, checksum text NOT NULL)`;
-                const applied = yield* sql<{
-                    name: string;
-                    checksum: string;
-                }>`SELECT name, checksum FROM storage_migration ORDER BY name`;
-                for (const [index, entry] of applied.entries()) {
-                    const candidate = migrations[index];
-                    if (candidate?.name !== entry.name || candidate.checksum !== entry.checksum) {
-                        return yield* new StorageFailure({ operation: 'applied-migration-changed' });
+    Effect.gen(
+        /** Acquire the configured SQL client and apply the forward-only history in one transaction. */ function* () {
+            // The caller supplies the database capability; this function neither provisions it nor chooses a tenant.
+            const sql = yield* SqlClient.SqlClient;
+            yield* sql.withTransaction(
+                Effect.gen(
+                    /** Lock the migration history, verify its immutable prefix and execute only the validated suffix. */ function* () {
+                        if (dialect === 'postgres') yield* sql`SELECT pg_advisory_xact_lock(4217001)`;
+                        yield* sql`CREATE TABLE IF NOT EXISTS storage_migration (name text PRIMARY KEY, checksum text NOT NULL)`;
+                        const applied = yield* sql<{
+                            name: string;
+                            checksum: string;
+                        }>`SELECT name, checksum FROM storage_migration ORDER BY name`;
+                        // Compare every applied entry before executing new SQL; omission and reordering also change history.
+                        for (const [index, entry] of applied.entries()) {
+                            const candidate = migrations[index];
+                            if (candidate?.name !== entry.name || candidate.checksum !== entry.checksum) {
+                                return yield* new StorageFailure({ operation: 'applied-migration-changed' });
+                            }
+                        }
+                        const names = migrations.map(
+                            /** Use declared names to check the complete ordered migration sequence. */ (m) => m.name
+                        );
+                        if (
+                            new Set(names).size !== names.length ||
+                            names.some(
+                                /** Require four-digit SQL names in strictly increasing order, with no duplicate or backward entry. */ (
+                                    name,
+                                    i
+                                ) => {
+                                    const previous = names[i - 1];
+                                    return !/^\d{4}\.sql$/.test(name) || (previous !== undefined && name <= previous);
+                                }
+                            )
+                        ) {
+                            return yield* new StorageFailure({ operation: 'migration-order' });
+                        }
+                        for (const entry of migrations.slice(applied.length)) {
+                            if (createHash('sha256').update(entry.sql).digest('hex') !== entry.checksum)
+                                return yield* new StorageFailure({ operation: 'migration-checksum' });
+                            // Explicit boundaries, not a SQL parser: trigger bodies may contain semicolons.
+                            for (const statement of entry.sql.split(/^-- statement-breakpoint\s*$/m)) {
+                                if (statement.trim()) yield* sql.unsafe(statement).withoutTransform;
+                            }
+                            yield* sql`INSERT INTO storage_migration (name, checksum) VALUES (${entry.name}, ${entry.checksum})`;
+                        }
                     }
-                }
-                const names = migrations.map((m) => m.name);
-                if (
-                    new Set(names).size !== names.length ||
-                    names.some((name, i) => {
-                        const previous = names[i - 1];
-                        return !/^\d{4}\.sql$/.test(name) || (previous !== undefined && name <= previous);
-                    })
-                ) {
-                    return yield* new StorageFailure({ operation: 'migration-order' });
-                }
-                for (const entry of migrations.slice(applied.length)) {
-                    if (createHash('sha256').update(entry.sql).digest('hex') !== entry.checksum)
-                        return yield* new StorageFailure({ operation: 'migration-checksum' });
-                    // Explicit boundaries, not a SQL parser: trigger bodies may contain semicolons.
-                    for (const statement of entry.sql.split(/^-- statement-breakpoint\s*$/m)) {
-                        if (statement.trim()) yield* sql.unsafe(statement).withoutTransform;
-                    }
-                    yield* sql`INSERT INTO storage_migration (name, checksum) VALUES (${entry.name}, ${entry.checksum})`;
-                }
-            })
-        );
-    }).pipe(
-        Effect.catchTag('SqlError', () => Effect.fail(new StorageFailure({ operation: 'migrate', reason: 'database' })))
+                )
+            );
+        }
+    ).pipe(
+        Effect.catchTag(
+            'SqlError',
+            /** Preserve migration-validation failures but replace database diagnostics with a closed reason. */ () =>
+                Effect.fail(new StorageFailure({ operation: 'migrate', reason: 'database' }))
+        )
     );

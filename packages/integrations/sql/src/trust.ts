@@ -22,52 +22,80 @@ import { Cause, Effect, Layer, Option, Schema } from 'effect';
 /** Standalone durable nonce consumption. Intentionally not wired into application composition. */
 export const trustReplay = Layer.effect(
     TrustReplay,
-    Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient;
-        const failure = (reason: 'invalid' | 'unavailable' | 'replay') => new TrustFailure({ gate: 'replay', reason });
-        return TrustReplay.of({
-            consume: (request, policy) =>
-                Effect.gen(function* () {
-                    // Nested SQL transactions are savepoints, not this port's durable commit.
-                    // Reject ambient transactions even when they belong to another client.
-                    if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
-                        return yield* failure('unavailable');
-                    const checked = yield* Schema.decode(TrustRequest)(request, { onExcessProperty: 'error' }).pipe(
-                        Effect.mapError(() => failure('invalid'))
-                    );
-                    const trusted = yield* Schema.decode(TrustPolicy)(policy, { onExcessProperty: 'error' }).pipe(
-                        Effect.mapError(() => failure('invalid'))
-                    );
-                    const body = yield* Schema.encode(Schema.parseJson(TrustRequest))(checked).pipe(
-                        Effect.mapError(() => failure('invalid'))
-                    );
-                    const audit = yield* Effect.try({
-                        // effect-boundary: Node generates an opaque audit UUID, never key material
-                        try: () => randomUUID(),
-                        catch: () => failure('unavailable'),
-                    });
-                    return yield* sql.withTransaction(
-                        Effect.gen(function* () {
-                            // UUID spelling must not allow a second claim through letter casing.
-                            const nonce = checked.nonce.toLowerCase();
-                            const rows =
-                                yield* sql`INSERT INTO trust_replay (nonce, request, consumed_at, audit) VALUES (${nonce}, ${body}, ${trusted.now}, ${audit}) ON CONFLICT (nonce) DO NOTHING RETURNING nonce`;
-                            if (rows.length !== 1) return yield* failure('replay');
-                            return audit;
-                        })
-                    );
-                }).pipe(
-                    Effect.catchAllCause((cause) => {
-                        // Cancellation is control flow, never an unavailable receipt decision.
-                        if (Cause.isInterrupted(cause)) return Effect.interrupt;
-                        const error = Cause.failureOption(cause);
-                        return Effect.fail(
-                            Option.isSome(error) && error.value instanceof TrustFailure
-                                ? error.value
-                                : failure('unavailable')
-                        );
-                    })
-                ),
-        });
-    })
+    Effect.gen(
+        /** Capture the replay database; callers still supply already-verified request and trusted policy metadata. */ function* () {
+            const sql = yield* SqlClient.SqlClient;
+            /** Restrict replay-store failures to bounded reasons without leaking request or SQL content. */
+            const failure = (reason: 'invalid' | 'unavailable' | 'replay') =>
+                new TrustFailure({ gate: 'replay', reason });
+            return TrustReplay.of({
+                /** Durably consume the case-normalized nonce once; this adapter does not perform the upstream verifier gates. */
+                consume: (request, policy) =>
+                    Effect.gen(
+                        /** Validate metadata and commit nonce consumption independently of any caller transaction. */ function* () {
+                            // Nested SQL transactions are savepoints, not this port's durable commit.
+                            // Reject ambient transactions even when they belong to another client.
+                            if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
+                                return yield* failure('unavailable');
+                            const checked = yield* Schema.decode(TrustRequest)(request, {
+                                onExcessProperty: 'error'
+                            }).pipe(
+                                Effect.mapError(
+                                    /** Hide request-validation diagnostics from the trust boundary. */ () =>
+                                        failure('invalid')
+                                )
+                            );
+                            const trusted = yield* Schema.decode(TrustPolicy)(policy, {
+                                onExcessProperty: 'error'
+                            }).pipe(
+                                Effect.mapError(
+                                    /** Reject malformed policy without disclosing its fields. */ () =>
+                                        failure('invalid')
+                                )
+                            );
+                            const body = yield* Schema.encode(Schema.parseJson(TrustRequest))(checked).pipe(
+                                Effect.mapError(
+                                    /** Refuse an unencodable retained request with a bounded failure. */ () =>
+                                        failure('invalid')
+                                )
+                            );
+                            const audit = yield* Effect.try({
+                                /** Generate an opaque evidence reference, not proof of verification or key release. */
+                                // effect-boundary: Node generates an opaque audit UUID, never key material
+                                try: () => randomUUID(),
+                                /** Fail closed when the local audit reference cannot be generated. */
+                                catch: () => failure('unavailable'),
+                            });
+                            return yield* sql.withTransaction(
+                                Effect.gen(
+                                    /** Let the nonce uniqueness constraint choose the sole consumer before returning its audit reference. */ function* () {
+                                        // UUID spelling must not allow a second claim through letter casing.
+                                        const nonce = checked.nonce.toLowerCase();
+                                        const rows =
+                                            yield* sql`INSERT INTO trust_replay (nonce, request, consumed_at, audit) VALUES (${nonce}, ${body}, ${trusted.now}, ${audit}) ON CONFLICT (nonce) DO NOTHING RETURNING nonce`;
+                                        if (rows.length !== 1) return yield* failure('replay');
+                                        return audit;
+                                    }
+                                )
+                            );
+                        }
+                    ).pipe(
+                        Effect.catchAllCause(
+                            /** Preserve interruption and typed trust failures while sanitizing unknown infrastructure causes. */ (
+                                cause
+                            ) => {
+                                // Cancellation is control flow, never an unavailable receipt decision.
+                                if (Cause.isInterrupted(cause)) return Effect.interrupt;
+                                const error = Cause.failureOption(cause);
+                                return Effect.fail(
+                                    Option.isSome(error) && error.value instanceof TrustFailure
+                                        ? error.value
+                                        : failure('unavailable')
+                                );
+                            }
+                        )
+                    ),
+            });
+        }
+    )
 );

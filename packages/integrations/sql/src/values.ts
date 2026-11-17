@@ -19,18 +19,28 @@ import { UuidV7, StorageFailure } from '@eventiva/contracts/storage';
 import { Clock, Effect, Schema } from 'effect';
 
 /** Application-generated UUIDv7: PostgreSQL 17 needs no extension or PG18-only function. */
-export const uuidV7 = Effect.gen(function* () {
-    const now = yield* Clock.currentTimeMillis;
-    const bytes = yield* Effect.try({
-        // effect-boundary: cryptographically secure randomness is a Node capability
-        try: () => randomBytes(16),
-        catch: () => new StorageFailure({ operation: 'uuid-randomness', reason: 'randomness' }),
-    });
-    bytes.writeUIntBE(now, 0, 6);
-    bytes[6] = (bytes.readUInt8(6) & 15) | 112;
-    bytes[8] = (bytes.readUInt8(8) & 63) | 128;
-    const hex = bytes.toString('hex');
-    return yield* Schema.decode(UuidV7)(
-        `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-    ).pipe(Effect.mapError(() => new StorageFailure({ operation: 'uuid-v7', reason: 'invalid-data' })));
-});
+export const uuidV7 = Effect.gen(
+    /** Encode the current millisecond timestamp with fresh random bits; no monotonic ordering is promised. */ function* () {
+        const now = yield* Clock.currentTimeMillis;
+        const bytes = yield* Effect.try({
+            /** Acquire random bytes locally; entropy failures become a bounded storage error. */
+            // effect-boundary: cryptographically secure randomness is a Node capability
+            try: () => randomBytes(16),
+            /** Hide entropy-provider diagnostics from the storage port. */
+            catch: () => new StorageFailure({ operation: 'uuid-randomness', reason: 'randomness' }),
+        });
+        // Reserve the UUID version and variant bits without discarding the remaining random entropy.
+        bytes.writeUIntBE(now, 0, 6);
+        bytes[6] = (bytes.readUInt8(6) & 15) | 112;
+        bytes[8] = (bytes.readUInt8(8) & 63) | 128;
+        const hex = bytes.toString('hex');
+        return yield* Schema.decode(UuidV7)(
+            `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+        ).pipe(
+            Effect.mapError(
+                /** Report malformed generated identifiers without leaking their value. */ () =>
+                    new StorageFailure({ operation: 'uuid-v7', reason: 'invalid-data' })
+            )
+        );
+    }
+);

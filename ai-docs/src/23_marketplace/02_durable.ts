@@ -27,8 +27,11 @@ import { Effect } from 'effect';
 
 /** Explicit lease/retry bounds come from approved policy, never this example. */
 export const recordLocalMetadata = (dialect: Dialect, input: ClaimExchange) =>
-    Effect.gen(function* () {
-        const outbox = yield* MarketplaceOutbox;
-        const claim = yield* outbox.claim(input);
-        if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
-    }).pipe(Effect.provide(marketplace(dialect)));
+    Effect.gen(
+        /** Settle only a successfully claimed local metadata exchange; this sample invokes no external party. */ function* () {
+            // An absent claim means no owned lease, so settlement must not be attempted.
+            const outbox = yield* MarketplaceOutbox;
+            const claim = yield* outbox.claim(input);
+            if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
+        }
+    ).pipe(Effect.provide(marketplace(dialect)));

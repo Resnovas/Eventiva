@@ -323,28 +323,35 @@ import { Storage } from '@eventiva/contracts/storage';
 import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
+/** Commit the supplied successful receipt with an invoice outbox command using the caller's tenant-bound services. */
 export const stage = (receipt: Receipt & { readonly version: number }) =>
-    Effect.gen(function* () {
-        const storage = yield* Storage;
-        const integrity = yield* Integrity;
-        return yield* integrity.commit(
-            {
-                key: 'example:invoice:1',
-                inputHash: receipt.inputHash,
-                caller: receipt.caller,
-                action: receipt.action,
-                version: receipt.version,
-            },
-            Effect.gen(function* () {
-                yield* storage.enqueue('invoice:1', {
-                    type: 'send-invoice',
-                    minorUnits: '9007199254740993',
-                    currency: 'GBP',
-                });
-                return { output: { queued: true }, receipt };
-            })
-        );
-    });
+    Effect.gen(
+        /** Couple outbox staging to integrity commit rather than dispatching an external invoice during the transaction. */ function* () {
+            // Both services must share the tenant storage so receipt and command cannot commit independently.
+            const storage = yield* Storage;
+            const integrity = yield* Integrity;
+            return yield* integrity.commit(
+                {
+                    key: 'example:invoice:1',
+                    inputHash: receipt.inputHash,
+                    caller: receipt.caller,
+                    action: receipt.action,
+                    version: receipt.version,
+                },
+                Effect.gen(
+                    /** Stage only the durable command and return the receipt; delivery belongs to an outbox consumer. */ function* () {
+                        // Keep money as an exact minor-unit string rather than a lossy JavaScript number.
+                        yield* storage.enqueue('invoice:1', {
+                            type: 'send-invoice',
+                            minorUnits: '9007199254740993',
+                            currency: 'GBP',
+                        });
+                        return { output: { queued: true }, receipt };
+                    }
+                )
+            );
+        }
+    );
 ```
 
 ### hook_producer
@@ -476,14 +483,19 @@ export const readOrganization = (caller: CallerIdentity) => {
     // IdentityStore, Storage, Approvals, InputDigest, Flags and CurrentTenant remain REQUIRED.
     // Supply production implementations at the trusted root, never a permissive fallback.
     return Effect.scoped(
-        Effect.gen(function* () {
-            const tenant = yield* CurrentTenant;
-            if (caller.tenant !== tenant.id)
-                return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
-            const actions = yield* ActionHost;
-            yield* actions.register(yield* identityModule);
-            return yield* actions.execute('identity.organization.get', {}).pipe(Effect.provideService(Caller, caller));
-        }).pipe(Effect.provide(host))
+        Effect.gen(
+            /** Reject a mismatched route before registering and invoking identity actions with the supplied caller. */ function* () {
+                // Host construction is not route authorization; verify the caller against the already bound tenant.
+                const tenant = yield* CurrentTenant;
+                if (caller.tenant !== tenant.id)
+                    return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
+                const actions = yield* ActionHost;
+                yield* actions.register(yield* identityModule);
+                return yield* actions
+                    .execute('identity.organization.get', {})
+                    .pipe(Effect.provideService(Caller, caller));
+            }
+        ).pipe(Effect.provide(host))
     );
 };
 ```
@@ -768,35 +780,44 @@ export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(FlagsSafeDefaults)
 );
 
+/** Stage trusted, minimized event metadata and approved observer pins atomically in the existing storage scope. */
 export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDeclaration>) =>
-    Effect.gen(function* () {
-        const store = yield* Storage;
-        const outbox = yield* HookOutbox;
-        // Include the real domain write in this transaction before staging.
-        yield* store.transaction(outbox.stage(event, observers));
-    });
+    Effect.gen(
+        /** Enlist hook outbox staging in the same transaction that should contain the domain write. */ function* () {
+            const store = yield* Storage;
+            const outbox = yield* HookOutbox;
+            // Include the real domain write in this transaction before staging.
+            yield* store.transaction(outbox.stage(event, observers));
+        }
+    );
 
 /** Trusted host only; release policy is still required before exposing facts to a consumer. */
 export const resume = (savedCursor: number) =>
-    Effect.gen(function* () {
-        const feed = yield* HookChangeFeed;
-        // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
-        return yield* feed.read(savedCursor, 50);
-    });
+    Effect.gen(
+        /** Fetch a bounded batch after the consumer's durable cursor, without advancing it here. */ function* () {
+            const feed = yield* HookChangeFeed;
+            // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
+            return yield* feed.read(savedCursor, 50);
+        }
+    );
 
 /** Inspection releases metadata too; this example remains deliberately denied. */
 export const inspectDeadLetters = (declaration: HookDeclaration) =>
-    Effect.gen(function* () {
-        const recovery = yield* HookRecovery;
-        return yield* recovery.deadLetters(declaration, null, 25);
-    }).pipe(Effect.provide(HookOperatorDeny));
+    Effect.gen(
+        /** Request the first dead-letter metadata page under the deliberately denying operator policy. */ function* () {
+            const recovery = yield* HookRecovery;
+            return yield* recovery.deadLetters(declaration, null, 25);
+        }
+    ).pipe(Effect.provide(HookOperatorDeny));
 
 /** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
 export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
-    Effect.gen(function* () {
-        const recovery = yield* HookRecovery;
-        return yield* recovery.replay(declaration, key, requestId);
-    }).pipe(Effect.provide(HookOperatorDeny));
+    Effect.gen(
+        /** Reuse the caller-retained replay identifier; the denying policy prevents this sample from resetting work. */ function* () {
+            const recovery = yield* HookRecovery;
+            return yield* recovery.replay(declaration, key, requestId);
+        }
+    ).pipe(Effect.provide(HookOperatorDeny));
 ```
 
 ---
@@ -852,61 +873,70 @@ export const composeExample = (
     policy: ResourceMigrationPolicy,
     authorize: Parameters<typeof resourceRuntime>[1]
 ) =>
-    Effect.gen(function* () {
-        const initial = yield* declareResource({
-            id: 'example.receipt',
-            owner: 'example',
-            moduleVersion: '1.0.0',
-            fields: {
-                message: { type: 'text', optional: false },
-            },
-        });
-        const annotated = yield* contributeFields(initial, {
-            owner: 'annotation',
-            moduleVersion: '1.2.3',
-            fields: {
-                annotation: { type: 'text', optional: true },
-            },
-        });
-        // The kernel must fence real workflow leases before this privileged execution call.
-        const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
-        if (migration.status === 'restart-required') return migration;
-        const provider = yield* resourceHookProvider(
-            dialect,
-            tenant,
-            { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
-            [annotated]
-        );
-        const feature = (id: string, message: string) =>
-            Effect.gen(function* () {
-                const resources = yield* Resources;
-                return yield* resources.create(annotated, id, {
-                    message,
-                    annotation: 'Contributed without changing the original resource fields',
-                });
+    Effect.gen(
+        /** Declare a contributed resource, apply the approved migration policy and expose unactivated composition helpers. */ function* () {
+            const initial = yield* declareResource({
+                id: 'example.receipt',
+                owner: 'example',
+                moduleVersion: '1.0.0',
+                fields: {
+                    message: { type: 'text', optional: false },
+                },
             });
-        // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
-        const writeAndStage = (
-            id: string,
-            message: string,
-            event: HookEvent,
-            observers: ReadonlyArray<HookDeclaration>
-        ) =>
-            provider.storage.transaction(
-                Effect.gen(function* () {
-                    const record = yield* feature(id, message);
-                    yield* provider.outbox.stage(event, observers);
-                    return record;
-                })
+            const annotated = yield* contributeFields(initial, {
+                owner: 'annotation',
+                moduleVersion: '1.2.3',
+                fields: {
+                    annotation: { type: 'text', optional: true },
+                },
+            });
+            // The kernel must fence real workflow leases before this privileged execution call.
+            const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
+            if (migration.status === 'restart-required') return migration;
+            const provider = yield* resourceHookProvider(
+                dialect,
+                tenant,
+                { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
+                [annotated]
             );
-        return {
-            status: 'prepared',
-            provider,
-            layer: resourceRuntime(provider, authorize),
-            feature,
-            writeAndStage,
-        } as const;
-    });
+            /** Create an annotated record through the injected authorized resource runtime. */
+            const feature = (id: string, message: string) =>
+                Effect.gen(
+                    /** Use the contributed schema without mutating the original resource declaration. */ function* () {
+                        const resources = yield* Resources;
+                        return yield* resources.create(annotated, id, {
+                            message,
+                            annotation: 'Contributed without changing the original resource fields',
+                        });
+                    }
+                );
+            // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
+            /** Atomically couple a resource write and trusted event staging using this provider's storage transaction. */
+            const writeAndStage = (
+                id: string,
+                message: string,
+                event: HookEvent,
+                observers: ReadonlyArray<HookDeclaration>
+            ) =>
+                provider.storage.transaction(
+                    Effect.gen(
+                        /** Stage observers only after the domain create succeeds, rolling both back on failure. */ function* () {
+                            // Sharing the provider transaction prevents an event from describing a resource write that never committed.
+                            const record = yield* feature(id, message);
+                            yield* provider.outbox.stage(event, observers);
+                            return record;
+                        }
+                    )
+                );
+            return {
+                status: 'prepared',
+                provider,
+                layer: resourceRuntime(provider, authorize),
+                feature,
+                writeAndStage,
+            } as const;
+        }
+    );
 ```
 
 ---
@@ -1099,22 +1129,27 @@ export const inspectMountedScreen = (
     currentViewer: CallerIdentity
 ) =>
     Effect.scoped(
-        Effect.gen(function* () {
-            const context = yield* makeScreenContext;
-            const screenScope = yield* Scope.make();
-            yield* Effect.addFinalizer(() => Scope.close(screenScope, Exit.void));
-            yield* registration.mount.pipe(
-                Effect.provideService(UiScreenContext, context.service),
-                Effect.provideService(Scope.Scope, screenScope),
-                Effect.provideService(Caller, mountingCaller)
-            );
-            // These effects retain Caller as a requirement until each call.
-            const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
-            const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
-            yield* Scope.close(screenScope, Exit.void);
-            const afterClose = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
-            return { visible, invoked, afterClose };
-        })
+        Effect.gen(
+            /** Mount in a child scope, read as the current viewer and demonstrate revocation after unmount. */ function* () {
+                const context = yield* makeScreenContext;
+                const screenScope = yield* Scope.make();
+                yield* Effect.addFinalizer(
+                    /** Close the child even if mounting or inspection fails before the explicit unmount. */ () =>
+                        Scope.close(screenScope, Exit.void)
+                );
+                yield* registration.mount.pipe(
+                    Effect.provideService(UiScreenContext, context.service),
+                    Effect.provideService(Scope.Scope, screenScope),
+                    Effect.provideService(Caller, mountingCaller)
+                );
+                // These effects retain Caller as a requirement until each call.
+                const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+                const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
+                yield* Scope.close(screenScope, Exit.void);
+                const afterClose = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+                return { visible, invoked, afterClose };
+            }
+        )
     );
 ```
 
@@ -1255,13 +1290,17 @@ import {
 import { Effect, Layer, Schema } from 'effect';
 
 // A neutral, trusted callable service contract, shared by providers and consumer.
+/** Example in-process message capability; the captured provider prefix makes selected bindings observable. */
 class Messages {
-    readonly read: (key: string) => Effect.Effect<string>;
+    /** Produce a deterministic message without IO or access to another provider's state. */
+    readonly read: /** Read a key without IO; the result carries this instance's provider prefix. */ (key: string) => Effect.Effect<string>;
+    /** Bind this instance's immutable prefix for all subsequent reads. */
     constructor(prefix: string) {
-        this.read = (key) => Effect.succeed(`${prefix}:${key}`);
+        this.read = /** Format a key using only this provider's captured prefix. */ (key) => Effect.succeed(`${prefix}:${key}`);
     }
 }
 const MessagesSchema = Schema.instanceOf(Messages);
+/** Build a minimal example manifest with no implicit dependencies or migration work. */
 const manifest = (id: string): KernelManifest => ({
     id,
     version: '1.0.0',
@@ -1274,21 +1313,24 @@ const manifest = (id: string): KernelManifest => ({
     restartRequired: false,
 });
 
+/** Publish one typed messages instance under an explicit capability/version declaration. */
 const provider = (id: string): ModuleDefinition => ({
     manifest: { ...manifest(id), provides: [{ name: 'Tenant A', capability: 'messages', version: '1.0.0' }] },
     validate: Effect.void,
     layer: Layer.effect(
         KernelModule,
-        Effect.gen(function* () {
-            const service = yield* kernelProvider(MessagesSchema, new Messages(id));
-            return KernelModule.of({
-                providers: new Map([['Tenant A', service]]),
-                install: Effect.void,
-                activate: Effect.void,
-                ready: Effect.void,
-                deactivate: Effect.void,
-            });
-        })
+        Effect.gen(
+            /** Wrap the trusted service instance for kernel admission and publish it under the manifest's instance name. */ function* () {
+                const service = yield* kernelProvider(MessagesSchema, new Messages(id));
+                return KernelModule.of({
+                    providers: new Map([['Tenant A', service]]),
+                    install: Effect.void,
+                    activate: Effect.void,
+                    ready: Effect.void,
+                    deactivate: Effect.void,
+                });
+            }
+        )
     ),
 });
 const feature: ModuleDefinition = {
@@ -1296,17 +1338,20 @@ const feature: ModuleDefinition = {
     validate: Effect.void,
     layer: Layer.effect(
         KernelModule,
-        Effect.gen(function* () {
-            const environment = yield* KernelEnvironment;
-            const messages = yield* environment.resolve('startup', MessagesSchema);
-            return KernelModule.of({
-                providers: new Map<string, KernelProvider>(),
-                install: Effect.void,
-                activate: messages.read('hello').pipe(Effect.asVoid),
-                ready: Effect.void,
-                deactivate: Effect.void,
-            });
-        })
+        Effect.gen(
+            /** Resolve only the declared startup binding and use it during feature activation. */ function* () {
+                // Resolution stays in the kernel environment so choosing a provider cannot become ambient global lookup.
+                const environment = yield* KernelEnvironment;
+                const messages = yield* environment.resolve('startup', MessagesSchema);
+                return KernelModule.of({
+                    providers: new Map<string, KernelProvider>(),
+                    install: Effect.void,
+                    activate: messages.read('hello').pipe(Effect.asVoid),
+                    ready: Effect.void,
+                    deactivate: Effect.void,
+                });
+            }
+        )
     ),
 };
 
@@ -1316,17 +1361,27 @@ export const runKernelExample = (
     authority: Layer.Layer<KernelAuthority>,
     selected: 'local' | 'regional'
 ) =>
-    Effect.gen(function* () {
-        const kernel = yield* Kernel;
-        const selectedProvider = provider(selected);
-        return yield* kernel.compose(
-            {
-                modules: [feature.manifest, selectedProvider.manifest].map(({ id, version }) => ({ id, version })),
-                bindings: [{ consumer: 'feature', requirement: 'startup', provider: selected, instance: 'Tenant A' }],
-            },
-            [feature, selectedProvider]
-        );
-    }).pipe(
+    Effect.gen(
+        /** Compose the chosen provider and consumer with an exact instance binding in the authorized kernel scope. */ function* () {
+            // Pin both module identities and the binding; a capability name alone does not select an implementation.
+            const kernel = yield* Kernel;
+            const selectedProvider = provider(selected);
+            return yield* kernel.compose(
+                {
+                    modules: [feature.manifest, selectedProvider.manifest].map(
+                        /** Admit the exact module versions used by this composition. */ ({ id, version }) => ({
+                            id,
+                            version
+                        })
+                    ),
+                    bindings: [
+                        { consumer: 'feature', requirement: 'startup', provider: selected, instance: 'Tenant A' }
+                    ],
+                },
+                [feature, selectedProvider]
+            );
+        }
+    ).pipe(
         Effect.provideService(Caller, caller),
         Effect.provide(KernelLive('example-runtime').pipe(Layer.provide(authority))),
         Effect.scoped
@@ -1480,11 +1535,14 @@ import { Effect } from 'effect';
 
 /** Explicit lease/retry bounds come from approved policy, never this example. */
 export const recordLocalMetadata = (dialect: Dialect, input: ClaimExchange) =>
-    Effect.gen(function* () {
-        const outbox = yield* MarketplaceOutbox;
-        const claim = yield* outbox.claim(input);
-        if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
-    }).pipe(Effect.provide(marketplace(dialect)));
+    Effect.gen(
+        /** Settle only a successfully claimed local metadata exchange; this sample invokes no external party. */ function* () {
+            // An absent claim means no owned lease, so settlement must not be attempted.
+            const outbox = yield* MarketplaceOutbox;
+            const claim = yield* outbox.claim(input);
+            if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
+        }
+    ).pipe(Effect.provide(marketplace(dialect)));
 ```
 
 ---
@@ -1543,6 +1601,7 @@ import { TrustUnavailable, type TrustPolicy, type TrustRequest } from '@eventiva
 import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect } from 'effect';
 
+/** Demonstrate fail-closed metadata preflight with unavailable verifiers; no private release is authorized. */
 export const refusedPreflight = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     trustPreflight(request, trustedPolicy).pipe(Effect.provide(TrustUnavailable));
 ```
@@ -1563,7 +1622,11 @@ import { Effect } from 'effect';
 /** The returned Effect still requires the intended trust database's SqlClient. */
 export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     TrustReplay.pipe(
-        Effect.flatMap((replay) => replay.consume(request, trustedPolicy)),
+        Effect.flatMap(
+            /** Consume against the injected durable authority only after the caller's independent trust checks. */ (
+                replay
+            ) => replay.consume(request, trustedPolicy)
+        ),
         Effect.provide(trustReplay)
     );
 ```
@@ -1610,7 +1673,7 @@ EVE-84's general Event scope was independently established from its complete liv
 
 Jonathan's 2026-11-17 instruction in https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a designates `docs/architecture/eventiva-platform-and-marketplace.md` as the current repository replacement/index for the unavailable historical `Eventiva-marketplace-infrastructure-v1.md`. Exact instruction time is unknown. Current EVE-250/251 descriptions point there and explicitly supersede historical missing-source/archive statements for current source status; all 30 existing comments remain unchanged. The original is unavailable/unread, not recovered or newly approved. Only those two issue mirrors were refreshed, with description update times 13:22:30.954Z and 13:22:32.697Z; original enumeration time and unrelated captures remain historical. Review the full changed sources before updating their exact planning digests. The strict source inventory can clear those two report ambiguities, not EVE-250/251 implementation acceptance. EVE-250 `91db949b` (2026-11-16T18:51:51.499Z) and EVE-251 `15483735` (2026-11-16T19:03:34.533Z) retain Linear precedence for bounded architecture/provider-neutral implementation. Concrete crypto/provider/verifier/custody/canonicalization/timing, legal/residency/retention, freshness/recovery/reconciliation/moderation, dependency/security and full acceptance gates remain where not independently approved. No production activation, spending or unrelated blocker is cleared.
 
-Coordinate root wiring, package/Nx manifests, `LLMS.md`, Graphify and delivery through the current shared-file owner. Regenerate `LLMS.md` from these sources and refresh Graphify without build output only in that coordinated window. Record exact revision/commands/output/target/limitations on the issue. EVE-45's approved producer defaults do not prove automatic kernel integration; EVE-45/EVE-261 remain open and native/UI/production acceptance remains separate.
+Jonathan/Puck ended the central shared-output delivery windows on 2026-11-17. Each lane now owns its verified source, affected root/generated outputs and direct-main delivery without waiting for a central handback. Rebase latest remote main, regenerate affected LLMS/planning/Graphify outputs, verify, and repeat on a push race. Canonical synced-tool ownership is unchanged: prepare upstream template patches in the authorized house lane, not downstream overrides. Record exact revision/commands/output/target/limitations on the issue. EVE-45's approved producer defaults do not prove automatic kernel integration; EVE-45/EVE-261 remain open and native/UI/production acceptance remains separate.
 
 The partial D01 packet dated 2026-11-17 documents eight reserved contract files (`caller`, `flags`, `i18n`, `identity`, `machine`, `module-policy`, `observability`, `security`). Its semantic review and exact removals are in `docs/planning/documentation-backlog.md` outside the generated inventory. Documentation resolves 26 attachments and one rationale identity without changing comment-free TypeScript tokens or checker behavior. Compare the packet against its immutable pre-packet base `87a82c9a3d1229f9a306230dfb5ebf268f9170bb`, including after commits; post-commit HEAD alone proves no reduction. Remaining D01 files and D02-D07 stay open. Do not infer repository-wide compliance from the eight files' zero findings.
 
@@ -1638,4 +1701,6 @@ The next bounded source integration uses actual delivered `d771b3664ab260b418983
 
 Only EVE-34/60 were reacquired in this increment (three/five comments, six added sources); original enumeration and unrelated captures stay historical. Read the full added sources before updating planning digests. EVE-60 authenticated owner choices at 13:16:16.737Z and 13:18:55.545Z select pseudonymous session/user correlation with per-request opt-in/current consent/protected exclusion and dedicated tenant/destination/purpose-separated rotating key custody. Relays 55507185/9cb2d84b have separate later timestamps. The one-hour UTC/HMAC-SHA-256/256-bit design is still proposed, not lifetime/algorithm approval or authority to generate deployment secrets. The synthetic wrapper and original finite minimizer remain unchanged by those later design choices.
 
-Read EVE-261 investigation checkpoint 2d5107ee-cf1e-4404-8e88-cb1928902019 separately from the historical mirror. The unchanged-base stress signature can arise when bootstrap logging occurs near the ten-second deadline: 13 timed-out children logged at 9,827-10,003ms and returned within 281ms, but their status 1/null signal differs from CI null/SIGTERM. Sixteen exit controls reached process.exit(1); no actual CI root/finalizer stall was captured. The lane's contracts run had 401 passes and 10 missing-PostgreSQL failures, not full green. Cause remains unknown. Failure-only bounded phase/timing capture is the next reserved diagnostic increment, not an approved force-exit, timeout increase, retry or speculative runtime fix. Shared generation/delivery remains coordinated.
+Read EVE-261 investigation checkpoint 2d5107ee-cf1e-4404-8e88-cb1928902019 separately from the historical mirror. The unchanged-base stress signature can arise when bootstrap logging occurs near the ten-second deadline: 13 timed-out children logged at 9,827-10,003ms and returned within 281ms, but their status 1/null signal differs from CI null/SIGTERM. Sixteen exit controls reached process.exit(1); no actual CI root/finalizer stall was captured. The lane's contracts run had 401 passes and 10 missing-PostgreSQL failures, not full green. Cause remains unknown. Failure-only bounded phase/timing capture belongs to its diagnostic lane, not an approved force-exit, timeout increase, retry or speculative runtime fix.
+
+The D03-D06 identity-independent packet starts at immutable remote main `c3a541b9172c7ce22ecde7cd118df5a1cc10e2df` and rebases onto separately delivered timeout-diagnostics head `416ef0aa7a4035b35f77bdf3eb4e1430b22b00f2`. Useful contracts and real transaction/tenant/lifecycle/negative-control rationale resolve 976 attachments and 207 live rationale candidates without changing any parsed executable/type terminal; 179 rationale entries were accepted debt. The same 1,155-only prune takes the rebased ledger from 3,049 to 1,894 (1,380 attachments, 514 rationale), preserving the timeout lane's separate 13 removals. No checker change belongs to this first packet. Nineteen proven token-equivalent source files remain parked for a separate parser-context fingerprint correction and trusted-history-only identity reconciliation. The 13 synced tools remain parked for canonical delivery and normal sync, not exempted. All 340 rationale candidates in the combined review, including newer nonledgered sources, remain in D03-D07 scope. Both uncached full serial verification runs, against c3a541b9 and rebased416ef0aa, passed 89 documentation fixtures, 95 boundary/type fixtures, all 85 aggregate tasks and smoke with PostgreSQL. Focused coverage failures or exit137 are not aggregate passes. Read the backlog for executed evidence and separate asynchronous CI; strict-zero activation is not yet justified.

@@ -29,13 +29,18 @@ export const readOrganization = (caller: CallerIdentity) => {
     // IdentityStore, Storage, Approvals, InputDigest, Flags and CurrentTenant remain REQUIRED.
     // Supply production implementations at the trusted root, never a permissive fallback.
     return Effect.scoped(
-        Effect.gen(function* () {
-            const tenant = yield* CurrentTenant;
-            if (caller.tenant !== tenant.id)
-                return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
-            const actions = yield* ActionHost;
-            yield* actions.register(yield* identityModule);
-            return yield* actions.execute('identity.organization.get', {}).pipe(Effect.provideService(Caller, caller));
-        }).pipe(Effect.provide(host))
+        Effect.gen(
+            /** Reject a mismatched route before registering and invoking identity actions with the supplied caller. */ function* () {
+                // Host construction is not route authorization; verify the caller against the already bound tenant.
+                const tenant = yield* CurrentTenant;
+                if (caller.tenant !== tenant.id)
+                    return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
+                const actions = yield* ActionHost;
+                yield* actions.register(yield* identityModule);
+                return yield* actions
+                    .execute('identity.organization.get', {})
+                    .pipe(Effect.provideService(Caller, caller));
+            }
+        ).pipe(Effect.provide(host))
     );
 };

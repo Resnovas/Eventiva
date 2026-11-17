@@ -28,16 +28,16 @@ const manifest = {
     flags: [{ key: 'events.tickets.enabled', description: 'Ticket sales.', owner: 'events', safeDefault: false }],
 };
 
-describe('module manifests', () => {
+describe('module manifests', /** Cover module discovery wire metadata independently of kernel exact-version pins. */ () => {
     const decode = Schema.decodeUnknownEither(ModuleManifest);
 
-    it('decode a complete manifest unchanged', () => {
+    it('decode a complete manifest unchanged', /** Verify a complete prerelease manifest survives decoding and re-encoding without losing flag metadata. */ () => {
         const result = decode(manifest);
         expect(result._tag).toBe('Right');
         expect(Schema.encodeSync(ModuleManifest)(Schema.decodeUnknownSync(ModuleManifest)(manifest))).toEqual(manifest);
     });
 
-    it('reject another format, a bad version, a bad action name and a bad module id', () => {
+    it('reject another format, a bad version, a bad action name and a bad module id', /** Reject malformed wire format and identifiers while retaining single-segment module ids. */ () => {
         expect(decode({ ...manifest, format: 2 })._tag).toBe('Left');
         expect(decode({ ...manifest, version: '1.2' })._tag).toBe('Left');
         expect(decode({ ...manifest, actions: ['create'] })._tag).toBe('Left');

@@ -31,20 +31,25 @@ export const inspectMountedScreen = (
     currentViewer: CallerIdentity
 ) =>
     Effect.scoped(
-        Effect.gen(function* () {
-            const context = yield* makeScreenContext;
-            const screenScope = yield* Scope.make();
-            yield* Effect.addFinalizer(() => Scope.close(screenScope, Exit.void));
-            yield* registration.mount.pipe(
-                Effect.provideService(UiScreenContext, context.service),
-                Effect.provideService(Scope.Scope, screenScope),
-                Effect.provideService(Caller, mountingCaller)
-            );
-            // These effects retain Caller as a requirement until each call.
-            const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
-            const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
-            yield* Scope.close(screenScope, Exit.void);
-            const afterClose = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
-            return { visible, invoked, afterClose };
-        })
+        Effect.gen(
+            /** Mount in a child scope, read as the current viewer and demonstrate revocation after unmount. */ function* () {
+                const context = yield* makeScreenContext;
+                const screenScope = yield* Scope.make();
+                yield* Effect.addFinalizer(
+                    /** Close the child even if mounting or inspection fails before the explicit unmount. */ () =>
+                        Scope.close(screenScope, Exit.void)
+                );
+                yield* registration.mount.pipe(
+                    Effect.provideService(UiScreenContext, context.service),
+                    Effect.provideService(Scope.Scope, screenScope),
+                    Effect.provideService(Caller, mountingCaller)
+                );
+                // These effects retain Caller as a requirement until each call.
+                const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+                const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
+                yield* Scope.close(screenScope, Exit.void);
+                const afterClose = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
+                return { visible, invoked, afterClose };
+            }
+        )
     );

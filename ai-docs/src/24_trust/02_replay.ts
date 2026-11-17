@@ -29,6 +29,10 @@ import { Effect } from 'effect';
 /** The returned Effect still requires the intended trust database's SqlClient. */
 export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     TrustReplay.pipe(
-        Effect.flatMap((replay) => replay.consume(request, trustedPolicy)),
+        Effect.flatMap(
+            /** Consume against the injected durable authority only after the caller's independent trust checks. */ (
+                replay
+            ) => replay.consume(request, trustedPolicy)
+        ),
         Effect.provide(trustReplay)
     );

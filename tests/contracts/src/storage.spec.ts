@@ -29,50 +29,65 @@ import {
 import { expect, it } from '@effect/vitest';
 import { Effect, Schema } from 'effect';
 
-it.effect('portable value codecs reject precision loss and non-v7 IDs without driver imports', () =>
-    Effect.gen(function* () {
-        const uuid = '019b0000-0000-7000-8000-000000000001';
-        expect(Schema.is(UuidV7)(uuid)).toBe(true);
-        expect(Schema.is(UuidV7)('019b0000-0000-4000-8000-000000000001')).toBe(false);
-        for (const value of ['-9007199254740993.1200', '0.000000000000000001'])
-            expect(yield* Schema.decodeUnknown(ExactDecimal)(value)).toBe(value);
-        for (const value of ['1e10', '01.1', 'NaN', 0.1]) expect(Schema.is(ExactDecimal)(value)).toBe(false);
-        expect(Schema.is(MinorUnits)('9223372036854775807')).toBe(true);
-        expect(Schema.is(MinorUnits)('1.5')).toBe(false);
-        for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) expect(Schema.is(Quantity)(value)).toBe(false);
-        expect(Schema.is(Version)(0)).toBe(true);
-        for (const value of [-62135596800000, 253402300799999, 1794700000123])
-            expect(yield* Schema.decodeUnknown(EpochMillis)(value)).toBe(value);
-        expect(Schema.is(EpochMillis)(253402300800000)).toBe(false);
-        const value = { amount: '-9007199254740993.1200', nested: [true, null, { id: uuid }] };
-        expect(yield* Schema.decodeUnknown(Json)(yield* Schema.encode(Json)(value))).toEqual(value);
-        expect(yield* Effect.either(Schema.encode(Json)({ invalid: Infinity }))).toMatchObject({ _tag: 'Left' });
-        expect(Schema.is(IntentOutcome)('pending')).toBe(true);
-        expect(
-            Schema.is(GuardedCommand)({
-                id: uuid,
-                expectedVersion: 0,
-                expectedState: 'pending',
-                idempotencyKey: 'key',
-                clientMutationId: uuid,
-                deadline: 1,
-            })
-        ).toBe(true);
-        expect(Schema.is(GuardedCommand)({ id: uuid, expectedVersion: 0 })).toBe(false);
-    })
+it.effect(
+    'portable value codecs reject precision loss and non-v7 IDs without driver imports',
+    /** Exercise portable storage codecs without a database driver or persistence service. */ () =>
+        Effect.gen(
+            /** Verify exact numeric strings, bounded timestamps, JSON values and complete guarded command metadata. */ function* () {
+                // Numeric strings beyond JavaScript integer precision must round trip lexically rather than through floating point.
+                const uuid = '019b0000-0000-7000-8000-000000000001';
+                expect(Schema.is(UuidV7)(uuid)).toBe(true);
+                expect(Schema.is(UuidV7)('019b0000-0000-4000-8000-000000000001')).toBe(false);
+                for (const value of ['-9007199254740993.1200', '0.000000000000000001'])
+                    expect(yield* Schema.decodeUnknown(ExactDecimal)(value)).toBe(value);
+                for (const value of ['1e10', '01.1', 'NaN', 0.1]) expect(Schema.is(ExactDecimal)(value)).toBe(false);
+                expect(Schema.is(MinorUnits)('9223372036854775807')).toBe(true);
+                expect(Schema.is(MinorUnits)('1.5')).toBe(false);
+                for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])
+                    expect(Schema.is(Quantity)(value)).toBe(false);
+                expect(Schema.is(Version)(0)).toBe(true);
+                for (const value of [-62135596800000, 253402300799999, 1794700000123])
+                    expect(yield* Schema.decodeUnknown(EpochMillis)(value)).toBe(value);
+                expect(Schema.is(EpochMillis)(253402300800000)).toBe(false);
+                // Recursive JSON must preserve valid nested values but refuse nonfinite numbers during encoding as well.
+                const value = { amount: '-9007199254740993.1200', nested: [true, null, { id: uuid }] };
+                expect(yield* Schema.decodeUnknown(Json)(yield* Schema.encode(Json)(value))).toEqual(value);
+                expect(yield* Effect.either(Schema.encode(Json)({ invalid: Infinity }))).toMatchObject({
+                    _tag: 'Left'
+                });
+                expect(Schema.is(IntentOutcome)('pending')).toBe(true);
+                expect(
+                    Schema.is(GuardedCommand)({
+                        id: uuid,
+                        expectedVersion: 0,
+                        expectedState: 'pending',
+                        idempotencyKey: 'key',
+                        clientMutationId: uuid,
+                        deadline: 1,
+                    })
+                ).toBe(true);
+                expect(Schema.is(GuardedCommand)({ id: uuid, expectedVersion: 0 })).toBe(false);
+            }
+        )
 );
 
-it.effect('typed machine edges reject illegal transitions', () =>
-    Effect.gen(function* () {
-        const machine = define({ pending: ['confirmed', 'expired'], confirmed: [], expired: [] });
-        expect(yield* transition(machine, 'reservation', 'pending', 'confirmed')).toBe('confirmed');
-        expect(yield* Effect.either(transition(machine, 'reservation', 'expired', 'confirmed'))).toMatchObject({
-            left: { reason: 'illegal-transition' },
-        });
-        const typeProof = () => {
-            // @ts-expect-error State names are the literal machine vocabulary.
-            return transition(machine, 'reservation', 'missing', 'confirmed');
-        };
-        expect(typeProof).toBeTypeOf('function');
-    })
+it.effect(
+    'typed machine edges reject illegal transitions',
+    /** Exercise runtime transition rejection alongside a compile-time state vocabulary proof. */ () =>
+        Effect.gen(
+            /** Verify declared edges succeed, undeclared edges fail and nonexistent states remain type errors. */ function* () {
+                // Runtime edge validity and compile-time state membership are independent guarantees.
+                const machine = define({ pending: ['confirmed', 'expired'], confirmed: [], expired: [] });
+                expect(yield* transition(machine, 'reservation', 'pending', 'confirmed')).toBe('confirmed');
+                expect(yield* Effect.either(transition(machine, 'reservation', 'expired', 'confirmed'))).toMatchObject({
+                    left: { reason: 'illegal-transition' },
+                });
+                /** Keep an invalid state reference typechecked but unexecuted to prove the literal state vocabulary. */
+                const typeProof = () => {
+                    // @ts-expect-error State names are the literal machine vocabulary.
+                    return transition(machine, 'reservation', 'missing', 'confirmed');
+                };
+                expect(typeProof).toBeTypeOf('function');
+            }
+        )
 );

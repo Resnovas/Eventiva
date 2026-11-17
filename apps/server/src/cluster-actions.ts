@@ -43,6 +43,7 @@ export const ClusterInvocation = Schema.Struct({
 });
 export type ClusterInvocation = typeof ClusterInvocation.Type;
 
+/** Public-safe Cluster rejection; underlying identity, audit and invocation errors do not cross transport. */
 export class ClusterActionDenied extends Data.TaggedError('ClusterActionDenied')<{
     readonly reason: string;
 }> {}
@@ -68,52 +69,82 @@ const ActionEntity = Entity.make('EventivaAction', [
         }),
         error: Denied,
     }).annotate(Persisted, true),
-]).annotate(ShardGroup, () => 'eventiva-actions');
+]).annotate(
+    ShardGroup,
+    /** Keep action entities in the runner's explicitly configured shard group. */ () => 'eventiva-actions'
+);
 
 /** Re-resolve identity on the receiving runner before entering the SAME authorized ActionHost. */
 export const receive = (address: string, request: ClusterInvocation) =>
-    Effect.gen(function* () {
-        const resolver = yield* IdentityResolver;
-        const caller = yield* resolver
-            .resolve(request.caller)
-            .pipe(Effect.mapError(() => new ClusterActionDenied({ reason: 'identity-unavailable' })));
-        if (caller.tenant !== request.caller.tenant || entityId(caller, request.entityKey) !== address)
-            return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
-        const host = yield* ClusterActionExecutor;
-        const result = yield* host.execute(request.action, request.input, request.intent).pipe(
-            Effect.provideService(Caller, caller),
-            Effect.mapError(() => new ClusterActionDenied({ reason: 'audit-unavailable' }))
-        );
-        const output = yield* result.result.pipe(
-            Effect.mapError(() => new ClusterActionDenied({ reason: 'invocation-denied' }))
-        );
-        return { output, receipt: result.receipt, replayed: result.replayed, audit: result.audit };
-    }).pipe(Effect.withSpan('cluster.action.receive'));
+    Effect.gen(
+        /** Reauthenticate the payload and expose a result only after routed host execution succeeds. */ function* () {
+            // Persisted transport identity is a claim, not authority; validate it again on the receiving runner.
+            const resolver = yield* IdentityResolver;
+            const caller = yield* resolver
+                .resolve(request.caller)
+                .pipe(
+                    Effect.mapError(
+                        /** Hide resolver internals from the transport client. */ () =>
+                            new ClusterActionDenied({ reason: 'identity-unavailable' })
+                    )
+                );
+            if (caller.tenant !== request.caller.tenant || entityId(caller, request.entityKey) !== address)
+                return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
+            const host = yield* ClusterActionExecutor;
+            const result = yield* host.execute(request.action, request.input, request.intent).pipe(
+                Effect.provideService(Caller, caller),
+                Effect.mapError(
+                    /** Reject host setup or audit failure without leaking backend diagnostics. */ () =>
+                        new ClusterActionDenied({ reason: 'audit-unavailable' })
+                )
+            );
+            const output = yield* result.result.pipe(
+                Effect.mapError(
+                    /** Convert a failed action result to the bounded wire rejection. */ () =>
+                        new ClusterActionDenied({ reason: 'invocation-denied' })
+                )
+            );
+            return { output, receipt: result.receipt, replayed: result.replayed, audit: result.audit };
+        }
+    ).pipe(Effect.withSpan('cluster.action.receive'));
 
 /** Common composition always includes this registration; readiness still needs real-stack validation. */
 export const ActionEntityLive = ActionEntity.toLayer(
-    Effect.gen(function* () {
-        const address = yield* Entity.CurrentAddress;
-        const context = yield* Effect.context<ClusterActionExecutor | IdentityResolver>();
-        return { Execute: ({ payload }) => receive(address.entityId, payload).pipe(Effect.provide(context)) };
-    }),
+    Effect.gen(
+        /** Capture this entity's address and receiver dependencies for serialized requests. */ function* () {
+            const address = yield* Entity.CurrentAddress;
+            const context = yield* Effect.context<ClusterActionExecutor | IdentityResolver>();
+            return {
+                /** Use the actual entity address, not an address supplied in the request payload. */ Execute: ({
+                    payload
+                }) => receive(address.entityId, payload).pipe(Effect.provide(context))
+            };
+        }
+    ),
     { concurrency: 1 }
 );
 
-const makeClusterActions = Effect.gen(function* () {
-    const client = yield* ActionEntity.client;
-    const resolver = yield* IdentityResolver;
-    return {
-        execute: (request: ClusterInvocation) =>
-            Effect.gen(function* () {
-                const caller = yield* resolver.resolve(request.caller);
-                if (caller.tenant !== request.caller.tenant)
-                    return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
-                return yield* client(entityId(caller, request.entityKey)).Execute({ ...request, caller });
-            }).pipe(Effect.withSpan('cluster.action.send')),
-    };
-});
+const makeClusterActions = Effect.gen(
+    /** Capture the Cluster client and identity resolver once for the sender service. */ function* () {
+        const client = yield* ActionEntity.client;
+        const resolver = yield* IdentityResolver;
+        return {
+            /** Resolve the caller before selecting its compute mailbox; the receiver independently authenticates again. */
+            execute: (request: ClusterInvocation) =>
+                Effect.gen(
+                    /** Send only a tenant-consistent canonical identity to the persisted entity RPC. */ function* () {
+                        // Refuse tenant changes during resolution before deriving the compute-ordering key.
+                        const caller = yield* resolver.resolve(request.caller);
+                        if (caller.tenant !== request.caller.tenant)
+                            return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
+                        return yield* client(entityId(caller, request.entityKey)).Execute({ ...request, caller });
+                    }
+                ).pipe(Effect.withSpan('cluster.action.send')),
+        };
+    }
+);
 
+/** Sender-facing service for authenticated persisted Cluster action dispatch, not direct local execution. */
 export class ClusterActions extends Context.Tag('@eventiva/server/ClusterActions')<
     ClusterActions,
     Effect.Effect.Success<typeof makeClusterActions>

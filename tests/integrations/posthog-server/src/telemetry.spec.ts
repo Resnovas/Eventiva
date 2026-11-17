@@ -64,6 +64,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise the actual SDK's serialized export projection. */ () =>
             Effect.gen(
                 /** Inspect outbound request bodies rather than only the SDK capture arguments. */ function* () {
+                    // Capture serialized bytes so privacy assertions cover SDK-added fields as well as our projection.
                     const bodies: Array<string> = [];
                     vi.stubGlobal(
                         'fetch',
@@ -72,6 +73,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                                 _url,
                                 options
                             ) => {
+                                // The SDK may gzip batches; decode either wire form before inspecting private-field leakage.
                                 const bytes = Buffer.from(await new Response(options?.body).arrayBuffer());
                                 bodies.push(
                                     (bytes[0] === 31 && bytes[1] === 139 ? gunzipSync(bytes) : bytes).toString('utf8')
@@ -144,6 +146,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise exact binding checks before SDK delivery. */ () =>
             Effect.gen(
                 /** Alter each authority dimension independently and verify no request is emitted. */ function* () {
+                    // A successful transport stub makes validation, not an incidental network error, responsible for rejection.
                     const transport = vi.fn<typeof fetch>(
                         /** Supply a harmless response if an unexpected request escapes validation. */ async () =>
                             new Response('{}', { status: 200 })
@@ -152,6 +155,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                     yield* Effect.gen(
                         /** Attempt writes and flushes under substituted bindings, then malformed records. */ function* () {
                             const remote = yield* TelemetryExportProvider;
+                            // Mutate one binding dimension at a time so a single rejected field cannot mask unchecked dimensions.
                             for (const candidate of [
                                 {
                                     ...binding,
@@ -170,6 +174,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                                 );
                                 expect((yield* Effect.flip(remote.flush(candidate))).reason).toBe('unavailable');
                             }
+                            // Separate denied profiles, invalid record structure and malformed bindings to preserve error taxonomy.
                             expect(
                                 (yield* Effect.flip(remote.write(binding, { ...record, profile: 'vault' }))).reason
                             ).toBe('unavailable');
@@ -191,6 +196,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise bounded failure reporting without retrying revoked or failed payloads. */ () =>
             Effect.gen(
                 /** Simulate an HTTP failure whose private response must not escape in the public error. */ function* () {
+                    // Count through scope disposal: cleanup must not replay the failed payload after the explicit flush.
                     const transport = vi.fn<typeof fetch>(
                         /** Return a canary-bearing failure to detect raw response leakage. */ async () =>
                             new Response('private-server-canary', { status: 503 })
@@ -202,6 +208,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                             const error = yield* Effect.flip(remote.write(binding, record));
                             expect(error.reason).toBe('write');
                             expect(JSON.stringify(error)).not.toContain('private-server-canary');
+                            // A failed delivery must leave no buffered payload for a later successful flush to resend.
                             yield* remote.flush(binding);
                         }
                     ).pipe(Effect.provide(postHogTelemetryLayer(settings, binding)));
@@ -215,6 +222,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise secure provider acquisition defaults. */ () =>
             Effect.gen(
                 /** Reject insecure endpoints, protected bindings and malformed credentials before SDK use. */ function* () {
+                    // Fail acquisition independently for each invalid input; none is allowed to reach the transport.
                     const transport = vi.fn<typeof fetch>();
                     vi.stubGlobal('fetch', transport);
                     for (const [options, current] of [
@@ -241,6 +249,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise transport cancellation and single-flight admission. */ () =>
             Effect.gen(
                 /** Keep one network request pending so contention and interruption are deterministic. */ function* () {
+                    // Synchronize on actual transport entry rather than elapsed time to keep the contention window deterministic.
                     const started = yield* Deferred.make<void>();
                     let aborted = false;
                     const transport = vi.fn<typeof fetch>(
@@ -250,6 +259,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                                     _resolve,
                                     reject
                                 ) => {
+                                    // Signal admission before waiting for abort so the competing write overlaps this request.
                                     Effect.runSync(Deferred.succeed(started, undefined));
                                     options?.signal?.addEventListener(
                                         'abort',
@@ -266,6 +276,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                         /** Reject a contending write, then interrupt the sole admitted request. */ function* () {
                             const remote = yield* TelemetryExportProvider;
                             const fiber = yield* remote.write(binding, record).pipe(Effect.fork);
+                            // The second payload must be refused while the first is in flight, never queued for later authorization.
                             yield* Deferred.await(started);
                             expect((yield* Effect.flip(remote.write(binding, record))).reason).toBe('unavailable');
                             yield* Fiber.interrupt(fiber);
@@ -283,6 +294,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise provider ownership across replacement. */ () =>
             Effect.gen(
                 /** Retain an expired handle and compare it with a newly scoped provider. */ function* () {
+                    // Keep the service after its acquisition scope ends to test stale handles separately from replacement acquisition.
                     const transport = vi.fn<typeof fetch>(
                         /** Accept only the live provider's expected request without real network IO. */ async () =>
                             new Response('{}', { status: 200 })
@@ -309,6 +321,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise interruption before the SDK has entered its network transport. */ () =>
             Effect.gen(
                 /** Delay SDK preparation to verify cancellation survives until the eventual fetch. */ function* () {
+                    // Hold SDK preparation before fetch exists, exercising retained cancellation rather than an already-live request.
                     /** Release SDK preparation once the pending capture has been interrupted. */
                     let release: () => void =
                         /** Provide an inert initial release until the promise executor installs the resolver. */ () =>
@@ -325,6 +338,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                             this: PostHog,
                             props
                         ) {
+                            // Preserve the real SDK receiver and delivery path after the test-controlled preparation barrier.
                             Effect.runSync(Deferred.succeed(prepared, undefined));
                             await gate;
                             return capture.call(this, props);
@@ -338,6 +352,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                                 _url,
                                 options
                             ) => {
+                                // Count only non-aborted delivery attempts so losing the retained signal becomes observable.
                                 if (options?.signal?.aborted) throw new Error('aborted-local-fixture');
                                 delivered++;
                                 return new Response('{}', { status: 200 });
@@ -365,6 +380,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
         /** Exercise private-cause redaction for delivery and finalization failures. */ () =>
             Effect.gen(
                 /** Inject separate SDK rejections so neither public error path can retain raw exception text. */ function* () {
+                    // Restore delivery before injecting cleanup failure so the two public error paths are tested independently.
                     const capture = vi
                         .spyOn(PostHog.prototype, 'captureImmediate')
                         .mockRejectedValue(new Error('private-sdk-canary'));

@@ -37,12 +37,14 @@ export const shellCaller: CallerIdentity = {
 /** Grants each subject a fixed list of permissions and denies the rest. */
 export const staticGrants = (grants: ReadonlyMap<string, ReadonlyArray<Permission>>): Layer.Layer<Authorizer> =>
     Layer.succeed(Authorizer, {
+        /** Deny invocation unless this subject's explicit grant contains the action permission. */
         canInvoke: (caller, action) =>
             grants.get(caller.subject)?.includes(action.permission) === true
                 ? Effect.void
                 : Effect.fail(
                       new Forbidden({ action: action.name, reason: `missing permission ${action.permission}` })
                   ),
+        /** Permit resource checks in this shell stub; this is not a production resource policy. */
         check: () => Effect.void,
     });
 
@@ -51,6 +53,7 @@ export const ShellCaller: Layer.Layer<Caller> = Layer.succeed(Caller, shellCalle
 
 /** No credential provider yet: recognize only this exact, process-owned service session. */
 export const ShellIdentity = Layer.succeed(IdentityResolver, {
+    /** Reject tenant/delegation claims and sessions other than the process-owned service identity. */
     resolve: (caller) =>
         caller.subject === shellCaller.subject &&
         caller.session === shellCaller.session &&

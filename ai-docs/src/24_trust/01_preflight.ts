@@ -24,5 +24,6 @@ import { TrustUnavailable, type TrustPolicy, type TrustRequest } from '@eventiva
 import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect } from 'effect';
 
+/** Demonstrate fail-closed metadata preflight with unavailable verifiers; no private release is authorized. */
 export const refusedPreflight = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     trustPreflight(request, trustedPolicy).pipe(Effect.provide(TrustUnavailable));

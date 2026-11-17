@@ -24,25 +24,32 @@ import { Storage } from '@eventiva/contracts/storage';
 import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
+/** Commit the supplied successful receipt with an invoice outbox command using the caller's tenant-bound services. */
 export const stage = (receipt: Receipt & { readonly version: number }) =>
-    Effect.gen(function* () {
-        const storage = yield* Storage;
-        const integrity = yield* Integrity;
-        return yield* integrity.commit(
-            {
-                key: 'example:invoice:1',
-                inputHash: receipt.inputHash,
-                caller: receipt.caller,
-                action: receipt.action,
-                version: receipt.version,
-            },
-            Effect.gen(function* () {
-                yield* storage.enqueue('invoice:1', {
-                    type: 'send-invoice',
-                    minorUnits: '9007199254740993',
-                    currency: 'GBP',
-                });
-                return { output: { queued: true }, receipt };
-            })
-        );
-    });
+    Effect.gen(
+        /** Couple outbox staging to integrity commit rather than dispatching an external invoice during the transaction. */ function* () {
+            // Both services must share the tenant storage so receipt and command cannot commit independently.
+            const storage = yield* Storage;
+            const integrity = yield* Integrity;
+            return yield* integrity.commit(
+                {
+                    key: 'example:invoice:1',
+                    inputHash: receipt.inputHash,
+                    caller: receipt.caller,
+                    action: receipt.action,
+                    version: receipt.version,
+                },
+                Effect.gen(
+                    /** Stage only the durable command and return the receipt; delivery belongs to an outbox consumer. */ function* () {
+                        // Keep money as an exact minor-unit string rather than a lossy JavaScript number.
+                        yield* storage.enqueue('invoice:1', {
+                            type: 'send-invoice',
+                            minorUnits: '9007199254740993',
+                            currency: 'GBP',
+                        });
+                        return { output: { queued: true }, receipt };
+                    }
+                )
+            );
+        }
+    );

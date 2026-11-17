@@ -44,6 +44,7 @@ const messages = defineMessages<{
 // Builds the flag providers once, for the life of the app.
 const runtime = ManagedRuntime.make(Layer.orDie(FlagsLive));
 
+/** Render the localized shell; the banner follows the provider's safe-default flag evaluation. */
 const Shell = () => {
     const showBanner = useBooleanFlagValue(offlineBanner.key, offlineBanner.safeDefault);
     return (
@@ -64,11 +65,15 @@ const Shell = () => {
     );
 };
 
+/** Bind the device catalogue and shared flag domain, starting the module-owned runtime after mount. */
 export const App = () => {
     const locale = deviceLocale();
-    useEffect(() => {
-        runtime.runFork(Effect.void);
-    }, []);
+    useEffect(
+        /** Acquire flag services lazily after React commits; runtime lifetime is the app module's, not this mount's. */ () => {
+            runtime.runFork(Effect.void);
+        },
+        []
+    );
     return (
         <IntlProvider locale={locale} defaultLocale="en-GB" messages={catalogues[locale] ?? {}}>
             <OpenFeatureProvider domain={domain}>

@@ -24,5 +24,10 @@ export const catalogues: Readonly<Record<string, Readonly<Record<string, string>
 /** The device's first preferred locale that has a catalogue, else en-GB. */
 export const deviceLocale = (): string =>
     getLocales()
-        .map((locale) => locale.languageTag)
-        .find((tag) => tag in catalogues) ?? canonicalLocale;
+        .map(
+            /** Preserve device preference order while extracting catalogue lookup keys. */ (locale) =>
+                locale.languageTag
+        )
+        .find(
+            /** Accept only an exact bundled catalogue key, without network negotiation. */ (tag) => tag in catalogues
+        ) ?? canonicalLocale;

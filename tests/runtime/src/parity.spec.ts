@@ -41,11 +41,12 @@ const Status = define('parity.read', {
     offline: 'local',
 });
 
-describe('action parity', () => {
-    it.scoped('a registered surface reaches the canonical inventory and its authorized dispatch', () =>
-        Effect.gen(function* () {
+describe('action parity', /** Register inventory, dispatch and live discovery conformance scenarios. */ () => {
+    it.scoped('a registered surface reaches the canonical inventory and its authorized dispatch', /** Install the test-only identity and invocation harness. */ () =>
+        Effect.gen(/** Compare one registered action's discovery metadata with its actual dispatch. */ function* () {
             const fixture = yield* makeTestOnlyHarness(shellCaller);
-            yield* Effect.gen(function* () {
+            yield* Effect.gen(/** Verify discovery and invocation share the canonical registration. */ function* () {
+                // Validate the advertised surface before dispatch so discoverability alone cannot satisfy parity.
                 const host = yield* ActionHost;
                 const inventory = yield* ActionInventory;
                 const module = {
@@ -57,15 +58,15 @@ describe('action parity', () => {
                         actions: [Status.name],
                         flags: [],
                     },
-                    actions: [implement(Status, () => Effect.succeed({ ok: true }))],
+                    actions: [implement(Status, /** Return a deterministic successful read result. */ () => Effect.succeed({ ok: true }))],
                 };
                 yield* host.register(module);
                 const listed = yield* inventory.list(shellCaller);
-                expect(listed.map((action) => action.id)).toEqual([Status.name]);
+                expect(listed.map(/** Compare public inventory identifiers without handler internals. */ (action) => action.id)).toEqual([Status.name]);
                 yield* validateParity(
                     listed,
                     {
-                        server: module.actions.map(({ spec }) => ({
+                        server: module.actions.map(/** Advertise only portable parity metadata for each server action. */ ({ spec }) => ({
                             id: spec.name,
                             version: spec.version,
                             permission: spec.permission,
@@ -83,8 +84,9 @@ describe('action parity', () => {
         })
     );
 
-    it.scoped('never executes a disposed registration after waiting for Integrity', () =>
-        Effect.gen(function* () {
+    it.scoped('never executes a disposed registration after waiting for Integrity', /** Pause invocation at Integrity while its registration is disposed. */ () =>
+        Effect.gen(/** Establish deterministic disposal ordering without timers. */ function* () {
+            // Hold execution before Integrity releases admission, allowing registration disposal to win the race.
             const fixture = yield* makeTestOnlyHarness(shellCaller);
             const waiting = yield* Deferred.make<void>();
             const resume = yield* Deferred.make<void>();
@@ -92,7 +94,8 @@ describe('action parity', () => {
                 fixture.beforeIntegrity,
                 Deferred.succeed(waiting, undefined).pipe(Effect.zipRight(Deferred.await(resume)))
             );
-            yield* Effect.gen(function* () {
+            yield* Effect.gen(/** Verify resumed execution rechecks registration before staging a write. */ function* () {
+                // Keep registration in a separate scope so closing it does not itself interrupt the pending invocation.
                 const host = yield* ActionHost;
                 const registration = yield* Scope.make();
                 const Write = define('parity.write', {
@@ -115,7 +118,7 @@ describe('action parity', () => {
                             flags: [],
                         },
                         actions: [
-                            implement(Write, () =>
+                            implement(Write, /** Stage a visible ledger effect if stale dispatch incorrectly reaches the handler. */ () =>
                                 fixture.ledger.stage('domain', 'stale').pipe(Effect.as({ ok: true }))
                             ),
                         ],
@@ -135,8 +138,9 @@ describe('action parity', () => {
         })
     );
 
-    it.scoped('discovery uses live authorization and flags and follows scoped module disposal', () =>
-        Effect.gen(function* () {
+    it.scoped('discovery uses live authorization and flags and follows scoped module disposal', /** Exercise independent live discovery gates and registration lifetime. */ () =>
+        Effect.gen(/** Build independently mutable policy and flag controls for inventory queries. */ function* () {
+            // Independent controls detect discovery implementations that consult only one gate or cache their first answer.
             const fixture = yield* makeTestOnlyHarness(shellCaller);
             const allowed = yield* Ref.make(true);
             const enabled = yield* Ref.make(true);
@@ -151,25 +155,30 @@ describe('action parity', () => {
                 flag: 'parity.enabled',
             });
             const authorizer = Layer.succeed(Authorizer, {
+                /** Re-evaluate mutable authorization for every inventory lookup. */
                 canInvoke: (_caller, spec) =>
                     Ref.get(allowed).pipe(
-                        Effect.flatMap((yes) =>
+                        Effect.flatMap(/** Deny with the requested action when permission has been revoked. */ (yes) =>
                             yes ? Effect.void : Effect.fail(new Forbidden({ action: spec.name, reason: 'revoked' }))
                         )
                     ),
+                /** Leave unrelated resource checks open in this discovery fixture. */
                 check: () => Effect.void,
             });
             const flags = Layer.succeed(Flags, {
+                /** Resolve the requested flag from the current fixture switch. */
                 evaluate: (flag) =>
                     Ref.get(enabled).pipe(
-                        Effect.map((value) => ({ flag: flag.key, value, reason: 'TEST', fallback: false }))
+                        Effect.map(/** Preserve flag identity while reporting a live nonfallback result. */ (value) => ({ flag: flag.key, value, reason: 'TEST', fallback: false }))
                     ),
             });
-            yield* Effect.gen(function* () {
+            yield* Effect.gen(/** Verify disposal and identity revocation remain visible outside registration scope. */ function* () {
+                // Query after registration scope exit to distinguish disposed metadata from temporarily hidden actions.
                 const host = yield* ActionHost;
                 const inventory = yield* ActionInventory;
                 yield* Effect.scoped(
-                    Effect.gen(function* () {
+                    Effect.gen(/** Toggle authorization and flag independently while the optional action remains registered. */ function* () {
+                        // Restore authorization before disabling the flag so each empty result has exactly one cause.
                         yield* host.register({
                             manifest: {
                                 format: 1,
@@ -186,9 +195,9 @@ describe('action parity', () => {
                                     },
                                 ],
                             },
-                            actions: [implement(Optional, () => Effect.succeed({}))],
+                            actions: [implement(Optional, /** Supply the optional read's empty successful result. */ () => Effect.succeed({}))],
                         });
-                        expect((yield* inventory.list(shellCaller)).map((item) => item.id)).toEqual([Optional.name]);
+                        expect((yield* inventory.list(shellCaller)).map(/** Inspect discoverable identifiers only. */ (item) => item.id)).toEqual([Optional.name]);
                         yield* Ref.set(allowed, false);
                         expect(yield* inventory.list(shellCaller)).toEqual([]);
                         yield* Ref.set(allowed, true);
@@ -213,8 +222,8 @@ describe('action parity', () => {
         })
     );
 
-    it.effect('rejects incompatible metadata and every missing registered surface', () =>
-        Effect.gen(function* () {
+    it.effect('rejects incompatible metadata and every missing registered surface', /** Compare missing and version-incompatible advertised surfaces. */ () =>
+        Effect.gen(/** Verify parity validation rejects absence and mismatched versions independently. */ function* () {
             const inventory = yield* validateInventory([Status]);
             const missing = yield* Effect.flip(validateParity(inventory, {}, ['server']));
             expect(missing._tag).toBe('InventoryParityError');

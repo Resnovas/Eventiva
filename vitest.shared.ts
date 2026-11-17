@@ -49,7 +49,11 @@ export const testProject = (name: string, covers: ReadonlyArray<string>, configU
                 provider: 'v8',
                 reportsDirectory: join(projectRoot, 'test-output/coverage'),
                 allowExternal: true,
-                include: covers.map((glob) => join(workspaceRoot, glob)),
+                include: covers.map(
+                    /** Anchor coverage globs at the shared Vite root rather than the suite config directory. */ (
+                        glob
+                    ) => join(workspaceRoot, glob)
+                ),
                 thresholds: { lines: 90, functions: 90, statements: 90, branches: 90 },
             },
         },

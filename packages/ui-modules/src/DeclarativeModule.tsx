@@ -28,6 +28,7 @@ export interface UiRenderer {
     readonly component: ComponentType<UiRendererProps>;
 }
 
+/** Masked node data and lazy action capability supplied to an installed adapter; children are already interpreted. */
 export interface UiRendererProps {
     readonly node: UiProjection['nodes'][number];
     readonly children: ReactNode;
@@ -39,6 +40,8 @@ export interface UiRendererProps {
  * Stateless interpreter, not a component library. The app owns refresh,
  * authenticated Effect execution, accessible unavailable/error components and
  * mount/error telemetry. UI and agents must use the same fresh projection.
+ * Installed adapters and the host own interaction and focus; this interpreter
+ * neither moves focus nor manages DOM lifetimes.
  */
 export const DeclarativeModule = ({
     projection,
@@ -48,14 +51,22 @@ export const DeclarativeModule = ({
 }: {
     readonly projection: UiProjection;
     readonly renderers: ReadonlyArray<UiRenderer>;
+    /** Resolve a canonical node id to a lazy effect; rendering must not execute it. */
     readonly invoke: (id: string) => Effect.Effect<void, UiModuleFailure, Caller>;
+    /** Let the host own accessible fallback presentation for unavailable projections or missing adapters. */
     readonly unavailable: (message: string) => ReactNode;
 }): ReactNode => {
+    // Interpret only supplied projection data; admission and viewer masking belong to its producer.
     if (projection.state !== 'available') return unavailable(projection.message);
+    /** Interpret descendants by projected id using exact installed component versions; absent nodes render nothing. */
     const render = (id: string): ReactNode => {
-        const node = projection.nodes.find((entry) => entry.id === id);
+        // Do not substitute another adapter version when the approved implementation is absent.
+        const node = projection.nodes.find(
+            /** Match the child reference within this projection only. */ (entry) => entry.id === id
+        );
         if (node === undefined) return null;
         const renderer = renderers.find(
+            /** Require both catalog identity and version; JSON cannot supply component code. */
             (entry) => entry.id === node.component.id && entry.version === node.component.version
         );
         if (renderer === undefined) return unavailable(projection.message);
