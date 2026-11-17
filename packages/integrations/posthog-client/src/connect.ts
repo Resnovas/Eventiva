@@ -31,7 +31,9 @@ export const connect = (apiKey: string, host: string): PostHogFlagClient => {
         sendFeatureFlagEvent: false,
     });
     return {
+        /** Read the SDK's cached boolean or variant value; absence remains undefined for provider fallback. */
         getFeatureFlag: (key) => client.getFeatureFlag(key),
+        /** Subscribe to SDK flag updates and return its unsubscribe function; the provider owns listener cleanup. */
         onFeatureFlags: (callback) => client.onFeatureFlags(callback),
     };
 };

@@ -188,6 +188,30 @@ strict exhaustive-review acceptance blocked on those sources; do not describe th
 historical mirror as a full live refresh. Next implement EVE-84 only after its
 recorded prerequisites and applicable authorization/confirmation tests are met.
 
+## Documentation adapter and CI diagnostics checkpoint - 2026-11-17
+
+This bounded increment compares against the coordinator's delivered
+`1674f6fec4c3cf061794975dde61d6959a4afe75`, not its unrelated local EVE-34
+packet. Tracking remains [EVE-13](https://linear.app/resnovas/issue/EVE-13) and
+[EVE-261](https://linear.app/resnovas/issue/EVE-261); see the exact semantic and
+execution evidence in [the documentation backlog](documentation-backlog.md#d03-first-adapters-and-bounded-ci-diagnostics---2026-11-17).
+
+| Step | Status | Evidence / remaining boundary |
+| --- | --- | --- |
+| D01 source and D02 runtime attachments | Completed delivery, not strict global zero | D02 delivered at `8a1440bbbbc04e8f5bed2e7d253683600a713d00`; its verify/smoke/application CI passed. Nine adequate retained runtime rationale candidates remain. |
+| First four D03 adapters | Source and focused verification complete | 33 attachment fixes and one rationale improvement, exact parsed executable tokens, zero scoped scanner findings, 26 uncached Nx tasks passed. |
+| Bounded subprocess diagnostics | Reviewed source; combined delivery current | Coordinator approved the exact patch after independent reading; seven assertions and the 10-second bound remain. Real timeout negative control produced bounded redacted context, not a root-cause finding. |
+| Exact prune and full verification | Completed local gate; delivery current | Uncached verify passed all 85 Nx tasks, 89 documentation fixtures, 95 boundary/type fixtures and all three smoke targets plus 12 dependencies. Retained debt is 3,117 (2,420 attachments and 697 rationale); five removed test rationale identities are replacements, not semantic fixes. |
+| Remaining D03-D06, then D07 | Upcoming | Reserve remaining sources, review semantically and deliver verified packets. Strict zero cannot be activated while adequate candidates lack a safe general classifier refinement. |
+
+The first D02 head failed both the original CI attempt and its one authorized
+same-head rerun in different children. The coordinator also observed recurrence
+on the pre-diagnostics planning head. Child signal/output were absent in those
+logs; passing local probes and final-D02 CI do not establish why they timed out.
+The diagnostics add evidence for future failures without retries, timeout
+inflation, assertion weakening or runtime changes. Existing platform dependency
+edges and production/native/UI acceptance gates remain unchanged.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 

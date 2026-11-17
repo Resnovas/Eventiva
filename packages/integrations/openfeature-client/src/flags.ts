@@ -40,12 +40,14 @@ import { type Cause, Data, Effect, Layer } from 'effect';
  * a cold start.
  */
 
+/** Closed lifecycle diagnostics that deliberately exclude the vendor's rejection value and targeting data. */
 interface FlagProviderErrorFields {
     readonly operation: 'initialize' | 'close';
     readonly reason: 'provider-failed';
 }
 
 // The exact constructor keeps the vendor's open generic out of public declarations.
+/** Construct bounded lifecycle failures without exposing the vendor's open generic signature. */
 const flagProviderErrorBase: new (
     fields: FlagProviderErrorFields
 ) => Cause.YieldableError & FlagProviderErrorFields & { readonly _tag: 'FlagProviderError' } = Data.TaggedError(
@@ -65,13 +67,19 @@ export interface SourcedProvider {
 export const staticValues = (values: Readonly<Record<string, boolean>>): Provider =>
     new InMemoryProvider(
         Object.fromEntries(
-            Object.entries(values).map(([key, value]) => [
-                key,
-                { variants: { on: true, off: false }, defaultVariant: value ? 'on' : 'off', disabled: false },
-            ])
+            Object.entries(values).map(
+                /** Represent each boolean as an enabled two-variant flag with an explicit default variant. */ ([
+                    key,
+                    value
+                ]) => [
+                    key,
+                    { variants: { on: true, off: false }, defaultVariant: value ? 'on' : 'off', disabled: false },
+                ]
+            )
         )
     );
 
+/** Flatten device attributes for the SDK, giving an explicit targeting key precedence over an attribute of that name. */
 const toOpenFeature = (context: FlagContext | undefined) => ({
     ...context?.attributes,
     ...(context?.targetingKey === undefined ? {} : { targetingKey: context.targetingKey }),
@@ -84,51 +92,72 @@ export const layer = (
 ): Layer.Layer<Flags> =>
     Layer.scoped(
         Flags,
-        Effect.gen(function* () {
-            const domain = options.domain ?? 'eventiva';
-            const multi = new MultiProvider(
-                byPrecedence(providers).map(({ source, provider }, index) => ({
-                    provider,
-                    name: `${source}-${index}`,
-                })),
-                new FirstMatchStrategy()
-            );
-            // A provider that fails to start stays bound in OpenFeature's recoverable
-            // ERROR state: it answers for what it knows and everything else falls back.
-            yield* Effect.acquireRelease(
-                Effect.tryPromise({
-                    // effect-boundary: OpenFeature binds providers and context through a promise.
-                    try: () => OpenFeature.setProviderAndWait(domain, multi, toOpenFeature(options.context)),
-                    catch: () => new FlagProviderError({ operation: 'initialize', reason: 'provider-failed' }),
-                }).pipe(
-                    Effect.catchAll((error) =>
-                        Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
-                    )
-                ),
-                () =>
+        Effect.gen(
+            /** Own provider binding for one domain and expose evaluations against its layer-time device context. */ function* () {
+                const domain = options.domain ?? 'eventiva';
+                const multi = new MultiProvider(
+                    byPrecedence(providers).map(
+                        /** Assign unique provider names in stable source-precedence order for first-match resolution. */ (
+                            { source, provider },
+                            index
+                        ) => ({
+                            provider,
+                            name: `${source}-${index}`,
+                        })
+                    ),
+                    new FirstMatchStrategy()
+                );
+                // A provider that fails to start stays bound in OpenFeature's recoverable
+                // ERROR state: it answers for what it knows and everything else falls back.
+                yield* Effect.acquireRelease(
                     Effect.tryPromise({
-                        // effect-boundary: replacing the provider closes the old one.
-                        try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
-                        catch: () => new FlagProviderError({ operation: 'close', reason: 'provider-failed' }),
-                    }).pipe(Effect.ignoreLogged)
-            );
-            const client = OpenFeature.getClient(domain);
-            return Flags.of({
-                // The client SDK evaluates against the static context; a per-call context is ignored.
-                evaluate: (flag: Flag) =>
-                    // OpenFeature catches provider failures and returns the default with an error code.
-                    Effect.sync(() => client.getBooleanDetails(flag.key, flag.safeDefault)).pipe(
-                        Effect.map((details) =>
-                            details.errorCode === undefined
-                                ? {
-                                      flag: flag.key,
-                                      value: details.value,
-                                      reason: details.reason ?? 'UNKNOWN',
-                                      fallback: false,
-                                  }
-                                : safeDefault(flag, details.errorCode)
+                        /** Await domain initialization with the device context before exposing the client service. */
+                        // effect-boundary: OpenFeature binds providers and context through a promise.
+                        try: () => OpenFeature.setProviderAndWait(domain, multi, toOpenFeature(options.context)),
+                        /** Discard rejection contents so startup diagnostics cannot expose vendor or targeting secrets. */
+                        catch: () => new FlagProviderError({ operation: 'initialize', reason: 'provider-failed' }),
+                    }).pipe(
+                        Effect.catchAll(
+                            /** Report the sanitized startup failure while leaving the recoverable provider bound. */ (
+                                error
+                            ) => Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
                         )
                     ),
-            });
-        })
+                    /** Replace this domain's provider on scope exit; log bounded cleanup failures rather than failing finalization. */
+                    () =>
+                        Effect.tryPromise({
+                            /** Await SDK replacement, which closes the domain's previous provider. */
+                            // effect-boundary: replacing the provider closes the old one.
+                            try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
+                            /** Retain only lifecycle phase and closed reason when provider replacement rejects. */
+                            catch: () => new FlagProviderError({ operation: 'close', reason: 'provider-failed' }),
+                        }).pipe(Effect.ignoreLogged)
+                );
+                const client = OpenFeature.getClient(domain);
+                return Flags.of({
+                    // The client SDK evaluates against the static context; a per-call context is ignored.
+                    /** Resolve a boolean using the bound device context, translating SDK error details to the declared safe default. */
+                    evaluate: (flag: Flag) =>
+                        // OpenFeature catches provider failures and returns the default with an error code.
+                        Effect.sync(
+                            /** Read synchronous provider details with the declaration's fallback; evaluation emits no new context. */ () =>
+                                client.getBooleanDetails(flag.key, flag.safeDefault)
+                        ).pipe(
+                            Effect.map(
+                                /** Preserve successful provider metadata, or mark an error-code fallback without exposing raw provider errors. */ (
+                                    details
+                                ) =>
+                                    details.errorCode === undefined
+                                        ? {
+                                              flag: flag.key,
+                                              value: details.value,
+                                              reason: details.reason ?? 'UNKNOWN',
+                                              fallback: false,
+                                          }
+                                        : safeDefault(flag, details.errorCode)
+                            )
+                        ),
+                });
+            }
+        )
     );

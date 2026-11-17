@@ -38,32 +38,37 @@ export interface I18nOptions {
 
 /** Builds the service value; exported so a React tree can share the same formatter. */
 export const make = (options: I18nOptions) =>
-    Effect.gen(function* () {
-        const missing = new Set<string>();
-        const runtime = yield* Effect.runtime<never>();
-        const messages = {
-            ...options.catalogue,
-            ...(options.terminology?.locale === options.locale ? options.terminology.messages : {}),
-        };
-        const intl = createIntl(
-            {
-                locale: options.locale,
-                defaultLocale: canonicalLocale,
-                messages,
-                onError: (error) => {
-                    // A missing or broken translation falls back to the default message; report each once.
-                    if (missing.has(error.message)) return;
-                    missing.add(error.message);
-                    Runtime.runFork(runtime)(Effect.logDebug('Message fallback', error.code, error.message));
+    Effect.gen(
+        /** Allocate one locale formatter with layer-local fallback deduplication and matching terminology. */ function* () {
+            const missing = new Set<string>();
+            const runtime = yield* Effect.runtime<never>();
+            // A pack selected for another locale must not replace translations in this formatter.
+            const messages = {
+                ...options.catalogue,
+                ...(options.terminology?.locale === options.locale ? options.terminology.messages : {}),
+            };
+            const intl = createIntl(
+                {
+                    locale: options.locale,
+                    defaultLocale: canonicalLocale,
+                    messages,
+                    /** Report each distinct formatter error once through the captured Effect runtime without throwing it. */
+                    onError: (error) => {
+                        // A missing or broken translation falls back to the default message; report each once.
+                        if (missing.has(error.message)) return;
+                        missing.add(error.message);
+                        Runtime.runFork(runtime)(Effect.logDebug('Message fallback', error.code, error.message));
+                    },
                 },
-            },
-            createIntlCache()
-        );
-        return I18n.of({
-            locale: options.locale,
-            format: (message, values) => intl.formatMessage(message, values),
-        });
-    });
+                createIntlCache()
+            );
+            return I18n.of({
+                locale: options.locale,
+                /** Format catalogue or matching-overlay ICU text, using the descriptor's canonical default on fallback. */
+                format: (message, values) => intl.formatMessage(message, values),
+            });
+        }
+    );
 
 /** An `I18n` layer for one locale. */
 export const layer = (options: I18nOptions): Layer.Layer<I18n> => Layer.effect(I18n, make(options));

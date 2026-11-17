@@ -39,12 +39,14 @@ import { type Cause, Data, Effect, Layer } from 'effect';
  * (a remote rollout). A flag no provider knows resolves to its safe default.
  */
 
+/** Closed lifecycle diagnostics that deliberately exclude the vendor's rejection value and targeting data. */
 interface FlagProviderErrorFields {
     readonly operation: 'initialize' | 'close';
     readonly reason: 'provider-failed';
 }
 
 // The exact constructor keeps the vendor's open generic out of public declarations.
+/** Construct bounded lifecycle failures without exposing the vendor's open generic signature. */
 const flagProviderErrorBase: new (
     fields: FlagProviderErrorFields
 ) => Cause.YieldableError & FlagProviderErrorFields & { readonly _tag: 'FlagProviderError' } = Data.TaggedError(
@@ -64,13 +66,19 @@ export interface SourcedProvider {
 export const staticValues = (values: Readonly<Record<string, boolean>>): Provider =>
     new InMemoryProvider(
         Object.fromEntries(
-            Object.entries(values).map(([key, value]) => [
-                key,
-                { variants: { on: true, off: false }, defaultVariant: value ? 'on' : 'off', disabled: false },
-            ])
+            Object.entries(values).map(
+                /** Represent each boolean as an enabled two-variant flag with an explicit default variant. */ ([
+                    key,
+                    value
+                ]) => [
+                    key,
+                    { variants: { on: true, off: false }, defaultVariant: value ? 'on' : 'off', disabled: false },
+                ]
+            )
         )
     );
 
+/** Flatten request attributes for the SDK, giving an explicit targeting key precedence over an attribute of that name. */
 const toOpenFeature = (context: FlagContext | undefined) => ({
     ...context?.attributes,
     ...(context?.targetingKey === undefined ? {} : { targetingKey: context.targetingKey }),
@@ -86,53 +94,72 @@ export const layer = (
 ): Layer.Layer<Flags> =>
     Layer.scoped(
         Flags,
-        Effect.gen(function* () {
-            const domain = options.domain ?? 'eventiva';
-            const multi = new MultiProvider(
-                byPrecedence(providers).map(({ source, provider }, index) => ({
-                    provider,
-                    name: `${source}-${index}`,
-                })),
-                new FirstMatchStrategy()
-            );
-            // A provider that fails to start stays bound in OpenFeature's recoverable
-            // ERROR state: it answers for what it knows and everything else falls back.
-            yield* Effect.acquireRelease(
-                Effect.tryPromise({
-                    // effect-boundary: OpenFeature binds providers through a promise.
-                    try: () => OpenFeature.setProviderAndWait(domain, multi),
-                    catch: () => new FlagProviderError({ operation: 'initialize', reason: 'provider-failed' }),
-                }).pipe(
-                    Effect.catchAll((error) =>
-                        Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
-                    )
-                ),
-                () =>
-                    Effect.tryPromise({
-                        // effect-boundary: replacing the provider closes the old one.
-                        try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
-                        catch: () => new FlagProviderError({ operation: 'close', reason: 'provider-failed' }),
-                    }).pipe(Effect.ignoreLogged)
-            );
-            const client = OpenFeature.getClient(domain);
-            return Flags.of({
-                evaluate: (flag: Flag, context?: FlagContext) =>
-                    // OpenFeature catches provider failures and resolves with the default and an error code.
-                    Effect.promise(() =>
-                        client.getBooleanDetails(flag.key, flag.safeDefault, toOpenFeature(context))
-                    ).pipe(
-                        Effect.map((details) =>
-                            details.errorCode === undefined
-                                ? {
-                                      flag: flag.key,
-                                      value: details.value,
-                                      reason: details.reason ?? 'UNKNOWN',
-                                      fallback: false,
-                                  }
-                                : safeDefault(flag, details.errorCode)
-                        ),
-                        Effect.withSpan('flags.evaluate', { attributes: { 'feature_flag.key': flag.key } })
+        Effect.gen(
+            /** Own provider binding for one domain while leaving targeting context to each evaluation. */ function* () {
+                const domain = options.domain ?? 'eventiva';
+                const multi = new MultiProvider(
+                    byPrecedence(providers).map(
+                        /** Assign unique provider names in stable source-precedence order for first-match resolution. */ (
+                            { source, provider },
+                            index
+                        ) => ({
+                            provider,
+                            name: `${source}-${index}`,
+                        })
                     ),
-            });
-        })
+                    new FirstMatchStrategy()
+                );
+                // A provider that fails to start stays bound in OpenFeature's recoverable
+                // ERROR state: it answers for what it knows and everything else falls back.
+                yield* Effect.acquireRelease(
+                    Effect.tryPromise({
+                        /** Await domain initialization before exposing evaluations; this server layer binds no static context. */
+                        // effect-boundary: OpenFeature binds providers through a promise.
+                        try: () => OpenFeature.setProviderAndWait(domain, multi),
+                        /** Discard rejection contents so startup diagnostics cannot expose vendor or targeting secrets. */
+                        catch: () => new FlagProviderError({ operation: 'initialize', reason: 'provider-failed' }),
+                    }).pipe(
+                        Effect.catchAll(
+                            /** Report the sanitized startup failure while leaving the recoverable provider bound. */ (
+                                error
+                            ) => Effect.logWarning('A flag provider failed to start; flags use safe defaults', error)
+                        )
+                    ),
+                    /** Replace this domain's provider on scope exit; log bounded cleanup failures rather than failing finalization. */
+                    () =>
+                        Effect.tryPromise({
+                            /** Await SDK replacement, which closes the domain's previous provider. */
+                            // effect-boundary: replacing the provider closes the old one.
+                            try: () => OpenFeature.setProviderAndWait(domain, NOOP_PROVIDER),
+                            /** Retain only lifecycle phase and closed reason when provider replacement rejects. */
+                            catch: () => new FlagProviderError({ operation: 'close', reason: 'provider-failed' }),
+                        }).pipe(Effect.ignoreLogged)
+                );
+                const client = OpenFeature.getClient(domain);
+                return Flags.of({
+                    /** Resolve a boolean with this call's targeting context, preserving SDK success details or the declared safe fallback. */
+                    evaluate: (flag: Flag, context?: FlagContext) =>
+                        // OpenFeature catches provider failures and resolves with the default and an error code.
+                        Effect.promise(
+                            /** Delegate asynchronous resolution with the declaration's default and flattened per-call context. */ () =>
+                                client.getBooleanDetails(flag.key, flag.safeDefault, toOpenFeature(context))
+                        ).pipe(
+                            Effect.map(
+                                /** Preserve successful provider metadata, or mark an error-code fallback without exposing raw provider errors. */ (
+                                    details
+                                ) =>
+                                    details.errorCode === undefined
+                                        ? {
+                                              flag: flag.key,
+                                              value: details.value,
+                                              reason: details.reason ?? 'UNKNOWN',
+                                              fallback: false,
+                                          }
+                                        : safeDefault(flag, details.errorCode)
+                            ),
+                            Effect.withSpan('flags.evaluate', { attributes: { 'feature_flag.key': flag.key } })
+                        ),
+                });
+            }
+        )
     );
