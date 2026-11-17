@@ -3199,7 +3199,19 @@
             "implementation": "Planning only; implementation and owner acceptance were not independently verified.",
             "parameters": "Use predecessor estimates, lag, earliest starts and constraints; preserve manual locks, actual/historical completions and other shows' commitments. Readiness/approval gates are independent of forecasting.",
             "supersededBy": [],
-            "supersessionNote": "Explicitly supersedes confirmation for each dependency-delay cascade. Whether EVE-84 deliberate Event/Phase anchor-date changes also lose confirmation is unresolved; do not globally remove its gate."
+            "supersessionNote": "Originally superseded confirmation for dependency-delay cascades. Jonathan's later 2026-11-17 option B, cited in tasks-anchor-confirmation and the EVE-84 annotation, narrows that clause: every Event/Phase anchor-date change requires confirmation even when caused by a cascade; non-anchor dates may cascade automatically. Continuous forecasting, baseline/history and safety constraints remain."
+        },
+        {
+            "id": "tasks-anchor-confirmation",
+            "authority": "recorded-owner-direction",
+            "summary": "EVE-84 covers general Event planning, not MDT only. Confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically.",
+            "timestamp": null,
+            "scope": ["EVE-62", "EVE-71", "EVE-84"],
+            "sources": ["EVE-84/description"],
+            "implementation": "Planning decision only; EVE-84 remains Backlog with implementation prerequisites. The frozen description establishes broad Event scope; the later owner relay supplies the explicit cascade distinction, not implementation acceptance.",
+            "parameters": "Jonathan supplied the conditional choice through Puck on 2026-11-17; exact owner-selection time is unknown. The complete live description and sole synchronization comment establish general Event templates and F1-owned Event/Phase/Segment/Itinerary anchors, so the broad-scope option B applies. Supplemental relay: https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d at 2026-11-17T12:31:56.867Z; authority route: https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a. Preserve absolute/completed-date exclusions, baseline/history, locks, authorization and readiness. The captured source has not been rewritten or silently reacquired.",
+            "supersededBy": [],
+            "supersessionNote": "Resolves the earlier anchor-confirmation ambiguity and narrows only automatic rescheduling that changes an Event/Phase anchor. Does not remove template-application confirms, other anchor controls or safety gates; does not authorize deployment."
         },
         {
             "id": "tasks-delay-tolerance",
@@ -3211,7 +3223,7 @@
             "implementation": "Planning only; implementation and owner acceptance were not independently verified.",
             "parameters": "Continuously show lateness/forecast/impacts below threshold. At or above tolerance, commit an idempotent working-schedule cascade and corresponding notifications without changing original baseline/history. Dependencies apply at every delay. Exact configuration scope/inheritance remains UI/policy design.",
             "supersededBy": [],
-            "supersessionNote": "Corrects initial verbal five-minute default and clarifies forecast-versus-committed-schedule semantics; no safety gate is relaxed."
+            "supersessionNote": "Corrects initial verbal five-minute default and clarifies forecast-versus-committed-schedule semantics; no safety gate is relaxed. Jonathan's later tasks-anchor-confirmation decision requires confirmation whenever the cascade changes an Event/Phase anchor, regardless of tolerance; other non-anchor cascade behavior remains."
         },
         {
             "id": "operations-queue-first",
@@ -9732,8 +9744,8 @@
         {
             "id": "EVE-84/description",
             "hash": "663a78f98666c27f98635d5abb1b642c7c6e8304013a81513210c254be32fdba",
-            "disposition": "ambiguous",
-            "reason": "Actual scoped conflict: older Event/Phase anchor-change cascades require confirmation; later owner comments automate dependency-delay cascades without explicitly resolving deliberate anchor-date edit approvals."
+            "disposition": "decision",
+            "reason": "Complete captured and live description reviewed: general Event templates and F1-owned Event/Phase/Segment/Itinerary anchors establish scope beyond MDT. The former conflict is resolved by Jonathan's conditional 2026-11-17 option B, relayed at https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d: confirm every Event/Phase anchor-date change including cascades; non-anchor dates may cascade automatically. The later relay is separately dated in annotations; the captured source/hash is unchanged and does not itself contain that later clarification."
         },
         {
             "id": "EVE-84/ef284a62-955b-4003-985a-a61e4c581299",
@@ -9959,6 +9971,18 @@
         }
     ],
     "annotations": [
+        {
+            "issue": "EVE-84",
+            "kind": "later-status",
+            "date": "2026-11-17T12:31:56.867Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Live description and complete comment list independently reviewed: EVE-84 covers general Event planning, not MDT only. Jonathan's conditional 2026-11-17 decision therefore selects option B: confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically. Exact owner-selection time is unknown; this date is the Amp Linear relay, not the owner-selection or capture time. Baseline/history, absolute/completed-date exclusions, manual locks, authorization and readiness remain. The prior source ambiguity is resolved, but implementation prerequisites and whole-issue acceptance remain open. Frozen capture is unchanged; this is not a complete live roadmap refresh.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a"
+            ]
+        },
         {
             "issue": "EVE-22",
             "kind": "later-status",

@@ -40,6 +40,17 @@ selection and agent relay timestamps must not be substituted for capture dates.
   was created at 11:53:50.388Z. The [telemetry guide](../telemetry.md) keeps
   production ingestion separate from dependency and fixture approval. Live EVE-21
   remains Backlog and EVE-45 In Progress; neither approval closes EVE-261.
+- **Event/Phase anchor confirmation (EVE-84):** Jonathan's conditional decision,
+  relayed through the same Puck thread on 2026-11-17, selects **option B** for
+  general Event planning. The complete live EVE-84 description covers Event
+  templates and F1-owned Event/Phase/Segment/Itinerary anchors, not MDT only.
+  Confirm every Event/Phase anchor-date change, including changes caused by a
+  dependency-delay cascade; non-anchor dates may cascade automatically. Preserve
+  baseline/history, absolute/completed-date exclusions, locks, authorization and
+  readiness. [The dated Amp relay](https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d)
+  was created at 12:31:56.867Z; the exact owner-selection time was not supplied.
+  This resolves the earlier scope ambiguity without rewriting the frozen source
+  capture, closing implementation prerequisites or authorizing deployment.
 
 ## Historical open and superseded information
 
@@ -51,7 +62,7 @@ selection and agent relay timestamps must not be substituted for capture dates.
 <!-- planning:generated:start -->
 ## Generated decision and evidence inventory
 
-394 curated public-safe decision records; 847 source records covered; **3 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
+395 curated public-safe decision records; 847 source records covered; **2 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
 
 [Every source and review disposition](roadmap/decision-sources.md). Source changes invalidate exact digests. New decision summaries never copy raw private source bodies/comments. Existing owner-authorized issue pages retain their separate publication policy.
 
@@ -312,6 +323,7 @@ selection and agent relay timestamps must not be substituted for capture dates.
 | [operations-planned-and-unscheduled](#operations-planned-and-unscheduled) | Initial CAD/MDT supports crew incidents and preplanned assigned production jobs with upcoming/active/history views and per-venue tour-template instances. | 2026-11-13T20:12:52.978Z | recorded-owner-direction |
 | [operations-routine-release](#operations-routine-release) | Routine scheduled production defaults to automatic release with configurable controller release; activation always requires start eligibility, completed predecessors and valid sign-offs. | 2026-11-13T20:16:00.222Z | recorded-owner-direction |
 | [tasks-continuous-forecast](#tasks-continuous-forecast) | Continuously recalculate dependency-linked forecasts as predecessors run late while retaining immutable baseline, subsequent revisions, actuals and uncertainty. | 2026-11-13T20:23:20.022Z | recorded-owner-direction |
+| [tasks-anchor-confirmation](#tasks-anchor-confirmation) | EVE-84 covers general Event planning, not MDT only. Confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically. | Unknown | recorded-owner-direction |
 | [tasks-delay-tolerance](#tasks-delay-tolerance) | Default automated rescheduling tolerance to 10 minutes, editable as any numeric minute value from 5 through 60 inclusive. | 2026-11-13T20:25:23.091Z | recorded-owner-direction |
 | [operations-queue-first](#operations-queue-first) | Prioritize incident/job queue, unit/status board, assignments, acknowledgements and timestamped log in the initial MDT/live-operations product vertical; maps are optional/contextual. | 2026-11-13T20:10:47.350Z | recorded-owner-direction |
 | [canonical-ids-time-decimals-reference](#canonical-ids-time-decimals-reference) | Follow the S4 canonical identifier, time and decimal conventions referenced by the owner-approved foundation policy. | 2026-11-15T01:45:09.727Z | recorded-owner-direction |
@@ -3510,7 +3522,19 @@ Continuously recalculate dependency-linked forecasts as predecessors run late wh
 - Evidence: [EVE-62/6ac23009-f0ee-44d4-967b-651ccdf69549](https://linear.app/resnovas/issue/EVE-62/f3-tasks-task-lists-assignments-dependencies-and-checklists-per-event#comment-6ac23009-f0ee-44d4-967b-651ccdf69549), [EVE-71/cdb2196d-2ef9-472b-adba-68c6fa179e3e](https://linear.app/resnovas/issue/EVE-71/f7-fleet-and-live-operations-vehicles-maintenance-units-dispatch-and#comment-cdb2196d-2ef9-472b-adba-68c6fa179e3e).
 - Implementation: Planning only; implementation and owner acceptance were not independently verified.
 - Concrete outstanding parameters: Use predecessor estimates, lag, earliest starts and constraints; preserve manual locks, actual/historical completions and other shows' commitments. Readiness/approval gates are independent of forecasting.
-- Superseded by: None explicitly established in this record. Explicitly supersedes confirmation for each dependency-delay cascade. Whether EVE-84 deliberate Event/Phase anchor-date changes also lose confirmation is unresolved; do not globally remove its gate.
+- Superseded by: None explicitly established in this record. Originally superseded confirmation for dependency-delay cascades. Jonathan's later 2026-11-17 option B, cited in tasks-anchor-confirmation and the EVE-84 annotation, narrows that clause: every Event/Phase anchor-date change requires confirmation even when caused by a cascade; non-anchor dates may cascade automatically. Continuous forecasting, baseline/history and safety constraints remain.
+
+### tasks-anchor-confirmation
+
+EVE-84 covers general Event planning, not MDT only. Confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically.
+
+- Authority: **recorded-owner-direction**. This records evidence, not a new approval.
+- Source timestamp: Unknown; no owner decision time available. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
+- Scope: [EVE-62](issues/EVE-62.md), [EVE-71](issues/EVE-71.md), [EVE-84](issues/EVE-84.md).
+- Evidence: [EVE-84/description](https://linear.app/resnovas/issue/EVE-84/f34-build-event-relative-due-dates-task-templates-and-reschedule).
+- Implementation: Planning decision only; EVE-84 remains Backlog with implementation prerequisites. The frozen description establishes broad Event scope; the later owner relay supplies the explicit cascade distinction, not implementation acceptance.
+- Concrete outstanding parameters: Jonathan supplied the conditional choice through Puck on 2026-11-17; exact owner-selection time is unknown. The complete live description and sole synchronization comment establish general Event templates and F1-owned Event/Phase/Segment/Itinerary anchors, so the broad-scope option B applies. Supplemental relay: https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d at 2026-11-17T12:31:56.867Z; authority route: https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a. Preserve absolute/completed-date exclusions, baseline/history, locks, authorization and readiness. The captured source has not been rewritten or silently reacquired.
+- Superseded by: None explicitly established in this record. Resolves the earlier anchor-confirmation ambiguity and narrows only automatic rescheduling that changes an Event/Phase anchor. Does not remove template-application confirms, other anchor controls or safety gates; does not authorize deployment.
 
 ### tasks-delay-tolerance
 
@@ -3522,7 +3546,7 @@ Default automated rescheduling tolerance to 10 minutes, editable as any numeric 
 - Evidence: [EVE-62/d7caf802-c15c-4a1d-9398-5e01083cad0c](https://linear.app/resnovas/issue/EVE-62/f3-tasks-task-lists-assignments-dependencies-and-checklists-per-event#comment-d7caf802-c15c-4a1d-9398-5e01083cad0c), [EVE-71/6c1ceaae-6636-4596-a193-ce368f725f27](https://linear.app/resnovas/issue/EVE-71/f7-fleet-and-live-operations-vehicles-maintenance-units-dispatch-and#comment-6c1ceaae-6636-4596-a193-ce368f725f27).
 - Implementation: Planning only; implementation and owner acceptance were not independently verified.
 - Concrete outstanding parameters: Continuously show lateness/forecast/impacts below threshold. At or above tolerance, commit an idempotent working-schedule cascade and corresponding notifications without changing original baseline/history. Dependencies apply at every delay. Exact configuration scope/inheritance remains UI/policy design.
-- Superseded by: None explicitly established in this record. Corrects initial verbal five-minute default and clarifies forecast-versus-committed-schedule semantics; no safety gate is relaxed.
+- Superseded by: None explicitly established in this record. Corrects initial verbal five-minute default and clarifies forecast-versus-committed-schedule semantics; no safety gate is relaxed. Jonathan's later tasks-anchor-confirmation decision requires confirmation whenever the cascade changes an Event/Phase anchor, regardless of tolerance; other non-anchor cascade behavior remains.
 
 ### operations-queue-first
 

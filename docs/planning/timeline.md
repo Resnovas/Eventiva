@@ -170,6 +170,24 @@ flowchart TD
 
 The authoritative detailed matrix remains [specification G01-G15](../architecture/modular-platform.md#14-hard-readiness-gates-and-acceptance-evidence-ledger) and the live [EVE-261](https://linear.app/resnovas/issue/EVE-261) packet. This lane has not executed platform acceptance and marks none of those rows passed. Each completed checkpoint must name commit, command/output, runtime/provider, negative control and remaining limits. In particular, native/UI, production security/ingestion and full platform integration are **not proven** by this governance change.
 
+## Anchor-confirmation planning resolution - 2026-11-17
+
+After the delivered D02 head
+`8a1440bbbbc04e8f5bed2e7d253683600a713d00` returned the shared window, the
+coordinator mirrored Jonathan's EVE-84 decision from the
+[12:31:56.867Z Amp relay](https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d).
+The source covers general Event planning, so option B applies: any Event/Phase
+anchor-date change requires confirmation, including dependency-delay cascades;
+non-anchor dates may cascade automatically. The exact owner-selection time is
+unknown. This completes the scope decision, not the Backlog implementation or its
+dependency gates. The [decision index](decisions.md#tasks-anchor-confirmation)
+records the narrowed supersession of earlier automatic-delay direction.
+
+Two unavailable owner-infrastructure source references remain unresolved. Keep
+strict exhaustive-review acceptance blocked on those sources; do not describe the
+historical mirror as a full live refresh. Next implement EVE-84 only after its
+recorded prerequisites and applicable authorization/confirmation tests are met.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
@@ -181,6 +199,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 
 ### Curated evidence separate from capture
 
+- EVE-84, 2026-11-17T12:31:56.867Z, later-status: Live description and complete comment list independently reviewed: EVE-84 covers general Event planning, not MDT only. Jonathan's conditional 2026-11-17 decision therefore selects option B: confirm every Event/Phase anchor-date change, including dependency-delay cascades; non-anchor dates may cascade automatically. Exact owner-selection time is unknown; this date is the Amp Linear relay, not the owner-selection or capture time. Baseline/history, absolute/completed-date exclusions, manual locks, authorization and readiness remain. The prior source ambiguity is resolved, but implementation prerequisites and whole-issue acceptance remain open. Frozen capture is unchanged; this is not a complete live roadmap refresh. [evidence](https://linear.app/resnovas/issue/EVE-84#comment-f9c96ce3-873a-46ba-9702-bf00bcebc44d), [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
 - EVE-22, 2026-11-17T12:15:01.148Z, later-status: Live MCP recheck retains In Progress. Human TGTGamer merged house PR 47 at 12:14:25Z as squash commit 983ce5595b75f1d485446b320fdc85b322c80dd4; GitHub state was independently checked. The tested downstream architecture references and house summary now align with Eventiva's 16 intersecting ESLint rows, without changing lint/runtime behavior. Eventiva combined verification/delivery and exact-head CI remain separate evidence; the historical mirror is not silently refreshed and whole-issue acceptance is not inferred from the house merge. [evidence](https://github.com/Resnovas/.github/pull/47), [evidence](https://github.com/Resnovas/.github/commit/983ce5595b75f1d485446b320fdc85b322c80dd4), [evidence](https://linear.app/resnovas/issue/EVE-22#comment-9b58885c-134f-49a6-aed2-59bfb9a1ef60).
 - EVE-34, 2026-11-17T12:03:57.576Z, later-status: Live MCP recheck retains Backlog. The later agent-authored packet scopes EVE-34 as EVE-54's first server-local durable run/step checkpoint, not a competing run manager or complete production-agent acceptance. It requires completed-Activity entry counts across between-step SIGKILL/drain/restart, current access checks and stable tenant/run/step keys. EVE-35/36 consume the settled run model; EVE-52 loop and EVE-54 persisted module pins/fencing remain separate. Source-only implementation paths were reserved through current coordination; no tests or delivery are claimed for this new lane. Historical capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-34#comment-01bffbbf-3f7b-433e-9397-e964b555037c), [evidence](https://ampcode.com/threads/T-5a85c8b5-cf76-429d-b85e-30bc35c680a4).
 - EVE-45, 2026-11-17T11:41:17.706Z, later-status: Live MCP recheck retains In Progress. Jonathan's authenticated option-A selection at 2026-11-17T11:38:55.329Z in the cited Puck thread requires mandatory finalizers despite failed durable admission, visible recovery-required and no fabricated fact. The Amp relay was recorded separately at 11:41:17.721Z on EVE-45. Ordinary mutations fail closed before callbacks with no replay. Kernel implementation and focused SQL acceptance are a bounded checkpoint, not full EVE-45/EVE-261 acceptance or production authorization. Historical capture is unchanged. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), [evidence](https://linear.app/resnovas/issue/EVE-45/p16-build-the-change-flow-domain-events-and-a-durable-resource-change#comment-2ef327d5).
