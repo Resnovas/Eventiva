@@ -85,7 +85,8 @@ export const governedTelemetrySinkLayer = (
                                 return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                             const flag = yield* flags.evaluate(telemetryExportFlag);
                             if (!flag.value) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
-                            yield* authority.authorize(trusted, operation);
+                            // Adapters may retain or rewrite their view, never the private admitted scalar binding.
+                            yield* authority.authorize({ ...trusted }, operation);
                             if (closed) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                         }
                     );
@@ -112,14 +113,14 @@ export const governedTelemetrySinkLayer = (
                                     attributes: {},
                                 };
                                 yield* authorize(record.signal);
-                                yield* provider.write(trusted, projected);
+                                yield* provider.write({ ...trusted }, projected);
                             }
                         ),
                     flush: Effect.gen(
                         /** Reauthorize the payload-free provider barrier instead of replaying queued metadata. */ function* () {
                             // Flush still reaches the retained provider, so a revoked export grant must stop even this payload-free call.
                             yield* authorize('flush');
-                            yield* provider.flush(trusted);
+                            yield* provider.flush({ ...trusted });
                         }
                     ),
                 });

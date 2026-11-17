@@ -2,6 +2,33 @@
 
 Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Governed telemetry export isolation, batch 7 - 2026-11-17
+
+Revision 4 of the [batch-7 packet](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-7-readiness-3f236807-623e-4880-84ac-3a3624072841)
+requires two private reference-isolation fixes, not new release policy. The
+[EVE-60 checkpoint](https://linear.app/resnovas/issue/EVE-60#comment-94b7d482)
+and [EVE-44 checkpoint](https://linear.app/resnovas/issue/EVE-44#comment-10803948)
+record red-first execution on unchanged main 2e41eaf2. Live issue reads retain
+EVE-60 Backlog and EVE-44 In Progress; neither is marked Done. The full source
+snapshot remains historical. Detailed behavior stays in the
+[export guide](../telemetry-export.md#preserve-admitted-scope-across-adapter-calls).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Export binding and retained correlation token corruption | Completed reproduction | Eight mutation regressions fail on unchanged runtime source; 29 tests pass, including four new untouched controls. Provider/authority mutation widens record scope, changes a later pair or extends a released request beyond hourly UTC rotation. |
+| Private admitted values | Focused verification passed | Fresh scalar views at authority/provider calls leave later profile and lease checks bound to the decoded originals. The same 37 focused cases pass; independent live-flag revocation controls are added. No contract, dependency, default-off flag or hourly refresh change. |
+| Shared outputs and aggregate gates | Passed locally above main bbd214c2; signed delivery recorded separately | Planning/LLMS and clean-source Graphify regenerated. Root check passes 102 documentation fixtures with zero ratchet violations; full fixture-backed verify passes all 86 aggregate tasks (14 cached), source/declaration boundaries and three smoke projects plus 12 dependencies (nine cached). Strict reviewed planning reports 258 issues/692 edges with zero unresolved/stale sources. Final signed revisions and exact-head CI are recorded separately on both issues; local success is not remote CI acceptance. |
+| Real correlation/export acceptance | Upcoming / separately gated | No authenticated ingress/device execution, ingestion, real issuer/consent/key custody, provisioning or production authorization. Broader EVE-60/EVE-44 acceptance remains open. |
+
+```mermaid
+flowchart LR
+    Red["Batch 7: two alias defects reproduced"] --> Private["Private binding and request token"]
+    Private --> Views["Disposable authority and provider views"]
+    Views --> Fences["Original profile and hourly UTC fences"]
+    Fences --> Verify["Full verification and signed main delivery"]
+    Verify --> Open["EVE-60 / EVE-44 broader acceptance open"]
+```
+
 ## PostgreSQL fixture cleanup checkpoint - 2026-11-17
 
 The [batch 6 slice 2 contract](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-6-readiness-3f236807-623e-4880-84ac-3a3624072841)

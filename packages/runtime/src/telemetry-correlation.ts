@@ -181,8 +181,9 @@ export const governedCorrelationSinkLayer = (
                                         if (!(yield* flags.evaluate(flag)).value)
                                             return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                                     }
-                                    yield* general.authorize(trustedBinding, operation);
-                                    yield* authority.authorize(trustedBinding, token);
+                                    // All lease/binding fields are scalar; disposable views keep adapter writes out of later fences.
+                                    yield* general.authorize({ ...trustedBinding }, operation);
+                                    yield* authority.authorize({ ...trustedBinding }, { ...token });
                                     yield* currentToken(token);
                                     if (closed) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                                 }
@@ -191,7 +192,9 @@ export const governedCorrelationSinkLayer = (
                             /** Identity-free projected records receive only this request's validated pair at dispatch. */
                             write: (trusted, record) =>
                                 release(record.signal).pipe(
-                                    Effect.zipRight(provider.write(trusted, record, token, release(record.signal)))
+                                    Effect.zipRight(
+                                        provider.write(trusted, record, { ...token }, release(record.signal))
+                                    )
                                 ),
                             /** No provider backlog exists; a flush is only a fresh authority check. */
                             flush: () => release('flush'),

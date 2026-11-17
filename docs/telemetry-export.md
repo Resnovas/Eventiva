@@ -150,6 +150,32 @@ Source evidence: `packages/contracts/src/module-manifest.ts` and `packages/runti
 
 ## Keep host provenance authoritative
 
+### Preserve admitted scope across adapter calls
+
+The runtime keeps its decoded binding and request correlation token private.
+Every authority and provider call receives a fresh scalar copy, including export
+flush and the transport's final correlation release check. An adapter that
+changes or retains its view cannot change the next record's admitted profile,
+purpose, generation, pseudonyms or expiry. This is in-process reference isolation,
+not a sandbox for arbitrary adapter code or a new release permission.
+
+For example, a Baseline pipeline still refuses a Sensitive record with
+`unavailable` after its provider changes the received binding to Sensitive;
+later Baseline records still export with catalog text and empty attributes.
+Likewise, changing a released token's session/person cannot relabel later writes,
+and advancing its epoch/expiry cannot carry the request across the next UTC hour.
+Flush uses the same original-bound checks and cannot revive an expired request.
+
+Run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts` to include
+the retained-reference regressions and untouched controls. The batch-7 red-first
+checkpoint on unchanged main failed eight mutation cases while four new controls
+and the existing tests in both affected files passed. The correction changes no
+contract or option: export/correlation remain default-off, live authorization and
+opt-in remain required, and the approved hourly UTC refresh remains unchanged.
+Track delivery evidence on [EVE-60](https://linear.app/resnovas/issue/EVE-60) and
+[EVE-44](https://linear.app/resnovas/issue/EVE-44); neither issue is completed by
+this bounded fix. Real ingestion and key-custody acceptance remain separate.
+
 `TelemetryExportBinding` contains `tenantId`, exact `moduleId`/`moduleVersion`, nonnegative safe-integer `generation`, static `profile`, existing hook `operation`, `purpose` and `destinationId`. All are required with no defaults; extra fields reject. The destination is a host-approved opaque UUID pseudonym for export, not the raw tenant/principal identifier. This module neither generates it nor selects a cryptographic algorithm.
 
 Build one pipeline per trusted tenant/security scope. Never attach one tenant binding to a mixed global logger. A record has no authority to select a tenant, profile or operation. Restricted/Vault and every non-ordinary operation (protected, financial, emergency, decrypting) fail closed, even if a record falsely declares Baseline and an injected authority allows it. Baseline/Sensitive records must exactly match the host profile. Event existence and timing still need authorization.

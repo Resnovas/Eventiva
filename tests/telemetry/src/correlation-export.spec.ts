@@ -144,6 +144,159 @@ const sinkLayer = (
     );
 
 describe('fixture-only pseudonymous correlation', /** Exercise public issuer, request lease and optional refresh contracts. */ () => {
+    for (const adapter of ['control', 'authority', 'provider'] as const) {
+        for (const mutation of ['pair', 'lease'] as const) {
+            it.effect(
+                `preserves request correlation after retained ${adapter} ${mutation} mutation`,
+                /** Previously released adapter views cannot relabel the next write or extend an hourly lease. */ () =>
+                    Effect.gen(
+                        /** Mutate retained references only after successful dispatch, then cross the exact UTC boundary. */ function* () {
+                            const token: TelemetryCorrelation = {
+                                version: 1,
+                                session: 'a'.repeat(64),
+                                person: 'b'.repeat(64),
+                                epoch: 0,
+                                expiresAt: hour,
+                            };
+                            const retained: TelemetryCorrelation[] = [];
+                            const received: TelemetryCorrelation[] = [];
+                            const scopes: TelemetryExportBinding[] = [];
+                            yield* Effect.gen(
+                                /** An unchanged control follows the same writes, flush and rotation as corrupting adapters. */ function* () {
+                                    const sink = yield* TelemetrySink;
+                                    // Advancing the epoch before release already fails closed; retain aliases only after success.
+                                    yield* sink.write(record);
+                                    if (mutation === 'pair')
+                                        for (const view of retained)
+                                            Object.assign(view, { session: 'c'.repeat(64), person: 'd'.repeat(64) });
+                                    yield* sink.write(record);
+                                    yield* sink.flush;
+                                    expect(received).toEqual([token, token]);
+                                    for (const scope of scopes) expect(scope).toEqual(binding);
+                                    if (mutation === 'lease')
+                                        for (const view of retained)
+                                            Object.assign(view, { epoch: 1, expiresAt: 2 * hour });
+                                    // A released view naming the next epoch must not extend the original request capability.
+                                    yield* TestClock.adjust(hour);
+                                    expect((yield* Effect.flip(sink.write(record))).reason).toBe('unavailable');
+                                    expect((yield* Effect.flip(sink.flush)).reason).toBe('unavailable');
+                                    expect(received).toEqual([token, token]);
+                                }
+                            ).pipe(
+                                Effect.provide(
+                                    sinkLayer(
+                                        token,
+                                        Layer.succeed(CorrelationProvider, {
+                                            /** Run the final release fence before retaining the provider's view. */
+                                            write: (scope, _record, pair, check) =>
+                                                check.pipe(
+                                                    Effect.zipRight(
+                                                        Effect.sync(
+                                                            /** Snapshots assert visible delivery independently of later reference corruption. */ () => {
+                                                                scopes.push({ ...scope });
+                                                                received.push({ ...pair });
+                                                                if (adapter === 'provider') retained.push(pair);
+                                                            }
+                                                        )
+                                                    )
+                                                ),
+                                        })
+                                    ).pipe(
+                                        Layer.provide(
+                                            Layer.succeed(CorrelationAuthority, {
+                                                /** Permit release while retaining only this authority's disposable view. */
+                                                authorize: (scope, pair) =>
+                                                    Effect.sync(
+                                                        /** Retain the token for later corruption and rewrite only this binding view now. */ () => {
+                                                            scopes.push({ ...scope });
+                                                            if (adapter === 'authority') {
+                                                                retained.push(pair);
+                                                                if (mutation === 'pair')
+                                                                    Object.assign(scope, {
+                                                                        purpose: 'changed',
+                                                                        generation: 99,
+                                                                    });
+                                                            }
+                                                        }
+                                                    ),
+                                            })
+                                        )
+                                    )
+                                )
+                            );
+                        }
+                    )
+            );
+        }
+    }
+
+    it.effect(
+        'rechecks each independent live flag on writes and flush without losing the admitted pair',
+        /** Disabling either flag revokes an existing sink, while reenabling it cannot change its request token. */ () =>
+            Effect.gen(
+                /** Use a permissive authority so only the runtime flag fence can deny delivery. */ function* () {
+                    const token: TelemetryCorrelation = {
+                        version: 1,
+                        session: 'a'.repeat(64),
+                        person: 'b'.repeat(64),
+                        epoch: 0,
+                        expiresAt: hour,
+                    };
+                    for (const key of ['telemetry.export.enabled', 'telemetry.correlation.pseudonymous.enabled']) {
+                        const active = yield* Ref.make(true);
+                        const output = collector();
+                        const flags = Layer.succeed(Flags, {
+                            /** All flags except the selected live gate remain explicitly enabled. */
+                            evaluate: (flag) =>
+                                Ref.get(active).pipe(
+                                    Effect.map(
+                                        /** Read live state rather than caching acquisition-time permission. */ (
+                                            value
+                                        ) => ({
+                                            ...safeDefault(flag),
+                                            value: flag.key !== key || value,
+                                        })
+                                    )
+                                ),
+                        });
+                        yield* Effect.gen(
+                            /** Both delivery paths must deny during revocation and recover only in the original epoch. */ function* () {
+                                const sink = yield* TelemetrySink;
+                                yield* sink.write(record);
+                                yield* Ref.set(active, false);
+                                expect((yield* Effect.flip(sink.write(record))).reason).toBe('unavailable');
+                                expect((yield* Effect.flip(sink.flush)).reason).toBe('unavailable');
+                                yield* Ref.set(active, true);
+                                yield* sink.write(record);
+                                yield* sink.flush;
+                                expect(output.writes).toEqual([
+                                    {
+                                        record: { ...record, text: 'Request failed.', attributes: {} },
+                                        correlation: token,
+                                    },
+                                    {
+                                        record: { ...record, text: 'Request failed.', attributes: {} },
+                                        correlation: token,
+                                    },
+                                ]);
+                            }
+                        ).pipe(
+                            Effect.provide(
+                                sinkLayer(token, output.layer, true, binding, flags).pipe(
+                                    Layer.provide(
+                                        Layer.succeed(CorrelationAuthority, {
+                                            /** Isolate runtime gates from fixture identity and consent validation. */
+                                            authorize: () => Effect.void,
+                                        })
+                                    )
+                                )
+                            )
+                        );
+                    }
+                }
+            )
+    );
+
     it.effect(
         'sends only the current pseudonymous pair over a real loopback OTLP socket and rejects late dispatch',
         /** Use actual HTTP rather than a fetch mock to prove the serialized release boundary. */ () =>

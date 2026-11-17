@@ -83,6 +83,24 @@ Keep the dependency direction runtime -> contracts <- integration. The only hook
 
 ## Security and lifecycle invariants
 
+Keep decoded bindings and request tokens private to the runtime. Each authority
+and provider invocation receives a fresh scalar view, including export flush
+and correlation's final release callback. Copies cover all binding/token fields;
+no contract, new dependency or rollout option is added. Retained adapter writes
+cannot alter a later profile comparison, grant binding, pair or hourly expiry.
+This isolates references, not arbitrary executable adapter behavior.
+
+For example, changing a provider's Baseline binding view to Sensitive still
+leaves Sensitive records denied `unavailable` and Baseline records exporting
+under the original binding. Changing a released token's person/session leaves
+the next write's pair unchanged; advancing epoch/expiresAt cannot extend the
+request beyond the original UTC-hour boundary. Expired writes and flush deny.
+`export.spec.ts` and `correlation-export.spec.ts` retain untouched controls and
+red-first authority/provider regressions. Run the normal telemetry suite above;
+keep existing opt-in, protected-floor, both flag, disposal, minimization and
+automatic refresh tests. EVE-60/EVE-44 remain open; this fixture proof is not
+ingestion, real-key custody or production authorization.
+
 Use only authenticated host bindings, one per tenant/security scope. Never classify a mixed global stream with one tenant binding. Deny Restricted/Vault and all protected/financial/emergency/decrypting operation scopes independently of record claims and injected policy. Record profile must match static host profile. The flag is `telemetry.export.enabled`, default false, checked on every write and flush. Neither flags nor admission grant decryption or release authority.
 
 Require catalog membership, replace text, drop all attributes and reauthorize when the worker delivers. The provider rechecks the complete binding. Remote output contains neither tenant identity nor free text; the host must approve a separate opaque destination pseudonym. Do not route directly from feature code to a provider, console, file or SDK. No host, kernel or app composition changes are part of this increment.

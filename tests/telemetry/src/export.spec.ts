@@ -77,6 +77,92 @@ const provider = (records: Array<TelemetryRecord>) =>
     });
 
 describe('governed telemetry export', /** Register vendor-independent export authorization and privacy regressions. */ () => {
+    for (const adapter of ['control', 'authority', 'provider'] as const) {
+        for (const operation of ['write', 'flush'] as const) {
+            it.effect(
+                `preserves admitted export scope after ${adapter} mutation during ${operation}`,
+                /** Adapter-owned views cannot widen later records or replace the original baseline scope. */ () =>
+                    Effect.gen(
+                        /** Compare asymmetric profiles and all delivered bindings through the public sink. */ function* () {
+                            const records: TelemetryRecord[] = [];
+                            const observed: TelemetryExportBinding[] = [];
+                            let changed = false;
+                            /** Mutate the first selected adapter view, never the fixture's trusted input. */
+                            const inspect = (scope: TelemetryExportBinding, source: string, phase: string) => {
+                                // Snapshot before corruption so the expectation cannot alias the adapter's later writes.
+                                observed.push({ ...scope });
+                                if (!changed && source === adapter && phase === operation) {
+                                    Object.assign(scope, { profile: 'sensitive', purpose: 'changed', generation: 99 });
+                                    changed = true;
+                                }
+                            };
+                            yield* Effect.gen(
+                                /** Mutation must neither admit sensitive records nor disable baseline delivery. */ function* () {
+                                    const sink = yield* TelemetrySink;
+                                    // First establish a valid release; the defect concerns reuse, not invalid acquisition.
+                                    if (operation === 'flush') yield* sink.flush;
+                                    else yield* sink.write(record);
+                                    expect(
+                                        (yield* Effect.flip(sink.write({ ...record, profile: 'sensitive' }))).reason
+                                    ).toBe('unavailable');
+                                    yield* sink.write(record);
+                                    yield* sink.flush;
+                                }
+                            ).pipe(
+                                Effect.provide(
+                                    governedTelemetrySinkLayer(binding, policy).pipe(
+                                        Layer.provide(enabled),
+                                        Layer.provide(
+                                            Layer.succeed(TelemetryExportAuthority, {
+                                                /** Observe the exact current scope before attempting adapter corruption. */
+                                                authorize: (scope, phase) =>
+                                                    Effect.sync(
+                                                        /** Flush and record authorization expose separate disposable views. */ () =>
+                                                            inspect(
+                                                                scope,
+                                                                'authority',
+                                                                phase === 'flush' ? 'flush' : 'write'
+                                                            )
+                                                    ),
+                                            })
+                                        ),
+                                        Layer.provide(
+                                            Layer.succeed(TelemetryExportProvider, {
+                                                /** Capture only the minimized record while corrupting the received binding. */
+                                                write: (scope, projected) =>
+                                                    Effect.sync(
+                                                        /** The mutation happens after the first release, not during setup. */ () => {
+                                                            records.push(projected);
+                                                            inspect(scope, 'provider', 'write');
+                                                        }
+                                                    ),
+                                                /** A payload-free flush must not change subsequent release scope either. */
+                                                flush: (scope) =>
+                                                    Effect.sync(
+                                                        /** Exercise flush through the same adapter boundary as transport. */ () =>
+                                                            inspect(scope, 'provider', 'flush')
+                                                    ),
+                                            })
+                                        )
+                                    )
+                                )
+                            );
+                            expect(records).toEqual(
+                                Array(operation === 'write' ? 2 : 1).fill({
+                                    ...record,
+                                    text: 'Completed.',
+                                    attributes: {},
+                                })
+                            );
+                            expect(observed.length).toBeGreaterThan(0);
+                            for (const scope of observed) expect(scope).toEqual(binding);
+                            expect(changed).toBe(adapter !== 'control');
+                        }
+                    )
+            );
+        }
+    }
+
     it.effect(
         'projects catalog text, drops every input attribute and preserves correlation with interchangeable providers',
         /** Exercise the same safe projection for logs and spans. */ () =>
