@@ -315,3 +315,12 @@ A kill before the next sink commit rolls back both its marker and cursor, so the
 next process retries it. This is local consumer crash/reopen evidence only. The
 fixture supplies no public endpoint, native execution, release authorization,
 concurrent-consumer protocol or general exactly-once external-effect guarantee.
+
+## Inspect worker telemetry
+
+The real dispatcher emits fixed spans for dispatch, claim, release, delivery and
+settlement. Follow [Hook worker telemetry](hook-worker-telemetry.md) to allow-list
+the bounded names/outcomes in the existing central collector and interpret
+timeouts, retries and denied release. No event content or identifiers are attached.
+These spans inherit only current process context; durable producer trace handoff
+and restart continuity remain separate requirements.

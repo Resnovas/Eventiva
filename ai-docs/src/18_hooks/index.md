@@ -96,3 +96,12 @@ A SIGKILL before sink commit preserves the old cursor and retries the fact.
 Public feed.read remains outside the sink transaction. Do not generalize this
 sequential fixture to concurrent consumers, native targets, release policy or
 arbitrary external effects; none is activated by the fixture.
+
+## Real worker spans
+
+`HookDispatcherLive` emits fixed dispatch/claim/release/deliver/settle spans with
+bounded outcome codes. See [the worker guide](02_worker-telemetry.md) and
+`tests/runtime/src/hook-telemetry.spec.ts` for real dispatcher/central collector
+proof. Allow-list static names and `eventiva.hook.outcome` values only; never pass
+claims, payloads or raw causes as attributes. No persisted producer handoff or
+restart trace continuity is supplied by this process-local instrumentation.

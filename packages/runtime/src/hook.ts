@@ -26,9 +26,10 @@ import {
     hookReleaseRequirements,
     hookFlag,
     type HookPin,
+    type HookSettlement,
 } from '@eventiva/contracts/hook';
 import { Flags } from '@eventiva/contracts/flags';
-import { Clock, Context, Effect, Exit, Layer, Option, Ref, Schema, type Scope } from 'effect';
+import { Cause, Clock, Context, Effect, Exit, Layer, Option, Ref, Schema, type Scope } from 'effect';
 
 /** Trusted dispatcher, not a plugin callback or decryption service. Additive requests MUST go through the
  * canonical ActionHost with a scoped service principal, fresh resource policy and ALL normal human approvals.
@@ -53,6 +54,27 @@ type Callback = (event: HookEvent, idempotencyKey: string) => Effect.Effect<void
 const keyOf = (pin: HookPin): string =>
     JSON.stringify([pin.tenant, pin.owner.module, pin.owner.version, pin.owner.generation, pin.hook, pin.revision]);
 type DispatchResult = 'unloaded' | 'disabled' | 'empty' | 'delivered' | 'retry' | 'dead-letter';
+type WorkerOutcome = DispatchResult | 'succeeded' | 'failed' | 'interrupted' | 'timeout' | 'claimed' | 'settled';
+
+// Static codes only. Central telemetry sanitizes Exit causes before forwarding to an exporter.
+const workerSpan = <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    name: 'hook.dispatch' | 'hook.claim' | 'hook.release' | 'hook.deliver' | 'hook.settle',
+    outcome: (value: A) => WorkerOutcome
+) =>
+    effect.pipe(
+        Effect.onExit((exit) =>
+            Effect.annotateCurrentSpan(
+                'eventiva.hook.outcome',
+                Exit.isSuccess(exit)
+                    ? outcome(exit.value)
+                    : Cause.isInterruptedOnly(exit.cause)
+                      ? 'interrupted'
+                      : 'failed'
+            )
+        ),
+        Effect.withSpan(name, { captureStackTrace: false })
+    );
 
 export class HookDispatcher extends Context.Tag('@eventiva/runtime/HookDispatcher')<
     HookDispatcher,
@@ -87,6 +109,8 @@ export const HookDispatcherLive = Layer.effect(
         const flags = yield* Flags;
         const entries = yield* Ref.make<ReadonlyMap<string, Ref.Ref<boolean>>>(new Map());
         const registry = yield* Effect.makeSemaphore(1);
+        const settle = (claim: HookClaim, settlement: HookSettlement) =>
+            workerSpan(outbox.settle(claim, settlement), 'hook.settle', () => 'settled');
         const register = (raw: HookDeclaration, callback?: Callback) =>
             Effect.gen(function* () {
                 // Decoding copies the declaration: callers cannot change pins/policy after registration.
@@ -131,7 +155,11 @@ export const HookDispatcherLive = Layer.effect(
                         return yield* Effect.uninterruptibleMask((restore) =>
                             Effect.gen(function* () {
                                 const now = yield* Clock.currentTimeMillis;
-                                const leased = yield* outbox.claim(declaration, now);
+                                const leased = yield* workerSpan(
+                                    outbox.claim(declaration, now),
+                                    'hook.claim',
+                                    (lease) => (lease === undefined ? 'empty' : 'claimed')
+                                );
                                 if (leased === undefined) return 'empty' as const;
                                 const decoded = yield* Schema.decodeUnknown(HookClaim)(leased).pipe(Effect.either);
                                 // No validated lease identity exists: fail closed, never settle an invalid envelope.
@@ -159,7 +187,7 @@ export const HookDispatcherLive = Layer.effect(
                                     (protectedEvent && declaration.target === 'executable') ||
                                     (event.operation === 'financial' && declaration.capability.kind === 'additive');
                                 if (invalid || forbidden) {
-                                    yield* outbox.settle(claim, {
+                                    yield* settle(claim, {
                                         state: 'dead-letter',
                                         reason: invalid ? 'invalid' : 'denied',
                                     });
@@ -169,9 +197,16 @@ export const HookDispatcherLive = Layer.effect(
                                     Effect.suspend(() =>
                                         policy.authorize(declaration, event, hookReleaseRequirements(event))
                                     )
-                                ).pipe(Effect.timeoutOption(declaration.timeoutMs), Effect.exit);
+                                ).pipe(
+                                    Effect.timeoutOption(declaration.timeoutMs),
+                                    (effect) =>
+                                        workerSpan(effect, 'hook.release', (result) =>
+                                            Option.isSome(result) ? 'succeeded' : 'timeout'
+                                        ),
+                                    Effect.exit
+                                );
                                 if (Exit.isFailure(released) || Option.isNone(released.value)) {
-                                    yield* outbox.settle(claim, { state: 'dead-letter', reason: 'denied' });
+                                    yield* settle(claim, { state: 'dead-letter', reason: 'denied' });
                                     return 'dead-letter' as const;
                                 }
                                 const delivered = yield* restore(
@@ -180,9 +215,16 @@ export const HookDispatcherLive = Layer.effect(
                                             ? sink.deliver(declaration, event, claim.idempotencyKey)
                                             : callback(event, claim.idempotencyKey)
                                     )
-                                ).pipe(Effect.timeoutOption(declaration.timeoutMs), Effect.exit);
+                                ).pipe(
+                                    Effect.timeoutOption(declaration.timeoutMs),
+                                    (effect) =>
+                                        workerSpan(effect, 'hook.deliver', (result) =>
+                                            Option.isSome(result) ? 'succeeded' : 'timeout'
+                                        ),
+                                    Effect.exit
+                                );
                                 if (Exit.isSuccess(delivered) && Option.isSome(delivered.value)) {
-                                    yield* outbox.settle(claim, { state: 'delivered' });
+                                    yield* settle(claim, { state: 'delivered' });
                                     return 'delivered' as const;
                                 }
                                 const settlement =
@@ -192,13 +234,13 @@ export const HookDispatcherLive = Layer.effect(
                                               state: 'retry' as const,
                                               availableAt: (yield* Clock.currentTimeMillis) + declaration.retryDelayMs,
                                           };
-                                yield* outbox.settle(claim, settlement);
+                                yield* settle(claim, settlement);
                                 return settlement.state;
                             })
                         );
                     })
                 );
-                return { dispatch, drain };
+                return { dispatch: workerSpan(dispatch, 'hook.dispatch', (result) => result), drain };
             });
         return HookDispatcher.of({ register });
     })
