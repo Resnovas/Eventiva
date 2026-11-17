@@ -151,7 +151,7 @@ type KernelOutcome = 'succeeded' | 'failed' | 'interrupted' | 'emitted' | 'uncha
 // Operation observations only; central telemetry sanitizes Exit causes before export.
 const kernelSpan = <A, E, R>(
     effect: Effect.Effect<A, E, R>,
-    name: `kernel.${LifecycleOperation | 'compose' | 'preflight' | 'release'}`,
+    name: `kernel.${LifecycleOperation | 'compose' | 'preflight' | 'release' | 'provider.select' | 'workflow.acquire' | 'workflow.release'}`,
     outcome: (value: A) => KernelOutcome = () => 'succeeded'
 ) =>
     effect.pipe(
@@ -246,7 +246,7 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                     if (declaration.capability !== required.capability || declaration.version !== required.version)
                         return yield* error(consumer, 'capability-version');
                     return { binding, provider };
-                });
+                }).pipe((effect) => kernelSpan(effect, 'kernel.provider.select'));
             const plan = (
                 candidate?: Entry,
                 registry: ReadonlyMap<string, Entry> = entries,
@@ -773,9 +773,9 @@ export const KernelLive = (runtimeId: string): Layer.Layer<Kernel, KernelError, 
                                         return leases === 0
                                             ? Deferred.succeed(drained, undefined).pipe(Effect.asVoid)
                                             : Effect.void;
-                                    })
+                                    }).pipe((effect) => kernelSpan(effect, 'kernel.workflow.release'))
                             );
-                        })
+                        }).pipe((effect) => kernelSpan(effect, 'kernel.workflow.acquire'))
                     ),
                 snapshot: Effect.suspend(() =>
                     // Empty preflight state is observable without waiting for its lifecycle lock.

@@ -15,21 +15,24 @@ events or evidence that an application is ready for production.
 4. Run the lifecycle operation and flush `TelemetryControl` before inspecting a
    completed local snapshot. Check exporter health separately from its result.
 
-| Span                | Observed operation                                                |
-| ------------------- | ----------------------------------------------------------------- |
-| `kernel.register`   | Manifest admission and scoped registration                        |
-| `kernel.validate`   | Standalone validation and state transition                        |
-| `kernel.preflight`  | Non-mutating module validation, including composition candidates  |
-| `kernel.install`    | Installation and acquisition of the module's scoped services      |
-| `kernel.activate`   | Activation and provider validation                                |
-| `kernel.ready`      | Readiness checks or an unchanged-generation receipt               |
-| `kernel.deactivate` | Explicit deactivation                                             |
-| `kernel.unregister` | Explicit registration removal                                     |
-| `kernel.retire`     | Explicit retirement                                               |
-| `kernel.update`     | Candidate evaluation and replacement, or restart-required refusal |
-| `kernel.recover`    | Recovery through existing validation, installation and activation |
-| `kernel.compose`    | Whole-graph admission, preflight and startup or rollback          |
-| `kernel.release`    | Deactivation and scope closure, including failure cleanup         |
+| Span                      | Observed operation                                                |
+| ------------------------- | ----------------------------------------------------------------- |
+| `kernel.register`         | Manifest admission and scoped registration                        |
+| `kernel.validate`         | Standalone validation and state transition                        |
+| `kernel.preflight`        | Non-mutating module validation, including composition candidates  |
+| `kernel.install`          | Installation and acquisition of the module's scoped services      |
+| `kernel.activate`         | Activation and provider validation                                |
+| `kernel.ready`            | Readiness checks or an unchanged-generation receipt               |
+| `kernel.deactivate`       | Explicit deactivation                                             |
+| `kernel.unregister`       | Explicit registration removal                                     |
+| `kernel.retire`           | Explicit retirement                                               |
+| `kernel.update`           | Candidate evaluation and replacement, or restart-required refusal |
+| `kernel.recover`          | Recovery through existing validation, installation and activation |
+| `kernel.compose`          | Whole-graph admission, preflight and startup or rollback          |
+| `kernel.release`          | Deactivation and scope closure, including failure cleanup         |
+| `kernel.provider.select`  | Actual private provider selection, including internal resolution  |
+| `kernel.workflow.acquire` | Scoped workflow-lease admission and acquisition                   |
+| `kernel.workflow.release` | Workflow-lease release in its owning scope's finalizer            |
 
 The operation attribute is one of `succeeded`, `failed`, `interrupted`, `emitted`,
 `unchanged`, `updated` or `restart-required`. Readiness and composition use
@@ -51,6 +54,13 @@ well as spans. Composition traces contain the private install/activate/ready
 operations that actually execute. They do not invent register/validate spans for
 composition's separate candidate-admission path. Candidate update hooks likewise
 remain inside the update operation rather than fabricating public transitions.
+
+Provider selection is observed where the kernel actually resolves a binding,
+including internal module-environment resolution. Authorization denial before
+selection does not produce a selection observation. Lease acquisition is a
+short operation span, not workflow duration. Its release span appears only when
+the owning scope closes; rejected admission produces no release span. A held
+lease still rejects replacement, and closing its scope permits replacement.
 
 ## Privacy, options and missing records
 
