@@ -65,3 +65,35 @@ export const organisationLifecycle = Effect.gen(
         return { created, updated, archived, hidden, visibleArchive, restored, page, tenant: caller.tenant };
     }
 );
+
+/** Use an existing active organisation and fresh IDs/keys; sensitive work contacts never activate an HTTP route or verification. */
+export const organisationWorkContacts = Effect.gen(
+    /** Demonstrate exact canonical action names, expected revisions and explicit original-key recovery without logging contact values. */ function* () {
+        const host = yield* ActionHost;
+        const organisationId = '019b0000-0000-7000-8000-000000000001';
+        const id = '019b0000-0000-7000-8000-000000000011';
+        // The existing ActionName grammar is lowercase; conceptual contactPoint/setPrimary are not wire aliases.
+        const input = { id, organisationId, kind: 'email', label: 'work', value: 'Sales.Team+demo@Example.test' };
+        const added = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
+        const recovered = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
+        const updated = yield* host.invoke(
+            'crm.contact-point.update',
+            { id, organisationId, expectedRevision: 1, value: 'Sales.New@example.test' },
+            { idempotencyKey: 'crm-contact-update' }
+        );
+        const primary = yield* host.invoke(
+            'crm.contact-point.set-primary',
+            { id, organisationId, expectedRevision: 2 },
+            { idempotencyKey: 'crm-contact-primary' }
+        );
+        const current = yield* host.invoke('crm.contact-point.get', { id, organisationId });
+        const page = yield* host.invoke('crm.contact-point.list', { organisationId, limit: 50 });
+        const removed = yield* host.invoke(
+            'crm.contact-point.remove',
+            { id, organisationId, expectedRevision: 3 },
+            { idempotencyKey: 'crm-contact-remove' }
+        );
+        // Removal retains immutable history; authorized replay is historical output, not a fresh domain-state read.
+        return { added, recovered, updated, primary, current, page, removed };
+    }
+);

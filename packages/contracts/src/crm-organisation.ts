@@ -44,7 +44,7 @@ export type Organisation = typeof Organisation.Type;
 
 /** Bounded public failure codes never include names, input, SQL diagnostics or parser context. */
 export class OrganisationFailure extends Schema.TaggedError<OrganisationFailure>()('OrganisationFailure', {
-    reason: Schema.Literal('not-found', 'conflict', 'denied', 'unavailable'),
+    reason: Schema.Literal('not-found', 'conflict', 'denied', 'unavailable', 'invalid-value'),
 }) {}
 
 /** Optional CRM capability; enabling it never grants record or action authority. */
@@ -125,7 +125,99 @@ export const organisationActions = [
     organisationList,
 ];
 
-/** Declare only this bounded organisation slice; application composition owns migration and provider admission. */
+// Deliberately conservative ASCII syntax, not ownership/deliverability checks or external normalization.
+const WorkEmail = Schema.NonEmptyTrimmedString.pipe(
+    Schema.maxLength(254),
+    Schema.pattern(
+        /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)+$/
+    )
+);
+const WorkPhone = Schema.String.pipe(Schema.maxLength(16), Schema.pattern(/^\+[1-9][0-9]{6,14}$/));
+const contactIdentity = {
+    id: UuidV7,
+    organisationId: UuidV7,
+    revision: Revision,
+    label: Schema.Literal('work'),
+    primary: Schema.Boolean,
+    removed: Schema.Boolean,
+};
+/** Sensitive current/tombstone projection; syntax never implies verification, and kind/parent/label cannot change. */
+export const ContactPoint = Schema.Union(
+    Schema.Struct({ ...contactIdentity, kind: Schema.Literal('email'), value: WorkEmail }).annotations(strict),
+    Schema.Struct({ ...contactIdentity, kind: Schema.Literal('phone'), value: WorkPhone }).annotations(strict)
+);
+export type ContactPoint = typeof ContactPoint.Type;
+const contactTarget = { id: UuidV7, organisationId: UuidV7 };
+const contactExpected = { ...contactTarget, expectedRevision: Revision };
+export const contactPointAdd = define('crm.contact-point.add', {
+    ...write,
+    description: 'Add a distinct unverified work contact to an active organisation; initially non-primary.',
+    input: Schema.Union(
+        Schema.Struct({
+            ...contactTarget,
+            kind: Schema.Literal('email'),
+            label: Schema.Literal('work'),
+            value: WorkEmail,
+        }).annotations(strict),
+        Schema.Struct({
+            ...contactTarget,
+            kind: Schema.Literal('phone'),
+            label: Schema.Literal('work'),
+            value: WorkPhone,
+        }).annotations(strict)
+    ),
+    output: ContactPoint,
+});
+export const contactPointUpdate = define('crm.contact-point.update', {
+    ...write,
+    description: 'Replace only the contact value at its expected revision; stored kind determines syntax.',
+    input: Schema.Struct({
+        ...contactExpected,
+        value: Schema.NonEmptyTrimmedString.pipe(Schema.maxLength(254)),
+    }).annotations(strict),
+    output: ContactPoint,
+});
+export const contactPointRemove = define('crm.contact-point.remove', {
+    ...write,
+    description: 'Tombstone a work contact and clear its primary status without nominating a replacement.',
+    input: Schema.Struct(contactExpected).annotations(strict),
+    output: ContactPoint,
+});
+export const contactPointSetPrimary = define('crm.contact-point.set-primary', {
+    ...write,
+    description: 'Atomically select a live work contact as the only primary for its organisation and kind.',
+    input: Schema.Struct(contactExpected).annotations(strict),
+    output: ContactPoint,
+});
+export const contactPointGet = define('crm.contact-point.get', {
+    ...read,
+    description: 'Read a live work contact only through its accessible active organisation.',
+    input: Schema.Struct(contactTarget).annotations(strict),
+    output: ContactPoint,
+});
+export const contactPointList = define('crm.contact-point.list', {
+    ...read,
+    description: 'List live organisation work contacts in exclusive ID order, default 50, maximum 100.',
+    input: Schema.Struct({
+        organisationId: UuidV7,
+        after: Schema.optionalWith(UuidV7, { exact: true }),
+        limit: Schema.optionalWith(Schema.Number.pipe(Schema.int(), Schema.between(1, 100)), { exact: true }),
+    }).annotations(strict),
+    output: Schema.Struct({
+        items: Schema.Array(ContactPoint),
+        after: Schema.optionalWith(UuidV7, { exact: true }),
+    }).annotations(strict),
+});
+export const contactPointActions = [
+    contactPointAdd,
+    contactPointUpdate,
+    contactPointRemove,
+    contactPointSetPrimary,
+    contactPointGet,
+    contactPointList,
+];
+
+/** Declare organisation pairs, work contacts and primary guards; application composition owns migration and provider admission. */
 export const organisationResources = Effect.gen(
     /** Share stable record IDs between the supertype and subtype without copying tenant routing into domain rows. */ function* () {
         const party = yield* declareResource({
@@ -151,6 +243,32 @@ export const organisationResources = Effect.gen(
                 tradingName: { type: 'text', optional: true },
             },
         });
-        return { party, organisation };
+        const contactPoint = yield* declareResource({
+            id: 'crm.contact-point',
+            owner: 'app.crm',
+            moduleVersion: '1.0.0',
+            fields: {
+                organisationId: { type: 'uuid', optional: false },
+                kind: { type: 'text', optional: false },
+                label: { type: 'text', optional: false },
+                value: { type: 'text', optional: false },
+                primary: { type: 'boolean', optional: false },
+                removed: { type: 'boolean', optional: false },
+            },
+        });
+        // Separate resources let the organisation UUID serialize each kind without lossy UUID key derivation or parent writes.
+        const emailPrimary = yield* declareResource({
+            id: 'crm.email-primary-guard',
+            owner: 'app.crm',
+            moduleVersion: '1.0.0',
+            fields: { marker: { type: 'boolean', optional: false } },
+        });
+        const phonePrimary = yield* declareResource({
+            id: 'crm.phone-primary-guard',
+            owner: 'app.crm',
+            moduleVersion: '1.0.0',
+            fields: { marker: { type: 'boolean', optional: false } },
+        });
+        return { party, organisation, contactPoint, emailPrimary, phonePrimary };
     }
 );

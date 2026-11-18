@@ -22,6 +22,11 @@ import {
     organisationCreate,
     organisationList,
     organisationResources,
+    contactPointActions,
+    contactPointAdd,
+    contactPointUpdate,
+    contactPointList,
+    ContactPoint,
 } from '@eventiva/contracts/crm-organisation';
 import { validateDefinitions, validateInventory } from '@eventiva/contracts/inventory';
 import { make } from '@eventiva/contracts/json-schema';
@@ -74,6 +79,113 @@ describe('CRM organisation contracts', /** Keep bounded wire validation independ
                     });
                     expect(
                         Either.isRight(yield* Effect.either(make(Schema.Struct({ active: Schema.Boolean }), 'google')))
+                    ).toBe(true);
+                }
+            )
+    );
+    it.effect(
+        'keeps work contacts sensitive, bounded and outside claimed provider parity',
+        /** All contact specifications use the same live CRM gate without a transport exemption. */ () =>
+            Effect.gen(
+                /** Distinguish local definition validity from the explicitly unsupported provider projection. */ function* () {
+                    // Keep metadata admission and actual runtime decoding separate from conservative provider-schema compatibility.
+                    yield* validateDefinitions(contactPointActions);
+                    expect(
+                        contactPointActions.map(/** Assert the six canonical additions only. */ (spec) => spec.name)
+                    ).toEqual([
+                        'crm.contact-point.add',
+                        'crm.contact-point.update',
+                        'crm.contact-point.remove',
+                        'crm.contact-point.set-primary',
+                        'crm.contact-point.get',
+                        'crm.contact-point.list',
+                    ]);
+                    for (const spec of contactPointActions) {
+                        expect(spec.sensitive).toBe(true);
+                        expect(spec.offline).toBe('online-only');
+                        expect(spec.flag).toMatchObject({ _tag: 'Some', value: 'crm.enabled' });
+                        expect(spec.permission).toBe(spec.sideEffect === 'read' ? 'crm.read' : 'crm.write');
+                    }
+                    expect(yield* Effect.either(validateInventory(contactPointActions))).toMatchObject({
+                        left: { _tag: 'UnsupportedSchema' },
+                    });
+                    const input = {
+                        id: '019b0000-0000-7000-8000-000000000011',
+                        organisationId: '019b0000-0000-7000-8000-000000000001',
+                        label: 'work',
+                        kind: 'email',
+                        value: 'Sales.Team+demo@Example.test',
+                    };
+                    const decode = Schema.decodeUnknownEither(contactPointAdd.input);
+                    expect(Either.isRight(decode(input))).toBe(true);
+                    expect(Either.isRight(decode({ ...input, kind: 'phone', value: '+442079460123' }))).toBe(true);
+                    for (const invalid of [
+                        { value: 'a..b@example.test' },
+                        { value: 'user@-bad.test' },
+                        { value: ' user@example.test' },
+                        { value: 'a@b' },
+                        { value: 'x'.repeat(255) },
+                        { kind: 'phone', value: '020 7946 0123' },
+                        { kind: 'phone', value: '+012345678' },
+                        { kind: 'phone', value: '+1234567890123456' },
+                        { label: 'personal' },
+                        { kind: 'website' },
+                        { primary: true },
+                        { verified: true },
+                        { tenant: input.id },
+                        { owner: input.id },
+                        { createdBy: input.id },
+                        { userId: input.id },
+                        { visibility: 'team' },
+                        { visibility: 'private' },
+                    ])
+                        expect(Either.isLeft(decode({ ...input, ...invalid }))).toBe(true);
+                    const update = {
+                        id: input.id,
+                        organisationId: input.organisationId,
+                        expectedRevision: 1,
+                        value: 'new@example.test',
+                    };
+                    for (const forged of [
+                        { kind: 'phone' },
+                        { label: 'personal' },
+                        { primary: true },
+                        { verified: true },
+                        { owner: input.id },
+                    ])
+                        expect(
+                            Either.isLeft(
+                                Schema.decodeUnknownEither(contactPointUpdate.input)({ ...update, ...forged })
+                            )
+                        ).toBe(true);
+                    for (const limit of [0, 101, 1.5])
+                        expect(
+                            Either.isLeft(
+                                Schema.decodeUnknownEither(contactPointList.input)({
+                                    organisationId: input.organisationId,
+                                    limit,
+                                })
+                            )
+                        ).toBe(true);
+                    for (const limit of [1, 100])
+                        expect(
+                            Either.isRight(
+                                Schema.decodeUnknownEither(contactPointList.input)({
+                                    organisationId: input.organisationId,
+                                    limit,
+                                })
+                            )
+                        ).toBe(true);
+                    expect(
+                        Either.isLeft(
+                            Schema.decodeUnknownEither(ContactPoint)({
+                                ...input,
+                                revision: 1,
+                                primary: false,
+                                removed: false,
+                                verified: true,
+                            })
+                        )
                     ).toBe(true);
                 }
             )

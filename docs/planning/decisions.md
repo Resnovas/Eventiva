@@ -63,6 +63,37 @@ replace stable original SQL committed evidence. Original HTTP entry/spec,
 identity/SQL/execution/compiler and unpublished trust files are not amended.
 The separate client lane requires no batch implementation or shared source edit.
 
+## Organisation work-contact continuation - 2026-11-18
+
+The owner-relayed [revision 10 rank-1 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+select organisation-only work email/phone contacts on the delivered backend.
+The [EVE-68 scope checkpoint](https://linear.app/resnovas/issue/EVE-68#comment-2ab7c5ec-9d28-4283-964d-bb422021dba5)
+records this bounded continuation; it supersedes the earlier contacts-deferred
+statement below only for organisation work email/phone. Exact owner-selection
+time is unknown. Broader EVE-68 remains Backlog, not accepted or released.
+
+The [CRM guide](../crm-organisations.md#manage-organisation-work-contacts) owns
+the contract: six sensitive online-only operations, strict immutable
+parent/kind/work label, stable UUIDv7 contact identity, revisioned values and
+tombstone history, without deduplication, verification or parent-pair rewrites.
+Persisted per-organisation/kind guards serialize primary selection across all
+storage pages under the existing provider transaction owner. Live CRM flag,
+action/target/resource authority and active-parent checks remain required.
+Historical authorized durable replay is not a fresh read: parent archive alone
+does not revoke replay authorization.
+
+The packet's conceptual `crm.contactPoint.*` and `setPrimary` fail current
+ActionName validation. This bounded implementation uses existing canonical
+lowercase grammar, `crm.contact-point.*` and `set-primary`, without aliases or
+shared grammar edits. This is an implementation spelling reconciliation, not
+a new general naming policy or permission family. Provider discovery remains
+incomplete on intact bounded schemas; UUID normalization is not bounds parity.
+Person/User, personal kinds, private/team sharing, masking, affiliations, undo,
+UI/offline/native and transport/provider acceptance remain separate. No shared
+Resources/SQL/compiler/trust API, migration, dependency, production activation
+or spend is selected. EVE-248 remains deferred until January 2027.
+
 ## Bounded CRM organisation backend - 2026-11-18
 
 The owner-relayed [revision 4 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
