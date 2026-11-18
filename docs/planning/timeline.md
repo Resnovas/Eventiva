@@ -2,6 +2,30 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Development task traceability rollout - 2026-11-18
+
+[EVE-266](https://linear.app/resnovas/issue/EVE-266) and its independently verified automatic [GitHub mirror #1053](https://github.com/Resnovas/Eventiva/issues/1053) own this bounded house/Eventiva guidance and offline commit-enforcement rollout. The [implementation thread](https://ampcode.com/threads/T-aab6c3a2-486c-4ef0-a267-8df2b3e6996e) follows Jonathan's [requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). This is contemporary evidence, not a full live refresh of the historical all-issue capture. No application lane, dependency or read-only audit status is changed.
+
+| Transition | Actual activity and evidence | Remaining whole-issue acceptance |
+| --- | --- | --- |
+| Started 2026-11-18; exact initial discovery time unknown | Read-only governance review found no owning task. SMC-156 is an earlier completed hook rollout; broader issues were not repurposed. Dedicated EVE-266 created at 15:54:34.654Z after authorization, In Progress with this thread and bounded scope. | Resolve and independently verify the automatically mirrored GitHub issue before task commits. |
+| Mapping resolved; implementation active 2026-11-18 | Linear attachment and terminal sync comment identify Eventiva#1053; GitHub OPEN issue and EVE-266 linkback independently read. No duplicate created. [Checkpoint](https://linear.app/resnovas/issue/EVE-266#comment-4933fd9f) records the pair and normal upstream acceptance boundary. | Local guidance, tests/gates, signed delivery, house human acceptance and normal downstream sync remain separate. |
+| Focused enforcement verification completed 2026-11-18 | On house base bb465f5 with task edits, `node --test test/commit-check.test.mjs` first reports 9 pass / 3 fail on the unchanged checker, then 12 pass / 0 fail with the opt-in syntax guard. Generated docs/graph subjects, wrong/bare/pull references, git comments/diff, invalid prefix and unmapped compatibility are exercised. | Full house render/test/check and Eventiva documentation/check; local proof is not published or accepted enforcement. |
+| House proposal delivered 2026-11-18T16:03Z; draft boundary verified at 16:04Z | Signed [source](https://github.com/Resnovas/.github/commit/9be987c27b06c5f1243333c0b01fccc42b4149a6) and [graph](https://github.com/Resnovas/.github/commit/d775961ca4c6e07019230bf003aa772abd79b867) are published in [house PR #50](https://github.com/Resnovas/.github/pull/50). Normal render reports 304 files/3 changed; `node --run test` passes 92 tests, 100% lines/98.58% branches; `node --run check` passes. `linear-code[bot]` marked it ready at 16:04:06Z; this task restored draft status and verified it. [Progress reply](https://github.com/Resnovas/Eventiva/issues/1053#issuecomment-6984016905) independently confirms tracker synchronization. | Remote CI remains pending; human house acceptance and normal managed downstream sync are not performed or inferred. |
+| Eventiva local delivery being finalized 2026-11-18T16:04Z | Rebased onto current main e1b78bdc without application-lane edits; planning/LLMS regenerated. `node --run check` passes 104 fixtures, 258 mirrored issues/593 comments/0 stale pages, planning 692 edges/0 unresolved/0 stale, 265 editable TypeScript files/0 strict findings. `node tools/documentation/planning.mjs --check --require-reviewed` passes. | Signed local-source/clean-source graph delivery and final handoff evidence remain active in this thread. No full application verify or hosted CI success is claimed. |
+| House acceptance and managed Eventiva sync | Upcoming; not running or accepted. Canonical template/checker source is proposed upstream, never copied into downstream managed blocks. Eventiva-local procedure applies now; `TASK_LINEAR_PREFIX: EVE` is pending checker activation. | Next acceptance owner is Jonathan for house review/acceptance, followed by normal downstream managed sync and final checks. EVE-266 stays open; no whole-issue Done/closure or production authority. |
+
+```mermaid
+flowchart LR
+    Mapping["EVE-266 / Eventiva#1053 verified"] --> Local["Eventiva local lifecycle guidance"]
+    Mapping --> House["Canonical house template and regression proof"]
+    House --> Review["PR 50: pending human house acceptance"]
+    Review --> Sync["Pending normal Eventiva managed sync"]
+    Local --> Verify["Current-source checks and signed delivery"]
+    Sync --> Acceptance["Full rollout acceptance remains open"]
+    Verify --> Acceptance
+```
+
 ## Portable typed sequential batch client - 2026-11-18
 
 The owner-relayed revision-8 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)

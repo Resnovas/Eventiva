@@ -2,6 +2,12 @@
 
 Current documentation enforcement is the 2026-11-18 thirteenth checkpoint at the end of this section: empty accepted ledger, complete live queue zero and a strict root scanner. Earlier dated checkpoint counts/holds are historical, not current exemptions. Executed gates, publication and remote CI remain distinct evidence in the canonical backlog and tracking issues.
 
+## Development task traceability - 2026-11-18
+
+Apply the canonical [task lifecycle and verified mapping procedure](../../../docs/planning/README.md#development-task-lifecycle-and-mapping) at actual start, blockage, pause/handoff and verified delivery. Each development task owns its Linear issue, verified linked GitHub issue and authored canonical timeline updates, including this Amp thread, bounded scope/owner, exact evidence and remaining whole-issue acceptance. Read-only requests grant no writes. Preserve other active slices; paused/unassigned work is not running, and shipped slices do not close broader issues. Every mapped task commit, including generated docs/graph commits, carries both verified IDs with non-closing `Refs` for partial delivery. The rollout pair is EVE-266 / Resnovas/Eventiva#1053, not a mapping for other tasks.
+
+`sync.values.TASK_LINEAR_PREFIX: EVE` prepares Eventiva for the canonical offline commit checker; it is not active enforcement until human house acceptance and normal downstream sync. Do not patch downstream managed AGENTS/checker content from an unaccepted proposal. The guard checks reference syntax, not actual tracker links, writes or acceptance. Preserve frozen mirror provenance, regenerate affected outputs from current source and retain independent delivery ownership. The rollout's actual state and pending acceptance are recorded in the [timeline](../../../docs/planning/timeline.md), not inferred from generated snapshot status.
+
 ## Historical canonical tooling checkpoint - 2026-11-17
 
 The canonical house tooling JSDoc packet was accepted by Jonathan in

@@ -43,6 +43,8 @@ sync:
     - .github/workflows/house-scorecard.yml
   values:
     HOUSE_PRESET: house-base.yml
+    # EVE-266: activates only after accepted canonical checker synchronization.
+    TASK_LINEAR_PREFIX: EVE
 
 # Require the real house gate and the application checks (EVE-244,
 # .github/workflows/ci.yml) even when a restricted PR skips aggregation.
