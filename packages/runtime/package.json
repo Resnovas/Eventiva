@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./catalogue-import": {
+            "@eventiva/source": "./src/catalogue-import.ts",
+            "types": "./dist/catalogue-import.d.ts",
+            "default": "./dist/catalogue-import.js"
+        },
         "./payment-sandbox": {
             "@eventiva/source": "./src/payment-sandbox.ts",
             "types": "./dist/payment-sandbox.d.ts",

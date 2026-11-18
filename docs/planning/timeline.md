@@ -2,6 +2,26 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Consent-gated catalogue preparation - 2026-11-18
+
+[EVE-247](https://linear.app/resnovas/issue/EVE-247) slice 2 follows Jonathan's explicit continuation in [the coordinating thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). The [catalogue guide](../catalogue.md#rights-and-supplier-consent-checkpoint---2026-11-18) owns cited rights findings, source authority, CSV bounds and remaining acceptance.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Manufacturer rights desk review | Completed, no acquisition grant found | Official DULA/trademark pages do not establish general catalogue reuse rights; robots rules are not licences. No consented supplier sample or external acquisition. |
+| Tenant-bound source and CSV preparation | Implemented; focused verification passed | Trusted source/evidence lookup, current tenant checks, 30-day maximum review age, expiry/revocation and literal CSV parsing feed the existing exact-match preview. Five public-flow tests pass with synthetic data and fake time. |
+| Shared outputs and delivery gates | Verification completed; signed delivery recorded on EVE-247 | After rebasing onto the reviewed Alpine fixture main, `node --run verify` passed all aggregate targets and smoke; strict planning and Nx sync passed. LLMS/planning and the clean-source graph are regenerated for the signed slice; exact main SHAs and final checks are recorded on EVE-247. |
+| Real samples, actions and durable import | Upcoming / separate acceptance | Obtain actual reviewed source permission; build upload/mapping/review journey and tenant Resources/Storage commit with fresh authorization, idempotency, audit and undo. No production activation. |
+
+```mermaid
+flowchart LR
+    Rights["Review actual source rights"] --> Source["Tenant-bound exact source and evidence"]
+    Source --> CSV["Bounded canonical CSV"]
+    CSV --> Preview["Exact matches or positioned corrections"]
+    Preview --> Gates["Verify and deliver portable slice"]
+    Gates --> Later["Separate authorized durable import and undo"]
+```
+
 ## Concrete trust and marketplace parameters - 2026-11-18
 
 Jonathan approved standard concrete choices for EVE-251/EVE-250 on 2026-11-18,

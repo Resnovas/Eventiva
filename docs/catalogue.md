@@ -1,4 +1,4 @@
-# Supplier stock import preview (EVE-247)
+# Supplier stock import preparation (EVE-247)
 
 ## Authority and scope
 
@@ -43,8 +43,43 @@ For the next zero-acquisition-cost pilot, use consented, redacted supplier expor
 
 Supplier discovery remains unperformed: no interviews, survey or representative sample supports a claim that these two tools dominate. Actual export compatibility, legal permission, realistic search quality and end-to-end import success rates remain open.
 
+## Rights and supplier consent checkpoint - 2026-11-18
+
+Jonathan's explicit same-day continuation in [the coordinating thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) requests licensing/consent evidence and a bounded import path. It does not manufacture source permission. These official pages were read directly; none establishes an Eventiva bulk-catalogue reuse grant:
+
+| Authority | Finding | Acquisition disposition |
+| --- | --- | --- |
+| [Shure Data Use License Agreement](https://www.shure.com/en-US/legal/dula), sections 1.1-1.3 | Applies to generated connected-product/related-service data under the EU Data Act. Section 1.3 does not grant documentation/API exploitation rights except as otherwise permitted. This is not a general manufacturer-catalogue licence. | Link-only research; obtain a source-specific grant or reviewed legal basis before ingestion. No licence expiry or publication revision was established. |
+| [Shure robots](https://www.shure.com/robots.txt) | Wildcard group allows `/` with login/advertising exclusions; a separate YisouSpider group disallows `/`. Read on this date, not a permanent permission. | Robots rules are a technical crawl policy, not copyright/database rights or redistribution permission. No crawler is run. |
+| [QSC trademark guidelines](https://www.qsc.com/policy/trademarks), Disclaimer | Explicitly says the guidelines create no licence, contract or relationship. Trademark-reference guidance is not catalogue reproduction permission. | No licensed feed or redistribution grant obtained; keep model research separate from copied descriptions/images. |
+| [QSC Audio robots](https://www.qscaudio.com/robots.txt) | Wildcard group excludes `/fileadmin/resources/corporate/`. | No inference of bulk reuse rights from other paths; no acquisition or scraper. |
+| Supplier export sample | No supplier has supplied a consented sample in this lane. Tool manuals show possible formats, not supplier prevalence, export compatibility or consent. | Synthetic fixtures only. Do not relabel a sample as licensed or supplier-permitted without the actual reviewed artifact. |
+
+The private-source authority must retain the actual licence/permission artifact under tenant access control. Review its rights holder, authority to grant, exact file/version, tenant, private-import purpose, permitted processing, retention/deletion terms, expiry and revocation contact. Manufacturer-reference reuse, public redistribution and training are separate rights, never implied by permission to import private stock. Unknown or disputed rights refuse intake; an artifact UUID is a pointer, not a legal determination. No outreach, purchased data or agreement was executed. The absence of a grant is a recorded blocker, not a claim that all factual reference use is prohibited.
+
+## Prepare a consent-gated canonical CSV - slice 2
+
+`@eventiva/runtime/catalogue-import` exports `prepareStockImport(sourceId, references)`. Supply the existing router-owned `CurrentTenant` and a trusted `StockImportSources` implementation. Its `load(tenant, source)` must reauthorize access and return one coherent `StockImportSource`: source UUID, tenant ID, exact CSV text and the current evidence for those contents. Callers pass an ID, never CSV plus a permission boolean. A new file version must receive a new source ID or freshly bound evidence; do not reuse an old grant for unrelated bytes. Host composition, not a user or agent request, provides this privileged service.
+
+Evidence requires an evidence UUID, private artifact UUID, reviewer subject ID, basis (`synthetic`, `supplier-permission` or `licence`), purpose exactly `private-stock-import`, nonnegative safe-integer millisecond `reviewedAt` and `validUntil`, and explicit `revoked`. There are no field defaults or accepted unknown fields. Check against the Effect clock after loading: source ID and tenant must match, review cannot be in the future, permission must be unrevoked and current, and review age must be less than 30 days. Exact `validUntil` and 30-day age boundaries refuse. The authority must cap `validUntil` at actual permission expiry; the 30-day maximum review age is a conservative agent-chosen engineering check under the cited build approval, not a claim that Jonathan selected a legal retention period or that a licence lasts 30 days. A synthetic basis is test evidence only, never a production licence.
+
+The canonical template has exactly five columns in this order and spelling:
+
+```csv
+supplierSku,manufacturer,model,variant,quantity
+S-01,Fixture Audio,A-10,,3
+```
+
+Map a real supplier export into this template only after source rights review; the mapping UI and tested vendor export adapters remain future work. `tests/runtime/src/catalogue-import.spec.ts` is the full compiling Effect/service example using an explicitly synthetic source authority. Run it with `pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/catalogue-import.spec.ts --coverage.enabled=false`.
+
+The parser accepts comma separators, optional leading Unicode BOM, LF/CRLF records, double-quoted fields, doubled quotes and embedded quoted newlines. It rejects bare CR records, malformed/unterminated quoting, characters after a closing quote, unknown/reordered headers, ragged records, empty files, header-only files and blank records. Optional final record newline is accepted. The file limit is 1,000,000 JavaScript UTF-16 code units including BOM; a hosting upload handler must separately enforce byte/stream limits before loading a file. Data rows are 1-1,000; public references remain capped at 10,000. These reversible bounds are engineering choices, not measured supplier-file sizes or product coverage targets.
+
+Blank variant maps to `null`; other text is literal and not silently trimmed, normalized or executed. Quantity must be canonical nonnegative integer text: no signs, exponent, decimal, leading zeros, whitespace or unsafe values. Invalid quantities/names keep a one-based data-record `invalid` outcome. Positions count logical data records, not physical lines inside quoted fields. Exact identity, duplicate-SKU refusal and ambiguity reuse the existing preview rules. The result contains source/evidence and rows, with state `reviewable` only when every row matches; otherwise `corrections-required`. No raw CSV is returned, but accepted stock rows are tenant-private and must not enter telemetry, public references or training. Never export literal fields to a spreadsheet without a separately safe export boundary.
+
+`StockImportFailure` exposes only `invalid`, `denied`, `unavailable` or `invalid-csv`, never parser input dumps. Whole-file structure errors require correcting/reloading the file; row correction states preserve the other record positions. Repeating preparation reloads evidence, including new revocations, and does not mutate its source. Preview abandonment/cancellation leaves inventory unchanged because this API has no write dependency. It is not a durable import, rollback, supplier survey, UI/agent parity proof or evidence that real-source permissions exist. A later authorized commit must reload/recheck rights and stock identity, use the existing tenant Resources/Storage transaction path, audit the source/evidence/version and provide idempotent re-import/undo semantics. Do not accept this review projection as a lasting permission token.
+
 ## Remaining research and implementation
 
-First validate source rights and recruit a consented supplier sample; prioritize connectors only from observed export evidence. Then implement mapped CSV preview and a correction/review journey under EVE-81: map columns, preview every row, correct invalid/duplicate/unmatched/ambiguous identities, and confirm the staged batch explicitly. Cancellation must leave stock unchanged. Only a later tenant-authorized persistence slice may add idempotent re-import, relationship ordering, durable audit and rollback; repeated local previews are not proof of those properties. Search-add and collaborative manual entry must use the same reviewed identity rules without forcing incomplete specifications to block quotations.
+The portable canonical CSV preparation above is implemented; real source rights and a consented supplier sample remain open. Prioritize connectors only from observed export evidence. Build the upload/mapping/correction UI and agent action journey under EVE-81, then confirm a staged batch explicitly. Only a later tenant-authorized persistence slice may add idempotent re-import, relationship ordering, durable audit and rollback; repeated local previews are not proof of those properties. Search-add and collaborative manual entry must use the same reviewed identity rules without forcing incomplete specifications to block quotations.
 
 Keep public model provenance/version/conflict review distinct from private ownership, reservation, price and publication controls. All user/agent surfaces must share the existing action authorization and private-stock opt-out. The portable library currently has no application registration or runtime behavior to flag; a future importer must be default-off. EVE-247 remains open until its evidence, journeys and phased acceptance metrics are actually reviewed.

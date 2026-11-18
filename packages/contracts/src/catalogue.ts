@@ -14,7 +14,8 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Effect, Schema } from 'effect';
+import { type Cause, Context, Data, Effect, Schema } from 'effect';
+import { SubjectId, TenantId } from './ids.ts';
 import { JsonValue } from './storage.ts';
 
 const strict = { parseOptions: { onExcessProperty: 'error' } } as const;
@@ -38,6 +39,51 @@ export const StockImportRow = Schema.Struct({
     quantity: Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_SAFE_INTEGER)),
 }).annotations(strict);
 export type StockImportRow = typeof StockImportRow.Type;
+
+const timestamp = Schema.Int.pipe(Schema.between(0, Number.MAX_SAFE_INTEGER));
+
+/** Reviewed rights for one private-stock source; an artifact reference is not itself proof of a licence or consent. */
+export const StockImportEvidence = Schema.Struct({
+    id: Schema.UUID,
+    artifact: Schema.UUID,
+    reviewer: SubjectId,
+    basis: Schema.Literal('synthetic', 'supplier-permission', 'licence'),
+    purpose: Schema.Literal('private-stock-import'),
+    reviewedAt: timestamp,
+    validUntil: timestamp,
+    revoked: Schema.Boolean,
+}).annotations(strict);
+export type StockImportEvidence = typeof StockImportEvidence.Type;
+
+/** Immutable source lookup result: the trusted loader must bind these exact CSV contents to the reviewed evidence. */
+export const StockImportSource = Schema.Struct({
+    id: Schema.UUID,
+    tenant: TenantId,
+    csv: Schema.String,
+    evidence: StockImportEvidence,
+}).annotations(strict);
+export type StockImportSource = typeof StockImportSource.Type;
+
+/** Bounded diagnostics never include private source contents, grant documents or schema parser context. */
+interface StockImportFailureFields {
+    readonly reason: 'invalid' | 'denied' | 'unavailable' | 'invalid-csv';
+}
+/** Preserve an exact public constructor without exposing vendor open generic error fields. */
+const failureBase: new (fields: StockImportFailureFields) => Cause.YieldableError &
+    StockImportFailureFields & {
+        readonly _tag: 'StockImportFailure';
+    } = Data.TaggedError('StockImportFailure');
+/** An unsuccessful preparation never grants permission to write, publish or train on supplier data. */
+export class StockImportFailure extends failureBase {}
+
+/** Server-owned source authority; clients cannot submit a consent flag beside arbitrary CSV contents. */
+export class StockImportSources extends Context.Tag('@eventiva/contracts/StockImportSources')<
+    StockImportSources,
+    {
+        /** Reauthorize the trusted tenant and load current rights plus their exact source together, refusing inaccessible IDs. */
+        readonly load: (tenant: TenantId, source: string) => Effect.Effect<StockImportSource, StockImportFailure>;
+    }
+>() {}
 
 /** One-based input row position and bounded disposition; no row is persisted or silently fuzzy-matched. */
 export type StockImportPreview =
