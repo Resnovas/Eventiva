@@ -15,8 +15,14 @@
  */
 
 import { expect, it } from '@effect/vitest';
-import { Effect } from 'effect';
-import { previewStockImport } from '@eventiva/contracts/catalogue';
+import { Effect, Option, Schema } from 'effect';
+import {
+    ApplyImportRow,
+    importActions,
+    previewStockImport,
+    StageImport,
+    stockImportFlag,
+} from '@eventiva/contracts/catalogue';
 
 const reference = {
     id: '11111111-1111-4111-8111-111111111111',
@@ -129,6 +135,80 @@ it.effect(
                     yield* previewStockImport([stock], [reference])
                 );
                 expect(JSON.stringify({ stock, reference })).toBe(before);
+            }
+        )
+);
+
+it.effect(
+    'requires complete reviewed metadata and stable identities without accepting writable SKU or quantities',
+    /** These are public transport contracts, not defaults inferred from a matched model or supplier quantity. */ () =>
+        Effect.gen(
+            /** Reject each absent mapping independently, plus legacy direct-CSV intake and untrusted extra metadata. */ function* () {
+                // Asymmetric IDs and row position distinguish an explicit mapping from order-based identity guessing.
+                const plan = '019b0000-0000-7000-8000-000000000001';
+                const row = '019b0000-0000-7000-8000-000000000002';
+                const product = '019b0000-0000-7000-8000-000000000003';
+                const review = {
+                    row: 2,
+                    id: row,
+                    product,
+                    name: 'Reviewed spare',
+                    category: 'leads',
+                    tracking: 'bulk',
+                    unit: 'each',
+                };
+                const input = {
+                    id: plan,
+                    source: reference.id,
+                    references: [reference],
+                    reviews: [review],
+                    acknowledgement: 'metadata-only-no-stock',
+                };
+                expect(yield* Schema.decodeUnknown(StageImport.input)(input)).toEqual(input);
+                for (const field of ['name', 'category', 'tracking', 'unit', 'id', 'product', 'row']) {
+                    const incomplete: Record<string, unknown> = { ...review };
+                    delete incomplete[field];
+                    expect(
+                        (yield* Effect.either(
+                            Schema.decodeUnknown(StageImport.input)({ ...input, reviews: [incomplete] })
+                        ))._tag
+                    ).toBe('Left');
+                }
+                for (const changed of [
+                    { ...input, reviews: [{ ...review, sku: 'OVERRIDE' }] },
+                    { ...input, reviews: [{ ...review, quantity: 9 }] },
+                    { ...input, csv: 'private', consent: true },
+                    { ...input, acknowledgement: 'yes' },
+                    { ...input, reviews: [] },
+                    { ...input, reviews: [{ ...review, row: 1001 }] },
+                    { ...input, reviews: [{ ...review, name: 'x'.repeat(201) }] },
+                ])
+                    expect((yield* Effect.either(Schema.decodeUnknown(StageImport.input)(changed)))._tag).toBe('Left');
+                expect(
+                    (yield* Effect.either(
+                        Schema.decodeUnknown(ApplyImportRow.input)({
+                            id: plan,
+                            revision: 0,
+                            row,
+                            rowRevision: 1,
+                            acknowledgement: 'metadata-only-no-stock',
+                        })
+                    ))._tag
+                ).toBe('Left');
+                expect(stockImportFlag.safeDefault).toBe(false);
+                expect(
+                    importActions.map(/** Compare the exact portable action identity set. */ (action) => action.name)
+                ).toEqual([
+                    'inventory.import.stage',
+                    'inventory.import.get',
+                    'inventory.import.cancel',
+                    'inventory.import.apply-row',
+                ]);
+                for (const action of importActions) {
+                    expect(action.sensitive).toBe(true);
+                    expect(action.offline).toBe('online-only');
+                    expect(action.flag).toEqual(Option.some('inventory.import.enabled'));
+                }
             }
         )
 );

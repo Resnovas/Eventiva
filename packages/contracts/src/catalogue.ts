@@ -15,8 +15,10 @@
  */
 
 import { type Cause, Context, Data, Effect, Schema } from 'effect';
+import { define } from './action.ts';
 import { SubjectId, TenantId } from './ids.ts';
-import { JsonValue } from './storage.ts';
+import { ProductFields } from './inventory-product.ts';
+import { JsonValue, UuidV7 } from './storage.ts';
 
 const strict = { parseOptions: { onExcessProperty: 'error' } } as const;
 const name = Schema.NonEmptyTrimmedString.pipe(Schema.maxLength(200));
@@ -142,3 +144,117 @@ export const previewStockImport = (rows: JsonValue, references: JsonValue) =>
             );
         }
     );
+
+/** Independently gated synthetic metadata import; enabling products alone never enables source intake. */
+export const stockImportFlag = {
+    key: 'inventory.import.enabled',
+    description: 'Reviewed tenant-private metadata imports only; quantities remain unapplied.',
+    owner: 'inventory-import',
+    safeDefault: false,
+};
+
+/** Review must explicitly supply fields absent from CSV; SKU can only come from the evidence-bound source. */
+export const ImportReview = Schema.Struct({
+    row: Schema.Int.pipe(Schema.between(1, 1000)),
+    id: UuidV7,
+    product: UuidV7,
+    name: ProductFields.fields.name,
+    category: ProductFields.fields.category,
+    tracking: ProductFields.fields.tracking,
+    unit: ProductFields.fields.unit,
+}).annotations(strict);
+
+/** Durable row status is metadata only, never a stock, ownership or availability assertion. */
+export const ImportRow = Schema.Struct({
+    ...ImportReview.fields,
+    revision: Schema.Int,
+    sku: name,
+    reference: Schema.UUID,
+    quantity: StockImportRow.fields.quantity,
+    quantityStatus: Schema.Literal('not-applied'),
+    state: Schema.Literal('pending', 'metadata-applied'),
+    stock: Schema.Literal('stock-pending'),
+}).annotations(strict);
+
+/** Immutable reviewed plan with optimistic revision and explicit partial progress; cancellation never undoes products. */
+export const ImportPlan = Schema.Struct({
+    id: UuidV7,
+    revision: Schema.Int,
+    source: Schema.UUID,
+    evidence: StockImportEvidence,
+    sourceDigest: Schema.String,
+    planDigest: Schema.String,
+    state: Schema.Literal('staged', 'cancelled', 'metadata-applied'),
+    rows: Schema.Array(ImportRow).pipe(Schema.maxItems(1000)),
+}).annotations(strict);
+
+/** Fixed failures omit source bytes, competing products, grant contents and SQL diagnostics. */
+export const ImportFailure = Schema.TaggedStruct('ImportFailure', {
+    reason: Schema.Literal('denied', 'invalid', 'conflict', 'unavailable', 'cancelled'),
+}).annotations(strict);
+export type ImportFailure = typeof ImportFailure.Type;
+
+const importShared = {
+    version: 1,
+    error: ImportFailure,
+    offline: 'online-only',
+    sensitive: true,
+    flag: stockImportFlag.key,
+} as const;
+
+/** Stage exact reviewed identities and mappings, not arbitrary CSV plus a consent boolean. No row applies implicitly. */
+export const StageImport = define('inventory.import.stage', {
+    ...importShared,
+    permission: 'inventory.catalogue.write',
+    description: 'Stage an evidence-bound private metadata plan without applying stock.',
+    sideEffect: 'write',
+    input: Schema.Struct({
+        id: UuidV7,
+        source: Schema.UUID,
+        references: Schema.Array(ProductReference).pipe(Schema.maxItems(10000)),
+        reviews: Schema.Array(ImportReview).pipe(Schema.minItems(1), Schema.maxItems(1000)),
+        acknowledgement: Schema.Literal('metadata-only-no-stock'),
+    }).annotations(strict),
+    output: ImportPlan,
+});
+
+/** Read accepted review and partial progress only while source rights and both runtime gates remain current. */
+export const GetImport = define('inventory.import.get', {
+    ...importShared,
+    permission: 'inventory.catalogue.read',
+    description: 'Read a private reviewed metadata import plan.',
+    sideEffect: 'read',
+    input: Schema.Struct({ id: UuidV7 }).annotations(strict),
+    output: ImportPlan,
+});
+
+const expectedRevision = Schema.Int.pipe(Schema.between(1, 2147483646));
+
+/** Cancel future row application at the expected plan revision; committed products remain untouched. */
+export const CancelImport = define('inventory.import.cancel', {
+    ...importShared,
+    permission: 'inventory.catalogue.write',
+    description: 'Cancel unapplied metadata rows without undoing existing products.',
+    sideEffect: 'write',
+    input: Schema.Struct({ id: UuidV7, revision: expectedRevision }).annotations(strict),
+    output: ImportPlan,
+});
+
+/** Confirm one create-only row with stable row UUID as host idempotency key; expected revisions never mean upsert. */
+export const ApplyImportRow = define('inventory.import.apply-row', {
+    ...importShared,
+    permission: 'inventory.catalogue.write',
+    description: 'Apply one reviewed product metadata row; stock stays pending.',
+    sideEffect: 'write',
+    input: Schema.Struct({
+        id: UuidV7,
+        revision: expectedRevision,
+        row: UuidV7,
+        rowRevision: expectedRevision,
+        acknowledgement: Schema.Literal('metadata-only-no-stock'),
+    }).annotations(strict),
+    output: ImportPlan,
+});
+
+/** One registration list preserves the portable action identities without installing a runtime importer. */
+export const importActions = [StageImport, GetImport, CancelImport, ApplyImportRow] as const;

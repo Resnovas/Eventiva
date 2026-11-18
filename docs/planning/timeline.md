@@ -58,6 +58,28 @@ flowchart LR
     Proof --> Later["Separate UI, sync and fulfilment acceptance"]
 ```
 
+## Synthetic metadata import checkpoint - 2026-11-18
+
+The owner-relayed revision-7 rank-1 packet in the [dispatch thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) authorizes bounded EVE-247/EVE-81 metadata import implementation, not real supplier rights or production activation. The dated [EVE-247 checkpoint](https://linear.app/resnovas/issue/EVE-247#comment-1a456d18-80b6-4016-90d4-e24d078f809c) and [EVE-81 checkpoint](https://linear.app/resnovas/issue/EVE-81#comment-37fdf03f-f4b4-4c89-a9a3-4c59c9c23f7c) distinguish focused execution from pending combined delivery. The [catalogue guide](../catalogue.md#synthetic-durable-metadata-import---2026-11-18) owns the contract and limitations. The historical captures below remain unchanged.
+
+The candidate above the [sequential-batch graph head](https://github.com/Resnovas/Eventiva/commit/21438ec04af01f6b16f411977e9193beb95e1a77) passed fixture-backed `node --run verify`: 34 projects' lint/typecheck/test/build/parity, source/declaration boundaries and three smoke projects. The strict scanner reports 255 editable TypeScript files with zero findings; strict planning reports 258 issues, 692 edges and zero unresolved/stale outputs. Later rebased delivery evidence and exact signed SHAs are recorded as replies to the live checkpoints, separately from this executed local result. No scanner, ledger or coverage gate is weakened.
+
+| Phase | Bounded state |
+| --- | --- |
+| Completed locally | Synthetic stage/get/cancel and one-row confirmation through the existing product action; PostgreSQL/SQLite public-host tests exercise shared-owner savepoints, rollback, fiber interruption, discarded-reply replay and fresh rights/flag/permission refusal on identical replay. No quantity is applied. |
+| Current | Final latest-main revalidation, generated graph refresh, signed direct-main delivery and live issue evidence. Remote CI and broader issue acceptance remain separate from the executed local gates. |
+| Upcoming | Real source consent/evidence, mapping/correction UI, export compatibility and wider import acceptance remain open; stock, whole-plan atomicity/undo and production activation are not included. EVE-248 stays deferred. |
+
+```mermaid
+flowchart LR
+    product[Existing private product create] --> row[One reviewed metadata row]
+    evidence[Fresh synthetic source and evidence checks] --> stage[Durable reviewed plan]
+    stage --> row
+    row --> receipt[Product and row commit together]
+    receipt --> replay[Same key and input replay with fresh authority]
+    receipt -. not implemented .-> stock[Stock and whole-plan undo]
+```
+
 ## Portable HTTP client checkpoint - 2026-11-18
 
 The owner-relayed revision-6 rank-1 packet and bounded clarifications in the
