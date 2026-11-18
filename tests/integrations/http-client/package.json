@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.http-client-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@effect/platform": "0.97.3",
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/integrations.http-client": "workspace:*"
+    }
+}

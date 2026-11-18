@@ -47,6 +47,9 @@
         },
         {
             "path": "./packages/integrations/oidc"
+        },
+        {
+            "path": "./packages/integrations/http-client"
         }
     ]
 }

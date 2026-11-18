@@ -23,5 +23,8 @@
         "@eventiva/runtime": "workspace:*",
         "@eventiva/schema": "workspace:*",
         "effect": "catalog:"
+    },
+    "devDependencies": {
+        "@eventiva/integrations.http-client": "workspace:*"
     }
 }

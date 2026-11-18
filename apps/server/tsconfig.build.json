@@ -35,6 +35,9 @@
         },
         {
             "path": "../../packages/contracts/tsconfig.build.json"
+        },
+        {
+            "path": "../../packages/integrations/http-client/tsconfig.build.json"
         }
     ]
 }

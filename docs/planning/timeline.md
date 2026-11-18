@@ -2,6 +2,35 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Portable HTTP client checkpoint - 2026-11-18
+
+The owner-relayed revision-6 rank-1 packet and bounded clarifications in the
+[dispatch thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize this client slice and the mechanically required additive Nx server
+build reference plus the one-line complete-package hygiene registration,
+not a server/compiler change. Live EVE-46 and its terminal four-comment page were read before the new
+[client checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-42aeaf15-2adf-4dd4-98ca-b31ec7cd443a).
+It remains Backlog. The [client guide](../http-client.md) owns the contract;
+the historical issue snapshot and current JSDoc governance remain unchanged.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Existing HTTP delivered-scope CI | Completed | Exact-head 93b22058 subscription reports every executed check successful; skipped release/PR-only jobs are not deployment. |
+| Canonical portable client and live backend conformance | Implemented; focused checks passed | Four portable tests at 100% coverage; two real loopback SQL/Cluster HTTP tests including the unchanged original HTTP scenario. Exact domain/wire codec distinction, typed sanitized malformed-response failures, real Fetch interruption, single sends, asymmetric branded output, stable stored commit receipt with fresh invocation receipt, changed-input refusal, current permission/session revocation and transformed-discovery denial pass. |
+| Latest-main integration gates | Completed locally | Full verification passed on strict-zero main and again after rebasing onto commerce head fd61cf59: 104 aggregate tasks and 17 smoke/dependency tasks, including Android/web exports and browser smoke. Source/declaration boundaries have zero violations/cycles. Strict documentation reports 251 editable files and zero findings; no debt/suppressions. Nx sync is current. Independent adapter-entry bundles and three deliberately rejected type probes supplement normal builds, not device-runtime acceptance. |
+| Signed delivery and exact-head hosted CI | Current / see live issue | Paired docs and LLMS are regenerated; clean-source Graphify, signed revisions and actual hosted results are recorded on EVE-46. Local success does not imply hosted CI acceptance or deployment. |
+| Whole EVE-46 and activation | Upcoming / separately authorized | This is not the full generated inventory SDK, batch client, streaming, machine credential issuance, offline engine or device-runtime acceptance. The separate batch lane retains its files. No public deployment, paid work or production activation. |
+
+```mermaid
+flowchart LR
+    Spec["Canonical ActionSpec domain and wire codecs"] --> Client["Portable single-attempt HttpApi client"]
+    Proof["Current separately protected bearer proof"] --> Client
+    Client --> HTTP["Existing local authenticated HTTP"]
+    HTTP --> Durable["Existing Cluster plus SQL commit and live policy"]
+    Durable --> Gates["Native/web and latest-main full gates"]
+    Gates --> Later["Separate generated SDK and streaming acceptance"]
+```
+
 ## Authenticated local HTTP checkpoint - 2026-11-18
 
 [EVE-46](https://linear.app/resnovas/issue/EVE-46) follows the owner-relayed

@@ -258,6 +258,9 @@ importers:
       '@eventiva/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
+      '@eventiva/integrations.http-client':
+        specifier: workspace:*
+        version: link:../packages/integrations/http-client
       '@eventiva/integrations.oidc':
         specifier: workspace:*
         version: link:../packages/integrations/oidc
@@ -285,6 +288,9 @@ importers:
       '@eventiva/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@eventiva/integrations.http-client':
+        specifier: workspace:*
+        version: link:../../packages/integrations/http-client
       '@eventiva/integrations.openfeature.client':
         specifier: workspace:*
         version: link:../../packages/integrations/openfeature-client
@@ -427,6 +433,10 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 3.22.4
+    devDependencies:
+      '@eventiva/integrations.http-client':
+        specifier: workspace:*
+        version: link:../../packages/integrations/http-client
 
   packages/contracts:
     devDependencies:
@@ -442,6 +452,19 @@ importers:
       '@formatjs/intl':
         specifier: 6.1.4
         version: 6.1.4
+    devDependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.4
+
+  packages/integrations/http-client:
+    dependencies:
+      '@effect/platform':
+        specifier: 0.97.3
+        version: 0.97.3(effect@3.22.4)
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
     devDependencies:
       effect:
         specifier: 'catalog:'
@@ -654,6 +677,18 @@ importers:
       '@eventiva/integrations.formatjs':
         specifier: workspace:*
         version: link:../../../packages/integrations/formatjs
+
+  tests/integrations/http-client:
+    devDependencies:
+      '@effect/platform':
+        specifier: 0.97.3
+        version: 0.97.3(effect@3.22.4)
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../../packages/contracts
+      '@eventiva/integrations.http-client':
+        specifier: workspace:*
+        version: link:../../../packages/integrations/http-client
 
   tests/integrations/oidc:
     devDependencies:

@@ -7,6 +7,7 @@
     },
     "include": ["src/**/*.ts"],
     "references": [
+        { "path": "../packages/integrations/http-client" },
         {
             "path": "../packages/integrations/trust.server"
         },

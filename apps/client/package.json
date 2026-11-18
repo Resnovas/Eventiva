@@ -8,6 +8,7 @@
     "dependencies": {
         "@babel/runtime": "7.29.13",
         "@eventiva/contracts": "workspace:*",
+        "@eventiva/integrations.http-client": "workspace:*",
         "@eventiva/integrations.openfeature.client": "workspace:*",
         "@eventiva/integrations.posthog.client": "workspace:*",
         "@expo/metro": "56.0.2",

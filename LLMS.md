@@ -2296,3 +2296,32 @@ export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: Toke
         }
     );
 ```
+
+### client
+
+@title Invoke a canonical specification with portable domain types and separately protected current proof
+
+```ts
+import type { ActionSpec, Input } from '@eventiva/contracts/action';
+import {
+    HttpActionCredentials,
+    invokeHttpAction,
+    type HttpActionTarget,
+} from '@eventiva/integrations.http-client/action';
+import { Effect, Layer } from 'effect';
+
+/**
+ * Build an unexecuted canonical call; the caller still provides its platform HttpClient and runs the Effect.
+ * The protected store effect is evaluated on every call, while server identity/consent/policy remain live authority.
+ * This is the spec-typed single-action boundary, not generated inventory, batch, streaming or offline support.
+ */
+export const callWithCurrentProof = <S extends ActionSpec>(
+    spec: S,
+    input: NoInfer<Input<S>>,
+    target: HttpActionTarget,
+    currentProof: HttpActionCredentials['Type']['proof']
+) =>
+    invokeHttpAction(spec, input, target).pipe(
+        Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof }))
+    );
+```

@@ -74,3 +74,33 @@ This comment thread is synced to a corresponding [GitHub issue](https://github.c
 ## Repository context (human-maintained)
 
 Add implementation notes here, with source links. This section never grants owner approval.
+
+### Portable client bounded checkpoint - 2026-11-18
+
+The owner-relayed revision-6 rank-1 dispatch and bounded clarifications are
+recorded in the [implementation thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+The [live client checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-42aeaf15-2adf-4dd4-98ca-b31ec7cd443a)
+follows a fresh read of the description and terminal four-comment page; EVE-46
+remains Backlog. This note does not refresh the historical complete snapshot.
+
+The [client guide](../../http-client.md) and compiling chapter-29 client example
+describe the spec-typed native/web boundary. Four portable tests and new plus
+unchanged real SQL/Cluster HTTP conformance pass. Replay preserves one mutation
+and the original stored `action_commit` receipt/result, while a new invocation
+receipt is valid. Transformations are tested only at the portable codec seam;
+actual HTTP uses representable branded structural schemas, and transformed
+discovery fails closed. Full latest-main gates and signed delivery are recorded
+separately on the issue and in the [timeline](../timeline.md).
+
+Full verification passed on the strict-zero documentation base and again after
+rebasing onto the delivered commerce/compiler work: 104 aggregate tasks and
+17 smoke/dependency tasks, normal native/web builds, browser smoke and zero
+source/declaration boundary violations or cycles. The standalone documentation
+scanner reports 251 editable files and zero findings. Three deliberate wrong
+domain/wire assignments are rejected by the public API. The only additional
+hygiene amendment registers the new package in the exact complete package list;
+no assertion, threshold, exclusion, suppression or accepted debt is changed.
+
+No server/compiler implementation changes, generated full inventory SDK,
+batch client, stream protocol, auth UI, credential issuance, offline engine,
+production activation, public deployment or paid work belong to this slice.

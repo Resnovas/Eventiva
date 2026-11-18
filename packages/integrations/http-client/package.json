@@ -1,0 +1,26 @@
+{
+    "name": "@eventiva/integrations.http-client",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "license": "SEE LICENSE IN LICENSE",
+    "sideEffects": false,
+    "exports": {
+        "./action": {
+            "@eventiva/source": "./src/action.ts",
+            "types": "./dist/action.d.ts",
+            "default": "./dist/action.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@effect/platform": "0.97.3",
+        "@eventiva/contracts": "workspace:*"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

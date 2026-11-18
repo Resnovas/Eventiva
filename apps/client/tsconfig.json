@@ -12,6 +12,7 @@
     },
     "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx", "lang/*.json"],
     "references": [
+        { "path": "../../packages/integrations/http-client" },
         {
             "path": "../../packages/integrations/posthog-client"
         },

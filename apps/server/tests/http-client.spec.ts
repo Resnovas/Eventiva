@@ -1,0 +1,506 @@
+/**
+ * @file apps/server/tests/http-client.spec.ts
+ *
+ * Copyright 2026 Jonathan Stevens trading as Resnovas. All rights reserved.
+ * Licensed under the Fair Core License, Version 1.0, MIT Future License
+ * (FCL-1.0-MIT); see LICENSE. You may not move, change, disable or circumvent
+ * the licence key functionality, or modify any part of the software that the
+ * licence key protects.
+ *
+ * Contributions are made under the Developer Certificate of Origin (DCO.md) and
+ * the Contributing Guidelines (CONTRIBUTING.md), subject to the Code of Conduct
+ * (CODE_OF_CONDUCT.md) and the Cooperation Commitment (COOPERATION_COMMITMENT.md).
+ *
+ * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
+ */
+
+import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
+import { SqlClient } from '@effect/sql';
+import { describe, expect, it } from '@effect/vitest';
+import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
+import { Authorizer } from '@eventiva/contracts/caller';
+import { Forbidden } from '@eventiva/contracts/errors';
+import { Flags } from '@eventiva/contracts/flags';
+import { IdentityStore, RoleId, organizationGet } from '@eventiva/contracts/identity';
+import { SubjectId, TenantId } from '@eventiva/contracts/ids';
+import { ActionInventory } from '@eventiva/contracts/inventory';
+import { CurrentTenant, EpochMillis, RoutingDenied, Storage } from '@eventiva/contracts/storage';
+import {
+    HttpActionClientFailure,
+    HttpActionCredentials,
+    invokeHttpAction,
+} from '@eventiva/integrations.http-client/action';
+import { makeOidcVerifier, oidcSessionId } from '@eventiva/integrations.oidc/token';
+import { identityStore } from '@eventiva/integrations.sql/identity';
+import { load, migrate } from '@eventiva/integrations.sql/migrations';
+import { client } from '@eventiva/integrations.sql/postgres';
+import { router } from '@eventiva/integrations.sql/router';
+import { storage } from '@eventiva/integrations.sql/storage';
+import { implement } from '@eventiva/runtime/action';
+import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
+import { identitySecurity } from '@eventiva/runtime/identity';
+import { Approvals, InputDigest, InvocationDenied } from '@eventiva/runtime/invocation';
+import { durable } from '@eventiva/runtime/storage';
+import { ConfigProvider, Context, Effect, Layer, Logger, Redacted, Schedule, Schema } from 'effect';
+import { backend } from '../src/backend.ts';
+import { ClusterActions } from '../src/cluster-actions.ts';
+import { DeploymentProfile } from '../src/cluster-profile.ts';
+import { ClusterStatus } from '../src/cluster.ts';
+import { httpActionsFlag } from '../src/http-actions.ts';
+import { serveLocalHttp } from '../src/http-entry.ts';
+import { oidcStandardsVerifier } from '../src/identity-oidc.ts';
+
+/** Stable UUIDv7-shaped synthetic identities keep provider subjects distinct from canonical identities. */
+const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
+const tenant = TenantId.make(id(501));
+const subject = SubjectId.make(id(502));
+const role = RoleId.make(id(503));
+const issuer = 'https://client-issuer.example.test/realms/eventiva';
+const policy = { issuer, audience: 'eventiva-http-client', scopes: ['eventiva.invoke'] };
+const session = oidcSessionId(issuer, 'client-provider-session');
+const Units = Schema.Int.pipe(Schema.brand('HttpClientUnits'));
+const ActionInput = Schema.Struct({ units: Units, adjustment: Schema.Int });
+const common = {
+    version: 1,
+    description: 'Synthetic structural HTTP client conformance action.',
+    input: ActionInput,
+    output: Schema.Struct({ total: Schema.Int }),
+    permission: 'fixture.invoke',
+    sideEffect: 'write',
+    offline: 'online-only',
+} as const;
+const write = define('fixture.client-write', common);
+const hidden = define('fixture.client-hidden', { ...common, permission: 'fixture.admin' });
+const sensitive = define('fixture.client-sensitive', { ...common, sensitive: true });
+const registered = [write, hidden, sensitive];
+const input = { units: Units.make(7), adjustment: -2 };
+
+/** Real SQL identity and backend Cluster composition; only synthetic token discovery/key material is fixture-owned. */
+const fixture = Effect.gen(
+    /** Own a disposable database, migrated storage, signed issuer, registered action and loopback listener. */ function* () {
+        // Refuse nonlocal targets before CREATE DATABASE; cleanup is scoped to the fixture role and generated name.
+        const target = new URL(
+            process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test'
+        );
+        expect(['localhost', '127.0.0.1', '[::1]']).toContain(target.hostname);
+        expect(target.pathname).toBe('/eventiva_test');
+        /** Keep connection credentials inside Effect configuration rather than command arguments or output. */
+        const pg = (url: string) =>
+            client.pipe(
+                Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]]))))
+            );
+        const admin = Context.get(yield* Layer.build(pg(target.toString())), SqlClient.SqlClient);
+        const database = `http_client_${randomUUID().replaceAll('-', '')}`;
+        yield* admin`CREATE DATABASE ${admin(database)} TEMPLATE template0`;
+        yield* Effect.addFinalizer(
+            /** Close only this role's fixture sessions before dropping its owned disposable database. */ () =>
+                admin`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ${database} AND usename = current_user AND pid <> pg_backend_pid()`.pipe(
+                    Effect.zipRight(admin`DROP DATABASE ${admin(database)}`),
+                    Effect.orDie
+                )
+        );
+        target.pathname = `/${database}`;
+        const connection = yield* Layer.build(pg(target.toString()));
+        const sql = Context.get(connection, SqlClient.SqlClient);
+        yield* migrate(
+            'postgres',
+            yield* load(fileURLToPath(new URL('../../../storage/migrations/postgres', import.meta.url)))
+        ).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+        const routing = Layer.succeed(CurrentTenant, { id: tenant });
+        const state = yield* Layer.build(
+            Layer.mergeAll(storage('postgres'), identityStore).pipe(
+                Layer.provide(routing),
+                Layer.provide(Layer.succeedContext(connection))
+            )
+        );
+        const identity = Context.get(state, IdentityStore);
+        const store = Context.get(state, Storage);
+        yield* identity.put('principal', { id: subject, kind: 'human', active: true }, null);
+        yield* identity.put(
+            'session',
+            { id: session, subject, active: true, expiresAt: EpochMillis.make(Date.now() + 300000), delegation: null },
+            null
+        );
+        yield* identity.put(
+            'role',
+            {
+                id: role,
+                name: 'Client fixture',
+                grants: [{ permission: 'fixture.invoke', resources: ['organization'] }],
+            },
+            null
+        );
+        yield* identity.put('membership', { id: subject, active: true, roles: [role] }, null);
+        yield* identity.link({ issuer, subject: 'provider-not-canonical' }, subject);
+        const security = yield* Layer.build(
+            identitySecurity.pipe(Layer.provide(routing), Layer.provide(Layer.succeedContext(state)))
+        );
+        const live = Context.get(security, Authorizer);
+        const dependencies = Layer.mergeAll(
+            Layer.succeedContext(security),
+            Layer.succeed(Flags, {
+                /** Enable only the existing local transport; every unrelated flag retains its safe default. */
+                evaluate: (flag) =>
+                    Effect.succeed({
+                        flag: flag.key,
+                        value: flag.key === httpActionsFlag.key || flag.safeDefault,
+                        fallback: false,
+                        reason: 'TEST',
+                    }),
+            }),
+            Layer.succeed(Authorizer, {
+                canInvoke: live.canInvoke,
+                /** The fixture owns an organization resource; retain real SQL authorization for every attempt, including replay. */
+                check: (caller, spec, value) =>
+                    registered.some(
+                        /** Do not admit unregistered definitions to the synthetic resource policy. */ (entry) =>
+                            entry.name === spec.name
+                    ) && Schema.is(ActionInput)(value)
+                        ? live.check(caller, { ...spec, name: organizationGet.name }, value)
+                        : Effect.fail(new Forbidden({ action: spec.name, reason: 'resource-policy-required' })),
+            }),
+            Layer.succeed(InputDigest, {
+                /** Bind the existing durable executor to real canonical input bytes. */
+                digest: (value) =>
+                    Effect.sync(
+                        /** Retain only the digest, never input text in diagnostic state. */ () =>
+                            createHash('sha256').update(value).digest('hex')
+                    ),
+            }),
+            Layer.succeed(Approvals, {
+                /** No test approval may satisfy an operation requiring protected authorization. */
+                get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+            })
+        );
+        /** Register identical definitions in discovery and the independently tenant-routed durable backend. */
+        const initialize = (host: ActionHost['Type']) =>
+            Effect.gen(
+                /** Capture the backend-selected store, not a transport-provided SQL handle. */ function* () {
+                    // Repeated handler execution collides on one fixed record, exposing a broken durable replay path.
+                    const routed = yield* Storage;
+                    yield* host.register({
+                        manifest: {
+                            format: 1,
+                            id: 'fixture',
+                            version: '1.0.0',
+                            description: 'Client conformance.',
+                            actions: registered.map(
+                                /** Reflect actual registered bindings in the manifest. */ (spec) => spec.name
+                            ),
+                            flags: [],
+                        },
+                        actions: registered.map(
+                            /** Use canonical codecs and durable host execution instead of a test HTTP result echo. */ (
+                                spec
+                            ) =>
+                                implement(
+                                    spec,
+                                    /** A repeated execution would collide on this fixed record; asymmetric output catches swapped or echoed fields. */ (
+                                        value
+                                    ) =>
+                                        routed
+                                            .create({
+                                                id: id(504),
+                                                state: 'pending',
+                                                version: 0,
+                                                payload: { units: value.units, adjustment: value.adjustment },
+                                                leaseUntil: null,
+                                            })
+                                            .pipe(
+                                                Effect.as({ total: value.units * 5 + value.adjustment }),
+                                                Effect.orDie
+                                            )
+                                )
+                        ),
+                    });
+                }
+            );
+        const hostContext = yield* Layer.build(
+            ActionHostLive.pipe(
+                Layer.provide(durable),
+                Layer.provide(dependencies),
+                Layer.provide(routing),
+                Layer.provide(Layer.succeedContext(state))
+            )
+        );
+        yield* initialize(Context.get(hostContext, ActionHost)).pipe(
+            Effect.provide(Layer.merge(routing, Layer.succeedContext(state)))
+        );
+        const captured: string[] = [];
+        const logger = Logger.make(
+            /** Independently reject credential and raw-value leakage from client/server structured logs. */ (
+                options
+            ) =>
+                captured.push(
+                    JSON.stringify({
+                        message: options.message,
+                        cause: options.cause,
+                        annotations: [...options.annotations],
+                    })
+                )
+        );
+        const runner = yield* Layer.build(
+            backend(
+                yield* Schema.decodeUnknown(DeploymentProfile)({
+                    edition: 'community',
+                    port: 34565,
+                    shards: 8,
+                    assignmentRefreshMs: 25,
+                    messagePollMs: 25,
+                    replyPollMs: 25,
+                }),
+                initialize
+            ).pipe(
+                Layer.provide(
+                    router(
+                        /** Another tenant cannot select this fixture's storage through a header or URL. */ (
+                            candidate
+                        ) =>
+                            candidate === tenant
+                                ? Effect.succeed(store)
+                                : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
+                        /** Release checks retain the same independently owned route. */ (candidate) =>
+                            candidate === tenant
+                                ? Effect.void
+                                : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' }))
+                    )
+                ),
+                Layer.provide(dependencies),
+                Layer.provide(Layer.succeedContext(connection))
+            )
+        ).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, logger)));
+        yield* Context.get(runner, ClusterStatus).snapshot.pipe(
+            Effect.repeat({
+                schedule: Schedule.spaced('25 millis'),
+                /** Dispatch only after actual PostgreSQL shard ownership. */
+                until: (value) => value.status === 'healthy',
+            }),
+            Effect.timeout('10 seconds')
+        );
+        const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+        const now = Math.floor(Date.now() / 1000);
+        /** Mint valid signatures around both allowed and deliberately expired claims, never an accepting verifier. */
+        const mint = (overrides: object = {}) => {
+            // Claim overrides stay inside the signature so negative controls exercise validation, not broken cryptography.
+            const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'at+jwt', kid: 'client-test' })).toString(
+                'base64url'
+            );
+            const claims = Buffer.from(
+                JSON.stringify({
+                    iss: issuer,
+                    sub: 'provider-not-canonical',
+                    aud: policy.audience,
+                    scope: 'eventiva.invoke',
+                    sid: 'client-provider-session',
+                    client_id: 'client-fixture',
+                    iat: now - 2,
+                    nbf: now - 2,
+                    exp: now + 300,
+                    jti: 'client-proof',
+                    ...overrides,
+                })
+            ).toString('base64url');
+            const unsigned = `${header}.${claims}`;
+            return `${unsigned}.${sign('RSA-SHA256', Buffer.from(unsigned), privateKey).toString('base64url')}`;
+        };
+        const verifier = yield* makeOidcVerifier(
+            {
+                issuer,
+                audience: policy.audience,
+                clients: ['client-fixture'],
+                algorithms: ['RS256'],
+                allowInsecureLoopback: false,
+            },
+            {
+                /** Only discovery/JWKS is synthetic; pinned standards validation verifies every signed request. */
+                fetch: (url) =>
+                    Promise.resolve(
+                        Response.json(
+                            url.endsWith('/.well-known/openid-configuration')
+                                ? { issuer, jwks_uri: `${issuer}/jwks` }
+                                : {
+                                      keys: [
+                                          {
+                                              ...publicKey.export({ format: 'jwk' }),
+                                              kid: 'client-test',
+                                              alg: 'RS256',
+                                              use: 'sig',
+                                          },
+                                      ],
+                                  }
+                        )
+                    ),
+            }
+        );
+        const services = Layer.mergeAll(
+            dependencies,
+            routing,
+            Layer.succeedContext(state),
+            oidcStandardsVerifier(verifier),
+            Layer.succeed(ActionInventory, Context.get(hostContext, ActionInventory)),
+            Layer.succeed(ClusterActions, Context.get(runner, ClusterActions))
+        );
+        const address = yield* serveLocalHttp(policy).pipe(
+            Effect.provide(services),
+            Effect.withConfigProvider(
+                ConfigProvider.fromMap(
+                    new Map([
+                        ['EVENTIVA_ENVIRONMENT', 'test'],
+                        ['HTTP_PORT', '0'],
+                    ])
+                )
+            ),
+            Effect.provide(Logger.replace(Logger.defaultLogger, logger))
+        );
+        if (address._tag !== 'TcpAddress') return yield* Effect.dieMessage('missing loopback address');
+        const baseUrl = `http://127.0.0.1:${address.port}`;
+        const token = mint();
+        /** Execute the public portable client over real sockets while changing only synthetic caller proof and target. */
+        const invoke = <S extends ActionSpec>(
+            spec: S,
+            value: NoInfer<Input<S>>,
+            key = 'client-write',
+            credential = token,
+            route = tenant
+        ) =>
+            invokeHttpAction(spec, value, { baseUrl, tenant: route, idempotencyKey: key }).pipe(
+                Effect.provide(FetchHttpClient.layer),
+                Effect.provideService(HttpActionCredentials, { proof: Effect.succeed(Redacted.make(credential)) }),
+                Effect.provide(Logger.replace(Logger.defaultLogger, logger))
+            );
+        return {
+            invoke,
+            sql,
+            identity,
+            mint,
+            token,
+            captured,
+            register: Context.get(hostContext, ActionHost).register,
+            inventory: Context.get(hostContext, ActionInventory),
+        };
+    }
+);
+
+describe('portable client versus authenticated HTTP and real SQL Cluster', /** New client conformance leaves the original HTTP source and original conformance unchanged. */ () => {
+    it.scopedLive(
+        'preserves canonical output, durable replay and live denial without treating spec possession as authority',
+        /** Exercise all acceptance through the client, then inspect independent durable SQL evidence. */ () =>
+            Effect.gen(
+                /** Own one live host so later policy/session changes must invalidate earlier successful calls. */ function* () {
+                    const f = yield* fixture;
+                    for (const credential of [
+                        '',
+                        session,
+                        'not-a-token',
+                        f.mint({ exp: Math.floor(Date.now() / 1000) - 1 }),
+                    ]) {
+                        const refused = yield* f.invoke(write, input, 'invalid-proof', credential).pipe(Effect.flip);
+                        expect(refused).toBeInstanceOf(HttpActionClientFailure);
+                        expect(refused.reason).toBe('unauthenticated');
+                    }
+                    for (const spec of [hidden, sensitive]) {
+                        expect((yield* f.invoke(spec, input, 'hidden').pipe(Effect.flip)).reason).toBe('unavailable');
+                    }
+                    expect(
+                        (yield* f.invoke(write, input, 'foreign', f.token, TenantId.make(id(999))).pipe(Effect.flip))
+                            .reason
+                    ).toBe('unavailable');
+                    const first = yield* f.invoke(write, input);
+                    expect(first.output).toEqual({ total: 33 });
+                    expect(first.receiptId.length).toBeGreaterThan(0);
+                    const committed = yield* f.sql<{
+                        result: string;
+                    }>`SELECT result FROM action_commit WHERE result IS NOT NULL`;
+                    expect(committed).toHaveLength(1);
+                    const original = yield* Schema.decodeUnknown(
+                        Schema.parseJson(
+                            Schema.Struct({
+                                output: Schema.Struct({ total: Schema.Int }),
+                                receipt: Schema.Struct({ id: Schema.String }),
+                            })
+                        )
+                    )(committed[0]?.result);
+                    expect(original).toEqual({ output: { total: 33 }, receipt: { id: first.receiptId } });
+                    const replay = yield* f.invoke(write, input);
+                    expect(replay.output).toEqual({ total: 33 });
+                    // A fresh wire invocation records reauthorization; it does not replace the original commit receipt.
+                    expect(replay.receiptId).not.toBe(first.receiptId);
+                    expect(
+                        yield* f.sql<{ result: string }>`SELECT result FROM action_commit WHERE result IS NOT NULL`
+                    ).toEqual(committed);
+                    expect(
+                        (yield* f.invoke(write, { units: Units.make(9), adjustment: -2 }).pipe(Effect.flip)).reason
+                    ).toBe('unavailable');
+                    expect(
+                        yield* f.sql<{ count: number }>`SELECT COUNT(*)::integer AS count FROM operational_record`
+                    ).toEqual([{ count: 1 }]);
+                    expect(
+                        (yield* f.identity.audit(100))
+                            .filter(
+                                /** Require independent persisted receipts for both successful invocations. */ (
+                                    receipt
+                                ) => receipt.outcome === 'succeeded'
+                            )
+                            .map(
+                                /** Raw provider subjects cannot substitute for canonical SQL identity. */ (receipt) =>
+                                    receipt.caller
+                            )
+                    ).toEqual([
+                        { subject, session, tenant, kind: 'human' },
+                        { subject, session, tenant, kind: 'human' },
+                    ]);
+                    yield* Effect.scoped(
+                        Effect.gen(
+                            /** A portable codec can be valid while this server's current discovery compiler explicitly cannot advertise it. */ function* () {
+                                // Unregister on scope close; otherwise the negative discovery control would mask later revocation checks.
+                                const unsupported = define('unsupported.transform', {
+                                    ...common,
+                                    input: Schema.Struct({ units: Schema.NumberFromString, adjustment: Schema.Int }),
+                                });
+                                yield* f.register({
+                                    manifest: {
+                                        format: 1,
+                                        id: 'unsupported',
+                                        version: '1.0.0',
+                                        description: 'Transformation negative control.',
+                                        actions: [unsupported.name],
+                                        flags: [],
+                                    },
+                                    actions: [
+                                        implement(
+                                            unsupported,
+                                            /** This handler must never become reachable through failed discovery. */ () =>
+                                                Effect.succeed({ total: 999 })
+                                        ),
+                                    ],
+                                });
+                                expect(
+                                    (yield* f.inventory
+                                        .list({ subject, session, tenant, kind: 'human' })
+                                        .pipe(Effect.either))._tag
+                                ).toBe('Left');
+                                expect((yield* f.invoke(write, input).pipe(Effect.flip)).reason).toBe('unavailable');
+                            }
+                        )
+                    );
+                    const membership = yield* f.identity.get('membership', subject);
+                    if (!membership) return yield* Effect.dieMessage('fixture membership missing');
+                    yield* f.identity.put('membership', { ...membership.value, roles: [] }, membership.version);
+                    expect((yield* f.invoke(write, input).pipe(Effect.flip)).reason).toBe('unavailable');
+                    yield* f.identity.put('membership', membership.value, membership.version + 1);
+                    const stored = yield* f.identity.get('session', session);
+                    if (!stored) return yield* Effect.dieMessage('fixture session missing');
+                    yield* f.identity.put('session', { ...stored.value, active: false }, stored.version);
+                    expect((yield* f.invoke(write, input).pipe(Effect.flip)).reason).toBe('unauthenticated');
+                    expect(
+                        yield* f.sql<{ count: number }>`SELECT COUNT(*)::integer AS count FROM operational_record`
+                    ).toEqual([{ count: 1 }]);
+                    expect(JSON.stringify(f.captured)).not.toContain(f.token);
+                    expect(JSON.stringify(f.captured)).not.toContain('provider-not-canonical');
+                }
+            ),
+        60000
+    );
+});

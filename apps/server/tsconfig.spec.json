@@ -8,6 +8,7 @@
     },
     "include": ["tests/**/*.ts", "../../vitest.shared.ts", "src/**/*.ts", "vitest.config.mts", "vitest.keycloak.mts"],
     "references": [
+        { "path": "../../packages/integrations/http-client" },
         { "path": "../../packages/contracts" },
         { "path": "../../packages/schema" },
         { "path": "../../packages/runtime" },

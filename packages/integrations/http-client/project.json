@@ -1,0 +1,6 @@
+{
+    "name": "@eventiva/integrations.http-client",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/http-client/src",
+    "tags": ["type:integration", "layer:shared", "capability:transport"]
+}
