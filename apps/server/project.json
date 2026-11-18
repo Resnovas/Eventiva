@@ -47,6 +47,14 @@
                 "command": "vitest run --config apps/server/vitest.keycloak.mts",
                 "cwd": "{workspaceRoot}"
             }
+        },
+        "http-conformance": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "options": {
+                "command": "vitest run --config apps/server/vitest.config.mts apps/server/tests/http-actions.spec.ts --coverage.include=apps/server/src/http-actions.ts --coverage.include=apps/server/src/http-entry.ts",
+                "cwd": "{workspaceRoot}"
+            }
         }
     }
 }

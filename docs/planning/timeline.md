@@ -2,6 +2,33 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Authenticated local HTTP checkpoint - 2026-11-18
+
+[EVE-46](https://linear.app/resnovas/issue/EVE-46) follows the owner-relayed
+[revision 2 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [implementation dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+The [HTTP guide](../http-actions.md) owns the detailed contract. The
+[11:39 UTC issue checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-3f17d066-7c11-456e-987d-af9676fff29c)
+records focused evidence and adds the Code label; the issue remains Backlog,
+not accepted. The historical complete issue capture is unchanged.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Recovered identity and telemetry CI | Completed | Delivered 3174013a's final subscription reports all active checks successful, including application, house and Code Quality. Release jobs remain skipped, not deployed. |
+| Real local credential/tenant/Cluster path | Implemented; focused verification passed | Actual loopback HTTP, signed JWT verification, live PostgreSQL identity, registered inventory and existing Cluster/backend. No ShellIdentity or UUID-as-credential path. Complete route/input/output metadata parity, durable replay, actual audit-table loss/recovery and live membership/session/role revocation controls pass. Focused transport coverage is 100% lines/functions and 95% branches; real Keycloak conformance separately passes. |
+| Final integration verification and delivery | Verified locally; signed delivery recorded on EVE-46 | After rebasing onto EVE-265 main db3695da, repeated disposable-PostgreSQL `node --run verify` passes all 98 aggregate tasks (14 cached) and 16 smoke/dependency tasks (10 cached). Source and emitted graphs retain zero boundary violations/cycles. Strict planning review and Nx sync pass; LLMS/planning and clean-source Graphify are regenerated. Exact signed revisions and separately pending/passed remote CI are published on EVE-46, not inferred from local success. |
+| Remaining EVE-46 acceptance | Upcoming / separately authorized | Streaming/cancellation, batch and machine auth, typed native client and offline queue; no public listener/deployment or production activation in this slice. |
+
+```mermaid
+flowchart LR
+    Credential["Verified bearer plus live SQL session"] --> Tenant["Trusted tenant and current inventory"]
+    Tenant --> Projection["Non-sensitive authorized action projection"]
+    Projection --> HTTP["Local HTTP routes and OpenAPI"]
+    HTTP --> Cluster["Existing Cluster and durable execution"]
+    Cluster --> Gates["Full verification and signed delivery"]
+    Gates --> Later["Separate client and streaming acceptance"]
+```
+
 ## Consent-gated catalogue preparation - 2026-11-18
 
 [EVE-247](https://linear.app/resnovas/issue/EVE-247) slice 2 follows Jonathan's explicit continuation in [the coordinating thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). The [catalogue guide](../catalogue.md#rights-and-supplier-consent-checkpoint---2026-11-18) owns cited rights findings, source authority, CSV bounds and remaining acceptance.

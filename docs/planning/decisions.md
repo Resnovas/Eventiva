@@ -17,6 +17,31 @@ Last checked: 2026-11-17. This is an index, not a new approval register. The own
 | Security profiles/assurance, independent decryption gates, regional marketplace exchange                                                     | [Existing approval-linked register](../architecture/eventiva-platform-and-marketplace.md#decision-register) cites EVE-13/250/251 comments                                                                                         | Keep that register's approved/proposed distinctions; this index does not select vendors, algorithms, regions or key providers.                                                                                                                                                                                                                               |
 | Useful JSDoc on every editable TypeScript function/method/class/interface; meaningful internal rationale                                     | Owner documentation requirement; Jonathan approved the reviewed exact debt ratchet on 2026-11-17 through this governance task                                                                                                     | New/changed code must comply; existing validated exact entries cannot grow; touched indebted files improve; tracked remediation reaches strict zero. Enforcing presence is mechanical; usefulness and meaningful-phase coverage need review. Checker/ledger validation and coordinator-owned root activation are a separate delivery, not global compliance. |
 
+## Authenticated local HTTP boundary - 2026-11-18
+
+The owner-relayed [revision 2 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize EVE-46's bounded local/test HTTP implementation, not its whole issue or
+production release. Exact owner-selection time is unknown. The
+[implementation checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-3f17d066-7c11-456e-987d-af9676fff29c)
+records executed evidence separately from that authority.
+
+Implementation choices in [the existing feature guide](../http-actions.md):
+bind only IPv4 loopback; require independently verified bearer proof and live
+tenant-local SQL identity for each request; derive routes and Effect HttpApi
+OpenAPI from the same current non-sensitive registered inventory; send all
+invocations through existing ClusterActions and durable host gates. Sensitive
+actions have neither a route nor exposed metadata. The default-off
+`http.actions.enabled` flag does not confer permissions. The entry refuses
+production; trusted tenant selection and critical dependencies are mandatory,
+never request-selected or replaced by the diagnostic shell. Wire bounds and
+generic refusals are transport implementation constraints, not newly attributed
+owner wording. No compiler/provider contract is weakened.
+
+The first slice has no approval issuance/options API, streaming, batch,
+machine-token invention, native client, offline queue or deployment. It does
+not accept EVE-46's remaining criteria or authorize telemetry identity export.
+
 ## Dependency security and preserved-directory scanning - 2026-11-18
 
 Jonathan approved necessary dependency-security upgrades, including majors, then

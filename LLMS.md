@@ -2076,3 +2076,74 @@ Catalogue slice 2 adds `StockImportEvidence`, `StockImportSource`, bounded `Stoc
 Canonical CSV columns are exactly supplierSku,manufacturer,model,variant,quantity. Limits: 1-1000 data rows, 1000000 UTF-16 code units, 10000 authorized public references. Host upload byte/stream limits remain separate. BOM, LF/CRLF, double-quoted commas, escaped quotes and quoted newlines work; ragged/empty records, malformed quotes, bare CR and unknown/reordered headers refuse. Empty variant becomes null; canonical integer quantity text excludes exponents/decimals/signs/leading zeros and unsafe values. Existing exact-match/duplicate/ambiguity rules produce every row outcome; all matched means reviewable, otherwise corrections-required. Neither means permission to write. Errors expose only invalid/denied/unavailable/invalid-csv, never raw parser values. Full compiling service/example and fake-clock boundaries: `tests/runtime/src/catalogue-import.spec.ts`, run with the runtime Vitest config.
 
 The dated `docs/catalogue.md` rights matrix distinguishes robots allowances from actual reuse rights: Shure DULA covers connected-product data, not a blanket documentation/API licence; QSC trademark guidelines explicitly create no licence. No real supplier permission, licensed feed, vendor export compatibility, source acquisition or prevalence finding is claimed. Keep all automated records synthetic. The API does not persist/publish/train; a future default-off application action and durable Resources/Storage commit must reauthorize/reload rights and add audit, idempotency and undo. Review output is not an authorization token. No dependency, production activation or external account is added.
+
+---
+
+# Authenticated local action HTTP (EVE-46)
+
+Read `docs/http-actions.md` for the complete contract and local conformance setup.
+`apps/server/src/http-entry.ts` exports scoped `serveLocalHttp(TokenPolicy)`;
+`http-actions.ts` exports `httpActions(TokenPolicy)` and default-off
+`httpActionsFlag` (`http.actions.enabled`). No import opens a listener. The entry
+allows only development/staging/test, binds IPv4 loopback and defaults HTTP_PORT
+to 34446 (zero is ephemeral). Do not use ShellIdentity, a SessionId credential,
+token-selected routing or an accepting identity/audit fixture.
+
+Compose the real OIDC verifier adapter, exact trusted CurrentTenant/SQL
+IdentityStore/identitySecurity, the same registered ActionInventory initializer
+used by backend, and that backend's ClusterActions. Authenticate every request
+with authenticateTokenSession; discovery and execution must refresh live
+identity, permissions and flags. The HTTP adapter dispatches only through
+ClusterActions, never ActionHost.execute locally. Module-owned decoded resource
+policy remains mandatory. The compiled socket/SQL/runner fixture is
+`apps/server/tests/http-actions.spec.ts`; run
+`pnpm nx run @eventiva/server:http-conformance` with the approved disposable
+PostgreSQL fixture configured as documented in `docs/storage.md`.
+
+Routes: authenticated GET `/tenants/<trusted-tenant>/openapi.json` and POST
+`/tenants/<trusted-tenant>/actions/<action-name>`. Both derive from the same live
+non-sensitive inventory projection. Sensitive, unauthorized and flag-disabled
+actions have neither a route nor metadata. Input/output JSON schemas come from
+ActionMetadata's existing structural profile, not reflection or an alternate
+compiler. Preserve constraints and fail closed if inventory compilation fails.
+Metadata version is descriptive, not an expected-action-version pin.
+
+The POST envelope is exactly `{ input, idempotencyKey }`. Require JSON, reject
+excess envelope keys, query strings and bodies over 65536 bytes; authorization
+is bounded to 8192 characters and URL to 512. Idempotency keys are 1..128 ASCII
+letters/digits/`._:-`. Success is `{ output, receiptId }`; do not expose the full
+receipt/caller/input hash. The unchanged host validates domain inputs, resource
+permissions, approvals, audit and replay. Errors are closed 400/401/404/503
+codes, never decoder/vendor messages. No automatic retries; a 10-second timeout
+is not evidence that a persisted mutation did not run. Keep the same key/input.
+
+The example below is server-only proof-to-discovery inspection, not a listener,
+flag activation or wire identity response. Actual HTTP uses the entry and
+mandatory composition above. No production deployment, streaming, batch,
+machine issuance, native client or offline queue is accepted by this slice.
+
+### proof
+
+@title Inspect current inventory only after credential verification inside one trusted tenant
+
+```ts
+import { ActionInventory } from '@eventiva/contracts/inventory';
+import { authenticateTokenSession, type TokenPolicy } from '@eventiva/runtime/identity';
+import { Effect, type Redacted } from 'effect';
+
+/** Server-only metadata inspection, not an HTTP executor, accepting identity layer or permission snapshot. */
+export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: TokenPolicy) =>
+    Effect.gen(
+        /** Resolve the canonical tenant-local identity before asking the real registered inventory for current visibility. */ function* () {
+            // A UUID or raw provider subject is not proof; missing verification, SQL identity or policy must fail closed.
+            const authenticated = yield* authenticateTokenSession(proof, policy);
+            const inventory = yield* ActionInventory;
+            const visible = yield* inventory.list(authenticated.caller);
+            return visible.filter(
+                /** Apply the same conservative sensitive-action exclusion used by the local HTTP projection. */ (
+                    action
+                ) => !action.sensitive
+            );
+        }
+    );
+```

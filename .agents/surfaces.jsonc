@@ -21,5 +21,6 @@
     { "id": "action-parity", "label": "Check action inventory parity", "script": "parity" },
     { "id": "documentation", "label": "Check planning and documentation", "script": "documentation" },
     { "id": "telemetry-local", "label": "Run authenticated local telemetry command", "command": "pnpm nx run @eventiva/server:telemetry" },
+    { "id": "http-conformance", "label": "Check authenticated local HTTP", "command": "pnpm nx run @eventiva/server:http-conformance" },
   ],
 }
