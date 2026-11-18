@@ -81,6 +81,44 @@ selection and agent relay timestamps must not be substituted for capture dates.
   This resolves the earlier scope ambiguity without rewriting the frozen source
   capture, closing implementation prerequisites or authorizing deployment.
 
+## Concrete trust and marketplace parameters - 2026-11-18
+
+Jonathan approved on 2026-11-18 that agents choose well-established standard
+options for the concrete cryptography, custody, retention, freshness, recovery
+and compensation parameters of [EVE-251](https://linear.app/resnovas/issue/EVE-251)
+and [EVE-250](https://linear.app/resnovas/issue/EVE-250), record each with its
+reasoning, and implement them. The approval was relayed through the
+[Puck coordination thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a);
+the exact owner-instruction time was not supplied. The choices below were made by
+the implementing agent under that approval. They are sealed floors: callers may
+tighten them, never relax them. Values live in
+`@eventiva/contracts/trust-profile` and `@eventiva/contracts/marketplace-policy`;
+the [trust profile guide](../trust-profile.md) explains each one.
+
+| Decision | Choice | Reasoning |
+| --- | --- | --- |
+| Signature algorithm | Ed25519 (RFC 8032) for service requests and verifier evidence | Deterministic, no per-signature randomness to misuse, small keys and signatures, native in Node, cloud KMS and HSMs. |
+| Canonicalization | RFC 8785 JSON Canonicalization Scheme with `eventiva.m2.v1` / `eventiva.evidence.v1` domain prefixes | Published standard; removes ordering and number ambiguity; prefixes stop cross-protocol signature reuse. |
+| Payload binding | SHA-256 digest of exact envelope bytes in the signed header | Standard, collision resistant, already used in the repository. |
+| Envelope encryption | AES-256-GCM, fresh KMS-generated 256-bit DEK per record version, 12-byte random IV, canonical header as AAD and KMS encryption context | NIST-approved AEAD; one key per seal keeps GCM far below its random-IV limit; AAD and context stop ciphertext moving between tenants, records, versions or profiles. |
+| Key custody | KEKs in an HSM-backed KMS at FIPS 140-3 level 3, non-exportable; root offline 3-of-5 quorum; two approvals for KEK administration | Matches the approved EVE-13 M-of-N custody with the common majority-of-five quorum; no single administrator can destroy or disable keys. |
+| Rotation | Signing keys 90 days with 7-day overlap; KEKs 90 days, older versions decrypt-only; intermediates 1 year; root 5 years | Common cloud KMS defaults; overlap covers propagation; decrypt-only versions keep retained evidence readable. |
+| Request timing | 5-minute lifetime, 30-second skew, 7-day replay-nonce retention | Short enough to limit replay, long enough for queued gateway retries; retention well beyond lifetime plus skew. |
+| Evidence freshness | Identity and resource 5 minutes, workload attestation 15 minutes, broker 60 seconds | Broker authorizes key use so it is strictest; attestation is expensive and changes less often. |
+| Revocation propagation | 60 seconds to service caches and key handles; offline devices show cached grants up to 15 minutes and never stage new exchange offline | Bounded staleness required by EVE-251 `304faca9`; offline never confirms authoritative effects. |
+| Marketplace freshness | Quote send 24 h; award 15 min with synchronous recheck; contract acceptance and payment 1 min with synchronous recheck; quote validity default 14 days, maximum 90 | Rechecks wherever stock or money is committed; missing or future-dated assertions are `unknown`, never `verified`. |
+| Retention | Messages and unawarded quotes 2 years; contract, payment and audit evidence 7 years; public tombstones 30 days; offline caches 15 minutes; legal hold suspends; jurisdictions may only lengthen; destruction waits for every participant obligation | Seven years covers the six-year UK limitation and HMRC periods with margin; shorter limits minimize personal data; satisfies EVE-251 `304faca9`. |
+| Recovery | Exponential backoff 1 s doubling to 5 min, 8 attempts; ambiguous outcomes reconcile by idempotency key first | Standard retry shape; never blindly replay an outcome that may already have taken effect (as in EVE-45). |
+| Compensation | Undo completed steps in reverse (cancel payment schedule, void contract snapshot, release stock hold); voids append, never delete; collected payments always go to manual recovery and provider refund; mixed-award legs recover independently | Preserves immutable evidence and the non-custodial payment model; no automatic money movement. |
+| Invoice reconciliation basis | Immutable Eventiva contract schedule is the baseline; provider and supplier lines that differ, are missing, extra or duplicated become discrepancies for manual review | Answers EVE-250 open decision 6 without inventing component pricing. |
+
+Still open: region placement and jurisdiction mapping, lawful bases per
+jurisdiction, staff access to private exchange records (EVE-250 open decision 7),
+anti-fraud thresholds (M3), the A2 approval policy, and selection or provisioning
+of any KMS, HSM or attestation product. This approval authorizes no spending,
+provisioning, new dependency or production activation;
+`privateExchangeUnavailable` still refuses private release.
+
 ## Historical open and superseded information
 
 - **EVE-60 hourly rotation follow-up, 2026-11-17:** Jonathan confirmed one-hour
@@ -105,7 +143,7 @@ selection and agent relay timestamps must not be substituted for capture dates.
 <!-- planning:generated:start -->
 ## Generated decision and evidence inventory
 
-398 curated public-safe decision records; 853 source records covered; **0 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
+399 curated public-safe decision records; 853 source records covered; **0 sources still require semantic decision review**. This is exhaustive source inventory, NOT a claim that all recoverable decisions have been extracted. Strict decision-review acceptance remains blocked until that queue is cleared. Account identity, an APPROVED keyword, issue Done status and agent reports cannot themselves establish owner approval. Unknown dates and unproven supersession remain explicit.
 
 [Every source and review disposition](roadmap/decision-sources.md). Source changes invalidate exact digests. New decision summaries never copy raw private source bodies/comments. Existing owner-authorized issue pages retain their separate publication policy.
 
@@ -432,6 +470,7 @@ selection and agent relay timestamps must not be substituted for capture dates.
 | [platform-marketplace-open-policy-proposal](#platform-marketplace-open-policy-proposal) | Specify remaining marketplace freshness, failure recovery, invoice matching, moderation and jurisdiction policy without reopening the selected architecture. | Unknown | proposal |
 | [platform-retention-interaction-original-proposal](#platform-retention-interaction-original-proposal) | Originally proposed preserving independently lawful contractual evidence after participant-grant revocation while erasing separable personal data and delaying final shredding. | 2026-11-15T00:36:30.920Z | proposal |
 | [platform-trust-conformance-spec](#platform-trust-conformance-spec) | Implement already binding deployment-root/key hierarchy, four independent release gates, sealed profiles and assurance floors through neutral contracts and fail-closed conformance tests, not a fresh architecture redesign. | Unknown | settled-requirement |
+| [platform-trust-concrete-parameters](#platform-trust-concrete-parameters) | Adopt standard concrete trust and marketplace parameters: Ed25519 over RFC 8785, SHA-256 payload digests, AES-256-GCM per-record DEKs under non-exportable KMS KEKs, 3-of-5 root custody and 90-day rotation, bounded request/evidence/revocation timing, step freshness with synchronous rechecks, class retention with legal hold, retry/compensation/manual recovery and contract-schedule invoice reconciliation. | Unknown | recorded-owner-direction |
 | [platform-trust-composition-parameters](#platform-trust-composition-parameters) | Resolve concrete crypto/provider/verifier composition and remaining legal policy within the approved root-trust architecture. | Unknown | proposal |
 | [platform-integration-acceptance-spec](#platform-integration-acceptance-spec) | Keep umbrella integration open until composition, boundaries, durable state/lifecycle/workflow, protected security, configuration, telemetry, real UI targets and aggregate gates have explicit reproducible evidence. | Unknown | settled-requirement |
 | [platform-lowercase-archive-direction](#platform-lowercase-archive-direction) | Rename only the top-level archive directory to lowercase with a Git-visible case-safe move, preserving all historical bytes and the private-test gitlink. | Unknown | recorded-owner-direction |
@@ -1204,7 +1243,7 @@ M2 canonical signed request envelope
 - Evidence: [docs/architecture/eventiva-platform-and-marketplace.md](../../docs/architecture/eventiva-platform-and-marketplace.md).
 - Implementation: The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.
 - Concrete outstanding parameters: Proposed M2 envelope fields include version, sender/service/tenant/participant/recipient, action/version/resource/purpose, payload digest, idempotency/correlation, issue/expiry/nonce/key IDs and attestation reference. Ratify exact schema, canonicalization, replay/freshness/key-rotation rules and independent verification before transport implementation; algorithms/libraries require separate approval.
-- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry.
+- Superseded by: [platform-trust-concrete-parameters](#platform-trust-concrete-parameters). Superseded by the 2026-11-18 concrete parameter approval, which fixes the eventiva.m2.v1 schema, Ed25519, RFC 8785 and timing rules.
 
 ### architecture-25
 
@@ -1228,7 +1267,7 @@ Freshness thresholds, compensation and manual recovery, invoice reconciliation b
 - Evidence: [docs/architecture/eventiva-platform-and-marketplace.md](../../docs/architecture/eventiva-platform-and-marketplace.md).
 - Implementation: The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.
 - Concrete outstanding parameters: Resolve availability/price freshness thresholds, compensation versus manual recovery after partial failure, invoice reconciliation against quote/award/receipt versions and exceptional staff access to private records. These remain explicit proposed policies; current sources provide no universal numeric freshness budget, staff plaintext exemption or completed reconciliation design.
-- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry.
+- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open.
 
 ### architecture-27
 
@@ -1240,7 +1279,7 @@ Exact region placement and jurisdiction mapping, per-jurisdiction lawful bases a
 - Evidence: [docs/architecture/eventiva-platform-and-marketplace.md](../../docs/architecture/eventiva-platform-and-marketplace.md).
 - Implementation: The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.
 - Concrete outstanding parameters: Choose exact marketplace region/cell placement and jurisdiction mapping plus lawful processing bases, retention schedules, transfer safeguards and participant-consent rules. UK-default residency direction does not itself settle every cross-region exchange or legal schedule; obtain policy/legal validation before claims or activation.
-- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry.
+- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open.
 
 ### architecture-28
 
@@ -1252,7 +1291,7 @@ Vendors, payment provider, HSM or KMS, attestation verifier and evidence format,
 - Evidence: [docs/architecture/eventiva-platform-and-marketplace.md](../../docs/architecture/eventiva-platform-and-marketplace.md).
 - Implementation: The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.
 - Concrete outstanding parameters: Approve exact remaining payment/crypto/HSM/KMS/attestation providers, algorithms, evidence formats, versions and paid services only in their owning implementation batch. Existing separate foundation matrix, SQL-only batch, production Neon direction and Keycloak product selection do not approve arbitrary new packages/images or vendor operation; exact Keycloak component adoption remains blocked pending its security/provenance gate.
-- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry.
+- Superseded by: None explicitly established in this record. No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open.
 
 ### one-client-runtime
 
@@ -4336,7 +4375,7 @@ Specify remaining marketplace freshness, failure recovery, invoice matching, mod
 - Evidence: [EVE-250/description](https://linear.app/resnovas/issue/EVE-250/decide-controlled-cross-tenant-marketplace-gateway-architecture).
 - Implementation: No final parameter values or production-policy acceptance established.
 - Concrete outstanding parameters: Choose synchronous stock recheck steps/TTL thresholds; per-boundary compensation/operator states; provider-line versus accounting-line versus contract-schedule matching; support/moderator roles and approvals; exchange fields and bounded offline revocation; exact residency/legal schedules.
-- Superseded by: None explicitly established in this record. Architecture selection is approved; these narrower parameters remain open, not the entire marketplace topology.
+- Superseded by: None explicitly established in this record. Architecture selection is approved; these narrower parameters remain open, not the entire marketplace topology. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open.
 
 ### platform-retention-interaction-original-proposal
 
@@ -4362,6 +4401,18 @@ Implement already binding deployment-root/key hierarchy, four independent releas
 - Concrete outstanding parameters: Test replay/expiry/revocation, audience/resource/purpose/profile mismatches, unavailable brokers, cumulative assurance and protected observer redaction. Modules/tenants may strengthen but never redefine/lower core controls.
 - Superseded by: None explicitly established in this record. Binding reconciliation and baseline trust-architecture-reconciled supersede stale whole-design proposal wording, not exact composition review.
 
+### platform-trust-concrete-parameters
+
+Adopt standard concrete trust and marketplace parameters: Ed25519 over RFC 8785, SHA-256 payload digests, AES-256-GCM per-record DEKs under non-exportable KMS KEKs, 3-of-5 root custody and 90-day rotation, bounded request/evidence/revocation timing, step freshness with synchronous rechecks, class retention with legal hold, retry/compensation/manual recovery and contract-schedule invoice reconciliation.
+
+- Authority: **recorded-owner-direction**. This records evidence, not a new approval.
+- Source timestamp: Unknown; no owner decision time available. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
+- Scope: [EVE-250](issues/EVE-250.md), [EVE-251](issues/EVE-251.md).
+- Evidence: [docs/architecture/eventiva-platform-and-marketplace.md](../../docs/architecture/eventiva-platform-and-marketplace.md).
+- Implementation: Jonathan approved agent selection of well-established standard options on 2026-11-18, relayed through the Puck coordination thread; exact instruction time unavailable. Implemented in @eventiva/contracts/trust-profile, @eventiva/contracts/marketplace-policy and @eventiva/integrations.trust.server/crypto with focused tests; no vendor, provisioning, dependency, spending or production release. privateExchangeUnavailable still refuses release.
+- Concrete outstanding parameters: Values are sealed floors (tighten only): 5 min request lifetime, 30 s skew, evidence max ages 5/5/15/1 min (identity/resource/workload/broker), 60 s revocation propagation, 15 min offline display without offline staging, 7 d nonce retention; freshness 24 h/15 min/1 min/1 min; retention 2 y/7 y/30 d/15 min classes; retry 1 s x2 to 5 min, 8 attempts. Still open: region/jurisdiction mapping, lawful bases, staff access, M3 thresholds, A2 approval policy, KMS/HSM/attestation product selection and provisioning.
+- Superseded by: None explicitly established in this record. Supersedes the proposed M2 envelope record and the concrete crypto/timing/custody/freshness/recovery/reconciliation/retention portions of earlier proposal records; their region, legal, staff-access and vendor portions remain open.
+
 ### platform-trust-composition-parameters
 
 Resolve concrete crypto/provider/verifier composition and remaining legal policy within the approved root-trust architecture.
@@ -4372,7 +4423,7 @@ Resolve concrete crypto/provider/verifier composition and remaining legal policy
 - Evidence: [EVE-251/description](https://linear.app/resnovas/issue/EVE-251/decide-marketplace-service-attestation-and-cryptographic-trust).
 - Implementation: No exact algorithm, library, attestation evidence format, custody deployment, infrastructure or production release approval established.
 - Concrete outstanding parameters: Review canonical signed format/algorithms/key sizes, evidence/verifier independence, broker/custody vendor, replay/rotation timing, anti-fraud thresholds and regions. Owner policy remaining: lawful processing/retention/holds, mandatory independent review, nonoverridable degraded assurance and product-wide custodian quorum. Engineering selections are not a reopening of root trust.
-- Superseded by: None explicitly established in this record. Earlier blanket not-approved-for-implementation text is subordinate to binding neutral-contract authorization; only concrete composition remains gated.
+- Superseded by: None explicitly established in this record. Earlier blanket not-approved-for-implementation text is subordinate to binding neutral-contract authorization; only concrete composition remains gated. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open.
 
 ### platform-integration-acceptance-spec
 

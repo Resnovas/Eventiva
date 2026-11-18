@@ -132,9 +132,11 @@ and makes no exactly-once external-effect claim.
 ## Private exchange and remaining delivery
 
 EVE-251 architecture is confirmed and provider-neutral implementation is permitted.
-Concrete algorithms, vendors and custody remain unapproved. This increment does
-not choose them or adopt the separately developed trust implementation.
-`privateExchangeUnavailable` always fails with `MarketplaceFailure` reason
+Since 2026-11-18 the concrete algorithms, custody quorum, timing, freshness,
+retention, recovery and reconciliation parameters are approved and implemented
+in the [trust profile](trust-profile.md). Vendors and provisioning remain
+unapproved, so no real KMS, trust directory or verifier exists to compose.
+`privateExchangeUnavailable` therefore still fails with `MarketplaceFailure` reason
 `trust-unapproved`, even after reference authorization succeeds. No flag, grant,
 synthetic policy success or signed request enables private release.
 

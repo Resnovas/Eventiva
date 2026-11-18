@@ -186,6 +186,7 @@ describe('package hygiene', /** Verify portable package exports and historical-s
             'packages/integrations/posthog-server',
             'packages/integrations/sql',
             'packages/integrations/telemetry.server',
+            'packages/integrations/trust.server',
             'packages/runtime',
             'packages/schema',
             'packages/ui-modules',

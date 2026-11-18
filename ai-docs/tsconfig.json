@@ -8,6 +8,9 @@
     "include": ["src/**/*.ts"],
     "references": [
         {
+            "path": "../packages/integrations/trust.server"
+        },
+        {
             "path": "../packages/ui-modules"
         },
         {

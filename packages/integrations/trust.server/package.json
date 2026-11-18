@@ -1,0 +1,26 @@
+{
+    "name": "@eventiva/integrations.trust.server",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Node crypto for the eventiva.trust.v1 profile: Ed25519 signatures and AES-256-GCM envelopes over KMS-held keys.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        "./crypto": {
+            "@eventiva/source": "./src/crypto.ts",
+            "types": "./dist/crypto.d.ts",
+            "default": "./dist/crypto.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

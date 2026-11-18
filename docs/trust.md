@@ -2,6 +2,8 @@
 
 EVE-251 implements an unwired provider-neutral library for metadata preflight, not private key release or decryption. It invokes verifier and replay ports but activates no application path and adds no security-bypass flag. A successful result always contains `decision: 'metadata-preflight-only'` and `release: 'denied'`. Do not treat it as a reusable authorization grant. No production verifier, cryptography, signature format, custody provider or infrastructure is selected.
 
+The concrete algorithms, timing windows and custody quorum approved on 2026-11-18, and the Node implementation of Ed25519 request and evidence signatures and AES-256-GCM envelopes, are described in the [trust profile](trust-profile.md). Use `trustPolicyAt` to build `TrustPolicy` from them.
+
 ## Keep four gates independent
 
 Provide these trusted Effect services at composition, not from a plugin or caller:

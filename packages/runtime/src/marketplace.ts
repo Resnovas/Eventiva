@@ -193,7 +193,7 @@ export const stageExchange = (input: StageExchangeRequest) =>
         }
     );
 
-/** EVE-251: no trust provider, algorithm, attestation verifier or key custody is selected or bypassable. */
+/** EVE-251: the eventiva.trust.v1 algorithms and custody are approved, but no KMS, trust directory or attestation verifier is provisioned, so private release stays refused and is not bypassable. */
 export const privateExchangeUnavailable: Effect.Effect<never, MarketplaceFailure> = Effect.fail(
     new MarketplaceFailure({ reason: 'trust-unapproved' })
 );

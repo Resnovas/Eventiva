@@ -1,0 +1,17 @@
+{
+    "name": "@eventiva/integrations.trust.server-tests",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "tests/integrations/trust-server/src",
+    "tags": ["type:test", "layer:backend", "capability:test"],
+    "targets": {
+        "typecheck": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "tsc -p tests/integrations/trust-server/tsconfig.json --noEmit",
+                "cwd": "{workspaceRoot}"
+            },
+            "dependsOn": ["^build"]
+        }
+    }
+}

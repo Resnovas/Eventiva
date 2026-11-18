@@ -1,0 +1,6 @@
+{
+    "name": "@eventiva/integrations.trust.server",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/trust.server/src",
+    "tags": ["type:integration", "layer:backend", "capability:trust"]
+}

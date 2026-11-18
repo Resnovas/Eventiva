@@ -137,6 +137,16 @@
             "types": "./dist/telemetry.d.ts",
             "default": "./dist/telemetry.js"
         },
+        "./trust-profile": {
+            "@eventiva/source": "./src/trust-profile.ts",
+            "types": "./dist/trust-profile.d.ts",
+            "default": "./dist/trust-profile.js"
+        },
+        "./marketplace-policy": {
+            "@eventiva/source": "./src/marketplace-policy.ts",
+            "types": "./dist/marketplace-policy.d.ts",
+            "default": "./dist/marketplace-policy.js"
+        },
         "./package.json": "./package.json"
     },
     "dependencies": {},

@@ -59,3 +59,23 @@ These assertions run in the existing storage test gate without new target wiring
 These are bounded persistence proofs, not actual verifier, custody, live revocation,
 power-loss/replication, replay-retention policy or release conformance. No concrete
 crypto, policy or production composition is selected by this test-only slice.
+
+## Concrete trust profile `eventiva.trust.v1`
+
+Supersedes earlier statements in this section that no concrete crypto, custody, timing, retention or freshness choice is selected; region, lawful-basis, staff-access and vendor-provisioning limits still stand.
+
+Jonathan approved these standard choices on 2026-11-18 (relayed through the Puck coordination thread T-01a1e940-37a3-7691-a5c0-e935b711c99a). They are sealed floors: callers may tighten, never relax. People guide: `docs/trust-profile.md`.
+
+- `@eventiva/contracts/trust-profile` (portable): `trustProfile` constants; schemas `KekReference`, `RecordBinding` (vault refused), `EncryptedRecord` (`eventiva.envelope.v1`, `A256GCM`), `SignedRequestClaims`/`SignedRequest` (`eventiva.m2.v1`, `Ed25519`), `SignedEvidence`, `KeyPurpose`, `DirectoryKey`; `CryptoFailure` with reasons `invalid | unavailable | signature | stale | revoked | binding | decrypt | vault`; ports `KeyManagement`, `SigningKeys`, `TrustDirectory`; `CryptoUnavailable` safe default; `canonicalize(value): Effect<string, CryptoFailure>` (RFC 8785; refuses non-plain objects, lone surrogates, non-finite numbers); `signingInput(domain, canonical): string`; `trustPolicyAt(now, minimumAssurance): TrustPolicy`; `requestWindowValid(claims, now): boolean`.
+- `@eventiva/integrations.trust.server/crypto` (Node only, `node:crypto`, no new dependency): `sealRecord(binding, kek, plaintext)` and `openRecord(record)` need `KeyManagement`; `signRequest(claims)` and `signEvidence(evidence, keyId, keyVersion)` need `SigningKeys`; `verifyRequest(signed, payload, { audience, now })` and `signedEvidenceGate(gate, service, source)` need `TrustDirectory`; `payloadDigest(bytes)` is pure.
+
+Values: Ed25519 signatures; RFC 8785 canonical JSON with `eventiva.m2.v1\n` / `eventiva.evidence.v1\n` domain prefixes; SHA-256 payload digest; AES-256-GCM with a fresh KMS-generated 256-bit DEK per seal, 12-byte random IV, 16-byte tag, canonical header as AAD and as the KMS encryption context. Request lifetime 300000 ms, skew 30000 ms. Evidence max age: identity and resource 300000 ms, workload 900000 ms, broker 60000 ms. Revocation propagation 60000 ms; offline grant display 900000 ms and never authorizes staging. Root 3-of-5 offline HSM, 5 years; intermediates 1 year; signing keys 90 days with 7 days overlap; KEKs FIPS 140-3 level 3 non-exportable, 90 days, two approvals for administration.
+
+Rules agents must keep:
+
+- `openRecord` is the release. Call it only after `trustPreflight` succeeds and the release policy allows it; `privateExchangeUnavailable` still refuses marketplace release because no real KMS, directory or verifier is provisioned.
+- `verifyRequest` checks lifetime, skew, audience, payload digest, key purpose `request`, key service equals sender, revocation and the key window at `issuedAt`. It does not consume the nonce; call `TrustReplay.consume` next.
+- Give each gate a different verifier `service` in `signedEvidenceGate`. Evidence keys have exactly one purpose (`evidence-<gate>`), so cross-gate or request keys are refused with `binding`.
+- Never log envelopes, DEKs or payloads. Failures carry only the closed reason.
+
+Tests: `tests/integrations/trust-server/src/crypto.spec.ts` (tamper, swap, vault, KMS-size, every request binding, four signed gates through `trustPreflight`) and `tests/contracts/src/trust-profile.spec.ts` (RFC 8785 vectors, timing boundaries). Region mapping, lawful bases, staff access and KMS/HSM/attestation vendor provisioning remain open.

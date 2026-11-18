@@ -786,8 +786,8 @@
             "sources": ["docs/architecture/eventiva-platform-and-marketplace.md"],
             "implementation": "The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.",
             "parameters": "Proposed M2 envelope fields include version, sender/service/tenant/participant/recipient, action/version/resource/purpose, payload digest, idempotency/correlation, issue/expiry/nonce/key IDs and attestation reference. Ratify exact schema, canonicalization, replay/freshness/key-rotation rules and independent verification before transport implementation; algorithms/libraries require separate approval.",
-            "supersededBy": [],
-            "supersessionNote": "No explicit whole-record supersession established in this curated entry."
+            "supersededBy": ["platform-trust-concrete-parameters"],
+            "supersessionNote": "Superseded by the 2026-11-18 concrete parameter approval, which fixes the eventiva.m2.v1 schema, Ed25519, RFC 8785 and timing rules."
         },
         {
             "id": "architecture-25",
@@ -811,7 +811,7 @@
             "implementation": "The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.",
             "parameters": "Resolve availability/price freshness thresholds, compensation versus manual recovery after partial failure, invoice reconciliation against quote/award/receipt versions and exceptional staff access to private records. These remain explicit proposed policies; current sources provide no universal numeric freshness budget, staff plaintext exemption or completed reconciliation design.",
             "supersededBy": [],
-            "supersessionNote": "No explicit whole-record supersession established in this curated entry."
+            "supersessionNote": "No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open."
         },
         {
             "id": "architecture-27",
@@ -823,7 +823,7 @@
             "implementation": "The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.",
             "parameters": "Choose exact marketplace region/cell placement and jurisdiction mapping plus lawful processing bases, retention schedules, transfer safeguards and participant-consent rules. UK-default residency direction does not itself settle every cross-region exchange or legal schedule; obtain policy/legal validation before claims or activation.",
             "supersededBy": [],
-            "supersessionNote": "No explicit whole-record supersession established in this curated entry."
+            "supersessionNote": "No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open."
         },
         {
             "id": "architecture-28",
@@ -835,7 +835,7 @@
             "implementation": "The register and its supporting captured comments/specifications have been semantically reviewed. Recorded approval/settled/proposed scope is preserved; actual whole-issue implementation, target conformance and production acceptance have not been independently established by this planning review.",
             "parameters": "Approve exact remaining payment/crypto/HSM/KMS/attestation providers, algorithms, evidence formats, versions and paid services only in their owning implementation batch. Existing separate foundation matrix, SQL-only batch, production Neon direction and Keycloak product selection do not approve arbitrary new packages/images or vendor operation; exact Keycloak component adoption remains blocked pending its security/provenance gate.",
             "supersededBy": [],
-            "supersessionNote": "No explicit whole-record supersession established in this curated entry."
+            "supersessionNote": "No explicit whole-record supersession established in this curated entry. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open."
         },
         {
             "id": "one-client-runtime",
@@ -3973,7 +3973,7 @@
             "implementation": "No final parameter values or production-policy acceptance established.",
             "parameters": "Choose synchronous stock recheck steps/TTL thresholds; per-boundary compensation/operator states; provider-line versus accounting-line versus contract-schedule matching; support/moderator roles and approvals; exchange fields and bounded offline revocation; exact residency/legal schedules.",
             "supersededBy": [],
-            "supersessionNote": "Architecture selection is approved; these narrower parameters remain open, not the entire marketplace topology."
+            "supersessionNote": "Architecture selection is approved; these narrower parameters remain open, not the entire marketplace topology. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open."
         },
         {
             "id": "platform-retention-interaction-original-proposal",
@@ -4000,6 +4000,18 @@
             "supersessionNote": "Binding reconciliation and baseline trust-architecture-reconciled supersede stale whole-design proposal wording, not exact composition review."
         },
         {
+            "id": "platform-trust-concrete-parameters",
+            "authority": "recorded-owner-direction",
+            "summary": "Adopt standard concrete trust and marketplace parameters: Ed25519 over RFC 8785, SHA-256 payload digests, AES-256-GCM per-record DEKs under non-exportable KMS KEKs, 3-of-5 root custody and 90-day rotation, bounded request/evidence/revocation timing, step freshness with synchronous rechecks, class retention with legal hold, retry/compensation/manual recovery and contract-schedule invoice reconciliation.",
+            "timestamp": null,
+            "scope": ["EVE-250", "EVE-251"],
+            "sources": ["docs/architecture/eventiva-platform-and-marketplace.md"],
+            "implementation": "Jonathan approved agent selection of well-established standard options on 2026-11-18, relayed through the Puck coordination thread; exact instruction time unavailable. Implemented in @eventiva/contracts/trust-profile, @eventiva/contracts/marketplace-policy and @eventiva/integrations.trust.server/crypto with focused tests; no vendor, provisioning, dependency, spending or production release. privateExchangeUnavailable still refuses release.",
+            "parameters": "Values are sealed floors (tighten only): 5 min request lifetime, 30 s skew, evidence max ages 5/5/15/1 min (identity/resource/workload/broker), 60 s revocation propagation, 15 min offline display without offline staging, 7 d nonce retention; freshness 24 h/15 min/1 min/1 min; retention 2 y/7 y/30 d/15 min classes; retry 1 s x2 to 5 min, 8 attempts. Still open: region/jurisdiction mapping, lawful bases, staff access, M3 thresholds, A2 approval policy, KMS/HSM/attestation product selection and provisioning.",
+            "supersededBy": [],
+            "supersessionNote": "Supersedes the proposed M2 envelope record and the concrete crypto/timing/custody/freshness/recovery/reconciliation/retention portions of earlier proposal records; their region, legal, staff-access and vendor portions remain open."
+        },
+        {
             "id": "platform-trust-composition-parameters",
             "authority": "proposal",
             "summary": "Resolve concrete crypto/provider/verifier composition and remaining legal policy within the approved root-trust architecture.",
@@ -4009,7 +4021,7 @@
             "implementation": "No exact algorithm, library, attestation evidence format, custody deployment, infrastructure or production release approval established.",
             "parameters": "Review canonical signed format/algorithms/key sizes, evidence/verifier independence, broker/custody vendor, replay/rotation timing, anti-fraud thresholds and regions. Owner policy remaining: lawful processing/retention/holds, mandatory independent review, nonoverridable degraded assurance and product-wide custodian quorum. Engineering selections are not a reopening of root trust.",
             "supersededBy": [],
-            "supersessionNote": "Earlier blanket not-approved-for-implementation text is subordinate to binding neutral-contract authorization; only concrete composition remains gated."
+            "supersessionNote": "Earlier blanket not-approved-for-implementation text is subordinate to binding neutral-contract authorization; only concrete composition remains gated. Partially superseded on 2026-11-18 by platform-trust-concrete-parameters for its concrete crypto, custody, timing, freshness, recovery, reconciliation and default retention parts; remaining parts stay open."
         },
         {
             "id": "platform-integration-acceptance-spec",
@@ -4927,9 +4939,9 @@
     "sources": [
         {
             "id": "docs/architecture/eventiva-platform-and-marketplace.md",
-            "hash": "21604f1ec92982f0906007545469fa32281098c2527aff45d4edb0dd0a4d1d8a",
+            "hash": "2869683ae6b050b237dcca20a23b74e564ed81a83b4c3a4c0813a5686c297c77",
             "disposition": "decision",
-            "reason": "Full changed source reread on 2026-11-17, including preserved four diagram sources, register and revision instructions. Owner-directed replacement/index designation resolves the historical missing-file prerequisite below Linear authority; archive comments stay unchanged and explicitly superseded only for current source status. Exact EVE-250/251 owner comment IDs/creation dates and unknown replacement-instruction time are recorded. Original remains unavailable/unread; concrete composition/policy and acceptance gates remain open. Earlier authenticated artifact review evidence is unchanged, not rerun or expanded here."
+            "reason": "Full changed source reread on 2026-11-17, including preserved four diagram sources, register and revision instructions. Owner-directed replacement/index designation resolves the historical missing-file prerequisite below Linear authority; archive comments stay unchanged and explicitly superseded only for current source status. Exact EVE-250/251 owner comment IDs/creation dates and unknown replacement-instruction time are recorded. Original remains unavailable/unread; concrete composition/policy and acceptance gates remain open. Earlier authenticated artifact review evidence is unchanged, not rerun or expanded here. Full changed source reread on 2026-11-18 after recording Jonathan's same-day approval of standard concrete choices (relayed through the Puck coordination thread; exact instruction time unavailable): M2 envelope, algorithms, custody/rotation, freshness/rechecks, recovery/compensation, reconciliation basis and default retention now marked approved with diagrams updated; staff access, region/jurisdiction/lawful basis, M3, A2 and vendor/provisioning rows remain proposed."
         },
         {
             "id": "docs/architecture/modular-platform.md",

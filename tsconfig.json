@@ -41,6 +41,9 @@
         },
         {
             "path": "./packages/ui-modules"
+        },
+        {
+            "path": "./packages/integrations/trust.server"
         }
     ]
 }

@@ -259,6 +259,9 @@ importers:
       '@eventiva/integrations.sql':
         specifier: workspace:*
         version: link:../packages/integrations/sql
+      '@eventiva/integrations.trust.server':
+        specifier: workspace:*
+        version: link:../packages/integrations/trust.server
       '@eventiva/runtime':
         specifier: workspace:*
         version: link:../packages/runtime
@@ -543,6 +546,16 @@ importers:
         specifier: 'catalog:'
         version: 3.22.4
 
+  packages/integrations/trust.server:
+    dependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.4
+
   packages/runtime:
     dependencies:
       '@eventiva/contracts':
@@ -671,6 +684,18 @@ importers:
       posthog-node:
         specifier: 5.63.1
         version: 5.63.1(@opentelemetry/api@1.9.0)
+
+  tests/integrations/trust-server:
+    devDependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../../packages/contracts
+      '@eventiva/integrations.trust.server':
+        specifier: workspace:*
+        version: link:../../../packages/integrations/trust.server
+      '@eventiva/runtime':
+        specifier: workspace:*
+        version: link:../../../packages/runtime
 
   tests/resources:
     devDependencies:

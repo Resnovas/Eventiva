@@ -1,0 +1,11 @@
+{
+    "name": "@eventiva/integrations.trust.server-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "@eventiva/runtime": "workspace:*",
+        "@eventiva/integrations.trust.server": "workspace:*"
+    }
+}

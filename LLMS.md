@@ -1624,6 +1624,19 @@ deduplication/sagas, financial records and legal policy receive their own proofs
 Do not activate production, select retention/residency/freshness defaults, run
 migrations, modify billing/settings/infrastructure or enable consumers here.
 
+## Marketplace parameters `eventiva.marketplace.v1`
+
+Supersedes earlier statements in this section that no concrete crypto, custody, timing, retention or freshness choice is selected; region, lawful-basis, staff-access and vendor-provisioning limits still stand.
+
+Pure functions in `@eventiva/contracts/marketplace-policy`, approved by Jonathan on 2026-11-18 (relayed through the Puck coordination thread). People guide: `docs/trust-profile.md`.
+
+- `freshnessPolicy`: quote-send 24 h, no synchronous recheck; award 15 min, contract-acceptance 1 min and payment 1 min, each with a synchronous supplier recheck. `assessFreshness(assertion | undefined, step, now)` returns `unknown` for missing or future-dated, `stale` for expired or over-age, else `verified` (display only; rechecks still run). `quoteValidity`: default 14 days, maximum 90 days.
+- `retentionPolicy` (ms after the closing event): message and unawarded-quote 2 years; contract-evidence, payment-evidence and audit 7 years; replay-nonce 7 days; public-tombstone 30 days; offline-cache 15 min. `destructionDueAt(state)` returns `undefined` under legal hold, otherwise the later of the period (jurisdiction can only lengthen) and every participant's obligation end.
+- `retryPolicy`: 1 s base, factor 2, cap 5 min, 8 attempts. `recoveryAction(step, failure, attempt)`: `ambiguous` always `reconcile`; `transient` retries until attempt 8; then, or for `permanent`, `compensate` earlier completed steps in reverse (`cancel-payment-schedule`, `void-contract-snapshot`, `release-stock-hold`), except `collect-payment`, which is always `manual-recovery`. Legs of a mixed award recover independently.
+- `reconcileInvoice(schedule, { 'provider-invoice'?, 'supplier-accounting'? })`: the immutable contract schedule is the baseline; changed, missing, extra or duplicated lines are a `discrepancy` for manual review. Nothing is adjusted.
+
+Tests: `tests/contracts/src/marketplace-policy.spec.ts` covers both sides of every boundary.
+
 ### Refuse private marketplace release
 
 Metadata authorization and pending local intents never grant private processing.
@@ -1724,6 +1737,26 @@ These are bounded persistence proofs, not actual verifier, custody, live revocat
 power-loss/replication, replay-retention policy or release conformance. No concrete
 crypto, policy or production composition is selected by this test-only slice.
 
+## Concrete trust profile `eventiva.trust.v1`
+
+Supersedes earlier statements in this section that no concrete crypto, custody, timing, retention or freshness choice is selected; region, lawful-basis, staff-access and vendor-provisioning limits still stand.
+
+Jonathan approved these standard choices on 2026-11-18 (relayed through the Puck coordination thread T-01a1e940-37a3-7691-a5c0-e935b711c99a). They are sealed floors: callers may tighten, never relax. People guide: `docs/trust-profile.md`.
+
+- `@eventiva/contracts/trust-profile` (portable): `trustProfile` constants; schemas `KekReference`, `RecordBinding` (vault refused), `EncryptedRecord` (`eventiva.envelope.v1`, `A256GCM`), `SignedRequestClaims`/`SignedRequest` (`eventiva.m2.v1`, `Ed25519`), `SignedEvidence`, `KeyPurpose`, `DirectoryKey`; `CryptoFailure` with reasons `invalid | unavailable | signature | stale | revoked | binding | decrypt | vault`; ports `KeyManagement`, `SigningKeys`, `TrustDirectory`; `CryptoUnavailable` safe default; `canonicalize(value): Effect<string, CryptoFailure>` (RFC 8785; refuses non-plain objects, lone surrogates, non-finite numbers); `signingInput(domain, canonical): string`; `trustPolicyAt(now, minimumAssurance): TrustPolicy`; `requestWindowValid(claims, now): boolean`.
+- `@eventiva/integrations.trust.server/crypto` (Node only, `node:crypto`, no new dependency): `sealRecord(binding, kek, plaintext)` and `openRecord(record)` need `KeyManagement`; `signRequest(claims)` and `signEvidence(evidence, keyId, keyVersion)` need `SigningKeys`; `verifyRequest(signed, payload, { audience, now })` and `signedEvidenceGate(gate, service, source)` need `TrustDirectory`; `payloadDigest(bytes)` is pure.
+
+Values: Ed25519 signatures; RFC 8785 canonical JSON with `eventiva.m2.v1\n` / `eventiva.evidence.v1\n` domain prefixes; SHA-256 payload digest; AES-256-GCM with a fresh KMS-generated 256-bit DEK per seal, 12-byte random IV, 16-byte tag, canonical header as AAD and as the KMS encryption context. Request lifetime 300000 ms, skew 30000 ms. Evidence max age: identity and resource 300000 ms, workload 900000 ms, broker 60000 ms. Revocation propagation 60000 ms; offline grant display 900000 ms and never authorizes staging. Root 3-of-5 offline HSM, 5 years; intermediates 1 year; signing keys 90 days with 7 days overlap; KEKs FIPS 140-3 level 3 non-exportable, 90 days, two approvals for administration.
+
+Rules agents must keep:
+
+- `openRecord` is the release. Call it only after `trustPreflight` succeeds and the release policy allows it; `privateExchangeUnavailable` still refuses marketplace release because no real KMS, directory or verifier is provisioned.
+- `verifyRequest` checks lifetime, skew, audience, payload digest, key purpose `request`, key service equals sender, revocation and the key window at `issuedAt`. It does not consume the nonce; call `TrustReplay.consume` next.
+- Give each gate a different verifier `service` in `signedEvidenceGate`. Evidence keys have exactly one purpose (`evidence-<gate>`), so cross-gate or request keys are refused with `binding`.
+- Never log envelopes, DEKs or payloads. Failures carry only the closed reason.
+
+Tests: `tests/integrations/trust-server/src/crypto.spec.ts` (tamper, swap, vault, KMS-size, every request binding, four signed gates through `trustPreflight`) and `tests/contracts/src/trust-profile.spec.ts` (RFC 8785 vectors, timing boundaries). Region mapping, lawful bases, staff access and KMS/HSM/attestation vendor provisioning remain open.
+
 ### Refuse preflight without approved verifiers
 
 The policy comes from trusted composition, never from a caller's request.
@@ -1762,6 +1795,31 @@ export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =
             ) => replay.consume(request, trustedPolicy)
         ),
         Effect.provide(trustReplay)
+    );
+```
+
+### Verify an M2 signed request and build the approved preflight policy
+
+Ed25519 over RFC 8785, five-minute lifetime, thirty-second skew, payload SHA-256.
+Consume the nonce through TrustReplay after verification; verifyRequest never does.
+Freshness floors come from trustPolicyAt, never from caller input.
+See docs/trust-profile.md for every parameter and its reason.
+
+```ts
+import type { TrustRequest } from '@eventiva/contracts/trust';
+import { type SignedRequest, trustPolicyAt } from '@eventiva/contracts/trust-profile';
+import { verifyRequest } from '@eventiva/integrations.trust.server/crypto';
+import { trustPreflight } from '@eventiva/runtime/trust';
+import { Effect } from 'effect';
+
+/** Requires TrustDirectory plus the four gates and TrustReplay; Restricted decryption needs A4. */
+export const admit = (signed: SignedRequest, body: Uint8Array, request: TrustRequest, now: number) =>
+    Effect.gen(
+        /** Authenticate the transport request first, then run the independent release preflight. */ function* () {
+            const claims = yield* verifyRequest(signed, body, { audience: 'marketplace.cell', now });
+            const preflight = yield* trustPreflight(request, trustPolicyAt(now, 'A4'));
+            return { claims, preflight };
+        }
     );
 ```
 

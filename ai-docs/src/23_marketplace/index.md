@@ -82,3 +82,16 @@ until publication/tombstones, private exchanges, mixed supplier awards, destinat
 deduplication/sagas, financial records and legal policy receive their own proofs.
 Do not activate production, select retention/residency/freshness defaults, run
 migrations, modify billing/settings/infrastructure or enable consumers here.
+
+## Marketplace parameters `eventiva.marketplace.v1`
+
+Supersedes earlier statements in this section that no concrete crypto, custody, timing, retention or freshness choice is selected; region, lawful-basis, staff-access and vendor-provisioning limits still stand.
+
+Pure functions in `@eventiva/contracts/marketplace-policy`, approved by Jonathan on 2026-11-18 (relayed through the Puck coordination thread). People guide: `docs/trust-profile.md`.
+
+- `freshnessPolicy`: quote-send 24 h, no synchronous recheck; award 15 min, contract-acceptance 1 min and payment 1 min, each with a synchronous supplier recheck. `assessFreshness(assertion | undefined, step, now)` returns `unknown` for missing or future-dated, `stale` for expired or over-age, else `verified` (display only; rechecks still run). `quoteValidity`: default 14 days, maximum 90 days.
+- `retentionPolicy` (ms after the closing event): message and unawarded-quote 2 years; contract-evidence, payment-evidence and audit 7 years; replay-nonce 7 days; public-tombstone 30 days; offline-cache 15 min. `destructionDueAt(state)` returns `undefined` under legal hold, otherwise the later of the period (jurisdiction can only lengthen) and every participant's obligation end.
+- `retryPolicy`: 1 s base, factor 2, cap 5 min, 8 attempts. `recoveryAction(step, failure, attempt)`: `ambiguous` always `reconcile`; `transient` retries until attempt 8; then, or for `permanent`, `compensate` earlier completed steps in reverse (`cancel-payment-schedule`, `void-contract-snapshot`, `release-stock-hold`), except `collect-payment`, which is always `manual-recovery`. Legs of a mixed award recover independently.
+- `reconcileInvoice(schedule, { 'provider-invoice'?, 'supplier-accounting'? })`: the immutable contract schedule is the baseline; changed, missing, extra or duplicated lines are a `discrepancy` for manual review. Nothing is adjusted.
+
+Tests: `tests/contracts/src/marketplace-policy.spec.ts` covers both sides of every boundary.

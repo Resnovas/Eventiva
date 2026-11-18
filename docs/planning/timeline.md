@@ -1,6 +1,30 @@
 # Foundation and integration timeline
 
-Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
+Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
+
+## Concrete trust and marketplace parameters - 2026-11-18
+
+Jonathan approved standard concrete choices for EVE-251/EVE-250 on 2026-11-18,
+relayed through the [Puck coordination thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+Each choice and its reasons are in the [decision index](decisions.md#concrete-trust-and-marketplace-parameters---2026-11-18).
+Both issues remain In Progress; this checkpoint does not mark either Done.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Record concrete choices | Completed | Ed25519, RFC 8785, SHA-256, AES-256-GCM per-record DEKs under KMS KEKs, 3-of-5 root custody, rotation, timing, freshness, retention, recovery, compensation and reconciliation basis recorded with reasons. Architecture register and diagrams updated. |
+| Portable contracts | Completed locally | `@eventiva/contracts/trust-profile` and `@eventiva/contracts/marketplace-policy`: schemas, ports, safe `CryptoUnavailable`, RFC 8785 canonicalization and pure policy functions with boundary tests. |
+| Node implementation | Completed locally | `@eventiva/integrations.trust.server/crypto` over `node:crypto`, no new dependency: envelope seal/open, M2 request sign/verify, signed per-gate evidence feeding the existing `trustPreflight`. Tamper, swap, vault, revocation, purpose, service, window and stale-evidence negatives pass; mutation controls fail as expected. |
+| Shared outputs and gates | Recorded on Linear with the delivered commits | LLMS, planning and Graphify regenerated; root check, full verify and strict planning results are posted on EVE-251 and EVE-250. |
+| Provisioning and activation | Upcoming / separately gated | No KMS, HSM or attestation product selected or provisioned; `privateExchangeUnavailable` still refuses release. Region mapping, lawful bases, staff access and M3 thresholds remain open. |
+
+```mermaid
+flowchart LR
+    Approve["2026-11-18 approval: standard choices"] --> Record["Decisions with reasoning"]
+    Record --> Contracts["trust-profile and marketplace-policy contracts"]
+    Contracts --> Node["Node Ed25519 and AES-256-GCM integration"]
+    Node --> Verify["Full verification and signed main delivery"]
+    Verify --> Open["Provisioning, regions, staff access still open"]
+```
 
 ## Dependency security remediation - 2026-11-18
 
