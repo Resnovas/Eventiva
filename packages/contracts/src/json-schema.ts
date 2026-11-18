@@ -78,6 +78,9 @@ const Refinement = Schema.Struct({
     maxItems: Schema.optionalWith(Schema.Number, { exact: true }),
 });
 const isConstraint = Schema.is(Schema.keyof(Refinement));
+// The pinned Effect UUID already spells out both ASCII cases; its i flag adds no accepted characters.
+const uuidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+const uuidV7Pattern = '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$';
 
 /** Classify a JSON literal without treating null as an object; callers reject nonfinite numeric literals. */
 const primitiveType = (value: string | number | boolean | null) =>
@@ -205,16 +208,29 @@ export const make = (
                             })
                         )(annotation.value);
                         if (Either.isLeft(parsed)) return yield* fail(path, 'Invalid refinement annotation');
-                        const additions = parsed.right;
+                        const pattern = ast.annotations[Schema.PatternSchemaId];
+                        const exactUuid =
+                            Option.getOrUndefined(SchemaAST.getSchemaIdAnnotation(ast)) === Schema.UUIDSchemaId &&
+                            typeof pattern === 'object' &&
+                            pattern !== null &&
+                            'regex' in pattern &&
+                            pattern.regex instanceof RegExp &&
+                            pattern.regex.source === uuidPattern &&
+                            pattern.regex.flags === 'i' &&
+                            parsed.right.pattern === uuidPattern &&
+                            parsed.right.format === 'uuid' &&
+                            Object.keys(parsed.right).length === 2;
+                        // UUID's runtime contract is exactly the pattern, not a provider-specific format validator.
+                        const additions = exactUuid ? { pattern: uuidPattern } : parsed.right;
                         if (Object.keys(additions).length === 0)
                             return yield* fail(path, 'Empty refinement annotation');
-                        const pattern = ast.annotations[Schema.PatternSchemaId];
                         if (
                             typeof pattern === 'object' &&
                             pattern !== null &&
                             'regex' in pattern &&
                             pattern.regex instanceof RegExp &&
-                            pattern.regex.flags !== ''
+                            pattern.regex.flags !== '' &&
+                            !exactUuid
                         ) {
                             return yield* fail(path, 'Regular expression flags are unsupported');
                         }
@@ -245,7 +261,15 @@ export const make = (
                             ) {
                                 return yield* fail(path, `Invalid constraint: ${key}`);
                             }
-                            if (isConstraint(key) && base[key] !== undefined && base[key] !== value) {
+                            // This exact lower-case v7 subset implies the entire UUID pattern; no general regex intersection is attempted.
+                            const uuidV7Narrowing =
+                                key === 'pattern' && base.pattern === uuidPattern && value === uuidV7Pattern;
+                            if (
+                                isConstraint(key) &&
+                                base[key] !== undefined &&
+                                base[key] !== value &&
+                                !uuidV7Narrowing
+                            ) {
                                 return yield* fail(path, `Conflicting composed constraint: ${key}`);
                             }
                         }

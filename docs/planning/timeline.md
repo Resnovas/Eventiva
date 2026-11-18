@@ -1188,6 +1188,27 @@ live accepted-owner checks and trusted producer release obligations. Graphify
 Cloud memory and the MCP gateway were unavailable; the local graph/source and
 connected Linear MCP were used instead. Existing APIs were copied from source.
 
+## EVE-81 bounded backend and compiler - 2026-11-18
+
+The [rank-1 packet and bounded approvals](https://ampcode.com/threads/T-01a1edbf-8aca-7321-bd1e-e052e15ff66d) relay Jonathan's build direction; exact owner-selection times are unknown. The [Linear checkpoint](https://linear.app/resnovas/issue/EVE-81#comment-49ac5017) separates local proof from delivery and broader acceptance. The original source capture remains historical.
+
+| Phase | State | Evidence and boundary |
+| --- | --- | --- |
+| Exact UUID compiler normalization | Current, separately verified delivery pending | Existing runtime validation and provider restrictions retained; dedicated compiler fixtures plus existing inventory tests. See [actions](../actions.md). |
+| Private product persistence/actions | Current, bounded implementation | Real SQLite/PostgreSQL public-host checkpoint covers initial SKU race, post-write rollback, rename/archive and tenant/reopen controls; final retry and combined gates remain pending. |
+| Inventory parity, kits, UI, sync, import commit | Upcoming or blocked | Complete private-product schemas are not representable in the conservative shared provider subset; discovery fails closed. No activation, stock or whole-issue acceptance. |
+
+```mermaid
+flowchart LR
+    Packet["Rank-1 EVE-81 packet"] --> Guard["Existing Resources transactional guard"]
+    Packet --> Compiler["Bounded exact UUID compiler normalization"]
+    Guard --> Invoke["Private actions and real two-dialect invoke tests"]
+    Compiler --> Limit["Provider restrictions retained; parity unresolved"]
+    Invoke --> Verify["Full and strict planning gates"]
+    Verify --> Ship["Signed direct-main delivery"]
+    Ship --> Future["Future import must use product action path"]
+```
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
