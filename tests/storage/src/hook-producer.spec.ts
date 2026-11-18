@@ -92,6 +92,7 @@ const fixture = (dialect: Dialect) =>
             const directory = yield* Effect.acquireRelease(
                 Effect.sync(
                     /** Keep SQLite state disposable while allowing multiple connections during a test. */ () => {
+                        // A shared unique directory permits real reconnects without sharing state with another test invocation.
                         const root = join(process.cwd(), '.amp/in/orb-backup');
                         mkdirSync(root, { recursive: true });
                         return mkdtempSync(join(root, 'hook-producer-'));
@@ -269,6 +270,7 @@ const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, con
                 confirm: (request) =>
                     Effect.gen(
                         /** Keep retained intent unresolved to model a failed commit acknowledgement boundary. */ function* () {
+                            // Only confirmation is withheld; the original admission and callback must remain independently observable.
                             if (yield* Ref.get(confirmationFails))
                                 return yield* new HookOutboxFailure({ reason: 'unavailable' });
                             return yield* f.producer.confirm(request);
@@ -284,6 +286,7 @@ const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, con
                                 policy,
                                 requestId: Effect.gen(
                                     /** Allocate distinct intents unless a test deliberately supplies a retained duplicate. */ function* () {
+                                        // Forced identities exercise replay fences without advancing the fresh-request sequence.
                                         const forced = yield* Ref.get(forcedRequest);
                                         if (forced !== undefined) return forced;
                                         return id(
@@ -359,6 +362,7 @@ const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, con
                     readonly ready?: Ref.Ref<boolean>;
                 } = {}
             ): ModuleDefinition => {
+                // Lifecycle faults are injected independently of manifest identity so journal bindings stay comparable.
                 const manifest: KernelManifest = {
                     id: name,
                     version: '1.0.0',
@@ -438,6 +442,7 @@ const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, con
                 run(
                     Effect.gen(
                         /** Registration ownership stays with the caller's scope for explicit cascade/disposal tests. */ function* () {
+                            // Do not add a helper-local scope: it would remove the module before the caller can test teardown.
                             yield* kernel.register(module);
                             yield* kernel.validate(module.manifest.id);
                             yield* kernel.install(module.manifest.id);
@@ -451,6 +456,7 @@ const kernelFixture = (f: Effect.Effect.Success<ReturnType<typeof fixture>>, con
 
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`producer journal prerequisite ${dialect}`, /** Register the same journal invariants for both SQL dialects. */ () => {
+        // The same lifecycle evidence must survive both dialects; no in-memory journal stands in for SQL confirmation.
         it.scoped(
             'kernel publishes exact transitions in commit order and deduplicates same-generation ready',
             /** Verify callback admission, retained provenance and ready incarnation identity on the real SQL feed. */ () =>
@@ -559,6 +565,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                 KernelModule,
                                 Effect.gen(
                                     /** A single resource outlives its cancellable deactivation hook. */ function* () {
+                                        // Register cleanup before installing the never-ending hook so cancellation still has a physical release witness.
                                         yield* Effect.addFinalizer(
                                             /** The finalizer is independent of journal and callback success. */ () =>
                                                 Ref.update(

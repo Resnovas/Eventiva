@@ -121,6 +121,7 @@ describe('OpenFeature server flags', /** Register server evaluation, targeting a
         /** Bind an empty static provider to force unknown-key fallback. */ () =>
             Effect.gen(
                 /** Verify fallback retains the requested key and is not mislabeled as a static match. */ function* () {
+                    // A default answer is not a provider match, even when the returned boolean is usable.
                     const flags = yield* Flags;
                     const result = yield* flags.evaluate(flag('a.unknown', true));
                     expect(result).toMatchObject({ flag: 'a.unknown', value: true, fallback: true });
@@ -180,6 +181,7 @@ describe('OpenFeature server flags', /** Register server evaluation, targeting a
         /** Bind a reasonless successful resolution for normalization coverage. */ () =>
             Effect.gen(
                 /** Verify a missing reason becomes UNKNOWN while preserving the resolved boolean. */ function* () {
+                    // True opposes the declared false default, separating missing metadata from failed evaluation.
                     const flags = yield* Flags;
                     expect(yield* flags.evaluate(flag('a.flag', false))).toMatchObject({
                         value: true,
@@ -212,6 +214,7 @@ describe('OpenFeature server flags', /** Register server evaluation, targeting a
         /** Bind the rejecting remote fixture to exercise evaluation failure. */ () =>
             Effect.gen(
                 /** Verify a rejected evaluation is represented as safe-default fallback. */ function* () {
+                    // Evaluation rejection is an answerable default condition, not an escaping vendor exception.
                     const flags = yield* Flags;
                     const result = yield* flags.evaluate(flag('a.flag', false));
                     expect(result).toMatchObject({ value: false, fallback: true });
@@ -224,6 +227,7 @@ describe('OpenFeature server flags', /** Register server evaluation, targeting a
         /** Bind a provider with rejected initialization and evaluation. */ () =>
             Effect.gen(
                 /** Verify failed startup cannot prevent a safe-default answer. */ function* () {
+                    // A true default also catches an adapter that hard-codes false on initialization failure.
                     const flags = yield* Flags;
                     expect(yield* flags.evaluate(flag('a.flag', true))).toMatchObject({ value: true, fallback: true });
                 }
@@ -257,6 +261,7 @@ describe('OpenFeature server flags', /** Register server evaluation, targeting a
                     yield* Effect.scoped(
                         Effect.gen(
                             /** Establish that the live domain serves its static true value before cleanup. */ function* () {
+                                // This positive control proves later fallback comes from disposal, not a never-bound provider.
                                 const flags = yield* Flags;
                                 expect((yield* flags.evaluate(flag('a.flag', false))).value).toBe(true);
                             }

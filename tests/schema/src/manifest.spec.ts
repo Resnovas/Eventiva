@@ -29,15 +29,18 @@ const manifest = {
 };
 
 describe('module manifests', /** Cover module discovery wire metadata independently of kernel exact-version pins. */ () => {
+    // Reuse the wire decoder across controls; kernel registration imposes its own additional version policy elsewhere.
     const decode = Schema.decodeUnknownEither(ModuleManifest);
 
     it('decode a complete manifest unchanged', /** Verify a complete prerelease manifest survives decoding and re-encoding without losing flag metadata. */ () => {
+        // Compare with the authored manifest, not the decoded value, to expose fields lost during either transformation.
         const result = decode(manifest);
         expect(result._tag).toBe('Right');
         expect(Schema.encodeSync(ModuleManifest)(Schema.decodeUnknownSync(ModuleManifest)(manifest))).toEqual(manifest);
     });
 
     it('reject another format, a bad version, a bad action name and a bad module id', /** Reject malformed wire format and identifiers while retaining single-segment module ids. */ () => {
+        // Each rejection changes one valid field; the platform id control prevents over-restricting legitimate single segments.
         expect(decode({ ...manifest, format: 2 })._tag).toBe('Left');
         expect(decode({ ...manifest, version: '1.2' })._tag).toBe('Left');
         expect(decode({ ...manifest, actions: ['create'] })._tag).toBe('Left');

@@ -237,6 +237,7 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                         query: (definition, query) =>
                                             Effect.sync(
                                                 /** Model a query adapter retaining and modifying the supplied schema. */ () => {
+                                                    // Restrict corruption to this port so the unchanged write path remains a control.
                                                     if (mutation === 'query') widen(definition);
                                                 }
                                             ).pipe(Effect.andThen(provider.driver.query(resource, query))),
@@ -244,6 +245,7 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                         write: (definition, recordId, revision, value) =>
                                             Effect.sync(
                                                 /** Model a write adapter rewriting the supplied definition before returning. */ () => {
+                                                    // The real driver below still uses the original physical declaration, isolating runtime admission.
                                                     if (mutation === 'write') widen(definition);
                                                 }
                                             ).pipe(
@@ -1497,6 +1499,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                         const work = auth(
                                             Effect.gen(
                                                 /** Return the resource create output and its matching durable action receipt. */ function* () {
+                                                    // Returning after the mutation lets the enclosing integrity commit own both business data and evidence.
                                                     yield* api.create(resource, id(1), data);
                                                     return { output: { id: id(1) }, receipt };
                                                 }
@@ -1577,6 +1580,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                             ).toMatchObject({ left: { reason: 'denied' } });
                             const routed = Effect.gen(
                                 /** Run an authorized resource read under the router-provided tenant scope. */ function* () {
+                                    // A permissive routing policy still needs the caller's tenant to match this bound resource provider.
                                     const routing = yield* TenantRouter;
                                     return yield* routing.run(tenant, api.get(resource, id(1)));
                                 }
@@ -1702,6 +1706,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                             // Exactly the same feature program runs under both provider Layers, despite the ambient second client.
                                             const feature = Effect.gen(
                                                 /** Read a name solely through the supplied resource port, without importing SQL capabilities. */ function* () {
+                                                    // Acquiring the port per execution exposes accidental reuse of the other provider's tenant binding.
                                                     const api = yield* Resources;
                                                     return (yield* api.get(resource, id(1)))?.value.name;
                                                 }

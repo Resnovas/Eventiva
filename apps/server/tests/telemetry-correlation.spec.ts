@@ -83,6 +83,7 @@ const probe = Effect.gen(
 
 /** Assert absence on all exported attributes, not just on a selected log. */
 const clean = (records: ReadonlyArray<TelemetryRecord>) => {
+    // Empty maps catch unexpected attribute names too; a fixed denylist would miss a newly introduced identifier.
     for (const record of records) expect(record.attributes).toEqual({});
 };
 

@@ -145,6 +145,7 @@ describe('OpenFeature client flags', /** Register browser flag fallback, precede
             };
             return Effect.gen(
                 /** Verify an error resolution cannot override the declared false default. */ function* () {
+                    // The provider's erroneous true answer opposes the safe default, making error-value leakage observable.
                     const flags = yield* Flags;
                     expect(yield* flags.evaluate(flag('a.flag', false))).toMatchObject({
                         value: false,
@@ -158,6 +159,7 @@ describe('OpenFeature client flags', /** Register browser flag fallback, precede
     it.effect(
         'reports UNKNOWN when a provider gives no reason',
         /** Bind a successful but reasonless provider to exercise reason normalization. */ () => {
+            // Absence of reason metadata must not turn a successful value into an evaluation failure.
             const terse: Provider = {
                 metadata: { name: 'terse' },
                 runsOn: 'client',

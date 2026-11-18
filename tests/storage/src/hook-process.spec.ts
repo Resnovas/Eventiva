@@ -32,6 +32,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         { timeout: 60000, maxBuffer: 1024 * 1024 },
                         /** Reject failed child execution with captured diagnostics, otherwise return its proof report. */
                         (error, stdout, stderr) => {
+                            // Partial stdout is not proof: even a printed report must come from a successful child exit.
                             if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
                             else resolve(stdout);
                         }
@@ -84,6 +85,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         { timeout: 60000, maxBuffer: 1024 * 1024 },
                         /** Surface child failure output or return the completed producer recovery report. */
                         (error, stdout, stderr) => {
+                            // Recovery may emit diagnostics before failing, so exit status remains authoritative over captured output.
                             if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
                             else resolve(stdout);
                         }

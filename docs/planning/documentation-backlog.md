@@ -378,38 +378,23 @@ Remote main subsequently advanced to `29de96345c711028fbdd128371c01066e6f4c9b7` 
 
 Executed combined `DOCUMENTATION_BASE=29de96345c711028fbdd128371c01066e6f4c9b7 NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (49 cached) and 15 smoke/dependency tasks (12 cached) pass, with zero source/emitted boundary violations/cycles and completed PostgreSQL/network cleanup. Strict reviewed planning reports 258 issues/692 edges, zero unresolved sources/stale outputs. Final immutable-base root and clean-source graph checks gate publication. Tenth exact-head CI at ee9c58f5 now independently passed all executed checks, including verify/smoke/application/house/security; eleventh-head CI remains separate.
 
+## Twelfth checkpoint: complete noncanonical rationale queue
+
+Starting at immutable remote main `d608164aebb292a402610b06e5ac0fe8f1c7ad6f`, all remaining 103 noncanonical candidates are reviewed and documented in thirty files. Counts are application tests five, boundaries three, contracts nine, provider integrations seventeen, resources six, runtime parity two, schema six, storage thirty and UI twenty-five. Concise comments explain asymmetric controls, literal wire expectations, privacy boundaries, policy-versus-provider ownership, SQL rollback witnesses, process exit evidence, independent scope lifetimes and detached mutation observations. Prior retained-adequate dispositions remain historical review records, not exemptions or the final state.
+
+Documentation resolves 103 live rationale findings: eighty accepted and 23 never ledgered. Checker corrections: zero. All 104,683 parsed executable/type terminals are identical to the immutable base, and every edited file scans clean. Exact accepted debt prunes 85 to five across four files; the complete live queue is five, all canonical release-tool candidates. There are zero missing JSDoc/prose findings, new accepted entries or ratchet violations. No source-semantic unknown is established. Focused ESLint exits zero with five preexisting non-null-assertion warnings in storage tests; no suppression is added.
+
+Current: full serial PostgreSQL-backed verification and signed source/clean-graph delivery. Upcoming: human attestations and merge of [house PR49](https://github.com/Resnovas/.github/pull/49), normal downstream sync, exact zero proof and strict CI activation with negative-control fixtures. PR49 is independently checked open/unmerged at `5cd68316d4c581cad1548172cf254f949e4986f3`; its fetched Smartcloud comment has zero errors and two human-attestation warnings. Its executed tests/render/security/replacement Smartcloud pass, not merge authorization. No downstream managed-copy edit, heuristic change, gate weakening, behavior change or production action belongs to this packet. Strict rationale is not yet live.
+
+Executed `DOCUMENTATION_BASE=d608164aebb292a402610b06e5ac0fe8f1c7ad6f NX_SKIP_NX_CACHE=false bash .amp/in/orb-backup/run-documentation-verify.sh`: exit zero. All 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (39 cached) and 15 smoke/dependency tasks (12 cached) pass. Source graph: 178 files/641 edges; emitted graph: 70 files/264 edges, both with zero violations/cycles. Disposable PostgreSQL/network cleanup completes. Strict reviewed planning independently passes at 258 issues/692 edges and zero unresolved sources/stale outputs. The standalone strict scanner's expected exit-one negative control retains exactly the five canonical release-tool findings across 189 checked files. Remote main remains at the same immutable ancestor after verification. Final root/clean-source graph checks and signed publication follow; exact-head CI is separately subscribed after push, never inferred from local success.
+
 <!-- documentation:inventory:start -->
 ## Exact current inventory (generated)
 
-85 remaining findings across 29 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 85 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
+5 remaining findings across 4 files: 0 mechanically missing JSDoc; 0 prose-review candidates; 5 internal-rationale review candidates. Review candidates are not asserted semantic policy violations. Exact declaration identities and source locations are in [debt.json](../../tools/documentation/debt.json).
 
 | Batch | File | Missing JSDoc | Prose review | Rationale review |
 | --- | --- | --- | --- | --- |
-| D04 | [apps/server/tests/cluster.spec.ts](../../apps/server/tests/cluster.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/boundaries/src/boundaries.spec.ts](../../tests/boundaries/src/boundaries.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/contracts/src/action.spec.ts](../../tests/contracts/src/action.spec.ts) | 0 | 0 | 6 |
-| D05 | [tests/contracts/src/flags.spec.ts](../../tests/contracts/src/flags.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/contracts/src/inventory.spec.ts](../../tests/contracts/src/inventory.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/integrations/formatjs/src/i18n.spec.ts](../../tests/integrations/formatjs/src/i18n.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/integrations/openfeature-client/src/flags.spec.ts](../../tests/integrations/openfeature-client/src/flags.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/integrations/openfeature-server/src/flags.spec.ts](../../tests/integrations/openfeature-server/src/flags.spec.ts) | 0 | 0 | 5 |
-| D05 | [tests/integrations/posthog-client/src/flags.spec.ts](../../tests/integrations/posthog-client/src/flags.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/integrations/posthog-server/src/flags.spec.ts](../../tests/integrations/posthog-server/src/flags.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/resources/src/resource.spec.ts](../../tests/resources/src/resource.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/resources/src/types.ts](../../tests/resources/src/types.ts) | 0 | 0 | 1 |
-| D05 | [tests/runtime/src/parity.spec.ts](../../tests/runtime/src/parity.spec.ts) | 0 | 0 | 2 |
-| D05 | [tests/schema/src/compose.spec.ts](../../tests/schema/src/compose.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/schema/src/manifest.spec.ts](../../tests/schema/src/manifest.spec.ts) | 0 | 0 | 3 |
-| D05 | [tests/storage/src/conformance.spec.ts](../../tests/storage/src/conformance.spec.ts) | 0 | 0 | 6 |
-| D05 | [tests/storage/src/hook.spec.ts](../../tests/storage/src/hook.spec.ts) | 0 | 0 | 5 |
-| D05 | [tests/storage/src/identity.spec.ts](../../tests/storage/src/identity.spec.ts) | 0 | 0 | 4 |
-| D05 | [tests/storage/src/marketplace-process.spec.ts](../../tests/storage/src/marketplace-process.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/storage/src/marketplace.spec.ts](../../tests/storage/src/marketplace.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/storage/src/resource-process.spec.ts](../../tests/storage/src/resource-process.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/storage/src/trust-process.spec.ts](../../tests/storage/src/trust-process.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/storage/src/trust.spec.ts](../../tests/storage/src/trust.spec.ts) | 0 | 0 | 1 |
-| D05 | [tests/ui-modules/src/declarative-module.spec.tsx](../../tests/ui-modules/src/declarative-module.spec.tsx) | 0 | 0 | 16 |
-| D05 | [tests/ui-modules/src/screen-context.spec.ts](../../tests/ui-modules/src/screen-context.spec.ts) | 0 | 0 | 3 |
 | D06 | [tools/release/changelog-renderer.ts](../../tools/release/changelog-renderer.ts) | 0 | 0 | 1 |
 | D06 | [tools/release/nightly.ts](../../tools/release/nightly.ts) | 0 | 0 | 1 |
 | D06 | [tools/release/preview.ts](../../tools/release/preview.ts) | 0 | 0 | 2 |

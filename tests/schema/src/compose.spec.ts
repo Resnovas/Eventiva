@@ -89,6 +89,7 @@ const names = (composed: Either.Either<{ readonly resources: ReadonlyArray<Resou
     );
 
 describe('fields', /** Cover field type inference, metadata immutability and wire transformations on a concrete event row. */ () => {
+    // A single derived row ties inference, metadata and encode/decode checks to the same concrete resource definition.
     const row = Resource.row(Event);
 
     it('retains each decoded and encoded field type without a mapped assertion', /** Pin row inference for dates, nullable values and nested JSON without widening concrete schema fields. */ () => {
@@ -168,6 +169,7 @@ describe('fields', /** Cover field type inference, metadata immutability and wir
     });
 
     it('carry their metadata', /** Verify labels, conflicts, nullability, reference targets and baseline classification remain visible. */ () => {
+        // Field and resource defaults are asserted separately so decorating a field cannot silently reclassify its owner.
         expect(Event.fields.title.label).toEqual(Option.some('events.event.title'));
         expect(Event.fields.seats.conflict).toBe('server-authoritative');
         expect(Event.fields.notes.nullable).toBe(true);
@@ -525,6 +527,7 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
 
 describe('manifest resources', /** Cover optional resource declarations on module manifest wire data. */ () => {
     it('are optional and must be canonical resource names', /** Verify omitted resources remain compatible while supplied entries require qualified canonical names. */ () => {
+        // The otherwise-valid manifest isolates backward-compatible omission from malformed supplied resource names.
         const manifest = { format: 1, id: 'events', version: '1.0.0', description: 'Events.', actions: [], flags: [] };
         const decode = Schema.decodeUnknownEither(ModuleManifest);
         expect(decode(manifest)._tag).toBe('Right');

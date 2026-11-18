@@ -311,6 +311,7 @@ const additive = (f: Effect.Effect.Success<ReturnType<typeof fixture>>) =>
                     inspect: () =>
                         Effect.gen(
                             /** Recompute execution constraints rather than caching the first successful policy decision. */ function* () {
+                                // Counting inspections separately lets a prepared action be tested against later policy changes.
                                 yield* Ref.update(
                                     checks,
                                     /** Count policy inspection independently from preparation. */ (n) => ({
@@ -1049,6 +1050,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         const dispatchWith = (queue: typeof HookOutbox.Service) =>
                             Effect.gen(
                                 /** Keep release authorization observable for both original and recovered delivery attempts. */ function* () {
+                                    // Rebuild the real dispatcher around each queue while sharing the sink and live release counter.
                                     const dispatcher = Context.get(
                                         yield* Layer.build(
                                             HookDispatcherLive.pipe(
@@ -1417,6 +1419,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         yield* f.store.transaction(
                             Effect.gen(
                                 /** Stage two ordered facts for both observers and an unrelated resource for one observer. */ function* () {
+                                    // One transaction creates a controlled feed whose observer and resource dimensions differ independently.
                                     yield* f.outbox.stage(event(), [d, good]);
                                     yield* f.outbox.stage(event(2), [d, good]);
                                     yield* f.outbox.stage(event(3, 'fixture.other'), [d]);
@@ -1679,6 +1682,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                                 deliver: () =>
                                                     Effect.gen(
                                                         /** Inspect ambient SQL ownership at the post-commit sink boundary. */ function* () {
+                                                            // A failing observer must run after commit, without the origin connection available to roll it back.
                                                             expect(
                                                                 Option.isNone(
                                                                     yield* Effect.serviceOption(
@@ -1704,6 +1708,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
     });
 
 it('preserves precise outbox, error and dispatcher layer types', /** Verify public outbox result/error environments and dispatcher layer requirements remain exact. */ () => {
+    // Type-level service requirements and runtime error decoding protect different parts of the public boundary.
     expectTypeOf<Context.Tag.Service<typeof HookOutbox>['claim']>().returns.toEqualTypeOf<
         Effect.Effect<HookClaim | undefined, HookOutboxFailure>
     >();

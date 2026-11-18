@@ -230,6 +230,7 @@ const mountIn = <A, E, R>(effect: Effect.Effect<A, E, R | Scope.Scope>, scope: S
 it.scoped(
     'reads real mounted registrations under the current viewer and invokes only canonical nodes',
     /** Prove empty, mounted, revoked and stale states never dispatch noncanonical or unauthorized requests. */ () => {
+        // Shared mutable policy and mounted capabilities expose stale authorization across successive context reads.
         const { state, layer } = fixture();
         return Effect.gen(
             /** Exercise real registry capabilities through the context, changing viewer and gates after mounting. */ function* () {
@@ -367,6 +368,7 @@ for (const change of ['replace', 'unmount', 'interrupt'] as const) {
     it.scoped(
         `never releases a suspended real projection after ${change}`,
         /** Prove a field read cannot release an invalidated or interrupted screen projection. */ () => {
+            // Each race gets fresh mounted state, while its masking barrier spans the ownership change being tested.
             const { state, layer } = fixture();
             return Effect.gen(
                 /** Hold real masking in flight while screen ownership or fiber lifetime changes. */ function* () {
@@ -405,6 +407,7 @@ for (const change of ['replace', 'unmount'] as const) {
     it.scoped(
         `cancels canonical invocation suspended in projection on screen ${change}`,
         /** Prove losing the screen during projection prevents canonical dispatch. */ () => {
+            // Suspend the real projection dependency rather than dispatch itself, testing cancellation before the platform boundary.
             const { state, layer } = fixture();
             return Effect.gen(
                 /** Invalidate while invocation awaits masking, then assert no platform call escapes. */ function* () {

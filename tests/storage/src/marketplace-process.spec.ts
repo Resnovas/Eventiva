@@ -38,6 +38,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             stdout,
                             stderr
                         ) => {
+                            // A worker can print before crashing; only a successful exit permits interpreting its report as evidence.
                             if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
                             else resolve(stdout);
                         }

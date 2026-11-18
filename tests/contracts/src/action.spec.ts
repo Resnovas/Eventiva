@@ -107,6 +107,7 @@ describe('platform errors', /** Cover transport preservation of each platform fa
 
 describe('message keys and terminology packs', /** Cover the basic overlay vocabulary without governed provenance requirements. */ () => {
     it('validate keys, locales and overlays', /** Verify canonical locale defaults and reject malformed overlay keys, locales and versions. */ () => {
+        // Basic overlays remain usable without provenance; governed metadata is a separate stricter contract below.
         expect(canonicalLocale).toBe('en-GB');
         expect(Schema.is(MessageKey)('client.shell.title')).toBe(true);
         expect(Schema.is(MessageKey)('title')).toBe(false);
@@ -122,6 +123,7 @@ describe('message keys and terminology packs', /** Cover the basic overlay vocab
 });
 
 describe('governed terminology metadata', /** Cover synthetic provenance and immutable version references without asserting external authority approval. */ () => {
+    // All authority claims are fictional so accepting this fixture cannot be mistaken for validating real guidance.
     const pack = {
         id: 'eventiva-training',
         version: 1,
@@ -244,6 +246,7 @@ describe('governed terminology metadata', /** Cover synthetic provenance and imm
 
 describe('telemetry names', /** Cover stable public instrumentation naming conventions. */ () => {
     it('name action spans and attributes consistently', /** Pin action span prefixes and the feature-flag attribute key for telemetry consumers. */ () => {
+        // Literal expectations keep external telemetry queries stable even if the formatting helpers change together.
         expect(actionSpan('events.create')).toBe('action.events.create');
         expect(Attributes.flagKey).toBe('feature_flag.key');
     });
@@ -254,6 +257,7 @@ describe('callers and identifiers', /** Cover caller wire identities using UUID-
     const session = '0193a4f0-0000-7000-8000-000000000002';
 
     it('decode a delegated agent caller and refuse malformed ids or kinds', /** Verify delegated agent identity round trips and reject invalid subjects and unsupported caller kinds. */ () => {
+        // Mutations start from a valid delegated caller, isolating identity syntax from the closed caller-kind domain.
         const decode = Schema.decodeUnknownEither(CallerIdentity);
         const agent = { subject, kind: 'external-agent', tenant: subject, onBehalfOf: session, session };
         expect(Schema.decodeUnknownSync(CallerIdentity)(agent)).toEqual(agent);
@@ -263,6 +267,7 @@ describe('callers and identifiers', /** Cover caller wire identities using UUID-
     });
 
     it('brand ids by kind', /** Verify identifier brands retain UUID validation rather than accepting prefixed arbitrary strings. */ () => {
+        // Brands are not a wire prefix convention: a valid UUID and a plausible prefixed id must decode differently.
         expect(Schema.is(TenantId)(subject)).toBe(true);
         expect(Schema.is(SubjectId)('ten_123')).toBe(false);
     });
@@ -270,6 +275,7 @@ describe('callers and identifiers', /** Cover caller wire identities using UUID-
 
 describe('security profiles', /** Cover the closed security ordering used by classification comparisons. */ () => {
     it('order profiles from baseline to vault', /** Pin profile ordering and require strictly weaker comparisons to exclude equality. */ () => {
+        // Both directions and equality prevent an inverted ordering or a non-strict comparison from passing.
         expect(SecurityProfile.literals).toEqual(['baseline', 'sensitive', 'restricted', 'vault']);
         expect(isWeaker('baseline', 'restricted')).toBe(true);
         expect(isWeaker('vault', 'restricted')).toBe(false);

@@ -44,6 +44,7 @@ const Status = define('parity.read', {
 describe('action parity', /** Register inventory, dispatch and live discovery conformance scenarios. */ () => {
     it.scoped('a registered surface reaches the canonical inventory and its authorized dispatch', /** Install the test-only identity and invocation harness. */ () =>
         Effect.gen(/** Compare one registered action's discovery metadata with its actual dispatch. */ function* () {
+            // Both discovery and dispatch receive one host fixture, preventing a metadata-only stand-in from proving parity.
             const fixture = yield* makeTestOnlyHarness(shellCaller);
             yield* Effect.gen(/** Verify discovery and invocation share the canonical registration. */ function* () {
                 // Validate the advertised surface before dispatch so discoverability alone cannot satisfy parity.
@@ -224,6 +225,7 @@ describe('action parity', /** Register inventory, dispatch and live discovery co
 
     it.effect('rejects incompatible metadata and every missing registered surface', /** Compare missing and version-incompatible advertised surfaces. */ () =>
         Effect.gen(/** Verify parity validation rejects absence and mismatched versions independently. */ function* () {
+            // Keep name and permission valid in the second case so version mismatch cannot borrow missing-surface rejection.
             const inventory = yield* validateInventory([Status]);
             const missing = yield* Effect.flip(validateParity(inventory, {}, ['server']));
             expect(missing._tag).toBe('InventoryParityError');

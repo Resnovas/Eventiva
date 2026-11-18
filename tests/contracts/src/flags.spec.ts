@@ -35,6 +35,7 @@ const flag = (key: string, value: boolean) => ({
 
 describe('flag keys and definitions', /** Cover portable flag naming and lifecycle metadata validation. */ () => {
     it('accepts dotted lower-case keys and rejects the rest', /** Verify dotted lowercase keys allow hyphenated segments but reject incomplete or uppercase names. */ () => {
+        // A hyphen is legal within a segment; missing separators and empty segments are different errors.
         const valid = Schema.is(FlagKey);
         expect(valid('client.shell.offline-banner')).toBe(true);
         expect(valid('client')).toBe(false);

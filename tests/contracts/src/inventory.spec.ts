@@ -116,6 +116,7 @@ describe('portable action inventory', /** Cover schema-free published metadata, 
             /** Build the same action inventory for each supported provider snapshot. */ () =>
                 Effect.gen(
                     /** Pin provider input/output schemas with stable action identifiers for comparison. */ function* () {
+                        // Project the same validated inventory per provider so snapshots expose wire-schema differences only.
                         const inventory = yield* validateInventory(specs);
                         expect(
                             inventory.map(
@@ -134,6 +135,7 @@ describe('portable action inventory', /** Cover schema-free published metadata, 
         /** Exercise name uniqueness independently of action version differences. */ () =>
             Effect.gen(
                 /** Verify a repeated canonical action name produces a typed error naming that action. */ function* () {
+                    // Changing only version proves a new version does not create a second dispatch name.
                     const error = yield* Effect.flip(validateDefinitions([read, { ...read, version: 2 }]));
                     expect(error).toBeInstanceOf(DuplicateAction);
                     expect(error).toMatchObject({ action: 'events.get' });

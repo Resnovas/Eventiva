@@ -39,6 +39,7 @@ const fake = (flags: Record<string, boolean | string>) => {
 
 describe('PostHogClientProvider', /** Register cached value mapping, fallback and subscription lifecycle regressions. */ () => {
     it('maps PostHog values to OpenFeature resolutions', /** Verify booleans retain polarity and string variants activate boolean evaluation. */ () => {
+        // Opposing caller defaults distinguish cached answers from fallback for both boolean polarities.
         const provider = new PostHogClientProvider(fake({ on: true, off: false, variant: 'b' }).client);
         expect(provider.resolveBooleanEvaluation('on', false)).toMatchObject({
             value: true,
@@ -50,6 +51,7 @@ describe('PostHogClientProvider', /** Register cached value mapping, fallback an
     });
 
     it('reports unknown flags as not found and other types as mismatches, keeping the default', /** Verify absence differs from incompatible types while caller defaults survive both. */ () => {
+        // One known boolean separates absent-key handling from a present value requested through the wrong type.
         const provider = new PostHogClientProvider(fake({ on: true }).client);
         expect(provider.resolveBooleanEvaluation('missing', true)).toMatchObject({
             value: true,

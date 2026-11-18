@@ -33,6 +33,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             stdout,
                             stderr
                         ) => {
+                            // A truncated crash-proof report cannot count as success even when stdout contains valid JSON.
                             if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
                             else resolve(stdout);
                         }

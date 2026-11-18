@@ -42,6 +42,7 @@ type Contact = Effect.Effect.Success<typeof _contacts>;
 
 /** Positive call-site evidence. Compiler-diagnostic negatives live in tools/resources/types.test.mjs, without suppressions. */
 export const typeProof = (api: Resources['Type'], resource: Contact) => {
+    // The partial patch intentionally omits required name; full decoding and patch decoding have different contracts.
     const create = api.create(resource, 'id', { name: 'One', seats: 3 });
     const query = api.query(resource, { where: { field: 'seats', equals: 4 }, limit: 2 });
     const full = decodeResource(resource, { name: 'One', seats: 3 });

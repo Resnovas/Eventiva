@@ -99,6 +99,7 @@ const withStore = <A, E, R>(dialect: Dialect, effect: Effect.Effect<A, E, R | St
 
 for (const dialect of ['postgres', 'sqlite'] as const)
     describe(`${dialect} portable storage conformance`, /** Register the same transaction, codec and routing contracts for both SQL dialects. */ () => {
+        // Identical public scenarios run per dialect; backend-specific lock mechanics cannot substitute for portable outcomes.
         it.effect(
             'runtime Integrity and Audit use the handler transaction and fail closed without durable evidence',
             /** Verify runtime integrity composes business mutations and durable audit atomically. */ () =>
@@ -192,6 +193,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 { ...request, key: 'no-audit' },
                                                 Effect.gen(
                                                     /** Attempt a business write whose required receipt table is unavailable. */ function* () {
+                                                        // A successful domain write before receipt failure makes rollback observable, not vacuous.
                                                         yield* s.create(record(803));
                                                         return { output: null, receipt };
                                                     }
@@ -443,6 +445,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                             const s = yield* Storage;
                             const execute = Effect.gen(
                                 /** Couple the created record, queued command and receipt in one commit. */ function* () {
+                                    // Fixed record/outbox keys make duplicate handler execution fail instead of hiding behind equivalent outputs.
                                     yield* s.create(record(40));
                                     yield* s.enqueue('send-40', { type: 'external-payment', amount: '1000' });
                                     return {
@@ -701,6 +704,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                         { key: 'no-audit', inputHash: 'h' },
                                         Effect.gen(
                                             /** Attempt a domain insert that must roll back when receipt persistence fails. */ function* () {
+                                                // Insert before the unavailable evidence boundary so the later absence proves transaction rollback.
                                                 yield* s.create(record(65));
                                                 return { output: null, receipt: null };
                                             }
@@ -765,6 +769,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                         };
                                         const operation = Effect.gen(
                                             /** Resolve the authenticated first tenant and read only through its supplied storage. */ function* () {
+                                                // Acquiring Storage inside the routed effect prevents the test from bypassing tenant selection.
                                                 const r = yield* TenantRouter;
                                                 return yield* r.run(
                                                     ta,
@@ -818,6 +823,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
     });
 
 it('keeps storage error constructor fields exact and preserves tagged error behavior', /** Verify exact constructor contracts and tagged errors without raw cause exposure. */ () => {
+    // Compile-time exactness and runtime serialization are separate protections against accidental raw-driver disclosure.
     expectTypeOf<ConstructorParameters<typeof StorageFailure>[0]>().toEqualTypeOf<
         Pick<StorageFailure, 'operation' | 'reason'>
     >();

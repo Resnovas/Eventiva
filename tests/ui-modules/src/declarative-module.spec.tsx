@@ -220,6 +220,7 @@ const reason = <A, R>(effect: Effect.Effect<A, UiModuleFailure, R>) =>
 it.effect(
     'publishes one masked UI/agent projection and invokes the canonical binding',
     /** Check projection wire shape, secrecy, canonical dispatch and post-publication revocation together. */ () => {
+        // Share one registry and policy state across projection and invocation so neither can pass using an unrelated fixture.
         const { layer, state } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -281,6 +282,7 @@ it.effect(
 it.effect(
     'fails closed on revoked admission, masked fields, tenant mismatch and offline/disabled state',
     /** Prove each independent gate blocks data or dispatch without a platform side effect. */ () => {
+        // Live fixture controls change after registration, separating admission-time success from release-time authority.
         const { layer, state } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -318,6 +320,7 @@ it.effect(
 it.effect(
     'safe defaults never enable the foundation or a module',
     /** Ensure fallback flag service cannot activate declarative projection. */ () => {
+        // Keep platform services valid while substituting only FlagsSafeDefaults, isolating the rollout boundary.
         const { services } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -340,6 +343,7 @@ it.effect(
 it.effect(
     'isolates discovery, handles and same-named replacements between tenants',
     /** Verify module ids are tenant-local and handles do not grant cross-tenant access. */ () => {
+        // One shared registry is essential: separate fixture instances would make tenant isolation trivial.
         const { layer, state } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -376,6 +380,7 @@ it.effect(
 it.effect(
     'rejects invalid scalar output from a masking adapter before releasing a projection',
     /** Ensure invalid platform data blocks both projection and projection-dependent dispatch. */ () => {
+        // Preserve real admission and visibility while replacing only the value adapter with non-wire output.
         const { platform, services } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -410,6 +415,7 @@ it.effect(
 it.effect(
     'rechecks admission after an asynchronous projection read before releasing fields',
     /** Prove admission revoked during field acquisition is checked again before data release. */ () => {
+        // The field adapter shares the policy state with the registry, placing revocation inside the read rather than before it.
         const { platform, services, state } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -549,6 +555,7 @@ it.effect(
 it.effect(
     'correlates projection, action and screen mount through the existing Effect tracer',
     /** Verify module operations join the caller's trace while preserving distinct operation span names. */ () => {
+        // Observe spans at actual platform ports instead of inferring tracing from successful registry operations.
         const { platform, services } = testServices();
         const captured: Array<{ readonly name: string; readonly trace: string }> = [];
         const capture = Effect.orDie(Effect.currentSpan).pipe(
@@ -824,6 +831,7 @@ for (const example of invalid)
     it.effect(
         `rejects ${example.name} without publication`,
         /** Check the precise rejection category and absence of partially published registry state. */ () => {
+            // A fresh accepting platform per candidate prevents another invalid fixture from masking this rejection.
             const { layer } = testServices();
             return Effect.scoped(
                 Effect.gen(
@@ -842,6 +850,7 @@ for (const example of invalid)
 it.effect(
     'rejects raw functions, malformed JSON and oversize input without leaking input',
     /** Verify the text boundary refuses executable/malformed/oversize content without echoing the canary. */ () => {
+        // All rejected texts share one registry so any partial publication remains visible to subsequent assertions.
         const { layer } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -863,6 +872,7 @@ it.effect(
 it.effect(
     'preserves replacements when an older scope closes and stales old handles',
     /** Verify replacement ownership survives stale finalizers and subsequent invalid replacement attempts. */ () => {
+        // Retain one registry across independently managed scopes so stale cleanup can contend with the live replacement.
         const { layer } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -896,6 +906,7 @@ it.effect(
 it.effect(
     'disposes once and refuses all stale operations after scope release',
     /** Check repeated scope close leaves no publication and a stale projection handle. */ () => {
+        // Keep registry services outside the closed acquisition scope to observe cleanup after its lifetime ends.
         const { layer } = testServices();
         return Effect.gen(
             /** Close the same acquisition twice to establish idempotent cleanup behavior. */ function* () {
@@ -917,6 +928,7 @@ it.effect(
 it.effect(
     'does not leak a registration acquired in an already closed scope',
     /** Check immediate finalization when acquisition is provided an already closed lifetime. */ () => {
+        // The registry remains live while only registration ownership is closed, exposing a leaked publication.
         const { layer } = testServices();
         return Effect.gen(
             /** Acquire after close and require no live registry entry or usable retained handle. */ function* () {
@@ -937,6 +949,7 @@ it.effect(
 it.effect(
     'rejects ambiguous approved catalogs instead of choosing the first renderer',
     /** Require deterministic catalog identity rather than order-dependent adapter selection. */ () => {
+        // Repeating the same renderer object tests identity ambiguity, not incompatibility between two implementations.
         const { services } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -1012,6 +1025,7 @@ for (const corrupt of [false, true])
                             admit: (candidate) =>
                                 Effect.sync(
                                     /** Model a projection-time adapter write, not an author-supplied definition. */ () => {
+                                        // Leave initial admission intact; only later hidden projections attempt to erase the protection floor.
                                         if (corrupt && published && !state.visible)
                                             for (const entry of candidate.nodes)
                                                 Object.assign(entry, { protected: false });
@@ -1076,12 +1090,14 @@ for (const port of ['visible', 'checkInput', 'invoke'] as const)
     it.effect(
         `retains canonical projection and dispatch after ${port} adapter writes`,
         /** Exercise nested adapter aliases and retained references through public lazy registry operations. */ () => {
+            // Separate retained arguments from dispatch observations so corruption cannot rewrite the test's expected history.
             const { platform, services, state } = testServices();
             let published = false;
             const retained: Array<UiActionBinding> = [];
             const dispatched: Array<UiActionBinding> = [];
             /** Rewrite identity, version and flat input without bypassing the readonly contract with casts. */
             const corruptBinding = (entry: UiActionBinding) => {
+                // Change nested input as well as top-level identity to detect shallow-copy isolation independently.
                 Object.assign(entry, { action: 'sample.changed', version: 9 });
                 Object.assign(entry.input, { target: 'changed' });
             };
@@ -1095,6 +1111,7 @@ for (const port of ['visible', 'checkInput', 'invoke'] as const)
                             visible: (module, entry) =>
                                 Effect.gen(
                                     /** Preserve the viewer decision while corrupting only callback data. */ function* () {
+                                        // Capture the real visibility result before mutating the disposable view supplied to this port.
                                         const visible = yield* platform.visible(module, entry);
                                         if (port === 'visible') {
                                             if (entry.binding !== undefined) {
@@ -1113,6 +1130,7 @@ for (const port of ['visible', 'checkInput', 'invoke'] as const)
                             checkInput: (entry) =>
                                 Effect.gen(
                                     /** Registration remains an unchanged control; later validation cannot rebind dispatch. */ function* () {
+                                        // Genuine schema validation must succeed first, otherwise refusal could hide alias corruption.
                                         yield* platform.checkInput(entry);
                                         if (port === 'checkInput' && published) {
                                             retained.push(entry);
@@ -1124,6 +1142,7 @@ for (const port of ['visible', 'checkInput', 'invoke'] as const)
                             invoke: (entry) =>
                                 Effect.gen(
                                     /** Snapshot observable dispatch independently before retaining the adapter argument. */ function* () {
+                                        // Preserve a detached pre-mutation observation so a later retained-reference write cannot falsify history.
                                         yield* platform.invoke(entry);
                                         dispatched.push({ ...entry, input: { ...entry.input } });
                                         if (port === 'invoke') {
@@ -1176,6 +1195,7 @@ for (const port of ['visible', 'checkInput', 'invoke'] as const)
 it.effect(
     'denies author-hidden protected ancestors before publication',
     /** Reject a definition that could hide protected content by suppressing its ancestor. */ () => {
+        // Use an accepting platform so rejection is attributable to the author definition's protection hierarchy.
         const { layer } = testServices();
         const definition = fixture();
         return Effect.scoped(
@@ -1203,6 +1223,7 @@ it.effect(
 it.effect(
     'waits for admitted invocation before publishing a replacement',
     /** Exercise the serialization boundary between an in-flight platform invocation and replacement publication. */ () => {
+        // Retain the actual platform while injecting the dispatch barrier; a substitute registry would not prove publication ordering.
         const { platform, services } = testServices();
         return Effect.scoped(
             Effect.gen(
@@ -1419,6 +1440,7 @@ it('audits transitive source edges including type-only imports, aliases and reex
         (file) => readFileSync(file, 'utf8'),
         /** Follow compiler-resolved workspace files but stop at installed dependencies. */
         (name, file) => {
+            // Stop at installed dependencies to measure authored workspace coupling without traversing vendor internals.
             const options = config.options;
             const target = ts.resolveModuleName(name, file, options, ts.sys).resolvedModule?.resolvedFileName;
             return target !== undefined && target.startsWith(root) && !target.includes('/node_modules/')

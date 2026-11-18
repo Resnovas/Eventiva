@@ -29,6 +29,7 @@ describe('PostHog server provider', /** Register optional configuration, redacti
         /** Supply no configuration so acquisition remains optional. */ () =>
             Effect.gen(
                 /** Verify absent credentials disable both parsed options and provider acquisition. */ function* () {
+                    // Check acquisition as well as parsing so an empty configuration cannot instantiate an unintended client.
                     expect(Option.isNone(yield* options)).toBe(true);
                     expect(Option.isNone(yield* Effect.scoped(fromConfig))).toBe(true);
                 }
@@ -40,6 +41,7 @@ describe('PostHog server provider', /** Register optional configuration, redacti
         /** Supply only a fixture key to exercise redaction and the default endpoint. */ () =>
             Effect.gen(
                 /** Verify explicit secret access works while ordinary rendering conceals the key. */ function* () {
+                    // Explicit unwrapping is permitted; ordinary string conversion must not expose the same secret.
                     const settings = Option.getOrThrow(yield* options);
                     expect(Redacted.value(settings.apiKey)).toBe('phc_test');
                     expect(String(settings.apiKey)).not.toContain('phc_test');

@@ -32,6 +32,7 @@ describe('FormatJS I18n', /** Register catalogue, fallback and terminology isola
         /** Supply the translated British catalogue for plural evaluation. */ () =>
             Effect.gen(
                 /** Verify singular and plural branches both use translated rather than default text. */ function* () {
+                    // The catalogue-only suffix makes fallback text distinguishable in both plural branches.
                     const i18n = yield* I18n;
                     expect(i18n.locale).toBe('en-GB');
                     expect(i18n.format(count, { n: 1 })).toBe('1 event today');
@@ -45,6 +46,7 @@ describe('FormatJS I18n', /** Register catalogue, fallback and terminology isola
         /** Provide an empty catalogue to force descriptor fallback. */ () =>
             Effect.gen(
                 /** Verify fallback interpolation varies with each call instead of retaining earlier values. */ function* () {
+                    // Reusing the descriptor with a different name detects accidental caching of formatted output.
                     const i18n = yield* I18n;
                     expect(
                         i18n.format({ id: 'events.missing', defaultMessage: 'Fallback {name}' }, { name: 'A' })
@@ -61,6 +63,7 @@ describe('FormatJS I18n', /** Register catalogue, fallback and terminology isola
         /** Provide French translations with a deliberately absent plural key. */ () =>
             Effect.gen(
                 /** Verify missing-key English plurals coexist with a present French catalogue entry. */ function* () {
+                    // Keep a present key alongside the missing one so fallback cannot silently replace the whole catalogue.
                     const i18n = yield* I18n;
                     const missing = { id: 'events.missing', defaultMessage: '{n, plural, one {# day} other {# days}}' };
                     expect(i18n.format(missing, { n: 1 })).toBe('1 day');

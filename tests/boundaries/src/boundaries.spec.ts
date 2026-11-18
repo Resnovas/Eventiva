@@ -33,6 +33,7 @@ const eslint = new ESLint({ cwd: root, ignore: false });
 
 /** Lint a deliberately violating tagged fixture and expose rule ids without depending on diagnostic wording. */
 const rulesIn = async (file: string) => {
+    // Exercise real on-disk project tags rather than a duplicate rule configuration in the test.
     const [result] = await eslint.lintFiles([join(root, fixtures, file)]);
     return (result?.messages ?? []).map(
         /** Keep each diagnostic's rule identity, including duplicates for distinct violations. */ (message) =>
@@ -82,6 +83,7 @@ describe(
 
         /** Lint synthetic source as a real project path so Nx uses the repository's actual dependency graph. */
         const rulesInText = async (file: string, code: string) => {
+            // The supplied workspace path determines Nx ownership even though the violating import stays in memory.
             const [result] = await eslint.lintText(code, { filePath: join(root, file) });
             return (result?.messages ?? []).map(
                 /** Preserve message wording where the assertion must distinguish a cycle from a generic forbidden edge. */ (
@@ -257,6 +259,7 @@ describe(
             /** Discover all public portable subpaths so newly exported modules enter the portability checks. */ (
                 name
             ) => {
+                // Manifest exports, not source filenames, define the portable consumer surface under test.
                 const { exports } = JSON.parse(readFileSync(join(root, 'packages', name, 'package.json'), 'utf8'));
                 return Object.keys(exports)
                     .filter(

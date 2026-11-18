@@ -53,6 +53,7 @@ const record: TelemetryRecord = {
 
 afterEach(
     /** Restore global transport and SDK spies so one scenario cannot affect another's network behavior. */ () => {
+        // Restoring spies alone leaves stubbed fetch installed and could hide a later scenario's real transport use.
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
     }
@@ -84,6 +85,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                     );
                     yield* Effect.gen(
                         /** Deliver both supported signals through one scoped provider. */ function* () {
+                            // Reuse one binding so signal handling, rather than independent client setup, explains the requests.
                             const remote = yield* TelemetryExportProvider;
                             yield* remote.write(binding, record);
                             yield* remote.write(binding, { ...record, signal: 'log' });
@@ -264,6 +266,7 @@ describe('PostHog telemetry provider', /** Register real-SDK transport, privacy 
                                     options?.signal?.addEventListener(
                                         'abort',
                                         /** Record cancellation and reject with a private transport cause. */ () => {
+                                            // Retain local abort evidence while the private cause probes public error sanitization.
                                             aborted = true;
                                             reject(new Error('private-network-canary'));
                                         }

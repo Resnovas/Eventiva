@@ -275,6 +275,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
         () =>
             Effect.gen(
                 /** Missing ports must fail before the existing fixture can register a duplicate handler. */ function* () {
+                    // The fixture already owns a registration, so unavailable must win over duplicate-name rejection.
                     const h = yield* fixture();
                     expect(
                         yield* h.registration.pipe(Effect.provideService(AgentRunModel, h.model), Effect.either)

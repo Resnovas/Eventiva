@@ -35,6 +35,7 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             stdout,
                             stderr
                         ) => {
+                            // Printed migration observations are accepted only after the orchestrating child exits successfully.
                             if (error) reject(new Error(`${error.message}\n${stdout}\n${stderr}`));
                             else resolve(stdout);
                         }

@@ -110,6 +110,7 @@ const fixture = (dialect: Dialect) =>
     );
 /** Require bounded replay failures with no underlying cause or private sentinel disclosure. */
 const safe = (failure: TrustFailure, reason: TrustFailure['reason']) => {
+    // Exact bounded fields and the private canary check cover both structural and serialized diagnostic leakage.
     expect(failure).toEqual(new TrustFailure({ gate: 'replay', reason }));
     expect(failure).not.toHaveProperty('cause');
     expect(JSON.stringify(failure)).not.toContain('synthetic-private');

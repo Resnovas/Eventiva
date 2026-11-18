@@ -198,6 +198,7 @@ const fixture = (dialect: Dialect) =>
                                 /** Preserve a missing proof as an invocation denial rather than inventing approval. */ (
                                     entries
                                 ) => {
+                                    // An unknown proof id must not inherit another request's approval or a permissive fixture default.
                                     const approval = entries.get(key);
                                     return approval
                                         ? Effect.succeed(approval)
@@ -226,6 +227,7 @@ const fixture = (dialect: Dialect) =>
 
 for (const dialect of ['postgres', 'sqlite'] as const)
     describe(`${dialect} identity foundation`, /** Register identity persistence and live security invariants for each SQL dialect. */ () => {
+        // Shared scenarios require the same identity semantics; only the lock-observation race is PostgreSQL-specific.
         it.scoped(
             'stable issuer/subject links never silently relink, collide across issuers or authorize another database',
             /** Verify exact external-identity keys, physical tenant isolation and corrupt-row rejection. */ () =>
@@ -315,6 +317,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
             /** Verify authorization, approval, idempotency and audit through public identity actions. */ () =>
                 Effect.gen(
                     /** Supply a durable host while retaining direct SQL observations of committed evidence. */ function* () {
+                        // Keep SQL observation outside host provision so adapter answers alone cannot prove durable receipts.
                         const f = yield* fixture(dialect);
                         yield* Effect.gen(
                             /** Exercise successful and denied actions with live role and membership changes. */ function* () {
@@ -563,6 +566,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                 /** Verify post-lock authorization observes a revocation committed ahead of a blocked action. */ () =>
                     Effect.gen(
                         /** Construct the real SQL host for an observed PostgreSQL lock-order race. */ function* () {
+                            // Retain the fixture outside host execution to coordinate a second SQL writer against its real guard.
                             const f = yield* fixture(dialect);
                             yield* Effect.gen(
                                 /** Hold the identity guard until the action writer is visibly blocked, then commit revocation. */ function* () {

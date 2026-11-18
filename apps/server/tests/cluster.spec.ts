@@ -65,6 +65,7 @@ describe('deployment profiles', /** Register topology validation tests without a
         /** Verify edition defaults preserve SQL-backed execution in both editions. */ () =>
             Effect.gen(
                 /** Decode both profiles and inspect layer construction without claiming runner readiness. */ function* () {
+                    // An empty provider tests actual configuration defaults rather than inherited orb settings.
                     const community = yield* deploymentProfile.pipe(
                         Effect.withConfigProvider(ConfigProvider.fromMap(new Map()))
                     );
@@ -80,6 +81,7 @@ describe('deployment profiles', /** Register topology validation tests without a
     );
 
     it('rejects unsafe topology, storage, ports, lease bounds and insufficient shards', /** Keep invalid topology and unsupported execution switches outside the decoded profile domain. */ () => {
+        // Each candidate is independently decoded; rejection cannot be borrowed from another invalid field combination.
         for (const invalid of [
             { edition: 'local' },
             { edition: 'cloud', expectedRunners: 1 },
@@ -451,6 +453,7 @@ describe('health observations, not availability promises', /** Register syntheti
                                             ...memory,
                                             getRunners: Effect.gen(
                                                 /** Fail membership reads on demand rather than disguising outage as an empty cluster. */ function* () {
+                                                    // Keep last-known membership intact so outage handling cannot pass as legitimate removal.
                                                     if (yield* Ref.get(unavailable))
                                                         return yield* new PersistenceError({ cause: 'test-outage' });
                                                     return yield* Ref.get(registered);

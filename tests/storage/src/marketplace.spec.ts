@@ -186,6 +186,7 @@ it.scoped(
     /** Verify database cleanup closes an independently scoped session without a cluster-wide signal grant. */ () =>
         Effect.gen(
             /** Keep a second client alive beyond the database scope and inspect database and backend removal. */ function* () {
+                // The extra client belongs to the outer scope, preventing ordinary pool cleanup from faking session termination.
                 const outer = yield* Scope.Scope;
                 const target = new URL(
                     process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test'
@@ -222,6 +223,7 @@ it.scoped(
 
 for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} durable marketplace`, /** Register local marketplace durability and authorization contracts for both dialects. */ () => {
+        // Both engines must persist the same command, grant and audit evidence despite their different locking primitives.
         it.scoped(
             'serializes competing command retries into one intent, delivery and audit',
             /** Verify duplicate staging shares one durable intent and changed command bindings conflict. */ () =>
