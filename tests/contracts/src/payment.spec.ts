@@ -15,7 +15,8 @@
  */
 
 import { expect, it } from '@effect/vitest';
-import { Effect, TestClock } from 'effect';
+import { Effect, Schema, TestClock } from 'effect';
+import { InvoiceRevision } from '@eventiva/contracts/invoice';
 import { assessFulfilment, type FulfilmentAssessment } from '@eventiva/contracts/payment';
 
 const day = 86_400_000;
@@ -81,6 +82,47 @@ it.effect(
                     state: 'blocked',
                     reason: 'unfulfilled',
                 });
+            }
+        )
+);
+
+it.effect(
+    'validates exact canonical invoice revisions without rounding or accepting inconsistent totals',
+    /** Separate invoice identity and supplier/customer identity from all later provider mappings. */ () =>
+        Effect.gen(
+            /** Use amounts beyond safe floating-point precision and independently derived tax-inclusive totals. */ function* () {
+                const revision = {
+                    invoice: evidence.obligation,
+                    revision: 1,
+                    supplier: evidence.obligation,
+                    customer: '22222222-2222-4222-8222-222222222222',
+                    currency: 'GBP',
+                    lines: [{ description: 'Synthetic', quantity: 2, unitNetMinor: '9007199254740993', taxMinor: '3' }],
+                    totalMinor: '18014398509481989',
+                    commissionMinor: '2',
+                };
+                expect(yield* Schema.decodeUnknown(InvoiceRevision)(revision)).toEqual(revision);
+                for (const input of [
+                    { ...revision, totalMinor: '18014398509481988' },
+                    { ...revision, commissionMinor: '18014398509481990' },
+                    { ...revision, revision: 0 },
+                    { ...revision, currency: 'gbp' },
+                    { ...revision, lines: [] },
+                    { ...revision, cardNumber: 'forbidden' },
+                    {
+                        ...revision,
+                        lines: [{ description: 'Synthetic', quantity: 1.5, unitNetMinor: '1', taxMinor: '0' }],
+                    },
+                    {
+                        ...revision,
+                        lines: [{ description: 'Synthetic', quantity: 1, unitNetMinor: '-1', taxMinor: '0' }],
+                    },
+                    {
+                        ...revision,
+                        lines: [{ description: 'Synthetic', quantity: 1, unitNetMinor: '01', taxMinor: '0' }],
+                    },
+                ])
+                    expect((yield* Effect.either(Schema.decodeUnknown(InvoiceRevision)(input)))._tag).toBe('Left');
             }
         )
 );

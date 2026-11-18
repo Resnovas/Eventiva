@@ -26,6 +26,26 @@ flowchart LR
     Verify --> Open["Provisioning, regions, staff access still open"]
 ```
 
+## Canonical invoice sandbox - 2026-11-18
+
+[EVE-246](https://linear.app/resnovas/issue/EVE-246) slice 2 follows the explicit no-real-money continuation in [the coordinating thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). Detailed contracts and chosen bounds remain in [the payment guide](../payments.md#canonical-invoice-and-local-fake-provider-sandbox---slice-2).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Canonical revision and mapping | Full slice verification passed | Exact minor-unit sums, bounded lines, separate provider identity and strict schema rejection; no legal numbering, statutory invoice or persistence claim. |
+| Local neutral-port sandbox | Full slice verification passed | Synthetic card/bank issue, payment, split refund and read-back; exact-input idempotency, cumulative fee rounding, outage and wrong-merchant/mapping negatives. No real money, credential or network. |
+| Shared outputs and delivery gates | Completed for this slice | Full verification and strict reviewed planning passed after rebasing concurrent security changes; clean-source graph and signed main revisions are recorded on EVE-246 with delivery evidence. |
+| Real-provider sandbox adapter | External prerequisite open | Needs an authorized test platform and connected merchant, secure test API/webhook access and endpoint; no account provisioning or live credential is implied. Catalogue evidence/import work continues independently. |
+
+```mermaid
+flowchart LR
+    Revision["Canonical exact-money revision"] --> Fake["Local fake provider"]
+    Fake --> Flow["Issue / simulate pay / refund / read-back"]
+    Flow --> Gates["Full gates and signed slice"]
+    Gates --> External["Test-account adapter remains separate"]
+    Gates --> Catalogue["Continue catalogue evidence and import"]
+```
+
 ## Dependency security remediation - 2026-11-18
 
 [EVE-265](https://linear.app/resnovas/issue/EVE-265/remediate-dependabotaudit-security-alerts-on-main)

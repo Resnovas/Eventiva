@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./payment-sandbox": {
+            "@eventiva/source": "./src/payment-sandbox.ts",
+            "types": "./dist/payment-sandbox.d.ts",
+            "default": "./dist/payment-sandbox.js"
+        },
         "./telemetry-correlation": {
             "@eventiva/source": "./src/telemetry-correlation.ts",
             "types": "./dist/telemetry-correlation.d.ts",

@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./invoice": {
+            "@eventiva/source": "./src/invoice.ts",
+            "types": "./dist/invoice.d.ts",
+            "default": "./dist/invoice.js"
+        },
         "./payment": {
             "@eventiva/source": "./src/payment.ts",
             "types": "./dist/payment.d.ts",
