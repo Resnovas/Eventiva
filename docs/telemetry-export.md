@@ -88,12 +88,18 @@ targeting, not event or trace arrival; the correlation root was still absent.
 | --- | --- | --- |
 | `EVENTIVA_ENVIRONMENT` | Required | Exactly `development` or `staging`; selects trusted route |
 | `TELEMETRY_STATE_DIRECTORY` | Absolute repository `.data/telemetry` | Private local state root; no secret in a path |
-| `TELEMETRY_COMMAND` | `status` | `status`, deliberate `grant` / `revoke`, or network `probe` |
+| `TELEMETRY_COMMAND` | `status` | Explicit `onboard`, `status`, deliberate `grant` / `revoke`, or network `probe` |
 | `TELEMETRY_CONSENT_REVISION` | Absent | Expected existing revision; absence permits a new row only |
+| `TELEMETRY_ACCESS_TOKEN` | Required | Private RFC 9068 access token from the configured issuer, with `eventiva.invoke` scope |
+| `TELEMETRY_CANONICAL_SUBJECT` | Required for `onboard` only | Operator-selected canonical Eventiva subject UUID; never raw OIDC `sub` |
+| `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_CLIENTS` | Required | Exact trusted issuer, expected audience and allowed clients; see [OIDC configuration](identity-oidc.md) |
+| `OIDC_ALGORITHMS` | `ES256` | Explicit asymmetric signing-algorithm allowlist |
+| `OIDC_ALLOW_INSECURE_LOOPBACK` | `false` | Permit HTTP only for the isolated loopback development issuer |
 | `POSTHOG_API_KEY` | Absent | Private project ingest token; absence disables the remote provider |
 | `POSTHOG_HOST` | `https://eu.i.posthog.com` | This composition accepts only this EU host |
 | `TELEMETRY_CORRELATION_ROOT_KEY` | Absent | Dedicated 64-hex root; mandatory for export, not status/consent |
 | `telemetry.enabled` | `true` | Existing central local opt-out; false denies remote export |
+| `telemetry.timeoutMs` | `1000`; local Nx command `10000` | Existing bounded write/drain budget, 1..10000 ms; environment name `telemetry_timeoutMs` |
 
 For server-side composition, build `identityStore`, `identitySecurity`,
 `telemetryConsentStore` and `CurrentTenant` on the same routed database. Provide
@@ -102,6 +108,43 @@ the normal remote `Flags` service and call
 request-scoped `telemetryLayer`. Its fresh session Effect must call
 `authenticateTokenSession`, not reuse a prior caller. `updateTelemetryConsent`
 uses the same verified session without needing either export secret.
+
+### Run deliberate local commands
+
+Configure the issuer using the [OIDC guide](identity-oidc.md). Supply a current
+access token and, for first onboarding only, a canonical subject UUID through
+private environment configuration. Never paste tokens into shell history. The
+executable uses the real OIDC verifier, not a token-decoding or accepting fixture.
+The `onboard` command atomically provisions only missing active human principal
+and membership records, the exact verified issuer/subject link and a one-hour
+SQL session. It refuses conflicting links, disabled identities/memberships and
+closed sessions. It does not grant consent or silently renew an existing SQL
+session. Other commands cannot provision identity.
+
+Run these commands from the repository root. Use `staging` instead of
+`development` for the separately routed staging database. Each command
+reauthenticates; supply a fresh private access token when it expires.
+
+```bash
+EVENTIVA_ENVIRONMENT=development TELEMETRY_COMMAND=onboard pnpm nx run @eventiva/server:telemetry
+EVENTIVA_ENVIRONMENT=development pnpm nx run @eventiva/server:telemetry
+EVENTIVA_ENVIRONMENT=development TELEMETRY_COMMAND=grant pnpm nx run @eventiva/server:telemetry
+EVENTIVA_ENVIRONMENT=development TELEMETRY_COMMAND=probe pnpm nx run @eventiva/server:telemetry
+EVENTIVA_ENVIRONMENT=development TELEMETRY_COMMAND=revoke TELEMETRY_CONSENT_REVISION=0 pnpm nx run @eventiva/server:telemetry
+```
+
+This example assumes a new consent row. Read `status` and use its current
+revision before changing an existing row; a stale revision must fail. The probe
+requires both export secrets and both remotely enabled gates. Its structured
+output contains only command/environment, consent revision/deadline or a random
+trace ID with bounded worker health. Failure prints a static diagnostic, not a
+raw Cause. Incomplete probe health produces a nonzero exit even after draining.
+The local Nx command sets the existing `telemetry.timeoutMs` budget to 10000 ms
+because a real remote probe serially rechecks flags and delivers two records.
+The global 1000 ms default is unchanged. Direct binary invocations must set
+`telemetry_timeoutMs=10000` for the same bounded local configuration; a short
+drain may interrupt delivery after only some records arrive. No retry or
+business-action replay is introduced, and transport deadlines remain bounded.
 
 ### Distinguish transport checks from arrival
 
@@ -121,12 +164,51 @@ live linked SQL session, displayed consent revision/deadline and both remotely
 targeted flags. Never print Config errors or rejected identity/credential values
 while diagnosing it.
 
+### Executed dev/staging connectivity evidence - 2026-11-18
+
+The local executable used the pinned real Keycloak 26.8.2 issuer, its synthetic
+realm and real signature verification, canonical tenant-local SQL identity links,
+live SQL sessions and explicit persisted consent. Separate command processes
+reopened each environment's private SQLite database. Both private Amp secrets
+were present and the root passed the required 64-hex format check without
+printing it. This is a local stack exporting to the real cloud project, not a
+deployed staging service or a production release.
+
+Independent read-only queries in [project 344329](https://eu.posthog.com/project/344329)
+confirmed the exact emitted trace IDs:
+
+| Local environment | Trace ID | Diagnostic events | OTLP trace |
+| --- | --- | --- | --- |
+| development | `8f618d46c07f555c7b2fbd7da6306422` | One `eventiva.telemetry.log` and one `eventiva.telemetry.span`, code `telemetry.probe` | One `telemetry.probe` root span, service `eventiva`, status 1 |
+| staging | `b8d8406a30be03273934761cdd7d4a9e` | One `eventiva.telemetry.log` and one `eventiva.telemetry.span`, code `telemetry.probe` | One `telemetry.probe` root span, service `eventiva`, status 1 |
+
+The same complete onboarding/consent/probe/revoke sequence also passed through
+`pnpm nx run @eventiva/server:telemetry` without an external timeout override.
+Its development trace `865bfec6e6f334481a3ff26499c80672` independently returned
+the same two events and one OTLP span.
+
+Each successful probe reported accepted=2, completed=2, failed=0 and dropped=0.
+The trace attribute checks found both scoped person/session keys and two 64-hex
+pseudonyms, without the canonical subject UUID or an access-token field.
+Before consent, with the root omitted, with production routing, and after a
+revisioned revoke, the executable returned denial. Consent remained revoked
+after reopening the database. The independent signed-JWT suite also rejects
+forgery, conflicting links and inactive membership without restoring authority.
+The real Keycloak conformance target passed its separate token/session test.
+
+The first live run did not complete under the global one-second drain budget;
+partial event arrival was not counted as success. The successful runs used the
+existing ten-second bounded configuration now supplied by the local Nx target.
+Native delivery, replay, Logs/metrics/AI endpoints, deployed ingress and
+production remain outside this evidence. No whole-issue closure is inferred.
+
 ## Govern pseudonymous request correlation (EVE-60)
 
-This later checkpoint adds a separate pseudonymous channel; it does not relax
-`TelemetryRecord` or its attribute minimizer. The existing synthetic app wrapper
-is unchanged. The issuer, consent and key providers below are non-production
-fixtures, not authenticated ingress. Keep production denied.
+This historical 2026-11-17 checkpoint added a separate pseudonymous channel;
+it does not relax `TelemetryRecord` or its attribute minimizer. The existing
+synthetic app wrapper is unchanged. The fixture APIs below remain proof-only;
+the current dev/staging OIDC, persistent consent and private key composition is
+documented above. Keep production denied.
 
 Jonathan selected per-request opt-in, current user consent and exclusion of
 protected profiles at 2026-11-17T13:16:16.737Z. His dedicated correlation-key
@@ -164,7 +246,8 @@ at acquisition. This is a fixture safety floor, not a release toggle. Consent is
 an injected live Effect returning the current grant expiry, or failing closed;
 its trusted closure must bind the current user/session, purpose/destination,
 protection and release policy. A request-carried consent boolean is not policy.
-The real identity/issuer/consent/key-store implementations remain absent.
+Those real implementations were absent from this historical fixture checkpoint;
+the current bounded dev/staging composition above supersedes that limitation.
 
 ### Compose one optional pipeline per request
 

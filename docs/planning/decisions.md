@@ -81,15 +81,24 @@ salt/info framing and custody are documented in the
 [existing export contract](../telemetry-export.md#configure-private-custody-and-rollout).
 This refines key provisioning, not the earlier raw-ID exclusion or live user
 consent requirement. Jonathan entered `POSTHOG_API_KEY` privately into Amp
-project `resnovas/Eventiva`; the root is still pending at this checkpoint.
+project `resnovas/Eventiva`; the root was pending at the original checkpoint.
+Later on this date Puck confirmed both masked project-secret entries and
+authorized environment refresh and dev/staging arrival proof. The refreshed
+environment contains both; root format validation passed without revealing it.
 The live provider returned both dev/staging flags true and production false,
-without fallbacks. No deployment target is selected or arrival proof claimed.
+without fallbacks. No deployment target or production release is authorized.
 
 Private local SQLite tenants and explicit storage-backed consent/onboarding are
 implementation choices under this scope. EVE-43's verified canonical subject,
 session, configured issuer and live SQL deadline are the integration seam.
 Presence of code, flags or transport interception is not live ingestion proof,
 production authorization or completion of EVE-58's full endpoint matrix.
+
+The same coordination thread explicitly authorized bounded recovery of the
+stopped EVE-43 lane's exact unpublished implementation. Preserve its original
+signed objects, source checkout, author and model credit; replay the source onto
+current main and regenerate the graph rather than recreating its implementation.
+Recovery alone neither resolves the supplier findings nor authorizes production.
 
 ## PostgreSQL fixture standing acceptance - 2026-11-18
 

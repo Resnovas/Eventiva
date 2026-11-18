@@ -18,6 +18,7 @@ import { mkdtempSync, mkdirSync, rmSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { afterEach, describe, expect, it, vi } from '@effect/vitest';
 import { CallerIdentity } from '@eventiva/contracts/caller';
@@ -30,7 +31,7 @@ import { localFile } from '@eventiva/integrations.sql/sqlite';
 import { IdentityResolver } from '@eventiva/runtime/invocation';
 import { ConfigProvider, Effect, Exit, Layer, Redacted, Schema } from 'effect';
 import { telemetryTenants } from '../src/telemetry-live.ts';
-import { localTelemetryProgram } from '../src/telemetry-local.ts';
+import { localOidcTelemetryProgram, localTelemetryProgram } from '../src/telemetry-local.ts';
 
 const caller = Schema.decodeSync(CallerIdentity)({
     subject: '019a95c0-0000-7000-8000-000000000021',
@@ -51,6 +52,173 @@ const current = Effect.gen(
 afterEach(/** Never retain the isolated transport in another test. */ () => vi.unstubAllGlobals());
 
 describe('persistent local telemetry commands', /** Verify no consent/identity seed is hidden in executable composition. */ () => {
+    it.scopedLive(
+        'verifies signed OIDC access tokens before explicit onboarding and never grants or resurrects authority implicitly',
+        /** Run actual verification, persistent identity, consent and both vendor serializers through the executable program. */ () =>
+            Effect.gen(
+                /** Test transport serves public discovery/JWKS only; no permissive verifier is injected. */ function* () {
+                    const root = yield* Effect.acquireRelease(
+                        Effect.sync(
+                            /** Keep the independently reopened database private to this test. */ () =>
+                                mkdtempSync(join(tmpdir(), 'telemetry-oidc-'))
+                        ),
+                        /** Close SQL scopes before discarding only the owned synthetic state. */ (path) =>
+                            Effect.sync(
+                                /** Remove no operator state or real identity. */ () =>
+                                    rmSync(path, { recursive: true, force: true })
+                            )
+                    );
+                    const issuer = 'https://telemetry-issuer.example.test';
+                    const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+                    const now = Math.floor(Date.now() / 1000);
+                    const header = Buffer.from(
+                        JSON.stringify({ alg: 'RS256', typ: 'at+jwt', kid: 'telemetry-test' })
+                    ).toString('base64url');
+                    const claims = Buffer.from(
+                        JSON.stringify({
+                            iss: issuer,
+                            sub: 'provider-subject',
+                            aud: 'eventiva-api',
+                            client_id: 'telemetry-client',
+                            sid: 'provider-session',
+                            iat: now,
+                            nbf: now - 1,
+                            exp: now + 300,
+                            jti: 'telemetry-test-token',
+                            scope: 'eventiva.invoke',
+                        })
+                    ).toString('base64url');
+                    const unsigned = `${header}.${claims}`;
+                    const token = `${unsigned}.${sign('RSA-SHA256', Buffer.from(unsigned), privateKey).toString('base64url')}`;
+                    const sent: string[] = [];
+                    vi.stubGlobal(
+                        'fetch',
+                        vi.fn<typeof fetch>(
+                            /** Reject unexpected hosts; only a real signature backed by this JWKS can authenticate. */ (
+                                url
+                            ) => {
+                                const destination = String(url);
+                                const body =
+                                    destination === `${issuer}/.well-known/openid-configuration`
+                                        ? {
+                                              issuer,
+                                              jwks_uri: `${issuer}/jwks`,
+                                              authorization_endpoint: `${issuer}/authorize`,
+                                              token_endpoint: `${issuer}/token`,
+                                          }
+                                        : destination === `${issuer}/jwks`
+                                          ? {
+                                                keys: [
+                                                    {
+                                                        ...publicKey.export({ format: 'jwk' }),
+                                                        kid: 'telemetry-test',
+                                                        alg: 'RS256',
+                                                        use: 'sig',
+                                                    },
+                                                ],
+                                            }
+                                          : destination.startsWith('https://eu.i.posthog.com/')
+                                            ? {
+                                                  featureFlags: {
+                                                      'eventiva-telemetry-export-enabled': true,
+                                                      'eventiva-telemetry-correlation-pseudonymous-enabled': true,
+                                                  },
+                                              }
+                                            : undefined;
+                                if (!body) return Promise.reject(new Error('unexpected destination'));
+                                if (destination.includes('/batch/') || destination.endsWith('/i/v1/traces'))
+                                    sent.push(destination);
+                                return Promise.resolve(
+                                    new Response(JSON.stringify(body), {
+                                        status: 200,
+                                        headers: { 'content-type': 'application/json' },
+                                    })
+                                );
+                            }
+                        )
+                    );
+                    /** Execute with private synthetic credentials, never ambient orb secrets or cached caller authority. */
+                    const run = (command: string, changes: ReadonlyArray<readonly [string, string]> = []) =>
+                        localOidcTelemetryProgram.pipe(
+                            Effect.provide(NodeFileSystem.layer),
+                            Effect.withConfigProvider(
+                                ConfigProvider.fromMap(
+                                    new Map([
+                                        ['EVENTIVA_ENVIRONMENT', 'development'],
+                                        ['TELEMETRY_STATE_DIRECTORY', root],
+                                        ['TELEMETRY_COMMAND', command],
+                                        ['TELEMETRY_ACCESS_TOKEN', token],
+                                        ['TELEMETRY_CANONICAL_SUBJECT', caller.subject],
+                                        ['OIDC_ISSUER', issuer],
+                                        ['OIDC_AUDIENCE', 'eventiva-api'],
+                                        ['OIDC_CLIENTS', 'telemetry-client'],
+                                        ['OIDC_ALGORITHMS', 'RS256'],
+                                        ['POSTHOG_API_KEY', 'fixture-ingest-only'],
+                                        ...changes,
+                                    ]),
+                                    { pathDelim: '_' }
+                                )
+                            )
+                        );
+                    expect(Exit.isFailure(yield* Effect.exit(run('status')))).toBe(true);
+                    expect(
+                        Exit.isFailure(
+                            yield* Effect.exit(run('onboard', [['TELEMETRY_ACCESS_TOKEN', `${unsigned}.invalid`]]))
+                        )
+                    ).toBe(true);
+                    expect((yield* run('onboard')).consent).toBeNull();
+                    expect((yield* run('status')).consent).toBeNull();
+                    expect((yield* run('grant')).consent?.version).toBe(0);
+                    expect(Exit.isFailure(yield* Effect.exit(run('probe')))).toBe(true);
+                    expect(sent).toHaveLength(0);
+                    const probe = yield* run('probe', [['TELEMETRY_CORRELATION_ROOT_KEY', '01'.repeat(32)]]);
+                    expect(probe).toMatchObject({ health: { accepted: 2, completed: 2, failed: 0, dropped: 0 } });
+                    expect(sent).toHaveLength(3);
+                    expect((yield* run('revoke', [['TELEMETRY_CONSENT_REVISION', '0']])).consent).toEqual({
+                        expiresAt: 0,
+                        version: 1,
+                    });
+                    expect(
+                        Exit.isFailure(
+                            yield* Effect.exit(run('probe', [['TELEMETRY_CORRELATION_ROOT_KEY', '01'.repeat(32)]]))
+                        )
+                    ).toBe(true);
+                    expect(sent).toHaveLength(3);
+                    const store = identityStore.pipe(
+                        Layer.provide(localFile(Redacted.make(join(root, 'development', 'tenant.sqlite')))),
+                        Layer.provide(Layer.succeed(CurrentTenant, { id: telemetryTenants.development.tenantId }))
+                    );
+                    const other = '019a95c0-0000-7000-8000-000000000099';
+                    expect(
+                        Exit.isFailure(yield* Effect.exit(run('onboard', [['TELEMETRY_CANONICAL_SUBJECT', other]])))
+                    ).toBe(true);
+                    expect(
+                        yield* Effect.scoped(
+                            Effect.gen(
+                                /** A conflicting verified external link must roll back the new canonical identity as well. */ function* () {
+                                    const identity = yield* IdentityStore;
+                                    const missing = yield* identity.get('principal', other);
+                                    const membership = yield* identity.get('membership', caller.subject);
+                                    if (!membership) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                    yield* identity.put(
+                                        'membership',
+                                        { ...membership.value, active: false },
+                                        membership.version
+                                    );
+                                    return missing;
+                                }
+                            ).pipe(Effect.provide(store))
+                        )
+                    ).toBeUndefined();
+                    expect(Exit.isFailure(yield* Effect.exit(run('onboard')))).toBe(true);
+                    expect(
+                        Exit.isFailure(yield* Effect.exit(run('grant', [['TELEMETRY_CONSENT_REVISION', '1']])))
+                    ).toBe(true);
+                    expect(sent).toHaveLength(3);
+                }
+            )
+    );
+
     it.scopedLive(
         'reopens real identity and consent state for status, deliberate grant, durable revocation and session removal',
         /** Independent program invocations must retain policy but never retain authenticated authority. */ () =>

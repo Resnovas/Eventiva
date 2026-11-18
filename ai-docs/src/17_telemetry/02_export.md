@@ -40,7 +40,23 @@ tenant routing, not cached claims or accepting fixtures. Explicit local
 onboarding must separately establish principal/membership/link/session.
 `updateTelemetryConsent` grants at most one hour/session lifetime and requires
 the displayed revision for updates. The local runner defaults to read-only
-status, uses private per-environment SQLite and never seeds identities/grants.
+status, uses private per-environment SQLite and never implicitly seeds identities
+or grants.
+
+`localOidcTelemetryProgram` is the executable EVE-43 composition, run with
+`pnpm nx run @eventiva/server:telemetry`. Keep `TELEMETRY_ACCESS_TOKEN` redacted.
+Only explicit `TELEMETRY_COMMAND=onboard` may atomically establish a verified
+issuer link, missing active human principal/membership and a one-hour SQL
+session for private `TELEMETRY_CANONICAL_SUBJECT`. Refuse disabled records,
+conflicting links and closed sessions; never grant consent during onboarding.
+All other commands call fresh `authenticateTokenSession` without provisioning.
+The entrypoint outputs only bounded status/probe fields, sanitizes every failure
+and exits nonzero for incomplete delivery health. Configuration and the complete
+onboard/status/grant/probe/revoke example live in the people guide.
+The local Nx command sets the existing `telemetry.timeoutMs` configuration to
+10000 ms for bounded serial remote checks and drain; the global default remains
+1000 ms. Direct binary invocations need `telemetry_timeoutMs=10000` for parity.
+Do not infer complete arrival from a partially drained or failed probe.
 
 PostHog aliases live in its integration, not portable flag contracts:
 `telemetry.export.enabled` -> `eventiva-telemetry-export-enabled` (367969);

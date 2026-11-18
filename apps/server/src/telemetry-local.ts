@@ -16,18 +16,24 @@
 
 import { fileURLToPath } from 'node:url';
 import * as FileSystem from '@effect/platform/FileSystem';
+import { SqlClient } from '@effect/sql';
+import { IdentityStore } from '@eventiva/contracts/identity';
+import { SubjectId } from '@eventiva/contracts/ids';
 import { CurrentTenant } from '@eventiva/contracts/storage';
 import { TelemetryConsent, type TelemetryExportBinding } from '@eventiva/contracts/telemetry-export';
 import { TelemetrySinkFailure } from '@eventiva/contracts/observability';
 import { fromConfig } from '@eventiva/integrations.posthog.server/flags';
 import { layer as flagLayer } from '@eventiva/integrations.openfeature.server/flags';
+import { openOidcSession } from '@eventiva/integrations.oidc/session';
+import { makeOidcVerifier, oidcVerifierSettings } from '@eventiva/integrations.oidc/token';
 import { identityStore } from '@eventiva/integrations.sql/identity';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { localFile } from '@eventiva/integrations.sql/sqlite';
 import { telemetryConsentStore } from '@eventiva/integrations.sql/telemetry-consent';
-import { identitySecurity } from '@eventiva/runtime/identity';
+import { authenticateTokenSession, identitySecurity } from '@eventiva/runtime/identity';
 import { TelemetryControl, telemetryLayer } from '@eventiva/runtime/telemetry';
-import { Config, Context, Effect, Layer, Option, Redacted } from 'effect';
+import { Clock, Config, Context, Effect, Layer, Option, Redacted, Schema } from 'effect';
+import { oidcStandardsVerifier } from './identity-oidc.ts';
 import {
     requestTelemetryLayer,
     telemetryTenants,
@@ -37,6 +43,7 @@ import {
 
 /** Finite local commands: status is read-only; grants/revocations are deliberate authenticated operator actions. */
 export const telemetryCommand = Config.literal(
+    'onboard',
     'status',
     'grant',
     'revoke',
@@ -112,7 +119,7 @@ export const localTelemetryProgram = <E, R>(currentSession: Effect.Effect<Teleme
                             ).pipe(Effect.provide(context))) ?? null,
                     };
                 }
-                if (command === 'status')
+                if (command === 'status' || command === 'onboard')
                     return { command, environment, consent: (yield* consent.get(binding, principal)) ?? null };
                 // Only the explicit probe may construct a network provider; status/consent need neither export credential.
                 const remote = yield* fromConfig;
@@ -140,3 +147,56 @@ export const localTelemetryProgram = <E, R>(currentSession: Effect.Effect<Teleme
             }
         )
     );
+
+/**
+ * Executable local composition using the approved OIDC verifier, canonical SQL links and live session checks.
+ * Onboarding is an explicit operator action, limited to these private non-production databases. It never
+ * reactivates a revoked principal/membership/session, replaces a conflicting link or grants telemetry consent.
+ */
+export const localOidcTelemetryProgram = Effect.gen(
+    /** Construct one verifier per command so repeated release checks share discovery/JWKS ownership, not authority. */ function* () {
+        yield* Config.literal('development', 'staging')('EVENTIVA_ENVIRONMENT');
+        const command = yield* telemetryCommand;
+        const settings = yield* oidcVerifierSettings;
+        const verifier = yield* makeOidcVerifier(settings);
+        const token = yield* Config.redacted('TELEMETRY_ACCESS_TOKEN');
+        const expected = { issuer: settings.issuer, audience: settings.audience, scopes: ['eventiva.invoke'] };
+        const authenticated = authenticateTokenSession(token, expected);
+        const current = Effect.gen(
+            /** Even onboarding verifies token provenance before writing identity; ordinary commands never provision anything. */ function* () {
+                if (command === 'onboard') {
+                    const claims = yield* verifier.verify(token);
+                    if (!claims.scopes.includes('eventiva.invoke'))
+                        return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                    const canonical = yield* Config.redacted('TELEMETRY_CANONICAL_SUBJECT');
+                    const subject = yield* Schema.decodeUnknown(SubjectId)(Redacted.value(canonical));
+                    const store = yield* IdentityStore;
+                    const sql = yield* SqlClient.SqlClient;
+                    yield* sql.withTransaction(
+                        Effect.gen(
+                            /** Provision atomically; stale links, disabled membership and closed sessions must roll back all writes. */ function* () {
+                                yield* store.lock;
+                                const principal = yield* store.get('principal', subject);
+                                const membership = yield* store.get('membership', subject);
+                                if (
+                                    (principal && (!principal.value.active || principal.value.kind !== 'human')) ||
+                                    (membership && !membership.value.active)
+                                )
+                                    return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                if (!principal)
+                                    yield* store.put('principal', { id: subject, active: true, kind: 'human' }, null);
+                                if (!membership)
+                                    yield* store.put('membership', { id: subject, active: true, roles: [] }, null);
+                                yield* store.link({ issuer: claims.issuer, subject: claims.subject }, subject);
+                                // This is a server policy deadline, not an untrusted token claim or a consent duration.
+                                yield* openOidcSession(claims, (yield* Clock.currentTimeMillis) + 3_600_000);
+                            }
+                        )
+                    );
+                }
+                return yield* authenticated;
+            }
+        );
+        return yield* localTelemetryProgram(current).pipe(Effect.provide(oidcStandardsVerifier(verifier)));
+    }
+);

@@ -5,6 +5,15 @@
     "sourceRoot": "apps/server/src",
     "tags": ["type:platform", "layer:backend", "capability:app"],
     "targets": {
+        "telemetry": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "dependsOn": ["build", "^build"],
+            "options": {
+                "command": "node apps/server/dist/telemetry-entry.js",
+                "env": { "telemetry_timeoutMs": "10000" }
+            }
+        },
         "test": {
             "cache": false,
             "dependsOn": ["cluster-conformance"]

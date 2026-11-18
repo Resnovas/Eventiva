@@ -136,17 +136,17 @@ remain in [telemetry export](../telemetry-export.md).
 | --- | --- | --- |
 | Dedicated destination and rollout | Configured externally | Existing Eventiva EU project 344329; server-only export/correlation aliases 367969/367970 target only development/staging. No production rollout. |
 | Real authority and custody composition | Implemented and aggregate-verified | Migration 0009 consent, persistent private SQLite tenants, revisioned revoke, HKDF exact-scope/hour derivation and fresh verified session seam. No accepting executable fixture or automatic grant. |
-| Local verification | Full core gate passed | `node --run verify` passed all 92 aggregate tasks, source/declaration boundaries and all three smoke targets, including browser smoke and Android/web exports. Exact delivery/base commits and rebase reruns are recorded on the owning issues. Real SQLite/PostgreSQL consent and independent crypto vector pass with unchanged coverage gates. Vendor transport interception is not remote arrival proof. |
-| OIDC executable composition | Blocked on unpublished dependency | At 10:02 UTC on 2026-11-18, the [EVE-43 lane](https://ampcode.com/threads/T-01a1edbf-561a-77d0-8d2a-98b8242307e4) stopped on provider usage quota before pushing. Integrate after its verifier/session package lands on main, then verify the preserved local onboarding/probe entrypoint. The shipped core accepts the narrow verifier-backed session Effect; it is not an accepting executable fixture. |
-| Live arrival proof | Pending OIDC integration and private root | POSTHOG_API_KEY is privately available; both real dev/staging flags returned true and production false, all without fallback. Amp project metadata still lacks TELEMETRY_CORRELATION_ROOT_KEY. A real linked SQL session and explicit consent remain mandatory; query exact emitted event/trace IDs in project 344329. |
+| Local verification | Full combined gate passed | `node --run verify` passed all 98 aggregate tasks, source/declaration boundaries and all three smoke targets, including browser smoke and Android/web exports. Exact delivery/base commits and rebase reruns are recorded on the owning issues. Real SQLite/PostgreSQL consent, OIDC composition and the independent crypto vector pass with unchanged coverage gates. Intercepted transport checks remain distinct from the live proof below. |
+| OIDC executable composition | Recovered, integrated and verified | The stopped EVE-43 lane's exact signed commits `bc7431c3` and `d1191de4` were recovered through supported cross-thread transfer, hash-verified and preserved under `recovery/eve43-original`. Its original background verification ended `verify_exit=0` with 98 aggregate tasks; the combined tree independently passed the full gate. The source is replayed with its original author/model credit; the graph is regenerated rather than replayed. The executable uses real OIDC verification and live SQL session/consent, not an accepting identity fixture. |
+| Live arrival proof | Independently observed in real project 344329 | Both private secrets are available and root format validation passed. Real Keycloak, canonical SQL identity and explicit persistent consent produced two diagnostic events plus one OTLP trace per local development/staging probe. Exact IDs and read-only arrival evidence are in the [existing export guide](../telemetry-export.md#executed-devstaging-connectivity-evidence---2026-11-18). Missing-consent/root, production and revoked-consent probes denied. This is local composition to the real cloud, not deployed staging ingress or production. |
 | Production and full endpoint/native matrix | Upcoming / separately gated | Production remains denied; no OTLP Logs/metrics/AI, native/replay or whole-issue acceptance is inferred. |
 
 ```mermaid
 flowchart LR
     Project["344329: dev/staging flags configured"] --> Compose["Private SQL consent and HKDF custody"]
-    OIDC["EVE-43 verified OIDC + live SQL session"] --> Compose
+    OIDC["EVE-43 recovered: verified OIDC + live SQL session"] --> Compose
     Compose --> Verify["Rebase and full verification"]
-    Secrets["Private project secrets"] --> Arrival["Exact event + trace query"]
+    Secrets["Private project secrets validated"] --> Arrival["Dev/staging events + OTLP observed"]
     Verify --> Arrival
     Arrival --> Gates["Production and wider matrix remain gated"]
 ```
