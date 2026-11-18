@@ -16,9 +16,10 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, matchesGlob } from 'node:path';
 import { test } from 'node:test';
 import { checkReferences } from './check.mjs';
 
@@ -132,3 +133,54 @@ for (const [label, change, expected] of [
             change(state);
             assert.throws(() => checkReferences(state.root), expected);
         }));
+
+/** Verify the repository's scanner policy without modifying preserved reference trees. */
+test('excludes every case/depth of reference directories while retaining active scans and house protections', () => {
+    // Reuse Nx's installed parser rather than adding a new tooling dependency.
+    const { parse } = createRequire(import.meta.resolve('nx/package.json'))('yaml');
+    const read = (file) => parse(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
+    const dependabot = read('.github/dependabot.yml');
+    const codeql = read('.github/codeql/codeql-config.yml');
+    const house = read('.github/smartcloud.yml');
+    assert.ok(house.sync.exclude.includes('.github/dependabot.yml'));
+    assert.equal(codeql['disable-default-queries'], undefined);
+    assert.equal(codeql.paths, undefined);
+    assert.ok(codeql['paths-ignore'].every((pattern) => !/[?+\[\]!]/.test(pattern)));
+
+    const policies = [codeql['paths-ignore']];
+    for (const ecosystem of ['github-actions', 'npm'])
+        assert.ok(dependabot.updates.some((update) => update['package-ecosystem'] === ecosystem));
+    for (const update of dependabot.updates) {
+        assert.equal(update.schedule.interval, 'weekly');
+        assert.equal(update.cooldown['default-days'], 7);
+        assert.ok(Object.values(update.groups).some((group) => group['applies-to'] === 'security-updates'));
+        policies.push(update['exclude-paths']);
+    }
+    for (const word of ['examples', 'externals']) {
+        // Build combinations independently of the literal list's bit-mask generation.
+        let variants = [''];
+        for (const letter of word)
+            variants = variants.flatMap((prefix) => [prefix + letter, prefix + letter.toUpperCase()]);
+        for (const variant of variants) {
+            const literal = `**/${variant}/**`;
+            assert.ok(codeql['paths-ignore'].includes(literal), literal);
+            for (const file of [`${variant}/package.json`, `nested/project/${variant}/deep/pnpm-lock.yaml`]) {
+                assert.ok(matchesGlob(file, literal), file);
+                for (const update of dependabot.updates)
+                    assert.ok(
+                        update['exclude-paths'].some((pattern) => matchesGlob(file, pattern)),
+                        file
+                    );
+            }
+        }
+    }
+    for (const file of [
+        'apps/client/src/index.ts',
+        'packages/contracts/src/action.ts',
+        'tools/references/check.mjs',
+        'notexamples/package.json',
+        'nested/externals-copy/package.json',
+        'nested/examples.ts',
+    ])
+        for (const patterns of policies) assert.ok(!patterns.some((pattern) => matchesGlob(file, pattern)), file);
+});

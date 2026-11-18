@@ -1,17 +1,14 @@
-# house:managed:begin - synced from Resnovas/.github templates/.github/dependabot.yml. Edits inside this block are overwritten.
-#
-# Weekly version updates on Monday morning, grouped so each ecosystem opens one
-# pull request, with security updates grouped separately so they are never held
-# back behind routine bumps. A repository with other ecosystems adds its own
-# updates below the managed block. One without a package.json excludes this
-# file with sync.exclude in .github/smartcloud.yml, because the npm update
-# below would fail there. Version updates wait seven days after a release, so
-# a compromised or broken release is usually pulled before it is proposed;
-# security updates are not delayed.
+# Repository-owned under sync.exclude in .github/smartcloud.yml (EVE-265).
+# Jonathan approved all-case, all-depth examples/externals exclusions, 2026-11-18.
+# exclude-paths affects VERSION UPDATES ONLY, not dependency graph or alerts.
+# Keep the house weekly schedule, cooldown and separate security-update groups.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    exclude-paths:
+      - '**/[eE][xX][aA][mM][pP][lL][eE][sS]/**'
+      - '**/[eE][xX][tT][eE][rR][nN][aA][lL][sS]/**'
     schedule:
       interval: weekly
       day: monday
@@ -32,6 +29,9 @@ updates:
 
   - package-ecosystem: npm
     directory: /
+    exclude-paths:
+      - '**/[eE][xX][aA][mM][pP][lL][eE][sS]/**'
+      - '**/[eE][xX][tT][eE][rR][nN][aA][lL][sS]/**'
     schedule:
       interval: weekly
       day: monday
@@ -50,5 +50,3 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         update-types: [minor, patch]
-# house:managed:end
-# house:local - add further updates below, as list items under updates.

@@ -35,6 +35,10 @@ extends:
 # including the CodeQL gate, secret scanning and the administrator always
 # bypass, still applies. See Resnovas/.github docs/preset.md#base.
 sync:
+  # EVE-265: owner-approved repository policy needs per-ecosystem path filters.
+  # The house documents this local override in docs/sync.md#exclude.
+  exclude:
+    - .github/dependabot.yml
   values:
     HOUSE_PRESET: house-base.yml
 

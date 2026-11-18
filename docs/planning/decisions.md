@@ -17,6 +17,25 @@ Last checked: 2026-11-17. This is an index, not a new approval register. The own
 | Security profiles/assurance, independent decryption gates, regional marketplace exchange                                                     | [Existing approval-linked register](../architecture/eventiva-platform-and-marketplace.md#decision-register) cites EVE-13/250/251 comments                                                                                         | Keep that register's approved/proposed distinctions; this index does not select vendors, algorithms, regions or key providers.                                                                                                                                                                                                                               |
 | Useful JSDoc on every editable TypeScript function/method/class/interface; meaningful internal rationale                                     | Owner documentation requirement; Jonathan approved the reviewed exact debt ratchet on 2026-11-17 through this governance task                                                                                                     | New/changed code must comply; existing validated exact entries cannot grow; touched indebted files improve; tracked remediation reaches strict zero. Enforcing presence is mechanical; usefulness and meaningful-phase coverage need review. Checker/ledger validation and coordinator-owned root activation are a separate delivery, not global compliance. |
 
+## Dependency security and preserved-directory scanning - 2026-11-18
+
+Jonathan approved necessary dependency-security upgrades, including majors, then
+approved ignoring every `examples` and `externals` directory regardless of depth
+or case, without changing their contents. The decisions were relayed through
+[the requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+and recorded on [EVE-265](https://linear.app/resnovas/issue/EVE-265#comment-5b68387c-8fd2-4841-ba02-a293a3041e54).
+The exact owner-selection times were not supplied. This permits the documented
+repository-local house-sync exclusion for Dependabot configuration; it does not
+override historical/source preservation or authorize global security disablement.
+
+The [security guide](../dependency-security.md#batch-3-exclude-preserved-reference-directories-from-supported-scans)
+separates delivered repository policy, hosted-scanner evidence and owner-side
+alert triage. Dependabot version-update exclusions do not remove dependency-graph
+entries or alerts. Manifest-path triage and a post-rebuild count need GitHub
+security access; this lane's API reads remain denied. Separate automatic Code
+Quality path exclusions are not established by the advanced House CodeQL config.
+These are explicit remaining boundaries, not waived checks or patch claims.
+
 ## Resumed commerce work - 2026-11-18
 
 Jonathan's [owner message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g)

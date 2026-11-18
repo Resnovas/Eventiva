@@ -39,15 +39,20 @@ The [inventory and residual reasons](../dependency-security.md) own the details.
 | --- | --- | --- |
 | Audit active and historical lockfiles | Completed inventory | Active: 0 critical, 2 high, 2 moderate. Historical main snapshot: 11 critical, 166 high, 175 moderate, 27 low; separate nested lockfiles recorded without double-counting the parent workspace. Dependabot API read denied (403). |
 | Expo Zod major override | Completed delivery | Signed main commits e06839cf and 86a40aea; root audit 4 -> 3 (1 high, 2 moderate). Root check, full verify and uncached PostgreSQL/SQLite storage suite pass; exact evidence recorded on EVE-265. |
-| Glob/minimatch majors | Verified; signed delivery recorded separately | Range-scoped glob 14.0.4 / minimatch 11.0.7 preserve unaffected legacy APIs and cooldown. Before/after compatibility probes, root check, full workspace verify and uncached storage (11 files / 206 tests, PostgreSQL and SQLite) pass. Source/declaration graphs have zero violations/cycles; all three smoke projects plus 12 dependencies pass. Audit 3 -> 1 (high picomatch only); exact signed delivery tracked on EVE-265. |
-| Picomatch and historical snapshots | Blocked | No published picomatch fix. Historical preservation needs an explicit EVE-264 override before upgrades/deletion; no finding is suppressed. |
+| Glob/minimatch majors | Completed delivery | Signed main source 2633f6f2 and graph 21b6eb8e after commerce/trust rebases. Scoped glob 14.0.4 / minimatch 11.0.7 preserve legacy APIs/cooldown. Root check, full verify (92 aggregate tasks), uncached storage (11 files / 206 tests), both SQLite/PostgreSQL process-loss proofs and 15 smoke/dependency tasks pass. Audit 3 -> 1 (high picomatch only); evidence on EVE-265. |
+| Picomatch investigation | Blocked on upstream patch | Every dependency is transitive; all published versions through latest 4.0.7 are affected. Twenty checked latest-parent records retain it. Build-pattern exposure reproduced; no untrusted application glob API found. [Full tree and analysis](../dependency-security.md#picomatch-dependency-paths-and-reachability); no unsafe replacement or suppression. |
+| Preserved-directory scanner policy | Current delivery increment | Jonathan approved all-case/all-depth examples/externals exclusions on 2026-11-18, preserving contents. Dependabot version-update filters, local house override and literal CodeQL case variants are covered by the root reference tests; full verification and exact delivery recorded on EVE-265. |
+| Hosted alert triage / count | Pending owner access and action | Repository config cannot remove dependency-graph entries/alerts. [Documented owner steps](../dependency-security.md#apply-the-remaining-github-side-alert-policy) cover manifest auto-triage/dismissal and rebuild. Alert API 403; last push banner 401 (13 critical/188 high/170 moderate/30 low), not a post-rebuild count. Separate automatic Code Quality exclusions remain unverified. |
 | Vendored reference refreshes | Upcoming / upstream boundary | Inventoried separately; reviewed upstream/subtree refreshes required, not provenance-breaking local patches. |
 
 ```mermaid
 flowchart LR
     Inventory["Audit all lockfiles"] --> Zod["Expo Zod security batch"]
     Zod --> Matchers["Glob / minimatch compatibility batch"]
-    Matchers --> Residual["Record unpatched and historical blockers"]
+    Matchers --> Residual["Unpatched picomatch; preserve reference source"]
+    Matchers --> Policy["Owner-approved all-case scanner policy"]
+    Policy --> Triage["Owner manifest triage and graph rebuild"]
+    Triage --> Count["Record actual hosted alert counts"]
 ```
 
 ## Payment and catalogue resumption - 2026-11-18
