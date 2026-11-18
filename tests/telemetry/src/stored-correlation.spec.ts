@@ -69,6 +69,7 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
         /** Derive via the public key port; never assert an oracle obtained from the implementation. */ () =>
             Effect.gen(
                 /** A stable root yields stable runner output only for the same exact current scope. */ function* () {
+                    // A fixed independent vector catches shared derivation bugs; one-dimension changes test separation and epoch rollover.
                     const a = yield* rootCorrelationKeys;
                     const b = yield* rootCorrelationKeys;
                     const expected = 'db601d61517e8bf69c2b0e5ed74ecf5c66534c2899148c55ed006277965962ed';
@@ -103,6 +104,7 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
         /** Configuration failures expose only a bounded safe reason, never a root or decoder cause. */ () =>
             Effect.gen(
                 /** Malformed material must not silently produce a weaker or empty HMAC key. */ function* () {
+                    // Inspect safe failure text as well as denial so malformed root material cannot leak through decoder diagnostics.
                     for (const root of ['', '0'.repeat(63), 'g'.repeat(64), 'x-secret-canary']) {
                         const failure = yield* Effect.flip(
                             rootCorrelationKeys.pipe(Effect.withConfigProvider(config('staging', root)))
@@ -124,6 +126,7 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
         /** The production store is covered by both-dialect storage tests; this controlled port makes the suspension boundary deterministic. */ () =>
             Effect.gen(
                 /** Change one authoritative input at a time and preserve the same already-issued request token. */ function* () {
+                    // Retain issued handles while changing policy to catch cached grants and expiry crossed during an awaited store read.
                     const state = yield* Ref.make({
                         grant: true,
                         expiresAt: identity.expiresAt,
@@ -152,6 +155,7 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                         /** Simulate a policy read crossing a clock boundary while retaining its prior deadline. */ get: () =>
                             Effect.gen(
                                 /** A grant read is fresh, explicit and never synthesized for an absent consent row. */ function* () {
+                                    // Advance time after capturing state to model a valid read that returns only after session expiry.
                                     const value = yield* Ref.get(state);
                                     if (value.suspend) yield* TestClock.adjust(identity.expiresAt);
                                     return value.grant ? { version: 0, expiresAt: 3 * correlationEpochMs } : undefined;
@@ -216,6 +220,7 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
         /** The new composition cannot bypass the existing production hold. */ () =>
             Effect.gen(
                 /** No permissive input can install the real issuer under a production environment. */ function* () {
+                    // Supply valid root and consent controls so production policy, not missing prerequisites, explains construction failure.
                     const keys = yield* rootCorrelationKeys;
                     const result = yield* Effect.exit(
                         Effect.scoped(

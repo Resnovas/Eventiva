@@ -195,6 +195,48 @@ const historicalFixture = (t, text = contextualSource) => {
     return { root, file, base, ledger, writeLedger, run, git };
 };
 
+test('strict CLI rejects accepted and never-ledgered rationale while documented source passes', (t) => {
+    const undocumented =
+        '/** Recheck live authorization before the provider barrier. */ function flush() { authorize(); barrier(); }';
+    const fixture = historicalFixture(t, undocumented);
+    const strict = (...args) =>
+        spawnSync(process.execPath, ['tools/documentation/check.mjs', ...args], {
+            cwd: fixture.root,
+            encoding: 'utf8',
+        });
+    // Accepted historical rationale passes the migration ratchet, never the separate strict scanner.
+    assert.equal(fixture.run().status, 0);
+    assert.equal(fixture.ledger.entries.length, 1);
+    assert.equal(strict().status, 1);
+    assert.match(strict().stdout, /review-internal-rationale/);
+    const documented = undocumented.replace(
+        '{ authorize();',
+        '{ /* Revocation must precede provider work. */ authorize();'
+    );
+    writeFileSync(join(fixture.root, fixture.file), documented);
+    assert.equal(strict().status, 0);
+    // New untracked source must not evade strict enforcement by staying outside the accepted ledger or Git index.
+    writeFileSync(join(fixture.root, 'packages/new.ts'), undocumented);
+    const result = strict('--json');
+    assert.equal(result.status, 1);
+    const inventory = JSON.parse(result.stdout);
+    assert.equal(inventory.checked, 2);
+    assert.deepEqual(
+        inventory.findings.map(({ file, rule }) => ({ file, rule })),
+        [{ file: 'packages/new.ts', rule: 'review-internal-rationale' }]
+    );
+});
+
+test('root and uncached Nx documentation wiring retain the ratchet and end with the strict scanner', () => {
+    const { scripts, nx } = JSON.parse(readFileSync('package.json', 'utf8'));
+    const commands = scripts.documentation.split(' && ');
+    assert.equal(commands.at(-1), 'node tools/documentation/check.mjs');
+    assert.ok(commands.includes('node tools/documentation/ratchet.mjs --base HEAD'));
+    assert.ok(scripts.check.split(' && ').includes('node --run documentation'));
+    assert.equal(nx.targets.documentation.cache, false);
+    assert.equal(nx.targets.documentation.options.command, 'node --run documentation');
+});
+
 test('trusted history reconciles exact legacy pairs without changing provenance, metadata or classification', (t) => {
     const fixture = historicalFixture(t);
     const trusted = history(fixture.root, fixture.base);

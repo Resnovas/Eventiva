@@ -62,6 +62,7 @@ it.effect(
     /** Commas, quotes, BOM, CRLF and embedded newlines must preserve exact technical identity. */ () =>
         Effect.gen(
             /** Check independently specified output, including a zero quantity and an explicit variant. */ function* () {
+                // Embedded delimiters/newlines are model identity, not opportunities to normalize or silently split private rows.
                 const loaded = {
                     ...source,
                     csv: `\uFEFF${header}\r\n"S,1","Fixture ""Audio""","A\n10",mk2,0\r\n`,
@@ -101,6 +102,7 @@ it.effect(
     /** A preparation is not reviewable unless every row has exactly one model match and a valid unique SKU. */ () =>
         Effect.gen(
             /** Bad quantities must not shift following records or be silently rounded into an accepted stock quantity. */ function* () {
+                // Preserve row positions and an accepted control to distinguish correction reporting from whole-batch rejection.
                 const result = yield* prepare({
                     ...source,
                     csv: `${header}\nS-1,Fixture Audio,A-10,,3\nS-2,Fixture Audio,A10,,1\nS-3,Fixture Audio,A-10,,01\nS-4,Fixture Audio,A-10,,1e3\nS-5,Fixture Audio,A-10,,9007199254740992\nS-6,Fixture Audio,A-10,,1.0\nS-7,Fixture Audio,A-10,,-1\nS-8,Fixture Audio,A-10,,`,
@@ -137,6 +139,7 @@ it.effect(
     /** A malicious or stale authority result must not grant cross-tenant access or turn a caller flag into permission. */ () =>
         Effect.gen(
             /** Retain a valid control and exercise each independent binding and time invariant. */ function* () {
+                // Reuse then revoke the same source object to catch cached authority while checking that failures omit private rows.
                 expect((yield* prepare()).state).toBe('reviewable');
                 for (const value of [
                     { ...source, id: id(99) },
@@ -176,6 +179,7 @@ it.effect(
     /** An earlier review projection is not a reusable consent or import token. */ () =>
         Effect.gen(
             /** Both exclusive boundaries must refuse even when the source's nominal expiry is still later. */ function* () {
+                // Adjacent milliseconds distinguish exact expiry and review-age gates from an always-stale implementation.
                 const expiring = { ...source, evidence: { ...source.evidence, validUntil: 10 } };
                 yield* TestClock.setTime(9);
                 expect((yield* prepare(expiring)).state).toBe('reviewable');
@@ -194,6 +198,7 @@ it.effect(
     /** Whole-file structural errors cannot silently skip rows or change field alignment. */ () =>
         Effect.gen(
             /** Cover both terminal-record forms and both sides of the 1000-row bound, not just input rejection. */ function* () {
+                // Accepted size controls isolate parser/budget failures from row-level corrections and prevent reject-all false passes.
                 const row = 'S-1,Fixture Audio,A-10,,3';
                 expect(
                     (yield* prepare({ ...source, csv: `${header}\n${Array(1000).fill(row).join('\n')}` })).rows.length

@@ -44,6 +44,7 @@ export const fakeInvoiceProviderLayer = (merchant: { readonly connection: string
         Effect.sync(
             /** Own private records and idempotency snapshots for this Layer acquisition only. */
             () => {
+                // Each acquired fake isolates merchant records and replay results; no state survives a new layer acquisition.
                 const connection = merchant.connection;
                 const supplier = merchant.supplier;
                 const records = new Map<
@@ -155,6 +156,7 @@ export const fakeInvoiceProviderLayer = (merchant: { readonly connection: string
                             Effect.suspend(
                                 /** A fake confirmation changes only one exact stored mapping, never the issue snapshot. */
                                 () => {
+                                    // Only open invoices advance to paid; repeated confirmation must preserve refunded state.
                                     if (!available)
                                         return Effect.fail(new InvoiceProviderFailure({ reason: 'unavailable' }));
                                     const record = lookup(mapping);

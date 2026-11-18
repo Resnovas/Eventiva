@@ -67,6 +67,7 @@ const database = <A, E, R>(
     Effect.acquireUseRelease(
         Effect.sync(
             /** Keep synthetic database files outside tracked source and user review artifacts. */ () => {
+                // Only this newly allocated directory belongs to the fixture; cleanup must not remove shared backup state.
                 const root = fileURLToPath(new URL('../../../.amp/in/orb-backup/', import.meta.url));
                 mkdirSync(root, { recursive: true });
                 return mkdtempSync(`${root}settings-`);
@@ -97,6 +98,7 @@ const session = <A, E, R>(
     Effect.scoped(
         Effect.gen(
             /** Compose a fresh client/host without carrying any preference cache across reconnects. */ function* () {
+                // Resources and the durable ledger share one SQL owner; reconnect passes only a filename, never retained services.
                 const resource = yield* settingsResource;
                 const migrations = yield* load(
                     fileURLToPath(new URL('../../../storage/migrations/sqlite', import.meta.url))
@@ -169,6 +171,7 @@ const session = <A, E, R>(
                 );
                 return yield* Effect.gen(
                     /** Register real settings actions, never handler-only or metadata-only stand-ins. */ function* () {
+                        // Check duplicate rejection before installing the valid control so partial registration cannot explain later results.
                         const host = yield* ActionHost;
                         expect((yield* settingsModule([...definitions, ...definitions]).pipe(Effect.flip)).reason).toBe(
                             'invalid-definition'
@@ -192,12 +195,14 @@ it.scoped(
             /** Retain no first-session services between writer and reader. */ (filename) =>
                 Effect.gen(
                     /** Assert independently specified values for every identity boundary. */ function* () {
+                        // Distinct stored values, defaults and fresh connections distinguish scope isolation from a shared preference cache.
                         yield* session(
                             filename,
                             tenant,
                             /** Write as canonical Alice even when presented claims name Bob. */ (host, fixture) =>
                                 Effect.gen(
                                     /** Exercise whitelist, defaults, revisions and canonical user binding through public actions. */ function* () {
+                                        // Keep presented claims different from resolved identity; the already-authorized canonical subject must own the row.
                                         expect(yield* host.invoke(settingsRead.name, target)).toEqual({
                                             value: '25',
                                             source: 'default',
@@ -304,6 +309,7 @@ it.scoped(
                             /** Reconnect must preserve both explicit stored-default and changed values. */ (host) =>
                                 Effect.gen(
                                     /** Verify persistence without reusing the old SQL pool or module. */ function* () {
+                                        // Independently specified user and tenant results catch both lost persistence and accidental scope conflation.
                                         expect(yield* host.invoke(settingsRead.name, target)).toEqual({
                                             value: '37',
                                             source: 'stored',
@@ -363,6 +369,7 @@ it.scoped(
                     ) =>
                         Effect.gen(
                             /** Deliberately choose both sides of every admission boundary. */ function* () {
+                                // Establish successful discovery and writes before revoking independent gates, avoiding reject-all false passes.
                                 const inventory = yield* ActionInventory;
                                 const listed = yield* inventory.list(alice);
                                 expect(

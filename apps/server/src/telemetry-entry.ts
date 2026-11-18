@@ -52,6 +52,7 @@ NodeRuntime.runMain(program, {
     disablePrettyLogger: true,
     /** Drain failed scoped roots naturally, avoiding the pinned Node forced-exit worker deadlock. */
     teardown: (exit, onExit) => {
+        // Preserve failure status without forcing exit while scoped database workers are still draining.
         if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) process.exitCode = 1;
         else onExit(0);
     },

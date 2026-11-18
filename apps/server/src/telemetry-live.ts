@@ -58,6 +58,7 @@ export const telemetryTenants = {
 const admittedBinding = (hostBinding: TelemetryExportBinding) =>
     Effect.gen(
         /** Neither a raw request tenant nor an unknown/production environment may select the consent database. */ function* () {
+            // Deployment-owned routing, not request metadata, selects the allowed tenant and destination pair.
             const environment = yield* Config.literal(
                 'development',
                 'staging'
@@ -91,6 +92,7 @@ const principalFor = (
     binding: TelemetryExportBinding,
     session: TelemetrySession
 ): Effect.Effect<CorrelationIdentity, TelemetrySinkFailure> => {
+    // Delegated and nonhuman callers cannot turn another principal's session into personal telemetry consent.
     if (
         session.caller.tenant !== binding.tenantId ||
         session.caller.kind !== 'human' ||
@@ -117,6 +119,7 @@ export const updateTelemetryConsent = <E, R>(
 ) =>
     Effect.gen(
         /** Only the authenticated session may manage its own exact binding; no caller-supplied subject is accepted. */ function* () {
+            // Consent cannot outlive the current session; versioned persistence keeps stale writers from restoring it.
             const { binding } = yield* admittedBinding(hostBinding);
             const session = yield* currentSession.pipe(
                 Effect.mapError(

@@ -81,6 +81,7 @@ export const openOidcSession = (
 export const closeOidcSession = (session: SessionId): Effect.Effect<void, StorageFailure, IdentityStore> =>
     Effect.gen(
         /** Lock, then CAS the session inactive so concurrent refreshes observe the revocation. */ function* () {
+            // Serialize the read and versioned revoke; an already inactive or absent session needs no replacement write.
             const store = yield* IdentityStore;
             yield* store.lock;
             const existing = yield* store.get('session', session);

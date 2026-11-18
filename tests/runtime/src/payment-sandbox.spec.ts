@@ -39,6 +39,7 @@ it.effect(
     /** Exercise both simulated methods through the same neutral port; no real payment rail is contacted. */ () =>
         Effect.gen(
             /** Independent expected totals expose per-refund rounding and duplicate-confirmation mistakes. */ function* () {
+                // Split refunds make cumulative commission differ from rounding each refund independently; replay must not count twice.
                 const provider = yield* InvoiceProvider;
                 const sandbox = yield* PaymentSandbox;
                 for (const [index, method] of (['card', 'bank-transfer'] as const).entries()) {
@@ -90,6 +91,7 @@ it.effect(
     /** Neither cross-connection lookup nor an issue-key collision may select a different invoice snapshot. */ () =>
         Effect.gen(
             /** Exercise both valid controls and refusal paths through the public provider interface. */ function* () {
+                // Establish a real mapping before tampering, then settle before testing refund limits so failures isolate their own gate.
                 const provider = yield* InvoiceProvider;
                 const sandbox = yield* PaymentSandbox;
                 const opened = yield* provider.execute(issue);
@@ -146,6 +148,7 @@ it.effect(
     /** A lost response or mutated read projection must never manufacture payment or change a retained amount. */ () =>
         Effect.gen(
             /** Recover by authoritative read-back rather than inferring success from the original command. */ function* () {
+                // Mutate both returned and submitted objects to expose shared references before checking outage/recovery behavior.
                 const provider = yield* InvoiceProvider;
                 const sandbox = yield* PaymentSandbox;
                 const command = {

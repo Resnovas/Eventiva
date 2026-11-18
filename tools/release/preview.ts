@@ -41,6 +41,7 @@ export const isFirstRelease = (tags: ReadonlyArray<string>): boolean =>
  * @returns The title with ` (#<number>)` added, then each commit message as a `* ` list item, as GitHub writes it.
  */
 export const squashMessage = (title: string, number: number, messages: ReadonlyArray<string>): string => {
+  // Preserve multiline bodies because Nx also detects breaking-change markers below the conventional title.
   const body = messages
     .map(/** Normalize surrounding whitespace while preserving multiline commit bodies. */ (message) => message.trim())
     .filter(/** Omit empty commits from the synthesized squash body. */ (message) => message !== '')
@@ -95,6 +96,7 @@ const FOOTER =
 // Cuts text to a limit at the last line break before it.
 /** Cut notes at the requested character limit or an earlier line break, then append a notice outside that limit. */
 const truncate = (text: string, limit: number) => {
+  // Prefer a complete line, but still bound a single oversized line; the notice deliberately sits outside the budget.
   if (text.length <= limit) return text
   const cut = text.lastIndexOf('\n', limit)
   return `${text.slice(0, cut > 0 ? cut : limit).trimEnd()}\n\n_The notes are cut short here; the job summary of the release preview run has them in full._`

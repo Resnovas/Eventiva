@@ -30,7 +30,8 @@ import {
 } from '@eventiva/contracts/trust-profile';
 import { Effect, Schema } from 'effect';
 
-describe('RFC 8785 canonicalization', /** Group the RFC 8785 canonicalization cases. */ () => {
+describe('RFC 8785 canonicalization', /** Register byte-level canonicalization vectors separately from cryptographic provider behavior. */ () => {
+    // These vectors pin signed bytes independently of signatures that could otherwise share the same serializer bug.
     it.effect(
         'sorts properties by UTF-16 code units (RFC 8785 section 3.2.3 example)',
         /** Check that it sorts properties by UTF-16 code units (RFC 8785 section 3.2.3 example). */ () =>
@@ -58,7 +59,8 @@ describe('RFC 8785 canonicalization', /** Group the RFC 8785 canonicalization ca
         'serializes numbers with ECMAScript rules and nests without whitespace',
         /** Check that it serializes numbers with ECMAScript rules and nests without whitespace. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Pin exponent thresholds, negative zero and legal Unicode without whitespace normalization. */ function* () {
+                    // Exact text distinguishes ECMAScript number spelling from numerically equivalent but differently signed bytes.
                     expect(yield* canonicalize({ b: [1e21, 0.000001, 1e-7, -0, 4.5], a: { z: null, y: true } })).toBe(
                         '{"a":{"y":true,"z":null},"b":[1e+21,0.000001,1e-7,0,4.5]}'
                     );
@@ -88,14 +90,17 @@ describe('RFC 8785 canonicalization', /** Group the RFC 8785 canonicalization ca
             )
     );
 
-    it('domain-separates signing input', /** Check that it domain-separates signing input. */ () => {
+    it('domain-separates signing input', /** Prevent the same canonical object from sharing request and evidence signing bytes. */ () => {
+        // Use identical canonical content so only the domain prefix can distinguish the two signatures.
         expect(signingInput('eventiva.m2.v1', '{}')).toBe('eventiva.m2.v1\n{}');
         expect(signingInput('eventiva.evidence.v1', '{}')).not.toBe(signingInput('eventiva.m2.v1', '{}'));
     });
 });
 
-describe('eventiva.trust.v1 timing', /** Group the eventiva.trust.v1 timing cases. */ () => {
-    it('derives per-gate freshness floors from the approved maximum ages', /** Check that it derives per-gate freshness floors from the approved maximum ages. */ () => {
+describe('eventiva.trust.v1 timing', /** Register profile timing and algorithm pins without relying on wall-clock time or provider implementations. */ () => {
+    // Fixed instants make policy drift visible without clock jitter or cryptographic transport dependencies.
+    it('derives per-gate freshness floors from the approved maximum ages', /** Pin distinct evidence-age floors and the early-epoch clamp. */ () => {
+        // Distinct broker/workload ages catch accidental reuse of the identity gate's bound.
         expect(trustPolicyAt(1_000_000, 'A4')).toEqual({
             now: 1_000_000,
             freshAfter: { identity: 700_000, resource: 700_000, workload: 100_000, broker: 940_000 },
@@ -104,7 +109,8 @@ describe('eventiva.trust.v1 timing', /** Group the eventiva.trust.v1 timing case
         expect(trustPolicyAt(10, 'A2').freshAfter.workload).toBe(0);
     });
 
-    it('bounds request lifetime at five minutes and tolerates thirty seconds of skew', /** Check that it bounds request lifetime at five minutes and tolerates thirty seconds of skew. */ () => {
+    it('bounds request lifetime at five minutes and tolerates thirty seconds of skew', /** Exercise lifetime and clock-skew boundaries with independent one-millisecond controls. */ () => {
+        // Probe equality and the next millisecond separately; expiry plus skew has an exclusive upper bound.
         const t = 1_000_000;
         expect(requestWindowValid({ issuedAt: t, expiresAt: t + 300_000 }, t)).toBe(true);
         expect(requestWindowValid({ issuedAt: t, expiresAt: t + 300_001 }, t)).toBe(false);
@@ -128,7 +134,8 @@ describe('eventiva.trust.v1 timing', /** Group the eventiva.trust.v1 timing case
     });
 });
 
-describe('envelope schema and safe defaults', /** Group the envelope schema and safe defaults cases. */ () => {
+describe('envelope schema and safe defaults', /** Register wire-format admission and unprovisioned-port denial without claiming live KMS conformance. */ () => {
+    // A schema-valid envelope is only structural evidence; absent crypto services must still refuse operations.
     const base = {
         version: 'eventiva.envelope.v1',
         enc: 'A256GCM',
@@ -146,7 +153,8 @@ describe('envelope schema and safe defaults', /** Group the envelope schema and 
         tag: 'A'.repeat(22),
         ciphertext: '',
     };
-    it('accepts exact base64url lengths and refuses vault, padding and other algorithms', /** Check that it accepts exact base64url lengths and refuses vault, padding and other algorithms. */ () => {
+    it('accepts exact base64url lengths and refuses vault, padding and other algorithms', /** Isolate protection, encoding-length and algorithm rejection from an otherwise valid envelope. */ () => {
+        // Start with an accepted control so universal rejection cannot satisfy the malformed-envelope assertions.
         const is = Schema.is(EncryptedRecord);
         expect(is(base)).toBe(true);
         expect(is({ ...base, binding: { ...base.binding, profile: 'vault' } })).toBe(false);
@@ -159,7 +167,8 @@ describe('envelope schema and safe defaults', /** Group the envelope schema and 
         'fails every crypto port closed when nothing is provisioned',
         /** Check that it fails every crypto port closed when nothing is provisioned. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Require typed unavailable failures from every unprovisioned crypto port, not fabricated key material. */ function* () {
+                    // Exercise each port independently; one unavailable service must not conceal an accepting fallback in another.
                     const kms = yield* KeyManagement;
                     const signer = yield* SigningKeys;
                     const directory = yield* TrustDirectory;

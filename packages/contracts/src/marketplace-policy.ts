@@ -136,6 +136,7 @@ export type RecoveryAction =
 
 /** Compensation for every completed step before `step`, in reverse order. */
 const undoBefore = (step: SagaStep): ReadonlyArray<Compensation> => {
+    // The failed step never completed; unwind only its predecessors, newest first, without inventing a payment reversal.
     const undo: Record<SagaStep, Compensation | undefined> = {
         'hold-stock': 'release-stock-hold',
         'create-contract': 'void-contract-snapshot',

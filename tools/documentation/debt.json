@@ -2,46 +2,5 @@
   "version": 1,
   "initialBase": "05e07b6dee66cddb594c089959df45bbd9a4c0aa",
   "authority": "Jonathan, 2026-11-17: reviewed documentation debt ratchet; tracked under EVE-13/EVE-261",
-  "entries": [
-    {
-      "id": "7ec6e39a5582a38cf8ee4df8159638ab122f3f516709cea7673e5255f32417db:0",
-      "file": "tools/release/changelog-renderer.ts",
-      "line": 28,
-      "kind": "MethodDeclaration",
-      "name": "formatChange",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "523609a63b8036a4c6706a0650d292dca494016fa946eaeb762c44c03b494bdf:0",
-      "file": "tools/release/nightly.ts",
-      "line": 42,
-      "kind": "ArrowFunction",
-      "name": "output",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "2d929f23f6cd3429ebc85139c36a95101a31a09f5150861757f721b8644e9798:0",
-      "file": "tools/release/preview.ts",
-      "line": 43,
-      "kind": "ArrowFunction",
-      "name": "squashMessage",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "47c24161ae404830098348a0d7bab4199222d192d1ad97cb0310cbc5a04b17fb:0",
-      "file": "tools/release/preview.ts",
-      "line": 97,
-      "kind": "ArrowFunction",
-      "name": "truncate",
-      "rule": "review-internal-rationale"
-    },
-    {
-      "id": "aeb02aa3f4cf985123f3f94232ef6a62e0eaeeb8be12226f3dd2b9cea283660f:0",
-      "file": "tools/release/release.ts",
-      "line": 82,
-      "kind": "ArrowFunction",
-      "name": "output",
-      "rule": "review-internal-rationale"
-    }
-  ]
+  "entries": []
 }

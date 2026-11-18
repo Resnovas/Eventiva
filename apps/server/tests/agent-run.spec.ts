@@ -146,6 +146,7 @@ const fixture = (options: FixtureOptions = {}) =>
                 append: (event) =>
                     Effect.suspend(
                         /** Reject injected storage outages without swallowing the failed append. */ () => {
+                            // Refuse before capture so the failure control cannot leave an apparently released event behind.
                             if (options.outputFailure)
                                 return Effect.fail(new AgentOutputFailure({ reason: 'unavailable' }));
                             const value = { ...event, tenant: caller.tenant!, offset: output.length };
@@ -256,6 +257,7 @@ describe('AgentRun internal handle', /** Exercise the reusable Workflow source w
         /** Probe the public model emission callback without asserting private Workflow implementation details. */ () =>
             Effect.gen(
                 /** Accepted input is confidential unless the trusted producer deliberately releases text. */ function* () {
+                    // Keep emitted text fixed while varying ordinal validity and storage availability to isolate each release boundary.
                     for (const [index, outputFailure, state] of [
                         [0, false, 'succeeded'],
                         [-1, false, 'failed'],

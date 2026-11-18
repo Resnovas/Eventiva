@@ -533,6 +533,7 @@ import { Effect } from 'effect';
 /** Retry identical logical content and resume after offset zero without repeating that committed event. */
 export const outputExample = Effect.gen(
     /** Stable producer identity is fixed before retryable SQL; it is never a random transport identity. */ function* () {
+        // Reuse identical logical content so retry deduplication, not a fresh event, determines the reconnect cursor.
         const log = yield* AgentOutputLog;
         const event = {
             runId: '019b0000-0000-7000-8000-000000001001',
@@ -1919,6 +1920,7 @@ import { Effect } from 'effect';
 export const admit = (signed: SignedRequest, body: Uint8Array, request: TrustRequest, now: number) =>
     Effect.gen(
         /** Authenticate the transport request first, then run the independent release preflight. */ function* () {
+            // A valid request signature does not supply the independent evidence needed to release the resource.
             const claims = yield* verifyRequest(signed, body, { audience: 'marketplace.cell', now });
             const preflight = yield* trustPreflight(request, trustPolicyAt(now, 'A4'));
             return { claims, preflight };
@@ -1943,6 +1945,10 @@ This pure contract has no runtime feature rollout and therefore no feature flag.
 ---
 
 # Planning and source documentation governance
+
+Current documentation enforcement is the 2026-11-18 thirteenth checkpoint at the end of this section: empty accepted ledger, complete live queue zero and a strict root scanner. Earlier dated checkpoint counts/holds are historical, not current exemptions. Executed gates, publication and remote CI remain distinct evidence in the canonical backlog and tracking issues.
+
+## Historical canonical tooling checkpoint - 2026-11-17
 
 The canonical house tooling JSDoc packet was accepted by Jonathan in
 `Resnovas/.github` PR 48 on 2026-11-17 at 14:35:04Z, commit
@@ -2089,6 +2095,16 @@ The twelfth packet starts at immutable delivered `d608164aebb292a402610b06e5ac0f
 
 Twelfth-packet full serial verification against that immutable ancestor passes 102 documentation fixtures, 116 boundary/type fixtures, 86 aggregate tasks (39 cached) and 15 smoke/dependency tasks (12 cached); source/emitted boundary graphs retain zero violations/cycles and disposable PostgreSQL is removed. The independent standalone strict scanner deliberately exits one on exactly the five canonical tools. Final root/clean-graph checks and actual delivery/CI are separately recorded; this local pass cannot enable strict early or replace human house merge authority.
 
+The thirteenth checkpoint on 2026-11-18 supersedes historical rationale holds and retained-adequate dispositions as a finish state. Jonathan merged house PR49 at 12:07:32Z as `6018bb91eeb739a9d0df8b3a7b93f850661e76a9`; its normal four-tool render adds the five canonical explanations. Starting from Eventiva remote main `93b22058550139083b9c687e81b5103da90632f0`, semantic review documents another 115 newer never-ledgered candidates across thirty files. All 120 resolutions are documentation, zero checker corrections; all 45,371 parsed terminals across 34 TypeScript files remain unchanged. Exact accepted ledger and complete live queue are both zero across 228 editable files, with no unresolved source intent. Comments explain actual tenant/consent/key-purpose/replay/compensation boundaries and discriminating test controls, not syntax. Read the authored thirteenth backlog checkpoint for executed combined gates and publication evidence.
+
+`node --run documentation` now retains fixtures, offline mirror/planning checks and the trusted-base prune-only ratchet, then runs `node tools/documentation/check.mjs` strictly. Root `check` and uncached Nx documentation inherit it. Keep the empty ledger for provenance/tamper checks; the final scanner ignores accepted debt and fails all findings, including never-ledgered rationale. Two red/green fixtures prove this distinction and the actual root/Nx wiring; all 77 focused checker/ratchet fixtures pass. Do not add accepted debt, suppressions, source exceptions or broader exclusions. A genuine false positive needs generally applicable positive/negative classifier fixtures; scanner zero still requires semantic review. Dated review-only paragraphs above are historical, not current exemptions or approval of unrelated product gates. Strict becomes live only with verified publication; no deployment is authorized.
+
+Pre-publication integration preserves independently delivered EVE-36 head `78c0e17a4b1a18439646a04e4031bec49da80135`. Thirteen new never-ledgered rationale candidates in seven output source/test/example files receive useful explanations of fresh page/emission authorization, exact owner binding, stable producer ordinals, exclusive reconnect cursors, typed corruption refusal and both-dialect evidence. Combined packet: 133 documentation resolutions, zero checker corrections, all 57,597 parsed executable/type terminals unchanged across 41 TypeScript files; accepted ledger and complete live queue both zero across 234 editable files. Full gates passed at the earlier immutable base (104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate and 16 smoke/dependency tasks); repeated combined verification and actual publication are separate evidence in the backlog. No output implementation, schema, assertion or product acceptance is credited to this documentation work.
+
+The combined full repeat at 78c0e17a also passes all 104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate and 16 smoke/dependency tasks with zero boundary violations/cycles and PostgreSQL cleanup. A later fetch preserves settings head `dcab6a3b403815e7b36920896b8e075cfa1d1ae0`; fifteen new candidates in three settings source/test/example files receive preparation-local one-shot admission, generation fencing, explicit default/persistence, transactional revision and real reconnect/scope-control explanations. Total for this packet becomes 148 documentation resolutions, zero checker corrections, all 63,769 parsed terminals unchanged across 44 TypeScript files, exact accepted and complete live queues zero across 239 editable files. No source semantics are unknown, no settings/host behavior changes and no broader acceptance is inferred. Repeat combined gates before strict publication; read the canonical backlog for actual execution and CI state.
+
+The full settings-integrated repeat at dcab6a3b exits zero: 104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate tasks (18 cached), 16 smoke/dependency tasks (11 cached), zero source/emitted boundary violations/cycles and PostgreSQL cleanup. The backlog records the cumulative lane count separately: 2,972 attachments and 1,055 rationale findings resolved through documentation, versus 32 bounded classifier false positives; fingerprint reconciliation clears no semantic finding. Independent implementation/canonical improvements and diagnostic identity replacements are not documentation credit. Final root/clean-source graph publication and exact-head remote CI remain separately reported evidence.
+
 ---
 
 ## Payment eligibility and catalogue preview
@@ -2142,6 +2158,7 @@ import { settingsModule } from '@eventiva/runtime/settings';
 /** Return unactivated composition helpers; the trusted caller supplies Resources, digest, tenant and durable host services. */
 export const example = Effect.gen(
     /** Validate metadata before returning resource migration and registration inputs. */ function* () {
+        // Return deferred operations, not activation: metadata validation supplies neither tenant authority nor a migrated store.
         const definition = yield* declareSetting({
             module: 'calendar',
             instance: 'primary',
@@ -2155,12 +2172,14 @@ export const example = Effect.gen(
         const resource = yield* settingsResource;
         const register = Effect.gen(
             /** Resources migrations/provider and a matching durable integrity owner must exist before this effect runs. */ function* () {
+                // Registration uses the caller's trusted host composition rather than installing a separate preference store.
                 const host = yield* ActionHost;
                 yield* host.register(yield* settingsModule([definition]));
             }
         );
         const use = Effect.gen(
             /** Invoke only after separately approved activation and authenticated permission checks. */ function* () {
+                // Revision zero is create-only; this example is an initial intent, not an unconditional overwrite recipe.
                 const host = yield* ActionHost;
                 const target = { module: 'calendar', instance: 'primary', key: 'page-size', scope: 'user' } as const;
                 const before = yield* host.invoke(settingsRead.name, target);

@@ -132,6 +132,7 @@ export const localTelemetryProgram = <E, R>(currentSession: Effect.Effect<Teleme
                 );
                 const exported = yield* Effect.gen(
                     /** Capture only a random trace identifier and bounded health; HTTP acceptance still requires a PostHog query. */ function* () {
+                        // Flush the scoped sink before reading health so this result includes the probe's delivery attempt.
                         const traceId = yield* Effect.gen(
                             /** Both records pass through the same central minimizer and request-scoped release gates. */ function* () {
                                 yield* Effect.logInfo('telemetry.probe');
@@ -155,6 +156,7 @@ export const localTelemetryProgram = <E, R>(currentSession: Effect.Effect<Teleme
  */
 export const localOidcTelemetryProgram = Effect.gen(
     /** Construct one verifier per command so repeated release checks share discovery/JWKS ownership, not authority. */ function* () {
+        // Share verifier resources within this command while leaving session authentication lazy for each release check.
         yield* Config.literal('development', 'staging')('EVENTIVA_ENVIRONMENT');
         const command = yield* telemetryCommand;
         const settings = yield* oidcVerifierSettings;
@@ -164,6 +166,7 @@ export const localOidcTelemetryProgram = Effect.gen(
         const authenticated = authenticateTokenSession(token, expected);
         const current = Effect.gen(
             /** Even onboarding verifies token provenance before writing identity; ordinary commands never provision anything. */ function* () {
+                // Only the explicit onboarding command may provision identity; every command still authenticates afterward.
                 if (command === 'onboard') {
                     const claims = yield* verifier.verify(token);
                     if (!claims.scopes.includes('eventiva.invoke'))

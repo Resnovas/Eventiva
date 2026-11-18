@@ -85,6 +85,7 @@ export const rootCorrelationKeys: Effect.Effect<CorrelationKeys, TelemetrySinkFa
     ),
     Effect.flatMap(
         /** Validate encoding before retaining the redacted root in the key provider closure. */ (root) => {
+            // Refuse malformed root material before publishing a provider that could derive correlation keys from it.
             if (!/^[0-9a-fA-F]{64}$/.test(Redacted.value(root)))
                 return Effect.fail(new TelemetrySinkFailure({ reason: 'configuration' }));
             return Effect.succeed<CorrelationKeys>({
@@ -180,6 +181,7 @@ export const storedCorrelationLayer = <R>(
     Layer.unwrapScoped(
         Effect.gen(
             /** Close over persistent policy without caching a consent grant or trusting a request assertion. */ function* () {
+                // Retained handles share this scope's revocation state, not a cached authorization decision.
                 const store = yield* TelemetryConsent;
                 const context = yield* Effect.context<R>();
                 let closed = false;
@@ -244,6 +246,7 @@ export const storedCorrelationLayer = <R>(
                         authorize: (candidate) =>
                             Effect.gen(
                                 /** Enforce host profile and binding independently of a transport's own validation. */ function* () {
+                                    // Consent for one host binding cannot authorize a substituted destination or protected profile.
                                     const decoded = yield* Schema.decode(TelemetryExportBinding)(candidate).pipe(
                                         Effect.mapError(
                                             /** Hide rejected caller metadata from the release failure. */ () =>

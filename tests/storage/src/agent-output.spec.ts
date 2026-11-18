@@ -43,6 +43,7 @@ const pg = (url: string) =>
     client.pipe(Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]])))));
 
 describe('durable tenant/run output log', /** Register both real SQL dialects; missing PostgreSQL is a failure. */ () => {
+    // Each driver must prove concurrent retry and reconnect guarantees; one dialect's success cannot stand in for the other.
     for (const dialect of ['sqlite', 'postgres'] as const) {
         it.scopedLive(
             `deduplicates concurrent logical retries and reconstructs exclusive pages after ${dialect} reconnect`,

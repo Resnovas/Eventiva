@@ -28,6 +28,7 @@ import { httpActions } from './http-actions.ts';
 export const serveLocalHttp = (policy: TokenPolicy) =>
     Effect.gen(
         /** Validate the local deployment boundary before opening a socket; the scope owns all listener teardown. */ function* () {
+            // Reject production configuration before acquiring a listener; this transport is deliberately loopback-only.
             yield* Config.literal('development', 'staging', 'test')('EVENTIVA_ENVIRONMENT');
             const port = yield* Config.integer('HTTP_PORT').pipe(
                 Config.withDefault(34446),

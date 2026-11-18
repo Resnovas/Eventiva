@@ -64,6 +64,7 @@ export const telemetryConsentStore = Layer.effect(
                 get: (binding, identity) =>
                     Effect.gen(
                         /** Return validated scalar state only, never stored subject material or SQL diagnostics. */ function* () {
+                            // A missing exact scope remains absent consent; it must not inherit a different principal's grant.
                             const scope = yield* key(binding, identity);
                             const [row] = yield* sql<{ expires_at: number | string; version: number | string }>`
                                 SELECT expires_at, version FROM telemetry_consent WHERE scope = ${scope}`;
@@ -79,6 +80,7 @@ export const telemetryConsentStore = Layer.effect(
                 put: (binding, identity, expiresAt, expectedVersion) =>
                     Effect.gen(
                         /** A retained revoked row preserves its revision across process restarts and concurrent clients. */ function* () {
+                            // Conflict-free insertion or an exact revision update is required; a stale grant must not replace revocation.
                             const scope = yield* key(binding, identity);
                             const deadline = yield* decode(Deadline, expiresAt);
                             const expected = yield* decode(Schema.NullOr(Revision), expectedVersion);

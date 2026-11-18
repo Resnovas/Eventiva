@@ -54,6 +54,7 @@ const canonicalCaller = (binding: ActionBinding): ActionBinding => ({
                         authorize: (authorizer, caller) =>
                             Effect.suspend(
                                 /** Detach before an external authorizer can retain or mutate its argument. */ () => {
+                                    // Invalidate the previous grant before yielding so a failed recheck cannot leave reusable authority.
                                     admitted = undefined;
                                     const attempt = ++generation;
                                     const snapshot = Object.freeze({ ...caller });
@@ -62,6 +63,7 @@ const canonicalCaller = (binding: ActionBinding): ActionBinding => ({
                                             /** Publish authority only after successful live target authorization. */ () =>
                                                 Effect.sync(
                                                     /** A later denial or run invalidates an earlier suspended authorization attempt. */ () => {
+                                                        // Completion order is not authority: only the current generation may publish its snapshot.
                                                         if (generation === attempt) admitted = snapshot;
                                                     }
                                                 )
@@ -71,6 +73,7 @@ const canonicalCaller = (binding: ActionBinding): ActionBinding => ({
                             ),
                         run: Effect.suspend(
                             /** A failed or absent authorization cannot reuse a prior successful snapshot. */ () => {
+                                // Consume admission before execution, including failure, and invalidate any older suspended authorizer.
                                 const caller = admitted;
                                 admitted = undefined;
                                 generation++;
@@ -206,6 +209,7 @@ export const settingsModule = (inputs: ReadonlyArray<SettingDefinition>) =>
                                 safe(
                                     Effect.gen(
                                         /** Validate stored bytes through the current declaration before returning a preference. */ function* () {
+                                            // Absence returns the explicit default without persistence; existing bytes must still satisfy today's declaration.
                                             const { definition, previous } = yield* resolve(target);
                                             if (!previous)
                                                 return {
@@ -241,6 +245,7 @@ export const settingsModule = (inputs: ReadonlyArray<SettingDefinition>) =>
                                     resources.transaction(
                                         Effect.gen(
                                             /** Validate and recheck the expected revision before writing the exact namespace. */ function* () {
+                                                // Decode and compare within the Resources transaction so stale intent never becomes an unconditional overwrite.
                                                 const { definition, binding, id, previous } = yield* resolve(input);
                                                 if (input.expectedRevision < 0 || input.expectedRevision > 2147483646)
                                                     return yield* new SettingsFailure({ reason: 'invalid-value' });

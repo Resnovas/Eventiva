@@ -70,6 +70,7 @@ const fixtureKms = (keks: ReadonlyMap<string, Buffer>) =>
         generateDataKey: (kek, context) =>
             Effect.gen(
                 /** Wrap a fresh random DEK, failing unavailable for unknown KEK versions. */ function* () {
+                    // Bind wrapped key material to the supplied context so record substitution fails even under the same KEK.
                     const wrapping = keks.get(`${kek.kek}:${kek.kekVersion}`);
                     if (wrapping === undefined) return yield* Effect.fail(new CryptoFailure({ reason: 'unavailable' }));
                     const dek = randomBytes(32);
@@ -83,6 +84,7 @@ const fixtureKms = (keks: ReadonlyMap<string, Buffer>) =>
         unwrapDataKey: (kek, wrapped, context) =>
             Effect.try({
                 /** Unwrap with the stored IV and tag; any context or KEK mismatch throws. */ try: () => {
+                    // Authenticate the context and retained tag before returning plaintext DEK bytes to the caller.
                     const wrapping = keks.get(`${kek.kek}:${kek.kekVersion}`);
                     if (wrapping === undefined) throw new Error('unknown');
                     const raw = Buffer.from(wrapped);
@@ -107,6 +109,7 @@ interface FixtureKey {
 }
 /** Generate an Ed25519 key with its public directory entry. */
 const edKey = (n: number, service: string, purpose: KeyPurpose, overrides: Partial<DirectoryKey> = {}): FixtureKey => {
+    // Override directory metadata without replacing signing material so tests can isolate revocation, purpose and validity checks.
     const { privateKey, publicKey } = generateKeyPairSync('ed25519');
     const x = publicKey.export({ format: 'jwk' }).x ?? '';
     return {
@@ -134,6 +137,7 @@ const layer = (keys: ReadonlyArray<FixtureKey>, keks = new Map([[`${uuid(50)}:1`
             /** Sign with the fixture private key named by keyId. */ sign: (keyId, _version, message) =>
                 Effect.sync(
                     /** Fixture keys are fixed, so a missing key is a test defect. */ () => {
+                        // An unknown fixture signer must fail loudly rather than accidentally sign with another service's key.
                         const key = keys.find(/** Select the fixture key by id. */ (k) => k.id === keyId);
                         if (key === undefined) throw new Error('missing fixture key');
                         return new Uint8Array(edSign(null, message, key.privateKey));
@@ -142,6 +146,7 @@ const layer = (keys: ReadonlyArray<FixtureKey>, keks = new Map([[`${uuid(50)}:1`
         }),
         Layer.succeed(TrustDirectory, {
             /** Return the directory entry for an exact key version or fail unavailable. */ key: (keyId, version) => {
+                // Key version participates in lookup so stale-version tests cannot borrow the current public key.
                 const key = keys.find(
                     /** Match both key id and version. */ (k) =>
                         k.entry.keyId === keyId && k.entry.keyVersion === version
@@ -166,7 +171,8 @@ describe('AES-256-GCM envelope', /** Group the AES-256-GCM envelope cases. */ ()
         'round-trips with a unique DEK and IV per seal and no plaintext in the envelope',
         /** Check that it round-trips with a unique DEK and IV per seal and no plaintext in the envelope. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Compare repeated seals and independent plaintext read-back under the same binding. */ function* () {
+                    // Identical plaintext must still use fresh DEK/IV material; read-back also rules out meaningless random envelopes.
                     const a = yield* sealRecord(binding, kek, secret);
                     const b = yield* sealRecord(binding, kek, secret);
                     expect(a.dek).not.toBe(b.dek);
@@ -202,6 +208,7 @@ describe('AES-256-GCM envelope', /** Group the AES-256-GCM envelope cases. */ ()
         [
             'ciphertext',
             /** Flip one ciphertext bit. */ (r) => {
+                // Preserve valid encoding and length so authentication, not schema rejection, detects the mutation.
                 const c = Buffer.from(r.ciphertext, 'base64url');
                 c[0] = (c[0] ?? 0) ^ 1;
                 return { ...r, ciphertext: c.toString('base64url') };
@@ -214,7 +221,8 @@ describe('AES-256-GCM envelope', /** Group the AES-256-GCM envelope cases. */ ()
         'refuses a changed %s with decrypt',
         /** Seal, apply one mutation and expect decrypt. */ ([, change]) =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Mutate a genuine seal once and require the bounded decrypt failure. */ function* () {
+                    // Sealing first makes each mutation a tamper test against valid cryptographic state, not arbitrary invalid input.
                     const sealed = yield* sealRecord(binding, kek, secret);
                     const failure = yield* Effect.flip(openRecord(change(sealed)));
                     expect(failure).toEqual(new CryptoFailure({ reason: 'decrypt' }));
@@ -226,7 +234,8 @@ describe('AES-256-GCM envelope', /** Group the AES-256-GCM envelope cases. */ ()
         'swapping the DEK of another record fails even within the same tenant and KEK',
         /** Check that it swapping the DEK of another record fails even within the same tenant and KEK. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Isolate record binding by swapping wrapped DEKs under a shared tenant and KEK. */ function* () {
+                    // Only record identity changes, so tenant or KEK separation cannot explain the required rejection.
                     const a = yield* sealRecord(binding, kek, secret);
                     const b = yield* sealRecord({ ...binding, recordId: uuid(3) }, kek, secret);
                     const failure = yield* Effect.flip(openRecord({ ...a, wrappedDek: b.wrappedDek }));
@@ -260,7 +269,8 @@ describe('AES-256-GCM envelope', /** Group the AES-256-GCM envelope cases. */ ()
         'refuses a KMS that returns a wrong-sized data key',
         /** Check that it refuses a KMS that returns a wrong-sized data key. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Probe wrong key sizes separately on seal and on opening an otherwise valid envelope. */ function* () {
+                    // Build the read control with a correct KMS; a bad initial seal must not conceal missing unwrap validation.
                     const short = Layer.succeed(KeyManagement, {
                         /** Return a 128-bit key where the profile requires 256 bits. */ generateDataKey: () =>
                             Effect.succeed({ plaintext: new Uint8Array(16), wrapped: new Uint8Array(1) }),
@@ -309,7 +319,8 @@ describe('Ed25519 M2 signed requests', /** Group the Ed25519 M2 signed requests 
         'accepts an exact signed request and returns its claims',
         /** Check that it accepts an exact signed request and returns its claims. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Check Ed25519 signature size and exact claims returned by request authentication. */ function* () {
+                    // Exact claim equality ensures successful verification does not rewrite the signed authorization context.
                     const signed = yield* signRequest(claims(sender));
                     expect(Buffer.from(signed.signature, 'base64url').length).toBe(64);
                     expect(yield* verifyRequest(signed, payload, expected)).toEqual(claims(sender));
@@ -372,7 +383,8 @@ describe('Ed25519 M2 signed requests', /** Group the Ed25519 M2 signed requests 
     );
 });
 
-describe('signed evidence gates with trustPreflight', /** Group the signed evidence gates with trustPreflight cases. */ () => {
+describe('signed evidence gates with trustPreflight', /** Register independent gate-signature checks composed with metadata-only trust preflight. */ () => {
+    // Distinct service keys make a valid signature from the wrong gate distinguishable from approved evidence.
     const gates = ['identity', 'resource', 'workload', 'broker'] as const;
     const verifiers = gates.map(
         /** Give each gate its own verifier service and evidence key. */ (gate, i) =>
@@ -417,6 +429,7 @@ describe('signed evidence gates with trustPreflight', /** Group the signed evide
     const compose = (remote: Remote) =>
         Effect.gen(
             /** Build the four signed gate layers plus a replay fixture. */ function* () {
+                // Capture signing dependencies while retaining each gate's expected service identity in its verification port.
                 const signing = yield* SigningKeys;
                 const ports = yield* Effect.all(
                     gates.map(
@@ -451,7 +464,8 @@ describe('signed evidence gates with trustPreflight', /** Group the signed evide
         'accepts four independently signed, fresh A4 gates as metadata preflight only',
         /** Check that it accepts four independently signed, fresh A4 gates as metadata preflight only. */ () =>
             Effect.gen(
-                /** Run the scenario steps in order inside the provided layer. */ function* () {
+                /** Require independently valid evidence without turning metadata preflight into decryption authorization. */ function* () {
+                    // All four gates may pass while release remains denied; authentication alone grants no key custody.
                     const ports = yield* compose(
                         /** Every gate returns its own correctly signed evidence. */ (gate) => signed(gate)
                     );

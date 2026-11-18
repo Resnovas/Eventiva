@@ -27,6 +27,7 @@ import { Effect } from 'effect';
 /** Retry identical logical content and resume after offset zero without repeating that committed event. */
 export const outputExample = Effect.gen(
     /** Stable producer identity is fixed before retryable SQL; it is never a random transport identity. */ function* () {
+        // Reuse identical logical content so retry deduplication, not a fresh event, determines the reconnect cursor.
         const log = yield* AgentOutputLog;
         const event = {
             runId: '019b0000-0000-7000-8000-000000001001',

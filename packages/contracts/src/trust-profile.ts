@@ -258,6 +258,7 @@ const jcs = (value: CanonicalValue): string | undefined => {
 export const canonicalize = (value: CanonicalValue): Effect.Effect<string, CryptoFailure> =>
     Effect.suspend(
         /** Defer serialization so each evaluation canonicalizes the value as it is now. */ () => {
+            // Invalid canonical input is a typed failure, never a signature over a substituted or partial representation.
             const text = jcs(value);
             return text === undefined ? Effect.fail(new CryptoFailure({ reason: 'invalid' })) : Effect.succeed(text);
         }
@@ -269,6 +270,7 @@ export const signingInput = (domain: 'eventiva.m2.v1' | 'eventiva.evidence.v1', 
 
 /** Build the approved trust policy at `now`: each gate's freshness floor is `now` minus its maximum evidence age. */
 export const trustPolicyAt = (now: number, minimumAssurance: Assurance): TrustPolicy => {
+    // All independent gates share one evaluation instant but retain their own evidence-age limits.
     /** Clamp at the epoch so early clocks never produce a negative, schema-invalid bound. */
     const floor = (gate: keyof typeof trustProfile.evidenceMaxAgeMs) =>
         Math.max(0, now - trustProfile.evidenceMaxAgeMs[gate]);

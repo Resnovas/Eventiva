@@ -42,6 +42,7 @@ const caller = Schema.decodeSync(CallerIdentity)({
 /** Resolve current SQL identity on every call; the test never supplies an always-accepting identity resolver. */
 const current = Effect.gen(
     /** The verifier seam is isolated here; live token provenance is exercised by the OIDC integration suite. */ function* () {
+        // Re-read persistent session state rather than treating an earlier resolver result as ongoing consent authority.
         const resolved = yield* (yield* IdentityResolver).resolve(caller);
         const stored = yield* (yield* IdentityStore).get('session', resolved.session);
         if (!stored) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
@@ -57,6 +58,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
         /** Run actual verification, persistent identity, consent and both vendor serializers through the executable program. */ () =>
             Effect.gen(
                 /** Test transport serves public discovery/JWKS only; no permissive verifier is injected. */ function* () {
+                    // Reopen the same private SQL state across commands to expose accidental onboarding, consent or authority caching.
                     const root = yield* Effect.acquireRelease(
                         Effect.sync(
                             /** Keep the independently reopened database private to this test. */ () =>
@@ -97,6 +99,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
                             /** Reject unexpected hosts; only a real signature backed by this JWKS can authenticate. */ (
                                 url
                             ) => {
+                                // Only fixture discovery, public keys and vendor responses are served; unexpected destinations stay denied.
                                 const destination = String(url);
                                 const body =
                                     destination === `${issuer}/.well-known/openid-configuration`
@@ -196,6 +199,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
                         yield* Effect.scoped(
                             Effect.gen(
                                 /** A conflicting verified external link must roll back the new canonical identity as well. */ function* () {
+                                    // Preserve the rollback observation, then revoke existing membership to test that onboarding cannot revive it.
                                     const identity = yield* IdentityStore;
                                     const missing = yield* identity.get('principal', other);
                                     const membership = yield* identity.get('membership', caller.subject);
@@ -279,6 +283,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
                     yield* manage(
                         Effect.gen(
                             /** Link authority depends on active principal, membership and exact live session, not consent alone. */ function* () {
+                                // Provision all independent identity records explicitly; a consent row must never manufacture any of them.
                                 const identity = yield* IdentityStore;
                                 yield* identity.put(
                                     'principal',
@@ -314,6 +319,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
                             /** Simulate vendor responses only; actual SQL identity and consent remain authoritative. */ (
                                 url
                             ) => {
+                                // Capture attempts independently of program output so denial cannot hide an outbound request.
                                 destinations.push(String(url));
                                 return Promise.resolve(
                                     new Response(
@@ -359,6 +365,7 @@ describe('persistent local telemetry commands', /** Verify no consent/identity s
                     yield* manage(
                         Effect.gen(
                             /** Revoke the real SQL session while retaining the consent row; the next command must authenticate again. */ function* () {
+                                // Leave durable consent intact to distinguish live session revocation from ordinary consent denial.
                                 const identity = yield* IdentityStore;
                                 const session = yield* identity.get('session', caller.session);
                                 if (!session) return yield* new TelemetrySinkFailure({ reason: 'unavailable' });

@@ -80,6 +80,7 @@ const nx = (...args: string[]) =>
 // Hands values to later workflow steps; a no-op outside GitHub Actions.
 /** Append a caller-provided single-line workflow output when a destination is configured. */
 const output = (name: string, value: string) => {
+  // Local runs have no workflow destination; an empty path must not become a filesystem write.
   const file = process.env['GITHUB_OUTPUT']
   if (file !== undefined && file !== '') appendFileSync(file, `${name}=${value}\n`)
 }

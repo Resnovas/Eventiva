@@ -55,6 +55,7 @@ export const oidcStandardsVerifier = (verifier: OidcVerifier): Layer.Layer<Stand
 export const OidcStandardsVerifierLive = Layer.unwrapEffect(
     Effect.gen(
         /** Read trusted settings, discover the issuer once, and fail construction rather than fall back. */ function* () {
+            // Discovery failure must prevent verifier publication rather than leave an accepting replacement.
             const settings = yield* oidcVerifierSettings;
             return oidcStandardsVerifier(yield* makeOidcVerifier(settings));
         }

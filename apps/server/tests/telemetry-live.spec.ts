@@ -100,6 +100,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
         /** Read actual SQL results so an unconditional accepting consent callback cannot satisfy the contract. */ () =>
             Effect.gen(
                 /** Independently chosen short deadline differs from the command hour cap. */ function* () {
+                    // The short session isolates the expiry cap, while revision reuse probes stale-grant resurrection after revoke.
                     const short = Effect.succeed({ ...session, sessionExpiresAt: 5000 });
                     expect(yield* updateTelemetryConsent(binding, short, true, null)).toEqual({
                         expiresAt: 5000,
@@ -137,6 +138,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
         /** Assert serialized output rather than assuming adapter acquisition means ingestion. */ () =>
             Effect.gen(
                 /** The controlled identity seam represents verified OIDC output; production authentication is a separate entrypoint requirement. */ function* () {
+                    // Reuse the acquired sink after SQL revocation to detect cached consent, not just denied reconstruction.
                     const bodies: Array<{ url: string; body: string }> = [];
                     vi.stubGlobal(
                         'fetch',
@@ -145,6 +147,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
                                 url,
                                 options
                             ) => {
+                                // Inspect decompressed wire bytes so compression cannot conceal a raw-identity leak.
                                 const bytes = Buffer.from(await new Response(options?.body).arrayBuffer());
                                 bodies.push({
                                     url: String(url),
@@ -197,6 +200,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
                         Layer.succeed(Flags, {
                             /** Only the two remotely representable telemetry aliases may match this host-owned dev target. */ evaluate:
                                 (flag, context) => {
+                                    // A true result is valid only for host-owned environment/destination targeting, not raw identity.
                                     expect(flag.key).toMatch(/^eventiva-telemetry-/);
                                     expect(context).toEqual({
                                         targetingKey: binding.destinationId,
@@ -216,6 +220,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
         /** An outbound trap makes accidental network access fail rather than count as a successful denial. */ () =>
             Effect.gen(
                 /** Test gates with all other accepting dependencies present wherever the path reaches them. */ function* () {
+                    // Change one gate at a time against valid stored consent; an unrelated missing grant must not explain denial.
                     const requests: string[] = [];
                     vi.stubGlobal(
                         'fetch',
@@ -223,6 +228,7 @@ describe('non-production request export composition', /** Exercise real SQL cons
                             /** Do not send fixture credentials to the public internet, even for a regression. */ (
                                 url
                             ) => {
+                                // Record the forbidden attempt before rejecting so a swallowed transport error cannot pass as prevention.
                                 requests.push(String(url));
                                 return Promise.reject(new Error('unexpected network'));
                             }

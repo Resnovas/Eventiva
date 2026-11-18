@@ -80,6 +80,7 @@ const sign = (key: webcrypto.CryptoKey, header: object, payload: object) =>
 const fakeIssuer =
     (served: { issuer: string; keys?: ReadonlyArray<object> }): OidcFetch =>
     /** Answer only the two endpoints the verifier may call. */ (url) => {
+        // Missing JWKS remains an endpoint outage, not a successful empty key set or a permissive network fallback.
         if (url.endsWith('/.well-known/openid-configuration'))
             return Promise.resolve(
                 Response.json({ issuer: served.issuer, jwks_uri: `${issuer}/protocol/openid-connect/certs` })
@@ -92,6 +93,7 @@ const fakeIssuer =
 /** Build a verifier and a token minter around a fresh issuer key. */
 const fixture = Effect.gen(
     /** Share one key and verifier across the cases of a test. */ function* () {
+        // Fresh signing material prevents key-cache state from another test from deciding a signature-negative case.
         const good = yield* keyPair('k1');
         const now = Math.floor(Date.now() / 1000);
         const claims = {
@@ -120,6 +122,7 @@ describe('OIDC access-token verifier', /** Signature, RFC 9068 and Eventiva clie
         /** Accept one well-formed token. */ () =>
             Effect.gen(
                 /** Compare every normalized field against values derived independently from the fixture. */ function* () {
+                    // Exact objects catch retained provider metadata; the second token isolates multi-audience and absent-scope normalization.
                     const { verifier, mint, now } = yield* fixture;
                     const result = yield* verifier.verify(Redacted.make(yield* mint()));
                     expect(result).toEqual({
@@ -148,6 +151,7 @@ describe('OIDC access-token verifier', /** Signature, RFC 9068 and Eventiva clie
         /** Each case changes exactly one property of an otherwise valid token. */ () =>
             Effect.gen(
                 /** Collect each refusal reason so a wrong classification is visible. */ function* () {
+                    // Correctly signed bad claims isolate validation, while the same-kid foreign key independently probes cryptographic trust.
                     const { verifier, mint, now } = yield* fixture;
                     const other = yield* keyPair('k1');
                     /** Verify a token and return the refusal reason it fails with. */
@@ -189,6 +193,7 @@ describe('OIDC access-token verifier', /** Signature, RFC 9068 and Eventiva clie
         /** Discovery succeeds but JWKS cannot be fetched. */ () =>
             Effect.gen(
                 /** A verifier whose key fetch fails must refuse with the outage reason. */ function* () {
+                    // Use a valid minted token so an invalid-token error cannot conceal a key-service outage.
                     const { mint } = yield* fixture;
                     const verifier = yield* makeOidcVerifier(settings, { fetch: fakeIssuer({ issuer }) });
                     const error = yield* Effect.flip(verifier.verify(Redacted.make(yield* mint())));
@@ -202,6 +207,7 @@ describe('OIDC access-token verifier', /** Signature, RFC 9068 and Eventiva clie
         /** No verifier is returned unless the issuer is safe and exactly confirmed. */ () =>
             Effect.gen(
                 /** Collect each configuration refusal reason. */ function* () {
+                    // Explicit loopback permission is a narrow exception: it must not authorize arbitrary insecure issuers.
                     const ok = fakeIssuer({ issuer, keys: [] });
                     /** Build a verifier and return the configuration refusal reason. */
                     const reason = (input: OidcVerifierInput, fetch = ok) =>
@@ -254,6 +260,7 @@ describe('OIDC access-token verifier', /** Signature, RFC 9068 and Eventiva clie
         /** Defaults are ES256 only and no plain HTTP. */ () =>
             Effect.gen(
                 /** Parse a minimal configuration and check the defaults. */ function* () {
+                    // Compare the full configuration so defaults cannot silently widen algorithms or permit plaintext transport.
                     const read = yield* oidcVerifierSettings;
                     expect(read).toEqual({
                         issuer,

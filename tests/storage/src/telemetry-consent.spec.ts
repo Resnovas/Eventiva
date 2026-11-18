@@ -60,6 +60,7 @@ const pg = (url: string) =>
     client.pipe(Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]])))));
 
 describe('durable exact-scope telemetry consent', /** Register both SQL dialects without treating an absent database as a pass. */ () => {
+    // Register identical persistence guarantees for each driver; SQLite success cannot substitute for PostgreSQL execution.
     for (const dialect of ['sqlite', 'postgres'] as const) {
         it.scopedLive(
             `persists revocation and rejects stale grants across independent ${dialect} clients`,

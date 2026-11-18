@@ -52,7 +52,7 @@ node tools/documentation/check.mjs --json > .amp/in/orb-backup/documentation-fin
 
 Both strict checker formats return exit 1 when there are findings, including review candidates. `--json` changes output only; it is not a successful audit mode. Default output is one `file:line rule kind name` per finding followed by the checked-file count. JSON includes `checked` and `findings`; each finding carries an exact token-based `id`, `file`, `line`, `kind`, `name` and `rule`. There is no auto-fix, ignore-comment or warning-only option. Save temporary reports under `.amp/in/orb-backup/` in an orb, never as undocumented source exemptions.
 
-Jonathan approved an exact reviewed documentation-debt ratchet on 2026-11-17. Its implementation is `tools/documentation/ratchet.mjs`; the full debt ledger is `tools/documentation/debt.json`. Run `node --run documentation` for all documentation fixtures, offline mirror/planning freshness and the ratchet; root `check` includes the same gate without replacing existing checks or thresholds. `pnpm nx run @eventiva/eventiva:documentation` invokes it uncached because Git history and working-tree state are inputs. The strict scanner still reports all debt; a passing ratchet is **not global documentation compliance**. This is tooling governance, not runtime behavior, so it adds no application feature flag.
+Jonathan approved an exact reviewed documentation-debt ratchet on 2026-11-17. Its implementation is `tools/documentation/ratchet.mjs`; the full debt ledger is `tools/documentation/debt.json`. Run `node --run documentation` for all documentation fixtures, offline mirror/planning freshness, the ratchet and finally the strict repository-wide scanner; root `check` includes the same gate without replacing existing checks or thresholds. `pnpm nx run @eventiva/eventiva:documentation` invokes it uncached because Git history and working-tree state are inputs. The empty ledger preserves provenance and tamper checks, not permission to accept findings: the final scanner ignores the ledger and fails on every finding, including rationale candidates in never-ledgered source. A passing mechanical scan does not prove semantic usefulness. This is tooling governance, not runtime behavior, so it adds no application feature flag.
 
 Install the approved lockfile before running the gate: `pnpm install --frozen-lockfile --ignore-scripts` is sufficient for documentation/house checks, which import the pinned TypeScript AST package but build no application and need no services. Both CI jobs fetch full history and supply the trusted event base. A dependency-free checkout cannot run the AST checker; missing TypeScript is a setup failure, not permission to skip it. Normal application verification keeps its existing installation and build steps.
 
@@ -76,7 +76,7 @@ The ratchet reconciles legacy fingerprints only by inspecting identical trusted 
 
 Use the same explicit trusted base and `--update-ledger` command shown above. The operation normalizes proven same-finding representations before pruning resolved entries and rendering the inventory; it never increases accepted count or accepts a new finding. Review canonicalization separately from documentation removals. At the first reconciliation base `b5837844e68a28e5031f76d60006b1d4728f20ba`, 395 of 1,894 accepted IDs change representation with zero unmatched entries and no count change. Documentation in the accompanying nineteen-file packet then removes 1,556 entries; 75 remapped identities remain among the 338 retained entries. No heuristic finding is cleared merely by changing its fingerprint. Regression fixtures cover template-comment shifts, changed literal/executable content, contextual regex/JSX, duplicates on added lines, forged debt and provenance/deletion attacks.
 
-The ledger records mechanical missing attachments and a distinct heuristic review queue. Rationale candidates are review-only: the current classifier falsely flags some adequate adjacent invariant contracts, simple reauthorization/barrier bodies and nested cleanup ownership explanations. The coordinator explicitly held automatic rationale-gate activation pending a generally applicable tested refinement. The ratchet neither fails new source merely for these candidates nor adds them to accepted debt. Review meaningful phases/invariants/security decisions semantically and record evidence on the owning issue; this does not waive rationale or approve filler. Existing rationale queue identities remain visible and prune-only, not confirmed violations. Attachment absence and the calibrated placeholder/name-only prose rule remain blocking in the root gate. Complete D01-D06, calibrate rationale independently, then switch to the strict repository-wide scanner at zero. Never use per-file suppressions or accept new blocking debt for urgency.
+The migration ratchet still distinguishes mechanical attachment/prose debt from heuristic rationale candidates; it never adds candidates to accepted debt. The separate strict scanner now blocks all findings after complete semantic remediation reached zero on 2026-11-18. Historical review-only dispositions below are evidence, not current exemptions. Review meaningful phases/invariants/security decisions semantically and record evidence on the owning issue; scanner success does not waive rationale or approve filler. Never use per-file suppressions or accept new blocking debt for urgency. Genuine false positives require generally applicable positive/negative fixtures and a classifier correction, not source exceptions.
 
 ## Mechanical checks versus review candidates
 
@@ -132,7 +132,7 @@ const ids = records.map(
 
 For a body that validates then authorizes, an internal explanation such as `// Authorize only the decoded tenant reference so encoded aliases cannot bypass scope checks.` explains the security boundary. `// Set value` does not. Trivial `return 1`, object-literal expression bodies and `const value = 1; return value` are explicitly tested not to require internal comments. Branches selecting only existing values also need no invented execution-phase narration. Calls, callbacks, constructors, assignments and destructuring defaults/computed keys that execute work remain review candidates; this is syntax classification, not a proof of purity. The classifier cannot identify every meaningful phase and intentionally does not manufacture rationale for those cases.
 
-### Reviewed calibration boundaries - 2026-11-17
+### Historical reviewed calibration boundaries - 2026-11-17
 
 Three delivered-source cases were read alongside the checker output and remain
 adequately explained semantic-review candidates, not confirmed documentation
@@ -154,7 +154,21 @@ No file/name allowlist, blanket nested-comment acceptance or suppression clears
 these cases. The bounded selector/standalone-JSDoc refinement keeps negative
 execution, binding-default, outer-phase and security-phase fixtures. A broader
 safe classifier for these three shapes remains unresolved; strict repo-wide
-rationale activation stays held while semantic remediation proceeds separately.
+rationale activation stayed held at that historical checkpoint. Subsequent
+semantic packets added useful own-body explanations without broadening the
+classifier, and the complete queue reached zero before strict activation.
+
+### Strict activation checkpoint - 2026-11-18
+
+Jonathan merged [canonical house PR49](https://github.com/Resnovas/.github/pull/49)
+at 12:07:32Z, commit `6018bb91eeb739a9d0df8b3a7b93f850661e76a9`.
+Its normal downstream render resolves the last five accepted tool candidates.
+Review of newer main resolves another 115 never-ledgered candidates through
+documentation, not classifier changes. The [thirteenth checkpoint](planning/documentation-backlog.md#thirteenth-semantic-checkpoint-and-strict-activation---2026-11-18)
+records the immutable base, token proof, exact zero inventory and executed gates.
+The root documentation command ends with `node tools/documentation/check.mjs`;
+regression fixtures prove accepted and never-ledgered rationale both fail that
+strict CLI, while an actual meaningful body comment clears the fixture.
 
 ## Maintain the rule
 

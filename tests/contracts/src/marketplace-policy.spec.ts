@@ -30,7 +30,8 @@ const day = 86_400_000;
 const now = 1_800_000_000_000;
 
 describe('freshness', /** Group the freshness cases. */ () => {
-    it('classifies each step on both sides of its maximum age', /** Check that it classifies each step on both sides of its maximum age. */ () => {
+    it('classifies each step on both sides of its maximum age', /** Distinguish inclusive freshness limits from the next stale millisecond for each workflow stage. */ () => {
+        // Keep expiry in the future so only assertion age, not expiration, explains the change in classification.
         /** Build an assertion `age` ms old that has not yet expired. */
         const at = (age: number) => ({
             asOf: now - age,
@@ -44,13 +45,15 @@ describe('freshness', /** Group the freshness cases. */ () => {
         expect(assessFreshness(at(minute + 1), 'contract-acceptance', now)).toBe('stale');
     });
 
-    it('treats missing and future assertions as unknown and expired ones as stale', /** Check that it treats missing and future assertions as unknown and expired ones as stale. */ () => {
+    it('treats missing and future assertions as unknown and expired ones as stale', /** Distinguish untrustworthy observation times from trustworthy but expired evidence. */ () => {
+        // A future observation is unknown even with a future expiry; expiration itself is already stale at equality.
         expect(assessFreshness(undefined, 'award', now)).toBe('unknown');
         expect(assessFreshness({ asOf: now + 1, expiresAt: now + day }, 'award', now)).toBe('unknown');
         expect(assessFreshness({ asOf: now - 1, expiresAt: now }, 'quote-send', now)).toBe('stale');
     });
 
-    it('requires a synchronous supplier recheck from award onwards and bounds quote validity', /** Check that it requires a synchronous supplier recheck from award onwards and bounds quote validity. */ () => {
+    it('requires a synchronous supplier recheck from award onwards and bounds quote validity', /** Pin the escalation from informational quote freshness to commitment-time supplier checks. */ () => {
+        // Quote lifetime is independent of the synchronous commitment gates and must not inherit their shorter age limits.
         expect(freshnessPolicy['quote-send'].synchronousRecheck).toBe(false);
         expect(freshnessPolicy.award.synchronousRecheck).toBe(true);
         expect(freshnessPolicy['contract-acceptance'].synchronousRecheck).toBe(true);
@@ -61,7 +64,8 @@ describe('freshness', /** Group the freshness cases. */ () => {
 
 describe('retention', /** Group the retention cases. */ () => {
     const base = { closedAt: now, legalHold: false, participantObligationsEndAt: 0 } as const;
-    it('keeps contract evidence seven years and lets jurisdictions only lengthen it', /** Check that it keeps contract evidence seven years and lets jurisdictions only lengthen it. */ () => {
+    it('keeps contract evidence seven years and lets jurisdictions only lengthen it', /** Preserve the policy floor when jurisdiction minima are either shorter or longer. */ () => {
+        // Probe both directions: choosing the jurisdiction unconditionally would shorten message retention.
         expect(retentionPolicy['contract-evidence']).toBe(7 * 365 * day);
         expect(destructionDueAt({ ...base, recordClass: 'contract-evidence' })).toBe(now + 7 * 365 * day);
         expect(
@@ -72,7 +76,8 @@ describe('retention', /** Group the retention cases. */ () => {
         );
     });
 
-    it('waits for every participant obligation and never destroys under legal hold', /** Check that it waits for every participant obligation and never destroys under legal hold. */ () => {
+    it('waits for every participant obligation and never destroys under legal hold', /** Keep later participant obligations and legal holds stronger than class retention deadlines. */ () => {
+        // A legal hold has no destruction date, rather than merely extending the ordinary deadline.
         expect(
             destructionDueAt({ ...base, recordClass: 'audit', participantObligationsEndAt: now + 9 * 365 * day })
         ).toBe(now + 9 * 365 * day);
@@ -81,7 +86,8 @@ describe('retention', /** Group the retention cases. */ () => {
 });
 
 describe('recovery and compensation', /** Group the recovery and compensation cases. */ () => {
-    it('backs off exponentially, capped at five minutes, for seven retries', /** Check that it backs off exponentially, capped at five minutes, for seven retries. */ () => {
+    it('backs off exponentially, capped at five minutes, for seven retries', /** Pin early and final retry delays and the first exhausted attempt's compensation. */ () => {
+        // The eighth attempt must leave retry policy; earlier failures must not prematurely unwind completed work.
         expect(recoveryAction('hold-stock', 'transient', 1)).toEqual({ kind: 'retry', delayMs: 1_000 });
         expect(recoveryAction('hold-stock', 'transient', 4)).toEqual({ kind: 'retry', delayMs: 8_000 });
         expect(recoveryAction('hold-stock', 'transient', 7)).toEqual({ kind: 'retry', delayMs: 64_000 });
@@ -91,7 +97,8 @@ describe('recovery and compensation', /** Group the recovery and compensation ca
         });
     });
 
-    it('compensates completed steps in reverse and never auto-refunds a collected payment', /** Check that it compensates completed steps in reverse and never auto-refunds a collected payment. */ () => {
+    it('compensates completed steps in reverse and never auto-refunds a collected payment', /** Distinguish reversible predecessors from payment failures requiring manual recovery. */ () => {
+        // No predecessor exists at the first step; later compensation order must not be confused with forward execution.
         expect(recoveryAction('hold-stock', 'permanent', 1)).toEqual({ kind: 'compensate', undo: [] });
         expect(recoveryAction('schedule-payment', 'permanent', 1)).toEqual({
             kind: 'compensate',
@@ -101,7 +108,8 @@ describe('recovery and compensation', /** Group the recovery and compensation ca
         expect(recoveryAction('collect-payment', 'transient', 8)).toEqual({ kind: 'manual-recovery' });
     });
 
-    it('reconciles ambiguous outcomes before any retry or compensation', /** Check that it reconciles ambiguous outcomes before any retry or compensation. */ () => {
+    it('reconciles ambiguous outcomes before any retry or compensation', /** Require reconciliation despite either payment risk or exhausted retry budget. */ () => {
+        // Ambiguity takes precedence over both ordinary retries and exhausted-attempt compensation.
         expect(recoveryAction('collect-payment', 'ambiguous', 1)).toEqual({ kind: 'reconcile' });
         expect(recoveryAction('hold-stock', 'ambiguous', 8)).toEqual({ kind: 'reconcile' });
     });

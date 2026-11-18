@@ -26,6 +26,7 @@ const BREAKING_MARKER = '\u26a0\ufe0f  '
 export default class HouseChangelogRenderer extends DefaultChangelogRenderer {
   /** Replace only Nx's leading breaking marker; preserve the remainder of the rendered change. */
   protected override formatChange(change: ChangelogChange): string {
+    // Let Nx own links and change text; replacing only its prefix preserves the upstream rendering contract.
     const line = super.formatChange(change)
     return line.startsWith(`- ${BREAKING_MARKER}`) ? `- **Breaking:** ${line.slice(2 + BREAKING_MARKER.length)}` : line
   }

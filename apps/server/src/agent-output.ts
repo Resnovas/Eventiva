@@ -32,6 +32,7 @@ export type AgentOutputRead = typeof AgentOutputRead.Type;
 export const readAgentOutput = (input: AgentOutputRead) =>
     Effect.gen(
         /** Decode before authority lookup, then refresh run ownership on every page without caching transport replies. */ function* () {
+            // Persisted output is confidential even after completion; live ownership must precede the tenant-routed read.
             const value = yield* Schema.decodeUnknown(AgentOutputRead)(input, { onExcessProperty: 'error' });
             yield* authorizeAgentOutput(value);
             const tenant = value.caller.tenant;
@@ -56,6 +57,7 @@ export const readAgentOutput = (input: AgentOutputRead) =>
 export const pollAgentOutput = (input: AgentOutputRead) =>
     Effect.gen(
         /** Empty pages are not terminal; every attempt reads committed data through fresh authorization. */ function* () {
+            // Do not retain an authorization result across the wait: revocation must also stop an otherwise empty poll.
             while (true) {
                 const events = yield* readAgentOutput(input);
                 if (events.length > 0) return events;

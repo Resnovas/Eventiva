@@ -29,6 +29,7 @@ const inactive = SubjectId.make('019a95c0-0000-7000-8000-000000000103');
 
 /** A minimal in-memory IdentityStore with real create-only/CAS semantics for session provisioning tests. */
 const memoryStore = () => {
+    // Keep optimistic versions and external links private to each test so revocation cannot borrow prior fixture state.
     const rows = new Map<string, { version: number; value: unknown }>();
     const links = new Map<string, SubjectId>();
     let locks = 0;
@@ -47,6 +48,7 @@ const memoryStore = () => {
         put: (kind, value, expectedVersion) =>
             Effect.suspend(
                 /** Apply optimistic concurrency exactly like the SQL store. */ () => {
+                    // Check before mutation so a stale version cannot overwrite the inactive session under test.
                     const current = rows.get(key(kind, value.id));
                     if ((current?.version ?? null) !== expectedVersion)
                         return Effect.fail(
@@ -92,6 +94,7 @@ const claimsFor = (subject: string, sid = 'sid-1'): OidcAccessClaims => ({
 /** Seed one human, one agent and one inactive principal, each linked under the issuer. */
 const seeded = Effect.gen(
     /** Build the store and its principals at a fixed clock. */ function* () {
+        // Equal external-link setup isolates principal kind/activity as the reason provisioning accepts or refuses.
         yield* TestClock.setTime(1000);
         const memory = memoryStore();
         for (const [id, kind, active] of [
@@ -112,6 +115,7 @@ describe('OIDC session provisioning', /** Trusted open/close of Eventiva session
         /** Happy path plus idempotent repeat. */ () =>
             Effect.gen(
                 /** The created row carries the server-chosen expiry, not the token's. */ function* () {
+                    // Repeat the same request without advancing revision to distinguish idempotent open from a refresh write.
                     const { store, rows, locks } = yield* seeded;
                     const claims = claimsFor(`ext-${human}`);
                     /** Run a provisioning effect against this test's store. */
@@ -168,6 +172,7 @@ describe('OIDC session provisioning', /** Trusted open/close of Eventiva session
         /** Revocation is final for that provider session. */ () =>
             Effect.gen(
                 /** Close twice and close an unknown session; then a reopen attempt conflicts. */ function* () {
+                    // Keep the same provider session identifier through revocation; opening a fresh identifier would miss resurrection.
                     const { store, rows } = yield* seeded;
                     const claims = claimsFor(`ext-${human}`);
                     /** Run a provisioning effect against this test's store. */

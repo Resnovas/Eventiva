@@ -48,6 +48,7 @@ it.scopedLive(
     /** Exercise the public read against persisted acceptance, not an unauthenticated direct database lookup. */ () =>
         Effect.gen(
             /** SQLite supplies real acceptance/output state; the separate two-process PostgreSQL harness supplies failover proof. */ function* () {
+                // Revoke independent gates after a successful page so cached authority cannot satisfy later reads or waiting polls.
                 const sql = Context.get(yield* Layer.build(memory()), SqlClient.SqlClient);
                 yield* migrate(
                     'sqlite',

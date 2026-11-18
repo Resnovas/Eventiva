@@ -186,6 +186,7 @@ const ed25519 = (publicKey: string, message: Uint8Array, signature: string) =>
 const usableKey = (keyId: string, keyVersion: number, purpose: KeyPurpose, service: string, issuedAt: number) =>
     Effect.gen(
         /** Look up public metadata and refuse revoked, out-of-window or cross-purpose keys. */ function* () {
+            // A directory hit alone is insufficient: identity, purpose, service and issuance-time validity must all bind.
             const directory = yield* TrustDirectory;
             const key: DirectoryKey = yield* directory.key(keyId, keyVersion);
             if (key.keyId.toLowerCase() !== keyId.toLowerCase() || key.keyVersion !== keyVersion)
@@ -201,6 +202,7 @@ const usableKey = (keyId: string, keyVersion: number, purpose: KeyPurpose, servi
 export const signRequest = (claims: SignedRequestClaims) =>
     Effect.gen(
         /** Validate claims, canonicalize them and obtain a KMS signature. */ function* () {
+            // Sign the validated canonical claims with the request domain so evidence signatures cannot be substituted.
             const checked = yield* decode(SignedRequest.fields.claims, claims);
             const canonical = yield* canonicalize({ ...checked });
             const signer = yield* SigningKeys;
@@ -221,6 +223,7 @@ export const signRequest = (claims: SignedRequestClaims) =>
 export const verifyRequest = (input: SignedRequest, payload: Uint8Array, expected: { audience: string; now: number }) =>
     Effect.gen(
         /** Check cheap structural bindings before the directory lookup and signature verification. */ function* () {
+            // Refuse stale or misbound requests before cryptographic work; replay consumption remains the dispatcher's job.
             const request = yield* decode(SignedRequest, input);
             const { claims } = request;
             if (!requestWindowValid(claims, expected.now)) return yield* fail('stale');
@@ -237,6 +240,7 @@ export const verifyRequest = (input: SignedRequest, payload: Uint8Array, expecte
 export const signEvidence = (evidence: TrustEvidence, keyId: string, keyVersion: number) =>
     Effect.gen(
         /** Validate evidence, canonicalize it and obtain a KMS signature. */ function* () {
+            // The evidence domain separates these signed bytes from otherwise similar transport-request claims.
             const checked = yield* decode(TrustEvidence, evidence);
             const canonical = yield* canonicalize(checked);
             const signer = yield* SigningKeys;
@@ -275,6 +279,7 @@ export const signedEvidenceGate = (
             verify: (request, policy) =>
                 Effect.gen(
                     /** Refuse unsigned, cross-gate or foreign-service evidence before preflight sees it. */ function* () {
+                        // Authenticate this gate's evidence here; the separate preflight still owns freshness and request binding.
                         const signed = yield* source(request, policy);
                         const checked = yield* decode(SignedEvidence, signed);
                         if (checked.evidence.gate !== gate) return yield* fail('binding');

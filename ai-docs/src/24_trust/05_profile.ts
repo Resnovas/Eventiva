@@ -31,6 +31,7 @@ import { Effect } from 'effect';
 export const admit = (signed: SignedRequest, body: Uint8Array, request: TrustRequest, now: number) =>
     Effect.gen(
         /** Authenticate the transport request first, then run the independent release preflight. */ function* () {
+            // A valid request signature does not supply the independent evidence needed to release the resource.
             const claims = yield* verifyRequest(signed, body, { audience: 'marketplace.cell', now });
             const preflight = yield* trustPreflight(request, trustPolicyAt(now, 'A4'));
             return { claims, preflight };

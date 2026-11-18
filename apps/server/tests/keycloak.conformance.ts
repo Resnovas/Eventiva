@@ -69,6 +69,7 @@ const token = (grant: Record<string, string>) =>
 const tenantDatabase = (tenant: TenantId) =>
     Effect.gen(
         /** Migrate, then capture the store for this tenant only. */ function* () {
+            // Keep the migrated SQL client and tenant routing together so the live verifier cannot mask missing local identity.
             const sql = Context.get(yield* Layer.build(memory()), SqlClient.SqlClient);
             yield* migrate(
                 'sqlite',
@@ -127,6 +128,7 @@ describe('Keycloak 26.8.2 OIDC conformance', /** Real tokens through the adapter
                     yield* inTenant(
                         Effect.gen(
                             /** Trusted bootstrap of one human member and its exact federated link. */ function* () {
+                                // Token possession is insufficient until the explicit canonical principal and membership are linked.
                                 const store = yield* IdentityStore;
                                 yield* store.put('principal', { id: human, kind: 'human', active: true }, null);
                                 yield* store.put('membership', { id: human, active: true, roles: [] }, null);
@@ -181,6 +183,7 @@ describe('Keycloak 26.8.2 OIDC conformance', /** Real tokens through the adapter
                     yield* inTenant(
                         Effect.gen(
                             /** Deprovision membership through the trusted store. */ function* () {
+                                // Retain the valid token and session so subsequent rejection proves a fresh membership check.
                                 const store = yield* IdentityStore;
                                 const membership = (yield* store.get('membership', human))!;
                                 yield* store.put(

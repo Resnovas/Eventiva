@@ -227,6 +227,7 @@ const acceptedRun = (reference: AgentRunReference, candidate?: AgentRunInput) =>
 export const authorizeAgentOutput = (reference: AgentRunReference) =>
     Effect.gen(
         /** Current identity and run ownership precede every page, including reads after completion. */ function* () {
+            // A valid execution identifier cannot replace either live policy or the accepted caller's exact ownership binding.
             yield* authorize(reference, 'status');
             yield* acceptedRun(reference);
         }
@@ -253,6 +254,7 @@ export const registerAgentRuns = Effect.gen(
         const append = (accepted: AgentRunInput, stepIndex: number, eventId: string, payload: OutputPayload) =>
             Effect.gen(
                 /** The identity is allocated by orchestration before the retryable SQL effect, never by the adapter. */ function* () {
+                    // Model execution permission can be revoked while producing text, so each release refreshes step authority.
                     const caller = yield* authorize(accepted, 'step', stepIndex);
                     if (caller.tenant === undefined) return yield* new AgentRunDenied({ reason: 'denied' });
                     yield* Context.get(dependencies, TenantRouter)
@@ -299,6 +301,7 @@ export const registerAgentRuns = Effect.gen(
                                                     input,
                                                     /** Stable producer ordinals deduplicate an unfinished model Activity after runner loss. */
                                                     emit: (chunkIndex, text) => {
+                                                        // Reject unusable ordinals before constructing retry identity; attempts must share the same logical key.
                                                         if (!Number.isSafeInteger(chunkIndex) || chunkIndex < 0)
                                                             return Effect.fail(
                                                                 new AgentRunDenied({ reason: 'invalid' })

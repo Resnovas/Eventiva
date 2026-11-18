@@ -47,6 +47,7 @@ describe('OIDC token seam composition', /** Server-side mapping from the adapter
         /** Compare the mapped claims and error. */ () =>
             Effect.gen(
                 /** The client ID must not cross into the runtime claims. */ function* () {
+                    // Compare the complete claim object to catch extra provider metadata as well as missing runtime fields.
                     const seam = yield* StandardsTokenVerifier;
                     expect(yield* seam.verify(Redacted.make('accepted'))).toEqual({
                         issuer,
@@ -71,6 +72,7 @@ describe('OIDC token seam composition', /** Server-side mapping from the adapter
         /** An insecure configured issuer must stop the layer from building. */ () =>
             Effect.gen(
                 /** Build the live layer against refused settings. */ function* () {
+                    // Layer construction itself must fail; postponing rejection until token verification would publish an invalid service.
                     const error = yield* Effect.flip(Layer.build(OidcStandardsVerifierLive).pipe(Effect.scoped));
                     expect(error).toMatchObject({ _tag: 'OidcConfigurationError', reason: 'insecure-issuer' });
                 }

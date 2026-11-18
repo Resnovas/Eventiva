@@ -84,6 +84,7 @@ const disabledFlag = {
 /** Real signed-token, persistent tenant identity and real PostgreSQL Cluster composition; no accepting identity fixture. */
 const fixture = Effect.gen(
     /** Allocate only owned synthetic state and tear it down after listeners, runners and SQL clients close. */ function* () {
+        // A private database and real runner keep replay/revocation assertions independent of other tests' authority.
         const target = new URL(
             process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test'
         );
@@ -181,6 +182,7 @@ const fixture = Effect.gen(
         const initialize = (host: ActionHost['Type']) =>
             Effect.gen(
                 /** Capture only the router-selected Storage, not a transport-selected client or caller. */ function* () {
+                    // Discovery and execution register the same definitions but must obtain their own trusted tenant route.
                     const bound = yield* CurrentTenant;
                     expect(bound.id).toBe(tenant);
                     const routed = yield* Storage;
@@ -283,6 +285,7 @@ const fixture = Effect.gen(
         const now = Math.floor(Date.now() / 1000);
         /** Mint real signed access credentials for negative claims as well as the allowed identity. */
         const mint = (overrides: object = {}) => {
+            // Sign overridden claims too, so negative cases test claim enforcement rather than merely a broken signature.
             const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'at+jwt', kid: 'http-test' })).toString(
                 'base64url'
             );
@@ -427,6 +430,7 @@ describe('authenticated local HTTP through real SQL Cluster', /** Transport acce
         /** Exercise both successful routes and all security boundaries over actual sockets. */ () =>
             Effect.gen(
                 /** Reuse one owned runner so revocation tests distinguish live reads from cached authority. */ function* () {
+                    // Mutate authority behind the same socket and token to expose transport or runner authorization caches.
                     const f = yield* fixture;
                     const prefix = `/tenants/${tenant}`;
                     const path = `${prefix}/actions/${write.name}`;
@@ -620,6 +624,7 @@ describe('authenticated local HTTP through real SQL Cluster', /** Transport acce
                     yield* Effect.scoped(
                         Effect.gen(
                             /** An actual unrepresentable registered definition must fail discovery closed, without a fallback route list. */ function* () {
+                                // Register unsupported input in the real inventory; a synthetic projection error could hide fallback routes.
                                 const unsupported = define('unsupported.decode', {
                                     ...common,
                                     input: Schema.Array(Schema.Number),

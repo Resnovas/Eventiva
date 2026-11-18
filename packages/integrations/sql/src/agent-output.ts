@@ -63,6 +63,7 @@ export const agentOutputLog = (
             append: (input) =>
                 Effect.gen(
                     /** Never inherit a business transaction: return only after this independent output transaction commits. */ function* () {
+                        // Resolve only the trusted tenant capability; canonical payload equality determines whether a logical retry conflicts.
                         const value = yield* decode(OutputAppend, input);
                         const tenant = yield* CurrentTenant;
                         const sql = yield* resolve(tenant.id);
@@ -112,6 +113,7 @@ export const agentOutputLog = (
             read: (input) =>
                 Effect.gen(
                     /** Tenant predicates remain mandatory even if multiple trusted tenants share one physical database. */ function* () {
+                        // The last consumed offset is exclusive; ordered bounded pages must not replay it on reconnect.
                         const value = yield* decode(OutputRead, input);
                         const tenant = yield* CurrentTenant;
                         const sql = yield* resolve(tenant.id);
@@ -125,6 +127,7 @@ export const agentOutputLog = (
                             ): Effect.Effect<OutputEvent, AgentOutputFailure> =>
                                 Effect.gen(
                                     /** Stored text is parsed through the same closed payload schema as append. */ function* () {
+                                        // Persistence is not a trust bypass: corrupt offsets or payloads fail the page instead of leaking raw rows.
                                         const row = yield* decode(Stored, raw);
                                         return {
                                             runId: value.runId,

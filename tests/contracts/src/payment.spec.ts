@@ -63,6 +63,7 @@ it.effect(
     /** Separate the fourteen-day buyer-response window from the supplier maturity delay. */ () =>
         Effect.gen(
             /** Exercise unanswered and late obligations without granting eligibility to another milestone. */ function* () {
+                // Late fulfilment starts a new delay rather than borrowing the older no-response deadline.
                 yield* TestClock.setTime(40 * day);
                 const unanswered = { ...evidence, confirmedAt: null };
                 expect(yield* assessFulfilment(unanswered)).toEqual({ state: 'blocked', reason: 'reminders-required' });
@@ -91,6 +92,7 @@ it.effect(
     /** Separate invoice identity and supplier/customer identity from all later provider mappings. */ () =>
         Effect.gen(
             /** Use amounts beyond safe floating-point precision and independently derived tax-inclusive totals. */ function* () {
+                // A one-unit total mismatch must survive decoding even where Number arithmetic would erase the difference.
                 const revision = {
                     invoice: evidence.obligation,
                     revision: 1,
@@ -132,6 +134,7 @@ it.effect(
     /** Capability failure cannot silently become a local escrow or override a dispute. */ () =>
         Effect.gen(
             /** Reevaluate the same accepted milestone after a dispute or capability change. */ function* () {
+                // Establish elapsed-time eligibility first so the negative controls isolate dispute and provider-hold gates.
                 yield* TestClock.setTime(40 * day);
                 expect(yield* assessFulfilment(evidence)).toEqual({ state: 'eligible', eligibleAt: 15 * day + 2 });
                 expect(yield* assessFulfilment({ ...evidence, openDispute: true })).toEqual({
@@ -151,6 +154,7 @@ it.effect(
     /** Check contradictory confirmation, missing fulfilment, unknown policy and excess private fields. */ () =>
         Effect.gen(
             /** Invalid schemas fail before policy evaluation; future confirmation remains pending. */ function* () {
+                // Distinguish structurally invalid evidence from valid evidence whose confirmation time has not arrived.
                 for (const input of [
                     { ...evidence, confirmedAt: day },
                     { ...evidence, fulfilledAt: null },

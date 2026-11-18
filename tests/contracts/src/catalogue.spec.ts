@@ -31,6 +31,7 @@ it.effect(
     /** Prevent optimistic fuzzy matching from conflating different physical models. */ () =>
         Effect.gen(
             /** Compare exact, punctuation-different, variant and manufacturer-different stock rows. */ function* () {
+                // Vary model punctuation and variant separately so case normalization cannot accidentally become fuzzy matching.
                 const rows = [
                     { ...stock, quantity: 0 },
                     { ...stock, supplierSku: 'S-02', model: 'A10' },
@@ -58,6 +59,7 @@ it.effect(
     /** Input order must not choose a duplicate stock winner or a technical model. */ () =>
         Effect.gen(
             /** Keep invalid rows in place and ensure valid neighboring rows remain independently previewable. */ function* () {
+                // Both colliding rows lose, while the independent SKU still matches; input order must not select a winner.
                 expect(
                     yield* previewStockImport(
                         [stock, { ...stock, supplierSku: 's-01' }, { ...stock, supplierSku: 'S-02' }],
@@ -84,6 +86,7 @@ it.effect(
     /** Unknown columns, unsafe quantities and incomplete identities cannot reach staged stock. */ () =>
         Effect.gen(
             /** Validate each row separately without losing its original one-based position. */ function* () {
+                // Retain a valid final control so rejecting the entire batch cannot masquerade as safe row-level validation.
                 const rows = [
                     null,
                     { ...stock, quantity: -1 },
@@ -111,6 +114,7 @@ it.effect(
     /** Caller-supplied catalogue rows are not permission to mix tenant stock with public model identity. */ () =>
         Effect.gen(
             /** Check both sides of batch limits and preserve the original inputs across deterministic retries. */ function* () {
+                // Exact limits must pass before overflow/private-field failures; retries must not mutate either input domain.
                 expect((yield* previewStockImport(Array(1000).fill(stock), [reference])).length).toBe(1000);
                 expect(yield* previewStockImport([], Array(10000).fill(reference))).toEqual([]);
                 for (const [rows, references] of [

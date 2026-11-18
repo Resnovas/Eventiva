@@ -120,6 +120,7 @@ export const previewStockImport = (rows: JsonValue, references: JsonValue) =>
             return decoded.map(
                 /** Emit correction-only outcomes before considering a match; ambiguity never selects an arbitrary reference. */
                 (entry, index): StockImportPreview => {
+                    // Reject invalid or repeated supplier rows before matching; neither may inherit a catalogue reference.
                     const row = index + 1;
                     if (entry._tag === 'Left') return { row, state: 'invalid' };
                     const stock = entry.right;
