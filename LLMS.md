@@ -2268,8 +2268,40 @@ is not evidence that a persisted mutation did not run. Keep the same key/input.
 
 The example below is server-only proof-to-discovery inspection, not a listener,
 flag activation or wire identity response. Actual HTTP uses the entry and
-mandatory composition above. No production deployment, streaming, batch,
+mandatory composition above. No production deployment, streaming,
 machine issuance, native client or offline queue is accepted by this slice.
+
+## Bounded local sequential batch sub-slice
+
+Revision 6 adds optional POST `/tenants/<trusted-tenant>/actions:batch` only when
+both `http.actions.enabled` and `http.action-batch.enabled` are true. The new
+flag is safe-default false and uses the existing Flags service; it creates no
+new mandatory context service. Both flags are rechecked between calls. Flag-off
+preserves the original single-action route/OpenAPI equality and exposes no batch
+metadata. Keep the original HTTP entry and conformance spec unchanged.
+
+Envelope: exactly `{ calls: [{ action, input, idempotencyKey }, ...] }`, 1..10,
+65536 total bytes, the same supplied key grammar as single calls. Decode all
+items and preflight all current non-sensitive action visibility before any
+dispatch. This does not prevalidate domain/resource policy. Invoke sequentially
+through ClusterActions; canonical identity/resource/flag/audit/replay gates
+remain freshly enforced per item. First failure stops the suffix with the
+existing fixed safe error; earlier commits remain. Never add automatic mutation
+retry, parallelism, atomic rollback or cross-tenant semantics.
+
+Success is ordered `{ results: [{ output, receiptId }, ...] }`. A wire receipt
+identifies a fresh attempt; replay preserves the original committed SQL receipt
+and output, not the attempt ID. A timeout/disconnect stops new dispatch but an
+accepted durable action may finish. Recover explicitly with the original
+keys/inputs and current authority, not newly generated keys. OpenAPI derives
+exact alternatives from the same visible schemas, never a static registry or
+hidden-schema union; preserve the literal-colon route without wildcard aliases.
+
+`03_batch.ts` compiles a pure synthetic wire example, not a listener, client,
+flag activation or authority grant. Run
+`pnpm nx run @eventiva/server:http-batch-conformance` against the disposable
+local SQL fixture and retain original HTTP conformance plus full gates. See
+`docs/http-actions.md#sequential-non-atomic-batches` for recovery and proof limits.
 
 ### proof
 
@@ -2324,4 +2356,35 @@ export const callWithCurrentProof = <S extends ActionSpec>(
     invokeHttpAction(spec, input, target).pipe(
         Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof }))
     );
+```
+
+### batch
+
+@title Preserve caller-owned keys and ordered wire inputs for explicit non-atomic batch recovery
+
+```ts
+import { JsonValue } from '@eventiva/contracts/storage';
+import { Schema } from 'effect';
+
+const Call = Schema.Struct({
+    action: Schema.String,
+    input: JsonValue,
+    idempotencyKey: Schema.String.pipe(Schema.pattern(/^[A-Za-z0-9._:-]{1,128}$/)),
+});
+const Envelope = Schema.Struct({ calls: Schema.Array(Call).pipe(Schema.minItems(1), Schema.maxItems(10)) });
+
+/** Pure synthetic payload validation only; neither possession of this envelope nor a specification grants authority. */
+export const batchExample = Schema.decodeUnknown(Envelope)(
+    {
+        calls: [
+            { action: 'batch.write', input: { value: 9 }, idempotencyKey: 'ordered-9' },
+            { action: 'batch.write', input: { value: 2 }, idempotencyKey: 'ordered-2' },
+            { action: 'batch.write', input: { value: 7 }, idempotencyKey: 'ordered-7' },
+        ],
+    },
+    { onExcessProperty: 'error' }
+);
+
+// Keep this same decoded envelope for recovery. The server independently preflights current visibility, then reauthorizes each invocation.
+// After failure the committed prefix stays committed. A replay has fresh attempt receipt IDs and must not be mistaken for an atomic rollback.
 ```

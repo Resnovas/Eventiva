@@ -48,6 +48,14 @@
                 "cwd": "{workspaceRoot}"
             }
         },
+        "http-batch-conformance": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "options": {
+                "command": "vitest run --config apps/server/vitest.config.mts apps/server/tests/http-action-batch.spec.ts --coverage.include=apps/server/src/http-action-batch.ts",
+                "cwd": "{workspaceRoot}"
+            }
+        },
         "http-conformance": {
             "executor": "nx:run-commands",
             "cache": false,

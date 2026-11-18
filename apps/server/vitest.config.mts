@@ -29,6 +29,7 @@ const config = testProject(
         'apps/server/src/identity-oidc.ts',
         'apps/server/src/http-actions.ts',
         'apps/server/src/http-entry.ts',
+        'apps/server/src/http-action-batch.ts',
     ],
     import.meta.url
 );

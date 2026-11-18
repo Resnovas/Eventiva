@@ -17,6 +17,26 @@ Last checked: 2026-11-17. This is an index, not a new approval register. The own
 | Security profiles/assurance, independent decryption gates, regional marketplace exchange                                                     | [Existing approval-linked register](../architecture/eventiva-platform-and-marketplace.md#decision-register) cites EVE-13/250/251 comments                                                                                         | Keep that register's approved/proposed distinctions; this index does not select vendors, algorithms, regions or key providers.                                                                                                                                                                                                                               |
 | Useful JSDoc on every editable TypeScript function/method/class/interface; meaningful internal rationale                                     | Owner documentation requirement; Jonathan approved the reviewed exact debt ratchet on 2026-11-17 and directed complete live zero before strict rationale activation                                                                 | The [2026-11-18 checkpoint](documentation-backlog.md#thirteenth-semantic-checkpoint-and-strict-activation---2026-11-18) reaches empty accepted ledger and complete live zero, adding strict scanning after the ratchet without suppressions or broader exclusions. Preserve the empty provenance ledger; every live finding blocks. Semantic usefulness and meaningful-phase coverage still require review. Publication/CI are separate from local evidence and product acceptance. |
 
+## Sequential local batch boundary - 2026-11-18
+
+The owner-relayed [revision 6 packet and dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize EVE-46's bounded default-off local/test batch route. Exact original
+owner-selection time is unknown. This does not authorize atomic execution,
+parallel dispatch, automatic mutation retry, public deployment or paid work.
+The [issue checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-aecfe4dd)
+records executed proof separately; EVE-46 stays Backlog/open. The source mirror
+remains historical rather than silently absorbing a partial live refresh.
+
+The [HTTP guide](../http-actions.md#sequential-non-atomic-batches) owns the
+contract: exact 1..10-call envelope within the existing total body bound,
+whole structural/visibility preflight, sequential existing Cluster/backend
+execution with fresh authority and audit, fixed safe errors and preserved
+committed prefix. Both transport flags must remain enabled. Original supplied
+keys/inputs support explicit recovery; fresh per-attempt wire receipts do not
+replace stable original SQL committed evidence. Original HTTP entry/spec,
+identity/SQL/execution/compiler and unpublished trust files are not amended.
+The separate client lane requires no batch implementation or shared source edit.
+
 ## Authenticated local HTTP boundary - 2026-11-18
 
 The owner-relayed [revision 2 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)

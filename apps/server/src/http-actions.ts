@@ -26,8 +26,9 @@ import { Flags, type Flag } from '@eventiva/contracts/flags';
 import { ActionInventory, type ActionMetadata } from '@eventiva/contracts/inventory';
 import { CurrentTenant, JsonValue } from '@eventiva/contracts/storage';
 import { authenticateTokenSession, type TokenPolicy } from '@eventiva/runtime/identity';
-import { Data, Effect, Option, Redacted, Schema } from 'effect';
+import { Effect, Option, Redacted, Schema } from 'effect';
 import { ClusterActions } from './cluster-actions.ts';
+import { HttpActionFailure, literalBatchPath, projectBatch } from './http-action-batch.ts';
 
 /** Default-off transport capability, independently rechecked from each action's own live flags. */
 export const httpActionsFlag: Flag = {
@@ -36,12 +37,6 @@ export const httpActionsFlag: Flag = {
     owner: 'platform',
     safeDefault: false,
 };
-
-/** Only closed public error codes cross HTTP; identity, decoder and backend diagnostics stay private. */
-class HttpActionFailure extends Data.TaggedError('HttpActionFailure')<{
-    readonly status: 400 | 401 | 404 | 503;
-    readonly code: 'invalid-request' | 'unauthenticated' | 'unavailable';
-}> {}
 
 const Envelope = Schema.Struct({
     input: JsonValue,
@@ -181,17 +176,27 @@ export const httpActions = (policy: TokenPolicy) =>
                 group = group.add(endpoint(action, path));
                 routes = HttpRouter.post(routes, path, invoke(action, caller, cluster));
             }
+            const projection = yield* projectBatch(
+                group,
+                routes,
+                prefix,
+                visible,
+                caller,
+                cluster,
+                flags,
+                httpActionsFlag
+            );
             const api = HttpApi.make('eventiva-local')
-                .add(group)
+                .add(projection.group)
                 .annotate(OpenApi.Title, 'Eventiva local actions')
                 .annotate(OpenApi.Version, '1')
                 .annotate(OpenApi.Override, {
                     components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } } },
                 });
-            const document = OpenApi.fromApi(api);
+            const document = literalBatchPath(OpenApi.fromApi(api), prefix);
             // The document is private and refreshed like invocation, not a startup snapshot that survives revocation.
             return yield* HttpRouter.get(
-                routes,
+                projection.routes,
                 `${prefix}/openapi.json`,
                 HttpServerResponse.json(document, {
                     headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' },

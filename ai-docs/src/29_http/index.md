@@ -38,5 +38,37 @@ is not evidence that a persisted mutation did not run. Keep the same key/input.
 
 The example below is server-only proof-to-discovery inspection, not a listener,
 flag activation or wire identity response. Actual HTTP uses the entry and
-mandatory composition above. No production deployment, streaming, batch,
+mandatory composition above. No production deployment, streaming,
 machine issuance, native client or offline queue is accepted by this slice.
+
+## Bounded local sequential batch sub-slice
+
+Revision 6 adds optional POST `/tenants/<trusted-tenant>/actions:batch` only when
+both `http.actions.enabled` and `http.action-batch.enabled` are true. The new
+flag is safe-default false and uses the existing Flags service; it creates no
+new mandatory context service. Both flags are rechecked between calls. Flag-off
+preserves the original single-action route/OpenAPI equality and exposes no batch
+metadata. Keep the original HTTP entry and conformance spec unchanged.
+
+Envelope: exactly `{ calls: [{ action, input, idempotencyKey }, ...] }`, 1..10,
+65536 total bytes, the same supplied key grammar as single calls. Decode all
+items and preflight all current non-sensitive action visibility before any
+dispatch. This does not prevalidate domain/resource policy. Invoke sequentially
+through ClusterActions; canonical identity/resource/flag/audit/replay gates
+remain freshly enforced per item. First failure stops the suffix with the
+existing fixed safe error; earlier commits remain. Never add automatic mutation
+retry, parallelism, atomic rollback or cross-tenant semantics.
+
+Success is ordered `{ results: [{ output, receiptId }, ...] }`. A wire receipt
+identifies a fresh attempt; replay preserves the original committed SQL receipt
+and output, not the attempt ID. A timeout/disconnect stops new dispatch but an
+accepted durable action may finish. Recover explicitly with the original
+keys/inputs and current authority, not newly generated keys. OpenAPI derives
+exact alternatives from the same visible schemas, never a static registry or
+hidden-schema union; preserve the literal-colon route without wildcard aliases.
+
+`03_batch.ts` compiles a pure synthetic wire example, not a listener, client,
+flag activation or authority grant. Run
+`pnpm nx run @eventiva/server:http-batch-conformance` against the disposable
+local SQL fixture and retain original HTTP conformance plus full gates. See
+`docs/http-actions.md#sequential-non-atomic-batches` for recovery and proof limits.

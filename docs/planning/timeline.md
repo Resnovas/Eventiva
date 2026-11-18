@@ -31,6 +31,34 @@ flowchart LR
     Gates --> Later["Separate generated SDK and streaming acceptance"]
 ```
 
+## Sequential local HTTP batches - 2026-11-18
+
+[EVE-46](https://linear.app/resnovas/issue/EVE-46) remains Backlog/open. The
+owner-relayed [revision 6 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [Puck dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize only this default-off local/test batch sub-slice. The
+[bounded issue checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-aecfe4dd)
+records implementation and focused execution separately. Detailed wire and
+recovery contracts remain in the [HTTP guide](../http-actions.md#sequential-non-atomic-batches).
+No historical issue capture, documentation debt or source-review digest is rewritten.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Exact reservation and live contract review | Completed | Read revision 6/live description and all four then-current comments; recorded exact additive server wiring with Puck before edits. Client lane confirms no implementation overlap. Original HTTP entry/spec and protected trust/output sources stay unchanged. |
+| Non-atomic ordered execution and recovery | Implemented; focused verification passed | Real loopback, signed JWT, live SQL identity and SQL Cluster/backend. Order [9,2,7] gives [63,15,51]; invalid later structure/visibility causes zero dispatch evidence. Failed item 2 preserves item 1; retry preserves original SQL committed receipt/output and executes only the allowed suffix. Wire receipts remain fresh per invocation. Mid-batch session/membership/permission/action/batch/transport revocation, audit loss, hidden metadata, 10-item bound, timeout and real client disconnect pass. |
+| Original HTTP compatibility and shared gates | Verified locally; signed delivery recorded on EVE-46 | Both uncached HTTP targets pass with the original spec and coverage thresholds unchanged. Rebased and repeated full gates after strict-zero main 099c7fc9, commerce main fd61cf59 and typed-client main b9248f6d: `node --run check` and disposable-PostgreSQL `node --run verify` pass, finally including 104 aggregate tasks and 17 smoke/dependency tasks. Standalone documentation scanner: 254 editable files, zero findings; ratchet: zero violations. Strict reviewed planning: 258 issues, 692 edges, zero unresolved/stale outputs; Nx sync current, source/declaration boundaries and cycles zero. Client wiring and its checkpoint are preserved; LLMS/planning and clean-source Graphify accompany signed delivery. Exact revisions and separately pending/passed hosted CI are recorded on EVE-46. No debt, suppression, checker or threshold weakening; local success is not whole-issue acceptance. |
+| Remaining EVE-46 and activation | Upcoming / separate acceptance | The portable client's separate checkpoint appears above; machine issuance, streaming/UI-message protocol and offline engine remain broader work. No public deployment, production activation or paid call. EVE-248 stays deferred until January 2027. |
+
+```mermaid
+flowchart LR
+    Proof["Verified bearer plus live SQL authority"] --> Preflight["Whole bounded envelope and visibility"]
+    Preflight --> Sequential["Sequential existing Cluster invocations"]
+    Sequential --> Prefix["Committed prefix survives refusal or timeout"]
+    Prefix --> Recovery["Explicit recovery with original keys and inputs"]
+    Recovery --> Gates["Latest-main gates and signed delivery"]
+    Gates --> Remaining["Separate broader EVE-46 acceptance"]
+```
+
 ## Authenticated local HTTP checkpoint - 2026-11-18
 
 [EVE-46](https://linear.app/resnovas/issue/EVE-46) follows the owner-relayed
