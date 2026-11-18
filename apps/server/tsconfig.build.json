@@ -28,6 +28,9 @@
             "path": "../../packages/integrations/openfeature-server/tsconfig.build.json"
         },
         {
+            "path": "../../packages/integrations/oidc/tsconfig.build.json"
+        },
+        {
             "path": "../../packages/integrations/formatjs/tsconfig.build.json"
         },
         {

@@ -11,6 +11,9 @@
             "path": "../packages/integrations/trust.server"
         },
         {
+            "path": "../packages/integrations/oidc"
+        },
+        {
             "path": "../packages/ui-modules"
         },
         {

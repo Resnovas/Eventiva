@@ -180,6 +180,7 @@ describe('package hygiene', /** Verify portable package exports and historical-s
         ).toEqual([
             'packages/contracts',
             'packages/integrations/formatjs',
+            'packages/integrations/oidc',
             'packages/integrations/openfeature-client',
             'packages/integrations/openfeature-server',
             'packages/integrations/posthog-client',

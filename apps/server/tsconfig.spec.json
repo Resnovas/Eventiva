@@ -6,7 +6,7 @@
         "tsBuildInfoFile": "dist/tsconfig.spec.tsbuildinfo",
         "types": ["node"]
     },
-    "include": ["tests/**/*.ts", "../../vitest.shared.ts", "src/**/*.ts", "vitest.config.mts"],
+    "include": ["tests/**/*.ts", "../../vitest.shared.ts", "src/**/*.ts", "vitest.config.mts", "vitest.keycloak.mts"],
     "references": [
         { "path": "../../packages/contracts" },
         { "path": "../../packages/schema" },

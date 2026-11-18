@@ -15,6 +15,7 @@
         "@effect/workflow": "0.19.1",
         "@eventiva/contracts": "workspace:*",
         "@eventiva/integrations.formatjs": "workspace:*",
+        "@eventiva/integrations.oidc": "workspace:*",
         "@eventiva/integrations.openfeature.server": "workspace:*",
         "@eventiva/integrations.posthog.server": "workspace:*",
         "@eventiva/integrations.sql": "workspace:*",

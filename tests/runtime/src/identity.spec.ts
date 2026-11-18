@@ -34,6 +34,7 @@ import { CurrentTenant, StorageFailure } from '@eventiva/contracts/storage';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import {
     authenticateToken,
+    authenticateTokenSession,
     identityModule,
     identitySecurity,
     StandardsTokenVerifier,
@@ -77,7 +78,7 @@ const permissions = [
 const grants = permissions.map(
     /** Give administrator fixtures unrestricted resource grants for each declared permission. */ (permission) => ({
         permission,
-        resources: ['*']
+        resources: ['*'],
     })
 );
 const flagsOn = Layer.succeed(Flags, {
@@ -88,140 +89,145 @@ const flagsOn = Layer.succeed(Flags, {
 const digest = (canonical: string) => createHash('sha256').update(canonical).digest('hex');
 
 /** Deliberately volatile unit fixture, not a production store or durability proof. */
-const fixture = Effect.gen(/** Seed live authority records and assemble tenant-scoped identity services over a volatile store. */ function* () {
-    // Fix time before seeding sessions and approvals so exact expiry boundaries are reproducible.
-    yield* TestClock.setTime(1000);
-    const data = new Map<string, { version: number; value: unknown }>();
-    const links = new Map<string, SubjectId>();
-    /** Represent optimistic-version conflicts using the fixture's deliberately minimal storage error. */
-    const unavailable = () => new StorageFailure({ operation: 'test-unavailable' });
-    const store = IdentityStore.of({
-        tenant,
-        lock: Effect.void,
-        /** Look up the kind-qualified row; only typed fixture seeding supplies this volatile map. */
-        get: <K extends IdentityKind>(kind: K, key: string) =>
-            Effect.sync(
-                /** Defer map access until execution so revocations are visible on each lookup. */ () =>
-                    data.get(`${kind}:${key}`) as StoredIdentity<K> | undefined
-            ),
-        /** Apply create-or-compare version semantics without claiming durable transaction isolation. */
-        put: (kind, value, expectedVersion) =>
+const fixture = Effect.gen(
+    /** Seed live authority records and assemble tenant-scoped identity services over a volatile store. */ function* () {
+        // Fix time before seeding sessions and approvals so exact expiry boundaries are reproducible.
+        yield* TestClock.setTime(1000);
+        const data = new Map<string, { version: number; value: unknown }>();
+        const links = new Map<string, SubjectId>();
+        /** Represent optimistic-version conflicts using the fixture's deliberately minimal storage error. */
+        const unavailable = () => new StorageFailure({ operation: 'test-unavailable' });
+        const store = IdentityStore.of({
+            tenant,
+            lock: Effect.void,
+            /** Look up the kind-qualified row; only typed fixture seeding supplies this volatile map. */
+            get: <K extends IdentityKind>(kind: K, key: string) =>
+                Effect.sync(
+                    /** Defer map access until execution so revocations are visible on each lookup. */ () =>
+                        data.get(`${kind}:${key}`) as StoredIdentity<K> | undefined
+                ),
+            /** Apply create-or-compare version semantics without claiming durable transaction isolation. */
+            put: (kind, value, expectedVersion) =>
+                Effect.gen(
+                    /** Reject stale writes before replacing the row and incrementing its version. */ function* () {
+                        // Null means create-only; an explicit version must match the currently stored row.
+                        const key = `${kind}:${value.id}`;
+                        const previous = data.get(key);
+                        if (
+                            (expectedVersion === null && previous !== undefined) ||
+                            (expectedVersion !== null && previous?.version !== expectedVersion)
+                        )
+                            return yield* unavailable();
+                        data.set(key, { value, version: expectedVersion === null ? 0 : expectedVersion + 1 });
+                    }
+                ),
+            /** Resolve current team memberships from stored team rows, not presented session claims. */
+            teams: (subject) =>
+                Effect.succeed(
+                    [...data.entries()]
+                        .filter(
+                            /** Exclude non-team identity records before decoding team schemas. */ ([key]) =>
+                                key.startsWith('team:')
+                        )
+                        .map(
+                            /** Validate the seeded team value before using its membership list. */ ([, row]) =>
+                                Schema.decodeUnknownSync(records.team)(row.value)
+                        )
+                        .filter(
+                            /** Retain only teams that currently include the requested subject. */ (team) =>
+                                team.members.includes(subject)
+                        )
+                ),
+            /** Associate the full external identity pair with a local subject in this fixture. */
+            link: (external, subject) =>
+                Effect.sync(
+                    /** Defer external-link mutation to Effect execution. */ () => {
+                        links.set(JSON.stringify(external), subject);
+                    }
+                ),
+            /** Resolve an exact issuer/subject link without deriving roles from token claims. */
+            lookup: (external) =>
+                Effect.sync(
+                    /** Observe the current mapping at authentication time. */ () => links.get(JSON.stringify(external))
+                ),
+            /** Supply an empty audit history; these tests assert access control rather than audit persistence. */
+            audit: () => Effect.succeed([]),
+        });
+        /** Insert a new typed identity record with create-only version semantics. */
+        const seed = <K extends IdentityKind>(kind: K, value: IdentityRecords[K]) => store.put(kind, value, null);
+        /** Update a fixture record using its current version to model live revocation. */
+        const replace = <K extends IdentityKind>(kind: K, value: IdentityRecords[K]) =>
             Effect.gen(
-                /** Reject stale writes before replacing the row and incrementing its version. */ function* () {
-                    // Null means create-only; an explicit version must match the currently stored row.
-                    const key = `${kind}:${value.id}`;
-                    const previous = data.get(key);
-                    if (
-                        (expectedVersion === null && previous !== undefined) ||
-                        (expectedVersion !== null && previous?.version !== expectedVersion)
-                    )
-                        return yield* unavailable();
-                    data.set(key, { value, version: expectedVersion === null ? 0 : expectedVersion + 1 });
+                /** Preserve optimistic-version discipline when changing seeded authority. */ function* () {
+                    // Reuse the current version so a revocation fixture cannot silently bypass the store's write-conflict contract.
+                    const previous = yield* store.get(kind, value.id);
+                    yield* store.put(kind, value, previous?.version ?? null);
                 }
-            ),
-        /** Resolve current team memberships from stored team rows, not presented session claims. */
-        teams: (subject) =>
-            Effect.succeed(
-                [...data.entries()]
-                    .filter(
-                        /** Exclude non-team identity records before decoding team schemas. */ ([key]) =>
-                            key.startsWith('team:')
-                    )
-                    .map(
-                        /** Validate the seeded team value before using its membership list. */ ([, row]) =>
-                            Schema.decodeUnknownSync(records.team)(row.value)
-                    )
-                    .filter(
-                        /** Retain only teams that currently include the requested subject. */ (team) =>
-                            team.members.includes(subject)
-                    )
-            ),
-        /** Associate the full external identity pair with a local subject in this fixture. */
-        link: (external, subject) =>
-            Effect.sync(
-                /** Defer external-link mutation to Effect execution. */ () => {
-                    links.set(JSON.stringify(external), subject);
-                }
-            ),
-        /** Resolve an exact issuer/subject link without deriving roles from token claims. */
-        lookup: (external) =>
-            Effect.sync(
-                /** Observe the current mapping at authentication time. */ () => links.get(JSON.stringify(external))
-            ),
-        /** Supply an empty audit history; these tests assert access control rather than audit persistence. */
-        audit: () => Effect.succeed([]),
-    });
-    /** Insert a new typed identity record with create-only version semantics. */
-    const seed = <K extends IdentityKind>(kind: K, value: IdentityRecords[K]) => store.put(kind, value, null);
-    /** Update a fixture record using its current version to model live revocation. */
-    const replace = <K extends IdentityKind>(kind: K, value: IdentityRecords[K]) =>
-        Effect.gen(
-            /** Preserve optimistic-version discipline when changing seeded authority. */ function* () {
-                // Reuse the current version so a revocation fixture cannot silently bypass the store's write-conflict contract.
-                const previous = yield* store.get(kind, value.id);
-                yield* store.put(kind, value, previous?.version ?? null);
-            }
+            );
+        yield* seed('role', { id: adminRole, name: 'Administrator', grants });
+        yield* seed('role', {
+            id: viewerRole,
+            name: 'Viewer',
+            grants: [{ permission: 'identity.profile.read', resources: [viewer.subject] }],
+        });
+        for (const caller of [admin, viewer, delegated, service]) {
+            yield* seed('principal', { id: caller.subject, kind: caller.kind, active: true });
+            yield* seed('membership', {
+                id: caller.subject,
+                active: true,
+                roles: [caller === viewer ? viewerRole : adminRole],
+            });
+            yield* seed('session', {
+                id: caller.session,
+                subject: caller.subject,
+                active: true,
+                expiresAt: 10000,
+                delegation:
+                    caller === delegated
+                        ? { human: viewer.subject, session: viewer.session, expiresAt: 9000, grants }
+                        : null,
+            });
+        }
+        yield* store.link({ issuer: 'https://issuer.test/realm', subject: 'external-user' }, viewer.subject);
+        const harness = yield* makeTestOnlyHarness(admin);
+        const context = Layer.mergeAll(
+            Layer.succeed(IdentityStore, store),
+            Layer.succeed(CurrentTenant, { id: tenant })
         );
-    yield* seed('role', { id: adminRole, name: 'Administrator', grants });
-    yield* seed('role', {
-        id: viewerRole,
-        name: 'Viewer',
-        grants: [{ permission: 'identity.profile.read', resources: [viewer.subject] }],
-    });
-    for (const caller of [admin, viewer, delegated, service]) {
-        yield* seed('principal', { id: caller.subject, kind: caller.kind, active: true });
-        yield* seed('membership', {
-            id: caller.subject,
-            active: true,
-            roles: [caller === viewer ? viewerRole : adminRole],
-        });
-        yield* seed('session', {
-            id: caller.session,
-            subject: caller.subject,
-            active: true,
-            expiresAt: 10000,
-            delegation:
-                caller === delegated
-                    ? { human: viewer.subject, session: viewer.session, expiresAt: 9000, grants }
-                    : null,
-        });
+        const security = identitySecurity.pipe(Layer.provide(context));
+        const platform = Layer.merge(
+            harness.TestOnly,
+            Layer.succeed(InputDigest, {
+                /** Hash canonical input with the same algorithm used by approval fixtures. */ digest: (canonical) =>
+                    Effect.sync(/** Defer hashing to the injected digest service effect. */ () => digest(canonical)),
+            })
+        );
+        const host = ActionHostLive.pipe(Layer.provide(flagsOn), Layer.provide(security), Layer.provide(platform));
+        /** Provide tenant-scoped live identity services while retaining unrelated effect requirements. */
+        const run = <A, E, R>(
+            effect: Effect.Effect<A, E, R | IdentityStore | CurrentTenant | IdentityResolver | Authorizer>
+        ) => effect.pipe(Effect.provide(Layer.merge(security, context)));
+        /** Bind an independent human approval to the exact action, caller and canonical input fixture. */
+        const approve = (name: string, input: unknown, caller = admin): Effect.Effect<void> =>
+            Ref.update(
+                harness.approvals,
+                /** Preserve other approval entries while replacing the fixture's selected confirmation. */ (entries) =>
+                    new Map(entries).set('approval', {
+                        principal: caller.subject,
+                        tenant,
+                        action: name,
+                        version: 1,
+                        inputHash: digest(Either.getOrThrow(canonicalJson(input))),
+                        limits: {},
+                        approver: { ...admin, subject: SubjectId.make(id(6)) },
+                        issuedAt: 1000,
+                        expiresAt: 8000,
+                        stepUp: true,
+                    })
+            );
+        return { store, data, replace, seed, harness, context, security, host, run, approve };
     }
-    yield* store.link({ issuer: 'https://issuer.test/realm', subject: 'external-user' }, viewer.subject);
-    const harness = yield* makeTestOnlyHarness(admin);
-    const context = Layer.mergeAll(Layer.succeed(IdentityStore, store), Layer.succeed(CurrentTenant, { id: tenant }));
-    const security = identitySecurity.pipe(Layer.provide(context));
-    const platform = Layer.merge(
-        harness.TestOnly,
-        Layer.succeed(InputDigest, {
-            /** Hash canonical input with the same algorithm used by approval fixtures. */ digest: (canonical) =>
-                Effect.sync(/** Defer hashing to the injected digest service effect. */ () => digest(canonical))
-        })
-    );
-    const host = ActionHostLive.pipe(Layer.provide(flagsOn), Layer.provide(security), Layer.provide(platform));
-    /** Provide tenant-scoped live identity services while retaining unrelated effect requirements. */
-    const run = <A, E, R>(
-        effect: Effect.Effect<A, E, R | IdentityStore | CurrentTenant | IdentityResolver | Authorizer>
-    ) => effect.pipe(Effect.provide(Layer.merge(security, context)));
-    /** Bind an independent human approval to the exact action, caller and canonical input fixture. */
-    const approve = (name: string, input: unknown, caller = admin): Effect.Effect<void> =>
-        Ref.update(
-            harness.approvals,
-            /** Preserve other approval entries while replacing the fixture's selected confirmation. */ (entries) =>
-                new Map(entries).set('approval', {
-                    principal: caller.subject,
-                    tenant,
-                    action: name,
-                    version: 1,
-                    inputHash: digest(Either.getOrThrow(canonicalJson(input))),
-                    limits: {},
-                    approver: { ...admin, subject: SubjectId.make(id(6)) },
-                    issuedAt: 1000,
-                    expiresAt: 8000,
-                    stepUp: true,
-                })
-        );
-    return { store, data, replace, seed, harness, context, security, host, run, approve };
-});
+);
 
 it.scoped(
     'identity actions share authorization, explicit approval, idempotency and one receipt per call',
@@ -255,7 +261,7 @@ it.scoped(
                         const writes = [
                             [
                                 'identity.role.set',
-                                { value: { id: id(202), name: 'Limited', grants: [] }, expectedVersion: null }
+                                { value: { id: id(202), name: 'Limited', grants: [] }, expectedVersion: null },
                             ],
                             [
                                 'identity.team.set',
@@ -268,7 +274,7 @@ it.scoped(
                                 'identity.membership.set',
                                 {
                                     value: { id: viewer.subject, active: true, roles: [viewerRole] },
-                                    expectedVersion: 0
+                                    expectedVersion: 0,
                                 },
                             ],
                         ] as const;
@@ -285,7 +291,7 @@ it.scoped(
                             expect(Exit.isSuccess((yield* execute(name, input)).result)).toBe(true);
                         const profile = {
                             value: { id: admin.subject, displayName: 'Private Name' },
-                            expectedVersion: null
+                            expectedVersion: null,
                         };
                         expect(Exit.isSuccess((yield* execute('identity.profile.set', profile)).result)).toBe(true);
                         expect(
@@ -433,7 +439,7 @@ it.scoped(
                     });
                 for (const effect of [
                     Layer.build(identitySecurity).pipe(Effect.asVoid),
-                    identityModule.pipe(Effect.asVoid)
+                    identityModule.pipe(Effect.asVoid),
                 ])
                     expect(
                         yield* Effect.either(
@@ -523,16 +529,24 @@ it.scoped(
                     value: Claims,
                     expected = policy
                 ) =>
-                    f
-                        .run(authenticateToken(Redacted.make('TEST-NOT-A-TOKEN'), expected))
-                        .pipe(
-                            Effect.provideService(StandardsTokenVerifier, {
-                                /** Supply this claim candidate without simulating signature verification. */ verify: () =>
-                                    Effect.succeed(value)
-                            })
-                        );
+                    f.run(authenticateToken(Redacted.make('TEST-NOT-A-TOKEN'), expected)).pipe(
+                        Effect.provideService(StandardsTokenVerifier, {
+                            /** Supply this claim candidate without simulating signature verification. */ verify: () =>
+                                Effect.succeed(value),
+                        })
+                    );
                 expect(yield* authenticate(claims)).toEqual(viewer);
                 expect(yield* authenticate({ ...claims, notBefore: -1 })).toEqual(viewer);
+                // A short-lived token inside a longer live session is the normal OIDC shape and must authenticate.
+                expect(yield* authenticate({ ...claims, expiresAt: 1001 })).toEqual(viewer);
+                expect(
+                    yield* f.run(authenticateTokenSession(Redacted.make('TEST-NOT-A-TOKEN'), policy)).pipe(
+                        Effect.provideService(StandardsTokenVerifier, {
+                            /** Supply the base claims to read the session-aware result. */ verify: () =>
+                                Effect.succeed(claims),
+                        })
+                    )
+                ).toEqual({ caller: viewer, issuer: claims.issuer, sessionExpiresAt: 10000 });
                 expect(
                     yield* Effect.either(
                         authenticateToken(Redacted.make('TEST-NOT-A-TOKEN'), policy).pipe(
@@ -541,7 +555,7 @@ it.scoped(
                             Effect.provideService(CurrentTenant, { id: tenant }),
                             Effect.provideService(StandardsTokenVerifier, {
                                 /** Hold verified claims constant while testing a mismatched store tenant. */ verify: () =>
-                                    Effect.succeed(claims)
+                                    Effect.succeed(claims),
                             })
                         )
                     )
@@ -557,7 +571,6 @@ it.scoped(
                     { ...claims, expiresAt: Number.NaN },
                     { ...claims, notBefore: -62135596800001 },
                     { ...claims, expiresAt: 1000 },
-                    { ...claims, expiresAt: 9999 },
                     { ...claims, notBefore: 1001 },
                     { ...claims, notBefore: 10000, expiresAt: 10000 },
                     { ...claims, subject: '' },

@@ -1,0 +1,31 @@
+{
+    "name": "@eventiva/integrations.oidc",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "license": "SEE LICENSE IN LICENSE",
+    "sideEffects": false,
+    "exports": {
+        "./token": {
+            "@eventiva/source": "./src/token.ts",
+            "types": "./dist/token.d.ts",
+            "default": "./dist/token.js"
+        },
+        "./session": {
+            "@eventiva/source": "./src/session.ts",
+            "types": "./dist/session.d.ts",
+            "default": "./dist/session.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "dependencies": {
+        "@eventiva/contracts": "workspace:*",
+        "oauth4webapi": "3.8.8"
+    },
+    "peerDependencies": {
+        "effect": "catalog:"
+    },
+    "devDependencies": {
+        "effect": "catalog:"
+    }
+}

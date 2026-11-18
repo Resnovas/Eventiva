@@ -1,0 +1,6 @@
+{
+    "name": "@eventiva/integrations.oidc",
+    "projectType": "library",
+    "sourceRoot": "packages/integrations/oidc/src",
+    "tags": ["type:integration", "layer:backend", "capability:identity"]
+}

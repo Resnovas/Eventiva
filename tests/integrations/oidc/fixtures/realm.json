@@ -1,0 +1,104 @@
+{
+    "realm": "eventiva-test",
+    "enabled": true,
+    "accessTokenLifespan": 300,
+    "ssoSessionIdleTimeout": 1800,
+    "ssoSessionMaxLifespan": 36000,
+    "clientScopes": [
+        {
+            "name": "basic",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "false"
+            },
+            "protocolMappers": [
+                {
+                    "name": "sub",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-sub-mapper",
+                    "config": {
+                        "access.token.claim": "true",
+                        "introspection.token.claim": "true"
+                    }
+                },
+                {
+                    "name": "auth_time",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usersessionmodel-note-mapper",
+                    "config": {
+                        "user.session.note": "AUTH_TIME",
+                        "claim.name": "auth_time",
+                        "jsonType.label": "long",
+                        "access.token.claim": "true",
+                        "id.token.claim": "true"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "eventiva.invoke",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true"
+            },
+            "protocolMappers": [
+                {
+                    "name": "eventiva-api audience",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "config": {
+                        "included.custom.audience": "eventiva-api",
+                        "access.token.claim": "true"
+                    }
+                }
+            ]
+        }
+    ],
+    "clients": [
+        {
+            "clientId": "eventiva-test-client",
+            "enabled": true,
+            "publicClient": false,
+            "secret": "synthetic-fixture-secret-not-a-credential",
+            "standardFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": true,
+            "attributes": {
+                "access.token.header.type.rfc9068": "true",
+                "access.token.signed.response.alg": "ES256"
+            },
+            "defaultClientScopes": ["basic", "eventiva.invoke"],
+            "optionalClientScopes": [],
+            "protocolMappers": [
+                {
+                    "name": "client_id",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-hardcoded-claim-mapper",
+                    "config": {
+                        "claim.name": "client_id",
+                        "claim.value": "eventiva-test-client",
+                        "jsonType.label": "String",
+                        "access.token.claim": "true"
+                    }
+                }
+            ]
+        }
+    ],
+    "users": [
+        {
+            "username": "synthetic-user",
+            "enabled": true,
+            "emailVerified": true,
+            "firstName": "Synthetic",
+            "lastName": "User",
+            "email": "synthetic-user@example.invalid",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "synthetic-fixture-password",
+                    "temporary": false
+                }
+            ]
+        }
+    ]
+}

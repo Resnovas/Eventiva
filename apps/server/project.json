@@ -5,22 +5,39 @@
     "sourceRoot": "apps/server/src",
     "tags": ["type:platform", "layer:backend", "capability:app"],
     "targets": {
-        "test": { "cache": false, "dependsOn": ["cluster-conformance"] },
+        "test": {
+            "cache": false,
+            "dependsOn": ["cluster-conformance"]
+        },
         "cluster-conformance": {
             "executor": "nx:run-commands",
             "cache": false,
             "dependsOn": ["build", "^build"],
-            "options": { "command": "node apps/server/tests/two-runners.mjs" }
+            "options": {
+                "command": "node apps/server/tests/two-runners.mjs"
+            }
         },
         "parity": {
             "executor": "nx:run-commands",
             "dependsOn": ["build", "^build"],
-            "options": { "command": "node apps/server/dist/main.js" }
+            "options": {
+                "command": "node apps/server/dist/main.js"
+            }
         },
         "smoke": {
             "executor": "nx:run-commands",
             "dependsOn": ["build", "^build"],
-            "options": { "command": "node apps/server/dist/main.js" }
+            "options": {
+                "command": "node apps/server/dist/main.js"
+            }
+        },
+        "keycloak-conformance": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "options": {
+                "command": "vitest run --config apps/server/vitest.keycloak.mts",
+                "cwd": "{workspaceRoot}"
+            }
         }
     }
 }

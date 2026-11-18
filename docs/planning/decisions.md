@@ -190,6 +190,23 @@ of any KMS, HSM or attestation product. This approval authorizes no spending,
 provisioning, new dependency or production activation;
 `privateExchangeUnavailable` still refuses private release.
 
+## Later owner decisions - 2026-11-18
+
+- **Keycloak/OIDC identity component adopted (EVE-43):** Jonathan approved, on
+  2026-11-18, adopting the EVE-43 identity component and any new packages it
+  needs. The instruction was relayed by the
+  [Puck coordination thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+  to the [implementing lane](https://ampcode.com/threads/T-01a1edbf-561a-77d0-8d2a-98b8242307e4).
+  This lane recorded it as the adoption decision for the consolidated batch the
+  2026-11-16 owner comment described: image
+  `quay.io/keycloak/keycloak@sha256:c68e286cacd87b942ac1939a0a1481461109d6acd3a57dc496969a319a76bbf0`
+  and `oauth4webapi@3.8.8`. The lane's own reading, not a quoted owner term, is
+  that the decision accepts the residual findings in the
+  [vulnerability register](../supply-chain/eve-43-keycloak-findings.md) under
+  their listed controls. No finding is reported as fixed. Production
+  provisioning, paid infrastructure, mutable tags and version changes remain
+  outside it. The [OIDC guide](../identity-oidc.md) owns the contract.
+
 ## Historical open and superseded information
 
 - **EVE-60 hourly rotation follow-up, 2026-11-17:** Jonathan confirmed one-hour

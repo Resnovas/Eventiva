@@ -156,8 +156,8 @@ export const identitySecurity = Layer.unwrapEffect(
                                     /** Include team-assigned role references in the same live authority set. */ (
                                         team
                                     ) => team.roles
-                                )
-                            ])
+                                ),
+                            ]),
                         ];
                         const entries = yield* Effect.forEach(
                             roles,
@@ -257,15 +257,34 @@ export const VerifiedTokenClaims = Schema.Struct({
     notBefore: EpochMillis,
 });
 
-/** Policy values come from trusted server configuration, never from a token or tenant header. No routing authority. */
-export const authenticateToken = (
+/** Trusted server policy for accepting a verified token: exact issuer, one audience and every required scope. */
+export interface TokenPolicy {
+    readonly issuer: string;
+    readonly audience: string;
+    readonly scopes: ReadonlyArray<string>;
+}
+
+/** A caller authenticated from a verified token, with the matched issuer and the live SQL session's expiry. */
+export interface AuthenticatedSession {
+    readonly caller: CallerIdentity;
+    /** The server-configured issuer the token matched exactly; use it as the identity namespace. */
+    readonly issuer: string;
+    /** Expiry of the live Eventiva session row; re-authenticate rather than caching beyond it. */
+    readonly sessionExpiresAt: typeof EpochMillis.Type;
+}
+
+/**
+ * Policy values come from trusted server configuration, never from a token or tenant header. No routing authority.
+ * Returns the resolved caller together with the issuer namespace and live session expiry for per-call consumers.
+ */
+export const authenticateTokenSession = (
     token: Redacted.Redacted<string>,
-    expected: {
-        readonly issuer: string;
-        readonly audience: string;
-        readonly scopes: ReadonlyArray<string>;
-    }
-) =>
+    expected: TokenPolicy
+): Effect.Effect<
+    AuthenticatedSession,
+    InvocationDenied,
+    StandardsTokenVerifier | IdentityStore | CurrentTenant | IdentityResolver
+> =>
     Effect.gen(
         /** Bind verified external token claims to configured issuer/audience/scopes and live tenant identity records. */ function* () {
             // Verification establishes token provenance, not tenant routing or current session/delegation authority.
@@ -297,21 +316,30 @@ export const authenticateToken = (
             if (subject === undefined) return yield* denied();
             const principal = (yield* store.get('principal', subject))?.value;
             const session = (yield* store.get('session', claims.session))?.value;
-            if (principal === undefined || session === undefined || session.expiresAt > claims.expiresAt)
-                return yield* denied();
-            return yield* resolver.resolve({
+            // The session may outlive this short-lived token; the resolver still requires it to be live and the subject's.
+            if (principal === undefined || session === undefined || session.subject !== subject) return yield* denied();
+            const caller = yield* resolver.resolve({
                 subject,
                 session: claims.session,
                 tenant: tenant.id,
                 kind: principal.kind,
                 ...(session.delegation === null ? {} : { onBehalfOf: session.delegation.human }),
             });
+            return { caller, issuer: claims.issuer, sessionExpiresAt: session.expiresAt };
         }
     ).pipe(
         Effect.catchTag(
             'StorageFailure',
             /** Fail authentication closed when federation/session lookup loses its trusted store. */ () =>
                 Effect.fail(denied())
+        )
+    );
+
+/** Authenticate a verified token and return only the resolved caller. See `authenticateTokenSession`. */
+export const authenticateToken = (token: Redacted.Redacted<string>, expected: TokenPolicy) =>
+    authenticateTokenSession(token, expected).pipe(
+        Effect.map(
+            /** Keep the original caller-only result for existing composition roots. */ (result) => result.caller
         )
     );
 
@@ -381,14 +409,14 @@ export const identityModule = Effect.gen(
                     organizationSet,
                     /** Apply the organization's optimistic version precondition through the captured store. */ ({
                         value,
-                        expectedVersion
+                        expectedVersion,
                     }) => put('organization', value, expectedVersion)
                 ),
                 implement(
                     membershipSet,
                     /** Require principal and role references before replacing a membership at its expected version. */ ({
                         value,
-                        expectedVersion
+                        expectedVersion,
                     }) =>
                         Effect.gen(
                             /** Keep membership reference checks and the write within the host-provided mutation transaction. */ function* () {
@@ -403,14 +431,14 @@ export const identityModule = Effect.gen(
                     roleSet,
                     /** Replace a role's grants only at the supplied optimistic version. */ ({
                         value,
-                        expectedVersion
+                        expectedVersion,
                     }) => put('role', value, expectedVersion)
                 ),
                 implement(
                     teamSet,
                     /** Require all membership and role references before updating a team's assignments. */ ({
                         value,
-                        expectedVersion
+                        expectedVersion,
                     }) =>
                         Effect.gen(
                             /** Validate team associations before the version-checked write in the host's mutation transaction. */ function* () {
@@ -424,7 +452,7 @@ export const identityModule = Effect.gen(
                 implement(
                     profileGet,
                     /** Read the authorized subject's profile without manufacturing a default profile. */ ({
-                        subject
+                        subject,
                     }) =>
                         safe(store.get('profile', subject)).pipe(
                             Effect.map(
@@ -437,7 +465,7 @@ export const identityModule = Effect.gen(
                     profileSet,
                     /** Require tenant membership before writing a profile at its expected version. */ ({
                         value,
-                        expectedVersion
+                        expectedVersion,
                     }) =>
                         Effect.gen(
                             /** Check profile ownership has a membership record before storing the public profile value. */ function* () {

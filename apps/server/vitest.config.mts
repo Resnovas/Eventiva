@@ -25,6 +25,7 @@ const config = testProject(
         'apps/server/src/telemetry-correlation.ts',
         'apps/server/src/telemetry-live.ts',
         'apps/server/src/telemetry-local.ts',
+        'apps/server/src/identity-oidc.ts',
     ],
     import.meta.url
 );

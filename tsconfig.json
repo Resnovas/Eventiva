@@ -44,6 +44,9 @@
         },
         {
             "path": "./packages/integrations/trust.server"
+        },
+        {
+            "path": "./packages/integrations/oidc"
         }
     ]
 }

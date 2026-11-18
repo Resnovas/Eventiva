@@ -258,6 +258,9 @@ importers:
       '@eventiva/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
+      '@eventiva/integrations.oidc':
+        specifier: workspace:*
+        version: link:../packages/integrations/oidc
       '@eventiva/integrations.sql':
         specifier: workspace:*
         version: link:../packages/integrations/sql
@@ -400,6 +403,9 @@ importers:
       '@eventiva/integrations.formatjs':
         specifier: workspace:*
         version: link:../../packages/integrations/formatjs
+      '@eventiva/integrations.oidc':
+        specifier: workspace:*
+        version: link:../../packages/integrations/oidc
       '@eventiva/integrations.openfeature.server':
         specifier: workspace:*
         version: link:../../packages/integrations/openfeature-server
@@ -436,6 +442,19 @@ importers:
       '@formatjs/intl':
         specifier: 6.1.4
         version: 6.1.4
+    devDependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.4
+
+  packages/integrations/oidc:
+    dependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      oauth4webapi:
+        specifier: 3.8.8
+        version: 3.8.8
     devDependencies:
       effect:
         specifier: 'catalog:'
@@ -635,6 +654,15 @@ importers:
       '@eventiva/integrations.formatjs':
         specifier: workspace:*
         version: link:../../../packages/integrations/formatjs
+
+  tests/integrations/oidc:
+    devDependencies:
+      '@eventiva/contracts':
+        specifier: workspace:*
+        version: link:../../../packages/contracts
+      '@eventiva/integrations.oidc':
+        specifier: workspace:*
+        version: link:../../../packages/integrations/oidc
 
   tests/integrations/openfeature-client:
     devDependencies:
@@ -4882,6 +4910,9 @@ packages:
         optional: true
       '@swc/core':
         optional: true
+
+  oauth4webapi@3.8.8:
+    resolution: {integrity: sha512-8N28E+a/oxfXWBgOMt+ZP/JUf/XR+IFbvkAEPP3gznXOMv9BpAAwiIj0TFNz3tGTPc0ZQ8zmWBNgN1nAys0gng==}
 
   ob1@0.84.5:
     resolution: {integrity: sha512-aH9RkoZc7w/90HBamFxTw8ZLFr05wXS+iOnvmrgo53Ep8Pyrm5FieQSaPIVROkfFVQISeD/zo92fes26TOwe+A==}
@@ -11290,6 +11321,8 @@ snapshots:
       '@nx/nx-linux-x64-musl': 24.0.5
       '@nx/nx-win32-arm64-msvc': 24.0.5
       '@nx/nx-win32-x64-msvc': 24.0.5
+
+  oauth4webapi@3.8.8: {}
 
   ob1@0.84.5:
     dependencies:

@@ -9,6 +9,7 @@
         "@eventiva/schema": "workspace:*",
         "@eventiva/integrations.sql": "workspace:*",
         "@eventiva/ui-modules": "workspace:*",
-        "@eventiva/integrations.trust.server": "workspace:*"
+        "@eventiva/integrations.trust.server": "workspace:*",
+        "@eventiva/integrations.oidc": "workspace:*"
     }
 }
