@@ -10098,11 +10098,14 @@
         {
             "issue": "EVE-68",
             "kind": "later-status",
-            "date": "2026-11-18T17:18:12.411Z",
-            "status": "Backlog",
-            "statusType": "backlog",
+            "date": "2026-11-18",
+            "status": "In Progress",
+            "statusType": "started",
             "summary": "Owner-relayed revision-10 rank-1 continuation adds six sensitive online-only organisation work email/phone actions to the delivered tenant-private organisation backend. Existing lowercase grammar requires crm.contact-point.* and set-primary, without shared naming changes or aliases. Stable UUIDv7 identity, immutable parent/kind/work label, exact unverified values, duplicate distinction and revisioned tombstones retain default-off crm.enabled and live crm.read/write/target/resource authority. Persisted per-organisation/kind guards serialize complete-page primary changes without parent-pair revision writes. Seventeen focused tests pass, including fourteen actual-host PostgreSQL/SQLite scenarios: reopen, original-key/lost-reply replay, post-write rollback/interruption, revision/primary races, whole tombstone-page traversal, tenant isolation, live revocation and actual span/logger/error canaries. Full check/verify repeats preserve kit, catalogue-import, task-traceability, location dcfca0df and authenticated HTTP c88b5cb0 main: 104 aggregate and 17 smoke/dependency tasks; strict scanner 270 files/0 findings, ratchet 0 violations, source/emitted boundaries and cycles zero. Strict reviewed planning and Nx sync pass. Generated outputs, signed SHAs and independent hosted CI are recorded separately in the maintained timeline and verified EVE-68/GitHub835 pair. Unmirrored task comments were explicitly synchronized to GitHub without claiming automatic synchronization. Archive blocks fresh contact operations but is not replay authorization revocation. Intact-schema provider discovery remains incomplete; UUID normalization does not fix bounds/composed/union restrictions. Person/personal kinds, affiliations, private/team sharing, masking/undo, UI/offline/native, transport/provider parity and broad EVE-68 remain open. Frozen capture is unchanged; EVE-248 stays January 2027-deferred, without paid work or production activation.",
             "sources": [
+                "https://linear.app/resnovas/issue/EVE-68",
+                "https://linear.app/resnovas/issue/EVE-68#comment-6ee19fe8-b30c-474b-a1d3-f024ed5812df",
+                "https://github.com/Resnovas/Eventiva/issues/835#issuecomment-6986135835",
                 "https://linear.app/resnovas/issue/EVE-68#comment-95d4b0f3-124a-492d-8283-0ba30092ce5e",
                 "https://linear.app/resnovas/issue/EVE-68#comment-395f9a4b-16a5-4d3c-b52c-2bc39300593d",
                 "https://linear.app/resnovas/issue/EVE-68#comment-cd5e2833-38a7-4ca8-9ff4-f5972d5f1489",
