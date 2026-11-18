@@ -47,15 +47,14 @@ updates:
       default-days: 7
     versioning-strategy: increase
     # Expo SDK 56 pins react/react-dom 19.2.3 and react-native 0.85.3 in its
-    # bundledNativeModules.json; a 0.x minor is still "minor" here. Move these
-    # only in a coherent Expo SDK migration (#1045, #1050), keeping patches.
+    # bundledNativeModules.json, and react-native 0.85.3's renderer throws
+    # unless React.version is exactly 19.2.3, so even a React patch breaks the
+    # app. Move these three only in a coherent Expo SDK migration (#1045,
+    # #1050, #1051); @types/react still takes patches.
     ignore:
       - dependency-name: react
-        update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: react-dom
-        update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: react-native
-        update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: '@types/react'
         update-types: [version-update:semver-major, version-update:semver-minor]
     commit-message:
