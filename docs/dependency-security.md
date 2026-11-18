@@ -160,6 +160,103 @@ cooldown and the house override. This validates repository policy, not execution
 inside GitHub's hosted scanners. Full gates and both SQL dialects still run for
 this batch; source and exact signed delivery evidence belong on EVE-265.
 
+## Batch 4: fix the actual Scorecard / OSV scan
+
+Jonathan's later 2026-11-18 excerpt, `Vulnerabilities score is 0: 481 existing
+vulnerabilities detected`, is reproduced exactly in the
+[House Scorecard job](https://github.com/Resnovas/Eventiva/actions/runs/44287585365/job/134744139427)
+at main `6d63016a`. The producer chain is `.github/workflows/house-scorecard.yml`
+-> the house reusable `scorecard.yml` -> `ossf/scorecard-action` v2.4.4
+(`2d1146689b8cda280b9bc96326124645441f03bc`) -> Scorecard v5.5.0
+(`c395761df6afe1a69e476bc60a013a94bcbc153f`) -> OSV-Scanner v2.3.2.
+The job succeeds while emitting a high-severity supply-chain finding.
+`github/codeql-action/upload-sarif` uploads its SARIF; it does not perform that
+dependency scan. CodeQL analysis, automatic Code Quality and Dependabot hosted
+alerts are separate services. CodeQL `paths-ignore` does not configure OSV.
+
+The action has no arbitrary path-exclusion or TOML-config input. Its embedded
+OSV version defaults to honoring `.gitignore`; `osv-scanner.toml` has no path
+exclusion field. The narrow supported configuration is therefore these root
+`.gitignore` directory patterns, not advisory-ID or package suppressions:
+
+```gitignore
+**/[Ee][Xx][Aa][Mm][Pp][Ll][Ee][Ss]/
+**/[Ee][Xx][Tt][Ee][Rr][Nn][Aa][Ll][Ss]/
+```
+
+Trailing slashes match directory segments, not similar names such as
+`notexamples`, `externals-copy` or `examples.ts`. Bracket classes cover all 768
+ASCII case spellings, and `**/` covers root and nested directories. Existing
+tracked archive/vendor bytes remain tracked and unchanged. New reference imports
+need explicit `git add -f`; do not untrack or delete preserved snapshots.
+The root `.gitignore` is repository-owned, not a managed house template.
+
+Exclusions alone are insufficient: v2.4.4's embedded parser reads only the first
+YAML document in this repository's PNPM lockfile, containing 15 package-manager
+bootstrap packages. It misses the application document. With exclusions alone,
+old Scorecard incorrectly reports zero findings. The local workflow therefore
+pins Action v2.5.0 at `fa7117db83c52d787ae5a89f350999701505d78e`, released
+2026-10-12. It embeds Scorecard v5.6.0, OSV-Scanner v2.5.1 and OSV-SCALIBR v0.5.3;
+that extractor reads every PNPM YAML document. A standalone older OSV binary's
+module versions need not equal the versions resolved inside the action.
+
+The documented `sync.exclude` mechanism protects the repository-owned Scorecard
+workflow as well as Dependabot configuration. This local workflow retains the
+house events, default-branch condition, check name, timeout, least-privilege reads,
+SARIF upload/category and all Scorecard checks. The observed old job reported
+`Publication enabled: false`, so the local job explicitly keeps publication off
+and does not request an OIDC write token. No external publishing, shared house
+source change, CodeQL gate change, AI budget change or EVE-248 investigation is
+introduced. Review future house fixes manually for both excluded configuration files.
+
+### Executed scope and active-finding proof
+
+Verified release binaries and SHA-256 release checksums reproduce the scan on a
+complete Git archive of `6d63016a`, read-only at `/scan` in a disposable validation
+container. No install or application check runs against historical source.
+The validation container trusts the orb's CA bundle; TLS verification stays on.
+The equivalent Scorecard CLI invocation is:
+
+```sh
+scorecard --local=/scan --checks=Vulnerabilities --format=json --show-details
+```
+
+Use verified v5.5.0 and v5.6.0 release binaries to compare. The local CLI runs
+the real Vulnerabilities check, not the other hosted checks or SARIF publication.
+For a manifest inventory, OSV v2.3.2 was also run with `scan source -r`, the same
+Python extractor selection as the old action, `--all-packages --format json`.
+Never add `--no-ignore`: it defeats this directory policy. An archive beneath an
+ignored ancestor can falsely appear empty; isolate it at a clean filesystem path.
+
+| Executed scenario | Result |
+| --- | --- |
+| Old Scorecard, original archive | Score 0; exactly 481 distinct vulnerability IDs, matching the quoted hosted output. |
+| New Scorecard, original archive | Score 0; exactly 481 distinct IDs. |
+| Old Scorecard, directory exclusions only | Score 10; zero IDs, exposing its preexisting second-document blind spot. Not accepted as the fix. |
+| New Scorecard, directory exclusions | Score 9; one ID: `GHSA-fc5q-39xc-vjpf` (picomatch). Active application finding retained. |
+| OSV old-version manifest inventory | 17 package-bearing manifest sources before, one root lockfile after; 16 excluded sources are beneath preserved directories. Two are NuGet `packages.config`, beyond the earlier 15-lockfile inventory. |
+| Actual OSV all-case/depth fixture | 1,540 manifests before -> four after: root, nested active, `notexamples`, and `externals-copy`. Every retained source still reports the same picomatch advisory that was present in the excluded sources. |
+| New Scorecard on retained-control fixture | Score 9; picomatch remains visible. |
+| New Scorecard with distinct reference-only controls | All 1,536 reference paths additionally contain vulnerable lodash 4.17.20; four retained controls contain only picomatch. Five advisory IDs before -> one after, retaining picomatch but removing the four reference-only IDs. Advisory deduplication cannot make a failed filter appear successful. |
+| Active `pnpm audit --json` | One high picomatch finding before and after; zero critical/moderate/low. |
+
+The direct OSV JSON contains 482 distinct IDs before exclusions; Scorecard's
+evaluation reports 481. Keep those tool-specific counts separate rather than
+equating them with each other or GitHub's hosted Dependabot alerts. The permanent
+reference suite verifies all 1,536 excluded root/nested paths, active/similar-name
+controls, the reviewed scanner pin, house override and preserved SARIF policy.
+It fails before the gitignore rules and passes with them. Full repository gates
+and uncached PostgreSQL/SQLite tests are recorded with signed delivery on EVE-265.
+No pasted GHSA ID is ignored; existing `osv-scanner.toml` files inside preserved
+source are neither edited nor copied into active configuration.
+
+Pinned sources: [old action inputs](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/action.yaml),
+[Scorecard's OSV invocation](https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/clients/osv.go),
+[OSV gitignore behavior](https://github.com/google/osv-scanner/blob/e2a5d93abd9c85d068755973f014d28d6cec02c1/docs/scan-source.md#ignored-files),
+[new action module versions](https://github.com/ossf/scorecard-action/blob/fa7117db83c52d787ae5a89f350999701505d78e/go.mod),
+[upstream multi-document fix](https://github.com/google/osv-scalibr/commit/87a1418f14c561f33139c98fbd562f3b72831a6f),
+[OSV configuration](https://github.com/google/osv-scanner/blob/c84fa4568f2526d0333e9a914ea8a0a5f74ad68b/docs/configuration.md).
+
 ### Apply the remaining GitHub-side alert policy
 
 These steps follow GitHub's official docs checked on 2026-11-18. Repository

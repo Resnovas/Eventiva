@@ -184,3 +184,46 @@ test('excludes every case/depth of reference directories while retaining active 
     ])
         for (const patterns of policies) assert.ok(!patterns.some((pattern) => matchesGlob(file, pattern)), file);
 });
+
+/** Keep OSV's default gitignore-based scope narrow without suppressing vulnerability IDs. */
+test('OSV gitignore policy excludes reference directory segments but retains active manifests', () =>
+    fixture(({ root, write }) => {
+        write('.gitignore', readFileSync(new URL('../../.gitignore', import.meta.url), 'utf8'));
+        const { parse } = createRequire(import.meta.resolve('nx/package.json'))('yaml');
+        const house = parse(readFileSync(new URL('../../.github/smartcloud.yml', import.meta.url), 'utf8'));
+        const workflow = parse(
+            readFileSync(new URL('../../.github/workflows/house-scorecard.yml', import.meta.url), 'utf8')
+        );
+        assert.ok(house.sync.exclude.includes('.github/workflows/house-scorecard.yml'));
+        const steps = workflow.jobs['house-scorecard'].steps;
+        const scanner = steps.find((step) => step.uses?.startsWith('ossf/scorecard-action@'));
+        // This reviewed release reads PNPM's application document, not just its bootstrap document.
+        assert.equal(scanner.uses, 'ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e');
+        assert.equal(scanner.with.results_format, 'sarif');
+        assert.equal(scanner.with.publish_results, false);
+        assert.ok(steps.some((step) => step.with?.category === 'scorecard'));
+        const excluded = [];
+        for (const word of ['examples', 'externals']) {
+            let variants = [''];
+            for (const letter of word)
+                variants = variants.flatMap((prefix) => [prefix + letter, prefix + letter.toUpperCase()]);
+            for (const variant of variants)
+                excluded.push(`${variant}/pnpm-lock.yaml`, `apps/nested/${variant}/deep/pnpm-lock.yaml`);
+        }
+        const retained = [
+            'pnpm-lock.yaml',
+            'apps/server/pnpm-lock.yaml',
+            'packages/nested/pnpm-lock.yaml',
+            'notexamples/pnpm-lock.yaml',
+            'nested/externals-copy/yarn.lock',
+            'nested/examples.ts',
+        ];
+        // --no-index also checks already tracked files, as the scanner does in its remote archive.
+        const ignored = execFileSync('git', ['-C', root, 'check-ignore', '--no-index', '--stdin'], {
+            input: [...excluded, ...retained].join('\n') + '\n',
+            encoding: 'utf8',
+        })
+            .trim()
+            .split('\n');
+        assert.deepEqual(ignored, excluded);
+    }));

@@ -1,9 +1,8 @@
-# house:managed:begin - synced from Resnovas/.github templates/.github/workflows/house-scorecard.yml. Edits inside this block are overwritten.
-#
-# OpenSSF Scorecard. Scores the repository's supply-chain practices on the
-# default branch, weekly and when branch protection changes, uploads the
-# results to code scanning and, for a public repository, publishes them for
-# the README badge. Uses only the workflow token.
+# Repository-owned EVE-265 override, excluded from house sync in smartcloud.yml.
+# Derived from Resnovas/.github's reusable scorecard.yml; retain its events,
+# permissions and SARIF category when maintaining this local scanner pin.
+# v2.5.0 reads both PNPM YAML documents; v2.4.4 missed application packages.
+# OSV honors the root .gitignore reference-directory policy in its remote archive.
 name: House Scorecard
 
 on:
@@ -18,11 +17,28 @@ permissions: {}
 
 jobs:
   house-scorecard:
-    uses: Resnovas/.github/.github/workflows/scorecard.yml@main
+    name: house-scorecard / scorecard
+    if: github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       actions: read
       contents: read
-      id-token: write
       security-events: write
-# house:managed:end
-# house:local - add further jobs below, indented under jobs.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # The previous reusable run reported publication disabled. Do not
+          # activate external publication by moving this job into the caller.
+          publish_results: false
+
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: results.sarif
+          category: scorecard

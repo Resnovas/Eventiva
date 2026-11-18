@@ -81,8 +81,9 @@ The [inventory and residual reasons](../dependency-security.md) own the details.
 | Expo Zod major override | Completed delivery | Signed main commits e06839cf and 86a40aea; root audit 4 -> 3 (1 high, 2 moderate). Root check, full verify and uncached PostgreSQL/SQLite storage suite pass; exact evidence recorded on EVE-265. |
 | Glob/minimatch majors | Completed delivery | Signed main source 2633f6f2 and graph 21b6eb8e after commerce/trust rebases. Scoped glob 14.0.4 / minimatch 11.0.7 preserve legacy APIs/cooldown. Root check, full verify (92 aggregate tasks), uncached storage (11 files / 206 tests), both SQLite/PostgreSQL process-loss proofs and 15 smoke/dependency tasks pass. Audit 3 -> 1 (high picomatch only); evidence on EVE-265. |
 | Picomatch investigation | Blocked on upstream patch | Every dependency is transitive; all published versions through latest 4.0.7 are affected. Twenty checked latest-parent records retain it. Build-pattern exposure reproduced; no untrusted application glob API found. [Full tree and analysis](../dependency-security.md#picomatch-dependency-paths-and-reachability); no unsafe replacement or suppression. |
-| Preserved-directory scanner policy | Current delivery increment | Jonathan approved all-case/all-depth examples/externals exclusions on 2026-11-18, preserving contents. Dependabot version-update filters, local house override and literal CodeQL case variants are covered by the root reference tests; full verification and exact delivery recorded on EVE-265. |
-| Hosted alert triage / count | Pending owner access and action | Repository config cannot remove dependency-graph entries/alerts. [Documented owner steps](../dependency-security.md#apply-the-remaining-github-side-alert-policy) cover manifest auto-triage/dismissal and rebuild. Alert API 403; last push banner 401 (13 critical/188 high/170 moderate/30 low), not a post-rebuild count. Separate automatic Code Quality exclusions remain unverified. |
+| Preserved-directory scanner policy | Completed batch 3 | Signed source fed3a557 and graph 02bc0751; full local gates, both SQL dialects and all reported non-skipped hosted checks passed. Dependabot version-update filters, local house override and literal CodeQL case variants preserve reference bytes. |
+| Scorecard / embedded OSV scope | Completed batch 4 | Exact 481-warning producer traced to House Scorecard, not CodeQL analysis. Root gitignore policy reduces scanner manifest scope 17 -> 1; actual all-case/depth fixture 1540 -> 4 active/similar-name controls. Local Action v2.5.0 override fixes the older parser's PNPM second-document blind spot: real Scorecard 481 -> 1, retaining active picomatch. [Detailed evidence and limits](../dependency-security.md#batch-4-fix-the-actual-scorecard--osv-scan); full gates and signed delivery recorded on EVE-265. |
+| Hosted alert triage / count | Pending owner access and action | Repository config cannot remove dependency-graph entries/alerts. [Documented owner steps](../dependency-security.md#apply-the-remaining-github-side-alert-policy) cover manifest auto-triage/dismissal and rebuild. Alert API 403; batch-3 push banner 400 (13 critical/188 high/169 moderate/30 low), not a post-rebuild count. Separate automatic Code Quality exclusions remain unverified; the quoted 481 warning is a different Scorecard/OSV metric. |
 | Vendored reference refreshes | Upcoming / upstream boundary | Inventoried separately; reviewed upstream/subtree refreshes required, not provenance-breaking local patches. |
 
 ```mermaid
@@ -91,6 +92,7 @@ flowchart LR
     Zod --> Matchers["Glob / minimatch compatibility batch"]
     Matchers --> Residual["Unpatched picomatch; preserve reference source"]
     Matchers --> Policy["Owner-approved all-case scanner policy"]
+    Policy --> OSV["Scorecard / OSV scope; active finding retained"]
     Policy --> Triage["Owner manifest triage and graph rebuild"]
     Triage --> Count["Record actual hosted alert counts"]
 ```

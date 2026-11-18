@@ -36,6 +36,18 @@ security access; this lane's API reads remain denied. Separate automatic Code
 Quality path exclusions are not established by the advanced House CodeQL config.
 These are explicit remaining boundaries, not waived checks or patch claims.
 
+The same-day quoted 481-vulnerability warning was subsequently traced to
+[House Scorecard](https://github.com/Resnovas/Eventiva/actions/runs/44287585365/job/134744139427),
+whose CodeQL action only uploads SARIF. The approved directory policy is implemented
+for that actual OSV scanner through root gitignore rules and a repository-local,
+house-sync-excluded Action v2.5.0 workflow. The scanner upgrade is necessary to
+read PNPM's application YAML document, not return a false zero after exclusions.
+Real archived-source checks retain one active picomatch finding (481 -> 1), while
+all-case/depth and similar-name controls prove narrow scope. This implementation
+does not approve advisory-ID suppressions, reference edits, external publication,
+shared house changes or reopening EVE-248; [the security guide](../dependency-security.md#batch-4-fix-the-actual-scorecard--osv-scan)
+records the tested versions, supported mechanism and remaining hosted-alert boundary.
+
 ## Resumed commerce work - 2026-11-18
 
 Jonathan's [owner message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g)

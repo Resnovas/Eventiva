@@ -308,3 +308,9 @@ vitest.config.*.timestamp*
 test-output
 test-results
 playwright-report
+
+# EVE-265: Scorecard's embedded OSV scanner honors these patterns in its
+# remote archive. Keep active manifests scanned; do not ignore GHSA IDs.
+# Existing tracked reference bytes remain versioned; new imports need git add -f.
+**/[Ee][Xx][Aa][Mm][Pp][Ll][Ee][Ss]/
+**/[Ee][Xx][Tt][Ee][Rr][Nn][Aa][Ll][Ss]/

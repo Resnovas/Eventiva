@@ -39,6 +39,8 @@ sync:
   # The house documents this local override in docs/sync.md#exclude.
   exclude:
     - .github/dependabot.yml
+    # The local scanner upgrade preserves application-lockfile coverage.
+    - .github/workflows/house-scorecard.yml
   values:
     HOUSE_PRESET: house-base.yml
 
