@@ -16,6 +16,12 @@ updates:
       timezone: Europe/London
     cooldown:
       default-days: 7
+    # v6.1.1's native pnpm 11.28.10 bootstrap intermittently installs one of
+    # its two packages, so setup-node's `pnpm store path` fails (PR #1046
+    # smoke, 2026-11-18). Skip only that release; later fixes still arrive.
+    ignore:
+      - dependency-name: pnpm/action-setup
+        versions: ['6.1.1']
     commit-message:
       prefix: ci
       include: scope
