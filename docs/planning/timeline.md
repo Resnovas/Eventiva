@@ -2,6 +2,39 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Mapped-preview permutation proof - 2026-11-18
+
+The revision-17 rank-2 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+dispatches a proof-only extension of the existing catalogue contract spec.
+This [implementation thread](https://ampcode.com/threads/T-01a1edbf-813f-7417-b69b-408647dfd0f5)
+independently read the complete live EVE-247 description/terminal comments,
+actual open [GitHub #1017](https://github.com/Resnovas/Eventiva/issues/1017)
+and its EVE-247 linkback. The original owner-selection time is unknown.
+The active import-process proof lane retains its separate fixtures and
+catalogue people/agent guides; this task changes no shared issue ownership,
+assignee or status. Broader EVE-247 stays open.
+
+| Transition | Actual activity and evidence | Remaining boundary |
+| --- | --- | --- |
+| Started 2026-11-18T17:39:44.187Z | [Linear start](https://linear.app/resnovas/issue/EVE-247#comment-28bab3a1-8b54-4ce2-8b7a-73793539c482) and independently read-back [GitHub start](https://github.com/Resnovas/Eventiva/issues/1017#issuecomment-6986554210) identify this lane and its single handwritten test reservation. Current base a909d508. Existing catalogue suite passes 5 tests before edits. | Implement bounded independent-oracle permutations and disposable incorrect-candidate controls. No production mismatch is presumed; request a source amendment before expanding if one appears. |
+| Focused checkpoint 2026-11-18T17:48:54Z | [Linear evidence](https://linear.app/resnovas/issue/EVE-247#comment-70d44f1c-7798-4fe7-8a1d-c6d75a505842) and independently read-back [GitHub evidence](https://github.com/Resnovas/Eventiva/issues/1017#issuecomment-6986769783). Catalogue spec: 6 tests pass, preserving the original 5. A handwritten oracle checks 200 deterministic row/reference permutations plus 5 perturbations twice with frozen inputs. Disposable first-duplicate-wins and shifted-private-payload candidates fail that actual oracle through assertion differences. Unchanged runtime import/product controls: 2 files / 10 tests pass across PostgreSQL and SQLite. | No production mismatch or amendment. Exact positioned private stock, all-valid-duplicate refusal, invalid-row independence, ambiguity, punctuation/internal-space and variant boundaries are covered with synthetic fixtures only. |
+| Combined acceptance verified 2026-11-18T18:27:02Z | After rebasing onto invoice delivery f4d109f4, `node --run check` and fixture-backed `node --run verify` pass: lint/typecheck/test/build/parity for 34 projects plus dependencies, source/emitted boundaries and 17 smoke/dependency tasks. Strict scanner: 274 files / 0 findings; ratchet: 0 findings/candidates/violations. Strict reviewed planning: 258 issues / 692 edges / 0 unresolved / 0 stale. Nx sync is current; planning/LLMS regenerated without output drift. | Clean-source Graphify and signed direct-main publication follow. Hosted CI is separate, not claimed green. No compiler, parser, runtime, process-lane guide/fixture or protected approval-path edits. |
+| Broader catalogue acceptance | Open / upcoming | Consented samples, lawful source acquisition, supplier discovery/export compatibility, reviewed journeys and agreed quality metrics remain open. Pure preview has no ActionHost/Integrity dependency and does not resolve the known post-handler approval gap. |
+
+```mermaid
+flowchart LR
+    Packet["Revision 17 proof-only dispatch"] --> Oracle["Independent mixed-outcome fixture oracle"]
+    Oracle --> Orders["Bounded stock and reference permutations"]
+    Orders --> Negative["Disposable incorrect-candidate rejection"]
+    Negative --> Gates["Latest-main strict and full gates"]
+    Gates --> Delivery["Signed bounded delivery and separate CI"]
+    Delivery --> Open["EVE-247 and common approval gaps remain open"]
+```
+
+No production/parser, property-testing dependency, protected execution/host/trust,
+paused asset/export, invoice/formatter, stock, real supplier data/rights,
+spending, activation or EVE-248 work is authorized by this proof.
+
 ## Development task traceability rollout - 2026-11-18
 
 [EVE-266](https://linear.app/resnovas/issue/EVE-266) and its independently verified automatic [GitHub mirror #1053](https://github.com/Resnovas/Eventiva/issues/1053) own this bounded house/Eventiva guidance and offline commit-enforcement rollout. The [implementation thread](https://ampcode.com/threads/T-aab6c3a2-486c-4ef0-a267-8df2b3e6996e) follows Jonathan's [requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). This is contemporary evidence, not a full live refresh of the historical all-issue capture. No application lane, dependency or read-only audit status is changed.

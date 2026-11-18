@@ -22,6 +22,8 @@ import {
     previewStockImport,
     StageImport,
     stockImportFlag,
+    type ProductReference,
+    type StockImportRow,
 } from '@eventiva/contracts/catalogue';
 
 const reference = {
@@ -209,6 +211,182 @@ it.effect(
                     expect(action.offline).toBe('online-only');
                     expect(action.flag).toEqual(Option.some('inventory.import.enabled'));
                 }
+            }
+        )
+);
+
+it.effect(
+    'preserves an independent mixed-outcome oracle across bounded permutations and perturbations',
+    /** Row and reference order may change positions, but must never choose winners or detach private stock. */ () =>
+        Effect.gen(
+            /** Exercise fixed synthetic outcomes without reimplementing matching, SKU counting or schema validation. */ function* () {
+                /** A handwritten disposition is independent of the implementation's keys and matching algorithm. */
+                type Fixture = {
+                    readonly input: StockImportRow;
+                    readonly result:
+                        | { readonly state: 'matched'; readonly reference: string }
+                        | { readonly state: 'invalid' | 'duplicate-sku' | 'unmatched' | 'ambiguous' };
+                };
+                const second = { ...reference, id: '22222222-2222-4222-8222-222222222222', model: 'B 20' };
+                const variant = { ...second, id: '33333333-3333-4333-8333-333333333333', variant: 'mk2' };
+                const ambiguous = { ...reference, id: '44444444-4444-4444-8444-444444444444', model: 'C-30' };
+                const references = [
+                    reference,
+                    second,
+                    variant,
+                    ambiguous,
+                    { ...ambiguous, id: '55555555-5555-4555-8555-555555555555' },
+                ].map(
+                    /** Freeze flat public identities so mutation cannot hide behind a later retry. */ (entry) =>
+                        Object.freeze({ ...entry })
+                );
+                // Expected dispositions are reviewed fixture facts, not derived from reference lookup or SKU normalization.
+                const fixtures: readonly Fixture[] = [
+                    {
+                        input: { ...stock, supplierSku: 'Unique-zero', quantity: 0 },
+                        result: { state: 'matched', reference: reference.id },
+                    },
+                    {
+                        input: { ...stock, supplierSku: 'Null-variant', model: 'b 20', quantity: 17 },
+                        result: { state: 'matched', reference: second.id },
+                    },
+                    {
+                        input: {
+                            ...stock,
+                            supplierSku: 'Explicit-variant',
+                            model: 'B 20',
+                            variant: 'MK2',
+                            quantity: 31,
+                        },
+                        result: { state: 'matched', reference: variant.id },
+                    },
+                    {
+                        input: { ...stock, supplierSku: 'Punctuation', model: 'A10', quantity: 11 },
+                        result: { state: 'unmatched' },
+                    },
+                    {
+                        input: { ...stock, supplierSku: 'Internal-space', model: 'B  20', quantity: 23 },
+                        result: { state: 'unmatched' },
+                    },
+                    {
+                        input: { ...stock, supplierSku: 'Ambiguous', model: 'c-30', quantity: 29 },
+                        result: { state: 'ambiguous' },
+                    },
+                    { input: { ...stock, supplierSku: 'Duplicate', quantity: 2 }, result: { state: 'duplicate-sku' } },
+                    { input: { ...stock, supplierSku: 'duplicate', quantity: 7 }, result: { state: 'duplicate-sku' } },
+                    { input: { ...stock, supplierSku: 'DUPLICATE', quantity: 43 }, result: { state: 'duplicate-sku' } },
+                    { input: { ...stock, supplierSku: 'UNIQUE-ZERO', quantity: -9 }, result: { state: 'invalid' } },
+                ];
+                /** Rotate in both directions to move every fixture through every position without factorial growth. */
+                const orders = <A>(values: readonly A[]): readonly (readonly A[])[] =>
+                    values.flatMap(
+                        /** Reverse each rotation to expose different neighbors and first/last candidates. */ (
+                            _,
+                            offset
+                        ) => {
+                            // Fresh arrays keep reversal from changing the fixture order used by subsequent rotations.
+                            const rotated = [...values.slice(offset), ...values.slice(0, offset)];
+                            return [rotated, rotated.toReversed()];
+                        }
+                    );
+                /** Attach only the current input position and exact private stock to the literal fixture verdict. */
+                const oracle = (rows: readonly Fixture[]) =>
+                    rows.map(
+                        /** Nonmatches deliberately have no reference, stock or private quantity fields. */ (
+                            entry,
+                            index
+                        ) =>
+                            entry.result.state === 'matched'
+                                ? { row: index + 1, ...entry.result, stock: entry.input }
+                                : { row: index + 1, ...entry.result }
+                    );
+                /** Check full public results twice and reject mutation of either frozen input domain. */
+                const check = (rows: readonly Fixture[], publicRows: readonly ProductReference[], label: string) =>
+                    Effect.gen(
+                        /** Preserve a pre-call snapshot so deterministic retries cannot conceal input mutation. */ function* () {
+                            const inputs = Object.freeze(
+                                rows.map(
+                                    /** Each row is flat, so freezing its fields covers all writable input. */ (
+                                        entry
+                                    ) => Object.freeze({ ...entry.input })
+                                )
+                            );
+                            const catalogue = Object.freeze([...publicRows]);
+                            const before = JSON.stringify({ inputs, catalogue });
+                            const expected = oracle(rows);
+                            // Complete object equality catches detached quantities and private diagnostic fields before testing retries.
+                            expect(yield* previewStockImport(inputs, catalogue), label).toEqual(expected);
+                            expect(yield* previewStockImport(inputs, catalogue), `${label}: repeat`).toEqual(expected);
+                            expect(JSON.stringify({ inputs, catalogue }), `${label}: unchanged`).toBe(before);
+                        }
+                    );
+                const rowOrders = orders(fixtures);
+                const referenceOrders = orders(references);
+                expect(rowOrders.length * referenceOrders.length).toBe(200);
+                for (const [rowIndex, rows] of rowOrders.entries())
+                    for (const [referenceIndex, publicRows] of referenceOrders.entries())
+                        yield* check(rows, publicRows, `rows=${rowIndex}, references=${referenceIndex}`);
+
+                // Extensions and removals change only explicitly named fixture outcomes, never a rematched expected result.
+                yield* check(
+                    fixtures,
+                    [
+                        ...references,
+                        Object.freeze({
+                            ...reference,
+                            id: '66666666-6666-4666-8666-666666666666',
+                            manufacturer: 'Unrelated Fixture',
+                        }),
+                    ],
+                    'unrelated public identity'
+                );
+                yield* check(
+                    [
+                        {
+                            input: { ...stock, supplierSku: 'Unrelated-invalid', quantity: 1.25 },
+                            result: { state: 'invalid' },
+                        },
+                        ...fixtures.toReversed(),
+                    ],
+                    references,
+                    'unrelated invalid row shifts positions only'
+                );
+                yield* check(
+                    fixtures.map(
+                        /** Increase private quantities without changing any matching identity or verdict. */ (
+                            entry
+                        ) =>
+                            entry.result.state === 'matched'
+                                ? { ...entry, input: { ...entry.input, quantity: entry.input.quantity + 97 } }
+                                : entry
+                    ),
+                    references,
+                    'asymmetric private quantities'
+                );
+                yield* check(
+                    fixtures.map(
+                        /** Only the zero-stock fixture becomes ambiguous when its second public candidate appears. */ (
+                            entry,
+                            index
+                        ): Fixture => (index === 0 ? { input: entry.input, result: { state: 'ambiguous' } } : entry)
+                    ),
+                    [...references, Object.freeze({ ...reference, id: '77777777-7777-4777-8777-777777777777' })],
+                    'second candidate cannot select by order'
+                );
+                yield* check(
+                    fixtures.map(
+                        /** Removing the null-variant identity must not let the explicit variant substitute for it. */ (
+                            entry,
+                            index
+                        ): Fixture => (index === 1 ? { input: entry.input, result: { state: 'unmatched' } } : entry)
+                    ),
+                    references.filter(
+                        /** Remove exactly the handwritten null-variant control, not an identity inferred by the matcher. */ (
+                            entry
+                        ) => entry.id !== second.id
+                    ),
+                    'null and explicit variant remain distinct'
+                );
             }
         )
 );
