@@ -20,7 +20,7 @@
         "@openfeature/web-sdk": "1.10.0",
         "@react-native-async-storage/async-storage": "2.2.0",
         "effect": "catalog:",
-        "expo": "56.0.24",
+        "expo": "58.0.23",
         "expo-localization": "56.0.6",
         "expo-splash-screen": "56.0.16",
         "expo-status-bar": "56.0.4",
