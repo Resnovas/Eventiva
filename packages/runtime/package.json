@@ -12,6 +12,11 @@
             "types": "./dist/inventory-location.d.ts",
             "default": "./dist/inventory-location.js"
         },
+        "./invoice-draft": {
+            "@eventiva/source": "./src/invoice-draft.ts",
+            "types": "./dist/invoice-draft.d.ts",
+            "default": "./dist/invoice-draft.js"
+        },
         "./settings": {
             "@eventiva/source": "./src/settings.ts",
             "types": "./dist/settings.d.ts",

@@ -77,6 +77,51 @@ flowchart LR
     Delivery --> Later["Separate generated SDK and streaming acceptance"]
 ```
 
+## Preparation-only invoice drafts - started 2026-11-18
+
+The revision-11 [packet/dispatch](https://ampcode.com/threads/T-01a1ee61-3b8d-76e1-acd9-cd77319ec06c)
+selects this bounded slice. Verified live pairs are EVE-126 / GitHub #893 and
+EVE-246 / GitHub #1016, both Backlog/open. Start was recorded at
+2026-11-18T16:02Z on [EVE-126](https://linear.app/resnovas/issue/EVE-126#comment-11777eee-b6b3-495d-b88f-703caf47a9fe),
+[EVE-246](https://linear.app/resnovas/issue/EVE-246#comment-056dcba9-dd2f-40fc-8b96-81fe170ab802),
+[#893](https://github.com/Resnovas/Eventiva/issues/893#issuecomment-6983983443) and
+[#1016](https://github.com/Resnovas/Eventiva/issues/1016#issuecomment-6983984536).
+Exact original owner-selection time is unknown. The historical capture is unchanged.
+
+Reservation: additive contracts invoice.ts, new runtime invoice-draft.ts,
+matching contracts/resources invoice-draft specs, payments guide, chapter
+32_invoice_drafts index/example and only additive runtime ./invoice-draft
+source/types/default export. Shared LLMS/planning/Graphify are regeneration
+surfaces. Product/import/compiler/SQL/CRM/contact/location/HTTP/trust and EVE-266
+sources remain read-only; preserve all location/kit exports.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Live packet/issues and tracker pairing | Completed at start | Revision 11, full live descriptions and terminal comments for EVE-126/246/69; GitHub issue bodies/states independently checked; base e1b78bdc. |
+| Canonical snapshot persistence and real SQL proof | Completed locally 2026-11-18 | Fifteen PostgreSQL/SQLite public-host tests pass; contracts configuration includes these plus two new contracts tests, 17/17 passed. Exact huge amounts, 1048576/1048577 UTF-8 byte boundaries, strict codec, reopened hosts/history/original SQL result+receipt, retained request mutation before persistence, current policy/identity/flags, actual telemetry and post-write failure/interruption rollback exercised. Independent PostgreSQL pools yield one revision-two successor/two history rows. |
+| Contention experiment and integration checkpoint | Completed locally 2026-11-18 | A forced barrier after both preflight reads timed out: live pg_stat_activity showed one transaction at a resource read and the other waiting on existing `UPDATE identity_guard SET version = version WHERE id = 1 RETURNING id`. Test now respects canonical tenant serialization rather than bypassing it. Rebased onto 0e937363; root check passes, standalone docs 269/0, ratchet 0 candidates/violations, strict planning 258 issues/692 edges/0 unresolved/0 stale and Nx sync current. Full verify running; [EVE-126 checkpoint](https://linear.app/resnovas/issue/EVE-126#comment-f0666227) and [EVE-246 checkpoint](https://linear.app/resnovas/issue/EVE-246#comment-17bba536) record bounded evidence, not whole-issue acceptance. |
+| First full gate and location integration | Completed / rechecking 2026-11-18T16:46Z | `node --run verify` exits 0 on e2f6f461 plus the complete invoice slice: 34 projects and two dependency tasks pass lint/typecheck/test/build/parity; three smoke projects and 14 dependencies pass. Source/declaration boundaries and cycles are zero. Initial explicit-unknown annotations and an intentionally unsafe negative-test literal were corrected without waivers. Newer location main dcfca0df is integrated with both export keys preserved; LLMS/planning regenerated, strict docs/reviewed planning/Nx sync rerun. Full combined-tree verification and signed delivery follow; no hosted-CI success claimed. |
+| Discovery and contact integration | Focused proof complete; combined gate running 2026-11-18T17:29Z | Full verify also passed on dcfca0df and c88b5cb0. A two-tenant/single-database fixture failed at duplicate identity seeding; inspection confirmed permanently one-tenant databases, not a supported shared-database isolation scenario. The corrected proof denies a foreign caller on the original host and preserves same-ID independence in correctly routed databases. Seventeen focused tests pass after contact source 5228a28a/graph 6ff9af0f: only the invoice fixture now supplies the CRM module's new live security assembly context. Contacts, locations and HTTP sources remain unchanged. Documentation-only contact checkpoint a909d508 is integrated during verification without changing tested TypeScript; LLMS/planning and strict/root checks repeat on that final tree. |
+| Latest-main generated outputs and signed delivery | Full combined verification observed complete 2026-11-18T17:48:30Z; signing next | Disposable PostgreSQL-backed `node --run verify` exits 0 with contact source 5228a28a and final documentation main a909d508 integrated: 15 builds, all 104 aggregate tasks and 17 smoke/dependency tasks pass. Workspace source/declarations: 264 files/1179 edges and 95 files/448 edges, zero violations or cycles. Final-tree root check passes; strict scanner 274 files/0 findings, ratchet 0 candidates/violations, reviewed planning 258 issues/692 edges/0 unresolved/0 stale and Nx sync current. LLMS/planning regenerated; clean-source Graphify and signed source/companion delivery follow. Hosted CI is not inferred from local proof. |
+| Broader statutory/provider/UI acceptance | Open / separate | No issue/send/approval/number/PDF/legal snapshot/ledger/provider/outbox/payment, financial or merchant authority, UI/sync, paid work or production. EVE-248 stays January 2027. |
+
+```mermaid
+flowchart LR
+    Canonical[Explicit canonical InvoiceRevision] --> Parties[Active accessible tenant Organisation references]
+    Parties --> Draft[Same-owner Resource snapshot and CAS revision]
+    Draft --> History[Immutable history and durable successful commit]
+    History --> Recovery[Original-key reopen and replay]
+    Recovery --> Gates[Strict-zero and current-main full verification]
+    Gates --> Delivery[Signed source and clean-source graph]
+    Delivery --> Later[Separate statutory provider and release acceptance]
+```
+
+The [payments guide](../payments.md#durable-preparation-only-invoice-drafts---eve-126--eve-246)
+owns complete fields/defaults, engineering byte/revision bounds, same-owner
+composition and shared replay limitations. No genuine blocker or handoff is
+known at this checkpoint; new blockage, handoff and delivery evidence must be
+recorded on both tracker pairs and here rather than inferred from source presence.
+
 ## Portable typed sequential batch client - 2026-11-18
 
 The owner-relayed revision-8 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
