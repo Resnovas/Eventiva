@@ -17,6 +17,11 @@
             "types": "./dist/inventory-product.d.ts",
             "default": "./dist/inventory-product.js"
         },
+        "./crm-organisation": {
+            "@eventiva/source": "./src/crm-organisation.ts",
+            "types": "./dist/crm-organisation.d.ts",
+            "default": "./dist/crm-organisation.js"
+        },
         "./catalogue-import": {
             "@eventiva/source": "./src/catalogue-import.ts",
             "types": "./dist/catalogue-import.d.ts",

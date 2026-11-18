@@ -37,6 +37,26 @@ replace stable original SQL committed evidence. Original HTTP entry/spec,
 identity/SQL/execution/compiler and unpublished trust files are not amended.
 The separate client lane requires no batch implementation or shared source edit.
 
+## Bounded CRM organisation backend - 2026-11-18
+
+The owner-relayed [revision 4 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [dispatch/clarification](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+select tenant-private organisation actions only. Exact owner-selection time is
+unknown. The [EVE-68 checkpoint](https://linear.app/resnovas/issue/EVE-68#comment-51e7e3a9-f92f-4bc7-95ac-5a1057a3c941)
+records actual SQL proof separately from approval. The historical issue capture
+and Backlog status remain unchanged.
+
+The [CRM guide](../crm-organisations.md) owns this implementation contract:
+paired Party/Organisation Resources, current UUIDv7 identity, canonical Caller
+creator/owner, tenant visibility only, dotted crm.read/write and default-off
+crm.enabled. Duplicate names do not merge. Full provider discovery is explicitly
+incomplete; the clarified bounded backend may proceed through public invocation
+without weakening schemas or editing the shared compiler. A narrow UUID fix
+does not establish bounded-name or composed-minimum compatibility. Person/User,
+team/private sharing, contacts, UI/offline and full inventory parity remain
+separate acceptance. No production activation or spending is selected; EVE-248
+remains deferred until January 2027.
+
 ## Authenticated local HTTP boundary - 2026-11-18
 
 The owner-relayed [revision 2 packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)

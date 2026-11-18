@@ -10070,6 +10070,21 @@
             ]
         },
         {
+            "issue": "EVE-68",
+            "kind": "later-status",
+            "date": "2026-11-18T14:15:22.812Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Owner-relayed revision-4 packet and clarification select a bounded tenant-private organisation backend using six public host actions, paired Resources/stable UUIDv7 and default-off crm.enabled. Ten focused tests pass, including eight real PostgreSQL/SQLite scenarios with rollback, revision races, isolation, paging, reconnect, revocation and safe telemetry. Rebased sequential-batch main 21438ec0 preserves product/UUID and portable-client delivery, passing root check, all 104 aggregate and 17 smoke/dependency tasks; standalone documentation and ratchet report zero findings/violations across 259 files. Exact UUID normalization is included, but provider discovery remains incomplete: bounded names and composed minima remain independent refusals. Shared compiler stays read-only in this lane and runtime schemas stay strict. Signed delivery and remote CI are recorded separately; Person/contacts, team/private policy, UI/offline/native/HTTP/MCP parity and whole EVE-68 remain open. Frozen capture is unchanged; EVE-248 stays deferred to January 2027, with no spend or production activation.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-68#comment-1fb5f620-046e-4144-8f24-64e20c3ca4a3",
+                "https://linear.app/resnovas/issue/EVE-68#comment-3601c5f9-a453-4a11-be9a-d3447fbe8ef3",
+                "https://linear.app/resnovas/issue/EVE-68#comment-ca2f3188-82eb-49a1-92c8-cd4105fdb0ba",
+                "https://linear.app/resnovas/issue/EVE-68#comment-51e7e3a9-f92f-4bc7-95ac-5a1057a3c941",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a"
+            ]
+        },
+        {
             "issue": "EVE-246",
             "kind": "later-status",
             "date": "2026-11-18",

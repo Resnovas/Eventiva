@@ -1,0 +1,117 @@
+/**
+ * @file tests/contracts/src/crm-organisation.spec.ts
+ *
+ * Copyright 2026 Jonathan Stevens trading as Resnovas. All rights reserved.
+ * Licensed under the Fair Core License, Version 1.0, MIT Future License
+ * (FCL-1.0-MIT); see LICENSE. You may not move, change, disable or circumvent
+ * the licence key functionality, or modify any part of the software that the
+ * licence key protects.
+ *
+ * Contributions are made under the Developer Certificate of Origin (DCO.md) and
+ * the Contributing Guidelines (CONTRIBUTING.md), subject to the Code of Conduct
+ * (CODE_OF_CONDUCT.md) and the Cooperation Commitment (COOPERATION_COMMITMENT.md).
+ *
+ * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
+ */
+
+import { describe, expect, it } from '@effect/vitest';
+import { Effect, Either, Schema } from 'effect';
+import {
+    crmFlag,
+    organisationActions,
+    organisationCreate,
+    organisationList,
+    organisationResources,
+} from '@eventiva/contracts/crm-organisation';
+import { validateDefinitions, validateInventory } from '@eventiva/contracts/inventory';
+import { make } from '@eventiva/contracts/json-schema';
+
+describe('CRM organisation contracts', /** Keep bounded wire validation independent of incomplete provider discovery. */ () => {
+    it.effect(
+        'declares six canonical private actions and paired resource identities',
+        /** Validate metadata without falsely claiming all provider profiles compile. */ () =>
+            Effect.gen(
+                /** Check declarations and explicit discovery refusal on intact schemas rather than replacing them with primitives. */ function* () {
+                    yield* validateDefinitions(organisationActions);
+                    expect(
+                        organisationActions.map(
+                            /** Compare the exact implemented public operations. */ (spec) => spec.name
+                        )
+                    ).toEqual([
+                        'crm.organisation.create',
+                        'crm.organisation.update',
+                        'crm.organisation.archive',
+                        'crm.organisation.restore',
+                        'crm.organisation.get',
+                        'crm.organisation.list',
+                    ]);
+                    expect(crmFlag.safeDefault).toBe(false);
+                    const resources = yield* organisationResources;
+                    expect(resources.party.id).toBe('crm.party');
+                    expect(resources.organisation.id).toBe('crm.organisation');
+                    for (const spec of organisationActions) {
+                        expect(spec.permission).toBe(spec.sideEffect === 'read' ? 'crm.read' : 'crm.write');
+                        expect(spec.sensitive).toBe(true);
+                    }
+                    // Negative control: discovery must fail closed, never silently erase unsupported refinements.
+                    expect(yield* Effect.either(validateInventory(organisationActions))).toMatchObject({
+                        left: { _tag: 'UnsupportedSchema' },
+                    });
+                    expect(
+                        yield* Effect.either(
+                            make(Schema.Struct({ name: Schema.String.pipe(Schema.maxLength(200)) }), 'google')
+                        )
+                    ).toMatchObject({ left: { path: '$.name', reason: 'Unsupported string keyword: maxLength' } });
+                    expect(
+                        yield* Effect.either(
+                            make(
+                                Schema.Struct({ limit: Schema.Number.pipe(Schema.int(), Schema.between(1, 100)) }),
+                                'anthropic'
+                            )
+                        )
+                    ).toMatchObject({
+                        left: { reason: 'Conflicting composed constraint: minimum' },
+                    });
+                    expect(
+                        Either.isRight(yield* Effect.either(make(Schema.Struct({ active: Schema.Boolean }), 'google')))
+                    ).toBe(true);
+                }
+            )
+    );
+    it('rejects excess private fields, malformed identities and paging boundaries', /** Demonstrate inputs where stripped or merely primitive validation would incorrectly admit mutation. */ () => {
+        // Boundary and forged-authority inputs distinguish strict rejection from silently stripping attacker-supplied fields.
+        const input = {
+            id: '019b0000-0000-7000-8000-000000000001',
+            displayName: 'Synthetic',
+            legalName: 'Synthetic Ltd',
+        };
+        expect(Either.isRight(Schema.decodeUnknownEither(organisationCreate.input)(input))).toBe(true);
+        for (const invalid of [
+            { id: 'not-a-uuid' },
+            { displayName: '' },
+            { legalName: ' untrimmed ' },
+            { displayName: 'x'.repeat(201) },
+        ])
+            expect(Either.isLeft(Schema.decodeUnknownEither(organisationCreate.input)({ ...input, ...invalid }))).toBe(
+                true
+            );
+        for (const extra of [
+            { owner: input.id },
+            { tenant: input.id },
+            { visibility: 'private' },
+            { visibility: 'team' },
+            { email: 'secret@example.test' },
+            { taxNumber: 'secret' },
+            { contactPoints: [] },
+            { arbitrary: {} },
+        ]) {
+            expect(Either.isLeft(Schema.decodeUnknownEither(organisationCreate.input)({ ...input, ...extra }))).toBe(
+                true
+            );
+        }
+        for (const limit of [0, 101, 1.5])
+            expect(Either.isLeft(Schema.decodeUnknownEither(organisationList.input)({ limit }))).toBe(true);
+        for (const limit of [1, 100])
+            expect(Either.isRight(Schema.decodeUnknownEither(organisationList.input)({ limit }))).toBe(true);
+    });
+});
