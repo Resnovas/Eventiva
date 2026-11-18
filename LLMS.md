@@ -258,6 +258,12 @@ Test projects run explicit `tsc -p ... --noEmit` targets after dependency builds
 
 Package-wide coverage reuses public cross-package specifications: runtime includes resources/telemetry, storage includes resources, and contracts includes resources/telemetry/UI/kernel. Nx implicit test dependencies track these inputs. Keep both package-wide coverage globs and thresholds; do not restore silent external-source exclusions. The paired hook Storage scenario tests handled versus escaping transaction failures, inventory settlement and exact payment replay through its public Storage methods.
 
+### Dependency security (EVE-265)
+
+Jonathan approved necessary security dependency upgrades, including majors, on 2026-11-18. The [inventory and batch record](../../../docs/dependency-security.md) distinguishes active and preserved historical lockfiles. Root `pnpm audit --json` starts at four findings (zero critical, two high, two moderate); GitHub Dependabot read access is unavailable (HTTP 403), so do not report audit counts as GitHub alert counts. Audit each archived lockfile in an isolated copy to avoid parent-workspace discovery; never run active application checks against historical source or rewrite preserved snapshots without an explicit EVE-264 override.
+
+Batch 1 scopes `@expo/cli>zod: 4.6.7` to Expo's development-tool plugin/command schemas, removing vulnerable 3.25.76 without changing Expo/native SDK versions or permitting Zod in application code. Validate valid and invalid plugin definitions, command enums, optional typed parameters, strict extra-key rejection and output unions against the installed Expo consumer. Run `node --run check`, uncached storage tests with the approved disposable PostgreSQL fixture (PostgreSQL and SQLite), and `node --run verify`. Picomatch remains high with no patched release; glob/minimatch majors form the next batch. Preserve the seven-day cooldown and script restrictions, regenerate surfaces/LLMS, and rebase/reverify before retrying a raced push. Exact signed revisions, results and residual reasons belong on [EVE-265](https://linear.app/resnovas/issue/EVE-265/remediate-dependabotaudit-security-alerts-on-main).
+
 ---
 
 ## Action inventory and runtime host (EVE-40)

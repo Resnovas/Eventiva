@@ -2,6 +2,29 @@
 
 Last reconciled with Linear: 2026-11-17. Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Dependency security remediation - 2026-11-18
+
+[EVE-265](https://linear.app/resnovas/issue/EVE-265/remediate-dependabotaudit-security-alerts-on-main)
+was created In Progress on this date after searching for an existing dependency-security
+issue. It is newer than the frozen complete issue capture; this checkpoint is not
+a claim that the full mirror was refreshed. Jonathan's upgrade approval is relayed
+through [the requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+The [inventory and residual reasons](../dependency-security.md) own the details.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Audit active and historical lockfiles | Completed inventory | Active: 0 critical, 2 high, 2 moderate. Historical main snapshot: 11 critical, 166 high, 175 moderate, 27 low; separate nested lockfiles recorded without double-counting the parent workspace. Dependabot API read denied (403). |
+| Expo Zod major override | Current verification | Scoped to the reviewed Expo consumer; root audit resolves to 1 high and 2 moderate. Full gates and signed delivery tracked on EVE-265. |
+| Glob/minimatch majors | Upcoming | Separate compatibility batch, unchanged cooldown and gates. |
+| Picomatch and historical snapshots | Blocked | No published picomatch fix. Historical preservation needs an explicit EVE-264 override before upgrades/deletion; no finding is suppressed. |
+
+```mermaid
+flowchart LR
+    Inventory["Audit all lockfiles"] --> Zod["Expo Zod security batch"]
+    Zod --> Matchers["Glob / minimatch compatibility batch"]
+    Matchers --> Residual["Record unpatched and historical blockers"]
+```
+
 ## Governed telemetry export isolation, batch 7 - 2026-11-17
 
 Revision 4 of the [batch-7 packet](https://ampcode.com/artifacts/eventiva-next-parallel-slices-batch-7-readiness-3f236807-623e-4880-84ac-3a3624072841)
