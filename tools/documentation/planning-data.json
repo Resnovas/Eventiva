@@ -10046,6 +10046,40 @@
     ],
     "annotations": [
         {
+            "issue": "EVE-246",
+            "kind": "later-status",
+            "date": "2026-11-18",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Jonathan resumed the named issues on 2026-11-18. First bounded slice adds a schema-validated advisory per-obligation fulfilment assessment with fake-clock 14/7/3-day boundaries, no-response reminders and dispute/unsupported-hold refusal. Focused tests and TypeScript compilation pass; full gates and signed delivery are recorded separately. No provider command, payment, dependency, production integration or whole-issue acceptance. The historical issue capture is unchanged.",
+            "sources": [
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g",
+                "https://linear.app/resnovas/issue/EVE-246#comment-1301864e"
+            ]
+        },
+        {
+            "issue": "EVE-247",
+            "kind": "later-status",
+            "date": "2026-11-18",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Owner resumed the named issue. First bounded library slice previews mapped bulk stock against separate public model identities. Exact case-insensitive matching retains punctuation/variants; invalid rows, all colliding valid SKUs and ambiguous references remain explicit. Conservative 1000-row/10000-reference limits are implementation choices, not researched coverage. Eight focused tests across the payment/catalogue modules and TypeScript compilation pass; full gates and signed delivery follow separately. The catalogue guide separately cites two official manufacturer samples and two inventory-tool format guides; source rights, connector compatibility and supplier discovery remain open. No scraping, source-rights claim, stock persistence, dependency or broader acceptance. Frozen source remains historical.",
+            "sources": [
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g",
+                "https://linear.app/resnovas/issue/EVE-247#comment-719b971b"
+            ]
+        },
+        {
+            "issue": "EVE-248",
+            "kind": "blocker",
+            "date": "2026-11-18",
+            "summary": "Jonathan's superseding 2026-11-18 decision: Leave off for now, revisit in January only. Recorded on EVE-248 with due date 2027-01-04. Keep the AI-gate override and all budgets unchanged; do not reopen before January 2027. No further EVE-248 work or read-only investigation by this lane. Supersedes the earlier same-day readiness checkpoint; EVE-246/247 continue independently. Frozen issue capture remains historical.",
+            "sources": [
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g",
+                "https://linear.app/resnovas/issue/EVE-248#comment-887d205b"
+            ]
+        },
+        {
             "issue": "EVE-257",
             "kind": "later-status",
             "date": "2026-11-17",

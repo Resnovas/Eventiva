@@ -17,6 +17,35 @@ Last checked: 2026-11-17. This is an index, not a new approval register. The own
 | Security profiles/assurance, independent decryption gates, regional marketplace exchange                                                     | [Existing approval-linked register](../architecture/eventiva-platform-and-marketplace.md#decision-register) cites EVE-13/250/251 comments                                                                                         | Keep that register's approved/proposed distinctions; this index does not select vendors, algorithms, regions or key providers.                                                                                                                                                                                                                               |
 | Useful JSDoc on every editable TypeScript function/method/class/interface; meaningful internal rationale                                     | Owner documentation requirement; Jonathan approved the reviewed exact debt ratchet on 2026-11-17 through this governance task                                                                                                     | New/changed code must comply; existing validated exact entries cannot grow; touched indebted files improve; tracked remediation reaches strict zero. Enforcing presence is mechanical; usefulness and meaningful-phase coverage need review. Checker/ledger validation and coordinator-owned root activation are a separate delivery, not global compliance. |
 
+## Resumed commerce work - 2026-11-18
+
+Jonathan's [owner message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g)
+explicitly follows a list naming EVE-246/247/248 and approves starting/building
+the issues. This supersedes deferral for bounded repository implementation,
+not source licensing, paid spending, dependency approval, provider agreements
+or production activation. Jonathan's later same-day decision defers EVE-248
+again, as recorded below; EVE-246/247 remain resumed.
+
+- [EVE-246](https://linear.app/resnovas/issue/EVE-246#comment-1301864e): the
+  [payment guide](../payments.md) records the first local per-obligation
+  assessment. Policy v1 uses the existing 14/7/3-day calibration; exactly seven
+  days for Established is an implementation choice from the approximate issue
+  target. A clock result never authorizes moving money or claims escrow.
+- [EVE-247](https://linear.app/resnovas/issue/EVE-247#comment-719b971b): the
+  [catalogue guide](../catalogue.md) records a bounded mapped-row preview with
+  public/private identity separation. Limits of 1,000 rows/10,000 references and
+  exact case-insensitive matching are conservative implementation choices, not
+  research-derived coverage targets or owner-approved supplier-tool selection.
+- [EVE-248](https://linear.app/resnovas/issue/EVE-248#comment-887d205b): Jonathan
+  explicitly decides "Leave off for now, revisit in January only". Due date is
+  2027-01-04; do not reopen before January 2027. Keep the override and all budgets
+  unchanged; no further EVE-248 work or read-only investigation by this lane.
+  This supersedes the earlier same-day readiness checkpoint. See the
+  [enrollment deferral](../smartcloud-enrollment.md#eve-248-deferral---2026-11-18).
+
+Full aggregate verification and signed delivery evidence are recorded separately
+on the owning issues; none of these narrow checkpoints closes broad acceptance.
+
 ## Later owner decisions - 2026-11-17
 
 These updates postdate the frozen issue/comment capture. Their distinct owner

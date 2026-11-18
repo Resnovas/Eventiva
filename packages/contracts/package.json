@@ -7,6 +7,16 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./payment": {
+            "@eventiva/source": "./src/payment.ts",
+            "types": "./dist/payment.d.ts",
+            "default": "./dist/payment.js"
+        },
+        "./catalogue": {
+            "@eventiva/source": "./src/catalogue.ts",
+            "types": "./dist/catalogue.d.ts",
+            "default": "./dist/catalogue.js"
+        },
         "./telemetry-export": {
             "@eventiva/source": "./src/telemetry-export.ts",
             "types": "./dist/telemetry-export.d.ts",

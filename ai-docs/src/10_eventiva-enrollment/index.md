@@ -15,3 +15,5 @@ Canonical governance is Markdown; obsolete root AsciiDoc compatibility links hav
 EVE-264 changes only the archive parent spelling to `examples/`, not historical content, AsciiDoc, modes or private-tests revision. Package hygiene requires the exact lowercase top-level spelling and rejects archive imports case-insensitively. Preserve the old `Examples/cluster-docker` spelling above as a historical incident reference, not a current path. This repository-only rename introduces no runtime behavior or feature flag.
 
 Enrollment introduces no runtime behavior or feature flag: it is repository governance and CI configuration. Application APIs and examples are in section 11.
+
+EVE-248 is deferred by Jonathan's explicit 2026-11-18 decision: "Leave off for now, revisit in January only". Linear due date is 2027-01-04; do not reopen before January 2027. Keep the base preset, AI-gate override and all budgets unchanged. No further EVE-248 work or read-only investigation by this lane. This supersedes the earlier same-day readiness checkpoint; see `docs/smartcloud-enrollment.md` and EVE-248 comment `887d205b-03f9-4a17-b19f-fb4902fa0658`. EVE-246/247 continue independently.

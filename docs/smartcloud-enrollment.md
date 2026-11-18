@@ -68,6 +68,10 @@ settings:
 
 To end the exception, remove the lines above, point `extends` back at `house.yml`, validate, and read back the ruleset.
 
+### EVE-248 deferral - 2026-11-18
+
+Jonathan's explicit decision, [recorded on EVE-248](https://linear.app/resnovas/issue/EVE-248#comment-887d205b), is: "Leave off for now, revisit in January only". The due date is 2027-01-04. Keep the AI-gate override and all budgets unchanged; do not reopen the work before January 2027. No further EVE-248 investigation, including read-only checks, is authorized for this lane. This supersedes the earlier same-day readiness checkpoint, not the historical issue capture. Continue EVE-246/247 independently.
+
 ## Checkout fix
 
 `actions/checkout` failed in every job that checks out code with `No url found for submodule path 'Examples/cluster-docker' in .gitmodules`. That gitlink was committed in April 2026 without a `.gitmodules` entry, and it is removed. This quoted error retains its historical spelling. The archived `examples/eventiva-before-amp/tests` submodule stays declared, inactive and not updated.
