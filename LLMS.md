@@ -2334,18 +2334,19 @@ export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: Toke
 @title Invoke a canonical specification with portable domain types and separately protected current proof
 
 ```ts
-import type { ActionSpec, Input } from '@eventiva/contracts/action';
+import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
 import {
     HttpActionCredentials,
     invokeHttpAction,
+    invokeHttpActionBatch,
     type HttpActionTarget,
 } from '@eventiva/integrations.http-client/action';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Schema } from 'effect';
 
 /**
  * Build an unexecuted canonical call; the caller still provides its platform HttpClient and runs the Effect.
  * The protected store effect is evaluated on every call, while server identity/consent/policy remain live authority.
- * This is the spec-typed single-action boundary, not generated inventory, batch, streaming or offline support.
+ * This is the spec-typed single-action boundary, not generated inventory, streaming or offline support.
  */
 export const callWithCurrentProof = <S extends ActionSpec>(
     spec: S,
@@ -2355,6 +2356,52 @@ export const callWithCurrentProof = <S extends ActionSpec>(
 ) =>
     invokeHttpAction(spec, input, target).pipe(
         Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof }))
+    );
+
+const reserve = define('example.reserve', {
+    version: 1,
+    description: 'Synthetic structural example; the actual server must register the canonical owning spec.',
+    input: Schema.Struct({ units: Schema.Int }),
+    output: Schema.Struct({ reserved: Schema.Int }),
+    permission: 'example.write',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+const annotate = define('example.annotate', {
+    version: 1,
+    description: 'Synthetic distinct output shape for portable positional inference.',
+    input: Schema.Struct({ note: Schema.String }),
+    output: Schema.Struct({ accepted: Schema.Boolean }),
+    permission: 'example.write',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+
+/**
+ * Prepare one heterogeneous sequential batch without executing it. Supply an unretried platform HttpClient to run.
+ * Retain these exact keys and inputs for explicit recovery: a failure may follow a committed prefix and supplies
+ * no partial results/index or rollback guarantee. Wire receipts can change while original SQL commits remain stable.
+ */
+export const batchWithCurrentProof = (
+    target: Omit<HttpActionTarget, 'idempotencyKey'>,
+    currentProof: HttpActionCredentials['Type']['proof']
+) =>
+    invokeHttpActionBatch(
+        [reserve, annotate],
+        [
+            { input: { units: 7 }, idempotencyKey: 'retained:reserve:0001' },
+            { input: { note: 'Reviewed separately' }, idempotencyKey: 'retained:annotate:0001' },
+        ],
+        target
+    ).pipe(
+        Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof })),
+        Effect.map(
+            /** Each result retains its canonical position without a union, cast or copied DTO. */ (results) => ({
+                reserved: results[0].output.reserved,
+                accepted: results[1].output.accepted,
+                receipts: [results[0].receiptId, results[1].receiptId],
+            })
+        )
     );
 ```
 

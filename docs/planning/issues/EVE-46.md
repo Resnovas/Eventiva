@@ -104,3 +104,27 @@ no assertion, threshold, exclusion, suppression or accepted debt is changed.
 No server/compiler implementation changes, generated full inventory SDK,
 batch client, stream protocol, auth UI, credential issuance, offline engine,
 production activation, public deployment or paid work belong to this slice.
+
+### Portable typed batch client checkpoint - 2026-11-18
+
+The later revision-8 [dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+extends the existing client only, through six named source/test/docs files.
+The [live evidence](https://linear.app/resnovas/issue/EVE-46#comment-f41e174b-fddc-4504-aad1-9ba760276aeb)
+follows a read of the issue and terminal eight-comment page plus delivered
+server batch head `21438ec0`. This is a dated annotation, not a frozen snapshot
+refresh or whole-issue acceptance. Earlier single-client b9248f6d hosted CI is
+complete with every executed check successful; skipped releases are not deployment.
+
+Nine portable tests pass at 100% coverage. Exact UTF-8 and all-item preflight,
+heterogeneous positional codecs, original keys, detached request during proof,
+fresh credentials, fixed safe failures, one attempt and actual socket cancellation
+are exercised. Three real HTTP/JWT/SQL/Cluster conformance files pass five tests,
+including both unchanged server specs. A refused second item preserves the
+committed prefix/no third; explicit original-key recovery leaves earlier SQL
+commit result/receipt bytes unchanged and executes only the remaining suffix.
+Wire invocation receipts remain fresh. Live permission/session and transport
+denials remain authoritative. Full gates and signed revisions are recorded in
+the [timeline](../timeline.md#portable-typed-sequential-batch-client---2026-11-18)
+and live issue after execution. No server/compiler/config/dependency/export
+change, transformed discovery, full generated SDK, discovery/output transport,
+offline engine, rollback/partial-result guarantee, production or paid work.

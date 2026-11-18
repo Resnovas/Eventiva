@@ -2,6 +2,35 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Portable typed sequential batch client - 2026-11-18
+
+The owner-relayed revision-8 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize the six-file client extension only. Live EVE-46 and all eight then-current
+comments were read after rebasing onto delivered batch head `21438ec0`.
+The [bounded checkpoint](https://linear.app/resnovas/issue/EVE-46#comment-f41e174b-fddc-4504-aad1-9ba760276aeb)
+separates execution from authorization; EVE-46 remains Backlog/open. Detailed
+contracts stay in the [client guide](../http-client.md); the frozen mirror and
+strict-zero documentation governance are unchanged.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Prior single-action hosted CI | Completed | Exact-head b9248f6d reports every executed check successful. Release and PR-only jobs are skipped, not deployment. Delivered server-batch head 21438ec0 was independently checked: CI pending/no failed checks, not yet a green-CI claim. |
+| Canonical tuple codecs and request boundary | Completed locally | Nine portable tests, 100% coverage. Distinct domain/wire and positional types, original keys, literal single POST, 0/1/10/11 bounds, all-item encoding/key checks, exact multibyte 65536/65537-byte bound, detached request across suspended proof, fresh proof, strict sanitized responses and real single/batch Fetch socket interruption pass. |
+| Real HTTP/JWT/SQL/Cluster recovery | Completed locally | New and unchanged HTTP/batch conformance: three files/five tests pass. Order [7,2,9] returns [{total:33},{label:middle:1},{total:44}]. Replay keeps exact stored commits and business order. Server-side second-item resource refusal retains [7,2,9,11], no third/no partial success. Same-key recovery returns [54,recover:4,72], retains prior commits and produces [7,2,9,11,22,13] with six total commits. Hidden/unknown/sensitive/foreign tenant, flag-off and current permission/session revocation controls pass. |
+| Latest-main full gates and signed delivery | Verified locally; signed delivery recorded on EVE-46 | Rebased onto CRM main dd2e9796 and repeated after CI-only main c1db3cbb, preserving strict-zero governance. Disposable-PostgreSQL `node --run verify` passes all 104 aggregate tasks (finally 78 cached) and 17 smoke/dependency tasks (14 cached), including normal native/web builds and browser smoke. Independent adapter-entry Android Hermes and web bundles also compile; inspected dependency maps contain no server/runtime/SQL/OIDC/platform-node/history imports. Nx sync and strict reviewed planning pass; standalone documentation reports 259 editable files, zero findings. Source/emitted boundaries and cycles remain zero. LLMS/planning and clean-source Graphify are regenerated; exact signed revisions and separately pending/passed hosted CI are recorded on EVE-46. No checker, debt or threshold weakening. |
+| Remaining SDK and release | Upcoming / separate acceptance | No discovery or generated full SDK, streaming/output transport, offline queue, rollback/partial-result guarantee, device runtime, production activation or paid work. Server/compiler/dependency/export/config sources are read-only for this packet; EVE-248 and budgets stay unchanged. |
+
+```mermaid
+flowchart LR
+    Tuple["Canonical heterogeneous spec and original-key tuple"] --> Snapshot["Encode all calls and bound detached JSON before proof"]
+    Snapshot --> POST["One authenticated literal actions:batch POST"]
+    POST --> SQL["Existing sequential Cluster and SQL commits"]
+    SQL --> Recovery["Explicit same-key recovery preserves committed prefix"]
+    Recovery --> Verify["Latest-main native/web and full verification"]
+    Verify --> Later["Separate generated SDK and streaming acceptance"]
+```
+
 ## Portable HTTP client checkpoint - 2026-11-18
 
 The owner-relayed revision-6 rank-1 packet and bounded clarifications in the

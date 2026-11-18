@@ -6,8 +6,8 @@ origin/tenant and a caller-chosen idempotency key. The adapter uses Effect
 HttpApi and the specification's exact Schema ASTs to encode input and decode
 output. It does not copy the action catalogue or compile discovery schemas.
 
-This is partial EVE-46 acceptance: a spec-typed single-action client, not the
-complete inventory-generated SDK, batch client, streaming transport, session UI
+This is partial EVE-46 acceptance: spec-typed single-action and sequential batch clients, not the
+complete inventory-generated SDK, streaming transport, session UI
 or offline engine. No application startup request, public listener, production
 activation or credential issuance is added. The existing local HTTP flag and
 production refusal remain unchanged. See [the server contract](http-actions.md).
@@ -104,6 +104,112 @@ inventory support from a portable client codec succeeding.
 
 ## Recover an ambiguous mutation
 
+### Send a typed sequential batch
+
+Call `invokeHttpActionBatch(specs, calls, { baseUrl, tenant })` with an ordered
+tuple of canonical specifications and the same-length tuple of domain inputs
+and original per-item keys. Inline tuples infer positions automatically; use
+`as const` when retaining a tuple in a variable. Repeated specs are valid. The
+result is a readonly tuple of `{ output, receiptId }`, with each domain output
+in its specification's original position, not a widened union.
+
+This complete unexecuted example uses two structural synthetic specifications;
+a real caller imports the actual registered canonical specs instead. Provide
+current proof from the protected host store and an unretried `HttpClient` to
+execute it. Spec possession never registers an action or grants permission.
+
+```typescript
+import { define } from '@eventiva/contracts/action';
+import {
+    HttpActionCredentials,
+    invokeHttpActionBatch,
+    type HttpActionTarget,
+} from '@eventiva/integrations.http-client/action';
+import { Effect, Schema } from 'effect';
+
+const reserve = define('example.reserve', {
+    version: 1,
+    description: 'Synthetic reservation example.',
+    input: Schema.Struct({ units: Schema.Int }),
+    output: Schema.Struct({ reserved: Schema.Int }),
+    permission: 'example.write',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+const annotate = define('example.annotate', {
+    version: 1,
+    description: 'Synthetic annotation example.',
+    input: Schema.Struct({ note: Schema.String }),
+    output: Schema.Struct({ accepted: Schema.Boolean }),
+    permission: 'example.write',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+const prepare = (
+    target: Omit<HttpActionTarget, 'idempotencyKey'>,
+    currentProof: HttpActionCredentials['Type']['proof']
+) =>
+    invokeHttpActionBatch(
+        [reserve, annotate],
+        [
+            { input: { units: 7 }, idempotencyKey: 'retained:reserve:0001' },
+            { input: { note: 'Reviewed separately' }, idempotencyKey: 'retained:annotate:0001' },
+        ],
+        target
+    ).pipe(
+        Effect.provideService(HttpActionCredentials, { proof: currentProof }),
+        Effect.map((results) => ({ reserved: results[0].output.reserved, accepted: results[1].output.accepted }))
+    );
+void prepare;
+```
+
+Batch options have no inferred defaults:
+
+- `specs`: 1..10 canonical service-free specs in caller-selected order.
+- `calls`: one `{ input, idempotencyKey }` per spec. Inputs use its domain type;
+  keys use the same required 1..128-character syntax as a single invocation.
+- `target`: the same trusted `baseUrl` and canonical `tenant` as above; there
+  is no batch-wide replay key. Preserve every original item key and input.
+
+The adapter validates routing, count, **all** keys and canonical encodings,
+then the entire serialized UTF-8 body against 65536 bytes before reading proof
+or sending. A bad later item sends nothing. It detaches the accepted JSON
+request and captures output codecs before waiting for proof, so retained caller
+objects/arrays cannot rewrite the validated request. The protected proof is
+read once per batch HTTP attempt, afresh on each explicit call, not per item.
+It sends exactly one literal `POST /tenants/<tenant>/actions:batch` containing
+`{ calls: [{ action, input: <encoded input>, idempotencyKey }] }`.
+
+Success requires the closed `{ results: [{ output, receiptId }] }` envelope,
+exact result count, each position's canonical output codec, and a nonempty
+receipt. Short/long responses, extra fields, distinguishably reordered outputs,
+empty receipts and malformed bodies fail as a whole. Identical output shapes
+cannot establish semantic order themselves; the server's sequential contract
+remains authoritative. The client never returns an inferred partial result or
+failed-item index. Both `http.actions.enabled` and `http.action-batch.enabled`
+remain safe-default-off; local-only listening and production refusal are unchanged.
+
+### Recover explicitly after batch failure
+
+The server preflights the full structural/visibility envelope, but evaluates
+domain/resource policy per item through the existing durable executor. A
+second-item refusal can follow the first commit and prevent the third item.
+A 503, malformed success, disconnect or cancellation therefore **does not**
+imply zero commits. There is no rollback, atomicity or partial-result guarantee.
+
+After resolving the current refusal or ambiguous outcome, explicitly reconcile
+or resubmit the same original key/input tuple. Do not generate replacement keys,
+drop an assumed prefix or blindly retry. Successful original items replay their
+stored durable results without repeating the mutation; current identity,
+permissions, flags and audit can still refuse replay. Wire receipts may differ.
+The real JWT/SQL/Cluster client fixture asserts ordered heterogeneous outputs,
+unchanged stored `action_commit` evidence and business sequence on replay, a
+committed prefix/no third on second-item resource refusal, and explicit same-key
+recovery without prefix reexecution. It does not prove transformed server
+inventory, production transport or offline behavior.
+
+### Recover a single invocation
+
 There is no automatic retry, timeout policy, offline queue or cached authority
 inside the adapter. Supply an unretried transport; do not add a generic retry or
 redirect-following wrapper around mutation requests. A platform transport's own
@@ -153,7 +259,7 @@ With the documented disposable PostgreSQL fixture available, run:
 ```sh
 pnpm exec vitest run --config tests/integrations/http-client/vitest.config.mts
 pnpm exec tsc -b packages/integrations/http-client apps/client apps/server/tsconfig.spec.json
-pnpm exec vitest run --config apps/server/vitest.config.mts apps/server/tests/http-client.spec.ts apps/server/tests/http-actions.spec.ts --coverage.include=apps/server/src/http-actions.ts --coverage.include=apps/server/src/http-entry.ts
+pnpm exec vitest run --config apps/server/vitest.config.mts apps/server/tests/http-client.spec.ts apps/server/tests/http-actions.spec.ts apps/server/tests/http-action-batch.spec.ts --coverage.include=apps/server/src/http-actions.ts --coverage.include=apps/server/src/http-entry.ts --coverage.include=apps/server/src/http-action-batch.ts
 node tools/documentation/check.mjs
 node --run check
 node --run verify

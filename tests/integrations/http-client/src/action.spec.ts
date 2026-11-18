@@ -26,6 +26,7 @@ import {
     HttpActionClientFailure,
     HttpActionCredentials,
     invokeHttpAction,
+    invokeHttpActionBatch,
 } from '@eventiva/integrations.http-client/action';
 import { Deferred, Effect, Either, Exit, Fiber, Logger, Redacted, Ref, Schema } from 'effect';
 
@@ -41,8 +42,371 @@ const spec = define('fixture.typed', {
 });
 const target = { baseUrl: 'http://127.0.0.1:12345', tenant, idempotencyKey: 'chosen-by-caller:7' };
 const proof = { proof: Effect.succeed(Redacted.make('PROOF_CANARY')) };
+const label = define('fixture.label', {
+    version: 1,
+    description: 'Distinct positional codec for heterogeneous batch proof.',
+    input: Schema.Struct({ label: Schema.String }),
+    output: Schema.Struct({ accepted: Schema.BooleanFromString }),
+    permission: 'fixture.invoke',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+const batchSpecs = [spec, label] as const;
+const batchCalls = [
+    { input: { units: 7, adjustment: -2 }, idempotencyKey: 'original:seven' },
+    { input: { label: 'asymmetric' }, idempotencyKey: 'original:label' },
+] as const;
+const batchWire = [
+    { output: { total: '35' }, receiptId: 'first' },
+    { output: { accepted: 'true' }, receiptId: 'second' },
+];
 
 describe('portable canonical HTTP action client', /** Codec tests deliberately do not claim transformed server inventory support. */ () => {
+    // Run identical socket-cancellation controls for single and batch APIs so their shared transport cannot hide a regression.
+    it.effect(
+        'sends one literal batch POST with original keys and heterogeneous positional codecs plus fresh proof',
+        /** Distinct schemas prevent reordered outputs or identity encoding from passing by accident. */ () =>
+            Effect.gen(
+                /** Observe actual serialized bytes and credential reads for two explicit caller attempts. */ function* () {
+                    // This transport recorder is synthetic only; production transport must never retain proof or payloads.
+                    let attempts = 0;
+                    let proofs = 0;
+                    const http = HttpClient.make(
+                        /** Inspect the single request that contains both typed actions. */ (request) => {
+                            // One send must carry both original keys; accepting one request per action would break ambiguous-prefix recovery.
+                            attempts++;
+                            expect(request.url).toBe(`${target.baseUrl}/tenants/${tenant}/actions:batch`);
+                            expect(request.method).toBe('POST');
+                            expect(request.headers.authorization).toBe(`Bearer proof-${attempts}`);
+                            expect(request.headers).not.toHaveProperty('traceparent');
+                            expect(request.body._tag).toBe('Uint8Array');
+                            if (request.body._tag === 'Uint8Array')
+                                expect(JSON.parse(Buffer.from(request.body.body).toString())).toEqual({
+                                    calls: [
+                                        {
+                                            action: spec.name,
+                                            input: { units: '7', adjustment: -2 },
+                                            idempotencyKey: 'original:seven',
+                                        },
+                                        {
+                                            action: label.name,
+                                            input: { label: 'asymmetric' },
+                                            idempotencyKey: 'original:label',
+                                        },
+                                    ],
+                                });
+                            return Effect.succeed(
+                                HttpClientResponse.fromWeb(request, Response.json({ results: batchWire }))
+                            );
+                        }
+                    );
+                    for (let invocation = 0; invocation < 2; invocation++) {
+                        expect(
+                            yield* invokeHttpActionBatch(batchSpecs, batchCalls, target).pipe(
+                                Effect.provideService(HttpClient.HttpClient, http),
+                                Effect.provideService(HttpActionCredentials, {
+                                    proof: Effect.sync(
+                                        /** Proof is obtained anew for each explicit request, never per item or cached. */ () =>
+                                            Redacted.make(`proof-${++proofs}`)
+                                    ),
+                                })
+                            )
+                        ).toEqual([
+                            { output: { total: 35 }, receiptId: 'first' },
+                            { output: { accepted: true }, receiptId: 'second' },
+                        ]);
+                    }
+                    expect(attempts).toBe(2);
+                    expect(proofs).toBe(2);
+                }
+            )
+    );
+
+    it.effect(
+        'admits 1/10 calls but refuses all local count/key/codec/UTF-8 size defects before proof or sending',
+        /** Exact multibyte boundaries distinguish byte bounds from UTF-16 length and all-item preflight from prefix sends. */ () =>
+            Effect.gen(
+                /** Generate independently sized literal JSON, then observe no IO or proof reads on rejected inputs. */ function* () {
+                    // The fixed literal JSON overhead is measured independently of the adapter's encoder.
+                    let attempts = 0;
+                    let proofs = 0;
+                    const http = HttpClient.make(
+                        /** Return one output for each sent call, keeping count controls valid. */ (request) => {
+                            // Derive response cardinality from bytes received so 1/10-call positive controls test real envelopes.
+                            attempts++;
+                            if (request.body._tag !== 'Uint8Array') return Effect.dieMessage('expected JSON');
+                            const body: { calls: unknown[] } = JSON.parse(Buffer.from(request.body.body).toString());
+                            return Effect.succeed(
+                                HttpClientResponse.fromWeb(
+                                    request,
+                                    Response.json({
+                                        results: body.calls.map(
+                                            /** Every control uses the label schema, so count alone varies here. */ () => ({
+                                                output: { accepted: 'true' },
+                                                receiptId: 'ok',
+                                            })
+                                        ),
+                                    })
+                                )
+                            );
+                        }
+                    );
+                    /** Apply identical isolated services to each public batch call. */
+                    const run = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient | HttpActionCredentials>) =>
+                        effect.pipe(
+                            Effect.provideService(HttpClient.HttpClient, http),
+                            Effect.provideService(HttpActionCredentials, {
+                                proof: Effect.sync(
+                                    /** Detect even credential reads on a locally invalid request. */ () => {
+                                        proofs++;
+                                        return Redacted.make('proof');
+                                    }
+                                ),
+                            }),
+                            Effect.either
+                        );
+                    for (const count of [0, 1, 10, 11]) {
+                        const result = yield* run(
+                            invokeHttpActionBatch(
+                                Array.from(
+                                    { length: count },
+                                    /** Use repeated canonical specs without generating keys in the client. */ () =>
+                                        label
+                                ),
+                                Array.from(
+                                    { length: count },
+                                    /** Every item explicitly supplies its original key. */ (_, index) => ({
+                                        input: { label: 'x' },
+                                        idempotencyKey: `key:${index}`,
+                                    })
+                                ),
+                                target
+                            )
+                        );
+                        expect(Either.isRight(result)).toBe(count === 1 || count === 10);
+                    }
+                    expect(attempts).toBe(2);
+                    expect(proofs).toBe(2);
+                    const overhead = Buffer.byteLength(
+                        JSON.stringify({
+                            calls: [{ action: label.name, input: { label: '' }, idempotencyKey: 'size' }],
+                        })
+                    );
+                    for (const excess of [0, 1]) {
+                        const text = '\u00e9'.repeat(30000) + 'x'.repeat(65536 - overhead - 60000 + excess);
+                        const result = yield* run(
+                            invokeHttpActionBatch([label], [{ input: { label: text }, idempotencyKey: 'size' }], target)
+                        );
+                        expect(Either.isRight(result)).toBe(excess === 0);
+                    }
+                    for (const key of ['', 'x'.repeat(129), 'bad/key']) {
+                        expect(
+                            Either.isLeft(
+                                yield* run(
+                                    invokeHttpActionBatch(
+                                        batchSpecs,
+                                        [batchCalls[0], { ...batchCalls[1], idempotencyKey: key }],
+                                        target
+                                    )
+                                )
+                            )
+                        ).toBe(true);
+                    }
+                    const numeric = define('fixture.numeric', {
+                        version: 1,
+                        description: 'Finite domain input negative control.',
+                        output: label.output,
+                        permission: 'fixture.invoke',
+                        sideEffect: 'write',
+                        offline: 'online-only',
+                        input: Schema.Struct({ amount: Schema.Finite }),
+                    });
+                    expect(
+                        Either.isLeft(
+                            yield* run(
+                                invokeHttpActionBatch(
+                                    [label, numeric],
+                                    [batchCalls[1], { input: { amount: NaN }, idempotencyKey: 'bad-input' }],
+                                    target
+                                )
+                            )
+                        )
+                    ).toBe(true);
+                    // JSON silently omits undefined; canonical encoding must not turn it into a missing input field.
+                    expect(
+                        yield* run(
+                            invokeHttpActionBatch(
+                                [{ ...label, input: Schema.Undefined }],
+                                [{ input: undefined, idempotencyKey: 'undefined-input' }],
+                                target
+                            )
+                        )
+                    ).toEqual(Either.left(new HttpActionClientFailure({ reason: 'codec' })));
+                    expect(
+                        Either.isLeft(
+                            yield* run(invokeHttpActionBatch([label] as readonly (typeof label)[], [], target))
+                        )
+                    ).toBe(true);
+                    expect(
+                        Either.isLeft(
+                            yield* run(
+                                invokeHttpActionBatch([{ ...label, name: 'invalid/name' }], [batchCalls[1]], target)
+                            )
+                        )
+                    ).toBe(true);
+                    for (const baseUrl of [
+                        'invalid',
+                        'http://example.test',
+                        'https://PROOF_CANARY@example.test',
+                        'https://example.test/path',
+                    ])
+                        expect(
+                            Either.isLeft(
+                                yield* run(invokeHttpActionBatch(batchSpecs, batchCalls, { ...target, baseUrl }))
+                            )
+                        ).toBe(true);
+                    expect(attempts).toBe(3);
+                    expect(proofs).toBe(3);
+                }
+            )
+    );
+
+    it.effect(
+        'detaches the validated request and positional schemas before protected proof suspends',
+        /** A caller retaining mutable arrays or nested objects must not rewrite accepted identity or content. */ () =>
+            Effect.gen(
+                /** Suspend exactly at the credential boundary, mutate caller references, then inspect sent bytes. */ function* () {
+                    // No immutable type assertion is relied on for runtime ownership; callers can retain mutable aliases.
+                    const entered = yield* Deferred.make<void>();
+                    const release = yield* Deferred.make<void>();
+                    const specs = [label];
+                    const retained = { input: { label: 'original' }, idempotencyKey: 'original-key' };
+                    const calls = [retained];
+                    const http = HttpClient.make(
+                        /** Check the detached snapshot rather than merely checking the return value. */ (request) => {
+                            // Read after the credential barrier: observing original bytes distinguishes detachment from readonly typing.
+                            expect(request.body._tag).toBe('Uint8Array');
+                            if (request.body._tag === 'Uint8Array')
+                                expect(JSON.parse(Buffer.from(request.body.body).toString())).toEqual({
+                                    calls: [
+                                        {
+                                            action: label.name,
+                                            input: { label: 'original' },
+                                            idempotencyKey: 'original-key',
+                                        },
+                                    ],
+                                });
+                            return Effect.succeed(
+                                HttpClientResponse.fromWeb(request, Response.json({ results: [batchWire[1]] }))
+                            );
+                        }
+                    );
+                    const fiber = yield* invokeHttpActionBatch(specs, calls, target).pipe(
+                        Effect.provideService(HttpClient.HttpClient, http),
+                        Effect.provideService(HttpActionCredentials, {
+                            proof: Deferred.succeed(entered, undefined).pipe(
+                                Effect.zipRight(Deferred.await(release)),
+                                Effect.as(Redacted.make('proof'))
+                            ),
+                        }),
+                        Effect.fork
+                    );
+                    yield* Deferred.await(entered);
+                    retained.input.label = 'changed';
+                    retained.idempotencyKey = 'changed-key';
+                    calls.push({ input: { label: 'extra' }, idempotencyKey: 'extra' });
+                    specs.length = 0;
+                    yield* Deferred.succeed(release, undefined);
+                    expect(yield* Fiber.join(fiber)).toEqual([{ output: { accepted: true }, receiptId: 'second' }]);
+                }
+            )
+    );
+
+    it.effect(
+        'rejects incomplete, reordered, extra-field and malformed batch responses with no partial result or retry',
+        /** Every response failure may follow committed server work; only fixed safe diagnostics are returned. */ () =>
+            Effect.gen(
+                /** Distinct output codecs detect reordered values; envelope controls cover both count boundaries. */ function* () {
+                    // These canaries must not survive as causes, bodies or logs on the closed public error.
+                    for (const [status, body] of [
+                        [200, JSON.stringify({ results: [] })],
+                        [200, JSON.stringify({ results: [batchWire[0]] })],
+                        [200, JSON.stringify({ results: [...batchWire, batchWire[0]] })],
+                        [200, JSON.stringify({ results: [...batchWire].reverse() })],
+                        [
+                            200,
+                            JSON.stringify({ results: [{ ...batchWire[0], secret: 'RAW_BODY_CANARY' }, batchWire[1]] }),
+                        ],
+                        [200, JSON.stringify({ results: batchWire, secret: 'RAW_BODY_CANARY' })],
+                        [
+                            200,
+                            JSON.stringify({
+                                results: [
+                                    { output: { total: '7', secret: 'RAW_BODY_CANARY' }, receiptId: 'ok' },
+                                    batchWire[1],
+                                ],
+                            }),
+                        ],
+                        [200, JSON.stringify({ results: [{ output: { total: '7' }, receiptId: '' }, batchWire[1]] })],
+                        [200, '{"results":['],
+                        [200, '{"results":[{"output":{"total":"RAW_BODY_CANARY"},"receiptId":"one"}]}'],
+                        [400, '{"error":"invalid-request"}'],
+                        [401, '{"error":"unauthenticated"}'],
+                        [404, '{"error":"unavailable"}'],
+                        [503, '{"error":"unavailable"}'],
+                        [503, '{"error":"unavailable","details":"RAW_BODY_CANARY"}'],
+                        [500, 'RAW_BODY_CANARY'],
+                        [0, 'RAW_BODY_CANARY'],
+                    ] as const) {
+                        let attempts = 0;
+                        const http = HttpClient.make(
+                            /** Record actual sends even when the network result is ambiguous. */ (request) => {
+                                // A connection failure is not a rejection-before-commit and must never trigger an internal retry.
+                                attempts++;
+                                return status === 0
+                                    ? Effect.fail(
+                                          new HttpClientError.RequestError({
+                                              request,
+                                              reason: 'Transport',
+                                              cause: body,
+                                          })
+                                      )
+                                    : Effect.succeed(
+                                          HttpClientResponse.fromWeb(
+                                              request,
+                                              new Response(body, {
+                                                  status,
+                                                  headers: { 'content-type': 'application/json' },
+                                              })
+                                          )
+                                      );
+                            }
+                        );
+                        const failure = yield* invokeHttpActionBatch(batchSpecs, batchCalls, target).pipe(
+                            Effect.provideService(HttpClient.HttpClient, http),
+                            Effect.provideService(HttpActionCredentials, proof),
+                            Effect.flip
+                        );
+                        expect(failure).toBeInstanceOf(HttpActionClientFailure);
+                        expect(Object.keys(failure).sort()).toEqual(['_tag', 'reason']);
+                        expect(JSON.stringify(failure)).not.toMatch(/RAW_BODY_CANARY|PROOF_CANARY/);
+                        expect(attempts).toBe(1);
+                    }
+                    for (const unavailable of [
+                        Effect.fail(new HttpActionClientFailure({ reason: 'unavailable' })),
+                        Effect.dieMessage('PROOF_CANARY'),
+                    ]) {
+                        const failure = yield* invokeHttpActionBatch(batchSpecs, batchCalls, target).pipe(
+                            Effect.provideService(HttpActionCredentials, { proof: unavailable }),
+                            Effect.provide(FetchHttpClient.layer),
+                            Effect.flip
+                        );
+                        expect(JSON.stringify(failure)).not.toContain('PROOF_CANARY');
+                    }
+                }
+            )
+    );
+
     it.effect(
         'encodes domain input and decodes asymmetric wire output, fetching protected proof afresh',
         /** Independent literal wire assertions catch an identity-codec implementation. */ () =>
@@ -240,70 +604,72 @@ describe('portable canonical HTTP action client', /** Codec tests deliberately d
             )
     );
 
-    it.scopedLive(
-        'interrupts real Fetch IO without retrying or reporting mutation rollback',
-        /** A held loopback response makes cancellation observable at the actual socket, not a mock effect. */ () =>
-            Effect.gen(
-                /** Wait for the complete POST to arrive, then interrupt while the server deliberately withholds its response. */ function* () {
-                    // Separate arrival and disconnect barriers prevent an early cancellation from producing a false positive.
-                    const received = yield* Deferred.make<void>();
-                    const disconnected = yield* Deferred.make<void>();
-                    let attempts = 0;
-                    const server = createServer(
-                        /** A complete accepted request can outlive its client; cancellation is not rollback. */ (
-                            request,
-                            response
-                        ) => {
-                            // Consume the request fully, but deliberately never send headers or a response body.
-                            attempts++;
-                            request.resume();
-                            request.once(
-                                'end',
-                                /** Signal that bytes reached the server before cancellation. */ () =>
-                                    Effect.runSync(Deferred.succeed(received, undefined))
-                            );
-                            response.once(
-                                'close',
-                                /** An aborted fetch must close the outstanding response stream. */ () =>
-                                    Effect.runSync(Deferred.succeed(disconnected, undefined))
-                            );
-                        }
-                    );
-                    yield* Effect.acquireRelease(
-                        Effect.tryPromise(
-                            /** Bind a disposable loopback-only listener with an ephemeral port. */ () =>
-                                new Promise<void>(
-                                    /** Resolve only once the listener is accepting connections. */ (resolve) =>
-                                        server.listen(0, '127.0.0.1', resolve)
+    for (const batch of [false, true])
+        it.scopedLive(
+            `interrupts real Fetch ${batch ? 'batch' : 'single'} IO without retrying or reporting mutation rollback`,
+            /** A held loopback response makes cancellation observable at the actual socket, not a mock effect. */ () =>
+                Effect.gen(
+                    /** Wait for the complete POST to arrive, then interrupt while the server deliberately withholds its response. */ function* () {
+                        // Separate arrival and disconnect barriers prevent an early cancellation from producing a false positive.
+                        const received = yield* Deferred.make<void>();
+                        const disconnected = yield* Deferred.make<void>();
+                        let attempts = 0;
+                        const server = createServer(
+                            /** A complete accepted request can outlive its client; cancellation is not rollback. */ (
+                                request,
+                                response
+                            ) => {
+                                // Consume the request fully, but deliberately never send headers or a response body.
+                                attempts++;
+                                request.resume();
+                                request.once(
+                                    'end',
+                                    /** Signal that bytes reached the server before cancellation. */ () =>
+                                        Effect.runSync(Deferred.succeed(received, undefined))
+                                );
+                                response.once(
+                                    'close',
+                                    /** An aborted fetch must close the outstanding response stream. */ () =>
+                                        Effect.runSync(Deferred.succeed(disconnected, undefined))
+                                );
+                            }
+                        );
+                        yield* Effect.acquireRelease(
+                            Effect.tryPromise(
+                                /** Bind a disposable loopback-only listener with an ephemeral port. */ () =>
+                                    new Promise<void>(
+                                        /** Resolve only once the listener is accepting connections. */ (resolve) =>
+                                            server.listen(0, '127.0.0.1', resolve)
+                                    )
+                            ),
+                            /** Close even a failed test's held response and listener. */ () =>
+                                Effect.sync(
+                                    /** No public listener or persistent service survives this fixture. */ () => {
+                                        // close() alone would retain the intentionally held connection after an assertion failure.
+                                        server.closeAllConnections();
+                                        server.close();
+                                    }
                                 )
-                        ),
-                        /** Close even a failed test's held response and listener. */ () =>
-                            Effect.sync(
-                                /** No public listener or persistent service survives this fixture. */ () => {
-                                    // close() alone would retain the intentionally held connection after an assertion failure.
-                                    server.closeAllConnections();
-                                    server.close();
-                                }
-                            )
-                    );
-                    const address = server.address();
-                    if (!address || typeof address === 'string')
-                        return yield* Effect.dieMessage('missing loopback address');
-                    const fiber = yield* invokeHttpAction(
-                        spec,
-                        { units: 7, adjustment: -2 },
-                        { ...target, baseUrl: `http://127.0.0.1:${address.port}` }
-                    ).pipe(
-                        Effect.provide(FetchHttpClient.layer),
-                        Effect.provideService(HttpActionCredentials, proof),
-                        Effect.fork
-                    );
-                    yield* Deferred.await(received).pipe(Effect.timeout('3 seconds'));
-                    expect(Exit.isInterrupted(yield* Fiber.interrupt(fiber))).toBe(true);
-                    yield* Deferred.await(disconnected).pipe(Effect.timeout('3 seconds'));
-                    expect(attempts).toBe(1);
-                }
-            ),
-        10000
-    );
+                        );
+                        const address = server.address();
+                        if (!address || typeof address === 'string')
+                            return yield* Effect.dieMessage('missing loopback address');
+                        const destination = { ...target, baseUrl: `http://127.0.0.1:${address.port}` };
+                        const fiber = yield* (
+                            batch
+                                ? invokeHttpActionBatch(batchSpecs, batchCalls, destination).pipe(Effect.asVoid)
+                                : invokeHttpAction(spec, { units: 7, adjustment: -2 }, destination).pipe(Effect.asVoid)
+                        ).pipe(
+                            Effect.provide(FetchHttpClient.layer),
+                            Effect.provideService(HttpActionCredentials, proof),
+                            Effect.fork
+                        );
+                        yield* Deferred.await(received).pipe(Effect.timeout('3 seconds'));
+                        expect(Exit.isInterrupted(yield* Fiber.interrupt(fiber))).toBe(true);
+                        yield* Deferred.await(disconnected).pipe(Effect.timeout('3 seconds'));
+                        expect(attempts).toBe(1);
+                    }
+                ),
+            10000
+        );
 });

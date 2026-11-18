@@ -15,7 +15,11 @@
  */
 
 import { define, type Input, type Output } from '@eventiva/contracts/action';
-import { invokeHttpAction, type HttpActionTarget } from '@eventiva/integrations.http-client/action';
+import {
+    invokeHttpAction,
+    invokeHttpActionBatch,
+    type HttpActionTarget,
+} from '@eventiva/integrations.http-client/action';
 import { Effect, Schema } from 'effect';
 
 const canonical = define('fixture.client-types', {
@@ -27,6 +31,50 @@ const canonical = define('fixture.client-types', {
     sideEffect: 'write',
     offline: 'online-only',
 });
+
+const distinct = define('fixture.batch-types', {
+    version: 1,
+    description: 'Distinct positional domain and encoded types; client seam only.',
+    input: Schema.Struct({ accepted: Schema.BooleanFromString }),
+    output: Schema.Struct({ label: Schema.String }),
+    permission: 'fixture.invoke',
+    sideEffect: 'write',
+    offline: 'online-only',
+});
+
+/** Compile heterogeneous tuple inference without importing server/runtime code or executing a network request. */
+export const checkHttpBatchTypes = (target: Omit<HttpActionTarget, 'idempotencyKey'>) => {
+    // Input inference comes only from the ordered canonical tuple, never a union widened by a mismatching input.
+    type Specs = readonly [typeof canonical, typeof distinct];
+    type Calls = Parameters<typeof invokeHttpActionBatch<Specs>>[1];
+    type Results = Effect.Effect.Success<ReturnType<typeof invokeHttpActionBatch<Specs>>>;
+    const swappedInputRejected: { readonly accepted: boolean } extends Calls[0]['input'] ? false : true = true;
+    const wireInputRejected: { readonly units: string } extends Calls[0]['input'] ? false : true = true;
+    const swappedOutputRejected: Results[1]['output'] extends Results[0]['output'] ? false : true = true;
+    const wireOutputRejected: string extends Results[0]['output']['total'] ? false : true = true;
+    void swappedInputRejected;
+    void wireInputRejected;
+    void swappedOutputRejected;
+    void wireOutputRejected;
+    return invokeHttpActionBatch(
+        [canonical, distinct],
+        [
+            { input: { units: 7 }, idempotencyKey: 'retained:first' },
+            { input: { accepted: true }, idempotencyKey: 'retained:second' },
+        ],
+        target
+    ).pipe(
+        Effect.map(
+            /** Positional outputs are inferred from an inline tuple without caller casts or duplicate DTOs. */ (
+                results
+            ) => {
+                const total: number = results[0].output.total;
+                const label: string = results[1].output.label;
+                return { total, label };
+            }
+        )
+    );
+};
 
 /** Native/web compile proof only; never called by the application shell and never supplies an authentication shortcut. */
 export const checkHttpClientTypes = (target: HttpActionTarget) => {

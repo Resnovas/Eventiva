@@ -26,11 +26,13 @@ import { Flags } from '@eventiva/contracts/flags';
 import { IdentityStore, RoleId, organizationGet } from '@eventiva/contracts/identity';
 import { SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { ActionInventory } from '@eventiva/contracts/inventory';
-import { CurrentTenant, EpochMillis, RoutingDenied, Storage } from '@eventiva/contracts/storage';
+import { CurrentTenant, EpochMillis, GuardedCommand, RoutingDenied, Storage } from '@eventiva/contracts/storage';
 import {
     HttpActionClientFailure,
     HttpActionCredentials,
     invokeHttpAction,
+    invokeHttpActionBatch,
+    type HttpActionBatchCalls,
 } from '@eventiva/integrations.http-client/action';
 import { makeOidcVerifier, oidcSessionId } from '@eventiva/integrations.oidc/token';
 import { identityStore } from '@eventiva/integrations.sql/identity';
@@ -48,6 +50,7 @@ import { backend } from '../src/backend.ts';
 import { ClusterActions } from '../src/cluster-actions.ts';
 import { DeploymentProfile } from '../src/cluster-profile.ts';
 import { ClusterStatus } from '../src/cluster.ts';
+import { httpActionBatchFlag } from '../src/http-action-batch.ts';
 import { httpActionsFlag } from '../src/http-actions.ts';
 import { serveLocalHttp } from '../src/http-entry.ts';
 import { oidcStandardsVerifier } from '../src/identity-oidc.ts';
@@ -74,7 +77,14 @@ const common = {
 const write = define('fixture.client-write', common);
 const hidden = define('fixture.client-hidden', { ...common, permission: 'fixture.admin' });
 const sensitive = define('fixture.client-sensitive', { ...common, sensitive: true });
-const registered = [write, hidden, sensitive];
+const batchWrite = define('fixture.client-batch-write', common);
+const LabelInput = Schema.Struct({ label: Schema.String, marker: Units });
+const batchLabel = define('fixture.client-batch-label', {
+    ...common,
+    input: LabelInput,
+    output: Schema.Struct({ label: Schema.String }),
+});
+const registered = [write, hidden, sensitive, batchWrite];
 const input = { units: Units.make(7), adjustment: -2 };
 
 /** Real SQL identity and backend Cluster composition; only synthetic token discovery/key material is fixture-owned. */
@@ -138,6 +148,7 @@ const fixture = Effect.gen(
             identitySecurity.pipe(Layer.provide(routing), Layer.provide(Layer.succeedContext(state)))
         );
         const live = Context.get(security, Authorizer);
+        const control = { batch: true, denySecond: false };
         const dependencies = Layer.mergeAll(
             Layer.succeedContext(security),
             Layer.succeed(Flags, {
@@ -145,7 +156,10 @@ const fixture = Effect.gen(
                 evaluate: (flag) =>
                     Effect.succeed({
                         flag: flag.key,
-                        value: flag.key === httpActionsFlag.key || flag.safeDefault,
+                        value:
+                            flag.key === httpActionsFlag.key ||
+                            (flag.key === httpActionBatchFlag.key && control.batch) ||
+                            flag.safeDefault,
                         fallback: false,
                         reason: 'TEST',
                     }),
@@ -154,10 +168,15 @@ const fixture = Effect.gen(
                 canInvoke: live.canInvoke,
                 /** The fixture owns an organization resource; retain real SQL authorization for every attempt, including replay. */
                 check: (caller, spec, value) =>
-                    registered.some(
-                        /** Do not admit unregistered definitions to the synthetic resource policy. */ (entry) =>
-                            entry.name === spec.name
-                    ) && Schema.is(ActionInput)(value)
+                    (
+                        spec.name === batchLabel.name
+                            ? Schema.is(LabelInput)(value) && !control.denySecond
+                            : registered.some(
+                                  /** Do not admit unregistered definitions to the synthetic resource policy. */ (
+                                      entry
+                                  ) => entry.name === spec.name
+                              ) && Schema.is(ActionInput)(value)
+                    )
                         ? live.check(caller, { ...spec, name: organizationGet.name }, value)
                         : Effect.fail(new Forbidden({ action: spec.name, reason: 'resource-policy-required' })),
             }),
@@ -180,40 +199,99 @@ const fixture = Effect.gen(
                 /** Capture the backend-selected store, not a transport-provided SQL handle. */ function* () {
                     // Repeated handler execution collides on one fixed record, exposing a broken durable replay path.
                     const routed = yield* Storage;
+                    /** Persist an ordered sequence through the same tenant-routed transaction as the durable action commit. */
+                    const record = (marker: number) =>
+                        Effect.gen(
+                            /** Unique markers and retained order detect prefix reexecution and parallel dispatch independently of wire receipts. */ function* () {
+                                // A single CAS-protected record is enough for this sequential fixture, not a new batch transaction primitive.
+                                const previous = yield* routed.get(id(800));
+                                const order = Schema.is(Schema.Array(Schema.Number))(previous?.payload)
+                                    ? previous.payload
+                                    : [];
+                                if (previous)
+                                    yield* routed.compareAndSet(
+                                        yield* Schema.decodeUnknown(GuardedCommand)({
+                                            id: id(800),
+                                            expectedVersion: previous.version,
+                                            expectedState: 'pending',
+                                            idempotencyKey: `order:${marker}`,
+                                            clientMutationId: id(1000 + marker),
+                                            deadline: Date.now() + 60000,
+                                        }),
+                                        'pending',
+                                        [...order, marker],
+                                        { pending: ['pending'] }
+                                    );
+                                else
+                                    yield* routed.create({
+                                        id: id(800),
+                                        state: 'pending',
+                                        version: 0,
+                                        payload: [marker],
+                                        leaseUntil: null,
+                                    });
+                                return order.length;
+                            }
+                        ).pipe(Effect.orDie);
                     yield* host.register({
                         manifest: {
                             format: 1,
                             id: 'fixture',
                             version: '1.0.0',
                             description: 'Client conformance.',
-                            actions: registered.map(
+                            actions: [...registered, batchLabel].map(
                                 /** Reflect actual registered bindings in the manifest. */ (spec) => spec.name
                             ),
                             flags: [],
                         },
-                        actions: registered.map(
-                            /** Use canonical codecs and durable host execution instead of a test HTTP result echo. */ (
-                                spec
-                            ) =>
-                                implement(
-                                    spec,
-                                    /** A repeated execution would collide on this fixed record; asymmetric output catches swapped or echoed fields. */ (
-                                        value
-                                    ) =>
-                                        routed
-                                            .create({
-                                                id: id(504),
-                                                state: 'pending',
-                                                version: 0,
-                                                payload: { units: value.units, adjustment: value.adjustment },
-                                                leaseUntil: null,
-                                            })
-                                            .pipe(
-                                                Effect.as({ total: value.units * 5 + value.adjustment }),
-                                                Effect.orDie
-                                            )
-                                )
-                        ),
+                        actions: [
+                            ...registered.map(
+                                /** Use canonical codecs and durable host execution instead of a test HTTP result echo. */ (
+                                    spec
+                                ) =>
+                                    implement(
+                                        spec,
+                                        /** A repeated execution would collide on this fixed record; asymmetric output catches swapped or echoed fields. */ (
+                                            value
+                                        ) =>
+                                            spec.name === batchWrite.name
+                                                ? record(value.units).pipe(
+                                                      Effect.map(
+                                                          /** The prior durable sequence length makes dispatch order observable in the result. */ (
+                                                              position
+                                                          ) => ({
+                                                              total: value.units * 5 + value.adjustment + position,
+                                                          })
+                                                      )
+                                                  )
+                                                : routed
+                                                      .create({
+                                                          id: id(504),
+                                                          state: 'pending',
+                                                          version: 0,
+                                                          payload: { units: value.units, adjustment: value.adjustment },
+                                                          leaseUntil: null,
+                                                      })
+                                                      .pipe(
+                                                          Effect.as({ total: value.units * 5 + value.adjustment }),
+                                                          Effect.orDie
+                                                      )
+                                    )
+                            ),
+                            implement(
+                                batchLabel,
+                                /** A structurally distinct action shares ordered durable evidence, never a transport echo. */ (
+                                    value
+                                ) =>
+                                    record(value.marker).pipe(
+                                        Effect.map(
+                                            /** Distinct output shape proves positional decoding over actual HTTP. */ (
+                                                position
+                                            ) => ({ label: `${value.label}:${position}` })
+                                        )
+                                    )
+                            ),
+                        ],
                     });
                 }
             );
@@ -370,10 +448,25 @@ const fixture = Effect.gen(
                 Effect.provideService(HttpActionCredentials, { proof: Effect.succeed(Redacted.make(credential)) }),
                 Effect.provide(Logger.replace(Logger.defaultLogger, logger))
             );
+        /** Invoke the new public batch client over real JWT/HTTP/SQL/Cluster with no accepting verifier or executor stub. */
+        const batch = <const S extends readonly ActionSpec[]>(
+            specs: S,
+            calls: NoInfer<HttpActionBatchCalls<S>>,
+            credential = token,
+            route = tenant
+        ) =>
+            invokeHttpActionBatch(specs, calls, { baseUrl, tenant: route }).pipe(
+                Effect.provide(FetchHttpClient.layer),
+                Effect.provideService(HttpActionCredentials, { proof: Effect.succeed(Redacted.make(credential)) }),
+                Effect.provide(Logger.replace(Logger.defaultLogger, logger))
+            );
         return {
             invoke,
+            batch,
+            control,
             sql,
             identity,
+            store,
             mint,
             token,
             captured,
@@ -384,6 +477,111 @@ const fixture = Effect.gen(
 );
 
 describe('portable client versus authenticated HTTP and real SQL Cluster', /** New client conformance leaves the original HTTP source and original conformance unchanged. */ () => {
+    it.scopedLive(
+        'preserves heterogeneous order, durable replay and explicit same-key recovery after a refused second item',
+        /** Public client calls cross actual JWT, SQL authority and Cluster before independent durable-state assertions. */ () =>
+            Effect.gen(
+                /** A transient resource refusal is server-side, not a client codec defect or invented rollback. */ function* () {
+                    // Asymmetric markers and outputs expose reordering, duplicates and an incorrectly dispatched third item.
+                    const f = yield* fixture;
+                    const specs = [batchWrite, batchLabel, batchWrite] as const;
+                    const calls = [
+                        { input: { units: Units.make(7), adjustment: -2 }, idempotencyKey: 'batch:first' },
+                        { input: { label: 'middle', marker: Units.make(2) }, idempotencyKey: 'batch:middle' },
+                        { input: { units: Units.make(9), adjustment: -3 }, idempotencyKey: 'batch:last' },
+                    ] as const;
+                    for (const credential of ['', session, f.mint({ exp: Math.floor(Date.now() / 1000) - 1 })])
+                        expect((yield* f.batch(specs, calls, credential).pipe(Effect.flip)).reason).toBe(
+                            'unauthenticated'
+                        );
+                    for (const concealed of [hidden, sensitive])
+                        expect(
+                            (yield* f.batch([batchWrite, concealed], [calls[0], calls[0]]).pipe(Effect.flip)).reason
+                        ).toBe('unavailable');
+                    const unknown = define('fixture.unknown', common);
+                    expect((yield* f.batch([unknown], [calls[0]]).pipe(Effect.flip)).reason).toBe('unavailable');
+                    expect(
+                        (yield* f.batch(specs, calls, f.token, TenantId.make(id(999))).pipe(Effect.flip)).reason
+                    ).toBe('unavailable');
+                    f.control.batch = false;
+                    expect((yield* f.batch(specs, calls).pipe(Effect.flip)).reason).toBe('unavailable');
+                    f.control.batch = true;
+                    expect(yield* f.sql`SELECT * FROM action_commit`).toEqual([]);
+                    expect(yield* f.store.get(id(800))).toBeUndefined();
+                    const first = yield* f.batch(specs, calls);
+                    expect(
+                        first.map(
+                            /** Compare only domain outputs here; durable receipts are independently read below. */ (
+                                result
+                            ) => result.output
+                        )
+                    ).toEqual([{ total: 33 }, { label: 'middle:1' }, { total: 44 }]);
+                    expect((yield* f.store.get(id(800)))?.payload).toEqual([7, 2, 9]);
+                    const commits = yield* f.sql<{
+                        key: string;
+                        result: string;
+                    }>`SELECT key, result FROM action_commit WHERE result IS NOT NULL ORDER BY key`;
+                    expect(commits).toHaveLength(3);
+                    const replay = yield* f.batch(specs, calls);
+                    expect(
+                        replay.map(/** Stable outputs accompany fresh invocation receipts. */ (result) => result.output)
+                    ).toEqual([{ total: 33 }, { label: 'middle:1' }, { total: 44 }]);
+                    for (let index = 0; index < 3; index++)
+                        expect(replay[index]?.receiptId).not.toBe(first[index]?.receiptId);
+                    expect(
+                        yield* f.sql`SELECT key, result FROM action_commit WHERE result IS NOT NULL ORDER BY key`
+                    ).toEqual(commits);
+                    expect((yield* f.store.get(id(800)))?.payload).toEqual([7, 2, 9]);
+
+                    const recovery = [
+                        { input: { units: Units.make(11), adjustment: -4 }, idempotencyKey: 'recovery:first' },
+                        { input: { label: 'recover', marker: Units.make(22) }, idempotencyKey: 'recovery:second' },
+                        { input: { units: Units.make(13), adjustment: 2 }, idempotencyKey: 'recovery:third' },
+                    ] as const;
+                    f.control.denySecond = true;
+                    const refusal = yield* f.batch(specs, recovery).pipe(Effect.flip);
+                    expect(refusal.reason).toBe('unavailable');
+                    expect(Object.keys(refusal).sort()).toEqual(['_tag', 'reason']);
+                    expect((yield* f.store.get(id(800)))?.payload).toEqual([7, 2, 9, 11]);
+                    const prefix = yield* f.sql<{
+                        key: string;
+                        result: string;
+                    }>`SELECT key, result FROM action_commit WHERE result IS NOT NULL ORDER BY key`;
+                    expect(prefix).toHaveLength(4);
+                    // Refusal of item two leaves no partial-success result, but the first item is already committed.
+                    f.control.denySecond = false;
+                    const recovered = yield* f.batch(specs, recovery);
+                    expect(
+                        recovered.map(
+                            /** Recovery retains the original input/key tuple rather than constructing a new intent. */ (
+                                result
+                            ) => result.output
+                        )
+                    ).toEqual([{ total: 54 }, { label: 'recover:4' }, { total: 72 }]);
+                    expect((yield* f.store.get(id(800)))?.payload).toEqual([7, 2, 9, 11, 22, 13]);
+                    expect(yield* f.sql`SELECT key, result FROM action_commit WHERE result IS NOT NULL`).toHaveLength(
+                        6
+                    );
+                    for (const row of prefix)
+                        expect(yield* f.sql`SELECT key, result FROM action_commit WHERE key = ${row.key}`).toEqual([
+                            row,
+                        ]);
+                    const membership = yield* f.identity.get('membership', subject);
+                    if (!membership) return yield* Effect.dieMessage('missing membership');
+                    yield* f.identity.put('membership', { ...membership.value, roles: [] }, membership.version);
+                    expect((yield* f.batch(specs, recovery).pipe(Effect.flip)).reason).toBe('unavailable');
+                    yield* f.identity.put('membership', membership.value, membership.version + 1);
+                    const stored = yield* f.identity.get('session', session);
+                    if (!stored) return yield* Effect.dieMessage('missing session');
+                    yield* f.identity.put('session', { ...stored.value, active: false }, stored.version);
+                    expect((yield* f.batch(specs, recovery).pipe(Effect.flip)).reason).toBe('unauthenticated');
+                    expect((yield* f.store.get(id(800)))?.payload).toEqual([7, 2, 9, 11, 22, 13]);
+                    expect(JSON.stringify(f.captured)).not.toContain(f.token);
+                }
+            ),
+        60000
+    );
+
     it.scopedLive(
         'preserves canonical output, durable replay and live denial without treating spec possession as authority',
         /** Exercise all acceptance through the client, then inspect independent durable SQL evidence. */ () =>
