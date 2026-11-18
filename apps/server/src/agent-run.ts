@@ -19,6 +19,7 @@ import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
 import * as Rpc from '@effect/rpc/Rpc';
 import * as Activity from '@effect/workflow/Activity';
 import * as Workflow from '@effect/workflow/Workflow';
+import { AgentOutputLog, type OutputPayload } from '@eventiva/contracts/agent-output';
 import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
 import { Json, JsonValue, Storage, TenantRouter, UuidV7 } from '@eventiva/contracts/storage';
 import { canonicalJson, IdentityResolver } from '@eventiva/runtime/invocation';
@@ -94,6 +95,8 @@ export class AgentRunModel extends Context.Tag('@eventiva/server/AgentRunModel')
             readonly stepIndex: number;
             readonly idempotencyKey: string;
             readonly input: JsonValue;
+            /** Emit approved text using a deterministic zero-based chunk index, reused unchanged on retry; await each emit. */
+            readonly emit: (chunkIndex: number, text: string) => Effect.Effect<void, AgentRunDenied>;
         }) => Effect.Effect<JsonValue, AgentRunDenied>;
     }
 >() {}
@@ -220,21 +223,49 @@ const acceptedRun = (reference: AgentRunReference, candidate?: AgentRunInput) =>
         })
     );
 
+/** Reauthorize an accepted run for confidential output reads without treating an execution id as authority. */
+export const authorizeAgentOutput = (reference: AgentRunReference) =>
+    Effect.gen(
+        /** Current identity and run ownership precede every page, including reads after completion. */ function* () {
+            yield* authorize(reference, 'status');
+            yield* acceptedRun(reference);
+        }
+    );
+
 /** Register the reusable run and short control entity before backend membership readiness. Required adapters have no fallback. */
 export const registerAgentRuns = Effect.gen(
     /** Capture only trusted adapters and register before backend readiness opens. */ function* () {
         // Missing execution adapters fail before either registration or acceptance.
         const modelPort = yield* Effect.serviceOption(AgentRunModel);
         const accessPort = yield* Effect.serviceOption(AgentRunAccess);
-        if (Option.isNone(modelPort) || Option.isNone(accessPort))
+        const outputPort = yield* Effect.serviceOption(AgentOutputLog);
+        if (Option.isNone(modelPort) || Option.isNone(accessPort) || Option.isNone(outputPort))
             return yield* new AgentRunDenied({ reason: 'unavailable' });
         const model = modelPort.value;
+        const output = outputPort.value;
         const dependencies = (yield* Effect.context<IdentityResolver | TenantRouter | ClusterActions>()).pipe(
             Context.pick(IdentityResolver, TenantRouter, ClusterActions),
             Context.add(AgentRunAccess, accessPort.value)
         );
         // Do not capture bootstrap Scope, WorkflowInstance, Caller or transaction services.
         const actions = Context.get(dependencies, ClusterActions);
+        /** Persist only explicitly selected output through the same authenticated tenant route as run acceptance. */
+        const append = (accepted: AgentRunInput, stepIndex: number, eventId: string, payload: OutputPayload) =>
+            Effect.gen(
+                /** The identity is allocated by orchestration before the retryable SQL effect, never by the adapter. */ function* () {
+                    const caller = yield* authorize(accepted, 'step', stepIndex);
+                    if (caller.tenant === undefined) return yield* new AgentRunDenied({ reason: 'denied' });
+                    yield* Context.get(dependencies, TenantRouter)
+                        .run(caller.tenant, output.append({ runId: accepted.runId, eventId, payload }))
+                        .pipe(Effect.provideService(Caller, caller));
+                }
+            ).pipe(
+                Effect.provide(dependencies),
+                Effect.mapError(
+                    /** Output failure cannot expose raw provider text or SQL diagnostics. */ () =>
+                        new AgentRunDenied({ reason: 'unavailable' })
+                )
+            );
         yield* Layer.build(
             Run.toLayer(
                 /** Replay only pure input selection; each raw model/action entry belongs to one persisted Activity. */
@@ -259,14 +290,33 @@ export const registerAgentRuns = Effect.gen(
                                         /** Reauthorize at the raw effect boundary before invoking the injected executor. */ function* () {
                                             const caller = yield* authorize(accepted, 'step', stepIndex);
                                             const idempotencyKey = `${accepted.runId}:${stepIndex}`;
-                                            if (step._tag === 'Model')
-                                                return yield* model.call({
+                                            if (step._tag === 'Model') {
+                                                const result: JsonValue = yield* model.call({
                                                     caller,
                                                     runId: accepted.runId,
                                                     stepIndex,
                                                     idempotencyKey,
                                                     input,
+                                                    /** Stable producer ordinals deduplicate an unfinished model Activity after runner loss. */
+                                                    emit: (chunkIndex, text) => {
+                                                        if (!Number.isSafeInteger(chunkIndex) || chunkIndex < 0)
+                                                            return Effect.fail(
+                                                                new AgentRunDenied({ reason: 'invalid' })
+                                                            );
+                                                        return append(
+                                                            accepted,
+                                                            stepIndex,
+                                                            `step:${stepIndex}:text:${chunkIndex}`,
+                                                            { _tag: 'Text', text }
+                                                        );
+                                                    },
                                                 });
+                                                yield* append(accepted, stepIndex, `step:${stepIndex}:complete`, {
+                                                    _tag: 'StepCompleted',
+                                                    stepIndex,
+                                                });
+                                                return result;
+                                            }
                                             // ClusterActions reaches the same authorized ActionHost and tenant A1 transaction.
                                             const result: Effect.Effect.Success<
                                                 ReturnType<ClusterActions['Type']['execute']>
@@ -298,6 +348,11 @@ export const registerAgentRuns = Effect.gen(
                                                         () => new AgentRunDenied({ reason: 'denied' })
                                                     )
                                                 );
+                                            // Completion metadata is safe; never implicitly copy tool output or its input into this log.
+                                            yield* append(accepted, stepIndex, `step:${stepIndex}:complete`, {
+                                                _tag: 'StepCompleted',
+                                                stepIndex,
+                                            });
                                             return result.output;
                                         }
                                     ),

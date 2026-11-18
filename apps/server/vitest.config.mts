@@ -22,6 +22,7 @@ const config = testProject(
         'apps/server/src/cluster*.ts',
         'apps/server/src/backend.ts',
         'apps/server/src/agent-run.ts',
+        'apps/server/src/agent-output.ts',
         'apps/server/src/telemetry-correlation.ts',
         'apps/server/src/telemetry-live.ts',
         'apps/server/src/telemetry-local.ts',

@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./agent-output": {
+            "@eventiva/source": "./src/agent-output.ts",
+            "types": "./dist/agent-output.d.ts",
+            "default": "./dist/agent-output.js"
+        },
         "./invoice": {
             "@eventiva/source": "./src/invoice.ts",
             "types": "./dist/invoice.d.ts",

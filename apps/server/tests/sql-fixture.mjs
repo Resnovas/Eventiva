@@ -21,6 +21,7 @@ import { ShardGroup } from '@effect/cluster/ClusterSchema';
 import * as Workflow from '@effect/workflow/Workflow';
 import * as Activity from '@effect/workflow/Activity';
 import { define } from '@eventiva/contracts/action';
+import { AgentOutputFailure } from '@eventiva/contracts/agent-output';
 import { Authorizer } from '@eventiva/contracts/caller';
 import { Forbidden } from '@eventiva/contracts/errors';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
@@ -28,6 +29,7 @@ import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { CurrentTenant, RoutingDenied, Storage } from '@eventiva/contracts/storage';
 import { client } from '@eventiva/integrations.sql/postgres';
 import { storage } from '@eventiva/integrations.sql/storage';
+import { agentOutputLog } from '@eventiva/integrations.sql/agent-output';
 import { router } from '@eventiva/integrations.sql/router';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { implement } from '@eventiva/runtime/action';
@@ -50,6 +52,7 @@ import {
     agentRuns,
     registerAgentRuns,
 } from '../dist/agent-run.js';
+import { pollAgentOutput, readAgentOutput } from '../dist/agent-output.js';
 
 export const id = (n) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 export const caller = (n = 1) => ({
@@ -124,6 +127,7 @@ export const prepare = Effect.gen(function* () {
     // No unique business key or ON CONFLICT can conceal repeated Activity execution.
     yield* sql`CREATE TABLE fixture_agent_entry (sequence bigserial PRIMARY KEY, tenant text NOT NULL, run_id text NOT NULL, step integer NOT NULL, pid integer NOT NULL, business_key text NOT NULL)`;
     yield* sql`CREATE TABLE fixture_run_gate (run_id text PRIMARY KEY, step integer NOT NULL, enabled boolean NOT NULL)`;
+    yield* sql`CREATE TABLE fixture_output_gate (run_id text PRIMARY KEY, enabled boolean NOT NULL)`;
     for (const [key, enabled] of [
         ['identity', true],
         ['permission', true],
@@ -155,6 +159,8 @@ const agentFailure = (error) =>
 export const commands = {
     workflow: (request) => Recovery.execute({ request }, { discard: true }),
     poll: (executionId) => Recovery.poll(executionId),
+    agentOutput: (request) => readAgentOutput(request).pipe(Effect.mapError(agentFailure)),
+    agentOutputPoll: (request) => pollAgentOutput(request).pipe(Effect.mapError(agentFailure)),
     agentStart: (request) =>
         Schema.decodeUnknown(AgentRunInput)(request).pipe(
             Effect.flatMap((input) => Effect.flatMap(agentRuns, (runs) => runs.start(input))),
@@ -178,11 +184,13 @@ export const makeBackend = (profile) =>
             const compute = yield* connect(checked(process.env.CLUSTER_TEST_C_URL).toString());
             const sql = sqlOf(compute);
             const stores = new Map();
+            const outputClients = new Map();
             for (const [n, cell] of [
                 [1, 'A'],
                 [2, 'B'],
             ]) {
                 const context = yield* connect(checked(process.env[`CLUSTER_TEST_${cell}_URL`]).toString());
+                outputClients.set(id(n), sqlOf(context));
                 stores.set(
                     id(n),
                     Context.get(
@@ -201,6 +209,34 @@ export const makeBackend = (profile) =>
             const deny = (action, reason) => new InvocationDenied({ action, reason });
             const Security = Layer.mergeAll(
                 FlagsSafeDefaults,
+                agentOutputLog((tenant) =>
+                    outputClients.has(tenant)
+                        ? Effect.succeed(outputClients.get(tenant))
+                        : Effect.fail(new AgentOutputFailure({ reason: 'unavailable' }))
+                ),
+                Layer.succeed(AgentRunAccess, {
+                    check: (reference, operation, step) =>
+                        Effect.gen(function* () {
+                            const gates =
+                                yield* sql`SELECT step, enabled FROM fixture_run_gate WHERE run_id = ${reference.runId}`;
+                            if (operation === 'step' && gates[0]?.enabled && gates[0].step === step) {
+                                process.send?.({
+                                    barrier: 'agent-between',
+                                    pid: process.pid,
+                                    runId: reference.runId,
+                                    step,
+                                });
+                                yield* sql`SELECT enabled FROM fixture_run_gate WHERE run_id = ${reference.runId}`.pipe(
+                                    Effect.repeat({
+                                        schedule: Schedule.spaced('50 millis'),
+                                        until: (rows) => rows[0]?.enabled === false,
+                                    })
+                                );
+                            }
+                            if (!(yield* enabled('permission')) || (yield* enabled('approval')))
+                                return yield* new AgentRunDenied({ reason: 'denied' });
+                        }).pipe(Effect.mapError(() => new AgentRunDenied({ reason: 'denied' }))),
+                }),
                 Layer.succeed(InputDigest, {
                     digest: (value) => Effect.sync(() => createHash('sha256').update(value).digest('hex')),
                 }),
@@ -315,38 +351,25 @@ export const makeBackend = (profile) =>
                     sql`INSERT INTO fixture_agent_entry (tenant, run_id, step, pid, business_key) VALUES (${tenant}, ${runId}, ${step}, ${process.pid}, ${key})`.pipe(
                         Effect.orDie
                     );
-                const access = {
-                    check: (reference, operation, step) =>
-                        Effect.gen(function* () {
-                            // The source invokes this after the preceding Activity yielded its
-                            // persisted reply, before dispatching the next Activity. No production hook.
-                            const gates =
-                                yield* sql`SELECT step, enabled FROM fixture_run_gate WHERE run_id = ${reference.runId}`;
-                            if (operation === 'step' && gates[0]?.enabled && gates[0].step === step) {
-                                process.send?.({
-                                    barrier: 'agent-between',
-                                    pid: process.pid,
-                                    runId: reference.runId,
-                                    step,
-                                });
-                                yield* sql`SELECT enabled FROM fixture_run_gate WHERE run_id = ${reference.runId}`.pipe(
-                                    Effect.repeat({
-                                        schedule: Schedule.spaced('50 millis'),
-                                        until: (rows) => rows[0]?.enabled === false,
-                                    })
-                                );
-                            }
-                            if (!(yield* enabled('permission')) || (yield* enabled('approval')))
-                                return yield* new AgentRunDenied({ reason: 'denied' });
-                        }).pipe(Effect.mapError(() => new AgentRunDenied({ reason: 'denied' }))),
-                };
                 yield* registerAgentRuns.pipe(
                     Effect.provide(Security),
-                    Effect.provideService(AgentRunAccess, access),
                     Effect.provideService(AgentRunModel, {
-                        call: ({ caller, runId, stepIndex, idempotencyKey, input }) =>
+                        call: ({ caller, runId, stepIndex, idempotencyKey, input, emit }) =>
                             Effect.gen(function* () {
                                 yield* entered(caller.tenant, runId, stepIndex, idempotencyKey);
+                                for (const index of [0, 1]) yield* emit(index, `scripted:${stepIndex}:${index}`);
+                                // Emit has committed, but this model Activity has not returned or journaled its reply.
+                                const [gate] =
+                                    yield* sql`SELECT enabled FROM fixture_output_gate WHERE run_id = ${runId}`;
+                                if (stepIndex === 1 && gate?.enabled) {
+                                    process.send?.({ barrier: 'agent-output-persisted', pid: process.pid, runId });
+                                    yield* sql`SELECT enabled FROM fixture_output_gate WHERE run_id = ${runId}`.pipe(
+                                        Effect.repeat({
+                                            schedule: Schedule.spaced('50 millis'),
+                                            until: (rows) => rows[0]?.enabled === false,
+                                        })
+                                    );
+                                }
                                 if (stepIndex === 1) return { id: input.id, value: input.seed * 3 + 1 };
                                 if (stepIndex === 3 && input.tenant === caller.tenant)
                                     return { answer: input.value * 5 + 2, tenant: input.tenant };
@@ -387,7 +410,7 @@ export const makeBackend = (profile) =>
                 yield* waitOpen(sql, 'registration');
             });
             return backend(profile, initialize, registerWorkflows).pipe(
-                Layer.provide(Security),
+                Layer.provideMerge(Security),
                 Layer.provide(Layer.succeedContext(compute))
             );
         })

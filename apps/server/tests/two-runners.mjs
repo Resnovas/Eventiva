@@ -258,6 +258,44 @@ try {
                 .c`SELECT step, pid, business_key FROM fixture_agent_entry WHERE tenant = ${input.caller.tenant} AND run_id = ${input.runId} ORDER BY sequence`
         );
     const counts = (entries) => [1, 2, 3].map((step) => entries.filter((entry) => entry.step === step).length);
+    const page = (runner, input, after = -1, limit = 2) =>
+        request(runner, {
+            command: 'agentOutput',
+            request: { caller: input.caller, runId: input.runId, after, limit },
+        });
+    const expectedOutput = [
+        { _tag: 'Text', text: 'scripted:1:0' },
+        { _tag: 'Text', text: 'scripted:1:1' },
+        { _tag: 'StepCompleted', stepIndex: 1 },
+        { _tag: 'StepCompleted', stepIndex: 2 },
+        { _tag: 'Text', text: 'scripted:3:0' },
+        { _tag: 'Text', text: 'scripted:3:1' },
+        { _tag: 'StepCompleted', stepIndex: 3 },
+    ];
+    const reconstruct = async (runner, input, consumed = []) => {
+        const result = [...consumed];
+        for (;;) {
+            const events = await page(runner, input, result.at(-1)?.offset ?? -1);
+            assert.ok(events.length <= 2);
+            if (events.length === 0) break;
+            result.push(...events);
+        }
+        assert.deepEqual(
+            result.map(({ offset }) => offset),
+            [0, 1, 2, 3, 4, 5, 6]
+        );
+        assert.equal(new Set(result.map(({ eventId }) => eventId)).size, 7);
+        assert.deepEqual(
+            result.map(({ payload }) => payload),
+            expectedOutput
+        );
+        for (const event of result) {
+            assert.equal(event.runId, input.runId);
+            assert.equal(event.tenant, input.caller.tenant);
+        }
+        assert.ok(!JSON.stringify(result).includes('raw-prompt-canary'));
+        return result;
+    };
     const assertAgent = async (runner, input, expected = [1, 1, 1]) => {
         const result = await until(
             () => request(runner, { command: 'agentStatus', request: input }),
@@ -268,7 +306,7 @@ try {
         assert.deepEqual(counts(entries), expected);
         assert.deepEqual(
             entries.map(({ step }) => step),
-            [1, 2, 3]
+            expected.flatMap((count, index) => Array(count).fill(index + 1))
         );
         for (const entry of entries) assert.equal(entry.business_key, `${input.runId}:${entry.step}`);
         await verifyCommitted({
@@ -276,6 +314,7 @@ try {
             input: { id: input.steps[0].input.value.id, value: 34 },
             intent: { idempotencyKey: `${input.runId}:2` },
         });
+        await reconstruct(runner, input);
         return result;
     };
     const checkpoint = async (input, executionId) => {
@@ -328,6 +367,89 @@ try {
             request: { ...agentInput(++record), steps: [{ _tag: 'Action', action: '', input: {} }] },
         })
     );
+    // Kill the actual model Activity owner after two committed chunks, before its durable Activity reply.
+    const midOutput = agentInput(++record);
+    midOutput.steps[0].input.value.prompt = 'raw-prompt-canary';
+    await run(fixture.sql.c`INSERT INTO fixture_output_gate VALUES (${midOutput.runId}, true)`);
+    const midExecution = await request(b, { command: 'agentStart', request: midOutput });
+    const outputBarrier = async (pid) =>
+        (
+            await until(
+                () => Promise.resolve(events),
+                (values) =>
+                    values.some(
+                        (event) =>
+                            event.barrier === 'agent-output-persisted' &&
+                            event.runId === midOutput.runId &&
+                            (pid === undefined || event.pid === pid)
+                    )
+            )
+        ).find(
+            (event) =>
+                event.barrier === 'agent-output-persisted' &&
+                event.runId === midOutput.runId &&
+                (pid === undefined || event.pid === pid)
+        );
+    const outputPersisted = await outputBarrier();
+    const prefix = await page(b, midOutput);
+    assert.deepEqual(
+        prefix.map(({ offset }) => offset),
+        [0, 1]
+    );
+    assert.deepEqual(
+        prefix.map(({ payload }) => payload),
+        expectedOutput.slice(0, 2)
+    );
+    const unfinished = await run(fixture.sql
+        .c`SELECT r.payload FROM cluster_messages m JOIN cluster_replies r ON r.id = m.last_reply_id
+        WHERE m.entity_type = 'Workflow/EventivaAgentRun-v1' AND m.entity_id = ${midExecution} AND m.tag = 'activity' AND m.payload::jsonb ->> 'name' = 'step:1:Model'`);
+    assert.equal(
+        unfinished.some((row) => JSON.parse(row.payload).value?._tag === 'Complete'),
+        false
+    );
+    const victim = outputPersisted.pid === a.pid ? a : b;
+    const survivor = victim === a ? b : a;
+    const replacementPort = victim === a ? 34561 : 34562;
+    assert.equal(victim.pid, outputPersisted.pid);
+    await stop(victim, 'SIGKILL');
+    await until(
+        () => snapshots(survivor),
+        ([state]) => state.healthyRunners === 1 && state.ownedShards.length === 24
+    );
+    await outputBarrier(survivor.pid);
+    assert.deepEqual(counts(await agentEntries(midOutput)), [2, 0, 0]);
+    assert.deepEqual(await page(survivor, midOutput), prefix);
+    assert.deepEqual(await page(survivor, midOutput, 1), []);
+    const waitingOutput = request(survivor, {
+        command: 'agentOutputPoll',
+        request: {
+            caller: midOutput.caller,
+            runId: midOutput.runId,
+            after: 1,
+            limit: 2,
+        },
+    });
+    await run(fixture.sql.c`UPDATE fixture_output_gate SET enabled = false WHERE run_id = ${midOutput.runId}`);
+    await assertAgent(survivor, midOutput, [2, 1, 1]);
+    await reconstruct(survivor, midOutput, [...prefix, ...(await waitingOutput)]);
+    console.log(
+        JSON.stringify({
+            event: 'agent-output-owner-kill-reconnect-passed',
+            signal: 'SIGKILL',
+            owner: outputPersisted.pid,
+            survivor: survivor.pid,
+            cursor: 1,
+            offsets: [0, 1, 2, 3, 4, 5, 6],
+            counts: [2, 1, 1],
+            activityReplyBeforeKill: false,
+        })
+    );
+    const outputReplacement = await launch(replacementPort);
+    if (victim === a) a = outputReplacement;
+    else b = outputReplacement;
+    await until(() => snapshots(a, b), distributed);
+    await assert.rejects(page(a, { ...control, caller: { ...caller(), tenant: id(2) } }), /denied/);
+    await assert.rejects(page(a, { ...control, caller: caller(2) }), /missing/);
     for (const signal of ['SIGKILL', 'SIGTERM']) {
         const input = agentInput(++record);
         await gateAgent(input);
@@ -385,6 +507,7 @@ try {
         await run(fixture.set(gate, closed));
         for (const command of ['agentStatus', 'agentStart', 'agentInterrupt'])
             await assert.rejects(request(a, { command, request: control }), /denied/);
+        await assert.rejects(page(a, control), /denied/);
         await releaseAgent(input);
         // Durable failed Workflow result is internal evidence while control access is revoked.
         await until(

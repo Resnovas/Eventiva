@@ -1125,6 +1125,44 @@ flowchart LR
     Delivery --> Open["Broader kernel acceptance remains open"]
 ```
 
+## Durable scripted agent output, packet 2 - 2026-11-18
+
+The [EVE-36 checkpoint](https://linear.app/resnovas/issue/EVE-36#comment-c1f49f5a-c95a-4ade-baa2-cb5160482ba8)
+implements revision 2 of the next-implementation packet, dispatched by Puck.
+Live description and the complete one-comment page were read before editing;
+the issue remains Backlog. This is bounded implementation evidence, not whole
+issue acceptance or production authority. The historical capture is preserved.
+The [output guide](../agent-output.md) owns the detailed contract and limits.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Allocate reserved scope and migrations | Completed | Main fetched at 3174013af87ba6dcd683e5b997d662944540d6f3; paired 0010 free. Exact additive export/coverage/SQL-fixture/planning amendments recorded to Puck before edits. Immutable 0009, telemetry state and protected unpublished trust files untouched. |
+| Retry-stable output and authorized reads | Focused verification passed | Real SQLite/PostgreSQL public-port tests pass concurrent duplicate/distinct append, tenant/run isolation, changed-content refusal, bounded exclusive pages, nonzero reconnect, rollback independence and safe outage/corruption errors. Server protocol/read tests pass nine cases. Explicit text and step completion only; no implicit raw input/tool JSON release. |
+| Actual owning-runner loss | Executed and passed | SIGKILL owner 47916 after offsets 0/1 commit while Activity 1 lacks a completed reply; survivor 47897 reaches the same barrier without Start/resume/victim restart. Prefix identical, raw entries 2/0/0; reconnect at cursor 1 yields exactly offsets 0..6, seven unique events/exact payloads, final counts 2/1/1. Completed-step SIGKILL/SIGTERM and full community restart controls also reconstruct output. |
+| Polling and regression negative control | Executed and passed | Public 200 ms polling returns committed output and denies live revocation. Updated process suite passes with owner 61759 / survivor 61594 and the same seven-event reconstruction. Temporarily including the PID in logical text keys makes the unchanged process assertion fail: replayed prefix appears at offsets 2/3 after cursor 1. Stable keys restored; no weakened assertion or timeout. |
+| Latest-main integration and aggregate gates | Completed local verification | Rebased and regenerated after security main db3695da and HTTP main 93b22058 advanced during verification; migration 0010 remains free on both. `node --run check` and `node --run verify` pass again on 93b22058: 14 builds, aggregate lint/typecheck/test/build/parity for 32 projects plus dependencies, and 16 smoke/dependency tasks. Strict reviewed planning reports 258 issues, 692 edges and zero unresolved decision sources. Documentation ratchet: 234 files, zero blocking findings/violations; 133 heuristic candidates remain review-only, not global compliance. Nx sync is current. LLMS/planning and clean-source Graphify are regenerated; exact signed direct-main revisions and CI follow-up are recorded on EVE-36. Local success is not remote CI or broader acceptance. |
+| Public transport and broader agent lifecycle | Upcoming / separate | No SSE/WebSocket/AI SDK UI, provider/paid call, public deployment, production retention, distributed fencing, EVE-35 rewrite or EVE-54 cancellation-completion claim. EVE-248 stays deferred until January 2027; budgets and paid gates unchanged. |
+
+```mermaid
+flowchart LR
+    Stable[Stable tenant run step chunk identity] --> Commit[Atomic log event and offset commit]
+    Commit --> Window[Crash before independent Activity reply]
+    Window --> Retry[Survivor retries same logical prefix]
+    Retry --> Dedup[Original committed offsets retained]
+    Dedup --> Read[Authorized exclusive cursor pages]
+    Read --> Proof[Real owner SIGKILL reconstruction]
+    Proof --> Gates[Latest-main full gates and signed delivery]
+    Gates --> Later[Public transport and production remain separate]
+```
+
+The engine journal and tenant output log deliberately do not share a
+transaction. Tested stable deduplication closes the acknowledged crash window;
+it is not exactly-once network delivery. No model or prompt is sent externally.
+Semantic review covers allocator locking, independent SQL transaction context,
+live accepted-owner checks and trusted producer release obligations. Graphify
+Cloud memory and the MCP gateway were unavailable; the local graph/source and
+connected Linear MCP were used instead. Existing APIs were copied from source.
+
 <!-- planning:generated:start -->
 ## Generated all-issue planning coverage
 
@@ -1136,6 +1174,7 @@ Legend: COMPLETED solid green; CURRENT double blue; UPCOMING dashed slate; CLOSE
 
 ### Curated evidence separate from capture
 
+- EVE-36, 2026-11-18, later-status: Revision-2 Packet 2 bounded scripted-output slice. Live description and complete one-comment page retain Backlog. SQL log serializes tenant/run offset allocation and deduplicates stable step/chunk identities, with authorized exclusive bounded reads. Focused real SQLite/PostgreSQL tests pass. Two real PostgreSQL runners prove SIGKILL after two output commits before Activity reply: survivor re-enters without resubmission/restarting victim; reconnect cursor 1 reconstructs offsets 0..6 and seven unique exact payloads with raw executor counts 2/1/1. Existing completed-step SIGKILL/SIGTERM and community total restart controls also pass. Full gates and signed delivery are recorded separately in the timeline and owning issue. No shared engine/log transaction or exactly-once transport, provider, paid model, public deployment, EVE-35 rewrite or EVE-54 cancellation acceptance. EVE-248 remains deferred until January 2027; frozen issue capture is unchanged. [evidence](https://linear.app/resnovas/issue/EVE-36#comment-c1f49f5a-c95a-4ade-baa2-cb5160482ba8), [evidence](https://ampcode.com/threads/T-36b919dc-3a62-4551-b698-48f4511ddb58).
 - EVE-246, 2026-11-18, later-status: Jonathan resumed the named issues on 2026-11-18. First bounded slice adds a schema-validated advisory per-obligation fulfilment assessment with fake-clock 14/7/3-day boundaries, no-response reminders and dispute/unsupported-hold refusal. Focused tests and TypeScript compilation pass; full gates and signed delivery are recorded separately. No provider command, payment, dependency, production integration or whole-issue acceptance. The historical issue capture is unchanged. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g), [evidence](https://linear.app/resnovas/issue/EVE-246#comment-1301864e).
 - EVE-247, 2026-11-18, later-status: Owner resumed the named issue. First bounded library slice previews mapped bulk stock against separate public model identities. Exact case-insensitive matching retains punctuation/variants; invalid rows, all colliding valid SKUs and ambiguous references remain explicit. Conservative 1000-row/10000-reference limits are implementation choices, not researched coverage. Eight focused tests across the payment/catalogue modules and TypeScript compilation pass; full gates and signed delivery follow separately. The catalogue guide separately cites two official manufacturer samples and two inventory-tool format guides; source rights, connector compatibility and supplier discovery remain open. No scraping, source-rights claim, stock persistence, dependency or broader acceptance. Frozen source remains historical. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g), [evidence](https://linear.app/resnovas/issue/EVE-247#comment-719b971b).
 - EVE-248, 2026-11-18, blocker: Jonathan's superseding 2026-11-18 decision: Leave off for now, revisit in January only. Recorded on EVE-248 with due date 2027-01-04. Keep the AI-gate override and all budgets unchanged; do not reopen before January 2027. No further EVE-248 work or read-only investigation by this lane. Supersedes the earlier same-day readiness checkpoint; EVE-246/247 continue independently. Frozen issue capture remains historical. [evidence](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zciY2mZuppwjcEvwc6g), [evidence](https://linear.app/resnovas/issue/EVE-248#comment-887d205b).

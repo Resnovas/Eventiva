@@ -10058,6 +10058,18 @@
     ],
     "annotations": [
         {
+            "issue": "EVE-36",
+            "kind": "later-status",
+            "date": "2026-11-18",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Revision-2 Packet 2 bounded scripted-output slice. Live description and complete one-comment page retain Backlog. SQL log serializes tenant/run offset allocation and deduplicates stable step/chunk identities, with authorized exclusive bounded reads. Focused real SQLite/PostgreSQL tests pass. Two real PostgreSQL runners prove SIGKILL after two output commits before Activity reply: survivor re-enters without resubmission/restarting victim; reconnect cursor 1 reconstructs offsets 0..6 and seven unique exact payloads with raw executor counts 2/1/1. Existing completed-step SIGKILL/SIGTERM and community total restart controls also pass. Full gates and signed delivery are recorded separately in the timeline and owning issue. No shared engine/log transaction or exactly-once transport, provider, paid model, public deployment, EVE-35 rewrite or EVE-54 cancellation acceptance. EVE-248 remains deferred until January 2027; frozen issue capture is unchanged.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-36#comment-c1f49f5a-c95a-4ade-baa2-cb5160482ba8",
+                "https://ampcode.com/threads/T-36b919dc-3a62-4551-b698-48f4511ddb58"
+            ]
+        },
+        {
             "issue": "EVE-246",
             "kind": "later-status",
             "date": "2026-11-18",

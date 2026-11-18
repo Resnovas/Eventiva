@@ -23,6 +23,7 @@ import * as Sharding from '@effect/cluster/Sharding';
 import * as ShardingConfig from '@effect/cluster/ShardingConfig';
 import { describe, expect, it } from '@effect/vitest';
 import { define } from '@eventiva/contracts/action';
+import { AgentOutputLog, AgentOutputFailure, type OutputEvent } from '@eventiva/contracts/agent-output';
 import { CallerIdentity } from '@eventiva/contracts/caller';
 import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import {
@@ -77,6 +78,7 @@ interface FixtureOptions {
     readonly routeDenied?: boolean;
     readonly records?: ReadonlyArray<RecordValue>;
     readonly model?: AgentRunModel['Type'];
+    readonly outputFailure?: boolean;
 }
 
 /** Volatile protocol fixture only; the independent SQL harness supplies all durability and kill evidence. */
@@ -138,6 +140,22 @@ const fixture = (options: FixtureOptions = {}) =>
                 audit: () => unavailable,
             });
             const allowed = yield* Ref.make(true);
+            const output: Array<OutputEvent> = [];
+            const log = AgentOutputLog.of({
+                /** Volatile protocol capture only; SQL fixtures own retry/transaction durability evidence. */
+                append: (event) =>
+                    Effect.suspend(
+                        /** Reject injected storage outages without swallowing the failed append. */ () => {
+                            if (options.outputFailure)
+                                return Effect.fail(new AgentOutputFailure({ reason: 'unavailable' }));
+                            const value = { ...event, tenant: caller.tenant!, offset: output.length };
+                            output.push(value);
+                            return Effect.succeed(value);
+                        }
+                    ),
+                /** No read acceptance is claimed from this volatile capture. */
+                read: () => Effect.succeed([]),
+            });
             const calls = yield* Ref.make(0);
             const stepDenied = yield* Deferred.make<void>();
             const access = AgentRunAccess.of({
@@ -210,7 +228,11 @@ const fixture = (options: FixtureOptions = {}) =>
                     )
                 )
             );
-            const registration = registerAgentRuns.pipe(Effect.provide(security), Effect.provide(context));
+            const registration = registerAgentRuns.pipe(
+                Effect.provide(security),
+                Effect.provide(context),
+                Effect.provideService(AgentOutputLog, log)
+            );
             yield* registration.pipe(
                 Effect.provideService(AgentRunModel, model),
                 Effect.provideService(AgentRunAccess, access)
@@ -223,11 +245,58 @@ const fixture = (options: FixtureOptions = {}) =>
                 model,
                 access,
                 stepDenied,
+                output,
             };
         }
     );
 
 describe('AgentRun internal handle', /** Exercise the reusable Workflow source without claiming process recovery. */ function agentRunContract() {
+    it.scopedLive(
+        'persists explicitly emitted chunks before completion and fails closed when emission is invalid or unavailable',
+        /** Probe the public model emission callback without asserting private Workflow implementation details. */ () =>
+            Effect.gen(
+                /** Accepted input is confidential unless the trusted producer deliberately releases text. */ function* () {
+                    for (const [index, outputFailure, state] of [
+                        [0, false, 'succeeded'],
+                        [-1, false, 'failed'],
+                        [0.5, false, 'failed'],
+                        [0, true, 'failed'],
+                    ] as const) {
+                        const h = yield* fixture({
+                            outputFailure,
+                            model: {
+                                /** The adapter chooses a stable producer ordinal, never an attempt/PID-generated event key. */
+                                call: ({ emit }) => emit(index, 'approved-text').pipe(Effect.as(17)),
+                            },
+                        });
+                        yield* h.runs.start(input);
+                        expect(
+                            yield* h.runs.status(input).pipe(
+                                Effect.delay('10 millis'),
+                                Effect.repeat({
+                                    /** Wait for the logical run's public terminal state. */ until: (value) =>
+                                        value.state !== 'pending',
+                                }),
+                                Effect.timeout('10 seconds')
+                            )
+                        ).toEqual(state === 'succeeded' ? { state, output: 17 } : { state });
+                        expect(
+                            h.output.map(
+                                /** Compare only the public release payload sequence. */ (event) => event.payload
+                            )
+                        ).toEqual(
+                            state === 'succeeded'
+                                ? [
+                                      { _tag: 'Text', text: 'approved-text' },
+                                      { _tag: 'StepCompleted', stepIndex: 1 },
+                                  ]
+                                : []
+                        );
+                    }
+                }
+            ),
+        15000
+    );
     it.scopedLive(
         'binds immutable input and reauthorizes cached status, duplicate Start and interruption',
         /** Public handle behavior must remain invariant across orchestration refactors. */
