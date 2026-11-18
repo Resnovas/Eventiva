@@ -2133,6 +2133,34 @@ Canonical CSV columns are exactly supplierSku,manufacturer,model,variant,quantit
 
 The dated `docs/catalogue.md` rights matrix distinguishes robots allowances from actual reuse rights: Shure DULA covers connected-product data, not a blanket documentation/API licence; QSC trademark guidelines explicitly create no licence. No real supplier permission, licensed feed, vendor export compatibility, source acquisition or prevalence finding is claimed. Keep all automated records synthetic. The API does not persist/publish/train; a future default-off application action and durable Resources/Storage commit must reauthorize/reload rights and add audit, idempotency and undo. Review output is not an authorization token. No dependency, production activation or external account is added.
 
+EVE-81's 2026-11-18 rank-1 packet and subsequent guard approval are cited in `docs/inventory-products.md`. `@eventiva/contracts/inventory-product` provides five sensitive online-only specifications with unchanged dotted permissions `inventory.catalogue.read/write`, and `inventory.f6-inventory` explicitly maps the historical issue label to a valid dotted default-off key. Core private metadata is name/SKU/category/tracking/unit, never stock or public model identity. Exact bounds, defaults, revision/archive/cursor semantics, failure handling and complete SQL test composition are documented there; `03_inventory.ts` compiles the registration seam.
+
+`@eventiva/runtime/inventory-product` exports `productResources` and `productModule`. Trusted composition migrates both declarations, restricts guard/product mutation to these common actions and shares the provider Storage owner with durable Integrity/Audit. Caller remains per invocation; identity/tenant/permission/target/flag are refreshed before transaction entry, after guard acquisition and on each full-transaction retry. All writes serialize per tenant through a retained singleton CAS guard; rename releases the old SKU, archive retains the current SKU, and only known guard conflicts retry up to three times. Arbitrary storage/deadlock/SQLite busy failures fail closed. Independent synchronous SQLite clients can refuse under contention; this is not universal multiprocess acceptance. Future import commits must use the same action path. Public-host tests cover both dialects, initial-guard races, post-write rollback, tenant isolation, archive/rename, live policy and reopened storage. No Resources/SQL contract amendment, new dependency version, production activation, quantities, kit/UI/sync or import commit is included.
+
+Repeated target authorization decodes fresh copies of captured wire bytes; policy observers never receive the metadata object later persisted. Both SQL public-host regressions fail with a rewritten SKU before isolation and retain the original afterward. Permanent controls also prove guard retry exhaustion, no arbitrary-storage retry, permission revocation across a conflict and permission/flag revocation after guard acquisition. Durable fixture receipts use SHA-256 rather than the test harness's readable digest, with private-value absence assertions.
+
+Discovery is a separately recorded limitation, not parity evidence: the conservative Google profile refuses required patterns/string bounds, and nullable cursor/composed bounds also remain unsupported. The module is not installed in the shell and stays default-off; do not activate it on a shared discovery host while this is unresolved. UUID normalization alone does not make the complete product schemas portable. Focused commands are not substitutes for root check, full fixture-backed verify and strict planning checks; broader EVE-81 remains open.
+
+### inventory
+
+```ts
+import { ActionHost } from '@eventiva/runtime/host';
+import { productModule } from '@eventiva/runtime/inventory-product';
+import { Effect } from 'effect';
+
+/**
+ * Register only inside trusted tenant routing after productResources migration and Resources policy composition.
+ * The ActionHost must share the provider's Storage owner for durable Integrity/Audit; Caller is supplied per call.
+ * No application activation occurs here. Keep inventory.f6-inventory default-off while discovery compatibility is unresolved.
+ */
+export const registerPrivateProducts = Effect.gen(
+    /** Register the same portable specifications and backend handlers for every authorized invocation surface. */ function* () {
+        const host = yield* ActionHost;
+        return yield* host.register(yield* productModule);
+    }
+);
+```
+
 ---
 
 ## Declared non-secret settings

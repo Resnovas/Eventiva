@@ -1194,8 +1194,9 @@ The [rank-1 packet and bounded approvals](https://ampcode.com/threads/T-01a1edbf
 
 | Phase | State | Evidence and boundary |
 | --- | --- | --- |
-| Exact UUID compiler normalization | Current, separately verified delivery pending | Existing runtime validation and provider restrictions retained; dedicated compiler fixtures plus existing inventory tests. See [actions](../actions.md). |
-| Private product persistence/actions | Current, bounded implementation | Real SQLite/PostgreSQL public-host checkpoint covers initial SKU race, post-write rollback, rename/archive and tenant/reopen controls; final retry and combined gates remain pending. |
+| Exact UUID compiler normalization | Bounded implementation verified | Dedicated compiler/inventory/product-contract run passes 50 tests. Existing runtime validation, ProviderSchema shape and provider restrictions remain intact. See [actions](../actions.md). |
+| Private product persistence/actions | Bounded backend verified | [Public-host checkpoint](https://linear.app/resnovas/issue/EVE-81#comment-4a79c911) records real SQLite/PostgreSQL initial guard race, actual post-write rollback, bounded retry exhaustion, live revocation, rename/archive, cursor/tenant isolation, private receipt checks and reopen persistence. Two red SKU-rewrite regressions pass after per-observer target isolation. See [product contract](../inventory-products.md). |
+| Documentation and combined delivery gates | Passed locally; signed delivery and CI recorded separately | [Final evidence](https://linear.app/resnovas/issue/EVE-81#comment-2762bf3c-a128-4e09-b89d-5f150ea017b9) records full fixture-backed verify on the strict-zero documentation base: 32 aggregate projects, source/declaration boundaries and three smoke projects. Strict documentation is zero across 245 editable files, without debt/suppression/checker changes; strict planning covers 258 issues/692 edges with no unresolved/stale outputs. LLMS/planning/clean-source Graphify are regenerated. Remote CI is not inferred from local success. |
 | Inventory parity, kits, UI, sync, import commit | Upcoming or blocked | Complete private-product schemas are not representable in the conservative shared provider subset; discovery fails closed. No activation, stock or whole-issue acceptance. |
 
 ```mermaid
