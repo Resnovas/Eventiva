@@ -29,6 +29,26 @@ flowchart LR
     Gates --> Later["Separate client and streaming acceptance"]
 ```
 
+## Declared non-secret settings - 2026-11-18
+
+[EVE-41](https://linear.app/resnovas/issue/EVE-41) packet 3 follows revision 2 of the [implementation packets](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0) and its [Puck dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). The dated [issue checkpoint](https://linear.app/resnovas/issue/EVE-41#comment-2c87ee41-1747-49e5-a4a3-46d73a859768) supplements, rather than rewrites, the frozen historical mirror. Detailed contracts, bounds, composition and the protected execution seam are in the [settings guide](../settings.md).
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Declaration and durable user/tenant actions | Implemented; focused checks passed | Explicit non-secret scalar schemas/defaults, whitelist, canonical identity/tenant/module-instance keys and Resources optimistic revisions; real SQLite close/reopen and registered-host inventory parity. No SQL migration or alternate store. |
+| Private caller adaptation | Verified bounded settings workaround | Detached/frozen per-preparation authority passes reverse-order callers, reference mutation, failed/stale authorization and post-authorization Resources revocation. Removing the bridge fails two scenarios; moving admission to the shared binding fails the interleaving scenario. Protected execution/action/trust sources untouched; the global execution seam still belongs to preservation-first trust recovery. |
+| Shared outputs and full delivery gates | Full gates passed for this bounded slice | `node --run check`, approved disposable PostgreSQL-backed `node --run verify` (98 aggregate tasks and 16 smoke/dependency tasks), strict reviewed planning and Nx sync pass. Planning/LLMS/clean-source graph accompany the source; see EVE-41 for latest-main revalidation and exact signed delivery state. This does not close full issue acceptance. |
+| App scope and original credential acceptance | Upcoming / bounded contract gap | App operations refuse until a reviewed app-global authority/store seam exists. Secret encryption, credential handles/revocation/redaction, hot updates and UI remain separate. No KMS, paid spend or production activation; EVE-248 remains deferred until January 2027. |
+
+```mermaid
+flowchart LR
+    Declare["Declare non-secret scalar preference"] --> Tenant["Trusted tenant Resources"]
+    Tenant --> Actions["Canonical user and tenant actions"]
+    Actions --> Proof["Isolation, conflicts, reconnect and live rechecks"]
+    Proof --> Deliver["Latest-main full gates and signed delivery"]
+    Deliver --> Gap["Separate app-global seam and credential acceptance"]
+```
+
 ## Consent-gated catalogue preparation - 2026-11-18
 
 [EVE-247](https://linear.app/resnovas/issue/EVE-247) slice 2 follows Jonathan's explicit continuation in [the coordinating thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). The [catalogue guide](../catalogue.md#rights-and-supplier-consent-checkpoint---2026-11-18) owns cited rights findings, source authority, CSV bounds and remaining acceptance.

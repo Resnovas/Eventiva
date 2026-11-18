@@ -9,6 +9,9 @@
     "include": ["src/**/*.ts", "vitest.config.mts"],
     "references": [
         {
+            "path": "../../packages/integrations/sql"
+        },
+        {
             "path": "../../packages/schema"
         },
         {

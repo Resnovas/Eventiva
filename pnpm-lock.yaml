@@ -744,9 +744,15 @@ importers:
 
   tests/runtime:
     devDependencies:
+      '@effect/sql':
+        specifier: 0.52.2
+        version: 0.52.2(@effect/experimental@0.61.2(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4))(@effect/platform@0.97.3(effect@3.22.4))(effect@3.22.4)
       '@eventiva/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@eventiva/integrations.sql':
+        specifier: workspace:*
+        version: link:../../packages/integrations/sql
       '@eventiva/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime

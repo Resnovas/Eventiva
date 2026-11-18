@@ -2117,6 +2117,68 @@ The dated `docs/catalogue.md` rights matrix distinguishes robots allowances from
 
 ---
 
+## Declared non-secret settings
+
+EVE-41 packet 3 implements `settings.read` and `settings.write` from `@eventiva/contracts/settings` using `settingsModule` from `@eventiva/runtime/settings`. See `docs/settings.md` for all required fields, defaults, bounds, setup, transport encoding and failures. This is not secret custody, a feature-flag service, permission configuration, UI or production activation.
+
+Declare only explicit `classification: 'non-secret'`, `purpose: 'preference'`, scalar `text|integer|boolean` metadata with schema-valid defaults and exact module/instance/key/scope namespaces. Unknown metadata, secret declarations and duplicate targets fail before registration. Supply trusted tenant Resources and its matching durable host transaction owner; apply `settingsResource` through existing Resources migration composition, never a new SQL store. The compiling example returns unactivated effects, not an operational service.
+
+The current inventory converter's common provider subset requires JSON-encoded scalar **strings** for action values/results. Integer 37 is `'37'`, false is `'false'`, and text hello is `'"hello"'`. Handler validation bounds encoded text at 24578 UTF-16 units, decoded text at 4096, namespaces at 100 and expected revisions at 0..2147483646. Revision zero means absent/create-only; explicit stored defaults have positive revisions. No arbitrary JSON, raw tenant/owner input or unrestricted provider selection.
+
+Canonical subject, trusted tenant route and exact module-instance namespace isolate values. The local settings-only bridge keeps a detached frozen authorization snapshot per preparation, consumes admission once and invalidates stale/failed authorization; interleaved caller tests prove no shared-binding identity crossover. Protected execution resolves/authorizes canonical identity but runs without supplying it as handler Caller. Keep that underlying seam for preservation-first trust recovery; do not describe this workaround as a global host fix. Host and Resources live policy remain in force.
+
+`settings.enabled` defaults false through the existing flag provider. Action/Resources policy are independently required. Current tenant-bound Resources cannot safely express app-global authority/storage: app reads and writes both refuse `app-scope-unavailable`, including tenant admins. EVE-41 stays In Progress for this gap, secret/credential handles and broader acceptance. No KMS, plaintext secret declaration, production migration, spend or external activation is included. EVE-248 stays deferred until January 2027.
+
+Tests: `tests/contracts/src/settings.spec.ts` and `tests/runtime/src/settings.spec.ts` cover declaration validation, inventory parity, encoded payload bounds, default/stored distinction, reconnect, isolation, conflicts, live rechecks and private caller admission. Use their Vitest configurations for focused execution; deliver only after package/full gates, strict reviewed planning and generated docs/graph succeed.
+
+### settings
+
+```ts
+import { Effect } from 'effect';
+import { declareSetting, settingsRead, settingsWrite, settingsResource } from '@eventiva/contracts/settings';
+import { ActionHost } from '@eventiva/runtime/host';
+import { settingsModule } from '@eventiva/runtime/settings';
+
+/** Return unactivated composition helpers; the trusted caller supplies Resources, digest, tenant and durable host services. */
+export const example = Effect.gen(
+    /** Validate metadata before returning resource migration and registration inputs. */ function* () {
+        const definition = yield* declareSetting({
+            module: 'calendar',
+            instance: 'primary',
+            key: 'page-size',
+            scope: 'user',
+            classification: 'non-secret',
+            purpose: 'preference',
+            type: 'integer',
+            default: 25,
+        });
+        const resource = yield* settingsResource;
+        const register = Effect.gen(
+            /** Resources migrations/provider and a matching durable integrity owner must exist before this effect runs. */ function* () {
+                const host = yield* ActionHost;
+                yield* host.register(yield* settingsModule([definition]));
+            }
+        );
+        const use = Effect.gen(
+            /** Invoke only after separately approved activation and authenticated permission checks. */ function* () {
+                const host = yield* ActionHost;
+                const target = { module: 'calendar', instance: 'primary', key: 'page-size', scope: 'user' } as const;
+                const before = yield* host.invoke(settingsRead.name, target);
+                const stored = yield* host.invoke(
+                    settingsWrite.name,
+                    { ...target, value: '37', expectedRevision: 0 },
+                    { idempotencyKey: 'example-first-preference' }
+                );
+                return { before, stored };
+            }
+        );
+        return { resource, register, use };
+    }
+);
+```
+
+---
+
 # Authenticated local action HTTP (EVE-46)
 
 Read `docs/http-actions.md` for the complete contract and local conformance setup.

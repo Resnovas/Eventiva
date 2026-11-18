@@ -4,6 +4,8 @@
     "private": true,
     "type": "module",
     "devDependencies": {
+        "@effect/sql": "0.52.2",
+        "@eventiva/integrations.sql": "workspace:*",
         "@eventiva/runtime": "workspace:*",
         "@eventiva/contracts": "workspace:*",
         "@eventiva/schema": "workspace:*"

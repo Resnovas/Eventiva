@@ -4965,7 +4965,7 @@ Validate namespaced module configuration before publication and expose scoped se
 - Evidence: [EVE-41/description](https://linear.app/resnovas/issue/EVE-41/p12-build-app-config-settings-secrets-and-credentials).
 - Implementation: Bootstrap preflight is delivered in a bounded report; full store/actions/rotation are explicitly incomplete.
 - Concrete outstanding parameters: Prove invalid/unknown/missing config, two independent providers, hot rollback/audit and revoked/expired handles; canaries must not enter JSON/inspect/Cause/log/telemetry/action/event/projection. Config is not authorization or a feature flag.
-- Superseded by: None explicitly established in this record. Module bootstrap seam does not replace the original complete settings/credential scope.
+- Superseded by: None explicitly established in this record. Module bootstrap seam does not replace the original complete settings/credential scope. Dated 2026-11-18 bounded implementation checkpoint: EVE-41 comment 2c87ee41-1747-49e5-a4a3-46d73a859768 records packet-3 user/tenant Resources actions and focused evidence, with full delivery gates pending at that checkpoint. See docs/settings.md and the authored timeline checkpoint for current delivery evidence. App-global authority/storage remains unavailable; secrets/credential custody, hot-update and full acceptance remain open. The settings-only canonical-caller bridge does not fix the protected execution seam. This annotation does not alter frozen source text, review hashes, issue status or production authorization.
 
 ### platform-keycloak-selection-direction
 
