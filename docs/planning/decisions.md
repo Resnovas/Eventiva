@@ -37,6 +37,12 @@ transport, offline engine, production activation or paid work follows. EVE-46
 remains Backlog/open; original durable receipts, not fresh wire receipt IDs,
 establish replay stability. Exact original owner-selection time is unknown.
 
+## Bounded physical location metadata - 2026-11-18
+
+The owner-relayed [revision 10 packet and dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) select EVE-103 physical warehouse/zone/bin metadata only; the exact original owner-selection timestamp is unknown. The [issue checkpoint](https://linear.app/resnovas/issue/EVE-103#comment-ddd54a8f-bada-472f-a508-6c5cce1998e5) distinguishes executed local evidence from approval, hosted CI and release authority. Broader EVE-103 stays Backlog/open; no frozen source/review digest is relabeled.
+
+The [location guide](../inventory-locations.md) owns the contract: sensitive online-only create/update/get/list, existing default-off inventory.f6-inventory, canonical dotted inventory.location.read/write, immutable client UUIDv7/kind and revisioned name/parent. No parent-kind taxonomy or uniqueness-by-name is assumed. Public null root/omitted retention maps at this feature boundary to a declared scalar empty-string marker, not a Resources API change. Every mutation serializes through a tenant graph guard before complete bounded ancestry checks. Maximum 1024 ancestors, 200-code-unit names, 32-bit revisions and four guard attempts are conservative implementation limits, not new ledger/stock policy. No archive without an authoritative LocationNotEmpty query, stock/quantity/movement API, dependency or production activation is included. EVE-248 remains January 2027 only.
+
 ## Sequential local batch boundary - 2026-11-18
 
 The owner-relayed [revision 6 packet and dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)

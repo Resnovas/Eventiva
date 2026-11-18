@@ -2660,3 +2660,69 @@ export const organisationLifecycle = Effect.gen(
     }
 );
 ```
+
+---
+
+# Physical location metadata
+
+`@eventiva/contracts/inventory-location` exports four strict sensitive online-only action specifications and `locationResources`. `@eventiva/runtime/inventory-location` exports `inventoryLocationModule`. Import installs nothing. Compose the tenant Resources provider and durable Integrity on its exact Storage owner, live identity/authorization/flags, then register on the common authenticated ActionHost. Keep existing `inventory.f6-inventory` default-off. Dotted `inventory.location.read/write` are the canonical permissions, not aliases for another family. No caller-selected tenant or direct feature SQL exists.
+
+Create uses UUIDv7 id, immutable warehouse/zone/bin kind, already-trimmed nonempty name up to 200 code units and optional parent. Omission/null means root on create. Update accepts expectedRevision 1..2147483646 and optional name/parent; omission retains and null detaches. Output is strict id/revision/kind/name/parent. Duplicate names are allowed; no parent-kind taxonomy exists. Public null maps only here to the declared scalar empty-string parent marker; nonempty stored parent must strictly decode as UUIDv7. Do not change Resources for nullable/unset fields.
+
+Get reads current state. List returns items/next with exclusive UUID after, limit 1..100/default50. Omitted parent selects all, null only roots, UUID exact children; apply filter before limiting. Continue with the same filter until next=null; a full last page may need an empty request.
+
+Every mutation acquires a tenant graph guard inside the existing transaction, then checks the full exact ancestor chain (maximum 1024, otherwise refuse) before writing. Missing/corrupt/denied/repeated ancestry fails closed. Only guard CAS/initialization conflicts retry up to three times; refresh authority after waits/retries. No automatic retry of mutation conflict, database uncertainty or policy failure. Preserve original action keys/input for explicit recovery and stable committed receipts. Public errors are finite LocationFailure reasons, not database diagnostics. Unrelated modules must not bypass the guard by directly writing its resources.
+
+The compiling example assumes an already composed authenticated host, not a policy bootstrap. Actual PostgreSQL/SQLite host/reopen/history/paging/rollback/replay/live-policy and independent PostgreSQL graph races are tested in `tests/resources/src/inventory-location.spec.ts`. Definition validation/invocation do not establish provider parity: intact schemas retain explicit UnsupportedSchema discovery controls. No archive exists without the authoritative LocationNotEmpty stock query. Broader EVE-103 ledger/levels/movements/UI/offline acceptance remains open. See `docs/inventory-locations.md` for options, limits and troubleshooting. No activation/spend or January-deferred EVE-248 work is included.
+
+### locations
+
+@title Invoke metadata without asserting stock
+
+```ts
+import { ActionHost } from '@eventiva/runtime/host';
+import { Effect } from 'effect';
+
+/** Run on a fresh synthetic authenticated host; stable keys represent each intentional mutation, not automatic retries. */
+export const locationLifecycle = Effect.gen(
+    /** Preserve root/null semantics and immutable kinds while demonstrating revisioned explicit detachment. */ function* () {
+        const host = yield* ActionHost;
+        const warehouse = '019b0000-0000-7000-8000-000000000001';
+        const bin = '019b0000-0000-7000-8000-000000000002';
+        // Caller and tenant come from the route; no location input supplies or grants authority.
+        yield* host.invoke(
+            'inventory.location.create',
+            {
+                id: warehouse,
+                kind: 'warehouse',
+                name: 'Synthetic warehouse',
+            },
+            { idempotencyKey: 'location-example-warehouse' }
+        );
+        yield* host.invoke(
+            'inventory.location.create',
+            {
+                id: bin,
+                kind: 'bin',
+                name: 'Synthetic bin',
+                parent: warehouse,
+            },
+            { idempotencyKey: 'location-example-bin' }
+        );
+        const detached = yield* host.invoke(
+            'inventory.location.update',
+            {
+                id: bin,
+                expectedRevision: 1,
+                name: 'Detached bin',
+                parent: null,
+            },
+            { idempotencyKey: 'location-example-detach' }
+        );
+        const current = yield* host.invoke('inventory.location.get', { id: bin });
+        const roots = yield* host.invoke('inventory.location.list', { parent: null, limit: 25 });
+        // Results are private caller data, never log attributes or assertions of empty stock.
+        return { detached, current, roots };
+    }
+);
+```

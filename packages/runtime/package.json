@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./inventory-location": {
+            "@eventiva/source": "./src/inventory-location.ts",
+            "types": "./dist/inventory-location.d.ts",
+            "default": "./dist/inventory-location.js"
+        },
         "./settings": {
             "@eventiva/source": "./src/settings.ts",
             "types": "./dist/settings.d.ts",
