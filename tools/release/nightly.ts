@@ -40,6 +40,7 @@ const dryRun = values['dry-run']
 // Hands values to later workflow steps; a no-op outside GitHub Actions.
 /** Append a single-line workflow output when a destination exists; caller values must not contain line breaks. */
 const output = (name: string, value: string) => {
+  // Local runs have no workflow destination; an empty path must not become a filesystem write.
   const file = process.env['GITHUB_OUTPUT']
   if (file !== undefined && file !== '') appendFileSync(file, `${name}=${value}\n`)
 }
