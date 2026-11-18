@@ -2141,6 +2141,14 @@ Repeated target authorization decodes fresh copies of captured wire bytes; polic
 
 Discovery is a separately recorded limitation, not parity evidence: the conservative Google profile refuses required patterns/string bounds, and nullable cursor/composed bounds also remain unsupported. The module is not installed in the shell and stays default-off; do not activate it on a shared discovery host while this is unresolved. UUID normalization alone does not make the complete product schemas portable. Focused commands are not substitutes for root check, full fixture-backed verify and strict planning checks; broader EVE-81 remains open.
 
+EVE-81 rank 2 (revision 7, 2026-11-18 dispatch) adds `@eventiva/contracts/inventory-kit` sensitive online-only `DefineKit`/`GetKit`, with existing catalogue read/write permissions and default-off `inventory.f6-inventory`. `@eventiva/runtime/inventory-kit` exports `kitResources` and `kitModule` (distinct `inventory.kits` module ID); register alongside products on the same tenant-bound Resources and durable Storage owner. `05_kits.ts` compiles registration and a full write/read input. The detailed contract and all no-default semantics are in `docs/inventory-kits.md`. A kit is an existing Product plus a separate ordered composition revision, not a copied product or stock type.
+
+Define atomically replaces the full list at an expected composition revision (zero=create-only). Explicit Product UUIDv7, integer quantity 1-1000000 and optional boolean are required per edge, with no summing/defaulting/rounding. Empty lists explicitly define leaves. Counted units must be exact `each`; other units refuse. Missing/archived/foreign target and reachable nested/optional components refuse. Get retains recorded metadata after archival and does not claim fulfilment. No Product or product-guard writes, stock, reservations, fractional conversion, UI/sync, import or production activation are included.
+
+Every define serializes through the kit-owned tenant singleton CAS guard within the same Resources transaction as complete graph loading/cycle validation/replacement. Iterative traversal includes optional edges and shared DAG descendants. Reversible engineering ceilings are 100 components, 1000 total tenant definitions, 1000 distinct reachable Products including leaves, and 16384 UTF-16 units for the fixed persisted array codec. The complete-inventory/distinct-Product bounds intentionally cap memory and IO more strictly than only counting reachable kit definitions. These are engineering safeguards, not owner-selected business limits. Persist one bounded typed composition as JSON in scalar Resource text, never as a new general JSON field; the action wire accepts a typed array, not arbitrary JSON text. Ceiling exhaustion or malformed stored state refuses, never truncates.
+
+Refresh canonical identity/permission/target/flag after guard acquisition and each recognized conflict retry, with current Resources policy. At most three retries apply only to recognized guard create/CAS conflicts; storage/deadlock/SQLite busy failures fail closed. Detached/frozen scalar caller/route and freshly decoded observer targets do not grant lasting authority. Like products, mismatched ambient/resolved identity refuses; this is not a global execution fix. Common-host durable replay retains one composition/history revision, while changed content/stale revisions conflict. Actual post-write failure rolls back composition/history/guard and successful commit; failure audit may remain. Real PostgreSQL/SQLite public-host tests cover nested exact values, cycle/race/limits, tenant isolation, revocation and reopen. Independent synchronous SQLite clients can busy-refuse; single-owner serialized races are not universal multiprocess acceptance. Provider discovery still fails closed; no Google parity or compiler change. Broader EVE-81 remains open and EVE-248 remains deferred until January 2027.
+
 ### inventory
 
 ```ts
@@ -2157,6 +2165,49 @@ export const registerPrivateProducts = Effect.gen(
     /** Register the same portable specifications and backend handlers for every authorized invocation surface. */ function* () {
         const host = yield* ActionHost;
         return yield* host.register(yield* productModule);
+    }
+);
+```
+
+### kits
+
+```ts
+import { DefineKit, GetKit } from '@eventiva/contracts/inventory-kit';
+import { ActionHost } from '@eventiva/runtime/host';
+import { kitModule } from '@eventiva/runtime/inventory-kit';
+import { Effect } from 'effect';
+
+/**
+ * Register alongside productModule only after kit/product Resources migration and tenant-local live policy composition.
+ * Share provider Storage with durable Integrity/Audit; supply Caller per invocation, not here.
+ * This compiling example does not install or enable the default-off inventory capability.
+ */
+export const registerPrivateKits = Effect.gen(
+    /** Keep all surfaces on the same common host instead of calling a private handler or alternate kit writer. */ function* () {
+        const host = yield* ActionHost;
+        return yield* host.register(yield* kitModule);
+    }
+);
+
+/** A complete counted composition example; the two existing Product IDs must belong to the authenticated tenant. */
+export const defineAndReadKit = Effect.gen(
+    /** Retain the original write key for acknowledgement recovery; a new key is not an overwrite or replay mechanism. */ function* () {
+        // This is composition metadata only: no quantity is added to stock and no product revision is changed.
+        const host = yield* ActionHost;
+        const id = '019b0000-0000-7000-8000-000000000010';
+        yield* host.invoke(
+            DefineKit.name,
+            {
+                id,
+                revision: 0,
+                components: [
+                    { product: '019b0000-0000-7000-8000-000000000011', quantity: 7, optional: false },
+                    { product: '019b0000-0000-7000-8000-000000000012', quantity: 2, optional: true },
+                ],
+            },
+            { idempotencyKey: '019b0000-0000-7000-8000-000000000099' }
+        );
+        return yield* host.invoke(GetKit.name, { id });
     }
 );
 ```
