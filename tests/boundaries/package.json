@@ -10,6 +10,6 @@
         "@eventiva/integrations.openfeature.client": "workspace:*",
         "@effect/platform-node": "0.108.4",
         "@effect/cluster": "0.60.5",
-        "posthog-node": "5.63.1"
+        "posthog-node": "5.69.0"
     }
 }
