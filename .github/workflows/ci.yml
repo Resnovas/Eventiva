@@ -81,15 +81,14 @@ jobs:
           node tools/resources/boundaries.mjs
           node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs
 
-      # The owner accepted this exact image's residual findings only for
-      # reviewed synthetic fixtures, until 2026-11-22 or an earlier trigger.
-      # Fail closed for PR code and expiry; never suppress or skip a suite.
+      # Standing owner acceptance (2026-11-18, EVE-42) is synthetic-fixture-only.
+      # Compare Bookworm/Alpine scans routinely; prefer fewer findings after
+      # compatibility checks. No calendar gate; untrusted PR code stays denied.
       - name: Start bounded disposable PostgreSQL fixture
         env:
           TRUSTED_FIXTURE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'merge_group' }}
         run: |
           test "$TRUSTED_FIXTURE" = true
-          test "$(date -u +%F)" \< 2026-11-22
           bootstrap=$(openssl rand -hex 32)
           STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
           export STORAGE_FIXTURE_PASSWORD
@@ -103,7 +102,7 @@ jobs:
             --tmpfs /var/lib/postgresql/data:rw,size=256m \
             --env POSTGRES_DB=eventiva_test --env POSTGRES_PASSWORD \
             --env 'POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256' \
-            docker.io/library/postgres:17.12-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+            docker.io/library/postgres:17.12-alpine3.24@sha256:a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7
           export PGPASSWORD="$bootstrap"
           for _ in {1..30}; do
             if docker exec --env PGPASSWORD eventiva-storage-test \

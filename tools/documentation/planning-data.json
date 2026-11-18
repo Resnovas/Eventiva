@@ -4098,14 +4098,14 @@
         {
             "id": "sql-test-image-bounded-risk-exception",
             "authority": "recorded-owner-direction",
-            "summary": "The storage specification records a bounded owner exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures, with findings unsuppressed and expiry/trigger revocation.",
+            "summary": "Historical 2026-11-15 exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures; its expiry/trigger terms are superseded by the separately cited 2026-11-18 standing acceptance in the authored decision checkpoint.",
             "timestamp": null,
             "scope": ["EVE-42", "EVE-261"],
             "sources": ["EVE-42/description"],
             "implementation": "Full description and supplemental SQL evidence artifact https://ampcode.com/artifacts/eve-42-sql-evidence-6f270af4-a889-4337-98aa-0ff0f25804db revision9 were read. Reported bounded fixture evidence is not independently rerun here, and the exception is not a clean scan or production acceptance.",
             "parameters": "Only postgres:17.12-bookworm sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536; expires2026-11-22UTC or earlier relevant exploit/input/fix/rebuild trigger. Retain4critical/140high/231medium/190low/11unknown findings, SCRAM/generated credentials, loopback/dedicated bridge, resource/time bounds and teardown; no real data/cloud credentials, arbitrary SQL/XML/extensions, host networking/privilege or Trixie/production/broader waiver.",
             "supersededBy": [],
-            "supersessionNote": "This exact-risk exception qualifies only the named synthetic fixture image; it never relaxes dependency approval or authorizes a replacement image after expiry."
+            "supersessionNote": "The frozen source and historical parameters above are preserved, not current policy. Jonathan's original 2026-11-18T08:47:18.801Z message https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdN6MvN88wCu04N6SDf accepts residual fixture findings on a standing basis; his 08:50:00.894Z message #M-034zdRCPlGPp83UkEzUx4k approves Alpine and comparing both variants. The implementing relay replaces the expiry/trigger gate with no hard expiry and routine hygiene, conditional on compatibility. See docs/storage.md, the authored decision/timeline checkpoint and EVE-42 comment83baa9b6-3011-48f2-9924-861ba5bd3b9c. Synthetic-only isolation, no production/broader waiver and dependency boundaries survive; no frozen source timestamp or hash was changed."
         },
         {
             "id": "platform-action-projection-spike-spec",
@@ -10213,13 +10213,16 @@
         {
             "issue": "EVE-42",
             "kind": "later-status",
-            "date": "2026-11-17",
+            "date": "2026-11-18",
             "status": "In Progress",
             "statusType": "started",
-            "summary": "The EVE-258 migration process-loss slice executes on both SQL dialects through the existing public migrator with fixture-only barriers and three distinct SIGKILL workers. Two asymmetric records, exact declaration bytes/checksums and five original revisions survive rollback/retry and acknowledgement loss; repeat history applies nothing and stale writers fail closed. No adapter policy, dependency, secret or production change. Deferred Drizzle/device/provider least-privilege and complete storage acceptance remain open. This dated checkpoint does not silently refresh the captured issue discussion or infer completion.",
+            "summary": "The 2026-11-17 EVE-258 migration process-loss slice executes on both SQL dialects through the public migrator with fixture-only barriers and three SIGKILL workers; records, exact declaration bytes/checksums and original revisions survive rollback/retry and acknowledgement loss. Newer 2026-11-18 original owner messages accept residual PostgreSQL findings for disposable synthetic local/CI fixtures on a standing basis and approve comparing Bookworm/Alpine to use the lower-finding compatible image. The implementing relay removes the hard expiry, keeps rescans/digest bumps as hygiene, and selects Alpine a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7 conditional on full compatibility checks. Fresh Trivy amd64/arm64 counts: Alpine62 versus unchanged Bookworm586; neither is clean. Non-superuser role and own-role/plain-DROP cleanup stay unchanged. Execution/delivery evidence is recorded separately, not inferred from approval. Deferred Drizzle/device/provider least-privilege and whole-issue acceptance remain open; frozen capture is unchanged.",
             "sources": [
                 "https://linear.app/resnovas/issue/EVE-42/p13-build-the-storage-layer-drizzle-on-postgres-and-sqlite-state#comment-b23c70d9",
-                "https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb"
+                "https://ampcode.com/threads/T-a0a1608d-284c-46c6-8bd0-372ce1a02efb",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdN6MvN88wCu04N6SDf",
+                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdRCPlGPp83UkEzUx4k",
+                "https://linear.app/resnovas/issue/EVE-42#comment-83baa9b6-3011-48f2-9924-861ba5bd3b9c"
             ]
         },
         {

@@ -98,14 +98,27 @@ Restore into a new isolated database, verify data, checksums and old-client read
 
 ## Run conformance
 
-The owner accepted the exact Bookworm image below on 2026-11-15 only for isolated disposable synthetic local/CI tests. The exception expires at 2026-11-22 UTC or earlier on a relevant exploit, changed input, available fix or rebuild. The recorded amd64 Trivy scan remains **4 critical, 140 high, 231 medium, 190 low and 11 unknown** findings, not a passing security scan. No CVE is suppressed; production use, Trixie adoption and a broader waiver are not authorized. Stop use at expiry or an earlier trigger and obtain a new reviewed decision.
+Jonathan gave standing acceptance of residual PostgreSQL image findings for isolated disposable synthetic local/CI fixtures on 2026-11-18. This replaces the earlier Bookworm exception's 2026-11-22 expiry and exploit/input/fix/rebuild revocation triggers with no hard expiry; it is not production or broader dependency approval. His [08:47:18.801Z message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdN6MvN88wCu04N6SDf) says, verbatim: "Yes you can keep using for now and postgresnis approved to have a few issues always". His [08:50:00.894Z message](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdRCPlGPp83UkEzUx4k) adds: "Im happy with alpine as the os for this. We should keep an eye on both for whichever is the os with least vulnerabilities". The implementing relay selects the exact Alpine pin below conditional on full compatibility checks. [EVE-42 records the decision and scan evidence](https://linear.app/resnovas/issue/EVE-42#comment-83baa9b6-3011-48f2-9924-861ba5bd3b9c).
 
-Use only reviewed synthetic fixtures in a disposable job/container: no real data, cloud credentials, XML parsing, extension loading or arbitrary external SQL. Publish only loopback, use a dedicated bridge network, generate per-run test credentials, bound CPU/memory/process/time, and tear down the container and data. Limit container egress where the runner supports it. Never use host networking, privileged mode, the Docker socket inside the container or unrelated host mounts. CI enforces the date and permits this fixture only for main pushes or the reviewed merge queue; PR/dispatch runs fail closed rather than skipping conformance. A later image decision must restore any additional event coverage.
+Rescan Bookworm and Alpine routinely with the same current scanner/database and record each severity plus the total. Use whichever compatible PostgreSQL 17 candidate has fewer findings; when a newer image appears, compare scans, pin its digest and rerun the full storage/server checks before a digest bump. These are maintenance hygiene, not calendar or severity gates. Keep findings unsuppressed, investigate new material exposure, and retain the synthetic-only isolation boundary. Do not replace an immutable pin with a floating tag. Trixie, production use, real data and broader risk acceptance are not selected.
 
-With a working Docker daemon, run the following in one Bash shell before the expiry. This creates a non-superuser fixture login with CREATEDB solely to create and remove isolated test databases. That harness privilege and ownership of its synthetic objects are not the runtime least-privilege policy. The bootstrap superuser is not passed to the application suite.
+Fresh Trivy 0.76.2 scans on 2026-11-18 (DB UpdatedAt `2026-11-18T07:15:21.579242117Z`) give identical counts on independently scanned amd64 and arm64:
+
+| PostgreSQL 17.12 variant | Critical | High | Medium | Low | Unknown | Total |
+| --- | --- | --- | --- | --- | --- | --- |
+| Selected Alpine 3.24.4 | 1 | 25 | 32 | 3 | 1 | 62 |
+| Bookworm / Debian 12.15 | 4 | 139 | 235 | 192 | 16 | 586 |
+| Trixie / Debian 13.7, comparison only | 2 | 148 | 195 | 156 | 19 | 520 |
+
+All Alpine findings are in bundled `usr/local/bin/gosu` Go stdlib v1.24.6, including critical `CVE-2025-68121`. Zero Alpine OS-package findings is not an independent audit of the compiled PostgreSQL server. Scan completion is not a clean security result or a reachability exemption. The unchanged Bookworm fallback pin is `postgres:17.12-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536`; a changed vulnerability database is not an image patch. The [six-scan report and raw evidence bundle](https://ampcode.com/artifacts/postgresql-fixture-renewal-45c5f435-9bc6-4788-801a-779184f57a76) record exact pins and reproduction commands. Bundle SHA-256: `1585bcf321f9d9d85a5cec35fe300e3c64c93e29a69eecdf08c118f65fb05f09`.
+
+Compatibility probes execute on PostgreSQL 17.12, Alpine 3.24.4/musl 1.2.6, UTF8 and database libc locale `en_US.utf8`. Exact Unicode keys/JSON (ASCII, accented, Japanese and supplementary-plane text), explicit C ordering, ASCII case conversion and explicit `en-US-x-icu` accent ordering pass on both variants. Default libc sorting is **not equivalent**: the same six values order as escaped `{E,e,z,\u00e9,\u65e5\u672c,\U0001f642}` on Alpine versus `{\U0001f642,e,E,\u00e9,z,\u65e5\u672c}` on Bookworm; accented case conversion passes on both. ICU versions also differ (153.136 versus 153.120). Full storage/server suites establish compatibility for the current synthetic fixture contracts, not universal locale parity or a production collation migration. Keep language-sensitive ordering explicit and separately tested; do not reuse persisted glibc collation indexes in this fresh tmpfs fixture.
+
+Use only reviewed synthetic fixtures in a disposable job/container: no real data, cloud credentials, XML parsing, extension loading or arbitrary external SQL. Publish only loopback, use a dedicated bridge network, generate per-run test credentials, bound CPU/memory/process/time, and tear down the container and data. Limit container egress where the runner supports it. Never use host networking, privileged mode, the Docker socket inside the container or unrelated host mounts. CI permits this fixture only for main pushes or the reviewed merge queue; PR/dispatch runs still fail closed rather than skipping conformance. Removing the date gate does not authorize untrusted code or additional event coverage.
+
+With a working Docker daemon, run the following in one Bash shell. This creates a non-superuser fixture login with CREATEDB solely to create and remove isolated test databases. That harness privilege and ownership of its synthetic objects are not the runtime least-privilege policy. The bootstrap superuser is not passed to the application suite.
 
 ```sh
-test "$(date -u +%F)" \< 2026-11-22 || exit 1
 POSTGRES_PASSWORD=$(openssl rand -hex 32)
 STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
 export POSTGRES_PASSWORD STORAGE_FIXTURE_PASSWORD
@@ -116,7 +129,7 @@ docker run --detach --rm --name eventiva-storage-test \
     --tmpfs /var/lib/postgresql/data:rw,size=256m \
     --env POSTGRES_DB=eventiva_test --env POSTGRES_PASSWORD \
     --env 'POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256' \
-    docker.io/library/postgres:17.12-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+    docker.io/library/postgres:17.12-alpine3.24@sha256:a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7
 export PGPASSWORD="$POSTGRES_PASSWORD"
 for _ in {1..30}; do
     if docker exec --env PGPASSWORD eventiva-storage-test \

@@ -91,6 +91,32 @@ session, configured issuer and live SQL deadline are the integration seam.
 Presence of code, flags or transport interception is not live ingestion proof,
 production authorization or completion of EVE-58's full endpoint matrix.
 
+## PostgreSQL fixture standing acceptance - 2026-11-18
+
+Jonathan's original human messages at
+[08:47:18.801Z](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdN6MvN88wCu04N6SDf)
+accept continued residual PostgreSQL fixture findings, and at
+[08:50:00.894Z](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdRCPlGPp83UkEzUx4k)
+approve Alpine and watching Bookworm/Alpine for the lower-vulnerability OS.
+The implementing relay replaces the 2026-11-22 expiry and earlier trigger gate
+with standing acceptance, no hard expiry and routine rescan/digest hygiene,
+solely for isolated disposable synthetic local/CI fixtures. It selects exact
+Alpine digest `a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7`
+conditional on full storage/server and musl/locale compatibility checks; retain
+Bookworm if those fail. Do not infer universal locale parity or production use.
+
+The [storage guide](../storage.md#run-conformance) owns the exact quotes, pins,
+fresh scan counts and isolation contract. [EVE-42's dated record](https://linear.app/resnovas/issue/EVE-42#comment-83baa9b6-3011-48f2-9924-861ba5bd3b9c)
+supersedes its historical expiry. Both independently scanned architectures
+report Alpine 62 findings versus Bookworm 586; neither scan is clean. Keep the
+non-superuser CREATEDB role, own-role termination/plain DROP cleanup, trusted
+events and all resource/credential/data limits unchanged. This supersedes only
+the fixture-image risk/selection terms of `sql-test-image-bounded-risk-exception`
+below; the frozen source, original scan and timestamps remain historical.
+No production, real-data, provider, broader dependency or whole-issue acceptance
+is supplied. Execution and signed delivery are recorded separately in the timeline
+and issue rather than inferred from the owner's policy decision.
+
 ## Later owner decisions - 2026-11-17
 
 These updates postdate the frozen issue/comment capture. Their distinct owner
@@ -523,7 +549,7 @@ provisioning, new dependency or production activation;
 | [private-validated-reflection-ingress-exception](#private-validated-reflection-ingress-exception) | Permit private TypeScript PropertyDescriptor/reflection unknown ingress only when immediately and recursively validated; never export the unknown or widen public domain contracts. | Unknown | recorded-owner-direction |
 | [rambo-adapter-scoped-deferral](#rambo-adapter-scoped-deferral) | Defer the real Rambo adapter until an approved releasable React Native package/API exists; do not block unrelated verified modular-platform delivery on that adapter. | Unknown | recorded-owner-direction |
 | [read-only-archive-recovery-authorization](#read-only-archive-recovery-authorization) | Permit temporary restoration of archived Eventiva threads/orbs for read-only fresh filesystem audits and safe recovery of missing work; rearchive after the audit. | Unknown | recorded-owner-direction |
-| [sql-test-image-bounded-risk-exception](#sql-test-image-bounded-risk-exception) | The storage specification records a bounded owner exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures, with findings unsuppressed and expiry/trigger revocation. | Unknown | recorded-owner-direction |
+| [sql-test-image-bounded-risk-exception](#sql-test-image-bounded-risk-exception) | Historical 2026-11-15 exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures; its expiry/trigger terms are superseded by the separately cited 2026-11-18 standing acceptance in the authored decision checkpoint. | Unknown | recorded-owner-direction |
 | [platform-action-projection-spike-spec](#platform-action-projection-spike-spec) | Prove one Effect action specification, handler, authorization and error model projected to HTTP, MCP and AI tools in a throwaway spike. | Unknown | settled-requirement |
 | [platform-action-spike-sdk-proposal](#platform-action-spike-sdk-proposal) | Use a shared action-construction API and protocol/AI adapters to avoid independently maintained tool schemas. | 2026-10-31T21:58:41.581Z | proposal |
 | [platform-no-zod-spike-direction](#platform-no-zod-spike-direction) | Avoid Zod in the action-projection spike while preserving a single Effect Schema source. | 2026-10-31T22:37:43.234Z | recorded-owner-direction |
@@ -4544,7 +4570,7 @@ Permit temporary restoration of archived Eventiva threads/orbs for read-only fre
 
 ### sql-test-image-bounded-risk-exception
 
-The storage specification records a bounded owner exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures, with findings unsuppressed and expiry/trigger revocation.
+Historical 2026-11-15 exception for the exact PostgreSQL17.12 Bookworm digest solely in isolated disposable synthetic local/CI fixtures; its expiry/trigger terms are superseded by the separately cited 2026-11-18 standing acceptance in the authored decision checkpoint.
 
 - Authority: **recorded-owner-direction**. This records evidence, not a new approval.
 - Source timestamp: Unknown; no owner decision time available. Comment creation time is evidence time, not necessarily the time of the owner's instruction.
@@ -4552,7 +4578,7 @@ The storage specification records a bounded owner exception for the exact Postgr
 - Evidence: [EVE-42/description](https://linear.app/resnovas/issue/EVE-42/p13-build-the-storage-layer-drizzle-on-postgres-and-sqlite-state).
 - Implementation: Full description and supplemental SQL evidence artifact https://ampcode.com/artifacts/eve-42-sql-evidence-6f270af4-a889-4337-98aa-0ff0f25804db revision9 were read. Reported bounded fixture evidence is not independently rerun here, and the exception is not a clean scan or production acceptance.
 - Concrete outstanding parameters: Only postgres:17.12-bookworm sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536; expires2026-11-22UTC or earlier relevant exploit/input/fix/rebuild trigger. Retain4critical/140high/231medium/190low/11unknown findings, SCRAM/generated credentials, loopback/dedicated bridge, resource/time bounds and teardown; no real data/cloud credentials, arbitrary SQL/XML/extensions, host networking/privilege or Trixie/production/broader waiver.
-- Superseded by: None explicitly established in this record. This exact-risk exception qualifies only the named synthetic fixture image; it never relaxes dependency approval or authorizes a replacement image after expiry.
+- Superseded by: None explicitly established in this record. The frozen source and historical parameters above are preserved, not current policy. Jonathan's original 2026-11-18T08:47:18.801Z message https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zdN6MvN88wCu04N6SDf accepts residual fixture findings on a standing basis; his 08:50:00.894Z message #M-034zdRCPlGPp83UkEzUx4k approves Alpine and comparing both variants. The implementing relay replaces the expiry/trigger gate with no hard expiry and routine hygiene, conditional on compatibility. See docs/storage.md, the authored decision/timeline checkpoint and EVE-42 comment83baa9b6-3011-48f2-9924-861ba5bd3b9c. Synthetic-only isolation, no production/broader waiver and dependency boundaries survive; no frozen source timestamp or hash was changed.
 
 ### platform-action-projection-spike-spec
 
