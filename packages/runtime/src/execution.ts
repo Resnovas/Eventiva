@@ -57,7 +57,7 @@ const rank: Readonly<Record<ApprovalPolicy, number>> = { none: 0, confirm: 1, al
 /** Identify agent principals subject to stricter routine-mutation and independent human-approval floors. */
 const agent = (caller: CallerIdentity) => caller.kind === 'first-party-agent' || caller.kind === 'external-agent';
 
-/** Enforce current timing, offline/state/capacity and approval constraints against trusted policy and the exact input hash. */
+/** Enforce fresh authority constraints; commit checks omit only business preconditions the admitted mutation may consume. */
 const checkExecution = (
     caller: CallerIdentity,
     spec: ActionSpec,
@@ -65,7 +65,8 @@ const checkExecution = (
     live: ExecutionRequirements,
     hash: string,
     now: number,
-    approvals: typeof Approvals.Service
+    approvals: typeof Approvals.Service,
+    phase: 'admission' | 'commit' = 'admission'
 ): Effect.Effect<void, InvocationDenied> =>
     Effect.gen(
         /** Reject intent or approval that cannot justify execution at this instant, including replay revalidation. */ function* () {
@@ -91,12 +92,15 @@ const checkExecution = (
                     intent.deadline === undefined)
             )
                 return yield* deny('guarded-intent-required');
-            if (intent.expectedVersion !== undefined && intent.expectedVersion !== live.currentVersion)
-                return yield* deny('version-conflict');
-            if (intent.expectedState !== undefined && intent.expectedState !== live.currentState)
-                return yield* deny('state-conflict');
-            if (!live.dependenciesReady) return yield* deny('dependency-conflict');
-            if (!live.capacityAvailable) return yield* deny('capacity-conflict');
+            // These are pre-mutation assertions, not postconditions: the handler may legitimately advance or consume them.
+            if (phase === 'admission') {
+                if (intent.expectedVersion !== undefined && intent.expectedVersion !== live.currentVersion)
+                    return yield* deny('version-conflict');
+                if (intent.expectedState !== undefined && intent.expectedState !== live.currentState)
+                    return yield* deny('state-conflict');
+                if (!live.dependenciesReady) return yield* deny('dependency-conflict');
+                if (!live.capacityAvailable) return yield* deny('capacity-conflict');
+            }
             if (spec.sideEffect !== 'read' && intent.idempotencyKey === undefined)
                 return yield* deny('idempotency-key-required');
 
@@ -241,39 +245,42 @@ export const makeExecutor = Effect.gen(
                                             if (protectedCall) yield* audit.ready(action);
                                             // Integrity may wait for a competing transaction. Recheck inside
                                             // its callback, not just before waiting; a deadline or grant can expire.
-                                            const revalidate = Effect.gen(
-                                                /** Recheck captured action, identity and current policy after waiting or before returning a saved mutation. */ function* () {
-                                                    const currentCaller = yield* identity.resolve(presented);
-                                                    // A refreshed grant may change, but it cannot silently substitute another principal, tenant or session.
-                                                    if (
-                                                        currentCaller.subject !== caller.subject ||
-                                                        currentCaller.session !== caller.session ||
-                                                        currentCaller.tenant !== caller.tenant ||
-                                                        currentCaller.kind !== caller.kind ||
-                                                        currentCaller.onBehalfOf !== caller.onBehalfOf
-                                                    )
-                                                        return yield* new InvocationDenied({
-                                                            action,
-                                                            reason: 'identity-changed',
+                                            /** Refresh common authority at admission/replay or before committing new effects, without reapplying consumed preconditions. */
+                                            const revalidate = (phase: 'admission' | 'commit') =>
+                                                Effect.gen(
+                                                    /** Recheck captured action, identity and current policy at the selected transaction boundary. */ function* () {
+                                                        const currentCaller = yield* identity.resolve(presented);
+                                                        // A refreshed grant may change, but it cannot silently substitute another principal, tenant or session.
+                                                        if (
+                                                            currentCaller.subject !== caller.subject ||
+                                                            currentCaller.session !== caller.session ||
+                                                            currentCaller.tenant !== caller.tenant ||
+                                                            currentCaller.kind !== caller.kind ||
+                                                            currentCaller.onBehalfOf !== caller.onBehalfOf
+                                                        )
+                                                            return yield* new InvocationDenied({
+                                                                action,
+                                                                reason: 'identity-changed',
+                                                            });
+                                                        yield* entry.available;
+                                                        yield* authorizer.canInvoke(currentCaller, entry.spec);
+                                                        yield* prepared.authorize(authorizer, currentCaller);
+                                                        const current = yield* prepared.inspect(policy, currentCaller, {
+                                                            ...intent,
                                                         });
-                                                    yield* entry.available;
-                                                    yield* authorizer.canInvoke(currentCaller, entry.spec);
-                                                    yield* prepared.authorize(authorizer, currentCaller);
-                                                    const current = yield* prepared.inspect(policy, currentCaller, {
-                                                        ...intent,
-                                                    });
-                                                    yield* checkExecution(
-                                                        currentCaller,
-                                                        entry.spec,
-                                                        intent,
-                                                        current,
-                                                        inputHash,
-                                                        yield* Clock.currentTimeMillis,
-                                                        approvals
-                                                    );
-                                                    yield* audit.ready(action);
-                                                }
-                                            );
+                                                        yield* checkExecution(
+                                                            currentCaller,
+                                                            entry.spec,
+                                                            intent,
+                                                            current,
+                                                            inputHash,
+                                                            yield* Clock.currentTimeMillis,
+                                                            approvals,
+                                                            phase
+                                                        );
+                                                        yield* audit.ready(action);
+                                                    }
+                                                );
                                             const run = prepared.run;
                                             if (spec.sideEffect === 'read') return yield* run;
                                             const saved = yield* integrity.commit(
@@ -293,8 +300,10 @@ export const makeExecutor = Effect.gen(
                                                 Effect.gen(
                                                     /** Produce mutation output and success evidence inside the integrity adapter's atomic transaction. */ function* () {
                                                         // Revalidate inside the transaction callback because waiting for its lock can expire earlier authority.
-                                                        yield* revalidate;
+                                                        yield* revalidate('admission');
                                                         const output = yield* run;
+                                                        // Handler waits can outlive approval, grants or deadlines; denial here rolls back the paired transaction.
+                                                        yield* revalidate('commit');
                                                         return {
                                                             output,
                                                             receipt: receipt(
@@ -305,7 +314,7 @@ export const makeExecutor = Effect.gen(
                                                     }
                                                 )
                                             );
-                                            if (saved.replayed) yield* revalidate;
+                                            if (saved.replayed) yield* revalidate('admission');
                                             committed = saved;
                                             return yield* canonicalJson(saved.output).pipe(
                                                 Effect.flatMap(Schema.decode(Json)),
