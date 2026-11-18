@@ -6,7 +6,8 @@ origin/tenant and a caller-chosen idempotency key. The adapter uses Effect
 HttpApi and the specification's exact Schema ASTs to encode input and decode
 output. It does not copy the action catalogue or compile discovery schemas.
 
-This is partial EVE-46 acceptance: spec-typed single-action and sequential batch clients, not the
+This is partial EVE-46 acceptance: spec-typed single-action/sequential batch clients
+and explicit authenticated JSON discovery, not the
 complete inventory-generated SDK, streaming transport, session UI
 or offline engine. No application startup request, public listener, production
 activation or credential issuance is added. The existing local HTTP flag and
@@ -101,6 +102,82 @@ round trips only at the client transport seam. Actual HTTP/SQL conformance uses
 currently representable branded structural schemas, and a negative registered
 transformation proves discovery fails closed. Do not infer transformed server
 inventory support from a portable client codec succeeding.
+
+## Discover current private inventory
+
+Call `discoverHttpActions({ baseUrl, tenant })` explicitly to send one
+`GET /tenants/<tenant>/openapi.json`. Both required fields use the target rules
+above; there is no spec, key, request body or default credential. The same
+`HttpActionCredentials` service reads fresh protected bearer proof for each
+call, and the same injected single-attempt `HttpClient` supplies transport.
+Nothing runs at startup, refreshes in the background or retries automatically.
+
+This complete composition prepares, but does not execute, a discovery request:
+
+```typescript
+import {
+    discoverHttpActions,
+    HttpActionCredentials,
+    type HttpActionTarget,
+} from '@eventiva/integrations.http-client/action';
+import { Effect } from 'effect';
+
+const prepareDiscovery = (
+    target: Omit<HttpActionTarget, 'idempotencyKey'>,
+    currentProof: HttpActionCredentials['Type']['proof']
+) => discoverHttpActions(target).pipe(Effect.provideService(HttpActionCredentials, { proof: currentProof }));
+void prepareDiscovery;
+```
+
+Provide the host's approved protected-store Effect and unretried platform
+`HttpClient`, then execute in its scoped runtime. See the compiling
+`discoverWithCurrentProof` example in chapter 29. Interrupting the request
+cancels the actual response stream/socket; it does not return stale data.
+
+The result, `HttpActionOpenApiDocument`, is a detached private JSON snapshot
+with `openapi: '3.1.0'`, string `info.title`/`info.version`, object `paths`
+and object `components.securitySchemes`. `components.schemas` is optional:
+the current server can emit schemas inline without that component map. Unknown
+fields at every level remain JSON data. Nested JSON Schema keywords, internal
+and external `$ref` strings, components, action version/permission/approval/risk
+extensions and the literal `actions:batch` route are preserved without
+stripping or dereferencing. Even JSON member names such as `__proto__` remain
+own data members. This narrow envelope check is **not full OpenAPI validation**
+and never asserts the unchecked document is a complete vendor OpenAPI type.
+An empty `paths` object is valid. The current server's route advertisement is
+distinct from action authorization: with both transport gates on, a caller
+with no roles receives exactly the literal batch route, whose request-item
+and output schemas are `{ not: {} }`. Turning the batch gate off produces
+empty paths for that caller. The advertised batch route grants no execution
+authority: no-role single/batch attempts remain denied with no business
+mutation or durable commit. Do not infer unconditional empty paths or a
+permission grant from the transport route alone.
+
+Fixed reversible engineering limits, not server or product completeness promises:
+
+| Limit                 | Value and behavior                                                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actual response bytes | At most 1048576 (1 MiB), including multibyte UTF-8. Content-Length is not trusted. Intake stops at the first excess chunk, before copying it, and releases the reader. |
+| Container depth       | At most 64 nested objects/arrays, counting the root, checked before recursive JSON/schema parsing.                                                                     |
+| Structural work       | At most 100000 unquoted opening containers, commas and colons combined. Quoted patterns/references/escaped characters do not count as structure.                       |
+| Text encoding         | UTF-8 must round-trip exactly; replacement/truncation of malformed bytes is refused as `codec`, not silently accepted.                                                 |
+
+These bounds also apply to refusal bodies. Limits fail explicitly with
+`response-limit`; larger legitimate inventories are never truncated into a
+successful partial route set. Unsupported versions, missing/wrong envelope
+fields, non-JSON and malformed closed error bodies fail as `codec`. Non-200
+successes/unexpected statuses and request/stream errors fail as `transport`.
+No body, URL, proof or vendor cause is retained in failures, logs or spans.
+
+Treat the result as this caller's **historical private snapshot**, not a global
+cache, inferred grants, executable schemas, a dynamic ActionSpec registry or
+authority to invoke. No persistence/cache is provided. Never send proof to a
+returned `servers` URL, fetch an external `$ref`, evaluate schema code or infer
+current authorization from a previously returned route. Refresh explicitly after
+identity/permission/flag changes; a failed refresh must not serve the old result
+as current authority. Single/batch invocation still takes canonical specs and
+crosses fresh server identity/policy gates. Current server compiler limitations
+remain unchanged, including refusal of unrepresentable transformed inventory.
 
 ## Recover an ambiguous mutation
 
@@ -230,8 +307,9 @@ use invocation receipt equality as a deduplication test.
 
 Failures use `HttpActionClientFailure` with a fixed `reason`, never a retained
 vendor cause, request, body or token. Reasons are `invalid-request`,
-`credential-unavailable`, `unauthenticated`, `unavailable`, `codec` and
-`transport`. `codec` covers canonical encoding and response decoding failures;
+`credential-unavailable`, `unauthenticated`, `unavailable`, `codec`,
+`transport` and `response-limit`. `response-limit` is discovery's explicit
+byte/structure safeguard. `codec` covers canonical encoding and response decoding failures;
 an unexpected status/network error is `transport`. Treat both as ambiguous for
 mutations, not an instruction to retry. Typed failures from the proof store are
 sanitized; defective adapters become a fixed transport failure. Fiber
@@ -251,6 +329,9 @@ Common problems:
   revoked or refused by the backend. Do not enumerate private diagnostics.
 - `codec`: check the canonical spec/version and server support. A valid HTTP
   200 status alone does not make a body valid output.
+- `response-limit`: reconcile inventory size/depth/structure with the documented
+  client limits. Do not silently truncate routes, retry, weaken server schemas
+  or treat an older private document as current authority.
 
 ## Run the evidence
 
@@ -269,3 +350,12 @@ The new conformance composes actual loopback HTTP, signed proof validation,
 current SQL identity, Cluster and durable backend execution. It checks missing,
 expired, session-only, hidden/sensitive, foreign-tenant, permission-revoked and
 session-revoked cases. No real tenant data or production service is used.
+Discovery additionally compares the complete current non-sensitive path set,
+inline input/output schemas and policy extensions with actual registered
+inventory, both batch/transport gates, exact no-role batch-only/empty paths,
+unchanged `{ not: {} }` schemas, denied no-role invocation, action-flag
+refresh, active membership/session revocation and invocation refusal after
+earlier disclosure. Portable tests independently cover exact 1 MiB boundaries,
+misleading/missing length headers, nested references/extensions, depth/work
+limits, safe failures and real held-body Fetch cancellation. Native/web builds
+prove compilation, not native-device execution or production readiness.

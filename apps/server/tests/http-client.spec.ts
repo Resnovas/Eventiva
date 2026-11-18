@@ -28,6 +28,7 @@ import { SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { ActionInventory } from '@eventiva/contracts/inventory';
 import { CurrentTenant, EpochMillis, GuardedCommand, RoutingDenied, Storage } from '@eventiva/contracts/storage';
 import {
+    discoverHttpActions,
     HttpActionClientFailure,
     HttpActionCredentials,
     invokeHttpAction,
@@ -74,7 +75,13 @@ const common = {
     sideEffect: 'write',
     offline: 'online-only',
 } as const;
-const write = define('fixture.client-write', common);
+const writeFlag = {
+    key: 'fixture.client-write-enabled',
+    description: 'Synthetic per-action discovery refresh control.',
+    owner: 'test',
+    safeDefault: false,
+};
+const write = define('fixture.client-write', { ...common, flag: writeFlag.key });
 const hidden = define('fixture.client-hidden', { ...common, permission: 'fixture.admin' });
 const sensitive = define('fixture.client-sensitive', { ...common, sensitive: true });
 const batchWrite = define('fixture.client-batch-write', common);
@@ -148,7 +155,7 @@ const fixture = Effect.gen(
             identitySecurity.pipe(Layer.provide(routing), Layer.provide(Layer.succeedContext(state)))
         );
         const live = Context.get(security, Authorizer);
-        const control = { batch: true, denySecond: false };
+        const control = { http: true, batch: true, write: true, denySecond: false };
         const dependencies = Layer.mergeAll(
             Layer.succeedContext(security),
             Layer.succeed(Flags, {
@@ -157,8 +164,9 @@ const fixture = Effect.gen(
                     Effect.succeed({
                         flag: flag.key,
                         value:
-                            flag.key === httpActionsFlag.key ||
+                            (flag.key === httpActionsFlag.key && control.http) ||
                             (flag.key === httpActionBatchFlag.key && control.batch) ||
+                            (flag.key === writeFlag.key && control.write) ||
                             flag.safeDefault,
                         fallback: false,
                         reason: 'TEST',
@@ -242,7 +250,7 @@ const fixture = Effect.gen(
                             actions: [...registered, batchLabel].map(
                                 /** Reflect actual registered bindings in the manifest. */ (spec) => spec.name
                             ),
-                            flags: [],
+                            flags: [writeFlag],
                         },
                         actions: [
                             ...registered.map(
@@ -460,9 +468,17 @@ const fixture = Effect.gen(
                 Effect.provideService(HttpActionCredentials, { proof: Effect.succeed(Redacted.make(credential)) }),
                 Effect.provide(Logger.replace(Logger.defaultLogger, logger))
             );
+        /** Fetch caller-private current inventory over the actual signed-proof HTTP boundary, never an in-process document adapter. */
+        const discover = (credential = token, route = tenant) =>
+            discoverHttpActions({ baseUrl, tenant: route }).pipe(
+                Effect.provide(FetchHttpClient.layer),
+                Effect.provideService(HttpActionCredentials, { proof: Effect.succeed(Redacted.make(credential)) }),
+                Effect.provide(Logger.replace(Logger.defaultLogger, logger))
+            );
         return {
             invoke,
             batch,
+            discover,
             control,
             sql,
             identity,
@@ -477,6 +493,193 @@ const fixture = Effect.gen(
 );
 
 describe('portable client versus authenticated HTTP and real SQL Cluster', /** New client conformance leaves the original HTTP source and original conformance unchanged. */ () => {
+    it.scopedLive(
+        'discovers exact current non-sensitive inventory and refreshes after action, transport and SQL authority revocation',
+        /** A previously disclosed route remains only historical data; every later GET and invocation rechecks authority. */ () =>
+            Effect.gen(
+                /** Compare complete provider schemas, then revoke independent gates on the same real host and signed session. */ function* () {
+                    // Neither possession of a document nor the client fixture's canonical specs may bypass live SQL authority.
+                    const f = yield* fixture;
+                    const prefix = `/tenants/${tenant}`;
+                    for (const credential of [
+                        '',
+                        session,
+                        'not-a-token',
+                        f.mint({ exp: Math.floor(Date.now() / 1000) - 1 }),
+                    ])
+                        expect((yield* f.discover(credential).pipe(Effect.flip)).reason).toBe('unauthenticated');
+                    expect((yield* f.discover(f.token, TenantId.make(id(999))).pipe(Effect.flip)).reason).toBe(
+                        'unavailable'
+                    );
+                    const projected = (yield* f.inventory.list({ subject, session, tenant, kind: 'human' })).filter(
+                        /** Match the existing HTTP boundary, not a separately maintained client catalogue. */ (
+                            entry
+                        ) => !entry.sensitive
+                    );
+                    const expected = projected.map(
+                        /** Include every actually disclosed registered action, not just a known successful route. */ (
+                            entry
+                        ) => `${prefix}/actions/${entry.id}`
+                    );
+                    expect(
+                        projected
+                            .map(
+                                /** Assert the fixture's asymmetric complete inventory independently. */ (entry) =>
+                                    entry.id
+                            )
+                            .sort()
+                    ).toEqual([batchLabel.name, batchWrite.name, write.name].sort());
+                    const first = yield* f.discover();
+                    expect(Object.keys(first.paths).sort()).toEqual([...expected, `${prefix}/actions:batch`].sort());
+                    expect(first.components.securitySchemes).toEqual({
+                        bearerAuth: { type: 'http', scheme: 'bearer' },
+                    });
+                    for (const action of projected) {
+                        const operation = ['paths', `${prefix}/actions/${action.id}`, 'post'];
+                        expect(first).toHaveProperty([...operation, 'x-action-version'], action.version);
+                        expect(first).toHaveProperty([...operation, 'x-action-permission'], action.permission);
+                        expect(first).toHaveProperty([...operation, 'x-action-approval'], action.approval);
+                        expect(first).toHaveProperty([...operation, 'x-action-risk'], action.risk);
+                        expect(first).toHaveProperty(
+                            [
+                                ...operation,
+                                'requestBody',
+                                'content',
+                                'application/json',
+                                'schema',
+                                'properties',
+                                'input',
+                            ],
+                            action.providerSchemas.anthropic.input
+                        );
+                        expect(first).toHaveProperty(
+                            [
+                                ...operation,
+                                'responses',
+                                '200',
+                                'content',
+                                'application/json',
+                                'schema',
+                                'properties',
+                                'output',
+                            ],
+                            action.providerSchemas.anthropic.output
+                        );
+                    }
+                    expect(JSON.stringify(first)).not.toContain(hidden.name);
+                    expect(JSON.stringify(first)).not.toContain(sensitive.name);
+                    f.control.batch = false;
+                    expect(Object.keys((yield* f.discover()).paths).sort()).toEqual(expected.sort());
+                    f.control.batch = true;
+                    f.control.http = false;
+                    expect((yield* f.discover().pipe(Effect.flip)).reason).toBe('unavailable');
+                    f.control.http = true;
+                    expect(Object.keys((yield* f.discover()).paths).sort()).toEqual(Object.keys(first.paths).sort());
+                    f.control.write = false;
+                    expect((yield* f.discover()).paths).not.toHaveProperty(`${prefix}/actions/${write.name}`);
+                    expect((yield* f.invoke(write, input, 'revoked-discovery').pipe(Effect.flip)).reason).toBe(
+                        'unavailable'
+                    );
+                    f.control.write = true;
+                    expect((yield* f.discover()).paths).toHaveProperty(`${prefix}/actions/${write.name}`);
+                    const membership = yield* f.identity.get('membership', subject);
+                    if (!membership) return yield* Effect.dieMessage('missing discovery membership');
+                    yield* f.identity.put('membership', { ...membership.value, roles: [] }, membership.version);
+                    // Route advertisement describes transport, not authority: with both gates on, zero roles still exposes batch only.
+                    const noRoles = yield* f.discover();
+                    expect(Object.keys(noRoles.paths)).toEqual([`${prefix}/actions:batch`]);
+                    const batchOperation = ['paths', `${prefix}/actions:batch`, 'post'];
+                    expect(noRoles).toHaveProperty(
+                        [
+                            ...batchOperation,
+                            'requestBody',
+                            'content',
+                            'application/json',
+                            'schema',
+                            'properties',
+                            'calls',
+                            'items',
+                        ],
+                        { not: {} }
+                    );
+                    expect(noRoles).toHaveProperty(
+                        [
+                            ...batchOperation,
+                            'responses',
+                            '200',
+                            'content',
+                            'application/json',
+                            'schema',
+                            'properties',
+                            'results',
+                            'items',
+                            'properties',
+                            'output',
+                        ],
+                        { not: {} }
+                    );
+                    expect(
+                        (yield* f.batch([write], [{ input, idempotencyKey: 'no-roles-batch' }]).pipe(Effect.flip))
+                            .reason
+                    ).toBe('unavailable');
+                    f.control.batch = false;
+                    expect((yield* f.discover()).paths).toEqual({});
+                    f.control.batch = true;
+                    expect((yield* f.invoke(write, input, 'permission-revoked').pipe(Effect.flip)).reason).toBe(
+                        'unavailable'
+                    );
+                    expect(yield* f.sql`SELECT * FROM action_commit`).toEqual([]);
+                    expect(yield* f.sql`SELECT * FROM operational_record`).toEqual([]);
+                    expect(Object.keys(first.paths).sort()).toEqual([...expected, `${prefix}/actions:batch`].sort());
+                    yield* f.identity.put('membership', { ...membership.value, active: false }, membership.version + 1);
+                    expect((yield* f.discover().pipe(Effect.flip)).reason).toBe('unauthenticated');
+                    yield* f.identity.put('membership', membership.value, membership.version + 2);
+                    expect(Object.keys((yield* f.discover()).paths).sort()).toEqual(Object.keys(first.paths).sort());
+                    yield* Effect.scoped(
+                        Effect.gen(
+                            /** An unrepresentable registered schema must still make actual discovery fail closed. */ function* () {
+                                // Scope removal restores inventory; this is a negative contract test, not transformed-server support.
+                                const unsupported = define('unsupported.discovery', {
+                                    ...common,
+                                    input: Schema.Struct({ units: Schema.NumberFromString, adjustment: Schema.Int }),
+                                });
+                                yield* f.register({
+                                    manifest: {
+                                        format: 1,
+                                        id: 'unsupported-discovery',
+                                        version: '1.0.0',
+                                        description: 'Negative discovery control.',
+                                        actions: [unsupported.name],
+                                        flags: [],
+                                    },
+                                    actions: [
+                                        implement(
+                                            unsupported,
+                                            /** A failed discovery never grants execution. */ () =>
+                                                Effect.succeed({ total: 999 })
+                                        ),
+                                    ],
+                                });
+                                expect((yield* f.discover().pipe(Effect.flip)).reason).toBe('unavailable');
+                            }
+                        )
+                    );
+                    const stored = yield* f.identity.get('session', session);
+                    if (!stored) return yield* Effect.dieMessage('missing discovery session');
+                    yield* f.identity.put('session', { ...stored.value, active: false }, stored.version);
+                    expect((yield* f.discover().pipe(Effect.flip)).reason).toBe('unauthenticated');
+                    expect((yield* f.invoke(write, input, 'session-revoked').pipe(Effect.flip)).reason).toBe(
+                        'unauthenticated'
+                    );
+                    expect(yield* f.sql`SELECT * FROM action_commit`).toEqual([]);
+                    expect(yield* f.sql`SELECT * FROM operational_record`).toEqual([]);
+                    expect(JSON.stringify(f.captured)).not.toContain(f.token);
+                    expect(JSON.stringify(f.captured)).not.toContain('provider-not-canonical');
+                }
+            ),
+        60000
+    );
+
     it.scopedLive(
         'preserves heterogeneous order, durable replay and explicit same-key recovery after a refused second item',
         /** Public client calls cross actual JWT, SQL authority and Cluster before independent durable-state assertions. */ () =>

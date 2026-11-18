@@ -15,7 +15,9 @@
  */
 
 import { define, type Input, type Output } from '@eventiva/contracts/action';
+import type { JsonValue } from '@eventiva/contracts/storage';
 import {
+    discoverHttpActions,
     invokeHttpAction,
     invokeHttpActionBatch,
     type HttpActionTarget,
@@ -41,6 +43,23 @@ const distinct = define('fixture.batch-types', {
     sideEffect: 'write',
     offline: 'online-only',
 });
+
+/** Compile the public JSON-valued discovery result on native/web without asserting executable schemas or invoking IO. */
+export const checkHttpDiscoveryTypes = (target: Omit<HttpActionTarget, 'idempotencyKey'>) =>
+    discoverHttpActions(target).pipe(
+        Effect.map(
+            /** Exact envelope types coexist with untouched JSON-valued schema/reference/extension data. */ (
+                document
+            ) => {
+                const version: '3.1.0' = document.openapi;
+                const title: string = document.info.title;
+                const path: JsonValue | undefined = document.paths[`/tenants/${target.tenant}/actions:batch`];
+                const schema: JsonValue | undefined = document.components.schemas?.['Example'];
+                const extension: JsonValue | undefined = document['x-future'];
+                return { version, title, path, schema, extension };
+            }
+        )
+    );
 
 /** Compile heterogeneous tuple inference without importing server/runtime code or executing a network request. */
 export const checkHttpBatchTypes = (target: Omit<HttpActionTarget, 'idempotencyKey'>) => {

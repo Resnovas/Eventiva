@@ -29,6 +29,54 @@ flowchart LR
     Verify --> Acceptance
 ```
 
+## Authenticated client discovery checkpoint - 2026-11-18
+
+The revision-11 rank-1 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)
+and [dispatch](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+authorize the six named client/test/example files plus generated outputs and
+this narrow evidence checkpoint. Original owner-selection time is unknown.
+This [task thread](https://ampcode.com/threads/T-01a1edbf-66b8-7570-b2b1-31c82b6132c5)
+independently verified Linear's attachment and GitHub's linkback: the pair is
+[EVE-46](https://linear.app/resnovas/issue/EVE-46) / [GitHub #813](https://github.com/Resnovas/Eventiva/issues/813),
+Backlog/open, not the unrelated numeric GitHub issue 46. Actual start was
+recorded at 2026-11-18T16:04:07.089Z on [Linear](https://linear.app/resnovas/issue/EVE-46#comment-e6473c02-d459-4cc4-97cc-7f2825aafa9b)
+and [GitHub](https://github.com/Resnovas/Eventiva/issues/813#issuecomment-6984038070).
+No actual blocker, pause or handoff occurred at that start checkpoint. Detailed
+contract and reversible engineering limits stay in the [client guide](../http-client.md#discover-current-private-inventory).
+The complete historical source snapshot is not refreshed by this bounded read.
+
+The later [actual blockage](https://linear.app/resnovas/issue/EVE-46#comment-a9559531-873d-4ee4-b4fe-f5971834502e)
+was the packet's unconditional no-permission empty-path expectation: the
+current server advertises batch-only with both transport gates on, including
+unchanged request-item/output `{ not: {} }` schemas. The [accepted correction](https://linear.app/resnovas/issue/EVE-46#comment-6cf18040-a9e8-45eb-b819-ae105bfeab78)
+changes this client proof only, not server policy. Exact blockage/clarification
+times are the cited live comments; original owner-selection time is unknown.
+The dispatch owner supplied the interpretation; no implementation handoff or
+pause occurred. Revised real HTTP proof passes: exactly batch-only with both
+gates on, empty paths with batch off, denied no-role single/batch calls and no
+business mutation/commit. Previously discovered invocation is denied after
+live permission/flag/session revocation. Route advertisement is not action
+authorization. Both verified trackers retain the revised scope and remain open.
+
+| Step | State | Evidence / remaining boundary |
+| --- | --- | --- |
+| Existing single/batch clients | Previously delivered | Source and graph delivery remain intact. Exact-head b9248f6d and 3c63b220 hosted events report every executed check successful; skipped release/PR-only jobs do not establish deployment. |
+| Discovery implementation and portable controls | Completed locally | Fourteen portable tests pass with 100% coverage: explicit current-proof GET, detached JSON-valued result, actual 1 MiB intake, structural limits, exact JSON/reference/extension preservation, safe failures and real held-body cancellation. Existing single/batch conformance remains green. |
+| Actual JWT/SQL/Cluster and native/web acceptance | Focused proof passed | Three HTTP files/six tests pass against real signed JWT, current SQL identity, Cluster and loopback HTTP, preserving unchanged server conformance. Complete inventory/input-output/policy schema equality, both gates, no-role advertisement/denied execution and live revocation pass. Android Hermes and web client-entry bundles compile; inspected source maps have no server/runtime/SQL/OIDC/platform-node/history imports. This is not native-device execution. |
+| Latest-main gates and signed delivery | Verified locally; bounded delivery evidence on paired trackers | Disposable-PostgreSQL `node --run verify` passes all 104 aggregate tasks and 17 smoke/dependency tasks, including native/web exports and browser smoke. Source/declaration/resource/cycle boundaries report zero violations; standalone documentation and the ratchet report zero findings/violations. Reviewed planning and `nx sync:check` pass. Rebased onto planning-only main e2f6f461 and then location metadata head dcfca0df, preserving both lanes' entire checkpoints and leaving their handwritten sources unchanged. LLMS/planning and clean-source Graphify are regenerated; the full gate is repeated before delivery. Exact signed revisions, actual delivery/handoff time, final counts and separate hosted status are recorded on EVE-46/#813, not inferred from local verification. No server implementation/config/export/dependency or accepted-debt/checker changes. |
+| Broader EVE-46 acceptance | Upcoming / separate | No generated SDK, executable schemas, dynamic invocation, streaming/output transport, offline queue, new credential issuance, public deployment, paid work or whole-issue completion. Default-off flags and production refusal remain unchanged; EVE-248 stays deferred. |
+
+```mermaid
+flowchart LR
+    Mapping["Verified EVE-46 / GitHub 813 and actual start"] --> Proof["Explicit trusted-origin current-proof GET"]
+    Proof --> Bound["Bound actual bytes and JSON structure"]
+    Bound --> Snapshot["Detached private historical JSON snapshot"]
+    Snapshot --> Refresh["Refresh with live SQL identity and flags"]
+    Refresh --> Gates["Native/web and latest-main full gates"]
+    Gates --> Delivery["Signed source/graph and exact-head CI"]
+    Delivery --> Later["Separate generated SDK and streaming acceptance"]
+```
+
 ## Portable typed sequential batch client - 2026-11-18
 
 The owner-relayed revision-8 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)

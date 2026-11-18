@@ -17,6 +17,7 @@
 /** @title Invoke a canonical specification with portable domain types and separately protected current proof */
 import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
 import {
+    discoverHttpActions,
     HttpActionCredentials,
     invokeHttpAction,
     invokeHttpActionBatch,
@@ -37,6 +38,32 @@ export const callWithCurrentProof = <S extends ActionSpec>(
 ) =>
     invokeHttpAction(spec, input, target).pipe(
         Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof }))
+    );
+
+/**
+ * Prepare one explicit current-proof GET, returning only this caller's private historical JSON snapshot.
+ * Provide an unretried platform HttpClient to execute; references/servers remain inert JSON, never destinations.
+ * Actual body intake is capped at 1 MiB, 64 nested containers and 100000 structural tokens before JSON decoding.
+ * A refresh failure is not permission to reuse a prior snapshot as current authority; invocation still needs canonical specs.
+ */
+export const discoverWithCurrentProof = (
+    target: Omit<HttpActionTarget, 'idempotencyKey'>,
+    currentProof: HttpActionCredentials['Type']['proof']
+) =>
+    discoverHttpActions(target).pipe(
+        Effect.provideService(HttpActionCredentials, { proof: currentProof }),
+        Effect.map(
+            /** The typed envelope retains optional components and arbitrary JSON extensions without compiling them. */ (
+                document
+            ) => ({
+                version: document.openapi,
+                title: document.info.title,
+                paths: document.paths,
+                schemas: document.components.schemas,
+                securitySchemes: document.components.securitySchemes,
+                document,
+            })
+        )
     );
 
 const reserve = define('example.reserve', {

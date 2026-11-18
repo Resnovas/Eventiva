@@ -23,6 +23,7 @@ import { describe, expect, it } from '@effect/vitest';
 import { define } from '@eventiva/contracts/action';
 import { TenantId } from '@eventiva/contracts/ids';
 import {
+    discoverHttpActions,
     HttpActionClientFailure,
     HttpActionCredentials,
     invokeHttpAction,
@@ -60,9 +61,330 @@ const batchWire = [
     { output: { total: '35' }, receiptId: 'first' },
     { output: { accepted: 'true' }, receiptId: 'second' },
 ];
+const discovery = {
+    openapi: '3.1.0',
+    info: { title: 'Private asymmetric inventory', version: '7.2', 'x-note': ['keep', false] },
+    paths: {
+        '/tenants/{tenant}/actions/fixture.typed': {
+            post: { requestBody: { $ref: '#/components/requestBodies/Seven' }, 'x-action': { version: 7 } },
+        },
+        '/tenants/{tenant}/actions:batch': { post: { 'x-sequential': true } },
+    },
+    components: {
+        schemas: {
+            ['__proto__']: { type: 'object', properties: { retained: { const: 17 } } },
+            constructor: { type: 'string', enum: ['not an object constructor'] },
+            Seven: {
+                type: 'object',
+                properties: { count: { type: 'integer', minimum: -2 }, label: { type: 'string', pattern: '[{"\\}]' } },
+                required: ['count'],
+                additionalProperties: false,
+                anyOf: [{ $ref: '#/components/schemas/Nine' }, { $ref: 'https://never-fetch.example.test/external' }],
+            },
+            Nine: { enum: [9, 17], nullable: true },
+        },
+        securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
+        requestBodies: {
+            Seven: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Seven' } } } },
+        },
+    },
+    servers: [{ url: 'https://never-send-proof.example.test' }],
+    'x-future': { number: 1.25, nil: null, text: '\u00e9', nested: [false, { order: [7, -3] }] },
+};
 
 describe('portable canonical HTTP action client', /** Codec tests deliberately do not claim transformed server inventory support. */ () => {
-    // Run identical socket-cancellation controls for single and batch APIs so their shared transport cannot hide a regression.
+    it.effect(
+        'discovers exactly one current-proof GET and preserves detached private JSON without following references or servers',
+        /** Asymmetric schemas and extensions distinguish faithful JSON from an erased/generated SDK description. */ () =>
+            Effect.gen(
+                /** Independently inspect routing, headers, bytes and per-call snapshots through the public API. */ function* () {
+                    // Deliberately advertise hostile destinations: document data must never control credential routing or IO.
+                    let attempts = 0;
+                    let proofs = 0;
+                    const http = HttpClient.make(
+                        /** Only the explicitly trusted origin and canonical tenant may receive current proof. */ (
+                            request
+                        ) => {
+                            // Count sends independently from proof reads so hidden reference fetches and retries cannot pass.
+                            attempts++;
+                            expect(request.method).toBe('GET');
+                            expect(request.url).toBe(`${target.baseUrl}/tenants/${tenant}/openapi.json`);
+                            expect(request.body._tag).toBe('Empty');
+                            expect(request.headers.authorization).toBe(`Bearer current-${attempts}`);
+                            expect(request.headers).not.toHaveProperty('traceparent');
+                            expect(request.headers).not.toHaveProperty('idempotency-key');
+                            return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json(discovery)));
+                        }
+                    );
+                    const fetch = discoverHttpActions(target).pipe(
+                        Effect.provideService(HttpClient.HttpClient, http),
+                        Effect.provideService(HttpActionCredentials, {
+                            proof: Effect.sync(
+                                /** Each explicit refresh must consult the protected store again. */ () =>
+                                    Redacted.make(`current-${++proofs}`)
+                            ),
+                        })
+                    );
+                    const first = yield* fetch;
+                    const second = yield* fetch;
+                    expect(first).toEqual(discovery);
+                    expect(second).toEqual(discovery);
+                    expect(first).not.toBe(second);
+                    expect(first.components.schemas).not.toBe(second.components.schemas);
+                    expect(Object.hasOwn(first.components.schemas ?? {}, '__proto__')).toBe(true);
+                    Object.defineProperty(first.info, 'title', { value: 'caller-local edit' });
+                    Object.defineProperty(first.paths, '/caller-local', { value: { post: {} } });
+                    expect(second).toEqual(discovery);
+                    expect(attempts).toBe(2);
+                    expect(proofs).toBe(2);
+                }
+            )
+    );
+
+    it.effect(
+        'bounds actual discovery bytes before parsing regardless of Content-Length and cancels an oversized stream early',
+        /** Exact multibyte and chunk-boundary controls catch character counts and header-only admission. */ () =>
+            Effect.gen(
+                /** Observe each received body rather than trusting declared sizes or materializing an unlimited response. */ function* () {
+                    // Include valid multibyte text and split its bytes across chunks; the wire limit counts octets, not characters.
+                    const base = JSON.stringify({ ...discovery, 'x-pad': '' });
+                    const overhead = Buffer.byteLength(base);
+                    for (const excess of [-1, 0, 1]) {
+                        const text = JSON.stringify({
+                            ...discovery,
+                            'x-pad': '\u00e9'.repeat(300000) + 'x'.repeat(1048576 - overhead - 600000 + excess),
+                        });
+                        const bytes = Buffer.from(text);
+                        expect(bytes.length).toBe(1048576 + excess);
+                        for (const declared of [undefined, '1', '999999999']) {
+                            const http = HttpClient.make(
+                                /** Deliberately lie in both directions; only actual bytes govern admission. */ (
+                                    request
+                                ) =>
+                                    Effect.succeed(
+                                        HttpClientResponse.fromWeb(
+                                            request,
+                                            new Response(
+                                                new ReadableStream({
+                                                    /** Fixed slices can cut through an encoded Unicode character. */
+                                                    start: (controller) => {
+                                                        // Uneven byte slices reject a decoder that corrupts multibyte characters at chunk boundaries.
+                                                        for (let offset = 0; offset < bytes.length; offset += 7919)
+                                                            controller.enqueue(bytes.subarray(offset, offset + 7919));
+                                                        controller.close();
+                                                    },
+                                                }),
+                                                {
+                                                    headers:
+                                                        declared === undefined ? {} : { 'content-length': declared },
+                                                }
+                                            )
+                                        )
+                                    )
+                            );
+                            const result = yield* discoverHttpActions(target).pipe(
+                                Effect.provideService(HttpClient.HttpClient, http),
+                                Effect.provideService(HttpActionCredentials, proof),
+                                Effect.either
+                            );
+                            expect(Either.isRight(result)).toBe(excess <= 0);
+                            if (Either.isRight(result)) expect(result.right['x-pad']).toBe(JSON.parse(text)['x-pad']);
+                            else expect(result.left.reason).toBe('response-limit');
+                        }
+                    }
+                    let pulls = 0;
+                    let cancelled = false;
+                    const overflowing = HttpClient.make(
+                        /** An unending response must be abandoned as soon as its first excess chunk arrives. */ (
+                            request
+                        ) =>
+                            Effect.succeed(
+                                HttpClientResponse.fromWeb(
+                                    request,
+                                    new Response(
+                                        new ReadableStream({
+                                            /** More data is always available, making early termination observable. */
+                                            pull: (controller) => {
+                                                // An unbounded producer distinguishes early reader cancellation from an eventual parser failure.
+                                                pulls++;
+                                                controller.enqueue(new Uint8Array(65536));
+                                            },
+                                            /** Stream cleanup must run even though parsing never starts. */
+                                            cancel: () => {
+                                                cancelled = true;
+                                            },
+                                        })
+                                    )
+                                )
+                            )
+                    );
+                    const rejected = yield* discoverHttpActions(target).pipe(
+                        Effect.provideService(HttpClient.HttpClient, overflowing),
+                        Effect.provideService(HttpActionCredentials, proof),
+                        Effect.flip
+                    );
+                    expect(rejected.reason).toBe('response-limit');
+                    expect(pulls).toBeLessThanOrEqual(18);
+                    expect(cancelled).toBe(true);
+                }
+            ),
+        20000
+    );
+
+    it.effect(
+        'refuses unsupported/malformed discovery and pathological structures with fixed safe failures and no retries',
+        /** No status or valid outer JSON alone can make malformed inventory useful or safe to parse recursively. */ () =>
+            Effect.gen(
+                /** Positive structural boundaries keep the safety limits reversible and distinguish limits from codecs. */ function* () {
+                    // Construct expected outcomes independently of the decoder, including exact container/token boundaries.
+                    const empty = {
+                        openapi: '3.1.0',
+                        info: { title: '', version: '' },
+                        paths: {},
+                        components: { schemas: {}, securitySchemes: {} },
+                    };
+                    const envelope = JSON.stringify(empty).slice(0, -1);
+                    const logs: string[] = [];
+                    const logger = Logger.make(
+                        /** No rejected body or credential belongs in diagnostics. */ (options) =>
+                            logs.push(JSON.stringify(options))
+                    );
+                    const cases = [
+                        [200, JSON.stringify(empty), undefined],
+                        [200, JSON.stringify({ ...discovery, 'x-replacement': '\ufffd' }), undefined],
+                        [200, `${envelope},"x":${'['.repeat(63)}0${']'.repeat(63)}}`, undefined],
+                        [200, `${envelope},"x":${'['.repeat(64)}0${']'.repeat(64)}}`, 'response-limit'],
+                        [200, `${envelope},"x":[${'0,'.repeat(99978)}0]}`, undefined],
+                        [200, `${envelope},"x":[${'0,'.repeat(99979)}0]}`, 'response-limit'],
+                        [200, 'BODY_CANARY', 'codec'],
+                        [200, 'null', 'codec'],
+                        [200, '[]', 'codec'],
+                        [200, JSON.stringify({ ...empty, openapi: '3.0.3' }), 'codec'],
+                        [200, JSON.stringify({ ...empty, info: { title: 'BODY_CANARY' } }), 'codec'],
+                        [200, JSON.stringify({ ...empty, paths: [] }), 'codec'],
+                        [200, JSON.stringify({ ...empty, components: { schemas: [] } }), 'codec'],
+                        [200, Buffer.concat([Buffer.from(JSON.stringify(empty)), Buffer.from([0xc3])]), 'codec'],
+                        [400, '{"error":"invalid-request"}', 'invalid-request'],
+                        [401, '{"error":"unauthenticated"}', 'unauthenticated'],
+                        [404, '{"error":"unavailable"}', 'unavailable'],
+                        [503, '{"error":"unavailable"}', 'unavailable'],
+                        [401, '{"error":"unavailable"}', 'codec'],
+                        [503, '{"error":"unavailable","detail":"BODY_CANARY"}', 'codec'],
+                        [201, JSON.stringify(empty), 'transport'],
+                        [500, 'BODY_CANARY', 'transport'],
+                        [0, 'BODY_CANARY', 'transport'],
+                        [-1, 'BODY_CANARY', 'transport'],
+                    ] as const;
+                    for (const [status, body, reason] of cases) {
+                        let attempts = 0;
+                        const http = HttpClient.make(
+                            /** A remote error can contain credential-shaped details; only closed diagnostics survive. */ (
+                                request
+                            ) => {
+                                // Distinguish request errors from body-reader errors while checking neither path triggers a second send.
+                                attempts++;
+                                if (status === 0)
+                                    return Effect.fail(
+                                        new HttpClientError.RequestError({ request, reason: 'Transport', cause: body })
+                                    );
+                                return Effect.succeed(
+                                    HttpClientResponse.fromWeb(
+                                        request,
+                                        status === -1
+                                            ? new Response(
+                                                  new ReadableStream({
+                                                      /** Stream failures must close the same sanitized boundary as request failures. */
+                                                      start: (controller) => controller.error(body),
+                                                  })
+                                              )
+                                            : new Response(body, { status })
+                                    )
+                                );
+                            }
+                        );
+                        const result = yield* discoverHttpActions(target).pipe(
+                            Effect.provideService(HttpClient.HttpClient, http),
+                            Effect.provideService(HttpActionCredentials, proof),
+                            Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
+                            Effect.either
+                        );
+                        expect(attempts).toBe(1);
+                        if (reason === undefined) expect(Either.isRight(result)).toBe(true);
+                        else {
+                            expect(Either.isLeft(result)).toBe(true);
+                            if (Either.isLeft(result)) {
+                                expect(result.left).toBeInstanceOf(HttpActionClientFailure);
+                                expect(result.left.reason).toBe(reason);
+                                expect(Object.keys(result.left).sort()).toEqual(['_tag', 'reason']);
+                                expect(`${result.left}${JSON.stringify(result.left)}`).not.toMatch(
+                                    /BODY_CANARY|PROOF_CANARY/
+                                );
+                            }
+                        }
+                    }
+                    expect(logs.join('')).not.toMatch(/BODY_CANARY|PROOF_CANARY/);
+                }
+            ),
+        20000
+    );
+
+    it.effect(
+        'rejects discovery routing before credential/transport IO and sanitizes unavailable or defective proof stores',
+        /** A proof-bearing URL must never become a discovery destination or public diagnostic. */ () =>
+            Effect.gen(
+                /** Exercise admission and both proof failure channels without ever sending. */ function* () {
+                    // The transport is deliberately unusable: every case must fail locally before handing it a credential.
+                    let attempts = 0;
+                    let proofs = 0;
+                    const http = HttpClient.make(
+                        /** Local admission must stop every case in this test. */ () => {
+                            attempts++;
+                            return Effect.dieMessage('UNEXPECTED_IO');
+                        }
+                    );
+                    const credentials = {
+                        proof: Effect.sync(
+                            /** Detect accidental protected-store access before target validation. */ () => {
+                                proofs++;
+                                return Redacted.make('PROOF_CANARY');
+                            }
+                        ),
+                    };
+                    for (const baseUrl of [
+                        'bad',
+                        'http://example.test',
+                        'https://PROOF_CANARY@example.test',
+                        'https://example.test/path',
+                        'https://example.test?proof=PROOF_CANARY',
+                        'https://example.test#PROOF_CANARY',
+                    ]) {
+                        const error = yield* discoverHttpActions({ ...target, baseUrl }).pipe(
+                            Effect.provideService(HttpClient.HttpClient, http),
+                            Effect.provideService(HttpActionCredentials, credentials),
+                            Effect.flip
+                        );
+                        expect(error.reason).toBe('invalid-request');
+                        expect(JSON.stringify(error)).not.toContain('PROOF_CANARY');
+                    }
+                    expect(proofs).toBe(0);
+                    for (const current of [
+                        Effect.fail(new HttpActionClientFailure({ reason: 'unavailable' })),
+                        Effect.dieMessage('PROOF_CANARY'),
+                    ]) {
+                        const error = yield* discoverHttpActions(target).pipe(
+                            Effect.provideService(HttpClient.HttpClient, http),
+                            Effect.provideService(HttpActionCredentials, { proof: current }),
+                            Effect.flip
+                        );
+                        expect(['credential-unavailable', 'transport']).toContain(error.reason);
+                        expect(JSON.stringify(error)).not.toContain('PROOF_CANARY');
+                    }
+                    expect(attempts).toBe(0);
+                }
+            )
+    );
+
+    // Existing single/batch controls also guard the shared proof boundary used by discovery.
     it.effect(
         'sends one literal batch POST with original keys and heterogeneous positional codecs plus fresh proof',
         /** Distinct schemas prevent reordered outputs or identity encoding from passing by accident. */ () =>
@@ -604,12 +926,12 @@ describe('portable canonical HTTP action client', /** Codec tests deliberately d
             )
     );
 
-    for (const batch of [false, true])
+    for (const mode of ['single', 'batch', 'discovery'])
         it.scopedLive(
-            `interrupts real Fetch ${batch ? 'batch' : 'single'} IO without retrying or reporting mutation rollback`,
+            `interrupts real Fetch ${mode} IO without retrying or reporting mutation rollback`,
             /** A held loopback response makes cancellation observable at the actual socket, not a mock effect. */ () =>
                 Effect.gen(
-                    /** Wait for the complete POST to arrive, then interrupt while the server deliberately withholds its response. */ function* () {
+                    /** Wait for the complete request before interrupting a withheld mutation response or partial discovery body. */ function* () {
                         // Separate arrival and disconnect barriers prevent an early cancellation from producing a false positive.
                         const received = yield* Deferred.make<void>();
                         const disconnected = yield* Deferred.make<void>();
@@ -619,13 +941,19 @@ describe('portable canonical HTTP action client', /** Codec tests deliberately d
                                 request,
                                 response
                             ) => {
-                                // Consume the request fully, but deliberately never send headers or a response body.
+                                // Mutations receive no headers; discovery receives an incomplete JSON body to hold its reader open.
                                 attempts++;
                                 request.resume();
                                 request.once(
                                     'end',
-                                    /** Signal that bytes reached the server before cancellation. */ () =>
-                                        Effect.runSync(Deferred.succeed(received, undefined))
+                                    /** Discovery must also cancel a partially received body, not merely a request waiting for headers. */ () => {
+                                        // Incomplete JSON keeps discovery blocked in body intake while mutation controls remain blocked before headers.
+                                        if (mode === 'discovery') {
+                                            response.writeHead(200, { 'content-type': 'application/json' });
+                                            response.write('{"openapi":');
+                                        }
+                                        Effect.runSync(Deferred.succeed(received, undefined));
+                                    }
                                 );
                                 response.once(
                                     'close',
@@ -656,9 +984,13 @@ describe('portable canonical HTTP action client', /** Codec tests deliberately d
                             return yield* Effect.dieMessage('missing loopback address');
                         const destination = { ...target, baseUrl: `http://127.0.0.1:${address.port}` };
                         const fiber = yield* (
-                            batch
-                                ? invokeHttpActionBatch(batchSpecs, batchCalls, destination).pipe(Effect.asVoid)
-                                : invokeHttpAction(spec, { units: 7, adjustment: -2 }, destination).pipe(Effect.asVoid)
+                            mode === 'discovery'
+                                ? discoverHttpActions(destination).pipe(Effect.asVoid)
+                                : mode === 'batch'
+                                  ? invokeHttpActionBatch(batchSpecs, batchCalls, destination).pipe(Effect.asVoid)
+                                  : invokeHttpAction(spec, { units: 7, adjustment: -2 }, destination).pipe(
+                                        Effect.asVoid
+                                    )
                         ).pipe(
                             Effect.provide(FetchHttpClient.layer),
                             Effect.provideService(HttpActionCredentials, proof),

@@ -25,12 +25,18 @@ import * as HttpClientRequest from '@effect/platform/HttpClientRequest';
 import { ActionName, type ActionSpec, type Input, type Output } from '@eventiva/contracts/action';
 import { TenantId } from '@eventiva/contracts/ids';
 import { JsonValue } from '@eventiva/contracts/storage';
-import { type Cause, Context, Data, Effect, Redacted, Schema } from 'effect';
+import { type Cause, Context, Data, Effect, Redacted, Schema, Stream } from 'effect';
 
 /** Closed public diagnostic fields; deliberately omit request, body, token and vendor cause. */
 interface HttpActionClientFailureFields {
     readonly reason:
-        'invalid-request' | 'credential-unavailable' | 'unauthenticated' | 'unavailable' | 'codec' | 'transport';
+        | 'invalid-request'
+        | 'credential-unavailable'
+        | 'unauthenticated'
+        | 'unavailable'
+        | 'codec'
+        | 'transport'
+        | 'response-limit';
 }
 /** Retain the exact yieldable error constructor without leaking the vendor's open generic into native declarations. */
 const HttpActionClientFailureBase: new (
@@ -78,7 +84,184 @@ export type HttpActionBatchResults<S extends readonly ActionSpec[]> = {
     readonly [K in keyof S]: { readonly output: Output<S[K]>; readonly receiptId: string };
 };
 
-/** Prepare protected proof and strict codecs for one transport attempt without caching authority. */
+const JsonObject = Schema.Record({ key: Schema.String, value: JsonValue });
+const DiscoveryEnvelope = Schema.Struct(
+    {
+        openapi: Schema.Literal('3.1.0'),
+        info: Schema.Struct({ title: Schema.String, version: Schema.String }, { key: Schema.String, value: JsonValue }),
+        paths: JsonObject,
+        components: Schema.Struct(
+            { schemas: Schema.optional(JsonObject), securitySchemes: JsonObject },
+            { key: Schema.String, value: JsonValue }
+        ),
+    },
+    { key: Schema.String, value: JsonValue }
+);
+// Validate without reconstructing records: assignment-based decoding can change a JSON member named __proto__.
+const DiscoveryDocument = Schema.declare(Schema.is(DiscoveryEnvelope));
+
+/** Private historical JSON snapshot, not executable schemas, a complete OpenAPI validator or invocation authority. */
+export type HttpActionOpenApiDocument = typeof DiscoveryDocument.Type;
+
+/** Reject deep/container-heavy JSON before recursive decoding; quoted schema patterns do not count as structure. */
+const discoveryStructureFits = (text: string): boolean => {
+    // Scan only unquoted punctuation: parser stack depth and work must be bounded without changing schema data.
+    let depth = 0;
+    let tokens = 0;
+    let quoted = false;
+    let escaped = false;
+    for (const character of text) {
+        if (quoted) {
+            if (escaped) escaped = false;
+            else if (character === '\\') escaped = true;
+            else if (character === '"') quoted = false;
+            continue;
+        }
+        if (character === '"') quoted = true;
+        else if (character === '{' || character === '[') {
+            depth++;
+            tokens++;
+        } else if (character === '}' || character === ']') depth--;
+        else if (character === ',' || character === ':') tokens++;
+        if (depth > 64 || tokens > 100000) return false;
+    }
+    return true;
+};
+
+/** Acquire current protected proof and disable raw tenant tracing for exactly one explicit client operation. */
+const protectedHttpClient = Effect.gen(
+    /** Admission belongs to each caller; this shared boundary supplies neither cached authority nor retry policy. */ function* () {
+        // Proof is read anew after local admission, never retained in public results, diagnostics or destinations.
+        const credentials = yield* HttpActionCredentials;
+        const proof = yield* credentials.proof.pipe(
+            Effect.mapError(
+                /** Never retain protected-store diagnostics in public failures. */ () =>
+                    new HttpActionClientFailure({ reason: 'credential-unavailable' })
+            )
+        );
+        const http = yield* HttpClient.HttpClient;
+        return http.pipe(
+            HttpClient.mapRequest(
+                /** Proof belongs only in the protected header, never a URL or body. */ (request) =>
+                    HttpClientRequest.bearerToken(request, proof)
+            ),
+            HttpClient.withTracerDisabledWhen(
+                /** Raw tenant URLs must not bypass governed telemetry correlation. */ () => true
+            ),
+            HttpClient.withTracerPropagation(false)
+        );
+    }
+);
+
+/**
+ * Fetch one current-proof tenant OpenAPI 3.1.0 snapshot, reading at most 1 MiB of actual UTF-8 body.
+ * Bounds of 64 nested containers and 100000 unquoted container/separator tokens precede JSON parsing.
+ * Preserve JSON schema/reference/extension values, but never fetch references, follow document servers,
+ * compile schemas, cache authority or retry. Callers own this private historical result and explicit refresh.
+ */
+export const discoverHttpActions = (
+    target: Omit<HttpActionTarget, 'idempotencyKey'>
+): Effect.Effect<HttpActionOpenApiDocument, HttpActionClientFailure, HttpActionCredentials | HttpClient.HttpClient> =>
+    Effect.gen(
+        /** Bound and detach untrusted bytes before decoding a deliberately narrow structural envelope. */ function* () {
+            const route = yield* Schema.decodeUnknown(Schema.Struct({ origin: Origin, tenant: TenantId }))({
+                origin: target.baseUrl,
+                tenant: target.tenant,
+            }).pipe(
+                Effect.mapError(
+                    /** Routing diagnostics can contain credential-shaped URLs. */ () =>
+                        new HttpActionClientFailure({ reason: 'invalid-request' })
+                )
+            );
+            const http = yield* protectedHttpClient;
+            const response = yield* http
+                .get(`${route.origin.origin}/tenants/${route.tenant}/openapi.json`)
+                .pipe(
+                    Effect.mapError(
+                        /** A vendor failure must not retain the protected request or remote URL. */ () =>
+                            new HttpActionClientFailure({ reason: 'transport' })
+                    )
+                );
+            // Fixed-capacity intake ignores Content-Length; an over-limit chunk is refused before copying or reading more.
+            const body = yield* response.stream.pipe(
+                Stream.runFoldEffect(
+                    { bytes: new Uint8Array(1048576), length: 0 },
+                    /** Accumulate only admitted bytes, with linear copying and scoped stream cancellation on failure. */ (
+                        state,
+                        chunk
+                    ) =>
+                        Effect.gen(
+                            /** The remaining-capacity comparison also avoids arithmetic overflow on hostile chunks. */ function* () {
+                                // Do not append an excess chunk: downstream parsing must never see a truncated document as complete.
+                                if (chunk.byteLength > state.bytes.length - state.length)
+                                    return yield* new HttpActionClientFailure({ reason: 'response-limit' });
+                                state.bytes.set(chunk, state.length);
+                                state.length += chunk.byteLength;
+                                return state;
+                            }
+                        )
+                ),
+                Effect.mapError(
+                    /** Preserve only the fixed local limit reason, never stream/vendor diagnostics. */ (error) =>
+                        error instanceof HttpActionClientFailure
+                            ? error
+                            : new HttpActionClientFailure({ reason: 'transport' })
+                )
+            );
+            const text = yield* Stream.make(body.bytes.subarray(0, body.length)).pipe(
+                Stream.decodeText(),
+                Stream.mkString
+            );
+            // Portable platform decoding can replace/truncate invalid UTF-8; round-trip equality refuses either change.
+            const encoded = HttpBody.text(text).body;
+            if (
+                encoded.length !== body.length ||
+                encoded.some(
+                    /** Reference/schema strings must not change through lossy byte decoding. */ (byte, index) =>
+                        byte !== body.bytes[index]
+                )
+            )
+                return yield* new HttpActionClientFailure({ reason: 'codec' });
+            if (!discoveryStructureFits(text)) return yield* new HttpActionClientFailure({ reason: 'response-limit' });
+            if (response.status !== 200) {
+                // Error bodies receive the same byte/structure bounds and must match the server's closed status contract.
+                const reason =
+                    response.status === 400
+                        ? 'invalid-request'
+                        : response.status === 401
+                          ? 'unauthenticated'
+                          : response.status === 404 || response.status === 503
+                            ? 'unavailable'
+                            : undefined;
+                if (reason === undefined) return yield* new HttpActionClientFailure({ reason: 'transport' });
+                const error = yield* Schema.decodeUnknown(
+                    Schema.parseJson(Schema.Struct({ error: Schema.Literal(reason) })),
+                    { onExcessProperty: 'error' }
+                )(text).pipe(
+                    Effect.mapError(
+                        /** A malformed refusal cannot disclose response data through parser diagnostics. */ () =>
+                            new HttpActionClientFailure({ reason: 'codec' })
+                    )
+                );
+                return yield* new HttpActionClientFailure({ reason: error.error });
+            }
+            // Rest-record schemas retain every JSON keyword/reference/extension without asserting full OpenAPI semantics.
+            return yield* Schema.decodeUnknown(Schema.parseJson(DiscoveryDocument))(text).pipe(
+                Effect.mapError(
+                    /** Invalid envelope/schema JSON must never retain the private document in a public error. */ () =>
+                        new HttpActionClientFailure({ reason: 'codec' })
+                )
+            );
+        }
+    ).pipe(
+        Effect.scoped,
+        Effect.catchAllDefect(
+            /** Contain defective credential/transport adapters without converting interruption into a value. */ () =>
+                Effect.fail(new HttpActionClientFailure({ reason: 'transport' }))
+        )
+    );
+
+/** Prepare strict mutation codecs for one transport attempt without caching authority. */
 const requestAction = <A, I, B, J>(
     origin: string,
     path: `/${string}`,
@@ -87,13 +270,7 @@ const requestAction = <A, I, B, J>(
 ) =>
     Effect.gen(
         /** Proof is acquired only after the caller has completed its local admission checks. */ function* () {
-            const credentials = yield* HttpActionCredentials;
-            const proof = yield* credentials.proof.pipe(
-                Effect.mapError(
-                    /** Never retain protected-store diagnostics in public failures. */ () =>
-                        new HttpActionClientFailure({ reason: 'credential-unavailable' })
-                )
-            );
+            const http = yield* protectedHttpClient;
             const api = HttpApi.make('eventiva-action-client').add(
                 HttpApiGroup.make('actions').add(
                     HttpApiEndpoint.post('invoke', path)
@@ -125,22 +302,12 @@ const requestAction = <A, I, B, J>(
                         )
                 )
             );
-            const http = yield* HttpClient.HttpClient;
             // Keep retries out of the shared transport: a lost response can follow a committed mutation.
             return yield* HttpApiClient.endpoint(api, {
                 group: 'actions',
                 endpoint: 'invoke',
                 baseUrl: origin,
-                httpClient: http.pipe(
-                    HttpClient.mapRequest(
-                        /** Proof belongs only in the protected header, never a URL or body. */ (request) =>
-                            HttpClientRequest.bearerToken(request, proof)
-                    ),
-                    HttpClient.withTracerDisabledWhen(
-                        /** Raw tenant URLs must not bypass governed telemetry correlation. */ () => true
-                    ),
-                    HttpClient.withTracerPropagation(false)
-                ),
+                httpClient: http,
             });
         }
     );
