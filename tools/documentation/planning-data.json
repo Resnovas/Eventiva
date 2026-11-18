@@ -10092,6 +10092,30 @@
             ]
         },
         {
+            "issue": "EVE-58",
+            "kind": "later-status",
+            "date": "2026-11-18T08:47:33.830Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Live MCP retains Backlog. Owner-relayed dev/staging activation selects existing EU project 344329. Server-only flag aliases target only development/staging; private root HKDF custody and persistent exact-scope SQL consent are implemented locally, not yet delivered. Private project secrets and independently delivered OIDC seam remain prerequisites to exact event/trace arrival proof. No production, full endpoint/auth matrix or whole-issue acceptance. Historical snapshot is unchanged.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-58#comment-1ab3f885-5de7-49bc-841d-21126d64fef0",
+                "https://ampcode.com/threads/T-01a1edbf-66b8-7570-b2b1-31c82b6132c5"
+            ]
+        },
+        {
+            "issue": "EVE-60",
+            "kind": "later-status",
+            "date": "2026-11-18T08:47:34.756Z",
+            "status": "Backlog",
+            "statusType": "backlog",
+            "summary": "Live MCP retains Backlog. Later owner relay authorizes non-production real identity/consent/root custody composition: HKDF-SHA256 derives exact environment/tenant/destination/purpose/UTC-hour keys from one private root. Existing pseudonym-only, live consent, profile, per-request opt-in and production denials remain. Focused persistent SQL/crypto/composition proof is not real PostHog arrival, native/replay or full issue acceptance; private secrets and delivered EVE-43 integration are pending.",
+            "sources": [
+                "https://linear.app/resnovas/issue/EVE-60#comment-0e6caaaf-6444-4066-8c8a-c06f2a69cb06",
+                "https://ampcode.com/threads/T-01a1edbf-66b8-7570-b2b1-31c82b6132c5"
+            ]
+        },
+        {
             "issue": "EVE-257",
             "kind": "later-status",
             "date": "2026-11-17",
@@ -10116,18 +10140,6 @@
                 "https://linear.app/resnovas/issue/EVE-39#comment-b29e9dc6-13ad-4601-b816-2775d340b154",
                 "https://linear.app/resnovas/issue/EVE-40#comment-f520561e-5fa6-4843-b0f3-5e8c70c885f1",
                 "https://ampcode.com/threads/T-1d187d8d-5a8e-492a-b9f9-66786c3a790a"
-            ]
-        },
-        {
-            "issue": "EVE-60",
-            "kind": "later-status",
-            "date": "2026-11-17T15:28:28.416Z",
-            "status": "Backlog",
-            "statusType": "backlog",
-            "summary": "Live issue and complete terminal comment page rechecked. Jonathan confirmed one-hour rotation at 15:27:19.582Z, conditional on automatic client renewal without disrupted actions; the separate 15:27:26.780Z Puck relay specifies UTC alignment, in-flight boundary and multi-epoch tests. This supersedes the historical lifetime-pending clause, not privacy/consent/protected-profile denial. The governed follow-up uses injected non-production fixture keys only; production, provisioning and real issuer/consent stores remain denied. Source/tests and exact-head aggregate/delivery evidence are recorded separately in the timeline and export guide. Frozen issue capture is unchanged; this is not a full live-source refresh or whole-issue acceptance.",
-            "sources": [
-                "https://linear.app/resnovas/issue/EVE-60#comment-c07d8ede-14b4-49b1-bb83-0088bae5cd6e",
-                "https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a#M-034zDqigs0qoRlB2tOAQYo"
             ]
         },
         {

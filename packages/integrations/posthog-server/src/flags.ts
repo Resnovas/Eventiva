@@ -49,6 +49,12 @@ export interface PostHogOptions {
     readonly host: string;
 }
 
+/** PostHog rejects dots in persisted keys; keep vendor aliases here without changing Eventiva's existing gate contracts. */
+export const telemetryFlagKeys: Readonly<Record<string, string>> = {
+    'telemetry.export.enabled': 'eventiva-telemetry-export-enabled',
+    'telemetry.correlation.pseudonymous.enabled': 'eventiva-telemetry-correlation-pseudonymous-enabled',
+};
+
 /** The PostHog settings from configuration, or none when no key is set. */
 export const options: Effect.Effect<Option.Option<PostHogOptions>, ConfigError.ConfigError> = Config.all({
     apiKey: Config.option(Config.redacted('POSTHOG_API_KEY')),

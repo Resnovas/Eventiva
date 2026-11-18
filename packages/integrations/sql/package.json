@@ -6,6 +6,11 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./telemetry-consent": {
+            "@eventiva/source": "./src/telemetry-consent.ts",
+            "types": "./dist/telemetry-consent.d.ts",
+            "default": "./dist/telemetry-consent.js"
+        },
         "./hook-producer": {
             "@eventiva/source": "./src/hook-producer.ts",
             "types": "./dist/hook-producer.d.ts",

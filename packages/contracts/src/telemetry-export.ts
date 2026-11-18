@@ -97,6 +97,34 @@ export const TelemetryCorrelation = Schema.Struct({
 }).annotations({ parseOptions: { onExcessProperty: 'error' } });
 export type TelemetryCorrelation = typeof TelemetryCorrelation.Type;
 
+/** Verified server identity only; an OIDC adapter supplies the exact issuer/subject and live session deadline. */
+export const CorrelationIdentity = Schema.Struct({
+    namespace: Schema.Redacted(Schema.NonEmptyString.pipe(Schema.maxLength(2048))),
+    subject: Schema.Redacted(Schema.NonEmptyString.pipe(Schema.maxLength(512))),
+    session: Schema.Redacted(Schema.NonEmptyString.pipe(Schema.maxLength(512))),
+    expiresAt: Schema.Number.pipe(Schema.int(), Schema.between(1, Number.MAX_SAFE_INTEGER)),
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+export type CorrelationIdentity = typeof CorrelationIdentity.Type;
+
+/** Composition-only persistent consent, not a client API or a substitute for authenticated identity/release policy. */
+export class TelemetryConsent extends Context.Tag('@eventiva/contracts/TelemetryConsent/v1')<
+    TelemetryConsent,
+    {
+        /** Read the exact identity/session and complete release scope; absence and expired grants never authorize. */
+        readonly get: (
+            binding: TelemetryExportBinding,
+            identity: CorrelationIdentity
+        ) => Effect.Effect<{ readonly version: number; readonly expiresAt: number } | undefined, TelemetrySinkFailure>;
+        /** Trusted consent management only: null creates, a matching version updates; zero expiry durably revokes. */
+        readonly put: (
+            binding: TelemetryExportBinding,
+            identity: CorrelationIdentity,
+            expiresAt: number,
+            expectedVersion: number | null
+        ) => Effect.Effect<void, TelemetrySinkFailure>;
+    }
+>() {}
+
 /** Trusted issuer client; no raw subject, key or trusting request-carried consent is part of this port. */
 export class CorrelationIssuer extends Context.Tag('@eventiva/contracts/CorrelationIssuer/v1')<
     CorrelationIssuer,

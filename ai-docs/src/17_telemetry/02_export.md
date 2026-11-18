@@ -1,5 +1,58 @@
 # Governed telemetry export
 
+## Persistent dev/staging composition (2026-11-18)
+
+Use existing EU PostHog project 344329. This later non-production activation
+supersedes fixture-only scope below only for `apps/server/src/telemetry-live.ts`
+and `telemetry-local.ts`; production still denies. Authority/provenance and all
+configuration/defaults are in [the people guide](docs/telemetry-export.md).
+Record progress on EVE-58/EVE-60/EVE-19/EVE-44/EVE-21 without treating the full
+endpoint/native/replay matrix as accepted.
+
+`CorrelationIdentity` and `TelemetryConsent` are composition-only contracts.
+`telemetryConsentStore` from `@eventiva/integrations.sql/telemetry-consent` uses
+the trusted `CurrentTenant` SQL database and migration 0009. Exact binding plus
+redacted configured issuer/canonical subject/session form the framed key; never
+key on raw OIDC `sub`. Fresh reads, missing-row denial and compare-and-set
+revisions persist revocation across processes. Zero expiry retains the revision.
+
+`rootCorrelationKeys` reads only redacted `TELEMETRY_CORRELATION_ROOT_KEY`.
+Require a dedicated 64-hex 32-byte root. HKDF-SHA256: salt
+`eventiva.correlation.hkdf.v1`, UTF-8 JSON info
+`[1, environment, tenantId, destinationId, purpose, epoch]`, 32 bytes. Current
+UTC hour only, no fallback/grace/alias. The existing HMAC domains and raw-ID
+exclusion remain unchanged. Custody is Amp project `resnovas/Eventiva`; no
+deployment target exists and secrets must not be printed or stored in scratch.
+
+`storedCorrelationLayer` takes initial and freshly authenticated identities plus
+the root-derived key provider. Every issuance/release/flush reauthenticates,
+compares exact identity, rereads committed consent and rechecks expiry after
+suspension. `requestTelemetryLayer` composes it with existing governed event and
+correlation sinks below the request-owned central `telemetryLayer`. Never attach
+it to a global mixed-tenant logger. Optional acquisition failure omits telemetry;
+never catch it by replaying the business Effect. Production/protection floors
+are independent of flags. No new accepting default exists.
+
+`TelemetrySession` is the narrow EVE-43 seam: canonical `CallerIdentity`, exact
+configured `issuer`, live SQL `sessionExpiresAt`. Supply a fresh
+`authenticateTokenSession` Effect with verifier/identity stores and trusted
+tenant routing, not cached claims or accepting fixtures. Explicit local
+onboarding must separately establish principal/membership/link/session.
+`updateTelemetryConsent` grants at most one hour/session lifetime and requires
+the displayed revision for updates. The local runner defaults to read-only
+status, uses private per-environment SQLite and never seeds identities/grants.
+
+PostHog aliases live in its integration, not portable flag contracts:
+`telemetry.export.enabled` -> `eventiva-telemetry-export-enabled` (367969);
+`telemetry.correlation.pseudonymous.enabled` ->
+`eventiva-telemetry-correlation-pseudonymous-enabled` (367970). Server runtime,
+100% only for host-owned `eventiva_environment` development/staging; absent and
+production do not match. `POSTHOG_API_KEY` remains a private project ingest
+token; EU capture and `/i/v1/traces` share it, with Bearer auth for OTLP traces.
+Ordinary diagnostic events have no person pseudonym; only the explicit span
+channel carries the two pseudonyms. A probe trace ID/HTTP response is not arrival
+evidence: query the exact event and trace in project 344329.
+
 ## Pseudonymous correlation checkpoint (EVE-60)
 
 Keep the synthetic app wrapper and `TelemetryRecord` v1 unchanged. The explicit

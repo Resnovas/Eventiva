@@ -65,6 +65,32 @@ again, as recorded below; EVE-246/247 remain resumed.
 Full aggregate verification and signed delivery evidence are recorded separately
 on the owning issues; none of these narrow checkpoints closes broad acceptance.
 
+## Non-production telemetry custody - 2026-11-18
+
+The [EVE-58 activation checkpoint](https://linear.app/resnovas/issue/EVE-58#comment-1ab3f885-5de7-49bc-841d-21126d64fef0)
+and [EVE-60 correlation checkpoint](https://linear.app/resnovas/issue/EVE-60#comment-0e6caaaf-6444-4066-8c8a-c06f2a69cb06)
+record Jonathan's direction relayed through Puck to the telemetry lane on this
+date. The source is an agent relay, not an independently timed human-authored
+Linear decision. Select existing dedicated EU project 344329, enable only
+dev/staging, and retain every production/protected-profile/consent gate.
+
+Use one dedicated private `TELEMETRY_CORRELATION_ROOT_KEY` and derive 32-byte
+per-environment/tenant/destination/purpose/hour keys with HKDF-SHA256. Keep the
+hourly UTC rotation, distinct HMAC domains and no old/new alias bridge. Exact
+salt/info framing and custody are documented in the
+[existing export contract](../telemetry-export.md#configure-private-custody-and-rollout).
+This refines key provisioning, not the earlier raw-ID exclusion or live user
+consent requirement. Jonathan entered `POSTHOG_API_KEY` privately into Amp
+project `resnovas/Eventiva`; the root is still pending at this checkpoint.
+The live provider returned both dev/staging flags true and production false,
+without fallbacks. No deployment target is selected or arrival proof claimed.
+
+Private local SQLite tenants and explicit storage-backed consent/onboarding are
+implementation choices under this scope. EVE-43's verified canonical subject,
+session, configured issuer and live SQL deadline are the integration seam.
+Presence of code, flags or transport interception is not live ingestion proof,
+production authorization or completion of EVE-58's full endpoint matrix.
+
 ## Later owner decisions - 2026-11-17
 
 These updates postdate the frozen issue/comment capture. Their distinct owner

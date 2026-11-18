@@ -4,6 +4,123 @@ The extension substrate exists, but the complete extension-platform acceptance g
 
 Audit baseline: `05e07b6dee66cddb594c089959df45bbd9a4c0aa`, inspected on 2026-11-17. Track acceptance on [EVE-257](https://linear.app/resnovas/issue/EVE-257), [EVE-262](https://linear.app/resnovas/issue/EVE-262), [EVE-261](https://linear.app/resnovas/issue/EVE-261), and telemetry on [EVE-44](https://linear.app/resnovas/issue/EVE-44). Historical issue/thread checkpoints and some existing documentation predate combined integration; current source takes precedence for what is present. Approval and acceptance requirements remain on the issues.
 
+## Activate non-production export (EVE-58 / EVE-60, 2026-11-18)
+
+This checkpoint supersedes the fixture-only restriction below for the explicit
+dev/staging composition only. Jonathan's activation instruction was relayed in
+the [implementation thread](https://ampcode.com/threads/T-01a1edbf-66b8-7570-b2b1-31c82b6132c5)
+and recorded on [EVE-58](https://linear.app/resnovas/issue/EVE-58#comment-1ab3f885-5de7-49bc-841d-21126d64fef0)
+and [EVE-60](https://linear.app/resnovas/issue/EVE-60#comment-0e6caaaf-6444-4066-8c8a-c06f2a69cb06).
+This is agent-relayed owner direction, not newly authenticated owner prose on
+those issues. Use the existing dedicated Eventiva project **344329**, EU region.
+Do not create a duplicate project or enable production.
+
+### Route and persist authority locally
+
+`apps/server/src/telemetry-local.ts` owns private, persistent SQLite databases.
+Development uses tenant `019a95c0-0000-7000-8000-000000000001` and destination
+`019a95c0-0000-7000-8000-000000000011`; staging uses tenant
+`019a95c0-0000-7000-8000-000000000002` and destination
+`019a95c0-0000-7000-8000-000000000012`. These are implementation-selected local
+routes, not production tenants. Each defaults to
+`.data/telemetry/<environment>/tenant.sqlite`. The directory must resolve to its
+exact absolute path, have no group/world permissions and not be a symlink.
+State is ignored by Git. Migration 0009 adds consent in both supported dialects;
+the local runner migrates only its own selected SQLite database.
+
+The composition accepts a verifier-backed `Effect<TelemetrySession>`. Its
+`caller.subject` and `caller.session` are canonical Eventiva IDs; `issuer` is
+the exact configured OIDC issuer and `sessionExpiresAt` is the current SQL
+session deadline. Trusted routing supplies `CurrentTenant`, never a header or
+token tenant claim. The EVE-43 `authenticateTokenSession` seam must rerun token
+verification and SQL principal/membership/session checks for each authorization.
+Do not supply an accepting fixture or create an automatic identity/consent seed.
+
+Consent is keyed by exact issuer, canonical subject, session and the complete
+tenant/module/version/generation/profile/operation/destination/purpose binding.
+Absent consent denies. Deliberate grants expire after at most one hour or the
+live session deadline. Revocation writes an expiry of zero but retains a
+monotonically increasing revision; stale clients cannot overwrite it. Use the
+revision returned by `status` for a later `grant` or `revoke`. A new row uses no
+revision. Reauthenticate and reread committed SQL consent for every issue,
+release and flush. Recheck expiry after suspended database reads. Neither a
+consent row nor a session ID alone proves current authority.
+
+### Configure private custody and rollout
+
+Enter secrets privately in Amp project `resnovas/Eventiva`, then refresh the orb
+environment before executing. Never paste a secret in a command, issue or chat.
+`POSTHOG_API_KEY` is the project's write-only ingestion token, not a personal
+management API key. `TELEMETRY_CORRELATION_ROOT_KEY` is a dedicated, randomly
+generated 32-byte root encoded as exactly 64 hexadecimal characters. Missing,
+empty or malformed credentials fail closed. No deployment secret target is
+currently configured; this local setup does not deploy or provision production.
+
+Derive per-scope HMAC keys using HKDF-SHA256 with salt
+`eventiva.correlation.hkdf.v1`, canonical UTF-8 JSON info
+`[1, environment, tenantId, destinationId, purpose, epoch]`, and 32 output bytes.
+The epoch is the current UTC hour since Unix epoch. Existing HMAC person/session
+domains stay distinct. There is no previous-key grace, old/new alias bridge,
+raw identifier export or reuse of an identity-provider signing key. Root
+rotation invalidates linkage; deleting local state does not revoke already
+dispatched bytes. JavaScript cannot guarantee complete memory zeroization.
+
+The existing Eventiva gates remain default-false. PostHog persisted keys cannot
+contain dots, so the server integration maps them to these vendor aliases:
+
+| Eventiva gate | Project 344329 alias / flag ID | Rollout |
+| --- | --- | --- |
+| `telemetry.export.enabled` | `eventiva-telemetry-export-enabled` / 367969 | Server-only, 100% where `eventiva_environment` exactly matches development or staging |
+| `telemetry.correlation.pseudonymous.enabled` | `eventiva-telemetry-correlation-pseudonymous-enabled` / 367970 | Same condition |
+
+The composition supplies the environment attribute from host configuration.
+Missing/production environments do not match. A remote true cannot override the
+hard non-production, protected-profile, consent, opt-in or local telemetry-off
+floor. Production remains denied even if a flag is changed accidentally.
+
+Live provider verification on 2026-11-18 evaluated both aliases through the
+configured PostHog/OpenFeature adapters: development and staging returned true,
+production returned false, and all six results had `fallback: false`. The
+private ingestion token was available in the orb. This verifies remote flag
+targeting, not event or trace arrival; the correlation root was still absent.
+
+| Configuration | Default | Meaning |
+| --- | --- | --- |
+| `EVENTIVA_ENVIRONMENT` | Required | Exactly `development` or `staging`; selects trusted route |
+| `TELEMETRY_STATE_DIRECTORY` | Absolute repository `.data/telemetry` | Private local state root; no secret in a path |
+| `TELEMETRY_COMMAND` | `status` | `status`, deliberate `grant` / `revoke`, or network `probe` |
+| `TELEMETRY_CONSENT_REVISION` | Absent | Expected existing revision; absence permits a new row only |
+| `POSTHOG_API_KEY` | Absent | Private project ingest token; absence disables the remote provider |
+| `POSTHOG_HOST` | `https://eu.i.posthog.com` | This composition accepts only this EU host |
+| `TELEMETRY_CORRELATION_ROOT_KEY` | Absent | Dedicated 64-hex root; mandatory for export, not status/consent |
+| `telemetry.enabled` | `true` | Existing central local opt-out; false denies remote export |
+
+For server-side composition, build `identityStore`, `identitySecurity`,
+`telemetryConsentStore` and `CurrentTenant` on the same routed database. Provide
+the normal remote `Flags` service and call
+`requestTelemetryLayer(binding, currentSession, true, policy)` below the existing
+request-scoped `telemetryLayer`. Its fresh session Effect must call
+`authenticateTokenSession`, not reuse a prior caller. `updateTelemetryConsent`
+uses the same verified session without needing either export secret.
+
+### Distinguish transport checks from arrival
+
+The explicit probe emits a minimized diagnostic event and a correlated OTLP
+span through the central queue. It reports a random trace ID and bounded
+health, not an ingestion-success claim. Query project 344329 for that exact
+trace ID in both events and traces before calling the path live. HTTP acceptance
+alone is insufficient. Consent revocation, inactive membership/session,
+telemetry-off, expired hour and protected profiles must send no additional
+records. A failure in optional telemetry must never replay a business action.
+
+This checkpoint does not establish OTLP Logs/metrics/AI endpoint support,
+captured exceptions, native ingress, browser replay association or production
+acceptance. EVE-58's broader endpoint/authentication matrix remains open.
+If the probe fails, check private secret availability, exact configured issuer,
+live linked SQL session, displayed consent revision/deadline and both remotely
+targeted flags. Never print Config errors or rejected identity/credential values
+while diagnosing it.
+
 ## Govern pseudonymous request correlation (EVE-60)
 
 This later checkpoint adds a separate pseudonymous channel; it does not relax

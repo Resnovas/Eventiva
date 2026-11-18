@@ -16,7 +16,18 @@
 
 import { SqliteClient } from '@effect/sql-sqlite-node';
 import { SqlClient } from '@effect/sql';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted } from 'effect';
+
+/** Persistent Node-local dev/staging database; callers own private directory provisioning and trusted tenant routing. */
+export const localFile = (filename: Redacted.Redacted<string>) =>
+    Layer.effectDiscard(
+        Effect.gen(
+            /** Match conformance referential integrity; persistence alone never provisions identity or consent. */ function* () {
+                const sql = yield* SqlClient.SqlClient;
+                yield* sql`PRAGMA foreign_keys = ON`;
+            }
+        )
+    ).pipe(Layer.provideMerge(SqliteClient.layer({ filename: Redacted.value(filename) })));
 
 /** Node conformance only. Uses the package's bundled prebuild, never a build-script allowance. */
 export const memory = () =>

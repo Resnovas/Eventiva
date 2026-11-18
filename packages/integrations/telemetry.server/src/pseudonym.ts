@@ -14,12 +14,17 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { createHmac } from 'node:crypto';
+import { createHmac, hkdfSync } from 'node:crypto';
+import { TenantId } from '@eventiva/contracts/ids';
+import { ModuleId } from '@eventiva/contracts/module-manifest';
 import { TelemetrySinkFailure } from '@eventiva/contracts/observability';
 import {
     CorrelationAuthority,
+    CorrelationIdentity,
     CorrelationIssuer,
+    TelemetryConsent,
     TelemetryCorrelation,
+    TelemetryExportAuthority,
     TelemetryExportBinding,
     correlationEpochMs,
 } from '@eventiva/contracts/telemetry-export';
@@ -34,26 +39,108 @@ export const FixtureCorrelationIdentity = Schema.Struct({
 }).annotations({ parseOptions: { onExcessProperty: 'error' } });
 export type FixtureCorrelationIdentity = typeof FixtureCorrelationIdentity.Type;
 
-/** Exact injected non-production key scope; no environment or universal-key fallback is permitted. */
-export interface FixtureCorrelationKeyScope {
-    readonly environment: 'test' | 'development';
+/** Exact secret-store key scope; no environment, tenant, purpose, destination or epoch fallback is permitted. */
+export interface CorrelationKeyScope {
+    readonly environment: 'test' | 'development' | 'staging';
     readonly tenantId: TelemetryExportBinding['tenantId'];
     readonly destinationId: string;
     readonly purpose: string;
     readonly epoch: number;
 }
 
-/** Fixture-only injection: a new dedicated 256-bit key per exact scope/epoch, never a deployment key. */
-export interface FixtureCorrelationKeys {
-    /** Return the active exact-scope fixture key, denying missing/revoked/future epochs without fallback. */
-    readonly get: (scope: FixtureCorrelationKeyScope) => Effect.Effect<
+/** Server-only custody boundary; keys never enter portable contracts, identity tokens or transport attributes. */
+export interface CorrelationKeys {
+    /** Return the active exact-scope 256-bit key, denying missing/revoked/future epochs without fallback. */
+    readonly get: (scope: CorrelationKeyScope) => Effect.Effect<
         {
-            readonly scope: FixtureCorrelationKeyScope;
+            readonly scope: CorrelationKeyScope;
             readonly material: Redacted.Redacted<Uint8Array>;
         },
         TelemetrySinkFailure
     >;
 }
+
+export type FixtureCorrelationKeyScope = CorrelationKeyScope;
+export type FixtureCorrelationKeys = CorrelationKeys;
+
+const KeyScope = Schema.Struct({
+    environment: Schema.Literal('development', 'staging'),
+    tenantId: TenantId,
+    destinationId: Schema.UUID,
+    purpose: ModuleId,
+    epoch: Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_SAFE_INTEGER)),
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+
+/**
+ * Derive independent exact-scope hourly HMAC keys from the dedicated 32-byte root (64 hexadecimal characters).
+ * HKDF salt/version and framed info prevent cross-environment/tenant/destination/purpose/epoch reuse.
+ * Missing/malformed roots deny; this server-only adapter never generates, prints or persists secrets.
+ */
+export const rootCorrelationKeys: Effect.Effect<CorrelationKeys, TelemetrySinkFailure> = Config.redacted(
+    'TELEMETRY_CORRELATION_ROOT_KEY'
+).pipe(
+    Effect.mapError(
+        /** Configuration diagnostics may include a secret; retain only a bounded reason. */ () =>
+            new TelemetrySinkFailure({ reason: 'configuration' })
+    ),
+    Effect.flatMap(
+        /** Validate encoding before retaining the redacted root in the key provider closure. */ (root) => {
+            if (!/^[0-9a-fA-F]{64}$/.test(Redacted.value(root)))
+                return Effect.fail(new TelemetrySinkFailure({ reason: 'configuration' }));
+            return Effect.succeed<CorrelationKeys>({
+                /** Derive only the current UTC epoch; no old-key grace, cache or future-key provisioning path. */
+                get: (input) =>
+                    Effect.gen(
+                        /** Snapshot and validate scope before reading secret bytes; no caller-owned scope is retained. */ function* () {
+                            const scope = yield* Schema.decodeUnknown(KeyScope)(input).pipe(
+                                Effect.mapError(
+                                    /** Reject out-of-scope derivation without exposing the rejected fields. */ () =>
+                                        new TelemetrySinkFailure({ reason: 'unavailable' })
+                                )
+                            );
+                            if (scope.epoch !== Math.floor((yield* Clock.currentTimeMillis) / correlationEpochMs))
+                                return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                            return yield* Effect.try({
+                                /** Use local RFC 5869 HKDF-SHA256; raw identity never participates in key derivation. */
+                                // effect-boundary: Node HKDF can fail; its inputs and secret material remain server-local.
+                                try: () => {
+                                    const owned = Buffer.from(Redacted.value(root), 'hex');
+                                    // effect-boundary: clear only our owned input copy even when the crypto provider throws.
+                                    try {
+                                        return {
+                                            scope,
+                                            material: Redacted.make(
+                                                new Uint8Array(
+                                                    hkdfSync(
+                                                        'sha256',
+                                                        owned,
+                                                        'eventiva.correlation.hkdf.v1',
+                                                        JSON.stringify([
+                                                            1,
+                                                            scope.environment,
+                                                            scope.tenantId,
+                                                            scope.destinationId,
+                                                            scope.purpose,
+                                                            scope.epoch,
+                                                        ]),
+                                                        32
+                                                    )
+                                                )
+                                            ),
+                                        };
+                                    } finally {
+                                        owned.fill(0);
+                                    }
+                                },
+                                /** Never retain a crypto exception, root bytes or key scope in an error. */
+                                catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
+                            });
+                        }
+                    ),
+            });
+        }
+    )
+);
 
 /**
  * Local proof only. Deny by default unless NODE_ENV explicitly selects test/development.
@@ -66,18 +153,142 @@ export const fixtureCorrelationLayer = (
     keys: FixtureCorrelationKeys,
     consent: Effect.Effect<number, TelemetrySinkFailure>
 ): Layer.Layer<CorrelationIssuer | CorrelationAuthority, TelemetrySinkFailure> =>
+    scopedCorrelationLayer(
+        binding,
+        identity,
+        keys,
+        consent,
+        Config.string('NODE_ENV').pipe(Config.withDefault('production')),
+        ['test', 'development']
+    );
+
+/**
+ * Real non-production composition. Each issuance/release rereads verified identity and persistent consent.
+ * The trusted identity resolver must recheck active session/tenant routing, not decode an unverified request.
+ * No consent management capability or secret is exposed to clients. Production remains unconditionally denied.
+ */
+export const storedCorrelationLayer = <R>(
+    binding: TelemetryExportBinding,
+    identity: CorrelationIdentity,
+    keys: CorrelationKeys,
+    currentIdentity: Effect.Effect<CorrelationIdentity, TelemetrySinkFailure, R>
+): Layer.Layer<
+    CorrelationIssuer | CorrelationAuthority | TelemetryExportAuthority,
+    TelemetrySinkFailure,
+    TelemetryConsent | R
+> =>
+    Layer.unwrapScoped(
+        Effect.gen(
+            /** Close over persistent policy without caching a consent grant or trusting a request assertion. */ function* () {
+                const store = yield* TelemetryConsent;
+                const context = yield* Effect.context<R>();
+                let closed = false;
+                yield* Effect.addFinalizer(
+                    /** Revoke retained release handles on session-scope disposal. */ () =>
+                        Effect.sync(
+                            /** Scope closure cannot be reversed by a still-present database grant. */ () => {
+                                closed = true;
+                            }
+                        )
+                );
+                const trusted = yield* Schema.decode(TelemetryExportBinding)(binding).pipe(
+                    Effect.mapError(
+                        /** Do not retain rejected host provenance in configuration errors. */ () =>
+                            new TelemetrySinkFailure({ reason: 'configuration' })
+                    )
+                );
+                const principal = yield* Schema.decode(Schema.typeSchema(CorrelationIdentity))(identity).pipe(
+                    Effect.mapError(
+                        /** Omit schema details containing raw identity. */ () =>
+                            new TelemetrySinkFailure({ reason: 'configuration' })
+                    )
+                );
+                const consent = Effect.gen(
+                    /** Recheck the exact authenticated principal after every suspension at issuance and dispatch. */ function* () {
+                        const live = yield* currentIdentity.pipe(
+                            Effect.provide(context),
+                            Effect.flatMap(Schema.decode(Schema.typeSchema(CorrelationIdentity))),
+                            Effect.mapError(
+                                /** A live identity failure is optional telemetry denial, never raw issuer diagnostics. */ () =>
+                                    new TelemetrySinkFailure({ reason: 'unavailable' })
+                            )
+                        );
+                        const now = yield* Clock.currentTimeMillis;
+                        if (
+                            closed ||
+                            Redacted.value(live.namespace) !== Redacted.value(principal.namespace) ||
+                            Redacted.value(live.subject) !== Redacted.value(principal.subject) ||
+                            Redacted.value(live.session) !== Redacted.value(principal.session) ||
+                            live.expiresAt <= now
+                        )
+                            return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                        const grant = yield* store.get({ ...trusted }, { ...principal });
+                        // A database read can suspend past expiry; authorize only a current committed grant.
+                        const after = yield* Clock.currentTimeMillis;
+                        if (closed || !grant || grant.expiresAt <= after || live.expiresAt <= after)
+                            return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                        return Math.min(grant.expiresAt, live.expiresAt);
+                    }
+                );
+                return Layer.merge(
+                    scopedCorrelationLayer(
+                        trusted,
+                        principal,
+                        keys,
+                        consent,
+                        Config.string('EVENTIVA_ENVIRONMENT').pipe(Config.withDefault('production')),
+                        ['development', 'staging']
+                    ),
+                    Layer.succeed(TelemetryExportAuthority, {
+                        /** Ordinary diagnostic release still requires exact live persistent consent, even without pseudonyms. */
+                        authorize: (candidate) =>
+                            Effect.gen(
+                                /** Enforce host profile and binding independently of a transport's own validation. */ function* () {
+                                    const decoded = yield* Schema.decode(TelemetryExportBinding)(candidate).pipe(
+                                        Effect.mapError(
+                                            /** Hide rejected caller metadata from the release failure. */ () =>
+                                                new TelemetrySinkFailure({ reason: 'unavailable' })
+                                        )
+                                    );
+                                    if (
+                                        JSON.stringify(decoded) !== JSON.stringify(trusted) ||
+                                        trusted.operation !== 'ordinary' ||
+                                        trusted.profile === 'restricted' ||
+                                        trusted.profile === 'vault'
+                                    )
+                                        return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
+                                    yield* consent;
+                                }
+                            ),
+                    })
+                );
+            }
+        )
+    );
+
+/** Shared HMAC implementation; wrappers select environment admission and authoritative consent, never crypto variants. */
+const scopedCorrelationLayer = (
+    binding: TelemetryExportBinding,
+    identity: FixtureCorrelationIdentity,
+    keys: CorrelationKeys,
+    consent: Effect.Effect<number, TelemetrySinkFailure>,
+    environmentConfig: Config.Config<string>,
+    allowed: ReadonlyArray<CorrelationKeyScope['environment']>
+): Layer.Layer<CorrelationIssuer | CorrelationAuthority, TelemetrySinkFailure> =>
     Layer.unwrapScoped(
         Effect.gen(
             /** Keep raw identities and key access within this scoped server integration. */ function* () {
                 // An omitted environment must never turn fixture cryptography into an accepting production issuer.
-                const environment = yield* Config.string('NODE_ENV').pipe(
-                    Config.withDefault('production'),
+                const environment = yield* environmentConfig.pipe(
                     Effect.mapError(
                         /** Configuration diagnostics are not safe identity diagnostics. */ () =>
                             new TelemetrySinkFailure({ reason: 'configuration' })
                     )
                 );
-                if (environment !== 'test' && environment !== 'development')
+                if (
+                    (environment !== 'test' && environment !== 'development' && environment !== 'staging') ||
+                    !allowed.includes(environment)
+                )
                     return yield* new TelemetrySinkFailure({ reason: 'unavailable' });
                 const trusted = yield* Schema.decode(TelemetryExportBinding)(binding).pipe(
                     Effect.mapError(
