@@ -28,3 +28,6 @@ catalog:
 # Restrict the major override to this reviewed consumer, not every Zod user.
 overrides:
     '@expo/cli>zod': 4.6.7
+    # EVE-265: patch affected matcher generations; retain unaffected legacy APIs.
+    'glob@>=9.0.0 <14.0.2': 14.0.4
+    'minimatch@>=7.0.0 <11.0.1': 11.0.7

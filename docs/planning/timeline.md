@@ -38,9 +38,10 @@ The [inventory and residual reasons](../dependency-security.md) own the details.
 | Step | State | Evidence / remaining boundary |
 | --- | --- | --- |
 | Audit active and historical lockfiles | Completed inventory | Active: 0 critical, 2 high, 2 moderate. Historical main snapshot: 11 critical, 166 high, 175 moderate, 27 low; separate nested lockfiles recorded without double-counting the parent workspace. Dependabot API read denied (403). |
-| Expo Zod major override | Current verification | Scoped to the reviewed Expo consumer; root audit resolves to 1 high and 2 moderate. Full gates and signed delivery tracked on EVE-265. |
-| Glob/minimatch majors | Upcoming | Separate compatibility batch, unchanged cooldown and gates. |
+| Expo Zod major override | Completed delivery | Signed main commits e06839cf and 86a40aea; root audit 4 -> 3 (1 high, 2 moderate). Root check, full verify and uncached PostgreSQL/SQLite storage suite pass; exact evidence recorded on EVE-265. |
+| Glob/minimatch majors | Verified; signed delivery recorded separately | Range-scoped glob 14.0.4 / minimatch 11.0.7 preserve unaffected legacy APIs and cooldown. Before/after compatibility probes, root check, full workspace verify and uncached storage (11 files / 206 tests, PostgreSQL and SQLite) pass. Source/declaration graphs have zero violations/cycles; all three smoke projects plus 12 dependencies pass. Audit 3 -> 1 (high picomatch only); exact signed delivery tracked on EVE-265. |
 | Picomatch and historical snapshots | Blocked | No published picomatch fix. Historical preservation needs an explicit EVE-264 override before upgrades/deletion; no finding is suppressed. |
+| Vendored reference refreshes | Upcoming / upstream boundary | Inventoried separately; reviewed upstream/subtree refreshes required, not provenance-breaking local patches. |
 
 ```mermaid
 flowchart LR

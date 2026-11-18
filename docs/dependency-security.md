@@ -72,18 +72,37 @@ cooldown. No feature flag is added for a mandatory security dependency fix.
 Observed audit inventory after resolution: 0 critical, 1 high, 2 moderate, 0 low.
 Delivery and exact verification evidence are recorded on EVE-265.
 
+## Batch 2: filesystem matcher majors
+
+Version-range overrides upgrade only affected glob generations (`>=9.0.0 <14.0.2`)
+to 14.0.4 and minimatch generations (`>=7.0.0 <11.0.1`) to 11.0.7. These fix
+[glob GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+and [minimatch GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+Unaffected legacy glob 8.1.0 and minimatch 5.1.9 retain their original APIs.
+The chosen releases were published on 2026-11-06 and 2026-11-10, respectively,
+and satisfy the unchanged seven-day cooldown; newer ineligible releases are
+not exempted. Node 24 remains within both packages' supported engine ranges.
+
+Scratch compatibility probes run unchanged before and after the upgrade cover
+synchronous/asynchronous file discovery, dotfiles, brace expansion, extglobs,
+ignore patterns, no-match results, case sensitivity, escapes and negation.
+These are dependency API probes, not an upstream security proof or permanent
+application contract tests. Full workspace checks cover their actual consumers.
+After resolution the root audit reports 0 critical, 1 high, 0 moderate, 0 low:
+only picomatch remains. Exact gate results and signed delivery are on EVE-265.
+
 ## Residual work
 
 - **High, picomatch:** [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
   affects installed 2.3.2 and 4.0.7. The registry reports no patched range and
   latest 4.0.7 remains affected. Do not replace the package with an unrelated
   matcher, suppress the advisory or claim upgrading to latest fixes it.
-- **Moderate, glob:** [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
-  requires 14.0.2 or later; active consumers currently resolve 10.5.0 and 13.0.7.
-- **Moderate, minimatch:** [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
-  requires 11.0.1 or later; active consumers resolve 9.0.9, 10.2.5 and 10.2.6.
+- **Historical lockfiles:** the inventory above remains blocked by EVE-244 /
+  EVE-264 preservation pending Jonathan's explicit override.
+- **Vendored reference lockfiles:** the inventory above needs reviewed upstream
+  or subtree refreshes, not local patches to provenance-preserved source.
 
-Group the glob/minimatch major upgrades in the next compatibility batch. Keep
+Keep
 `minimumReleaseAge: 10080`, lifecycle-script restrictions and every existing gate.
 For each batch, regenerate agent surfaces and LLMS, run `node --run check`,
 the uncached storage suite with the approved disposable PostgreSQL fixture (the
