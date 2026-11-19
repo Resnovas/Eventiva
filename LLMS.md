@@ -278,6 +278,8 @@ Picomatch is entirely transitive: [the complete dependency paths and reachabilit
 
 Canonical human documentation: `docs/actions.md`. The compiled module example remains `apps/server/src/status.ts`; runtime integration/negative examples are compiled under `tests/runtime/src/{execution,parity}.spec.ts`.
 
+The 2026-11-19 implementation packet is `docs/core-qualification/approval-wiring.md`, linked from the current planning timeline. It is a proposal under the resolved EVE-275 contract, not a new public API/example or completed provider integration. Caller main b5e16e8a has completed hosted CI; provider bb5df959 and its separate AI-11-pending fencing fixture a5645a1e remain local. Use one owner for registered preparation/explicit human completion, exact target input/write-key lookup, same-routed-client identity/proof/Storage/Integrity, commit-use marking and approval-requiring read auditing. The independent new server session-policy capability must accept required trusted values and fail absent/invalid values, not choose an hour or use generic preference Settings. Retention maintenance follows a stable shared port; event-lead acceptance needs a selected authoritative source, not request IDs or role names. Exact nonoverlapping proposed paths and combined real-SQL acceptance are in that packet. No implementation, new dependency, spend, fixture acceptance or activation follows from this planning checkpoint.
+
 Portable API:
 
 - `@eventiva/contracts/action`: `ApprovalPolicy`, `Risk`, and specification fields `approval` (default `none`), `risk` (default `routine`), `sensitive` (default `false`). Existing required version, schemas, description, permission, sideEffect and offline fields remain.

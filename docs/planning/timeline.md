@@ -2,6 +2,32 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Next approval production wiring - 2026-11-19
+
+The [concrete EVE-275 packet](../core-qualification/approval-wiring.md) reconciles freshly fetched main `b5e16e8ac59ba628b7b240550844496421a1109e`, inspected retained provider source and its live final Linear evidence. This dated checkpoint supersedes earlier pending Caller CI/provider-running observations, without rewriting their history or the frozen planning capture. The packet defines technical implementation scope, not new product approval or implementation acceptance. No new thread or production source adoption occurred.
+
+| State | Evidence / next step |
+| --- | --- |
+| Completed | Caller exact-head hosted CI: 17 executed successes, seven intentional skips, no failures. [Application CI](https://github.com/Resnovas/Eventiva/actions/runs/44503825634) and [Code Quality](https://github.com/Resnovas/Eventiva/actions/runs/44503823503) complete. |
+| Retained, publication-held | Provider `bb5df959` and separate AI-11-pending fixture `a5645a1e` remain signed/local. Owner's normal runtime 664/664 and storage 266/266 pass on the older base plus held candidate, not the combined publishable tree. [Final Linear evidence](https://linear.app/resnovas/issue/EVE-275#comment-5d71a93b-153c-4796-8c7e-c37895e5aff8) independently read; missing final GitHub synchronization repaired by [explicit mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7007430441). |
+| Current planning, no implementation started | Packet A: one owner for registered human consent, exact input/target-key binding, route-local same-client identity/proof/Storage/Integrity and successful-use transaction, including approval-requiring reads. Packet B: independently eligible mandatory session-policy capability with explicit test values and no chosen production default. |
+| Upcoming, dependency-bound | Packet C: actual terminal-event retention cleanup after provider reconciliation and A's shared record/port handshake. Exact path sets are in the packet; shared manifests, guides, timeline/LLMS/Graphify remain single-owner. Do not count coupled retention/event work as extra independent lanes. |
+| Material choices / limits | Select actual session duration/configuration authority and the authoritative event-lead source from concrete options in the packet. Existing cancellation/lifetime/retention contract is approved; no one-hour assumption, step-up/dependency/spend/activation inference or stop-all external-credential hold. EVE-248 stays January 2027; budgets/settings unchanged. |
+
+Dependency sequence: published Caller plus retained-provider adoption and exact fixture acceptance lead to combined wiring qualification; independently built required policy capability joins wiring; the stable record/port unlocks retention; trusted event authority unlocks event-lead acceptance. Partial technical work does not close whole EVE-275/Core.
+
+```mermaid
+flowchart LR
+    CallerReady["Caller: published, hosted CI green"] --> WiringNext["A: registered consent and routed transaction"]
+    RetainedProvider["Provider: retained; adoption coordination"] --> WiringNext
+    FixtureDecision["Exact fencing AI-11 acceptance pending"] --> CombinedNext["Publishable combined qualification"]
+    PolicyCapability["B: required session-policy capability"] --> WiringNext
+    WiringNext --> CombinedNext
+    WiringNext --> RetentionNext["C: stable port then bounded retention cleanup"]
+    EventSource["Select authoritative event-lead source"] --> EventGate["Event-lead acceptance"]
+    WiringNext --> EventGate
+```
+
 ## Combined Core integration and Caller repair - 2026-11-19
 
 Jonathan, relayed by [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), originally authorized local integration/qualification of the completed EVE-277/278 fixes and Caller/proof evidence, with final combined verification after the exact EVE-276 handoff. The [sole integration owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) started a separate `agents/core-local-integration` checkout from freshly fetched main `9fb0bda2167be0499a4a3ed729c5fa033f23dd7a`. Retention refs/bundles remain intact. Jonathan subsequently explicitly authorized publication and the bounded canonical Caller repair; exact human-selection time is unknown. [Linear START and approval provenance](https://linear.app/resnovas/issue/EVE-275#comment-5bd241f2-ca35-42d8-8a7b-14f8439c9102) and [verified GitHub START](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7004681684) record the amendment. His later 2026-11-19 relay resolves the human-approval product contract below and resumes its existing owner separately; this supersedes the former policy/provider hold only within the approved scope. Dependencies, spending and activation are not authorized by either change.
