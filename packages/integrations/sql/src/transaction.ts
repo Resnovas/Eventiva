@@ -79,6 +79,14 @@ export const transactionScope = (
             const paired = Storage.of({
                 capabilities: base.capabilities,
                 ready: owned(base.ready),
+                /** Bind durable run acceptance to this exact transaction root. */
+                acceptRun: (...args) => owned(base.acceptRun(...args)),
+                /** Refuse retained-run reads through a foreign ambient transaction. */
+                getRun: (...args) => owned(base.getRun(...args)),
+                /** Serialize takeover only on this root's own tenant connection. */
+                claimRun: (...args) => owned(base.claimRun(...args)),
+                /** Mark the fenced effect with the same private ownership as business commits. */
+                fence: (fence, effect) => owned(base.fence(fence, inside(effect))),
                 // The ownership check runs BEFORE Effect SQL can reuse a foreign ambient connection.
                 /** Reject foreign ambient connections, then mark the paired transaction's body as owned. */
                 transaction: (effect) => owned(base.transaction(inside(effect))),

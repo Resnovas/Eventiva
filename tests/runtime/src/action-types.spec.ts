@@ -28,6 +28,7 @@ import { Authorizer, type CallerIdentity } from '@eventiva/contracts/caller';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost } from '@eventiva/runtime/host';
 import { ExecutionPolicy } from '@eventiva/runtime/invocation';
+import { expectTypeOf } from '@effect/vitest';
 import { Context, Effect, Layer, Schema } from 'effect';
 class Store extends Context.Tag('fixture/Store')<Store, { readonly value: number }>() {}
 class Other extends Context.Tag('fixture/Other')<Other, { readonly text: string }>() {}
@@ -40,6 +41,19 @@ const spec = define('fixture.exact', {
 });
 const binding = implement(spec, ({ value }) => Effect.map(Store, (store) => ({ doubled: value * store.value })));
 const retainedSchema: typeof spec.input = binding.spec.input;
+expectTypeOf<Parameters<typeof binding.handler>[0]>().toEqualTypeOf<{ readonly value: number }>();
+expectTypeOf<Effect.Effect.Success<ReturnType<typeof binding.handler>>>().toEqualTypeOf<{ readonly doubled: number }>();
+expectTypeOf<Effect.Effect.Error<ReturnType<typeof binding.handler>>>().toEqualTypeOf<{ readonly _tag: 'Rejected'; readonly code: number }>();
+expectTypeOf<Effect.Effect.Context<ReturnType<typeof binding.handler>>>().toEqualTypeOf<Store>();
+expectTypeOf<Schema.Schema.Encoded<typeof binding.spec.input>>().toEqualTypeOf<{ readonly value: string }>();
+expectTypeOf<Schema.Schema.Encoded<typeof binding.spec.output>>().toEqualTypeOf<{ readonly doubled: string }>();
+declare const contextualSchema: Schema.Schema<string, string, Store>;
+declare const astOnly: { readonly ast: typeof Schema.String.ast; readonly Context: never };
+const portableOptions = {
+    version: 1, description: 'Service-free schemas.', input: Schema.String, output: Schema.String, error: Schema.String,
+    permission: spec.permission, sideEffect: spec.sideEffect, offline: spec.offline,
+};
+const portableControl = define('fixture.portable', portableOptions);
 const identifier = Schema.String.pipe(Schema.brand('ActionIdentifier'));
 const branded = define('fixture.branded', {
     version: 1, description: 'Branded schema proof.', input: identifier, output: identifier,
@@ -87,6 +101,10 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
         `const impossible: Failure<typeof noError> = 'undeclared';`,
         `brandedBinding.handler('unbranded');`,
         `implement(branded, () => Effect.succeed('unbranded'));`,
+        `define('fixture.context-input', { ...portableOptions, input: contextualSchema });`,
+        `define('fixture.context-output', { ...portableOptions, output: contextualSchema });`,
+        `define('fixture.context-error', { ...portableOptions, error: contextualSchema });`,
+        `define('fixture.ast-only', { ...portableOptions, input: astOnly });`,
     ];
     const source =
         positive +
@@ -117,7 +135,7 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
     const exists = compiler.fileExists;
     compiler.readFile =
         /** Overlay only the virtual fixture; dependencies still resolve through the real compiler host. */ (path) =>
-            (path === filename ? source : read(path));
+            path === filename ? source : read(path);
     compiler.fileExists = /** Advertise the virtual fixture without masking real dependency existence checks. */ (
         path
     ) => path === filename || exists(path);
@@ -147,7 +165,8 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
                 diagnostic.code
         )
     ).toEqual([
-        2345, 2375, 2375, 2375, 2345, 2322, 2375, 2322, 2322, 2322, 2322, 2322, 2322, 2345, 2375,
+        2345, 2375, 2375, 2375, 2345, 2322, 2375, 2322, 2322, 2322, 2322, 2322, 2322, 2345, 2375, 2322, 2322, 2322,
+        2322,
     ]);
     // The patched compiler additionally diagnoses missing Effect errors/environments.
     expect(
@@ -157,9 +176,7 @@ void [provided, swapped, empty, needsStore, output, failure, Other, noError, che
                     diagnostic.code < 1000
             )
             .map(/** Preserve the patched compiler's diagnostic ordering. */ (diagnostic) => diagnostic.code)
-    ).toEqual([
-        1, 1, 1,
-    ]);
+    ).toEqual([1, 1, 1]);
     for (const [index, expression] of negatives.entries()) {
         const errors = standard.filter(
             /** Bind this negative source line to its diagnostic rather than relying only on totals. */ (diagnostic) =>

@@ -62,6 +62,32 @@ export const PlatformComposition = Schema.Struct({
     bindings: Schema.Array(ProviderBinding),
 }).annotations(strict);
 export type PlatformComposition = typeof PlatformComposition.Type;
+/** Immutable run identity contains references only: never live services, credentials or executable code. */
+export const RunSnapshot = Schema.Struct({
+    composition: PlatformComposition,
+    providers: Schema.Array(
+        Schema.Struct({
+            module: ModuleId,
+            instance: Schema.NonEmptyString,
+            configuration: Schema.NonEmptyString,
+        }).annotations(strict)
+    ),
+    schema: Schema.Array(
+        Schema.Struct({
+            name: Schema.String.pipe(Schema.pattern(/^\d{4}\.sql$/)),
+            checksum: Schema.String.pipe(Schema.pattern(/^[a-f0-9]{64}$/)),
+        }).annotations(strict)
+    ),
+    origin: Schema.Struct({
+        incarnation: Schema.NonEmptyString,
+        generation: Schema.Number.pipe(
+            Schema.int(),
+            Schema.positive(),
+            Schema.lessThanOrEqualTo(Number.MAX_SAFE_INTEGER)
+        ),
+    }).annotations(strict),
+}).annotations(strict);
+export type RunSnapshot = typeof RunSnapshot.Type;
 export const LifecycleOperation = Schema.Literal(
     'register',
     'validate',

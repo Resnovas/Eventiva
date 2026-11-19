@@ -15,7 +15,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -258,15 +258,28 @@ const approvedReflectionIngress = (node, ast, path, declarations) => {
     );
 };
 
-/** Syntax escapes are rejected; only the owner's pinned private reflection ingress is approved in source. */
+/** Audit owned syntax escapes, following first-party declaration closure but never policing dependency internals. */
 export const checkTypeEscapes = (root, { entries, declarations = false } = {}) => {
-    const paths =
+    const repository = realpathSync(root);
+    /** Canonical paths keep workspace symlinks owned and dependency symlinks outside the audit. */
+    const ownedDeclaration = (path) => {
+        const location = relative(repository, existsSync(path) ? realpathSync(path) : resolve(path));
+        const segments = location.split(/[\\/]/);
+        return (
+            !isAbsolute(location) &&
+            segments[0] !== '..' &&
+            segments[0] !== 'externals' &&
+            !segments.includes('node_modules')
+        );
+    };
+    const starts =
         entries?.map((path) => resolve(root, path)) ??
         (declarations
             ? declarationEntries(root)
             : ['packages', 'apps']
                   .flatMap((top) => files(join(root, top)))
                   .filter((path) => /\/src\/.*\.[cm]?tsx?$/.test(path) && !/\/(?:tests|fixtures)\//.test(path)));
+    const paths = new Set(declarations ? starts.filter(ownedDeclaration) : starts);
     const findings = [];
     for (const path of paths) {
         if (!existsSync(path)) {
@@ -275,6 +288,25 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
         }
         const text = readFileSync(path, 'utf8');
         const ast = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+        if (declarations) {
+            const options = optionsFor(root, path);
+            // Expand only owned emitted files; the separate graph gate diagnoses unresolved/source edges.
+            references(ast, (specifier) => {
+                if (!ts.isStringLiteralLike(specifier)) return;
+                const target = ts.resolveModuleName(
+                    specifier.text,
+                    path,
+                    {
+                        ...options,
+                        customConditions: (options.customConditions ?? []).filter(
+                            (condition) => condition !== '@eventiva/source'
+                        ),
+                    },
+                    ts.sys
+                ).resolvedModule?.resolvedFileName;
+                if (target && /\.d\.[cm]?ts$/.test(target) && ownedDeclaration(target)) paths.add(realpathSync(target));
+            });
+        }
         // The approved fingerprint covers parser flags. Binding annotates those
         // flags, so evaluate the unchanged exception before TypeScript binds.
         const reflectionApprovals = new Set();
@@ -371,7 +403,7 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
         if (/@ts-(?:ignore|expect-error|nocheck)|@effect-diagnostics[^\n]*:off|eslint-disable/.test(text))
             findings.push({ path: relative(root, path), reason: 'Suppressed type or lint diagnostic' });
     }
-    return { scanned: paths.length, findings };
+    return { scanned: paths.size, findings };
 };
 
 /** Audit every active source and the declared package graph, including packages with no incoming imports. */
@@ -410,8 +442,8 @@ export const checkWorkspaceGraph = (root, { declarations = false } = {}) => {
     return { ...result, packages: manifests.length, packageEdges: edges, packageCycles: cycles };
 };
 
-/** TypeScript's resolver follows aliases, conditions, relative paths and type-only imports; regex on import text cannot. */
-export const checkResourceBoundaries = (root, { entries, compilerOptions } = {}) => {
+/** Audit feature dependency closure in source or exported declarations using TypeScript resolution, not import-text matching. */
+export const checkResourceBoundaries = (root, { entries, compilerOptions, declarations = false } = {}) => {
     const all = ['packages', 'apps'].flatMap((top) => files(join(root, top)));
     const roots = all
         .filter((path) => path.endsWith('/project.json'))
@@ -421,7 +453,7 @@ export const checkResourceBoundaries = (root, { entries, compilerOptions } = {})
         });
     const starts =
         entries?.map((path) => resolve(root, path)) ??
-        all.filter(
+        (declarations ? declarationEntries(root) : all).filter(
             (path) =>
                 source.test(path) &&
                 (roots.some((dir) => path.startsWith(dir + '/')) || /\/(?:features|extensions)\//.test(path))
@@ -432,6 +464,10 @@ export const checkResourceBoundaries = (root, { entries, compilerOptions } = {})
         path = resolve(path);
         if (seen.has(path)) return;
         seen.add(path);
+        if (declarations && !existsSync(path)) {
+            findings.push({ path: relative(root, path), reason: 'Missing emitted public declaration', chain });
+            return;
+        }
         if (/\/packages\/integrations\/sql\//.test(path)) {
             findings.push({
                 path: relative(root, path),
@@ -453,16 +489,25 @@ export const checkResourceBoundaries = (root, { entries, compilerOptions } = {})
             }
             const name = specifier.text;
             const next = [...chain, name];
+            const options = optionsFor(root, path, compilerOptions);
+            // Consumer declarations must not silently follow the development source condition.
             const resolved = ts.resolveModuleName(
                 name,
                 path,
-                optionsFor(root, path, compilerOptions),
+                declarations
+                    ? {
+                          ...options,
+                          customConditions: (options.customConditions ?? []).filter(
+                              (condition) => condition !== '@eventiva/source'
+                          ),
+                      }
+                    : options,
                 ts.sys
             ).resolvedModule;
             const target = resolved?.resolvedFileName ?? '';
             const isPort =
                 name === '@eventiva/contracts/resource' ||
-                /\/packages\/contracts\/src\/resource\.[cm]?[jt]s$/.test(target);
+                /\/packages\/contracts\/(?:src|dist)\/resource(?:\.d)?\.[cm]?[jt]s$/.test(target);
             const bindings = node.importClause?.namedBindings ?? node.exportClause;
             const qualifier = ts.isImportTypeNode(node) ? node.qualifier?.getText(ast).split('.')[0] : undefined;
             const hiddenPort =
@@ -480,9 +525,17 @@ export const checkResourceBoundaries = (root, { entries, compilerOptions } = {})
                 });
                 return;
             }
-            if (resolved && !resolved.resolvedFileName.includes('/node_modules/'))
-                visit(resolved.resolvedFileName, next);
-            else if (!resolved && (name.startsWith('.') || name.startsWith('@eventiva/') || isAbsolute(name)))
+            if (resolved && !target.includes('/node_modules/')) {
+                if (declarations && !/\.d\.[cm]?ts$/.test(target)) {
+                    findings.push({
+                        path: relative(root, path),
+                        reason: 'Emitted declaration dependency resolves to non-declaration source',
+                        chain: next,
+                    });
+                    return;
+                }
+                visit(target, next);
+            } else if (!resolved && (name.startsWith('.') || name.startsWith('@eventiva/') || isAbsolute(name)))
                 findings.push({
                     path: relative(root, path),
                     reason: `Unresolved workspace dependency: ${name}`,
@@ -504,6 +557,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const emitted = process.argv.includes('--declarations')
         ? checkWorkspaceGraph(root, { declarations: true })
         : undefined;
+    const emittedResources = process.argv.includes('--declarations')
+        ? checkResourceBoundaries(root, { declarations: true })
+        : undefined;
     for (const finding of result.findings)
         console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
     for (const finding of graph.findings)
@@ -514,9 +570,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const finding of types.findings) console.error(`${finding.path}:${finding.line ?? 1}: ${finding.reason}`);
     for (const finding of emitted?.findings ?? [])
         console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
+    for (const finding of emittedResources?.findings ?? [])
+        console.error(`${finding.path}: ${finding.reason}\n  ${finding.chain.join(' -> ')}`);
     for (const cycle of emitted?.packageCycles ?? []) console.error(`Emitted package cycle: ${cycle.join(' -> ')}`);
     console.log(`Type boundaries: ${types.scanned} files, ${types.findings.length} violations`);
     console.log(`Resource boundaries: ${result.scanned} feature files, ${result.findings.length} violations`);
+    if (emittedResources)
+        console.log(
+            `Emitted resource boundaries: ${emittedResources.scanned} feature declarations, ` +
+                `${emittedResources.findings.length} violations`
+        );
     console.log(
         `Resource-rooted graph: ${graph.scanned} files, ${graph.edges.length} edges, ${graph.findings.length} violations`
     );
@@ -536,6 +599,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         workspace.findings.length ||
         workspace.packageCycles.length ||
         types.findings.length ||
+        emittedResources?.findings.length ||
         emitted?.findings.length ||
         emitted?.packageCycles.length
             ? 1

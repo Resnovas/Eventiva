@@ -77,6 +77,28 @@ Run `node --run parity` to validate the canonical server inventory, scoped disco
 
 Provide `Caller` per call. Call `host.execute(name, wireInput, options)` to receive `{ result, receipt, replayed, audit }`. `result` is an Effect `Exit` preserving success, declared failure, defect or interruption. `host.invoke` is a convenience projection of this same path that returns the output or fails; it never bypasses receipts. If the receipt cannot be persisted under A4, the call fails with `AuditUnavailable` instead of returning unrecorded output.
 
+The handler receives the trusted resolved Caller admitted by the executor, for
+reads and new mutations alike. That invocation Caller takes precedence even if
+a module Layer exports its own Caller. Only Caller is overlaid at deferred
+execution: unrelated captured module services retain their precedence, the
+Layer is not rebuilt, and Integrity's transaction-local services remain
+available. Do not merge the entire ambient invocation context over the module
+context or capture Caller at registration. Post-wait and precommit checks still
+reject changes to the admitted identity tuple and refresh live authority.
+Replay skips the handler and returns historical committed output; its new
+receipt uses the freshly admitted Caller, not a rewritten historical payload.
+
+Run `pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/caller-qualification.spec.ts --coverage.enabled=false`
+for the compiling public-host example and regression controls. Distinct
+registration/presented/resolved identities, benign/conflicting once-built
+Layers, preserved module/transaction markers, delegated calls, fresh-session
+replay, tenant/principal key isolation and post-handler rollback distinguish
+the boundary. See the [qualification and repair record](core-qualification/caller.md)
+for before/after evidence. Synthetic identity substitution does not demonstrate
+a current-ingress exploit. Trusted handlers can still explicitly replace their
+own inner services or capture values during construction; this context guarantee
+does not sandbox module code or implement the separate production approval provider.
+
 Dynamic action names return the existing `JsonValue` wire contract. Encoded outputs and declared failures must pass strict canonical JSON validation; dates, undefined values, cycles and nonfinite numbers are not coerced into JSON. `ActionFailed.error` uses this same portable schema. `Integrity.commit` accepts generic adapter ingress but must validate it before returning its JSON-valued committed result; the volatile fixture performs the same validation. Schema diagnostics and handler defects return bounded messages rather than raw input, output or underlying causes. `ActivationFailed` exposes `module` and `reason: 'layer-failed'`, not the layer's raw error. This is an intentional non-disclosure change to the previous `cause` payload.
 
 The portable `Receipt` schema is exported from `@eventiva/contracts/receipt`. Each receipt identifies its invocation and resolved caller, canonical action/version, canonical input digest, outcome, start time and duration. It contains no raw input or approval token. The platform supplies a SHA-256-or-stronger `InputDigest`. Canonicalization sorts object keys, preserves array order and rejects non-JSON values. Input schemas reject excess wire properties. Successful mutations return exactly the receipt committed by the integrity adapter; replays receive a new invocation receipt after current authorization is checked.

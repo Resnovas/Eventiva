@@ -44,6 +44,14 @@ const fixture = (overrides: Partial<Storage['Type']> = {}): Storage['Type'] =>
     Storage.of({
         capabilities: { transactions: true, compareAndSet: true, appendOnlyLedger: true, device: false },
         ready: Effect.void,
+        /** Run persistence is outside this non-SQL fixture. */
+        acceptRun: () => unavailable,
+        /** Never fabricate retained module identity. */
+        getRun: () => unavailable,
+        /** Never fabricate distributed ownership. */
+        claimRun: () => unavailable,
+        /** A volatile adapter cannot certify fenced writes. */
+        fence: () => unavailable,
         /** Preserve the supplied effect without simulating driver atomicity. */
         transaction: (effect) => effect,
         /** Execute once and mark evidence as newly committed, not replayed. */

@@ -415,7 +415,7 @@ export const ActionHostLive: Layer.Layer<
                         yield* validateDefinitions(
                             parts.actions.map(
                                 /** Validate portable action definitions before any module services start. */ ({
-                                    spec
+                                    spec,
                                 }) => spec
                             )
                         ).pipe(
@@ -462,7 +462,19 @@ export const ActionHostLive: Layer.Layer<
                                                                       prepared
                                                                   ) => ({
                                                                       ...prepared,
-                                                                      run: Effect.provide(prepared.run, context),
+                                                                      // Resolve only Caller at invocation time; every other captured module service keeps its precedence.
+                                                                      run: Effect.contextWithEffect(
+                                                                          /** Pick optional ambient Caller supplied by the executor without adding requirements to the closed module binding. */ (
+                                                                              environment: Context.Context<never>
+                                                                          ) =>
+                                                                              Effect.provide(
+                                                                                  prepared.run,
+                                                                                  Context.merge(
+                                                                                      context,
+                                                                                      Context.pick(Caller)(environment)
+                                                                                  )
+                                                                              )
+                                                                      ),
                                                                   })
                                                               )
                                                           ),
@@ -574,7 +586,7 @@ export const ActionHostLive: Layer.Layer<
                 execute(action, input, options).pipe(
                     Effect.flatMap(
                         /** Restore the captured execution Exit to the result channel after receipt persistence. */ ({
-                            result
+                            result,
                         }) => result
                     )
                 );

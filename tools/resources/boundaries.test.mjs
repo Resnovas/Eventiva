@@ -58,7 +58,8 @@ const fixture = (sources, run) => {
             checkWorkspaceGraph(root),
             checkTypeEscapes(root, { entries: ['feature.ts'] }),
             checkTypeEscapes(root, { declarations: true }),
-            checkWorkspaceGraph(root, { declarations: true })
+            checkWorkspaceGraph(root, { declarations: true }),
+            checkResourceBoundaries(root, { declarations: true })
         );
     } finally {
         rmSync(root, { recursive: true, force: true });
@@ -357,6 +358,132 @@ const declarationPackage = (name) =>
             },
         },
     });
+
+for (const [label, entry, bridge] of [
+    ['direct re-export', (name) => `export type { Client } from '${name}'`, false],
+    ['import-type', (name) => `export type Client = import('${name}').Client`, false],
+    ['relative transitive', () => `export type { Client } from './bridge.js'`, true],
+    ['path-alias transitive', () => `export type Client = import('@bridge').Client`, true],
+    ['package types-condition transitive', () => `export type { Client } from '@eventiva/b/api'`, true],
+])
+    for (const sql of [true, false])
+        test(`emitted feature SQL ${sql ? 'rejects' : 'allows legal control for'} ${label}`, () => {
+            const dependency = sql ? 'pg' : './safe.js';
+            fixture(
+                {
+                    'tsconfig.base.json': JSON.stringify({
+                        compilerOptions: {
+                            module: 'nodenext',
+                            moduleResolution: 'nodenext',
+                            customConditions: ['@eventiva/source'],
+                            paths: { '@bridge': ['./packages/b/dist/api.d.ts'] },
+                        },
+                    }),
+                    'feature.ts': 'export {}',
+                    'packages/a/project.json': JSON.stringify({ tags: ['type:extension'] }),
+                    'packages/a/package.json': declarationPackage('@eventiva/a'),
+                    'packages/a/src/api.ts': 'export type Client = string',
+                    'packages/a/dist/api.d.ts': entry(dependency),
+                    'packages/a/dist/bridge.d.ts': `export type { Client } from '${dependency}'`,
+                    'packages/a/dist/safe.d.ts': 'export type Client = string',
+                    'packages/b/package.json': declarationPackage('@eventiva/b'),
+                    'packages/b/src/api.ts': 'export type Client = string',
+                    'packages/b/dist/api.d.ts': `export type { Client } from '${dependency}'`,
+                    'packages/b/dist/safe.d.ts': 'export type Client = string',
+                    'node_modules/pg/package.json': JSON.stringify({ name: 'pg', types: './index.d.ts' }),
+                    'node_modules/pg/index.d.ts': 'export type Client = unknown',
+                },
+                (_boundary, _graph, workspace, _types, _declarations, emitted, resources) => {
+                    assert.deepEqual(workspace.findings, []);
+                    assert.deepEqual(emitted.findings, []);
+                    assert.equal(resources.scanned, 1);
+                    if (!sql) {
+                        assert.deepEqual(resources.findings, []);
+                        return;
+                    }
+                    assert.equal(resources.findings.length, 1);
+                    assert.equal(resources.findings[0].reason, 'Feature reaches privileged dependency: pg');
+                    assert.equal(resources.findings[0].chain.length, bridge ? 3 : 2);
+                    assert.equal(resources.findings[0].chain.at(-1), 'pg');
+                }
+            );
+        });
+
+for (const erased of ['any', 'unknown'])
+    for (const firstParty of [true, false])
+        test(`emitted type closure ${firstParty ? 'rejects owned' : 'does not police third-party'} ${erased}`, () =>
+            fixture(
+                {
+                    'tsconfig.base.json': JSON.stringify({
+                        compilerOptions: {
+                            module: 'nodenext',
+                            moduleResolution: 'nodenext',
+                            paths: { '@bridge': ['./packages/b/dist/hidden.d.ts'] },
+                        },
+                    }),
+                    'feature.ts': 'export {}',
+                    'packages/a/package.json': declarationPackage('@eventiva/a'),
+                    'packages/a/src/api.ts': 'export type Value = string',
+                    'packages/a/dist/api.d.ts': `export type { Value } from './bridge.js'`,
+                    'packages/a/dist/bridge.d.ts': `export type Value = import('${firstParty ? '@bridge' : 'vendor'}').Value`,
+                    // No manifest exports this file: only traversal can audit the owned alias target.
+                    'packages/b/dist/hidden.d.ts': `export type Value = ${erased}`,
+                    'node_modules/vendor/package.json': JSON.stringify({ name: 'vendor', types: './index.d.ts' }),
+                    'node_modules/vendor/index.d.ts': `export type Value = ${erased}`,
+                },
+                (_boundary, _graph, _workspace, _types, declarations, emitted) => {
+                    assert.deepEqual(emitted.findings, []);
+                    assert.deepEqual(
+                        declarations.findings,
+                        firstParty
+                            ? [{ path: 'packages/b/dist/hidden.d.ts', line: 1, reason: 'Erased any/unknown type' }]
+                            : []
+                    );
+                }
+            ));
+
+test('type auditing leaves reference-only dependency declarations to the graph boundary', () =>
+    fixture(
+        {
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/a/src/api.ts': 'export type Value = string',
+            'packages/a/dist/api.d.ts': `export type Value = import('../../../externals/vendor/api.d.ts').Value`,
+            'externals/vendor/api.d.ts': 'export type Value = unknown',
+        },
+        (_boundary, _graph, _workspace, _types, declarations, emitted) => {
+            assert.deepEqual(declarations.findings, []);
+            assert.equal(declarations.scanned, 1);
+            assert.equal(emitted.findings.length, 1);
+            assert.match(emitted.findings[0].reason, /reference-only upstream source/);
+        }
+    ));
+
+test('workspace package symlinks do not turn owned declarations into vendor exemptions', () =>
+    fixture(
+        {
+            'tsconfig.base.json': JSON.stringify({
+                compilerOptions: { module: 'nodenext', moduleResolution: 'nodenext', preserveSymlinks: true },
+            }),
+            'feature.ts': 'export {}',
+            'packages/a/package.json': declarationPackage('@eventiva/a'),
+            'packages/a/src/api.ts': 'export type Value = string',
+            'packages/a/dist/api.d.ts': `export type Value = import('@eventiva/b/hidden').Value`,
+            'packages/b/package.json': JSON.stringify({
+                name: '@eventiva/b',
+                type: 'module',
+                // This declaration is reachable through default, not an independently audited types entry.
+                exports: { './hidden': { default: './dist/hidden.d.ts' } },
+            }),
+            'packages/b/dist/hidden.d.ts': 'export type Value = unknown',
+        },
+        (_boundary, _graph, _workspace, _types, declarations, emitted) => {
+            assert.deepEqual(emitted.findings, []);
+            assert.deepEqual(declarations.findings, [
+                { path: 'packages/b/dist/hidden.d.ts', line: 1, reason: 'Erased any/unknown type' },
+            ]);
+        }
+    ));
 
 for (const [label, declarations, cycle] of [
     [

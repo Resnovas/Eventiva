@@ -21,14 +21,23 @@ import * as Activity from '@effect/workflow/Activity';
 import * as Workflow from '@effect/workflow/Workflow';
 import { AgentOutputLog, type OutputPayload } from '@eventiva/contracts/agent-output';
 import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
-import { Json, JsonValue, Storage, TenantRouter, UuidV7 } from '@eventiva/contracts/storage';
+import {
+    CurrentRunFence,
+    Json,
+    JsonValue,
+    Storage,
+    TenantRouter,
+    UuidV7,
+    type RunFence,
+} from '@eventiva/contracts/storage';
 import { canonicalJson, IdentityResolver } from '@eventiva/runtime/invocation';
 import { type Cause, Context, Data, Effect, Either, Exit, Layer, Option, Schema } from 'effect';
 import { ClusterActions, entityId } from './cluster-actions.ts';
+import { ModuleRunCatalog, runArtifact } from './module-run.ts';
 
 /** Sanitized run failures never carry stored inputs, provider output or transport diagnostics. */
 interface RunFailureFields {
-    readonly reason: 'denied' | 'conflict' | 'invalid' | 'unavailable' | 'missing';
+    readonly reason: 'denied' | 'conflict' | 'invalid' | 'unavailable' | 'missing' | 'recovery-required';
 }
 /** Keep the emitted error constructor exact rather than exporting the vendor's open generic. */
 const runFailureBase: new (
@@ -38,7 +47,7 @@ const runFailureBase: new (
 export class AgentRunDenied extends runFailureBase {}
 const Failure = Schema.Struct({
     _tag: Schema.Literal('AgentRunDenied'),
-    reason: Schema.Literal('denied', 'conflict', 'invalid', 'unavailable', 'missing'),
+    reason: Schema.Literal('denied', 'conflict', 'invalid', 'unavailable', 'missing', 'recovery-required'),
 });
 
 const Input = Schema.Union(
@@ -59,11 +68,11 @@ const Step = Schema.Union(
     })
 );
 
-/** Only fixed scripted definitions are admitted; module-bound runs await EVE-54 pin resolution/fencing. */
+/** Module runs bind trusted retained executable identity at acceptance; input cannot supply a snapshot or owner token. */
 export const AgentRunInput = Schema.Struct({
     caller: CallerIdentity,
     runId: UuidV7,
-    definition: Schema.Literal('scripted-v1'),
+    definition: Schema.Literal('scripted-v1', 'module-v1'),
     steps: Schema.NonEmptyArray(Step),
 });
 export type AgentRunInput = typeof AgentRunInput.Type;
@@ -165,46 +174,85 @@ const acceptedRun = (reference: AgentRunReference, candidate?: AgentRunInput) =>
             const routing = yield* TenantRouter;
             const caller = reference.caller;
             if (caller.tenant === undefined) return yield* new AgentRunDenied({ reason: 'denied' });
+            const tenant = caller.tenant;
             // Caller is supplied only after live identity refresh; the reference is never a database selector.
             return yield* routing
                 .run(
                     caller.tenant,
                     Effect.gen(
                         /** Compare persisted acceptance after unique insertion, never overwrite it. */ function* () {
+                            // The operational record and immutable module identity share one tenant transaction, including duplicate admission.
                             const store = yield* Storage;
-                            if (candidate !== undefined) {
-                                // A unique tenant-local record binds the logical id before Workflow.execute.
-                                // A crash after acceptance can safely retry Start with exactly the same definition.
-                                yield* store
-                                    .create({
-                                        id: candidate.runId,
-                                        state: 'agent-run.accepted-v1',
-                                        version: 0,
-                                        leaseUntil: null,
-                                        payload: yield* canonical(candidate).pipe(Effect.flatMap(Schema.decode(Json))),
-                                    })
-                                    .pipe(
-                                        Effect.catchTag(
-                                            'StorageConflict',
-                                            /** Only a unique-id collision is eligible for immutable-input comparison. */
-                                            (error) => (error.reason === 'duplicate' ? Effect.void : Effect.fail(error))
+                            return yield* store.transaction(
+                                Effect.gen(
+                                    /** Acceptance records and the exact snapshot either commit together or remain absent together. */ function* () {
+                                        if (candidate !== undefined) {
+                                            if (candidate.definition === 'module-v1') {
+                                                const catalog = yield* Effect.serviceOption(ModuleRunCatalog);
+                                                if (
+                                                    Option.isNone(catalog) ||
+                                                    candidate.steps.some(
+                                                        /** This increment binds action executables, not an unrecorded external model adapter. */ (
+                                                            step
+                                                        ) => step._tag !== 'Action'
+                                                    )
+                                                )
+                                                    return yield* new AgentRunDenied({ reason: 'recovery-required' });
+                                                const previous = yield* store.getRun(tenant, candidate.runId);
+                                                const snapshot = previous?.snapshot ?? catalog.value.current;
+                                                yield* runArtifact(snapshot).pipe(
+                                                    Effect.provideService(ModuleRunCatalog, catalog.value)
+                                                );
+                                                yield* store.acceptRun(
+                                                    tenant,
+                                                    candidate.runId,
+                                                    yield* canonical(candidate).pipe(
+                                                        Effect.flatMap(Schema.decode(Json))
+                                                    ),
+                                                    snapshot
+                                                );
+                                            }
+                                            // A unique tenant-local record binds the logical id before Workflow.execute.
+                                            // A crash after acceptance can safely retry Start with exactly the same definition.
+                                            yield* store
+                                                .create({
+                                                    id: candidate.runId,
+                                                    state: 'agent-run.accepted-v1',
+                                                    version: 0,
+                                                    leaseUntil: null,
+                                                    payload: yield* canonical(candidate).pipe(
+                                                        Effect.flatMap(Schema.decode(Json))
+                                                    ),
+                                                })
+                                                .pipe(
+                                                    Effect.catchTag(
+                                                        'StorageConflict',
+                                                        /** Only a unique-id collision is eligible for immutable-input comparison. */
+                                                        (error) =>
+                                                            error.reason === 'duplicate'
+                                                                ? Effect.void
+                                                                : Effect.fail(error)
+                                                    )
+                                                );
+                                        }
+                                        const record = yield* store.get(reference.runId);
+                                        if (record === undefined)
+                                            return yield* new AgentRunDenied({ reason: 'missing' });
+                                        if (record.state !== 'agent-run.accepted-v1')
+                                            return yield* new AgentRunDenied({ reason: 'conflict' });
+                                        const accepted = yield* Schema.decodeUnknown(AgentRunInput)(record.payload);
+                                        // The same tenant cannot read another principal's cached confidential output.
+                                        if ((yield* canonical(accepted.caller)) !== (yield* canonical(caller)))
+                                            return yield* new AgentRunDenied({ reason: 'denied' });
+                                        if (
+                                            candidate !== undefined &&
+                                            (yield* canonical(accepted)) !== (yield* canonical(candidate))
                                         )
-                                    );
-                            }
-                            const record = yield* store.get(reference.runId);
-                            if (record === undefined) return yield* new AgentRunDenied({ reason: 'missing' });
-                            if (record.state !== 'agent-run.accepted-v1')
-                                return yield* new AgentRunDenied({ reason: 'conflict' });
-                            const accepted = yield* Schema.decodeUnknown(AgentRunInput)(record.payload);
-                            // The same tenant cannot read another principal's cached confidential output.
-                            if ((yield* canonical(accepted.caller)) !== (yield* canonical(caller)))
-                                return yield* new AgentRunDenied({ reason: 'denied' });
-                            if (
-                                candidate !== undefined &&
-                                (yield* canonical(accepted)) !== (yield* canonical(candidate))
-                            )
-                                return yield* new AgentRunDenied({ reason: 'conflict' });
-                            return accepted;
+                                            return yield* new AgentRunDenied({ reason: 'conflict' });
+                                        return accepted;
+                                    }
+                                )
+                            );
                         }
                     )
                 )
@@ -212,14 +260,21 @@ const acceptedRun = (reference: AgentRunReference, candidate?: AgentRunInput) =>
         }
     ).pipe(
         Effect.catchTags({
-            /** Storage/parser/routing diagnostics never disclose the stored definition. */
-            StorageFailure: () => Effect.fail(new AgentRunDenied({ reason: 'unavailable' })),
+            /** Distinguish exact-schema recovery refusal from transient storage failure without exposing diagnostics. */
+            StorageFailure: (error) =>
+                Effect.fail(
+                    new AgentRunDenied({
+                        reason: error.operation === 'run-recovery-required' ? 'recovery-required' : 'unavailable',
+                    })
+                ),
             /** Non-duplicate storage conflicts remain safe input conflicts. */
             StorageConflict: () => Effect.fail(new AgentRunDenied({ reason: 'conflict' })),
             /** Malformed stored data cannot be executed using a fallback definition. */
             ParseError: () => Effect.fail(new AgentRunDenied({ reason: 'invalid' })),
             /** Do not reveal another routed tenant's existence. */
             RoutingDenied: () => Effect.fail(new AgentRunDenied({ reason: 'denied' })),
+            /** Missing retained executable/config/schema artifacts never select a newer admission default. */
+            RunRecoveryRequired: () => Effect.fail(new AgentRunDenied({ reason: 'recovery-required' })),
         })
     );
 
@@ -244,21 +299,76 @@ export const registerAgentRuns = Effect.gen(
             return yield* new AgentRunDenied({ reason: 'unavailable' });
         const model = modelPort.value;
         const output = outputPort.value;
-        const dependencies = (yield* Effect.context<IdentityResolver | TenantRouter | ClusterActions>()).pipe(
+        const catalog = yield* Effect.serviceOption(ModuleRunCatalog);
+        const baseDependencies = (yield* Effect.context<IdentityResolver | TenantRouter | ClusterActions>()).pipe(
             Context.pick(IdentityResolver, TenantRouter, ClusterActions),
             Context.add(AgentRunAccess, accessPort.value)
         );
+        const dependencies = Option.isSome(catalog)
+            ? Context.add(baseDependencies, ModuleRunCatalog, catalog.value)
+            : baseDependencies;
+        /** Acquire exactly once per workflow attempt; a stale attempt never refreshes its epoch after takeover. */
+        const claim = (accepted: AgentRunInput) =>
+            Effect.gen(
+                /** Resolve exact recorded artifacts before committing a tenant-local owner transfer. */ function* () {
+                    // Scripted workflows have no recorded module identity; module attempts acquire once and retain that token until exit.
+                    if (accepted.definition === 'scripted-v1') return undefined;
+                    const caller = yield* authorize(accepted, 'step', 1);
+                    if (caller.tenant === undefined || Option.isNone(catalog))
+                        return yield* new AgentRunDenied({ reason: 'recovery-required' });
+                    const tenant = caller.tenant;
+                    return yield* Context.get(baseDependencies, TenantRouter)
+                        .run(
+                            caller.tenant,
+                            Effect.gen(
+                                /** Read acceptance from tenant authority rather than Workflow payload or current defaults. */ function* () {
+                                    // Reject unavailable artifacts before advancing ownership so a bad deployment cannot steal a recoverable run.
+                                    const store = yield* Storage;
+                                    const stored = yield* store.getRun(tenant, accepted.runId);
+                                    if (!stored || (yield* canonical(stored.input)) !== (yield* canonical(accepted)))
+                                        return yield* new AgentRunDenied({ reason: 'recovery-required' });
+                                    yield* runArtifact(stored.snapshot).pipe(
+                                        Effect.provideService(ModuleRunCatalog, catalog.value)
+                                    );
+                                    return yield* store.claimRun(
+                                        tenant,
+                                        accepted.runId,
+                                        stored.epoch,
+                                        catalog.value.incarnation
+                                    );
+                                }
+                            )
+                        )
+                        .pipe(Effect.provideService(Caller, caller));
+                }
+            ).pipe(
+                Effect.provide(dependencies),
+                Effect.mapError(
+                    /** Refuse recovery without exposing stored identity, artifacts or database diagnostics. */ () =>
+                        new AgentRunDenied({ reason: 'recovery-required' })
+                )
+            );
         // Do not capture bootstrap Scope, WorkflowInstance, Caller or transaction services.
         const actions = Context.get(dependencies, ClusterActions);
         /** Persist only explicitly selected output through the same authenticated tenant route as run acceptance. */
-        const append = (accepted: AgentRunInput, stepIndex: number, eventId: string, payload: OutputPayload) =>
+        const append = (
+            accepted: AgentRunInput,
+            stepIndex: number,
+            eventId: string,
+            payload: OutputPayload,
+            fence: RunFence | undefined
+        ) =>
             Effect.gen(
                 /** The identity is allocated by orchestration before the retryable SQL effect, never by the adapter. */ function* () {
                     // Model execution permission can be revoked while producing text, so each release refreshes step authority.
                     const caller = yield* authorize(accepted, 'step', stepIndex);
                     if (caller.tenant === undefined) return yield* new AgentRunDenied({ reason: 'denied' });
+                    const write = output.append({ runId: accepted.runId, eventId, payload });
                     yield* Context.get(dependencies, TenantRouter)
-                        .run(caller.tenant, output.append({ runId: accepted.runId, eventId, payload }))
+                        .run(
+                            caller.tenant,
+                            fence === undefined ? write : write.pipe(Effect.provideService(CurrentRunFence, fence))
+                        )
                         .pipe(Effect.provideService(Caller, caller));
                 }
             ).pipe(
@@ -274,6 +384,7 @@ export const registerAgentRuns = Effect.gen(
                 ({ accepted }) =>
                     Effect.gen(
                         /** Recover ordered Activity outputs before selecting the next call's input. */ function* () {
+                            const fence = yield* claim(accepted);
                             let previous: JsonValue = null;
                             for (const [offset, step] of accepted.steps.entries()) {
                                 const stepIndex = offset + 1;
@@ -310,14 +421,21 @@ export const registerAgentRuns = Effect.gen(
                                                             accepted,
                                                             stepIndex,
                                                             `step:${stepIndex}:text:${chunkIndex}`,
-                                                            { _tag: 'Text', text }
+                                                            { _tag: 'Text', text },
+                                                            fence
                                                         );
                                                     },
                                                 });
-                                                yield* append(accepted, stepIndex, `step:${stepIndex}:complete`, {
-                                                    _tag: 'StepCompleted',
+                                                yield* append(
+                                                    accepted,
                                                     stepIndex,
-                                                });
+                                                    `step:${stepIndex}:complete`,
+                                                    {
+                                                        _tag: 'StepCompleted',
+                                                        stepIndex,
+                                                    },
+                                                    fence
+                                                );
                                                 return result;
                                             }
                                             // ClusterActions reaches the same authorized ActionHost and tenant A1 transaction.
@@ -329,6 +447,7 @@ export const registerAgentRuns = Effect.gen(
                                                     entityKey: step.entityKey,
                                                     action: step.action,
                                                     input,
+                                                    ...(fence === undefined ? {} : { fence }),
                                                     intent: {
                                                         idempotencyKey,
                                                         ...(step.approvalId === undefined
@@ -352,10 +471,16 @@ export const registerAgentRuns = Effect.gen(
                                                     )
                                                 );
                                             // Completion metadata is safe; never implicitly copy tool output or its input into this log.
-                                            yield* append(accepted, stepIndex, `step:${stepIndex}:complete`, {
-                                                _tag: 'StepCompleted',
+                                            yield* append(
+                                                accepted,
                                                 stepIndex,
-                                            });
+                                                `step:${stepIndex}:complete`,
+                                                {
+                                                    _tag: 'StepCompleted',
+                                                    stepIndex,
+                                                },
+                                                fence
+                                            );
                                             return result.output;
                                         }
                                     ),

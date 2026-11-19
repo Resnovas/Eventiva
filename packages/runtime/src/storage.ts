@@ -15,8 +15,8 @@
  */
 
 import { Receipt } from '@eventiva/contracts/receipt';
-import { Conflict, CurrentTenant, Json, Storage, StorageFailure } from '@eventiva/contracts/storage';
-import { Effect, Layer, Schema } from 'effect';
+import { Conflict, CurrentRunFence, CurrentTenant, Json, Storage, StorageFailure } from '@eventiva/contracts/storage';
+import { Effect, Layer, Option, Schema } from 'effect';
 import { Audit, AuditUnavailable, canonicalJson, Integrity, InvocationDenied } from './invocation.ts';
 
 /** Build inside a tenant route. No drivers, global client, external effects or in-memory audit fallback. */
@@ -54,14 +54,19 @@ export const durable = Layer.unwrapEffect(
                                                 new AuditUnavailable({ action: receipt.action })
                                         )
                                     );
-                                    yield* storage
-                                        .audit(receipt.id, body)
-                                        .pipe(
-                                            Effect.mapError(
-                                                /** Hide persistence failure details while failing receipt delivery closed. */ () =>
-                                                    new AuditUnavailable({ action: receipt.action })
-                                            )
-                                        );
+                                    const attempt = yield* Effect.serviceOption(CurrentRunFence);
+                                    const write = storage.audit(receipt.id, body);
+                                    // Replay has a new invocation receipt; fence that successful evidence in its own accepting transaction too.
+                                    yield* (
+                                        receipt.outcome === 'succeeded' && Option.isSome(attempt)
+                                            ? storage.fence(attempt.value, write)
+                                            : write
+                                    ).pipe(
+                                        Effect.mapError(
+                                            /** Hide persistence failure details while failing receipt delivery closed. */ () =>
+                                                new AuditUnavailable({ action: receipt.action })
+                                        )
+                                    );
                                     return 'durable' as const;
                                 }
                             ),
@@ -75,7 +80,10 @@ export const durable = Layer.unwrapEffect(
                             Effect.gen(
                                 /** Delegate mutation atomicity to Storage and recover the typed receipt from its durable JSON representation. */ function* () {
                                     // The composite key includes delegation as well as principal/action/version, preventing cross-authority replay.
-                                    if (request.caller.tenant !== tenant.id)
+                                    if (
+                                        request.caller.tenant !== tenant.id ||
+                                        (request.fence !== undefined && request.fence.tenant !== tenant.id)
+                                    )
                                         return yield* new InvocationDenied({
                                             action: request.action,
                                             reason: 'tenant-scope-mismatch',
@@ -90,7 +98,11 @@ export const durable = Layer.unwrapEffect(
                                     ]);
                                     const committed = yield* storage
                                         .commit(
-                                            { key, inputHash: request.inputHash },
+                                            {
+                                                key,
+                                                inputHash: request.inputHash,
+                                                ...(request.fence === undefined ? {} : { fence: request.fence }),
+                                            },
                                             Effect.gen(
                                                 /** Run inside the storage transaction and reject success evidence that does not bind this exact mutation. */ function* () {
                                                     const result = yield* execute;
@@ -145,7 +157,7 @@ export const durable = Layer.unwrapEffect(
                                                         : error instanceof Conflict
                                                           ? new InvocationDenied({
                                                                 action: request.action,
-                                                                reason: error.reason
+                                                                reason: error.reason,
                                                             })
                                                           : error
                                             )

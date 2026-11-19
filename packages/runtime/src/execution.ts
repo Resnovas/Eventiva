@@ -17,7 +17,7 @@
 import type { ActionSpec, ApprovalPolicy } from '@eventiva/contracts/action';
 import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { type PlatformError } from '@eventiva/contracts/errors';
-import { Json } from '@eventiva/contracts/storage';
+import { CurrentRunFence, Json } from '@eventiva/contracts/storage';
 import { Cause, Clock, Effect, Either, Exit, Option, Random, Schema } from 'effect';
 import type { ActionBinding } from './action.ts';
 import {
@@ -281,8 +281,10 @@ export const makeExecutor = Effect.gen(
                                                         yield* audit.ready(action);
                                                     }
                                                 );
-                                            const run = prepared.run;
+                                            // Handler identity must match the admitted tuple, not the caller presented to a replacing resolver.
+                                            const run = prepared.run.pipe(Effect.provideService(Caller, caller));
                                             if (spec.sideEffect === 'read') return yield* run;
+                                            const fence = yield* Effect.serviceOption(CurrentRunFence);
                                             const saved = yield* integrity.commit(
                                                 {
                                                     key: JSON.stringify([
@@ -296,6 +298,7 @@ export const makeExecutor = Effect.gen(
                                                     caller,
                                                     action,
                                                     version: spec.version,
+                                                    ...(Option.isSome(fence) ? { fence: fence.value } : {}),
                                                 },
                                                 Effect.gen(
                                                     /** Produce mutation output and success evidence inside the integrity adapter's atomic transaction. */ function* () {

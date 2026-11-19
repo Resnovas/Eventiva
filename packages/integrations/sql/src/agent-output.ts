@@ -25,8 +25,9 @@ import {
     type OutputEvent,
 } from '@eventiva/contracts/agent-output';
 import type { TenantId } from '@eventiva/contracts/ids';
-import { CurrentTenant } from '@eventiva/contracts/storage';
-import { Context, Effect, Layer, Schema } from 'effect';
+import { CurrentRunFence, CurrentTenant } from '@eventiva/contracts/storage';
+import { Context, Effect, Layer, Option, Schema } from 'effect';
+import { checkRunFence } from './storage.ts';
 
 const Stored = Schema.Struct({
     event_id: Schema.String,
@@ -71,6 +72,18 @@ export const agentOutputLog = (
                         return yield* sql.withTransaction(
                             Effect.gen(
                                 /** The no-op UPSERT takes a row write lock on PostgreSQL and a writer lock on SQLite. */ function* () {
+                                    // Output deliberately owns an independent transaction: the fence must be checked HERE, not in its caller.
+                                    const fence = yield* Effect.serviceOption(CurrentRunFence);
+                                    if (Option.isSome(fence)) {
+                                        if (fence.value.tenant !== tenant.id || fence.value.runId !== value.runId)
+                                            return yield* unavailable();
+                                        yield* checkRunFence(sql, fence.value).pipe(Effect.mapError(unavailable));
+                                    } else {
+                                        const pinned =
+                                            yield* sql`SELECT run_id FROM module_run_snapshot WHERE tenant_id = ${tenant.id} AND run_id = ${value.runId}`;
+                                        // Scripted output remains compatible; omitting the token can never downgrade a recorded module run.
+                                        if (pinned.length !== 0) return yield* unavailable();
+                                    }
                                     yield* sql`INSERT INTO agent_output_run (tenant_id, run_id, next_offset) VALUES (${tenant.id}, ${value.runId}, 0)
                         ON CONFLICT (tenant_id, run_id) DO UPDATE SET next_offset = agent_output_run.next_offset`;
                                     const [prior] =

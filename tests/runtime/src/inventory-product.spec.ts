@@ -39,7 +39,7 @@ import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import { productModule, productResources } from '@eventiva/runtime/inventory-product';
 import { resourceRuntime } from '@eventiva/runtime/resource';
 import { durable } from '@eventiva/runtime/storage';
-import { InputDigest } from '@eventiva/runtime/invocation';
+import { IdentityResolver, InputDigest } from '@eventiva/runtime/invocation';
 import { ResourceFailure, Resources, type ResourceProvider } from '@eventiva/contracts/resource';
 import { CurrentTenant, Storage } from '@eventiva/contracts/storage';
 import { client } from '@eventiva/integrations.sql/postgres';
@@ -434,7 +434,11 @@ for (const dialect of ['sqlite', 'postgres'] as const) {
                                     persistence,
                                     flags,
                                     authority,
-                                    digest
+                                    digest,
+                                    Layer.succeed(IdentityResolver, {
+                                        /** Preserve synthetic presented identities so the product's routed-tenant guard, not harness substitution, decides isolation. */
+                                        resolve: (presented) => Effect.succeed(presented),
+                                    })
                                 );
                                 const context = yield* Layer.build(services);
                                 const module = yield* productModule.pipe(
@@ -674,6 +678,20 @@ for (const dialect of ['sqlite', 'postgres'] as const) {
                     expect(
                         (yield* Effect.either(invoke(first.host, GetProduct.name, { id: winner.id }, other)))._tag
                     ).toBe('Left');
+                    expect(
+                        (yield* Effect.either(
+                            invoke(
+                                first.host,
+                                UpdateProduct.name,
+                                { id: id(22), revision: 1, product: { ...fields, name: 'Foreign overwrite' } },
+                                other
+                            )
+                        ))._tag
+                    ).toBe('Left');
+                    expect(yield* invoke(first.host, GetProduct.name, { id: id(22) })).toMatchObject({
+                        name: 'Synthetic product',
+                        revision: 1,
+                    });
                     const receipts = yield* db.sql`SELECT receipt FROM action_receipt`;
                     expect(receipts.length).toBeGreaterThan(0);
                     const auditText = JSON.stringify(receipts);

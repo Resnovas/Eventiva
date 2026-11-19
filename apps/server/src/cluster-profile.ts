@@ -14,7 +14,7 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { Config, Effect, Option, Schema } from 'effect';
+import { Config, Data, Effect, Option, Schema } from 'effect';
 import { RunnerAddress } from '@effect/cluster/RunnerAddress';
 import { defaults, type ShardingConfig } from '@effect/cluster/ShardingConfig';
 
@@ -64,10 +64,22 @@ export const DeploymentProfile = Schema.Union(
 );
 export type DeploymentProfile = typeof DeploymentProfile.Type;
 
-/** One validated configuration boundary. Configuration never disables Cluster. */
-export const deploymentProfile = Config.string('EVENTIVA_CLUSTER_PROFILE').pipe(
+/** Closed configuration diagnostics exclude rejected values, provider messages and underlying causes. */
+export class DeploymentProfileFailure extends Data.TaggedError('DeploymentProfileFailure')<{
+    readonly reason: 'configuration';
+}> {}
+
+/** Validate configuration without disabling Cluster or exposing private Config/Schema failures to callers. */
+export const deploymentProfile: Effect.Effect<DeploymentProfile, DeploymentProfileFailure> = Config.string(
+    'EVENTIVA_CLUSTER_PROFILE'
+).pipe(
     Config.withDefault('{"edition":"community"}'),
-    Effect.flatMap(Schema.decodeUnknown(Schema.parseJson(DeploymentProfile)))
+    Effect.flatMap(Schema.decodeUnknown(Schema.parseJson(DeploymentProfile))),
+    // Sanitize at the exported boundary: outer bootstrap logging cannot protect other callers' Cause/Exit rendering.
+    Effect.mapError(
+        /** Replace both provider and decoder failures without retaining their input, message or cause. */ () =>
+            new DeploymentProfileFailure({ reason: 'configuration' })
+    )
 );
 
 /** Full config, not partial env overrides, so unvalidated upstream env cannot alter topology. */

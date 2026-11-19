@@ -15,7 +15,8 @@
  */
 
 import { type Cause, Context, Data, type Effect, Schema } from 'effect';
-import type { TenantId } from './ids.ts';
+import { TenantId } from './ids.ts';
+import { RunSnapshot } from './module-manifest.ts';
 
 /** Provider-neutral values. Integer quantities never pass through floating point arithmetic. */
 export const UuidV7 = Schema.UUID.pipe(
@@ -125,11 +126,30 @@ export interface CommitRequest {
     /** Caller/action/version scope is part of the key, not hidden database state. */
     readonly key: string;
     readonly inputHash: string;
+    readonly fence?: RunFence;
 }
 /** JSON-only mutation result and its receipt, persisted atomically for subsequent replay. */
 export interface CommitResult {
     readonly output: JsonValue;
     readonly receipt: JsonValue;
+}
+
+/** An attempt binding is not bearer authority; callers still need current tenant/action authorization. */
+export const RunFence = Schema.Struct({
+    tenant: TenantId,
+    runId: UuidV7,
+    owner: Schema.NonEmptyString,
+    epoch: Version.pipe(Schema.positive()),
+}).annotations({ parseOptions: { onExcessProperty: 'error' } });
+export type RunFence = typeof RunFence.Type;
+/** Trusted invocation context, explicitly transported between backend runners, never accepted in public action intent. */
+export class CurrentRunFence extends Context.Tag('@eventiva/contracts/CurrentRunFence')<CurrentRunFence, RunFence>() {}
+/** Immutable acceptance and mutable monotonic ownership are read together from the authenticated tenant database. */
+export interface StoredRun {
+    readonly input: JsonValue;
+    readonly snapshot: RunSnapshot;
+    readonly epoch: number;
+    readonly owner: string | null;
 }
 
 /** All methods are bound to exactly one authenticated tenant database. No raw query escape hatch. */
@@ -138,6 +158,27 @@ export class Storage extends Context.Tag('@eventiva/contracts/Storage')<
     {
         readonly capabilities: Capabilities;
         readonly ready: Effect.Effect<void, StorageFailure>;
+        /** Insert once, compare identical retries and never rewrite the accepted input or exact snapshot. */
+        readonly acceptRun: (
+            tenant: TenantId,
+            id: string,
+            input: JsonValue,
+            snapshot: RunSnapshot
+        ) => Effect.Effect<StoredRun, StorageFailure | Conflict>;
+        /** Read recorded identity without selecting defaults or conferring current execution authority. */
+        readonly getRun: (tenant: TenantId, id: string) => Effect.Effect<StoredRun | undefined, StorageFailure>;
+        /** Compare the observed epoch and commit a monotonic owner transfer; only its transaction commit linearizes takeover. */
+        readonly claimRun: (
+            tenant: TenantId,
+            id: string,
+            expectedEpoch: number,
+            owner: string
+        ) => Effect.Effect<RunFence, StorageFailure | Conflict>;
+        /** Lock/check ownership before executing and retain that lock through the supplied transaction's commit. */
+        readonly fence: <A, E, R>(
+            fence: RunFence,
+            effect: Effect.Effect<A, E, R>
+        ) => Effect.Effect<A, E | StorageFailure | Conflict, R>;
         /** Commit the supplied effect atomically, rolling back its storage writes on failure, defect or interruption. */
         readonly transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | StorageFailure, R>;
         /** Serialize by scoped key, reject changed input and persist result plus receipt; replay never reruns execute. */
