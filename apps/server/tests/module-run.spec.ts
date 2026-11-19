@@ -390,7 +390,11 @@ describe('module run source composition', /** Instrument the real server seams w
                     expect(yield* f.sql`SELECT * FROM agent_output_event`).toHaveLength(2);
                     yield* Ref.set(f.available, true);
                     // An actual database history change must report recovery, not suggest transient availability or repinning.
-                    yield* f.sql`INSERT INTO storage_migration (name, checksum) VALUES ('0012.sql', ${'a'.repeat(64)})`;
+                    const [latest] = yield* f.sql<{
+                        name: string;
+                    }>`SELECT name FROM storage_migration ORDER BY name DESC LIMIT 1`;
+                    const future = `${String(Number(latest?.name.slice(0, -4) ?? '0') + 1).padStart(4, '0')}.sql`;
+                    yield* f.sql`INSERT INTO storage_migration (name, checksum) VALUES (${future}, ${'a'.repeat(64)})`;
                     expect(yield* Effect.either(f.runs.start(f.accepted))).toMatchObject({
                         left: { reason: 'recovery-required' },
                     });
