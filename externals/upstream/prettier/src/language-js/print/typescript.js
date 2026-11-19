@@ -1,3 +1,4 @@
+import { group } from "../../document/index.js";
 import UnexpectedNodeError from "../../utilities/unexpected-node-error.js";
 import isTsKeywordType from "../utilities/is-ts-keyword-type.js";
 import { printArray } from "./array.js";
@@ -13,8 +14,10 @@ import {
   printClassProperty,
 } from "./class.js";
 import { printEnumDeclaration, printEnumMember } from "./enum.js";
+import { printExportAssignment } from "./export-assignment.js";
 import { printFunction, printMethodValue } from "./function.js";
 import { printFunctionType } from "./function-type.js";
+import { printImportEqualsDeclaration } from "./import-equals-declaration.js";
 import { printIndexSignature } from "./index-signature.js";
 import { printIndexedAccessType } from "./indexed-access-type.js";
 import { printInferType } from "./infer-type.js";
@@ -23,14 +26,12 @@ import { printJSDocType } from "./js-doc-type.js";
 import { printKey } from "./key.js";
 import { printTypeScriptMappedType } from "./mapped-type.js";
 import { printMethodSignature } from "./method-signature.js";
-import {
-  printOptionalToken,
-  printSemicolon,
-  printTypeScriptAccessibilityToken,
-} from "./miscellaneous.js";
-import { printImportKind } from "./module.js";
+import { printOptionalToken } from "./miscellaneous.js";
 import { printModuleDeclaration } from "./module-declaration.js";
+import { printNamespaceExportDeclaration } from "./namespace-export-declaration.js";
+import { printNonNullExpression } from "./non-null-expression.js";
 import { printObject } from "./object.js";
+import { printParameterProperty } from "./parameter-property.js";
 import { printRestType } from "./rest-type.js";
 import { printTemplateLiteral } from "./template-literal.js";
 import { printTernary } from "./ternary.js";
@@ -68,7 +69,7 @@ function printTypescript(path, options, print, args) {
     case "TSDeclareFunction":
       return printFunction(path, options, print);
     case "TSExportAssignment":
-      return ["export = ", print("expression"), printSemicolon(options)];
+      return printExportAssignment(path, options, print);
     case "TSModuleBlock":
       return printBlock(path, options, print);
     case "TSInterfaceBody":
@@ -111,21 +112,17 @@ function printTypescript(path, options, print, args) {
       return printArrayType(print);
     case "TSPropertySignature":
       return [
-        node.readonly ? "readonly " : "",
-        printKey(path, options, print),
-        printOptionalToken(path),
-        printTypeAnnotationProperty(path, print),
+        group([
+          node.readonly ? "readonly " : "",
+          printKey(path, options, print),
+          printOptionalToken(path),
+          printTypeAnnotationProperty(path, print),
+        ]),
         printClassMemberSemicolon(path, options),
       ];
 
     case "TSParameterProperty":
-      return [
-        printTypeScriptAccessibilityToken(node),
-        node.static ? "static " : "",
-        node.override ? "override " : "",
-        node.readonly ? "readonly " : "",
-        print("parameter"),
-      ];
+      return printParameterProperty(path, options, print);
 
     case "TSTypeQuery":
       return printTypeQuery(path, print);
@@ -135,7 +132,7 @@ function printTypescript(path, options, print, args) {
     case "TSTypePredicate":
       return printTypePredicate(path, print);
     case "TSNonNullExpression":
-      return [print("expression"), "!"];
+      return printNonNullExpression(path, options, print);
     case "TSImportType":
       return [
         printCallExpression(path, options, print),
@@ -157,7 +154,7 @@ function printTypescript(path, options, print, args) {
       return printMethodSignature(path, options, print);
 
     case "TSNamespaceExportDeclaration":
-      return ["export as namespace ", print("id"), printSemicolon(options)];
+      return printNamespaceExportDeclaration(path, options, print);
     case "TSEnumDeclaration":
       return printEnumDeclaration(path, print);
     case "TSEnumBody":
@@ -166,14 +163,7 @@ function printTypescript(path, options, print, args) {
       return printEnumMember(path, options, print);
 
     case "TSImportEqualsDeclaration":
-      return [
-        "import ",
-        printImportKind(node, /* spaceBeforeKind */ false),
-        print("id"),
-        " = ",
-        print("moduleReference"),
-        printSemicolon(options),
-      ];
+      return printImportEqualsDeclaration(path, options, print);
     case "TSExternalModuleReference":
       return printCallExpression(path, options, print);
     case "TSModuleDeclaration":

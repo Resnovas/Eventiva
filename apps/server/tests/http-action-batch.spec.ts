@@ -723,14 +723,85 @@ describe('bounded sequential local batch over real SQL/JWT/Cluster', /** Exercis
                         f.control.at = next;
                         f.control.revoke = kind;
                         const before = yield* f.store.get(id(800));
+                        const authorityBefore = {
+                            session: yield* f.identity.get('session', session),
+                            membership: yield* f.identity.get('membership', subject),
+                            role: yield* f.identity.get('role', role),
+                        };
+                        const historyBefore =
+                            yield* f.sql`SELECT * FROM transition_history WHERE record_id = ${id(800)} ORDER BY version, command_id`;
+                        const commitsBefore =
+                            yield* f.sql`SELECT key, result FROM action_commit WHERE result IS NOT NULL ORDER BY key`;
+                        const successfulBefore = (yield* f.identity.audit(100))
+                            .filter(
+                                /** Denied attempts may append audit, but must not fabricate successful mutation evidence. */ (
+                                    receipt
+                                ) => receipt.outcome === 'succeeded'
+                            )
+                            .map(
+                                /** Compare immutable success identities independently of audit ordering. */ (
+                                    receipt
+                                ) => receipt.id
+                            )
+                            .toSorted();
                         expect(
                             yield* f.request(envelope([next, next + 1, next + 2], `revoke-${kind}`, gated.name))
                         ).toMatchObject({ status: 503 });
-                        expect((yield* f.store.get(id(800)))?.payload).toEqual([
-                            ...(Schema.is(Schema.Array(Schema.Number))(before?.payload) ? before.payload : []),
-                            next,
-                        ]);
+                        const transportOnly = kind === 'batch' || kind === 'transport';
+                        const historyAfter =
+                            yield* f.sql`SELECT * FROM transition_history WHERE record_id = ${id(800)} ORDER BY version, command_id`;
+                        const commitsAfter =
+                            yield* f.sql`SELECT key, result FROM action_commit WHERE result IS NOT NULL ORDER BY key`;
+                        if (transportOnly) {
+                            // Transport admission stops the suffix, not an item still authorized at its own SQL commit boundary.
+                            expect((yield* f.store.get(id(800)))?.payload).toEqual([
+                                ...(Schema.is(Schema.Array(Schema.Number))(before?.payload) ? before.payload : []),
+                                next,
+                            ]);
+                            expect(historyAfter).toHaveLength(historyBefore.length + 1);
+                            expect(commitsAfter).toHaveLength(commitsBefore.length + 1);
+                        } else {
+                            // The handler revoked its own action authority: item 1 and its SQL identity edits roll back together.
+                            expect(yield* f.store.get(id(800))).toEqual(before);
+                            expect(historyAfter).toEqual(historyBefore);
+                            expect(commitsAfter).toEqual(commitsBefore);
+                            expect({
+                                session: yield* f.identity.get('session', session),
+                                membership: yield* f.identity.get('membership', subject),
+                                role: yield* f.identity.get('role', role),
+                            }).toEqual(authorityBefore);
+                            expect(
+                                (yield* f.identity.audit(100))
+                                    .filter(
+                                        /** Successful evidence cannot survive an action-authority refusal at commit. */ (
+                                            receipt
+                                        ) => receipt.outcome === 'succeeded'
+                                    )
+                                    .map(
+                                        /** Keep the comparison independent of fresh denial-audit ordering. */ (
+                                            receipt
+                                        ) => receipt.id
+                                    )
+                                    .toSorted()
+                            ).toEqual(successfulBefore);
+                        }
                         yield* f.restore;
+                        if (transportOnly) {
+                            const recovered = yield* f.request(
+                                envelope([next, next + 1, next + 2], `revoke-${kind}`, gated.name)
+                            );
+                            expect(recovered.status).toBe(200);
+                            expect((yield* f.store.get(id(800)))?.payload).toEqual([
+                                ...(Schema.is(Schema.Array(Schema.Number))(before?.payload) ? before.payload : []),
+                                next,
+                                next + 1,
+                                next + 2,
+                            ]);
+                            for (const row of commitsAfter)
+                                expect(
+                                    yield* f.sql`SELECT key, result FROM action_commit WHERE key = ${row['key']}`
+                                ).toEqual([row]);
+                        }
                         next += 10;
                     }
                     yield* f.sql`ALTER TABLE action_receipt RENAME TO batch_audit_unavailable`;
