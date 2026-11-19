@@ -289,6 +289,28 @@ Portable API:
 
 `host.execute(action, input, options?)` requires a per-call `Caller` and returns `{ result: Exit, receipt, replayed, audit: 'durable' | 'spooled' }`; `AuditUnavailable` is an outer failure, not a receipt-free success. `invoke` projects the same execute path to the output/error. Receipts contain invocation id, resolved caller, action/version, canonical input digest, outcome, start and duration, never raw input or approval tokens. The app supplies SHA-256 or stronger via `InputDigest`; the runtime canonicalizer sorts keys, preserves array ordering and rejects non-JSON values. Input decode rejects excess wire keys. Declared handler failures encode as `ActionFailed`; defects and interruptions stay distinct and are audited.
 
+EVE-275 canonical Caller precedence: `execution.ts` provides the admitted resolved
+Caller around `prepared.run` before the read/write split. The host's module
+binding defers context observation until run time and merges only
+`Context.pick(Caller)(environment)` over the built module context. Observe that
+ambient context without adding Caller requirements to the closed ActionBinding;
+the executor owns its provision. Do not capture registration Caller, rebuild the
+Layer per call or merge the whole ambient context over unrelated module services.
+Integrity callback-local services and existing fencing/admission/commit checks
+remain intact. Replay does not enter the handler or rewrite saved output; only
+its fresh receipt is attributed to the currently admitted identity.
+
+The compiling example is `tests/runtime/src/caller-qualification.spec.ts`.
+Run `pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/caller-qualification.spec.ts --coverage.enabled=false`.
+It crosses read/write with absent/benign/conflicting once-built Layers, unequal
+registration/presented/resolved identities, delegated and human invocations,
+independent module/transaction markers, fresh-session replay, tenant/principal
+isolation and commit-denial rollback. The historical red and executor-only
+negative results remain in `docs/core-qualification/caller.md`. This synthetic
+resolver test is not a demonstrated production-ingress exploit, module sandbox
+or production approval-provider acceptance. Explicit trusted handler-internal
+service overrides and construction-time closures are outside the guarantee.
+
 Execution: refresh trusted identity/delegation; resolve current registration and flags; coarse permission before decode; strict decode; resource permission; canonical input hash; live ExecutionPolicy; timing, state/version, dependency and capacity gates; approval floor/binding/limits; protected audit availability; read handler or A1 integrity transaction; durable receipt. The mutation callback repeats live gates inside the transaction after lock waits. Replays repeat gates before returning and get a fresh invocation receipt. A new mutation returns exactly its transaction-committed successful receipt.
 
 EVE-275 / Eventiva#1063 adds a private commit phase after a new mutation handler returns, before Integrity receives its output/success receipt. Refresh identity, captured registration/flags, coarse and decoded-target authority, policy/approval requirements and evidence, timing and audit readiness. Only admission/replay enforces expectedVersion/expectedState/dependenciesReady/capacityAvailable: successful self-mutation can legitimately consume these preconditions. Do not cache approval or replace policy inspection with the earlier observation. Target policies must remain authority checks that can inspect post-mutation state, not duplicate optimistic business preconditions. Public APIs/options/defaults, read execution and replay admission semantics do not change. The real-SQL batch fixture in `apps/server/tests/http-action-batch.spec.ts` preserves this distinction: in-handler session/membership/permission/action revocation rolls back the current item, whereas batch/transport-only admission switches stop the suffix but retain an authorized committed prefix and its original replay evidence.

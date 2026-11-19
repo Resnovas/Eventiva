@@ -281,7 +281,8 @@ export const makeExecutor = Effect.gen(
                                                         yield* audit.ready(action);
                                                     }
                                                 );
-                                            const run = prepared.run;
+                                            // Handler identity must match the admitted tuple, not the caller presented to a replacing resolver.
+                                            const run = prepared.run.pipe(Effect.provideService(Caller, caller));
                                             if (spec.sideEffect === 'read') return yield* run;
                                             const fence = yield* Effect.serviceOption(CurrentRunFence);
                                             const saved = yield* integrity.commit(

@@ -20,7 +20,7 @@ import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
-import { ExecutionPolicy } from '@eventiva/runtime/invocation';
+import { ExecutionPolicy, Integrity } from '@eventiva/runtime/invocation';
 import { makeTestOnlyHarness } from '@eventiva/runtime/testing';
 import { describe, expect, it } from '@effect/vitest';
 import { Context, Effect, Exit, Layer, Option, Ref, Schema } from 'effect';
@@ -40,19 +40,45 @@ const resolved: CallerIdentity = {
     onBehalfOf: person('04').subject,
 };
 
+/** Distinguish captured module services from conflicting ambient invocation services. */
+class ModuleMarker extends Context.Tag('qualification/CallerModuleMarker')<ModuleMarker, string>() {}
+
+/** Distinguish ambient context from its replacement service scoped to the Integrity callback. */
+class TransactionMarker extends Context.Tag('qualification/CallerTransactionMarker')<TransactionMarker, string>() {}
+
 /** Build only public host services; the volatile ledger proves identity selection, not SQL durability or trusted ingress. */
-const fixture = (sideEffect: 'read' | 'write', initial: CallerIdentity) =>
+const fixture = (
+    sideEffect: 'read' | 'write',
+    initial: CallerIdentity,
+    moduleMode: 'none' | 'benign' | 'conflicting' = 'none'
+) =>
     Effect.gen(
         /** Record independent policy and handler observations without supplying Caller through a module-specific bridge. */ function* () {
             // A readable test digest and volatile transaction isolate this acceptance question from production adapters.
             const harness = yield* makeTestOnlyHarness(initial);
             const observations = yield* Ref.make<ReadonlyArray<CallerIdentity>>([]);
             const entries = yield* Ref.make(0);
+            const moduleBuilds = yield* Ref.make(0);
+            const afterHandler = yield* Ref.make<Effect.Effect<void>>(Effect.void);
+            const originalIntegrity = Context.get(yield* Layer.build(harness.TestOnly), Integrity);
+            const moduleLayer = Layer.effect(
+                ModuleMarker,
+                Ref.update(
+                    moduleBuilds,
+                    /** Count actual Layer acquisition so per-invocation rebuilding cannot hide registration capture. */ (
+                        n
+                    ) => n + 1
+                ).pipe(Effect.as('module-service'))
+            );
             const action = define(`qualification.caller-${sideEffect}`, {
                 version: 1,
                 description: 'Observe invocation Caller without a feature-owned canonicalization bridge.',
                 input: Schema.Struct({}),
-                output: Schema.Struct({ caller: Schema.NullOr(CallerIdentity) }),
+                output: Schema.Struct({
+                    caller: Schema.NullOr(CallerIdentity),
+                    module: Schema.optional(Schema.NullOr(Schema.String)),
+                    transaction: Schema.optional(Schema.NullOr(Schema.String)),
+                }),
                 permission: 'qualification.caller',
                 sideEffect,
                 offline: 'local',
@@ -89,6 +115,16 @@ const fixture = (sideEffect: 'read' | 'write', initial: CallerIdentity) =>
                             })
                         )
                     ),
+                    Layer.provide(
+                        Layer.succeed(Integrity, {
+                            /** Preserve the existing transaction while injecting a callback-only context service. */
+                            commit: (request, execute) =>
+                                originalIntegrity.commit(
+                                    request,
+                                    execute.pipe(Effect.provideService(TransactionMarker, 'integrity-transaction'))
+                                ),
+                        })
+                    ),
                     Layer.provide(harness.TestOnly),
                     Layer.provide(FlagsSafeDefaults)
                 )
@@ -104,6 +140,14 @@ const fixture = (sideEffect: 'read' | 'write', initial: CallerIdentity) =>
                         actions: [action.name],
                         flags: [],
                     },
+                    ...(moduleMode === 'none'
+                        ? {}
+                        : {
+                              layer:
+                                  moduleMode === 'conflicting'
+                                      ? Layer.merge(moduleLayer, Layer.succeed(Caller, registration))
+                                      : moduleLayer,
+                          }),
                     actions: [
                         implement(
                             action,
@@ -112,16 +156,25 @@ const fixture = (sideEffect: 'read' | 'write', initial: CallerIdentity) =>
                                     /** Count actual work and stage its identity observations under the same test Integrity owner. */ function* () {
                                         // Optional service lookup is the public Effect mechanism already used by settings' handler boundary.
                                         const caller = Option.getOrNull(yield* Effect.serviceOption(Caller));
+                                        const module = Option.getOrNull(yield* Effect.serviceOption(ModuleMarker));
+                                        const transaction = Option.getOrNull(
+                                            yield* Effect.serviceOption(TransactionMarker)
+                                        );
+                                        const output = {
+                                            caller,
+                                            ...(moduleMode === 'none' ? {} : { module, transaction }),
+                                        };
                                         yield* Ref.update(
                                             entries,
                                             /** Count real executions, excluding deduplicated replies. */ (n) => n + 1
                                         );
                                         if (sideEffect === 'write') {
-                                            yield* harness.ledger.stage('domain', { caller });
-                                            yield* harness.ledger.stage('history', { caller });
-                                            yield* harness.ledger.stage('outbox', { caller });
+                                            yield* harness.ledger.stage('domain', output);
+                                            yield* harness.ledger.stage('history', output);
+                                            yield* harness.ledger.stage('outbox', output);
                                         }
-                                        return { caller };
+                                        yield* Ref.get(afterHandler).pipe(Effect.flatten);
+                                        return output;
                                     }
                                 )
                         ),
@@ -129,11 +182,15 @@ const fixture = (sideEffect: 'read' | 'write', initial: CallerIdentity) =>
                 })
                 .pipe(Effect.provideService(Caller, registration));
             /** Execute the same logical key with a separately supplied ambient identity; only mutation results deduplicate. */
-            const execute = (caller: CallerIdentity = presented) =>
+            const execute = (caller: CallerIdentity = presented, key = 'same-key') =>
                 host
-                    .execute(action.name, {}, { idempotencyKey: 'same-key' })
-                    .pipe(Effect.provideService(Caller, caller));
-            return { harness, observations, entries, execute, action };
+                    .execute(action.name, {}, { idempotencyKey: key })
+                    .pipe(
+                        Effect.provideService(Caller, caller),
+                        Effect.provideService(ModuleMarker, 'ambient-decoy'),
+                        Effect.provideService(TransactionMarker, 'ambient-transaction')
+                    );
+            return { harness, observations, entries, execute, action, moduleBuilds, afterHandler };
         }
     );
 
@@ -142,7 +199,7 @@ describe('Caller public-path qualification', /** Separate production-compatible 
     for (const sideEffect of ['read', 'write'] as const) {
         for (const substitution of [false, true]) {
             it.scoped(
-                `${sideEffect}: ${substitution ? 'characterizes synthetic presented/resolved split' : 'uses invocation identity rather than registration identity'}`,
+                `${sideEffect}: ${substitution ? 'uses resolved canonical identity rather than presented identity' : 'uses invocation identity rather than registration identity'}`,
                 /** Compare successful handler output, policy and persisted evidence through the real executor. */ () =>
                     Effect.gen(
                         /** Require successful positive controls so a denial or missing service cannot masquerade as identity propagation. */ function* () {
@@ -150,7 +207,7 @@ describe('Caller public-path qualification', /** Separate production-compatible 
                             const canonical = substitution ? resolved : presented;
                             const f = yield* fixture(sideEffect, canonical);
                             const first = yield* f.execute();
-                            expect(first.result).toEqual(Exit.succeed({ caller: presented }));
+                            expect(first.result).toEqual(Exit.succeed({ caller: canonical }));
                             expect(first.receipt.caller).toEqual(canonical);
                             expect(first.receipt.outcome).toBe('succeeded');
                             expect(first.replayed).toBe(false);
@@ -166,12 +223,20 @@ describe('Caller public-path qualification', /** Separate production-compatible 
                             const state = yield* Ref.get(f.harness.state);
                             expect(state.receipts).toEqual([first.receipt, again.receipt]);
                             if (sideEffect === 'write') {
-                                expect(state.domain).toEqual([{ caller: presented }]);
+                                expect(state.domain).toEqual([{ caller: canonical }]);
                                 expect(state.history).toEqual(state.domain);
                                 expect(state.outbox).toEqual(state.domain);
                                 expect([...state.dedup.keys()]).toEqual([
                                     JSON.stringify([canonical.tenant, canonical.subject, f.action.name, 1, 'same-key']),
                                 ]);
+                                // Replay returns historical output, but its new receipt must use the fresh admitted session.
+                                const refreshed = { ...canonical, session: person('08').session };
+                                yield* Ref.set(f.harness.identity, refreshed);
+                                const refreshedReplay = yield* f.execute(refreshed);
+                                expect(refreshedReplay.result).toEqual(first.result);
+                                expect(refreshedReplay.receipt.caller).toEqual(refreshed);
+                                expect(refreshedReplay.replayed).toBe(true);
+                                expect(yield* Ref.get(f.entries)).toBe(1);
                                 // Vary tenant and principal independently: changing both would not detect a key omitting either one.
                                 for (const other of [
                                     { ...canonical, tenant: person('05').tenant },
@@ -191,6 +256,92 @@ describe('Caller public-path qualification', /** Separate production-compatible 
             );
         }
     }
+
+    for (const sideEffect of ['read', 'write'] as const) {
+        for (const moduleMode of ['benign', 'conflicting'] as const) {
+            it.scoped(
+                `${sideEffect}: canonical Caller wins with ${moduleMode} once-built module services`,
+                /** Cross module precedence with both executor branches and independent invocation identities. */ () =>
+                    Effect.gen(
+                        /** Preserve captured non-Caller services and transaction-local context without rebuilding the module. */ function* () {
+                            const f = yield* fixture(sideEffect, resolved, moduleMode);
+                            const expected = [];
+                            // Distinct new requests must see fresh canonical identity rather than the first invocation's closure.
+                            for (const canonical of [resolved, person('06')]) {
+                                yield* Ref.set(f.harness.identity, canonical);
+                                const key = canonical.session;
+                                const output = {
+                                    caller: canonical,
+                                    module: 'module-service',
+                                    transaction:
+                                        sideEffect === 'write' ? 'integrity-transaction' : 'ambient-transaction',
+                                };
+                                const result = yield* f.execute(presented, key);
+                                expect(result.result).toEqual(Exit.succeed(output));
+                                expect(result.receipt.caller).toEqual(canonical);
+                                expect(result.replayed).toBe(false);
+                                const repeat = yield* f.execute(presented, key);
+                                expect(repeat.result).toEqual(result.result);
+                                expect(repeat.replayed).toBe(sideEffect === 'write');
+                                expected.push(output);
+                            }
+                            expect(yield* Ref.get(f.moduleBuilds)).toBe(1);
+                            expect(yield* Ref.get(f.entries)).toBe(sideEffect === 'write' ? 2 : 4);
+                            const state = yield* Ref.get(f.harness.state);
+                            expect(state.domain).toEqual(sideEffect === 'write' ? expected : []);
+                            expect(state.history).toEqual(state.domain);
+                            expect(state.outbox).toEqual(state.domain);
+                        }
+                    )
+            );
+        }
+    }
+
+    it.scoped(
+        'rolls back canonical module-backed writes when identity changes after the handler',
+        /** Contrast denied post-handler authority with recovery and once-only replay on the same public key. */ () =>
+            Effect.gen(
+                /** Keep staged domain/history/outbox and successful dedup evidence absent after commit denial. */ function* () {
+                    const f = yield* fixture('write', resolved, 'conflicting');
+                    // Delay the session change until after staging: a preflight denial would not prove transaction rollback.
+                    yield* Ref.set(
+                        f.afterHandler,
+                        Ref.set(f.harness.identity, { ...resolved, session: person('07').session })
+                    );
+                    const denied = yield* f.execute();
+                    expect(denied.result).toMatchObject({
+                        _tag: 'Failure',
+                        cause: { error: { _tag: 'InvocationDenied', reason: 'identity-changed' } },
+                    });
+                    const rolledBack = yield* Ref.get(f.harness.state);
+                    expect(rolledBack.domain).toEqual([]);
+                    expect(rolledBack.history).toEqual([]);
+                    expect(rolledBack.outbox).toEqual([]);
+                    expect(rolledBack.dedup.size).toBe(0);
+                    expect(rolledBack.receipts).toEqual([denied.receipt]);
+                    yield* Ref.set(f.afterHandler, Effect.void);
+                    yield* Ref.set(f.harness.identity, resolved);
+                    const recovered = yield* f.execute();
+                    const replay = yield* f.execute();
+                    expect(recovered.result).toEqual(
+                        Exit.succeed({
+                            caller: resolved,
+                            module: 'module-service',
+                            transaction: 'integrity-transaction',
+                        })
+                    );
+                    expect(replay.result).toEqual(recovered.result);
+                    expect(replay.replayed).toBe(true);
+                    expect(yield* Ref.get(f.entries)).toBe(2);
+                    expect(yield* Ref.get(f.moduleBuilds)).toBe(1);
+                    const state = yield* Ref.get(f.harness.state);
+                    expect(state.domain).toHaveLength(1);
+                    expect(state.history).toEqual(state.domain);
+                    expect(state.outbox).toEqual(state.domain);
+                    expect(state.dedup.size).toBe(1);
+                }
+            )
+    );
 
     it.scoped(
         'preserves an already-canonical delegated caller through handler execution and replay',

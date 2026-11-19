@@ -1,5 +1,141 @@
 # Canonical Caller qualification
 
+## Approved repair START - 2026-11-19T09:07:09Z
+
+Jonathan explicitly selected canonical authenticated invocation Caller precedence
+over module-supplied Caller, relayed by
+[Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
+The exact human-selection time is unknown. Both original owners released
+`execution.ts`, affected runtime tests and this report; neither has a parallel
+Caller implementation. The sole integration owner starts from published
+[23baec94](https://github.com/Resnovas/Eventiva/commit/23baec94dc9f7dbdf5df70bccf92862bcff2eb09),
+which contains the exact EVE-276 fencing source plus approved EVE-277/278 fixes.
+The normal push exited 0 and independent remote-main read-back matched; hosted
+CI is followed separately, not inferred from the prior combined local pass.
+
+Approved scope: executor-provided resolved Caller before the read/write split,
+and a deferred Caller-only overlay onto captured module services. Preserve
+unrelated module/transaction services, EVE-276 fencing, admission/commit checks
+and historical replay output. First update public-path acceptance expectations
+and demonstrate unchanged-source failures, then distinguish executor-only
+placement from the complete repair with a conflicting module Layer. This START
+precedes source/test edits. The historical characterization below is retained
+as before evidence, not relabeled repair acceptance. Production human-approval
+provider/policy remains held; no new dependency, spend, activation or whole-Core
+acceptance is authorized. Linear START:
+[5bd241f2](https://linear.app/resnovas/issue/EVE-275#comment-5bd241f2-ca35-42d8-8a7b-14f8439c9102).
+
+### Executed repair evidence
+
+The expanded public-host suite contains 15 tests. On unchanged published source,
+the canonical expectations fail **7 tests with 8 controls passing**. Executor-only
+provision reduces this to **3 failed / 12 passed**: conflicting module Caller
+still wins for reads, new writes and recovered writes. The complete Caller-only
+overlay passes; unrelated captured module services defeat an ambient decoy, and
+Integrity's callback-local transaction marker survives. Two independent admitted
+identities use a once-built Layer, with once-only write/replay counts. A fresh
+session receives a fresh receipt while replay retains historical output. A
+post-handler tuple change rolls back staged domain/history/outbox and successful
+dedup evidence; restoring authority permits recovery and once-only replay.
+These are volatile test transactions, not newly claimed SQL/provider durability.
+
+Final focused command:
+
+```sh
+pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/caller-qualification.spec.ts tests/runtime/src/host.spec.ts tests/runtime/src/execution.spec.ts tests/runtime/src/identity.spec.ts --coverage.enabled=false
+NX_DAEMON=false pnpm nx run-many -t lint typecheck --projects=@eventiva/runtime-tests,@eventiva/runtime --parallel=1
+```
+
+Both exit 0: **153 tests / 4 files**; **11 successful affected lint/typecheck
+and dependency tasks, 6 cache hits**. An initial explicit `Context<Caller>`
+annotation incorrectly added a service requirement to closed ActionBinding and
+failed normal build/typecheck. It was corrected to observe optional ambient
+context with `Context<never>`, matching the executor-owned provision and
+`Context.pick`'s non-demanding filter. No type assertion, suppression, public
+contract widening or boundary exemption was added. The exact pinned Effect
+3.22.4 source was inspected after Context7 returned unrelated examples.
+
+The first full fixture-backed repair run reports **2 failed / 663 passed** in
+runtime: both dialects of the product fixture's foreign-presented-tenant read
+assertion. Its `makeTestOnlyHarness(who)` resolver ignores presented identity
+and always returns `who`. Before this repair the handler saw the foreign
+presented tuple and its own re-resolution comparison denied; after canonical
+provision it sees the resolver's routed tuple and legitimately proceeds.
+Production `identitySecurity` instead validates and preserves identifiers and
+denies a tenant different from `CurrentTenant`; no new ingress bypass is shown.
+The product fixture now overrides only its resolver to preserve synthetic
+presented identity, as the kit fixture already does. This is not synthetic token
+authentication. Its original foreign-read assertion remains unchanged; an
+additional foreign-write denial followed by unchanged own-tenant state checks
+prevents a read-only correction from concealing mutation leakage. No product
+production source, assertion, threshold or gate is weakened. The failed full
+run is retained, not relabeled a pass. It ultimately exits 124 at the unchanged
+20-minute timeout: 78 tasks succeeded (64 cache hits), the contracts test target
+was stopped and downstream server tests did not run. This incomplete aggregate
+does not establish broader acceptance.
+
+The corrected-fixture real PostgreSQL/SQLite command exits 0, **30 tests / 3 files**:
+
+```sh
+bash /home/user/workspace/repo/.amp/in/orb-backup/integration/verify-with-postgres.sh pnpm exec vitest run --config tests/runtime/vitest.config.mts tests/runtime/src/inventory-product.spec.ts tests/runtime/src/caller-qualification.spec.ts tests/runtime/src/execution-approval-commit.spec.ts --coverage.enabled=false
+```
+
+Both SQL dialects execute; product foreign-read/write denial and unchanged state,
+the volatile Caller precedence controls and actual post-handler SQL rollback
+all pass. The helper removes its container/network and stops supervised Docker.
+The second full run also exits 124 at the unchanged 20-minute timeout. Normal
+runtime, storage and contracts tests pass; 80 aggregate tasks succeed with 67
+cache hits, but the server test target is stopped before completion. This is
+not a complete aggregate pass. The third run exits **0** using the same
+immutable helper, normal command and 20-minute timeout, without changing source,
+tests or cache policy: all 15 builds pass; all 105 lint/typecheck/test/build/parity
+tasks across 34 projects and three dependencies succeed (71 cache hits; aggregate
+11m 28s). Normal server tests and actual Cluster/module-run/migration conformance
+complete. Source and emitted declaration boundaries report zero violations and
+cycles; all three smoke projects pass (14/17 smoke/dependency cache hits).
+Runtime's preceding uncached normal result is 665/665 with unchanged coverage:
+statements 95.77%, branches 92.79%, functions 95.1%, lines 96.9%; that successful
+result is used by the final normal cache. No incomplete attempt is relabeled.
+
+```sh
+bash /home/user/workspace/repo/.amp/in/orb-backup/integration/verify-with-postgres.sh node --run verify
+```
+
+Final log: `.amp/in/orb-backup/integration/caller-repair/full-verify-final.log`.
+A Docker readiness race prevented one intervening setup from reaching verify;
+waiting for daemon readiness fixed setup without editing the immutable helper.
+Its startup log is preserved separately; it is not another executed verify gate.
+Only documentation/evidence and regenerated outputs change after the complete
+passing gate. Signed delivery and exact-head hosted results are tracked on the
+existing EVE-275/#1063 pair; local acceptance does not certify hosted checks.
+Jonathan explicitly accepts the precise product-fixture correction
+under AI-11, relayed by Puck on 2026-11-19: preserve presented synthetic identity,
+retain foreign-read denial, add foreign-write denial and unchanged legitimate
+tenant-state controls, with no production product edit or weakened assertion.
+Signed local `3c54a0f577c5faee9a292678aa4ab30242cd8849` isolates that correction;
+its maintainer hold is removed. This does not approve the separate approval
+provider's run-fencing migration-name fixture amendment, which remains pending.
+Private unchanged-source, executor-only, focused, compiler and full-run logs
+are retained by the integration owner.
+Historical standalone qualification and combined-publication results below are
+not substituted for this final repair gate. The published baseline's exact-head
+hosted CI completed 2026-11-19T09:20:53Z: 17 executed checks passed and seven
+graph-check/release-publication jobs were intentionally skipped.
+
+Fresh pre-delivery actor/rules inspection still identifies TGTGamer with admin/push
+and an active/effective RepositoryRole 5 Always allowance. Unlike the earlier
+no-queue observation, the live ruleset now includes a merge-queue rule. This lane
+does not remove or change it; the approved normal signed direct-main route must
+use actual granted access, not force, a bypass flag or weakened checks.
+
+Jonathan's later 2026-11-19 relay resolves the separate human-approval product
+contract and resumes its existing proof owner; it supersedes the policy hold
+recorded at this repair's START. That provider's disjoint implementation and
+remaining trusted preparation/write-key/tenant-client seams are tracked in the
+[current timeline](../planning/timeline.md#approved-caller-amendment-and-separate-approval-provider-contract),
+not implemented or accepted by the Caller patch. No dependency, spending,
+step-up support or activation is inferred.
+
 ## START - 2026-11-19
 
 Bounded authorized acceptance investigation for [EVE-275](https://linear.app/resnovas/issue/EVE-275)
