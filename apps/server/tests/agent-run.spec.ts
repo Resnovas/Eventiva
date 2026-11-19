@@ -96,6 +96,14 @@ const fixture = (options: FixtureOptions = {}) =>
             const store = Storage.of({
                 capabilities: { transactions: true, compareAndSet: true, appendOnlyLedger: true, device: false },
                 ready: Effect.void,
+                /** Durable module acceptance requires the actual SQL fixture. */
+                acceptRun: () => unavailable,
+                /** Never simulate a retained module snapshot in this scripted fixture. */
+                getRun: () => unavailable,
+                /** Never simulate distributed ownership. */
+                claimRun: () => unavailable,
+                /** Never claim volatile transaction fencing. */
+                fence: () => unavailable,
                 /** Preserve test scope; this fixture never claims transaction or durability evidence. */
                 transaction: (effect) => effect,
                 /** Reject unused mutation paths rather than silently emulating business integrity. */

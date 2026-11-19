@@ -19,5 +19,8 @@ import { testProject } from '../../vitest.shared.ts';
 const config = testProject('storage-tests', ['packages/integrations/sql/src/**'], import.meta.url);
 export default defineConfig({
     ...config,
-    test: { ...config.test, include: ['src/**/*.spec.ts', '../resources/src/**/*.spec.ts'] },
+    test: {
+        ...config.test,
+        include: ['src/**/*.spec.ts', '../resources/src/**/*.spec.ts', '../runtime/src/run-fencing.spec.ts'],
+    },
 });

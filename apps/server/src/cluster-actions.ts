@@ -19,10 +19,10 @@ import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
 import * as Rpc from '@effect/rpc/Rpc';
 import { Caller, CallerIdentity } from '@eventiva/contracts/caller';
 import { Receipt } from '@eventiva/contracts/receipt';
-import { JsonValue } from '@eventiva/contracts/storage';
+import { CurrentRunFence, JsonValue, RunFence, Storage, TenantRouter } from '@eventiva/contracts/storage';
 import type { ActionHost } from '@eventiva/runtime/host';
 import { IdentityResolver } from '@eventiva/runtime/invocation';
-import { Context, Data, Effect, Layer, Schema } from 'effect';
+import { Context, Data, Effect, Layer, Option, Schema } from 'effect';
 
 const Intent = Schema.Struct({
     idempotencyKey: Schema.NonEmptyString,
@@ -40,6 +40,7 @@ export const ClusterInvocation = Schema.Struct({
     action: Schema.NonEmptyString,
     input: JsonValue,
     intent: Intent,
+    fence: Schema.optional(RunFence),
 });
 export type ClusterInvocation = typeof ClusterInvocation.Type;
 
@@ -91,7 +92,14 @@ export const receive = (address: string, request: ClusterInvocation) =>
             if (caller.tenant !== request.caller.tenant || entityId(caller, request.entityKey) !== address)
                 return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
             const host = yield* ClusterActionExecutor;
-            const result = yield* host.execute(request.action, request.input, request.intent).pipe(
+            if (request.fence !== undefined && request.fence.tenant !== caller.tenant)
+                return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
+            const execution = host.execute(request.action, request.input, request.intent);
+            const result = yield* (
+                request.fence === undefined
+                    ? execution
+                    : execution.pipe(Effect.provideService(CurrentRunFence, request.fence))
+            ).pipe(
                 Effect.provideService(Caller, caller),
                 Effect.mapError(
                     /** Reject host setup or audit failure without leaking backend diagnostics. */ () =>
@@ -116,8 +124,8 @@ export const ActionEntityLive = ActionEntity.toLayer(
             const context = yield* Effect.context<ClusterActionExecutor | IdentityResolver>();
             return {
                 /** Use the actual entity address, not an address supplied in the request payload. */ Execute: ({
-                    payload
-                }) => receive(address.entityId, payload).pipe(Effect.provide(context))
+                    payload,
+                }) => receive(address.entityId, payload).pipe(Effect.provide(context)),
             };
         }
     ),
@@ -128,6 +136,7 @@ const makeClusterActions = Effect.gen(
     /** Capture the Cluster client and identity resolver once for the sender service. */ function* () {
         const client = yield* ActionEntity.client;
         const resolver = yield* IdentityResolver;
+        const routing = yield* Effect.serviceOption(TenantRouter);
         return {
             /** Resolve the caller before selecting its compute mailbox; the receiver independently authenticates again. */
             execute: (request: ClusterInvocation) =>
@@ -137,7 +146,42 @@ const makeClusterActions = Effect.gen(
                         const caller = yield* resolver.resolve(request.caller);
                         if (caller.tenant !== request.caller.tenant)
                             return yield* new ClusterActionDenied({ reason: 'tenant-route-mismatch' });
-                        return yield* client(entityId(caller, request.entityKey)).Execute({ ...request, caller });
+                        const fence = request.fence;
+                        const verify =
+                            fence === undefined
+                                ? Effect.void
+                                : Effect.gen(
+                                      /** Persisted transport replies may bypass the receiver, but never the authoritative tenant epoch. */ function* () {
+                                          // Routing reauthorizes the tenant; the serialized token alone grants neither routing nor action authority.
+                                          if (Option.isNone(routing) || caller.tenant !== fence.tenant)
+                                              return yield* new ClusterActionDenied({
+                                                  reason: 'tenant-route-mismatch',
+                                              });
+                                          yield* routing.value
+                                              .run(
+                                                  fence.tenant,
+                                                  Effect.flatMap(
+                                                      Storage,
+                                                      /** Hold only a local verification transaction, never a database lock across a network RPC. */
+                                                      (storage) => storage.fence(fence, Effect.void)
+                                                  )
+                                              )
+                                              .pipe(
+                                                  Effect.provideService(Caller, caller),
+                                                  Effect.mapError(
+                                                      /** A cached success is confidential stale-attempt evidence, not a valid retry result. */
+                                                      () => new ClusterActionDenied({ reason: 'stale-attempt' })
+                                                  )
+                                              );
+                                      }
+                                  );
+                        yield* verify;
+                        const result = yield* client(entityId(caller, request.entityKey)).Execute({
+                            ...request,
+                            caller,
+                        });
+                        yield* verify;
+                        return result;
                     }
                 ).pipe(Effect.withSpan('cluster.action.send')),
         };

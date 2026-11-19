@@ -24,6 +24,8 @@ All Execute RPCs explicitly annotate `ClusterSchema.Persisted = true`; upstream'
 
 Set `EVENTIVA_CLUSTER_PROFILE` to a JSON object. It contains no database credentials. Unknown options, invalid values, insufficient shards and unsafe lease ratios fail validation. All runners sharing coordination storage must use the same shard count and available group list. Change those settings only with a separately verified migration/drain plan, not a rolling mixed configuration.
 
+The exported `deploymentProfile` loader returns `DeploymentProfileFailure` with reason `configuration` for Config-provider or JSON/schema failures. It retains no rejected input, provider message or underlying cause, so serialized failures and formatted Causes cannot disclose those values. Correct the profile through secure configuration rather than logging its raw value. The default profile and topology validation remain unchanged.
+
 Community defaults:
 
 ```json

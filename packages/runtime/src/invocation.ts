@@ -18,7 +18,7 @@ import type { ActionSpec, ApprovalPolicy, Input } from '@eventiva/contracts/acti
 import type { CallerIdentity } from '@eventiva/contracts/caller';
 import type { PlatformError } from '@eventiva/contracts/errors';
 import type { Receipt } from '@eventiva/contracts/receipt';
-import type { JsonValue } from '@eventiva/contracts/storage';
+import type { JsonValue, RunFence } from '@eventiva/contracts/storage';
 import { type Cause, Context, Data, Effect, Either, type Exit, Layer } from 'effect';
 
 export type { Receipt } from '@eventiva/contracts/receipt';
@@ -75,7 +75,7 @@ export class IdentityResolver extends Context.Tag('@eventiva/runtime/IdentityRes
     {
         /** Resolve trusted current authority from presented identity, rejecting stale or unavailable identity state. */ readonly resolve: (
             caller: CallerIdentity
-        ) => Effect.Effect<CallerIdentity, InvocationDenied>
+        ) => Effect.Effect<CallerIdentity, InvocationDenied>;
     }
 >() {}
 
@@ -85,7 +85,7 @@ export class InputDigest extends Context.Tag('@eventiva/runtime/InputDigest')<
     {
         /** Hash canonical input bytes deterministically with the host's cryptographic digest, never a transport-provided hash. */ readonly digest: (
             canonical: string
-        ) => Effect.Effect<string>
+        ) => Effect.Effect<string>;
     }
 >() {}
 
@@ -110,7 +110,7 @@ export class Approvals extends Context.Tag('@eventiva/runtime/Approvals')<
     {
         /** Look up trusted approval evidence by opaque id; the executor validates its exact live binding and bounds. */ readonly get: (
             id: string
-        ) => Effect.Effect<Approval, InvocationDenied>
+        ) => Effect.Effect<Approval, InvocationDenied>;
     }
 >() {}
 
@@ -168,6 +168,7 @@ export interface IntegrityRequest {
     readonly caller: CallerIdentity;
     readonly action: string;
     readonly version: number;
+    readonly fence?: RunFence;
 }
 
 /** Successful atomic mutation result and its original durable receipt, with an explicit replay marker. */

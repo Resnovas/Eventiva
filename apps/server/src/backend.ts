@@ -16,7 +16,7 @@
 
 import { Authorizer, Caller } from '@eventiva/contracts/caller';
 import { Flags } from '@eventiva/contracts/flags';
-import { CurrentTenant, Storage, TenantRouter } from '@eventiva/contracts/storage';
+import { CurrentRunFence, CurrentTenant, Storage, TenantRouter } from '@eventiva/contracts/storage';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
 import {
     Approvals,
@@ -24,14 +24,17 @@ import {
     ExecutionPolicy,
     IdentityResolver,
     InputDigest,
+    canonicalJson,
 } from '@eventiva/runtime/invocation';
 import { durable } from '@eventiva/runtime/storage';
 import type { WorkflowEngine } from '@effect/workflow/WorkflowEngine';
 import { SqlClient } from '@effect/sql';
-import { Context, Effect, Layer, Scope } from 'effect';
+import { Context, Effect, Layer, Option, Schema, Scope } from 'effect';
 import { clusterRunner } from './cluster.ts';
 import { ClusterActionExecutor } from './cluster-actions.ts';
 import type { DeploymentProfile } from './cluster-profile.ts';
+import { AgentRunInput } from './agent-run.ts';
+import { ModuleRunCatalog, registerRunArtifact } from './module-run.ts';
 
 /**
  * Compute membership is independent of authenticated tenant database routing.
@@ -55,6 +58,7 @@ export const backend = <E, WE = never, WR = never>(
                     Flags | Authorizer | IdentityResolver | InputDigest | ExecutionPolicy | Approvals
                 >()).pipe(Context.omit(Caller, Storage, CurrentTenant, Scope.Scope, SqlClient.TransactionConnection));
                 const routing = yield* TenantRouter;
+                const catalog = yield* Effect.serviceOption(ModuleRunCatalog);
                 /** Require an authenticated tenant, rebuild its host inside routing, and fail closed on execution setup errors. */
                 const execute: ClusterActionExecutor['Type']['execute'] = (action, input, intent) =>
                     Effect.gen(
@@ -72,7 +76,39 @@ export const backend = <E, WE = never, WR = never>(
                                                 ActionHostLive.pipe(Layer.provide(durable))
                                             );
                                             const host = Context.get(hostContext, ActionHost);
-                                            yield* initialize(host);
+                                            const attempt = yield* Effect.serviceOption(CurrentRunFence);
+                                            if (Option.isNone(attempt)) yield* initialize(host);
+                                            else {
+                                                // A transported token grants no tenant or principal authority and chooses no executable.
+                                                const fence = attempt.value;
+                                                if (fence.tenant !== caller.tenant || Option.isNone(catalog))
+                                                    return yield* new AuditUnavailable({ action });
+                                                const storage = yield* Storage;
+                                                const stored = yield* storage.getRun(fence.tenant, fence.runId);
+                                                if (stored === undefined)
+                                                    return yield* new AuditUnavailable({ action });
+                                                const accepted = yield* Schema.decodeUnknown(AgentRunInput)(
+                                                    stored.input
+                                                );
+                                                if (
+                                                    accepted.definition !== 'module-v1' ||
+                                                    (yield* canonicalJson(accepted.caller)) !==
+                                                        (yield* canonicalJson(caller))
+                                                )
+                                                    return yield* new AuditUnavailable({ action });
+                                                const step = accepted.steps.find(
+                                                    /** Bind the attempt to a recorded action and its stable logical step key, not arbitrary transport work. */
+                                                    (step, index) =>
+                                                        step._tag === 'Action' &&
+                                                        step.action === action &&
+                                                        intent?.idempotencyKey === `${fence.runId}:${index + 1}`
+                                                );
+                                                if (!step) return yield* new AuditUnavailable({ action });
+                                                yield* storage.fence(fence, Effect.void);
+                                                yield* registerRunArtifact(host, stored.snapshot).pipe(
+                                                    Effect.provideService(ModuleRunCatalog, catalog.value)
+                                                );
+                                            }
                                             return yield* host.execute(action, input, intent);
                                         }
                                     )

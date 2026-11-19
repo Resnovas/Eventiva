@@ -16,6 +16,7 @@
 
 import { SqlClient } from '@effect/sql';
 import { SqlError } from '@effect/sql/SqlError';
+import { RunSnapshot } from '@eventiva/contracts/module-manifest';
 import {
     Conflict,
     EpochMillis,
@@ -24,8 +25,10 @@ import {
     JsonValue,
     MinorUnits,
     Quantity,
+    RunFence,
     Storage,
     StorageFailure,
+    type StoredRun,
     UuidV7,
     Version,
 } from '@eventiva/contracts/storage';
@@ -65,6 +68,47 @@ const encode = (value: JsonValue) =>
         )
     );
 
+/** Require the exact retained schema, not merely a migration name or a newer compatible-looking default. */
+const checkRunSchema = (snapshot: RunSnapshot) =>
+    Effect.gen(
+        /** Compare the full applied history while the caller holds the run transaction lock. */ function* () {
+            // Additional migrations are not assumed compatible: recovery has permission to execute only the recorded schema.
+            const sql = yield* SqlClient.SqlClient;
+            const rows = yield* sql<{
+                name: string;
+                checksum: string;
+            }>`SELECT name, checksum FROM storage_migration ORDER BY name`;
+            if (
+                rows.length !== snapshot.schema.length ||
+                rows.some(
+                    /** Every byte checksum belongs to the recorded history; no omitted or additional migration is inferred safe. */
+                    (row, index) =>
+                        row.name !== snapshot.schema[index]?.name || row.checksum !== snapshot.schema[index]?.checksum
+                )
+            )
+                return yield* new StorageFailure({ operation: 'run-recovery-required' });
+        }
+    );
+
+/** Integration-private fence primitive: call INSIDE the accepting SQL transaction, including independent output transactions. */
+export const checkRunFence = (sql: SqlClient.SqlClient, input: RunFence) =>
+    Effect.gen(
+        /** A conditional no-op UPDATE locks the authoritative row on both engines until commit or rollback. */ function* () {
+            // Takeover uses this same row, establishing a total commit order without depending on Cluster lease timing.
+            const fence = yield* decode(RunFence, input);
+            const locked =
+                yield* sql`UPDATE module_run_owner SET epoch = epoch WHERE tenant_id = ${fence.tenant} AND run_id = ${fence.runId} AND owner = ${fence.owner} AND epoch = ${fence.epoch} RETURNING run_id`;
+            if (locked.length !== 1) return yield* new Conflict({ id: fence.runId, reason: 'stale' });
+            const [row] = yield* sql<{
+                snapshot: string;
+            }>`SELECT snapshot FROM module_run_snapshot WHERE tenant_id = ${fence.tenant} AND run_id = ${fence.runId}`;
+            if (!row) return yield* new StorageFailure({ operation: 'run-recovery-required' });
+            yield* checkRunSchema(yield* decode(Schema.parseJson(RunSnapshot), row.snapshot)).pipe(
+                Effect.provideService(SqlClient.SqlClient, sql)
+            );
+        }
+    );
+
 /** SQL methods close over one client; Effect SQL propagates its connection through the current fiber transaction. */
 export const storage = (dialect: Dialect) =>
     Layer.effect(
@@ -86,7 +130,7 @@ export const storage = (dialect: Dialect) =>
                         .pipe(
                             Effect.mapError(
                                 /** Preserve typed business failures while sanitizing driver errors. */ (cause) =>
-                                    (cause instanceof SqlError ? failure() : cause)
+                                    cause instanceof SqlError ? failure() : cause
                             )
                         );
                 /** Decode stored JSON and normalize driver primitives before validating the public record shape. */
@@ -160,10 +204,77 @@ export const storage = (dialect: Dialect) =>
                         /** Sanitize any SQL failure escaping expiry reclamation. */ () => Effect.fail(failure())
                     )
                 );
+                /** Decode retained acceptance and ownership without resolving any executable default. */
+                const getRun: Storage['Type']['getRun'] = (tenant, id) =>
+                    Effect.gen(
+                        /** Tenant and run together identify a record even when a trusted fixture shares a physical database. */ function* () {
+                            // Ownership is mutable, but the joined acceptance never resolves any process-local default.
+                            const [row] = yield* sql<{
+                                input: string;
+                                snapshot: string;
+                                owner: string | null;
+                                epoch: string | number;
+                            }>`SELECT s.input, s.snapshot, o.owner, o.epoch FROM module_run_snapshot s JOIN module_run_owner o ON s.tenant_id = o.tenant_id AND s.run_id = o.run_id WHERE s.tenant_id = ${tenant} AND s.run_id = ${id}`;
+                            if (!row) return undefined;
+                            return {
+                                input: yield* decode(Json, row.input),
+                                snapshot: yield* decode(Schema.parseJson(RunSnapshot), row.snapshot),
+                                owner: row.owner,
+                                epoch: yield* decode(Version, Number(row.epoch)),
+                            } satisfies StoredRun;
+                        }
+                    ).pipe(Effect.catchTag('SqlError', failure));
                 return Storage.of({
                     capabilities: { transactions: true, compareAndSet: true, appendOnlyLedger: true, device: false },
                     ready: sql`SELECT id FROM action_receipt LIMIT 0`.pipe(Effect.asVoid, Effect.mapError(failure)),
                     transaction,
+                    getRun,
+                    /** Compare accepted bytes after insert-ignore; immutable snapshots can never be repinned by a retry. */
+                    acceptRun: (tenant, id, input, snapshot) =>
+                        transaction(
+                            Effect.gen(
+                                /** Create the snapshot and its initial owner row atomically, preserving existing acceptance on conflict. */ function* () {
+                                    // Insert-ignore may win or lose a race; compare the retained bytes before acknowledging either case.
+                                    yield* decode(UuidV7, id);
+                                    const pinned = yield* decode(RunSnapshot, snapshot);
+                                    yield* checkRunSchema(pinned).pipe(Effect.provideService(SqlClient.SqlClient, sql));
+                                    const body = yield* encode(input);
+                                    const encoded = yield* Schema.encode(Schema.parseJson(RunSnapshot))(pinned).pipe(
+                                        Effect.mapError(failure)
+                                    );
+                                    yield* sql`INSERT INTO module_run_snapshot (tenant_id, run_id, input, snapshot) VALUES (${tenant}, ${id}, ${body}, ${encoded}) ON CONFLICT (tenant_id, run_id) DO NOTHING`;
+                                    yield* sql`INSERT INTO module_run_owner (tenant_id, run_id, owner, epoch) VALUES (${tenant}, ${id}, NULL, 0) ON CONFLICT (tenant_id, run_id) DO NOTHING`;
+                                    const [stored] = yield* sql<{
+                                        input: string;
+                                        snapshot: string;
+                                    }>`SELECT input, snapshot FROM module_run_snapshot WHERE tenant_id = ${tenant} AND run_id = ${id}`;
+                                    if (stored?.input !== body || stored.snapshot !== encoded)
+                                        return yield* new Conflict({ id, reason: 'input-changed' });
+                                    const accepted = yield* getRun(tenant, id);
+                                    if (!accepted) return yield* failure();
+                                    return accepted;
+                                }
+                            )
+                        ),
+                    /** Explicit expected-epoch transfer cannot overwrite a concurrent acquisition or wrap the monotonic counter. */
+                    claimRun: (tenant, id, expectedEpoch, owner) =>
+                        transaction(
+                            Effect.gen(
+                                /** Compare-and-increment takes the same row lock as every fenced acceptance. */ function* () {
+                                    // Validate the recorded schema before this transaction commits; a failed check rolls the increment back.
+                                    yield* decode(Version, expectedEpoch);
+                                    yield* decode(Schema.NonEmptyString, owner);
+                                    const rows =
+                                        yield* sql`UPDATE module_run_owner SET owner = ${owner}, epoch = epoch + 1 WHERE tenant_id = ${tenant} AND run_id = ${id} AND epoch = ${expectedEpoch} AND epoch < 9007199254740991 RETURNING epoch`;
+                                    if (rows.length !== 1) return yield* new Conflict({ id, reason: 'stale' });
+                                    const fence = { tenant, runId: id, owner, epoch: expectedEpoch + 1 };
+                                    yield* checkRunFence(sql, fence);
+                                    return fence;
+                                }
+                            )
+                        ),
+                    /** Retain the checked fence lock for the entire effect and its transaction commit. */
+                    fence: (fence, effect) => transaction(checkRunFence(sql, fence).pipe(Effect.zipRight(effect))),
                     get,
                     audit,
                     expire,
@@ -172,6 +283,8 @@ export const storage = (dialect: Dialect) =>
                         transaction(
                             Effect.gen(
                                 /** Persist mutation result and receipt in the same transaction as the supplied execution effect. */ function* () {
+                                    // Lock ownership BEFORE dedup lookup: stale owners cannot replay a previously successful result either.
+                                    if (request.fence !== undefined) yield* checkRunFence(sql, request.fence);
                                     // Lock the idempotency row before executing so concurrent requests cannot both mutate.
                                     yield* sql`INSERT INTO action_commit (key, input_hash) VALUES (${request.key}, ${request.inputHash}) ON CONFLICT (key) DO NOTHING`;
                                     const [stored] = yield* sql<{
