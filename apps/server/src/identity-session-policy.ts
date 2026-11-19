@@ -15,7 +15,7 @@
  */
 
 import { TenantId } from '@eventiva/contracts/ids';
-import { CurrentTenant } from '@eventiva/contracts/storage';
+import { CurrentTenant, type JsonValue } from '@eventiva/contracts/storage';
 import { type Cause, Clock, Config, Context, Data, Effect, Layer, Schema } from 'effect';
 
 const duration = Schema.Number.pipe(Schema.int(), Schema.between(300_000, Number.MAX_SAFE_INTEGER));
@@ -48,7 +48,7 @@ const SessionPolicyFailureBase: new (
 export class SessionPolicyFailure extends SessionPolicyFailureBase {}
 
 /** Decode at every trust boundary, including typed server calls, without attaching the rejected value as a cause. */
-const decode = <A, I>(schema: Schema.Schema<A, I>, value: unknown) =>
+const decode = <A, I>(schema: Schema.Schema<A, I>, value: JsonValue | undefined) =>
     Schema.decodeUnknown(schema)(value, { onExcessProperty: 'error' }).pipe(
         Effect.mapError(
             /** Schema diagnostics can contain secrets supplied through a misconfigured source. */
@@ -94,9 +94,9 @@ export class IdentitySessionPolicy extends Context.Tag('@eventiva/server/Identit
     }
 >() {}
 
-/** Bind a live trusted source to the routed tenant once, never its policy values; source evaluation occurs on every operation. */
+/** Bind live trusted JSON policy to the routed tenant; missing data denies and every use rereads without accepting executable values. */
 export const identitySessionPolicy = (
-    source: Effect.Effect<unknown, SessionPolicyFailure>
+    source: Effect.Effect<JsonValue | undefined, SessionPolicyFailure>
 ): Layer.Layer<IdentitySessionPolicy, never, CurrentTenant> =>
     Layer.effect(
         IdentitySessionPolicy,

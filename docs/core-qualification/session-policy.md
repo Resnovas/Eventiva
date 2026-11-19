@@ -47,10 +47,11 @@ wiring. No existing tests, thresholds, fixtures or production composition change
   `Effect<IdentitySessionPolicyValue, SessionPolicyFailure>`, `sessionExpiresAt` is
   `Effect<number, SessionPolicyFailure>`, and
   `approvalExpiresAt({ tenant, expiresAt })` returns the latter Effect type.
-- `identitySessionPolicy(source: Effect<unknown, SessionPolicyFailure>)`, returning
+- `identitySessionPolicy(source: Effect<JsonValue | undefined, SessionPolicyFailure>)`, returning
   `Layer<IdentitySessionPolicy, never, CurrentTenant>`. The routed tenant is bound
   once; policy is reread and decoded on every operation, not cached in request
-  context or captured when the layer is built.
+  context or captured when the layer is built. Ingress uses the existing storage
+  JSON data contract plus explicit absence, not arbitrary executable values.
 - `sessionPolicyFromConfig`, an unactivated Effect with the same value/error
   output as `current`. `IDENTITY_SESSION_POLICY_TENANT`,
   `IDENTITY_SESSION_MAXIMUM_MS` and `IDENTITY_APPROVAL_WINDOW_MS` are all mandatory.
@@ -133,3 +134,45 @@ refs remain separate and unchanged.
 
 Graphify Cloud memory and the MCP gateway were unavailable; local repository
 sources and the committed graph were used, and no memory acceptance is claimed.
+
+### Hosted type-boundary correction
+
+The initial published head `fbae70333a538de8e32207d36c47074dfc92f0f4`
+[failed the hosted verify job](https://github.com/Resnovas/Eventiva/actions/runs/44517702527/job/135537902257)
+at `node tools/resources/boundaries.mjs`: two `Erased any/unknown type` findings
+on the helper input and live source. The same command reproduced locally with
+exit 1. Earlier affected/root checks did not execute that additional gate; their
+success did not establish full hosted acceptance.
+
+The correction narrows those inputs to the existing `JsonValue | undefined`
+contract and aligns the test injection types. All valid policy objects and
+missing/malformed JSON, nonfinite/unsafe numeric and live-change denial cases
+remain covered. No schema, checker, fixture, threshold or assertion is weakened;
+this is not a generic type-parameter disguise for erased ingress. The accepted
+outputs and runtime validation remain unchanged. Corrected gate results are
+recorded on the dual tracker pair after execution.
+
+Correction verification uses the commands above plus the previously omitted
+normal boundary gates:
+
+- `node tools/resources/boundaries.mjs`: exit 0; 121 type-boundary files and zero
+  violations, with resource and workspace graphs also clean.
+- `node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs`:
+  exit 0; 132 tests pass, including erased-ingress rejection controls.
+- `NX_DAEMON=false NX_NO_CLOUD=true pnpm exec nx run-many -t build --parallel=1`:
+  exit 0; all 15 projects build.
+- `node tools/resources/boundaries.mjs --declarations`: exit 0; 95 declaration
+  files, 485 edges and zero violations/cycles.
+- Affected server lint/typecheck/build: exit 0, 23 tasks. Unchanged seven policy
+  tests retain 100% statements, branches, functions and lines. Root check repeats
+  with 104 documentation fixtures, 284 TypeScript files and zero findings.
+- Normal `@eventiva/server:test` repeats on corrected source with exit 0: 14 tasks,
+  PostgreSQL Cluster/module-run conformance, 63 passing tests and unchanged
+  95.32% branch / 98.26% line coverage. No normal coverage or fixture amendment
+  is included in this correction.
+
+One local root-check attempt scanned an expanded ignored graph-generation copy
+after Git's large file listing exceeded the header checker's buffer. The owned
+copy was preserved as a compressed backup, not patched or excluded by a new rule;
+the unchanged root check then passed. This local scratch failure is separate from
+the reproduced hosted type violation.

@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from '@effect/vitest';
 import { TenantId } from '@eventiva/contracts/ids';
-import { CurrentTenant } from '@eventiva/contracts/storage';
+import { CurrentTenant, type JsonValue } from '@eventiva/contracts/storage';
 import { ConfigProvider, Context, Effect, Layer, Ref, TestClock } from 'effect';
 import {
     IdentitySessionPolicy,
@@ -30,7 +30,7 @@ const otherTenant = TenantId.make('019b0000-0000-7000-8000-000000000002');
 const explicit = { tenant, sessionLifetimeMs: 7_200_000, approvalWindowMs: 900_000 };
 
 /** Build one tenant-bound service without substituting policy validation or calculating expectations through production helpers. */
-const build = (source: Effect.Effect<unknown, SessionPolicyFailure>, expectedTenant = tenant) =>
+const build = (source: Effect.Effect<JsonValue | undefined, SessionPolicyFailure>, expectedTenant = tenant) =>
     Layer.build(
         identitySessionPolicy(source).pipe(Layer.provide(Layer.succeed(CurrentTenant, { id: expectedTenant })))
     ).pipe(
@@ -155,7 +155,7 @@ describe('required trusted tenant session policy', /** Deadlines express policy 
                 function* () {
                     // Reusing the built capability is essential: rebuilding would conceal stale layer-time policy capture.
                     yield* TestClock.setTime(1_000_000);
-                    const source = yield* Ref.make<unknown>(explicit);
+                    const source = yield* Ref.make<JsonValue | undefined>(explicit);
                     const policy = yield* build(Ref.get(source));
                     const previous = yield* policy.current;
                     expect(yield* policy.sessionExpiresAt).toBe(8_200_000);
