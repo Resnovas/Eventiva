@@ -1,6 +1,6 @@
 # Upstream source references
 
-These are upstream implementation source trees for local coding-agent research, imported as a single-commit Git subtree at `externals/upstream`. They are not runtime dependencies, workspace projects, npm package archives, declaration-only substitutes or a second application baseline. No upstream installation or build scripts run during import. Eventiva's approved dependency versions and lockfile remain unchanged.
+These are upstream implementation source trees for local coding-agent research, imported as aggregate Git subtree snapshots at `externals/upstream`. They are not runtime dependencies, workspace projects, npm package archives, declaration-only substitutes or a second application baseline. No upstream installation or build scripts run during import. A source refresh follows the separately approved dependency change; it does not itself authorize new installed versions.
 
 ## Governing rules and scope
 
@@ -22,11 +22,17 @@ Versions below identify published releases through their upstream tags or npm `g
 - React and React DOM 19.2.3; React Native 0.85.3 and its code generator; React Native Web 0.21.4; Async Storage 2.2.0.
 - Expo 56.0.24; CLI 56.1.27; Metro runtime 56.0.21; Babel preset 56.0.21; localization 56.0.6; splash-screen 56.0.16; status-bar 56.0.4; system-ui 56.0.5. Independently released packages retain their own npm `gitHead` commits, not an approximate shared Expo tag.
 - Metro and its 13 companion packages 0.84.5, the exact implementation dependencies of `@expo/metro` 56.0.2. The latter describes itself as a "Generated and versioned meta-package wrapping Metro". Its published `expo/expo-metro` URL returns 404 and its `gitHead` is absent from both public Expo repositories checked. Under the no-stable-public-URL exception, no wrapper source is invented or replaced with npm artifacts; the actual upstream Metro implementation is copied at its matching release.
-- FormatJS intl 6.1.4, React Intl 12.1.6, intl-getcanonicallocales 3.3.0, intl-locale 5.4.2, intl-pluralrules 7.0.2, CLI 6.18.0 and ESLint plugin 8.1.3.
+- FormatJS intl 6.1.5, React Intl 12.1.7, intl-getcanonicallocales 3.3.1, intl-locale 5.4.3, intl-pluralrules 7.0.4, CLI 6.18.2 and ESLint plugin 8.1.4.
 - OpenFeature core 1.12.0, server SDK 1.23.0, web SDK 1.10.0 and React SDK 1.4.1.
-- PostHog Node 5.63.1, React Native 4.85.3 and OpenFeature provider 0.1.3, each with its same-commit shared core source; node-postgres (`pg`) 8.23.1 including its repository packages.
-- TypeScript 6.0.3; Nx and all seven directly used Nx plugins/devkit 24.0.5; Vite 8.3.6; Vitest and coverage-v8 4.1.12; Playwright 1.65.0.
-- ESLint 10.14.0; `@eslint/js` 10.0.1; typescript-eslint 8.72.1; React Hooks ESLint plugin 7.1.1 at its own release, not the older copy in the React release; Prettier 3.9.10; eslint-config-prettier 10.1.8; Babel core/runtime 7.29.13 plus upstream helpers.
+- PostHog Node 5.69.0, React Native 4.86.0 and OpenFeature provider 0.1.3, each with its same-commit shared core source; node-postgres (`pg`) 8.23.1 including its repository packages.
+- TypeScript 6.0.3; Nx and all seven directly used Nx plugins/devkit 24.0.6; Vite 8.3.8; Vitest and coverage-v8 4.1.12; Playwright 1.65.0.
+- ESLint 10.14.0; `@eslint/js` 10.0.1; typescript-eslint 8.72.2; React Hooks ESLint plugin 7.1.1 at its own release, not the older copy in the React release; Prettier 3.10.0; eslint-config-prettier 10.1.8; Babel core/runtime 7.29.13 plus upstream helpers.
+
+### Dependency-group reconciliation - 2026-11-19
+
+[EVE-265](https://linear.app/resnovas/issue/EVE-265) / [GitHub #1043](https://github.com/Resnovas/Eventiva/issues/1043) records the bounded cleanup of [dependency PR #1052](https://github.com/Resnovas/Eventiva/pull/1052). Its 21 updates keep Expo 56, React 19.2.3 and React Native 0.85.3 unchanged. Thirteen existing reference entries follow those approved minor/patch releases through exact upstream release tags; annotated tags are peeled to commits. The published Prettier 3.10.0 npm `gitHead` cannot be fetched from its upstream repository, so the independently verified `3.10.0` release tag supplies its source instead. No nearby revision or compiled npm archive substitutes for source.
+
+The importer retains each existing source scope and license. Unchanged entries, both Effect snapshots and historical application snapshots remain byte-identical. The seven-day dependency cooldown and import boundaries remain enforced. `@opentelemetry/api` 1.10.0 is also in the dependency group but has no preexisting entry in this catalog; this reconciliation does not claim a new exhaustive dependency inventory. Exact source identities and the application gates must pass before delivery; queue admission, hosted CI and broader security remediation remain separate evidence.
 
 ## Licenses and security
 

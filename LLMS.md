@@ -1677,6 +1677,8 @@ Keep `externals/**` in `.github/codeql/codeql-config.yml` under `paths-ignore`. 
 
 Run `node tools/references/check.mjs` to verify exact implementation bytes, executable modes, symlink containment and release pins. Run `node --run check` and `node --run verify` before delivering an update. Update immutable commits through the documented squashed-subtree process, preserve upstream notices and keep the reference catalog and installed versions aligned. The oversized-monorepo scopes and unavailable generated Expo Metro wrapper are explicitly documented in the README; do not claim those scopes are complete repository clones.
 
+The 2026-11-19 EVE-265 / Eventiva#1043 cleanup reconciles dependency PR #1052 with thirteen existing upstream entries while preserving Expo/React/React Native pins and unchanged reference trees. Release tags, including peeled annotated tags, identify the exact source; Prettier 3.10.0 uses its verified release tag because its npm gitHead is unavailable upstream. No local vendor patches, scripts, broader inventory expansion or production activation are part of the refresh. Keep local source/application checks distinct from queue admission and hosted verification: the existing PR fixture trust boundary can block normal queue entry even for a sound dependency change.
+
 ---
 
 # Marketplace reference and local intent contract
