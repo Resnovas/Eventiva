@@ -253,7 +253,7 @@ export const useApproval = (id: string, action: ActionBinding, input: JsonValue,
         }
     );
 
-/** Cancel only pending evidence: the consenting human owns it; other humans need an independently granted exact tenant permission. */
+/** Cancel pending evidence as its consenting human, or with a live exact tenant/resource cancellation grant. */
 export const cancelApproval = (id: string) =>
     Effect.gen(
         /** Refresh current role/team grants in the same transaction; role names and untrusted event IDs confer nothing. */
@@ -304,19 +304,20 @@ export const cancelApproval = (id: string) =>
                             );
                             if (!allowed) {
                                 const events = yield* Effect.serviceOption(ApprovalEvents);
-                                // An event-shaped grant is insufficient without captured association and a current trusted lead/target check.
+                                const scope = record.eventScope;
+                                // A shared event never broadens one resource grant; the adapter independently verifies continued association.
                                 if (
-                                    record.eventScope === undefined ||
+                                    scope === undefined ||
                                     Option.isNone(events) ||
                                     !grants.some(
-                                        /** Event authority remains independently grantable and cannot broaden into tenant authority. */
+                                        /** Match the trusted preparation-captured resource exactly, never a role name or event-wide shortcut. */
                                         (grant) =>
                                             grant.permission === cancelApprovalsPermission &&
-                                            grant.resources.includes(`event:${record.eventScope?.event}`)
+                                            grant.resources.includes(scope.resource)
                                     )
                                 )
                                     return yield* denied();
-                                yield* events.value.canCancel(caller, record.binding, record.eventScope);
+                                yield* events.value.canCancel(caller, record.binding, scope);
                             }
                         }
                         if (record.revokedAt !== null) return record;

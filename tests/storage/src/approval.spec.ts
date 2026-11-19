@@ -519,6 +519,220 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
 
         it.scoped(
+            'cancels only explicitly granted captured resources, never another resource in the same event',
+            /** Registered target association and live exact grants must agree without an implicit event-lead role. */ () =>
+                Effect.gen(
+                    /** Keep both proofs pending across independent denials before accepting the exact-resource control. */
+                    function* () {
+                        // Sharing an event distinguishes resource authority from the superseded event-wide grant shortcut.
+                        const f = yield* fixture(dialect);
+                        const event = yield* Ref.make('shared-event');
+                        const available = yield* Ref.make(true);
+                        const events: ApprovalEvents['Type'] = {
+                            /** Resolve stable target references from registered canonical input, not cancellation parameters. */
+                            resolve: (_target, wire) =>
+                                Effect.gen(
+                                    /** The registered codec encodes amount as text; the association source receives that wire projection. */
+                                    function* () {
+                                        // Only validated registered wire data may select a trusted target; the cancellation id carries no association.
+                                        const value = yield* Schema.decodeUnknown(
+                                            Schema.Struct({ amount: Schema.String, items: Schema.Array(Schema.String) })
+                                        )(wire).pipe(
+                                            Effect.mapError(
+                                                /** Invalid target data cannot acquire a guessed resource association. */
+                                                () => new ApprovalFailure({ reason: 'binding' })
+                                            )
+                                        );
+                                        return {
+                                            event: yield* Ref.get(event),
+                                            resource:
+                                                value.items[0] === 'left'
+                                                    ? 'registered-target-17'
+                                                    : 'registered-target-18',
+                                        };
+                                    }
+                                ),
+                            /** The feature checks continued association only; explicit SQL grants decide cancellation authority. */
+                            canCancel: (_caller, _target, scope) =>
+                                Effect.gen(
+                                    /** Unavailable or reassigned targets cannot retain their former cancellation scope. */
+                                    function* () {
+                                        if (!(yield* Ref.get(available)) || scope.event !== (yield* Ref.get(event)))
+                                            return yield* new ApprovalFailure({ reason: 'denied' });
+                                    }
+                                ),
+                        };
+                        const services = Context.add(f.services, ApprovalEvents, events);
+                        const host = Context.get(
+                            yield* Layer.build(
+                                ActionHostLive.pipe(
+                                    Layer.provide(durable),
+                                    Layer.provide(approvalServices),
+                                    Layer.provide(Layer.succeedContext(services))
+                                )
+                            ),
+                            ActionHost
+                        );
+                        yield* host.register({
+                            manifest: {
+                                format: 1,
+                                id: 'fixture.approval',
+                                version: '1.0.0',
+                                description: 'Registered exact-resource cancellation fixture.',
+                                actions: [spec.name],
+                                flags: [],
+                            },
+                            actions: [binding],
+                        });
+                        /** Supply only the trusted association adapter; the cancellation operation still receives just an id. */
+                        const run = <A, E, R>(effect: Effect.Effect<A, E, R>, caller = human) =>
+                            f.run(effect.pipe(Effect.provideService(ApprovalEvents, events)), caller);
+                        const secondInput = { ...input, items: ['right', 'left'] };
+                        const review = yield* run(host.prepareApproval(spec.name, input, 'resource-17'));
+                        const secondReview = yield* run(host.prepareApproval(spec.name, secondInput, 'resource-18'));
+                        expect(review.eventScope).toEqual({ event: 'shared-event', resource: 'registered-target-17' });
+                        expect(secondReview.eventScope).toEqual({
+                            event: 'shared-event',
+                            resource: 'registered-target-18',
+                        });
+                        const first = yield* run(issueApproval(binding, input, human, 'resource-17', settings));
+                        const second = yield* run(issueApproval(binding, secondInput, human, 'resource-18', settings));
+                        expect(first.eventScope).toEqual(review.eventScope);
+                        expect(second.eventScope).toEqual(secondReview.eventScope);
+                        const cancelRole = RoleId.make(id(97));
+                        const team = {
+                            id: TeamId.make(id(98)),
+                            name: 'No implied lead',
+                            members: [other.subject],
+                            roles: [cancelRole],
+                        };
+                        yield* f.identities.put('team', team, null);
+                        yield* f.identities.put('role', { id: cancelRole, name: 'Event lead', grants: [] }, null);
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                            left: { reason: 'denied' },
+                        });
+                        yield* f.identities.put(
+                            'role',
+                            {
+                                id: cancelRole,
+                                name: 'Event lead',
+                                grants: [{ permission: cancelApprovalsPermission, resources: ['event:shared-event'] }],
+                            },
+                            0
+                        );
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                            left: { reason: 'denied' },
+                        });
+                        yield* f.identities.put(
+                            'role',
+                            {
+                                id: cancelRole,
+                                name: 'Explicit resource permission',
+                                grants: [
+                                    { permission: cancelApprovalsPermission, resources: ['registered-target-17'] },
+                                ],
+                            },
+                            1
+                        );
+                        expect(yield* run(Effect.either(cancelApproval(second.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                            left: { reason: 'denied' },
+                        });
+                        expect(yield* f.run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* Ref.set(available, false);
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* Ref.set(available, true);
+                        yield* Ref.set(event, 'another-event');
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* Ref.set(event, 'shared-event');
+                        // Each authority withdrawal is restored independently, so later success cannot hide a permanently denying fixture.
+                        yield* f.identities.put('team', { ...team, members: [] }, 0);
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* f.identities.put('team', team, 1);
+                        const granted = (yield* f.identities.get('role', cancelRole))!;
+                        yield* f.identities.put('role', { ...granted.value, grants: [] }, granted.version);
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* f.identities.put('role', granted.value, granted.version + 1);
+                        const membership = (yield* f.identities.get('membership', other.subject))!;
+                        yield* f.identities.put(
+                            'membership',
+                            { ...membership.value, active: false },
+                            membership.version
+                        );
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* f.identities.put('membership', membership.value, membership.version + 1);
+                        const session = (yield* f.identities.get('session', other.session))!;
+                        yield* f.identities.put('session', { ...session.value, expiresAt: 1_000_000 }, session.version);
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        yield* f.identities.put('session', session.value, session.version + 1);
+                        const foreign = Schema.decodeUnknownSync(CallerIdentity)({ ...other, tenant: id(99) });
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), foreign)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        expect((yield* f.proofs.get(first.id))?.revision).toBe(0);
+                        expect((yield* run(cancelApproval(first.id), other)).revokedAt).toBe(1_000_000);
+                        expect((yield* run(cancelApproval(first.id), other)).revision).toBe(1);
+                        expect((yield* f.proofs.get(first.id))?.approver).toEqual(human);
+                        expect((yield* f.proofs.get(second.id))?.revokedAt).toBeNull();
+                        const decisions = yield* f.sql<{
+                            body: string;
+                        }>`SELECT body FROM approval_decision WHERE proof_id = ${first.id} ORDER BY revision`;
+                        expect(
+                            decisions.map(
+                                /** Inspect persisted actors and terminal decisions, not adapter call counts. */
+                                (row) => JSON.parse(row.body)
+                            )
+                        ).toMatchObject([
+                            { kind: 'issued', actor: human },
+                            { kind: 'cancelled', actor: other },
+                        ]);
+                        // Force the decision insert to fail after proof UPDATE, proving exact-resource cancellation still rolls back atomically.
+                        const auditFailure = yield* run(
+                            issueApproval(binding, input, human, 'resource-audit', settings)
+                        );
+                        yield* f.sql`INSERT INTO approval_decision (proof_id, revision, body) VALUES (${auditFailure.id}, 1, '{}')`;
+                        expect(yield* run(Effect.either(cancelApproval(auditFailure.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                            left: { reason: 'unavailable' },
+                        });
+                        expect((yield* f.proofs.get(auditFailure.id))?.revision).toBe(0);
+                        expect((yield* f.proofs.get(auditFailure.id))?.revokedAt).toBeNull();
+                        yield* f.identities.put(
+                            'role',
+                            { id: cancelRole, name: 'Revoked resource permission', grants: [] },
+                            4
+                        );
+                        expect(yield* run(Effect.either(cancelApproval(first.id)), other)).toMatchObject({
+                            _tag: 'Left',
+                        });
+                        expect((yield* f.run(cancelApproval(second.id))).revokedAt).toBe(1_000_000);
+                        const expired = yield* run(issueApproval(binding, input, human, 'resource-expired', settings));
+                        yield* TestClock.setTime(expired.expiresAt);
+                        expect(yield* run(Effect.either(cancelApproval(expired.id)))).toMatchObject({
+                            _tag: 'Left',
+                            left: { reason: 'expired' },
+                        });
+                    }
+                )
+        );
+
+        it.scoped(
             'rolls back proof issue/use/cancel when audit fails and rejects malformed or missing persisted evidence',
             /** Real SQL errors cannot become absent proof or acknowledged evidence. */ () =>
                 Effect.gen(

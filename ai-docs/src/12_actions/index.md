@@ -86,3 +86,23 @@ Canonicalize encoded output/error before parsing JSON; the recursive record sche
 The suppressions-free compiler fixture is `tests/runtime/src/action-types.spec.ts`; the existing transforming handler/lifecycle/security tests are in `host.spec.ts` and `execution.spec.ts`. Run the tests from `tests/runtime` with `pnpm exec vitest run --config vitest.config.mts`. The fixture uses the strict pinned patched compiler, checks exact input/output/failure and missing/wrong environments, and includes unchanged-handler provider swapping. It does not certify full EVE-263 clearance. Existing storage/schema/identity dependency escapes and combined export/source-graph checks remain coordinator-owned blockers.
 
 Vendor review remains required for one private canonicalJson ingress: TypeScript's PropertyDescriptor.value is vendor `any`, captured as `unknown` and immediately visited through scalar, prototype, cycle and descriptor checks. The visitor is generic and arrays use descriptors too, removing the former unknown visitor parameter and unknown array-element collection without executing getters. JsonValue prevalidation is not equivalent: recursive decoding can execute getters, recurse cycles and coerce Date into an empty record. Effect AST annotations are vendor-opaque and validated/narrowed privately before provider compilation. Effect Exit/Cause retain vendor-defined opaque defects internally; the host classifies interruption/failure and returns bounded action defects without serializing original handler causes. These are specific review requests, not approved exceptions; EVE-263 cannot claim full clearance until the owner decides them.
+
+## Exact-resource cancellation follow-up
+
+The bounded follow-up supersedes only the event-grant/lead interpretation above,
+not the selected session policy or its activity-ingress classification. Require
+live `approvals.cancel` on exactly `ApprovalEventScope.resource`, captured by the
+trusted `ApprovalEvents.resolve` after registered preparation. A grant for one
+resource never covers a different resource in the same event; event-shaped
+grants and role names confer nothing. Keep the existing `canCancel` signature as
+an association-only check, denying unavailable/changed target association without
+inferring lead authority. Tenant-wide explicit `tenant:<id>` grants and
+own-pending cancellation remain; input stays `{ id }`. Preserve fresh live
+identity/role/team authority, atomic cancellation audit, immutable approver and
+the unchanged terminal-retention producer. No schemas, SQL producer, migrations,
+host/transport or session-policy edits belong to this correction. See agent
+chapter `35_approval_cancellation`, `docs/core-qualification/resource-cancellation.md`
+and compiling two-engine `tests/storage/src/approval.spec.ts` for exact grant
+example, scope, options/defaults, regression/gate evidence and troubleshooting.
+The existing consent capability remains default false; no production event
+adapter, renewal, retention cleanup or activation is implied.

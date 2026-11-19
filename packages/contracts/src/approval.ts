@@ -136,16 +136,16 @@ export class ApprovalFailure extends Schema.TaggedError<ApprovalFailure>()('Appr
     ),
 }) {}
 
-/** Feature-owned authority seam. Absence never grants event cancellation and does not disable own/tenant cancellation. */
+/** Feature-owned trusted association seam; absence denies resource cancellation without disabling own/tenant cancellation. */
 export class ApprovalEvents extends Context.Tag('@eventiva/contracts/ApprovalEvents')<
     ApprovalEvents,
     {
-        /** Resolve the live event/target association only after registered canonical input and target permissions were validated. */
+        /** Resolve the live event and exact grant resource reference after registered canonical input/target validation; never accept cancellation-request association. */
         readonly resolve: (
             binding: ApprovalBinding,
             input: JsonValue
         ) => Effect.Effect<ApprovalEventScope | undefined, ApprovalFailure>;
-        /** Recheck live lead authority AND the target's continued event association; the independent cancel permission is checked separately. */
+        /** Recheck the captured resource's continued tenant-local event association, denying changed/unavailable targets; runtime checks exact approvals.cancel grants independently, never inferred lead roles. */
         readonly canCancel: (
             caller: CallerIdentity,
             binding: ApprovalBinding,

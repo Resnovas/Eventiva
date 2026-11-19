@@ -189,3 +189,48 @@ For tests only, use `makeTestOnlyHarness` from `@eventiva/runtime/testing`. Its 
 - `InventoryParityError`: restore the missing surface/action/version/permission mapping. Do not exclude a surface to make parity pass.
 
 Run `pnpm exec vitest run --config vitest.config.mts` from `tests/runtime` for host and strict compile-negative action proofs. The type proof uses the pinned patched compiler, keeps strict settings, checks decoded versus encoded types and declared failures, rejects missing/wrong service layers and proves that swapping two providers of the same service does not change a handler. It does not clear unrelated baseline storage, identity or schema typing findings in EVE-263, nor does it certify vendor opacity exceptions or the combined source graph.
+
+## Cancel consent with an exact resource grant
+
+The resource-cancellation follow-up supersedes only A's event-grant/lead seam
+described above. It does not change the selected session policy or implement
+rolling renewal. See the [qualification record](core-qualification/resource-cancellation.md)
+for policy provenance, executed evidence and delivery state.
+
+For another person's pending approval, grant `approvals.cancel` on the exact
+trusted resource reference captured during registered preparation. For example,
+if `ApprovalEvents.resolve` returns
+`{ "event": "event-a", "resource": "registered-target-17" }`, the permission is:
+
+```json
+{
+    "permission": "approvals.cancel",
+    "resources": ["registered-target-17"]
+}
+```
+
+This grant does not cover another resource in `event-a`. An event-shaped grant,
+wildcard or a role named `Event lead` does not substitute for the exact reference.
+The existing `ApprovalEvents.canCancel` method now documents an association-only
+contract: verify the target still belongs to its captured tenant/event, fail
+changed/unavailable association closed, and do not infer lead authority. The
+runtime independently reads live explicit grants from roles and teams. No
+contract shape, cancellation input, new event-domain table or production event
+provider is introduced; cancellation still takes only the approval id.
+
+Own-pending cancellation and an independently granted exact `tenant:<tenant id>`
+cancellation scope keep their existing behavior without requiring this adapter.
+All paths still require a current same-tenant human/session/membership. Used or
+expired pending approvals cannot be cancelled; authorized repeats do not append
+another decision. The original approver remains immutable, while cancellation
+and its cancelling-actor audit commit or roll back together. The lifecycle gate
+`identity.approval-consent-enabled` remains default false; missing association
+has no accepting fallback. No other options or defaults change.
+
+Run the normal storage and runtime gates with the disposable database in
+[machine setup](../AGENT-SETUP.md). The compiling real-SQL cancellation examples
+are in `tests/storage/src/approval.spec.ts`; their association adapter is synthetic,
+not an implemented event feature. If cancellation is denied, inspect current
+exact grants and trusted association availability instead of submitting a
+resource in cancellation input or granting a broader event scope. Retention
+cleanup, renewal activity classification and production activation remain separate.
