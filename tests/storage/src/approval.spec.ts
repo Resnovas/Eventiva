@@ -414,15 +414,15 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
 
         it.scoped(
-            'requires captured event association, independent permission and current lead authority without disabling own cancellation',
+            'requires captured resource association and independent permission without disabling own cancellation',
             /** A misleading role name or request event cannot replace the feature-owned event/target authority source. */ () =>
                 Effect.gen(
-                    /** Persist server-derived scope and independently invalidate lead, target association and permission. */
+                    /** Persist server-derived scope and independently invalidate association availability, reassignment and permission. */
                     function* () {
                         // Keep the granting actor distinct from the consenting human so own-cancel cannot mask missing event checks.
                         const f = yield* fixture(dialect);
                         const event = yield* Ref.make('event-a');
-                        const lead = yield* Ref.make(true);
+                        const associationAvailable = yield* Ref.make(true);
                         const events: ApprovalEvents['Type'] = {
                             /** Return only the canonical target's authoritative event association, not arbitrary request fields. */
                             resolve: (target, wire) =>
@@ -438,14 +438,14 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                         return { event: yield* Ref.get(event), resource: 'registered-target-17' };
                                     }
                                 ),
-                            /** Reassignment and lost lead authority must deny even while the independent event grant still exists. */
+                            /** Unavailable or reassigned targets must deny even while the independent exact-resource grant exists. */
                             canCancel: (caller, _binding, scope) =>
                                 Effect.gen(
-                                    /** Check current relationship rather than persisting a role/lead snapshot on the proof. */
+                                    /** Check current association rather than accepting its preparation-time snapshot indefinitely. */
                                     function* () {
                                         if (
                                             caller.subject !== other.subject ||
-                                            !(yield* Ref.get(lead)) ||
+                                            !(yield* Ref.get(associationAvailable)) ||
                                             scope.event !== (yield* Ref.get(event)) ||
                                             scope.resource !== 'registered-target-17'
                                         )
@@ -464,7 +464,9 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             {
                                 id: cancelRole,
                                 name: 'Event lead',
-                                grants: [{ permission: cancelApprovalsPermission, resources: ['event:event-b'] }],
+                                grants: [
+                                    { permission: cancelApprovalsPermission, resources: ['registered-target-18'] },
+                                ],
                             },
                             null
                         );
@@ -486,18 +488,20 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             {
                                 id: cancelRole,
                                 name: 'Independent permission',
-                                grants: [{ permission: cancelApprovalsPermission, resources: ['event:event-a'] }],
+                                grants: [
+                                    { permission: cancelApprovalsPermission, resources: ['registered-target-17'] },
+                                ],
                             },
                             0
                         );
                         expect(yield* f.run(Effect.either(cancelApproval(record.id)), other)).toMatchObject({
                             _tag: 'Left',
                         });
-                        yield* Ref.set(lead, false);
+                        yield* Ref.set(associationAvailable, false);
                         expect(yield* run(Effect.either(cancelApproval(record.id)), other)).toMatchObject({
                             _tag: 'Left',
                         });
-                        yield* Ref.set(lead, true);
+                        yield* Ref.set(associationAvailable, true);
                         yield* Ref.set(event, 'event-b');
                         expect(yield* run(Effect.either(cancelApproval(record.id)), other)).toMatchObject({
                             _tag: 'Left',
