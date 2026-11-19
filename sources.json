@@ -493,13 +493,13 @@
   {
     "id": "formatjs-intl",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "aa3f90b53b157481515a0f7a7f0d76fcbd7c3274",
-    "ref": "@formatjs/intl@6.1.4",
+    "commit": "b545aec5ba3663c89112bb18da277f7e9726244b",
+    "ref": "@formatjs/intl@6.1.5",
     "license": "MIT",
     "packages": [
       {
         "name": "@formatjs/intl",
-        "version": "6.1.4"
+        "version": "6.1.5"
       }
     ],
     "paths": [
@@ -512,22 +512,22 @@
       "packages/intl/LICENSE.md"
     ],
     "trees": {
-      "packages/intl": "06de9aaa60e075c9c0474e2e364d2f65f96ea0ed",
+      "packages/intl": "40c94bcb06319023d9cda43569df5cd9257b56bf",
       "packages/intl/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "98b44689fc93a19f28e7df7ed365c08e15d8846f"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "bdc7e60bffd6c22eec913efb148b7211789107e7"
     }
   },
   {
     "id": "react-intl",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "a487f4e06c7da613256a2671000b855183c5f78f",
-    "ref": "react-intl@12.1.6",
+    "commit": "b545aec5ba3663c89112bb18da277f7e9726244b",
+    "ref": "react-intl@12.1.7",
     "license": "BSD-3-Clause",
     "packages": [
       {
         "name": "react-intl",
-        "version": "12.1.6"
+        "version": "12.1.7"
       }
     ],
     "paths": [
@@ -540,10 +540,10 @@
       "packages/react-intl/LICENSE.md"
     ],
     "trees": {
-      "packages/react-intl": "7fb1e481c2a1e0a380bbc10187bf12af0a7de949",
+      "packages/react-intl": "57cfb00d39705956f867707a6a3ba0541b6ccdd3",
       "packages/react-intl/LICENSE.md": "70a07299fe8287b1615b7453e649b2d4a6a5722e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "d9ef1a3b44000e82a38536458d86089af3bf27fb"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "bdc7e60bffd6c22eec913efb148b7211789107e7"
     }
   },
   {
@@ -651,13 +651,13 @@
   {
     "id": "posthog-node",
     "upstream": "https://github.com/PostHog/posthog-js",
-    "commit": "d2d8a2631a3492a3bee727728803099a6c588f70",
-    "ref": "posthog-node@5.63.1",
+    "commit": "43e895efd2dad49e16b298d7262258b0b066cfbd",
+    "ref": "posthog-node@5.69.0",
     "license": "MIT",
     "packages": [
       {
         "name": "posthog-node",
-        "version": "5.63.1"
+        "version": "5.69.0"
       }
     ],
     "paths": [
@@ -673,10 +673,10 @@
       "LICENSE"
     ],
     "trees": {
-      "packages/node/src": "dc8157f7d8a9408b2ad623348d132557679aedd5",
-      "packages/node/package.json": "4235ffcb42933482e16e5ee235b04083ecbfa013",
-      "packages/core/src": "e75e9b0d79545628c870ef137161768ae4e7983b",
-      "packages/core/package.json": "cca4b379db04522a68d3a7236b162b1300e03f06",
+      "packages/node/src": "31a9bf8d8a6d677f5e79869425c68ce12e929309",
+      "packages/node/package.json": "f9d3caacfbe0ab5ce514eb2b4dfeb1c657629a99",
+      "packages/core/src": "6e60554bd8e16b4b8a5f3bdca7a1211ec579a275",
+      "packages/core/package.json": "457d49f95f122b9f9cdd9b22c12e268ad3a81fd1",
       "LICENSE": "dd16ba34802268548d52039ff3445cdb9323988d",
       "README.md": "4d25d38b705159accfd0d5f6b4dddc3304654731",
       "package.json": "ff860bf78e8e1946be80b58c1ecd7273bf281078"
@@ -685,13 +685,13 @@
   {
     "id": "posthog-react-native",
     "upstream": "https://github.com/PostHog/posthog-js",
-    "commit": "5ce520f2e44c68ff782f4417840e37ef9642b029",
-    "ref": "posthog-react-native@4.85.3",
+    "commit": "ea6035c5fec0d6c275b5e3fde5ddaf5846036e7a",
+    "ref": "posthog-react-native@4.86.0",
     "license": "MIT",
     "packages": [
       {
         "name": "posthog-react-native",
-        "version": "4.85.3"
+        "version": "4.86.0"
       }
     ],
     "paths": [
@@ -707,10 +707,10 @@
       "LICENSE"
     ],
     "trees": {
-      "packages/react-native/src": "03eb12d46575685cb53d2e53e6ced20612916f40",
-      "packages/react-native/package.json": "5b25a7ca6051d8a9b7d32174bfac72739134fc57",
-      "packages/core/src": "64edcbbb492ec6c22742245d8cf8419b4edc0ad9",
-      "packages/core/package.json": "4c33e5e8a1c24cb2a642f9bc1467ffb14a5cb17c",
+      "packages/react-native/src": "4d38a51143a2e775fdf44f7db662ed99ec80b5e9",
+      "packages/react-native/package.json": "97ea06afd7d7b40622d5f2c1fde400f8a359e602",
+      "packages/core/src": "d2167c3de57e7f05007165ab83cefb32b46f6502",
+      "packages/core/package.json": "f97fea6830d098f58cfe040e7aecbe66797f63cf",
       "LICENSE": "dd16ba34802268548d52039ff3445cdb9323988d",
       "README.md": "4d25d38b705159accfd0d5f6b4dddc3304654731",
       "package.json": "ff860bf78e8e1946be80b58c1ecd7273bf281078"
@@ -781,41 +781,41 @@
   {
     "id": "nx",
     "upstream": "https://github.com/nrwl/nx",
-    "commit": "19a9e5f4e525b517faa4b1ab086781c9d158957d",
-    "ref": "24.0.5",
+    "commit": "7fca107183276aefb23322a83476de5081ed5d01",
+    "ref": "24.0.6",
     "license": "MIT",
     "packages": [
       {
         "name": "nx",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/devkit",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/eslint",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/eslint-plugin",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/expo",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/js",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/playwright",
-        "version": "24.0.5"
+        "version": "24.0.6"
       },
       {
         "name": "@nx/vitest",
-        "version": "24.0.5"
+        "version": "24.0.6"
       }
     ],
     "paths": [
@@ -835,12 +835,12 @@
       "LICENSE"
     ],
     "trees": {
-      "packages/nx": "e5c8e245c7251a3b097c42528b8a2e8c590e4f1e",
+      "packages/nx": "3731ba8ed6e6fcf1e579d42cfc86a7918c621a2f",
       "packages/devkit": "1a1ccc950487a9999183b2be40e59022eb966afa",
       "packages/eslint": "680fd4323af3f6ad67f66b76212eaf73251a0800",
       "packages/eslint-plugin": "0519e907eeec63cb7a4474981547fcd06b0653c3",
       "packages/expo": "ec78747bf04f670db3ebc0d282f7105d283eb2e5",
-      "packages/js": "ea1c412e26e4c0a6db5cdb4c6fdf2b37755430a4",
+      "packages/js": "bf82bab7b50647133de4ae23f9fea5d7646cfd0e",
       "packages/playwright": "c692fff266743dce6fa28cb116c63f58bb877042",
       "packages/vitest": "a61799271623b8d366c79584e099a6ad0e1065cf",
       "LICENSE": "00fa6062439cf3d8b94d7d651332ae58b8248aa6",
@@ -851,13 +851,13 @@
   {
     "id": "vite",
     "upstream": "https://github.com/vitejs/vite",
-    "commit": "0fd9a29f57d49d496f39c952f44c1b5fc3e90769",
-    "ref": "v8.3.6",
+    "commit": "b39e6e63dcbfc3cf4be871acf3554efbd6d0e268",
+    "ref": "v8.3.8",
     "license": "MIT",
     "packages": [
       {
         "name": "vite",
-        "version": "8.3.6"
+        "version": "8.3.8"
       }
     ],
     "paths": [
@@ -886,7 +886,7 @@
       "LICENSE"
     ],
     "trees": {
-      "packages/vite": "0176e3aa9daefd6d66dc57e3299775980bd472b9",
+      "packages/vite": "42c003e5cb05ad529e25ff90809cc14a73da8046",
       "packages/vite/LICENSE.md": "06481aa9d21aa40e438c0d263dc9df80eaaad717",
       "packages/vite/src/node/__tests__/plugins/__snapshots__/license.spec.ts.snap": "1546143e444a7522d5b6f436bac15d3842a97141",
       "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-licence-cc0/licence": "7837407e70efb51ec7d19b669ac3f9b2d8683273",
@@ -897,7 +897,7 @@
       "packages/vite/src/node/plugins/license.ts": "266957c000e88c9dea6913246b6ce794a469e68b",
       "LICENSE": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
       "README.md": "069c468a98123f873f4626f6fb5a666389cdfb45",
-      "package.json": "b037c1b4d91f0d2d782584c52eefd2db407fc41e"
+      "package.json": "33dc43dd84c5d9a7ed730c28bc29981f289a04c2"
     }
   },
   {
@@ -1006,13 +1006,13 @@
   {
     "id": "prettier",
     "upstream": "https://github.com/prettier/prettier",
-    "commit": "1172b82c295c4f889fd787dc6c78c3e194ebf353",
-    "ref": "3.9.10",
+    "commit": "b688380af847b008d9951d794b2990a59048922f",
+    "ref": "3.10.0",
     "license": "MIT",
     "packages": [
       {
         "name": "prettier",
-        "version": "3.9.10"
+        "version": "3.10.0"
       }
     ],
     "paths": [
@@ -1025,10 +1025,10 @@
       "LICENSE"
     ],
     "trees": {
-      "src": "904d26914390ad6bf4ac3f04a257a405841e20d1",
+      "src": "922de546373368e0cac912fe580ba3150529d6bc",
       "LICENSE": "5767e34d30ab78796220f9492726dd2f677d4166",
       "README.md": "2297b58e424367eaaaa6a22c8f9f3ed45e769cca",
-      "package.json": "9646b6d624fb8bbf1be2e068fa06528b45a6fe4e"
+      "package.json": "06b2eb770586988ac13f6428a819396d869dc429"
     }
   },
   {
@@ -1132,13 +1132,13 @@
   {
     "id": "formatjs-intl-getcanonicallocales",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "84d17110e122d2019f41e50a19bf3c24d6152f29",
-    "ref": "@formatjs/intl-getcanonicallocales@3.3.0",
+    "commit": "b545aec5ba3663c89112bb18da277f7e9726244b",
+    "ref": "@formatjs/intl-getcanonicallocales@3.3.1",
     "license": "MIT",
     "packages": [
       {
         "name": "@formatjs/intl-getcanonicallocales",
-        "version": "3.3.0"
+        "version": "3.3.1"
       }
     ],
     "paths": [
@@ -1151,22 +1151,22 @@
       "packages/intl-getcanonicallocales/LICENSE.md"
     ],
     "trees": {
-      "packages/intl-getcanonicallocales": "b10da7169b86fe3fc8ccf3d320b830fdc62e9782",
+      "packages/intl-getcanonicallocales": "7211d9943f40b8e55d79bfa63b1fa729a0858e45",
       "packages/intl-getcanonicallocales/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "6001e798762c0fd0f90b1c82920fbf16b8e077ec"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "bdc7e60bffd6c22eec913efb148b7211789107e7"
     }
   },
   {
     "id": "formatjs-intl-locale",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "cd9daefa867152a0cc51ce737a509edb88dcdea9",
-    "ref": "@formatjs/intl-locale@5.4.2",
+    "commit": "b545aec5ba3663c89112bb18da277f7e9726244b",
+    "ref": "@formatjs/intl-locale@5.4.3",
     "license": "MIT",
     "packages": [
       {
         "name": "@formatjs/intl-locale",
-        "version": "5.4.2"
+        "version": "5.4.3"
       }
     ],
     "paths": [
@@ -1179,22 +1179,22 @@
       "packages/intl-locale/LICENSE.md"
     ],
     "trees": {
-      "packages/intl-locale": "5d85be52033e49894716d000953eab05a4dc98d3",
+      "packages/intl-locale": "b04dca3de1388ae36a4b905616e36d12527fd791",
       "packages/intl-locale/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "27f16bd8f144cab6f6b9d8d6c31016ffa0c9a15e"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "bdc7e60bffd6c22eec913efb148b7211789107e7"
     }
   },
   {
     "id": "formatjs-intl-pluralrules",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "e212dfa58c73f05eac1099f1c11e0364413199d2",
-    "ref": "@formatjs/intl-pluralrules@7.0.2",
+    "commit": "3294d013f0379b1bc1c8ec4ae1fd22cfbd94f3dc",
+    "ref": "@formatjs/intl-pluralrules@7.0.4",
     "license": "MIT",
     "packages": [
       {
         "name": "@formatjs/intl-pluralrules",
-        "version": "7.0.2"
+        "version": "7.0.4"
       }
     ],
     "paths": [
@@ -1207,22 +1207,22 @@
       "packages/intl-pluralrules/LICENSE.md"
     ],
     "trees": {
-      "packages/intl-pluralrules": "3d008d07b16d044b3841f7584d2db97ec96aecaa",
+      "packages/intl-pluralrules": "8da2d045902141eb3482ec235c23da68df177a2a",
       "packages/intl-pluralrules/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
       "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
-      "package.json": "012dd0ada19fa147b5e2cc4813ef11dbeb22f05e"
+      "package.json": "d145d571ebd13e89b51f9f3c27968de8d4759679"
     }
   },
   {
     "id": "formatjs-cli",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "73430970acbac6e144d7f4750ef1cd4354ce78dc",
-    "ref": "@formatjs/cli@6.18.0",
+    "commit": "3294d013f0379b1bc1c8ec4ae1fd22cfbd94f3dc",
+    "ref": "@formatjs/cli@6.18.2",
     "license": "MIT",
     "packages": [
       {
         "name": "@formatjs/cli",
-        "version": "6.18.0"
+        "version": "6.18.2"
       }
     ],
     "paths": [
@@ -1238,24 +1238,24 @@
       "packages/cli/LICENSE.md"
     ],
     "trees": {
-      "packages/cli": "e46638c20b575df6741536fcb2aec5becf3c2095",
-      "packages/cli-lib": "5f6c9ff0814be4ae37b72aea0cae5f93a8de00dd",
+      "packages/cli": "58cd5b4edf616337b63456cac2d5aae8f133fd54",
+      "packages/cli-lib": "91f79ea798f8d8822a99b368fd466087c682ad0c",
       "packages/cli-lib/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
       "packages/cli/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "012dd0ada19fa147b5e2cc4813ef11dbeb22f05e"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "d145d571ebd13e89b51f9f3c27968de8d4759679"
     }
   },
   {
     "id": "eslint-plugin-formatjs",
     "upstream": "https://github.com/formatjs/formatjs",
-    "commit": "cd9daefa867152a0cc51ce737a509edb88dcdea9",
-    "ref": "eslint-plugin-formatjs@8.1.3",
+    "commit": "b545aec5ba3663c89112bb18da277f7e9726244b",
+    "ref": "eslint-plugin-formatjs@8.1.4",
     "license": "MIT",
     "packages": [
       {
         "name": "eslint-plugin-formatjs",
-        "version": "8.1.3"
+        "version": "8.1.4"
       }
     ],
     "paths": [
@@ -1268,10 +1268,10 @@
       "packages/eslint-plugin-formatjs/LICENSE.md"
     ],
     "trees": {
-      "packages/eslint-plugin-formatjs": "52658ee52ac1bc46d52a19e3266db99ddcff2382",
+      "packages/eslint-plugin-formatjs": "0e69d7285afd889979217930c227aa4f09edec28",
       "packages/eslint-plugin-formatjs/LICENSE.md": "479ee16faa726e67271b765e8c71a28f6063993e",
-      "README.md": "f05d0cd6c5d26bc21a1f2eef325a56e48e944b73",
-      "package.json": "27f16bd8f144cab6f6b9d8d6c31016ffa0c9a15e"
+      "README.md": "7f8a55689a3b18ab934f9552cd5b0a796ded0730",
+      "package.json": "bdc7e60bffd6c22eec913efb148b7211789107e7"
     }
   },
   {
@@ -1598,13 +1598,13 @@
   {
     "id": "typescript-eslint",
     "upstream": "https://github.com/typescript-eslint/typescript-eslint",
-    "commit": "4ad6b7553781fa3c93fc26642d7219d2e6624504",
-    "ref": "v8.72.1",
+    "commit": "12e452f0292212bf9bf443b3988ec230f4ae7097",
+    "ref": "v8.72.2",
     "license": "MIT",
     "packages": [
       {
         "name": "typescript-eslint",
-        "version": "8.72.1"
+        "version": "8.72.2"
       }
     ],
     "paths": [
@@ -1655,7 +1655,7 @@
       "LICENSE"
     ],
     "trees": {
-      "packages": "ea6b9a7f695204ec3c99969f59d58b2f42a7bcb7",
+      "packages": "6960b8b9753feb7a678e2ee9d7e1b29442bb4033",
       "packages/ast-spec/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
       "packages/eslint-plugin-internal/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
       "packages/eslint-plugin/LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
@@ -1677,7 +1677,7 @@
       "packages/website/blog/authors.yml": "01e38c980a114899a9cb06875df5032d88f12c80",
       "LICENSE": "a1164108d4d6037cb976384c16e5493917d87157",
       "README.md": "fde6040f8c7ef1b086dc1345d3f582c97714058b",
-      "package.json": "e208876f130578cdd1f8ca08c5263784daf0c088"
+      "package.json": "1571bb450c528906b2aabf0b0ea0ac10e849463d"
     }
   },
   {
