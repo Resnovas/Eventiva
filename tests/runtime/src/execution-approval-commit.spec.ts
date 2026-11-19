@@ -247,6 +247,17 @@ const fixture = (dialect: Dialect, initiallyRequired: boolean, consumesPrecondit
                                           )
                             )
                         ),
+                    /** Preserve the same live synthetic revocation control at successful-use acceptance. */
+                    use: (key) => Ref.get(approved).pipe(
+                        Effect.flatMap(
+                            /** A revoked fixture proof cannot acknowledge acceptance after the handler. */
+                            (valid) => key === 'human-proof' && valid
+                                ? Effect.void
+                                : Effect.fail(new InvocationDenied({ action: action.name, reason: 'approval-revoked' }))
+                        )
+                    ),
+                    /** This mutation-only proof fixture does not provide approved-read lifecycle support. */
+                    transaction: () => Effect.fail(new InvocationDenied({ action: action.name, reason: 'read-approval-unavailable' })),
                 })
             );
             const host = Context.get(

@@ -322,6 +322,10 @@ const fixture = <E>(
                 Layer.succeed(Approvals, {
                     /** CRM human routine actions need no approval; a requested unknown proof still fails closed. */ get: () =>
                         Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** This fixture supplies no accepting proof-use capability. */ use: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** No approved-read transaction may run through an always-denying provider. */ transaction: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
                 }),
                 Layer.succeed(Authorizer, {
                     canInvoke: policy.canInvoke,

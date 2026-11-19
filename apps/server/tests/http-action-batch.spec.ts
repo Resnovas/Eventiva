@@ -33,7 +33,7 @@ import { CurrentTenant, EpochMillis, GuardedCommand, RoutingDenied, Storage } fr
 import { identityStore } from '@eventiva/integrations.sql/identity';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { storage } from '@eventiva/integrations.sql/storage';
 import { makeOidcVerifier, oidcSessionId } from '@eventiva/integrations.oidc/token';
 import { implement } from '@eventiva/runtime/action';
@@ -186,6 +186,10 @@ const fixture = Effect.gen(
             }),
             Layer.succeed(Approvals, {
                 /** No fixture approval can bypass existing protected-action rules. */ get: () =>
+                    Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** Keep accepting use unavailable without changing the batch's existing authority controls. */ use: () =>
+                    Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** Refuse approved-read lifecycle work rather than create fixture consent. */ transaction: () =>
                     Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
             })
         );
@@ -347,12 +351,13 @@ const fixture = Effect.gen(
                 )
         );
         const runner = yield* Layer.build(
-            backend(profile, initialize).pipe(
+            backend(profile, initialize, Effect.void, dependencies).pipe(
                 Layer.provide(
-                    router(
+                    sqlRouter(
+                        'postgres',
                         /** A foreign tenant never aliases this fixture database. */ (candidate) =>
                             candidate === tenant
-                                ? Effect.succeed(store)
+                                ? Effect.succeed(sql)
                                 : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
                         /** Permit only the explicitly provisioned tenant route. */ (candidate) =>
                             candidate === tenant

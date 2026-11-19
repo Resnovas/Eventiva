@@ -28,9 +28,8 @@ import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { CurrentTenant, RoutingDenied, Storage } from '@eventiva/contracts/storage';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { storage } from '@eventiva/integrations.sql/storage';
 import { agentOutputLog } from '@eventiva/integrations.sql/agent-output';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { implement } from '@eventiva/runtime/action';
 import {
@@ -183,7 +182,6 @@ export const makeBackend = (profile) =>
         Effect.gen(function* () {
             const compute = yield* connect(checked(process.env.CLUSTER_TEST_C_URL).toString());
             const sql = sqlOf(compute);
-            const stores = new Map();
             const outputClients = new Map();
             for (const [n, cell] of [
                 [1, 'A'],
@@ -191,13 +189,6 @@ export const makeBackend = (profile) =>
             ]) {
                 const context = yield* connect(checked(process.env[`CLUSTER_TEST_${cell}_URL`]).toString());
                 outputClients.set(id(n), sqlOf(context));
-                stores.set(
-                    id(n),
-                    Context.get(
-                        yield* Layer.build(storage('postgres').pipe(Layer.provide(Layer.succeedContext(context)))),
-                        Storage
-                    )
-                );
             }
             // Effect SQL shares a transaction context tag across clients. Control-plane
             // reads must not accidentally run on the current tenant transaction.
@@ -279,10 +270,11 @@ export const makeBackend = (profile) =>
                         }).pipe(Effect.mapError(() => deny(spec.name, 'policy-unavailable'))),
                 }),
                 Layer.succeed(Approvals, { get: () => Effect.fail(deny('<approval>', 'approval-unavailable')) }),
-                router(
+                sqlRouter(
+                    'postgres',
                     (tenant) =>
-                        stores.has(tenant)
-                            ? Effect.succeed(stores.get(tenant))
+                        outputClients.has(tenant)
+                            ? Effect.succeed(outputClients.get(tenant))
                             : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
                     () => Effect.void
                 )
@@ -409,7 +401,7 @@ export const makeBackend = (profile) =>
                 process.send?.({ barrier: 'registration', pid: process.pid });
                 yield* waitOpen(sql, 'registration');
             });
-            return backend(profile, initialize, registerWorkflows).pipe(
+            return backend(profile, initialize, registerWorkflows, Security).pipe(
                 Layer.provideMerge(Security),
                 Layer.provide(Layer.succeedContext(compute))
             );

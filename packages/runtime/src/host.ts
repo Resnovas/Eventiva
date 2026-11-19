@@ -15,6 +15,14 @@
  */
 
 import { ActionName, type ActionSpec } from '@eventiva/contracts/action';
+import {
+    ApprovalFailure,
+    ApprovalPreparation,
+    ApprovalStore,
+    type ApprovalRecord,
+    type ApprovalSettings,
+} from '@eventiva/contracts/approval';
+import { IdentityStore } from '@eventiva/contracts/identity';
 import { Authorizer, Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { Forbidden, UnknownAction, Unavailable } from '@eventiva/contracts/errors';
 import { type Flag, Flags } from '@eventiva/contracts/flags';
@@ -40,6 +48,7 @@ import {
     Scope,
 } from 'effect';
 import type { ActionBinding } from './action.ts';
+import { issueApproval, prepareApproval as prepareApprovalIntent } from './approval.ts';
 import { type InvocationError, makeExecutor } from './execution.ts';
 import {
     Approvals,
@@ -47,6 +56,7 @@ import {
     ExecutionPolicy,
     IdentityResolver,
     InputDigest,
+    canonicalJson,
     Integrity,
     type InvokeOptions,
     type InvocationResult,
@@ -152,6 +162,22 @@ export class ActionHost extends Context.Tag('@eventiva/runtime/ActionHost')<
             input: Wire,
             options?: InvokeOptions
         ) => Effect.Effect<InvocationResult<InvocationError>, AuditUnavailable, Caller>;
+        /** Derive review data from the live execution registry and refreshed caller; this never runs a handler or issues consent. */
+        readonly prepareApproval: <Wire>(
+            action: string,
+            input: Wire,
+            writeKey: string,
+            expectedActionVersion?: number
+        ) => Effect.Effect<ApprovalPreparation, ApprovalFailure | InvocationError, Caller>;
+        /** Trusted explicit human completion only: re-resolve the registered target and match the entire reviewed tuple before issuing. */
+        readonly completeApproval: (
+            action: string,
+            input: JsonValue,
+            principal: CallerIdentity,
+            review: ApprovalPreparation,
+            expiresAt: number,
+            settings: typeof ApprovalSettings.Encoded
+        ) => Effect.Effect<ApprovalRecord, ApprovalFailure | InvocationError, Caller>;
     }
 >() {}
 
@@ -385,6 +411,8 @@ export const ActionHostLive: Layer.Layer<
             const flags = yield* Flags;
             const authorizer = yield* Authorizer;
             const identity = yield* IdentityResolver;
+            const policy = yield* ExecutionPolicy;
+            const digest = yield* InputDigest;
             const executor = yield* makeExecutor;
             const state = yield* Ref.make(emptyState);
 
@@ -531,44 +559,143 @@ export const ActionHostLive: Layer.Layer<
                     }
                 );
 
+            /** Resolve one live execution-registry binding, shared by invocation and consent preparation without inventory dispatch. */
+            const lookup = (action: string, options?: Pick<InvokeOptions, 'expectedActionVersion'>) =>
+                Effect.gen(
+                    /** Reject version drift before decoding and retain the exact registration for later availability checks. */ function* () {
+                        const entry = HashMap.get((yield* Ref.get(state)).actions, action);
+                        if (Option.isNone(entry)) return yield* new UnknownAction({ action });
+                        const { spec, prepare, gates, module } = entry.value;
+                        // Compare the intent with this captured entry, never a separate inventory lookup.
+                        // Resource-state expectedVersion is an unrelated policy gate.
+                        const expectedActionVersion = options?.expectedActionVersion;
+                        if (expectedActionVersion !== undefined && expectedActionVersion !== spec.version)
+                            return yield* new Forbidden({ action, reason: 'action-version-conflict' });
+                        yield* Effect.annotateCurrentSpan(Attributes.moduleId, module);
+                        yield* Effect.annotateCurrentSpan(Attributes.actionVersion, spec.version);
+                        return {
+                            spec,
+                            prepare,
+                            available: Effect.gen(
+                                /** Reject removed/replaced bindings and reevaluate every captured gate for this execution checkpoint. */ function* () {
+                                    // A same-name replacement is not the captured implementation; never authorize it using the earlier snapshot.
+                                    const current = HashMap.get((yield* Ref.get(state)).actions, action);
+                                    if (Option.isNone(current) || current.value !== entry.value)
+                                        return yield* new UnknownAction({ action });
+                                    for (const gate of gates) {
+                                        const evaluation = yield* flags.evaluate(gate);
+                                        if (!evaluation.value)
+                                            return yield* new Unavailable({ action, reason: 'flag-off' });
+                                    }
+                                }
+                            ),
+                        };
+                    }
+                );
+
+            /** Prepare only a bounded review projection; registered handlers and raw encoded input never escape this operation. */
+            const prepareApproval: ActionHost['Type']['prepareApproval'] = (
+                action,
+                input,
+                writeKey,
+                expectedActionVersion
+            ) =>
+                Effect.gen(
+                    /** Refresh authority and bracket codec/policy waits with the same availability gates as execution. */
+                    function* () {
+                        const caller = yield* identity.resolve(yield* Caller);
+                        const entry = yield* lookup(action, { expectedActionVersion });
+                        yield* entry.available;
+                        const review = yield* prepareApprovalIntent(entry, input, caller, writeKey).pipe(
+                            Effect.provideService(Authorizer, authorizer),
+                            Effect.provideService(ExecutionPolicy, policy),
+                            Effect.provideService(InputDigest, digest)
+                        );
+                        // Preparation is not consent: a later completion must independently resolve and compare this tuple again.
+                        yield* entry.available;
+                        return review;
+                    }
+                );
+
+            /** Complete only against current registration and current SQL identity; no caller-carried handler or policy is accepted. */
+            const completeApproval: ActionHost['Type']['completeApproval'] = (
+                action,
+                input,
+                principal,
+                review,
+                expiresAt,
+                settings
+            ) =>
+                Effect.gen(
+                    /** Serialize proof issue with live identity while keeping the target handler entirely outside consent completion. */
+                    function* () {
+                        // Optional construction does not grant a fallback: a host without routed SQL stores cannot issue any approval.
+                        const stores = yield* Effect.serviceOption(ApprovalStore);
+                        const identities = yield* Effect.serviceOption(IdentityStore);
+                        if (Option.isNone(stores) || Option.isNone(identities))
+                            return yield* new ApprovalFailure({ reason: 'unavailable' });
+                        return yield* stores.value.transaction(
+                            Effect.gen(
+                                /** Match fresh review data after transaction waits, then bracket issuance with current availability checks. */
+                                function* () {
+                                    const checked = yield* Schema.decode(ApprovalPreparation)(review, {
+                                        onExcessProperty: 'error',
+                                    }).pipe(
+                                        Effect.mapError(
+                                            /** A typed completion still crosses a trust boundary; parser diagnostics must not escape. */
+                                            () => new ApprovalFailure({ reason: 'invalid' })
+                                        )
+                                    );
+                                    const human = yield* identity.resolve(yield* Caller);
+                                    if (human.kind !== 'human' || human.onBehalfOf !== undefined)
+                                        return yield* new ApprovalFailure({ reason: 'denied' });
+                                    const actor = yield* identity.resolve(principal);
+                                    const entry = yield* lookup(action, {
+                                        expectedActionVersion: checked.binding.version,
+                                    });
+                                    const current = yield* prepareApproval(
+                                        action,
+                                        input,
+                                        checked.binding.writeKey,
+                                        checked.binding.version
+                                    ).pipe(Effect.provideService(Caller, actor));
+                                    const currentJson = canonicalJson(current);
+                                    const reviewedJson = canonicalJson(checked);
+                                    if (
+                                        Either.isLeft(currentJson) ||
+                                        Either.isLeft(reviewedJson) ||
+                                        currentJson.right !== reviewedJson.right
+                                    )
+                                        return yield* new ApprovalFailure({ reason: 'binding' });
+                                    yield* entry.available;
+                                    const record = yield* issueApproval(
+                                        entry,
+                                        input,
+                                        actor,
+                                        checked.binding.writeKey,
+                                        settings,
+                                        expiresAt
+                                    ).pipe(
+                                        Effect.provideService(Authorizer, authorizer),
+                                        Effect.provideService(IdentityResolver, identity),
+                                        Effect.provideService(ExecutionPolicy, policy),
+                                        Effect.provideService(InputDigest, digest),
+                                        Effect.provideService(IdentityStore, identities.value),
+                                        Effect.provideService(ApprovalStore, stores.value),
+                                        Effect.provideService(Caller, human)
+                                    );
+                                    // A removed/disabled registration cannot leave an issued proof behind on completion.
+                                    yield* entry.available;
+                                    return record;
+                                }
+                            )
+                        );
+                    }
+                );
+
             /** Execute against one captured registration, retaining durable invocation evidence and payload-free span outcomes. */
             const execute = <Wire>(action: string, input: Wire, options?: InvokeOptions) =>
-                executor(
-                    action,
-                    input,
-                    Effect.gen(
-                        /** Resolve a live binding and reject action-version drift before input preparation. */ function* () {
-                            const entry = HashMap.get((yield* Ref.get(state)).actions, action);
-                            if (Option.isNone(entry)) return yield* new UnknownAction({ action });
-                            const { spec, prepare, gates, module } = entry.value;
-                            // Compare the intent with this captured entry, never a separate inventory lookup.
-                            // Resource-state expectedVersion is an unrelated policy gate.
-                            const expectedActionVersion = options?.expectedActionVersion;
-                            if (expectedActionVersion !== undefined && expectedActionVersion !== spec.version)
-                                return yield* new Forbidden({ action, reason: 'action-version-conflict' });
-                            yield* Effect.annotateCurrentSpan(Attributes.moduleId, module);
-                            yield* Effect.annotateCurrentSpan(Attributes.actionVersion, spec.version);
-                            return {
-                                spec,
-                                prepare,
-                                available: Effect.gen(
-                                    /** Reject removed/replaced bindings and reevaluate every captured gate for this execution checkpoint. */ function* () {
-                                        // A same-name replacement is not the captured implementation; never authorize it using the earlier snapshot.
-                                        const current = HashMap.get((yield* Ref.get(state)).actions, action);
-                                        if (Option.isNone(current) || current.value !== entry.value)
-                                            return yield* new UnknownAction({ action });
-                                        for (const gate of gates) {
-                                            const evaluation = yield* flags.evaluate(gate);
-                                            if (!evaluation.value)
-                                                return yield* new Unavailable({ action, reason: 'flag-off' });
-                                        }
-                                    }
-                                ),
-                            };
-                        }
-                    ),
-                    options
-                ).pipe(
+                executor(action, input, lookup(action, options), options).pipe(
                     Effect.onExit(
                         /** Annotate both outer audit failure and captured execution failure through the same bounded outcome vocabulary. */ (
                             exit
@@ -660,6 +787,8 @@ export const ActionHostLive: Layer.Layer<
                     ),
                     invoke,
                     execute,
+                    prepareApproval,
+                    completeApproval,
                 })
             ).pipe(
                 Context.add(ActionInventory, {

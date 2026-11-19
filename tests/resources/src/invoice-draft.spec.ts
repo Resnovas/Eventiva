@@ -319,6 +319,10 @@ const fixture = <E>(dialect: Dialect, connection: Layer.Layer<SqlClient.SqlClien
                 Layer.succeed(Approvals, {
                     /** Draft preparation has no approval; no future issue/payment authority is supplied. */ get: () =>
                         Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** Draft tests cannot confer a future accepting proof-use capability. */ use: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** Refuse protected read callbacks when no authoritative proof transaction exists. */ transaction: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
                 }),
                 Layer.succeed(Authorizer, {
                     /** Support revocation exactly after tentative SQL persistence. */ canInvoke: (c, spec) =>

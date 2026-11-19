@@ -15,8 +15,8 @@
  */
 
 import type { ActionSpec, ApprovalPolicy, Input } from '@eventiva/contracts/action';
-import type { CallerIdentity } from '@eventiva/contracts/caller';
-import type { PlatformError } from '@eventiva/contracts/errors';
+import type { Authorizer, Caller, CallerIdentity } from '@eventiva/contracts/caller';
+import type { ActionFailed, Forbidden, InvalidInput, PlatformError } from '@eventiva/contracts/errors';
 import type { Receipt } from '@eventiva/contracts/receipt';
 import type { JsonValue, RunFence } from '@eventiva/contracts/storage';
 import { type Cause, Context, Data, Effect, Either, type Exit, Layer } from 'effect';
@@ -59,6 +59,30 @@ export interface InvokeOptions {
     readonly expectedActionVersion?: number | undefined;
     readonly expectedVersion?: string | undefined;
     readonly expectedState?: string | undefined;
+}
+
+/** A decoded invocation captured without erasing the handler's schema types. */
+export interface PreparedAction<R = never> {
+    readonly canonicalInput: Effect.Effect<string, InvalidInput>;
+    /** Authorize the captured decoded target using the host's freshly resolved caller and trusted authorizer. */
+    readonly authorize: (
+        authorizer: typeof Authorizer.Service,
+        caller: CallerIdentity
+    ) => Effect.Effect<void, Forbidden>;
+    /** Derive live execution requirements from the decoded target and untrusted intent, not from transport claims. */
+    readonly inspect: (
+        policy: typeof ExecutionPolicy.Service,
+        caller: CallerIdentity,
+        intent: InvokeOptions
+    ) => Effect.Effect<ExecutionRequirements, InvocationDenied>;
+    readonly run: Effect.Effect<JsonValue, ActionFailed, R>;
+}
+
+/** Heterogeneous registry capability, not an erased input/output handler. */
+export interface ActionBinding<R = never> {
+    readonly spec: ActionSpec;
+    /** Decode wire input and capture typed operations without executing the handler or granting invocation authority. */
+    readonly prepare: <Wire>(input: Wire) => Effect.Effect<PreparedAction<R>, InvalidInput>;
 }
 
 /** Preserve the executed Exit and its persisted invocation receipt, distinguishing durable mutation replay from a new execution. */
@@ -104,13 +128,23 @@ export interface Approval {
     readonly stepUp: boolean;
 }
 
-/** Never accepts an approval object from a transport: the transport supplies only an opaque id. */
+/** Live registered target supplied by the executor, never an action/hash/key selected by a proof adapter. */
+export interface ApprovalTarget {
+    readonly action: ActionBinding;
+    readonly input: JsonValue;
+    readonly writeKey: string;
+}
+
+/** Never accepts transport proof: resolve an opaque id against each live target and commit use with its successful effects. */
 export class Approvals extends Context.Tag('@eventiva/runtime/Approvals')<
     Approvals,
     {
-        /** Look up trusted approval evidence by opaque id; the executor validates its exact live binding and bounds. */ readonly get: (
-            id: string
-        ) => Effect.Effect<Approval, InvocationDenied>;
+        /** Look up exact live proof without consuming it; the executor independently checks the returned binding and bounds. */
+        readonly get: (id: string, target: ApprovalTarget) => Effect.Effect<Approval, InvocationDenied, Caller>;
+        /** Mark successful use within the accepting transaction, rechecking authority; replay never calls this operation. */
+        readonly use: (id: string, target: ApprovalTarget) => Effect.Effect<void, InvocationDenied, Caller>;
+        /** Pair approved-read effects, use and mandatory successful audit; mutation use joins Integrity's existing transaction. */
+        readonly transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | InvocationDenied, R>;
     }
 >() {}
 
@@ -248,6 +282,10 @@ export const FailClosed = Layer.mergeAll(
     Layer.succeed(Approvals, {
         /** Refuse opaque approval ids until a trusted evidence store is composed. */
         get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+        /** Missing durable lifecycle support cannot acknowledge successful proof consumption. */
+        use: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+        /** Never enter an approved read without an authoritative transaction owner. */
+        transaction: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
     }),
     Layer.succeed(ExecutionPolicy, {
         /** Reject execution when no live resource/readiness policy is available. */

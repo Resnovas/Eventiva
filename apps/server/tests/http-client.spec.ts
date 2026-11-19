@@ -39,7 +39,7 @@ import { makeOidcVerifier, oidcSessionId } from '@eventiva/integrations.oidc/tok
 import { identityStore } from '@eventiva/integrations.sql/identity';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { storage } from '@eventiva/integrations.sql/storage';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
@@ -199,6 +199,11 @@ const fixture = Effect.gen(
             Layer.succeed(Approvals, {
                 /** No test approval may satisfy an operation requiring protected authorization. */
                 get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** The same missing capability denies accepting use, not just admission. */
+                use: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** Preserve denial for protected reads without manufacturing a transaction. */
+                transaction: () =>
+                    Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
             })
         );
         /** Register identical definitions in discovery and the independently tenant-routed durable backend. */
@@ -337,15 +342,18 @@ const fixture = Effect.gen(
                     messagePollMs: 25,
                     replyPollMs: 25,
                 }),
-                initialize
+                initialize,
+                Effect.void,
+                dependencies
             ).pipe(
                 Layer.provide(
-                    router(
+                    sqlRouter(
+                        'postgres',
                         /** Another tenant cannot select this fixture's storage through a header or URL. */ (
                             candidate
                         ) =>
                             candidate === tenant
-                                ? Effect.succeed(store)
+                                ? Effect.succeed(sql)
                                 : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
                         /** Release checks retain the same independently owned route. */ (candidate) =>
                             candidate === tenant

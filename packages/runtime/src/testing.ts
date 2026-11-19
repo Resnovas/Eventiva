@@ -227,6 +227,20 @@ export const makeTestOnlyHarness = (initialIdentity: CallerIdentity) =>
                         )
                     ),
             });
+            /** Resolve the volatile map afresh for both lookup and accepting use; this fixture is not durable consent storage. */
+            const testApproval: Approvals['Type']['get'] = (id) =>
+                Ref.get(approvals).pipe(
+                    Effect.flatMap(
+                        /** Removing evidence models revocation rather than preserving an earlier successful observation. */
+                        (all) => {
+                            // No absent id can inherit another fixture approval, including during accepting use.
+                            const approval = all.get(id);
+                            return approval === undefined
+                                ? Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-revoked' }))
+                                : Effect.succeed(approval);
+                        }
+                    )
+                );
             const TestOnly = Layer.mergeAll(
                 Layer.succeed(IdentityResolver, {
                     /** Resolve the test-controlled current identity on every call, recording successful refreshes for assertions. */
@@ -258,22 +272,11 @@ export const makeTestOnlyHarness = (initialIdentity: CallerIdentity) =>
                 }),
                 Layer.succeed(Approvals, {
                     /** Resolve only currently present test approvals; deleting an id simulates immediate revocation. */
-                    get: (id) =>
-                        Ref.get(approvals).pipe(
-                            Effect.flatMap(
-                                /** Treat missing approval evidence as denial rather than reusing a stale previously returned object. */ (
-                                    all
-                                ) => {
-                                    // Consult the current map each time so removing a fixture approval really models revocation.
-                                    const approval = all.get(id);
-                                    return approval === undefined
-                                        ? Effect.fail(
-                                              new InvocationDenied({ action: '<approval>', reason: 'approval-revoked' })
-                                          )
-                                        : Effect.succeed(approval);
-                                }
-                            )
-                        ),
+                    get: testApproval,
+                    /** Recheck volatile evidence at acceptance; SQL tests separately prove durable use and rollback. */
+                    use: (id, target) => testApproval(id, target).pipe(Effect.asVoid),
+                    /** This explicit test-only adapter provides no SQL or durable approved-read transaction claim. */
+                    transaction: (effect) => effect,
                 }),
                 Layer.succeed(ExecutionPolicy, {
                     /** Read the test-controlled policy afresh so lock-wait and replay checks observe changes. */

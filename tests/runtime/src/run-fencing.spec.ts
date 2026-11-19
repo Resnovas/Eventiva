@@ -196,6 +196,13 @@ const fixture = (dialect: Dialect) =>
                             Layer.succeed(Approvals, {
                                 /** Unused approval references never grant permission. */ get: () =>
                                     Effect.fail(new InvocationDenied({ action: action.name, reason: 'missing-proof' })),
+                                /** Preserve missing-proof denial at the accepting-use capability too. */ use: () =>
+                                    Effect.fail(new InvocationDenied({ action: action.name, reason: 'missing-proof' })),
+                                /** No protected read transaction is available from this denying fixture. */ transaction:
+                                    () =>
+                                        Effect.fail(
+                                            new InvocationDenied({ action: action.name, reason: 'missing-proof' })
+                                        ),
                             }),
                             Layer.succeed(InputDigest, {
                                 /** Hash canonical private input with the approved local fixture boundary. */ digest: (

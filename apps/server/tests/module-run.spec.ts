@@ -31,7 +31,7 @@ import { Json, JsonValue, RoutingDenied, RunFence, Storage } from '@eventiva/con
 import { agentOutputLog } from '@eventiva/integrations.sql/agent-output';
 import { client } from '@eventiva/integrations.sql/postgres';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { localFile } from '@eventiva/integrations.sql/sqlite';
 import { storage } from '@eventiva/integrations.sql/storage';
 import { implement } from '@eventiva/runtime/action';
@@ -200,9 +200,10 @@ const moduleFixture = (withCatalog = true) =>
                 agentOutputLog(
                     /** Resolve the already authenticated disposable tenant only. */ () => Effect.succeed(sql)
                 ),
-                router(
+                sqlRouter(
+                    'postgres',
                     /** Never allow another tenant to borrow this storage capability. */ (value) =>
-                        value === tenant ? Effect.succeed(store) : Effect.fail(new RoutingDenied({ reason: 'denied' })),
+                        value === tenant ? Effect.succeed(sql) : Effect.fail(new RoutingDenied({ reason: 'denied' })),
                     /** Synthetic route grants do not replace normal Caller checks. */ () => Effect.void
                 ),
                 Layer.succeed(AgentRunAccess, {
@@ -226,7 +227,8 @@ const moduleFixture = (withCatalog = true) =>
                     profile,
                     /** A module-bound invocation must never initialize the admission default. */ () =>
                         Effect.fail(new RunRecoveryRequired()),
-                    registerAgentRuns.pipe(Effect.provide(security))
+                    registerAgentRuns.pipe(Effect.provide(security)),
+                    harness.TestOnly
                 ).pipe(Layer.provideMerge(security), Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)))
             );
             yield* Context.get(context, ClusterStatus).snapshot.pipe(

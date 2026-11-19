@@ -23,7 +23,7 @@ import type { ActionBinding } from './action.ts';
 import {
     Approvals,
     Audit,
-    type AuditUnavailable,
+    AuditUnavailable,
     ExecutionPolicy,
     type ExecutionRequirements,
     IdentityResolver,
@@ -33,6 +33,7 @@ import {
     type InvocationResult,
     type InvokeOptions,
     type Receipt,
+    type ApprovalTarget,
     canonicalJson,
 } from './invocation.ts';
 
@@ -66,8 +67,9 @@ const checkExecution = (
     hash: string,
     now: number,
     approvals: typeof Approvals.Service,
+    target: Effect.Effect<ApprovalTarget>,
     phase: 'admission' | 'commit' = 'admission'
-): Effect.Effect<void, InvocationDenied> =>
+): Effect.Effect<boolean, InvocationDenied> =>
     Effect.gen(
         /** Reject intent or approval that cannot justify execution at this instant, including replay revalidation. */ function* () {
             /** Retain only a safe gate identifier and action name in public denial evidence. */
@@ -112,9 +114,12 @@ const checkExecution = (
                       ? 'confirm'
                       : 'none';
             const required = Math.max(rank[spec.approval], rank[floor], rank[live.approval]);
-            if (required === 0) return;
+            if (required === 0) return false;
             if (intent.approvalId === undefined) return yield* deny('approval-required');
-            const approval = yield* approvals.get(intent.approvalId);
+            if (intent.idempotencyKey === undefined) return yield* deny('approval-write-key-required');
+            const approval = yield* approvals
+                .get(intent.approvalId, yield* target)
+                .pipe(Effect.provideService(Caller, caller));
             // Human evidence authorizes this principal, tenant, action version and canonical input, not an interchangeable request.
             if (approval.approver.kind !== 'human' || (agent(caller) && approval.approver.subject === caller.subject))
                 return yield* deny('human-approval-required');
@@ -147,6 +152,7 @@ const checkExecution = (
                 )
                     return yield* deny('approval-limit');
             }
+            return true;
         }
     );
 
@@ -198,6 +204,7 @@ export const makeExecutor = Effect.gen(
                                 )
                             );
                             let committed: { readonly receipt: Receipt; readonly replayed: boolean } | undefined;
+                            let approvalProtected = false;
                             /** Snapshot receipt metadata using the latest trusted caller/spec/hash, never raw input or failure details. */
                             const receipt = <A>(exit: Exit.Exit<A, InvocationError>, ended: number): Receipt => ({
                                 id,
@@ -231,17 +238,27 @@ export const makeExecutor = Effect.gen(
                                             // Intent contains only decoded scalars. Keep it private: each policy
                                             // inspection receives a disposable view, never the values we enforce.
                                             const live = yield* prepared.inspect(policy, caller, { ...intent });
-                                            yield* checkExecution(
+                                            // Reparse private canonical bytes for each provider call; it cannot mutate a later lookup's target.
+                                            const approvalTarget = Schema.decode(Json)(canonical).pipe(
+                                                Effect.orDie,
+                                                Effect.map(
+                                                    /** Supply exact registered wire input and the target key, never the consent transport key. */
+                                                    (wire) => ({ action: entry, input: wire, writeKey: intent.idempotencyKey ?? '' })
+                                                )
+                                            );
+                                            approvalProtected = spec.approval !== 'none' || live.approval !== 'none' || spec.risk !== 'routine';
+                                            let proofRequired = yield* checkExecution(
                                                 caller,
                                                 spec,
                                                 intent,
                                                 live,
                                                 inputHash,
                                                 yield* Clock.currentTimeMillis,
-                                                approvals
+                                                approvals,
+                                                approvalTarget
                                             );
                                             const protectedCall =
-                                                spec.sideEffect !== 'read' || spec.sensitive || spec.risk !== 'routine';
+                                                spec.sideEffect !== 'read' || spec.sensitive || approvalProtected;
                                             if (protectedCall) yield* audit.ready(action);
                                             // Integrity may wait for a competing transaction. Recheck inside
                                             // its callback, not just before waiting; a deadline or grant can expire.
@@ -268,7 +285,7 @@ export const makeExecutor = Effect.gen(
                                                         const current = yield* prepared.inspect(policy, currentCaller, {
                                                             ...intent,
                                                         });
-                                                        yield* checkExecution(
+                                                        const required = yield* checkExecution(
                                                             currentCaller,
                                                             entry.spec,
                                                             intent,
@@ -276,14 +293,47 @@ export const makeExecutor = Effect.gen(
                                                             inputHash,
                                                             yield* Clock.currentTimeMillis,
                                                             approvals,
+                                                            approvalTarget,
                                                             phase
                                                         );
+                                                        // A policy relaxation cannot erase consent that already authorized this accepting attempt.
+                                                        proofRequired = required || proofRequired;
                                                         yield* audit.ready(action);
                                                     }
                                                 );
                                             // Handler identity must match the admitted tuple, not the caller presented to a replacing resolver.
                                             const run = prepared.run.pipe(Effect.provideService(Caller, caller));
-                                            if (spec.sideEffect === 'read') return yield* run;
+                                            const use = Effect.gen(
+                                                /** Only accepting work consumes proof; fresh replay lookup does not create another lifecycle decision. */
+                                                function* () {
+                                                    // A failed use remains inside the paired transaction and rolls back domain and success evidence.
+                                                    if (proofRequired && intent.approvalId !== undefined)
+                                                        yield* approvals.use(intent.approvalId, yield* approvalTarget).pipe(
+                                                            Effect.provideService(Caller, caller)
+                                                        );
+                                                }
+                                            );
+                                            if (spec.sideEffect === 'read') {
+                                                if (!proofRequired) return yield* run;
+                                                const accepted = yield* approvals.transaction(
+                                                    Effect.gen(
+                                                        /** Approved reads have no dedup replay, but proof use and their successful audit still commit together. */
+                                                        function* () {
+                                                            // Neither handler waits nor a failed audit may consume a pending human consent.
+                                                            yield* revalidate('admission');
+                                                            const output = yield* run;
+                                                            yield* revalidate('commit');
+                                                            yield* use;
+                                                            const successful = receipt(Exit.succeed(output), yield* Clock.currentTimeMillis);
+                                                            if ((yield* audit.record(successful, false)) !== 'durable')
+                                                                return yield* new AuditUnavailable({ action });
+                                                            return { output, receipt: successful, replayed: false };
+                                                        }
+                                                    )
+                                                );
+                                                committed = accepted;
+                                                return accepted.output;
+                                            }
                                             const fence = yield* Effect.serviceOption(CurrentRunFence);
                                             const saved = yield* integrity.commit(
                                                 {
@@ -307,6 +357,7 @@ export const makeExecutor = Effect.gen(
                                                         const output = yield* run;
                                                         // Handler waits can outlive approval, grants or deadlines; denial here rolls back the paired transaction.
                                                         yield* revalidate('commit');
+                                                        yield* use;
                                                         return {
                                                             output,
                                                             receipt: receipt(
@@ -336,7 +387,7 @@ export const makeExecutor = Effect.gen(
                                 committed !== undefined && !committed.replayed && Exit.isSuccess(exit)
                                     ? committed.receipt
                                     : receipt(exit, yield* Clock.currentTimeMillis);
-                            // A new mutation's receipt was already committed in the A1 transaction.
+                            // An accepting mutation or approved read already committed its successful receipt with proof use.
                             // A replay is a new invocation and needs a new audit record after live revalidation.
                             const persisted =
                                 committed !== undefined && !committed.replayed && Exit.isSuccess(exit)
@@ -345,6 +396,7 @@ export const makeExecutor = Effect.gen(
                                           current,
                                           spec !== undefined &&
                                               spec.sideEffect === 'read' &&
+                                              !approvalProtected &&
                                               !spec.sensitive &&
                                               spec.risk === 'routine'
                                       );

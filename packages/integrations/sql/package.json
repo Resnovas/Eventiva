@@ -6,6 +6,11 @@
     "license": "SEE LICENSE IN LICENSE",
     "sideEffects": false,
     "exports": {
+        "./approval": {
+            "@eventiva/source": "./src/approval.ts",
+            "types": "./dist/approval.d.ts",
+            "default": "./dist/approval.js"
+        },
         "./agent-output": {
             "@eventiva/source": "./src/agent-output.ts",
             "types": "./dist/agent-output.d.ts",

@@ -282,6 +282,10 @@ const fixture = <E>(
                 Layer.succeed(Approvals, {
                     /** Unknown approval proofs fail closed; routine human metadata writes need none. */ get: () =>
                         Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** Missing proof cannot acknowledge successful approval use. */ use: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /** Keep protected read callbacks outside this denying fixture capability. */ transaction: () =>
+                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
                 }),
                 Layer.succeed(Authorizer, {
                     canInvoke: policy.canInvoke,
