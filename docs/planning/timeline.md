@@ -78,6 +78,8 @@ Implementation resumed at 2026-11-20T01:41:14Z, superseding the blocked state ab
 
 Local acceptance completed 2026-11-20T02:28:34Z: pre-commit static/full gates and all 20 uncached affected-feature proofs passed, including the unchanged backend replay assertion. Signed source commit `9e379bf6a5c6629752d14e822dd673ae51894c81` carries EVE-299 / Resnovas/Eventiva#1092 / RES-66 references. Graph/evidence publication and exact-head CI follow separately; this does not close EVE-299. The original failed collection remains preserved. Shared enforcement still requires staged adoption; the approved plugin fails the existing seven-day cooldown because it was published November 19. An exact-version exception or waiting until November 26 is the [owner prerequisite](https://linear.app/resnovas/issue/EVE-299#comment-56a2f790-605b-440a-a83c-c1ad84eb2e9a), independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027919574). No cooldown policy change or active-workspace dependency installation occurred.
 
+Published on November 20: signed [source 9e379bf6](https://github.com/Resnovas/Eventiva/commit/9e379bf6a5c6629752d14e822dd673ae51894c81) and [graph/evidence 5ca8059d](https://github.com/Resnovas/Eventiva/commit/5ca8059d15d582bdc0165b975db52fa0a17eeb86) are on main. This supersedes the local-only delivery state above; exact-head [application CI](https://github.com/Resnovas/Eventiva/actions/runs/44663334032) is running and subscribed. The separate EVE-261 timing owner is CLEARED for measured parallelism of two in non-feature stages and Android-to-web ordering, retaining stage order and the tested serial feature-evidence runner. Root serial settings were inherited, not a new correctness requirement; the EVE-299 registry wording is corrected here. No root edits collide. Shared JSDoc/cooldown, shared registry/evidence adoption, authored budget remediation and managed-guidance reduction remain upcoming; the whole issue stays open.
+
 ```mermaid
 flowchart LR
     FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
@@ -86,7 +88,7 @@ flowchart LR
     HouseSource["House merged; remaining fixes affect later adoption"] --> FullFunnel["Complete funnel acceptance"]
     FeatureProof --> FullFunnel
     FeatureProof --> Delivery["Passed: full gates and 20 affected proofs; signed source"]
-    Delivery --> Publication["Graph/evidence publication and exact-head CI"]
+    Delivery --> Publication["Published source and graph/evidence; hosted CI running"]
     Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
     SharedRules --> FullFunnel
     Delivery --> FullFunnel
