@@ -142,6 +142,21 @@ flowchart LR
     Graph --> Accepted["Required: exact-head acceptance before slot release"]
 ```
 
+### Replacement source qualified - November 20, 2026
+
+The capsule above is preserved historical intake, including its separate-fixture wording and pre-attempt state. Puck subsequently authorized one combined replacement source commit, funnel cleared the complete session/reporter/reuse subsystem omission, and a first cleared attempt on `515a62ff` failed the unchanged telemetry diamond timeout. Original signed G `d26ea6ca9dfa9389910db1aa45148db2f339efed`, fixture `57d4b784223bf9326a408fb050954006ce4a8880` and every failed measurement remain retained. Puck then authorized exactly one replacement attempt on published `0facfa440f22efd60146307129fcd10a5af423a5`, with only the additive timeline conflict resolved as published renewal followed by the exact G addition. Full-file byte equality passed. Old-base telemetry input isolation does not establish rebased closure identity: published renewal changes `packages/contracts/src/identity.ts`. Neither observation establishes a contention cause.
+
+At 17:38:26 UTC, signed local source `8a21dc28ab76e050dc45a9c9c758e619e797a2d2`, tree `1f3956f1fd0f627b8e69bb41400ec7247e54292c`, passed its genuine installed static-plus-affected hook in 500.545098 seconds; containing Git exited zero in 501.119586 seconds and the unchanged pinned fixture through verified cleanup exited zero in 503.525158 seconds. All 19 affected tasks succeeded: 11 cache hits and eight executions. Contracts executed fresh, hash `3660946553810285288`: 580 tests/35 files, lines 95.81%, branches 90.55%, functions 93% and statements 95.43% coverage. Runtime passed all 680 tests fresh; Resources 68, Storage 339 and Server 80 also passed fresh, with all 323 affected Node checks passing. Every budget, assertion and coverage gate remains unchanged. Sampled workload memory reached 6442405888 bytes including cache against the actual 6 GiB cap; memory-max events increased 357, with no OOM or kill. The [qualification report](https://ampcode.com/artifacts/integrated-g-medium-qualification-16f083b7-ec03-4624-a837-546b6086620d) retains exact Trace2, shared-cache history, reports and four-CPU resource observations.
+
+Current: prepare the separate clean-source Graphify/evidence commit and qualify its normal hook. Upcoming: direct-main push and independent exact-head CI acceptance. This local source pass is not graph acceptance, publication, whole-core closure or feature activation. The slot stays held and SQL has not started; the coordinator releases it only after accepted landing. EVE-276/#1064 and EVE-299/#1092 remain open. Production ancestry remains design-only; no session wrapper, CI reuse change, worker-cap change, test edit or dependency change is adopted.
+
+```mermaid
+flowchart LR
+    Source["Completed: replacement source, fresh Contracts and Runtime"] --> Graph["Current: separate clean graph and normal hook"]
+    Graph --> CI["Required: main push and exact-head acceptance"]
+    CI --> Slot["Only then: release G slot and start queued SQL"]
+```
+
 ## Core approval evidence reconciliation I
 
 START November 20, 2026: the [I owner](https://ampcode.com/threads/T-20b14e85-79c3-4f05-9bbd-92a8f7fc8a09) independently fetches published `origin/main` `c779e486a93d8c5b863b1958c50211745bae6f94` into isolated `agents/eve-275-packet-i`, not the coordinator's older local main or unpublished renewal. The full live discussion reaches terminal pagination; [EVE-275](https://linear.app/resnovas/issue/EVE-275) remains In Progress and actual [GitHub #1063](https://github.com/Resnovas/Eventiva/issues/1063) OPEN with normal linkback6988293684. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-48cb133a-d640-4538-8c9f-96f9ec8e12f8) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036520194). This bounded inspection does not refresh the historical issue capture.
