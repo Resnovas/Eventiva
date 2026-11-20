@@ -88,7 +88,7 @@ describe(
             return (result?.messages ?? []).map(
                 /** Preserve message wording where the assertion must distinguish a cycle from a generic forbidden edge. */ (
                     message
-                ) => [message.ruleId, message.message]
+                ) => [message.ruleId, message.message] as const
             );
         };
 
@@ -116,10 +116,7 @@ describe(
                 messages
                     .map(/** Compare enforcement identities rather than vendor diagnostic prose. */ ([rule]) => rule)
                     .sort()
-            ).toEqual([
-                '@nx/enforce-module-boundaries',
-                'no-restricted-imports',
-            ]);
+            ).toEqual(['@nx/enforce-module-boundaries', 'no-restricted-imports']);
         });
 
         it('F10 refuses hard-coded strings in client JSX', /** Keep visible client copy on the localization path. */ async () => {
@@ -146,6 +143,95 @@ describe(
                         message.ruleId
                 )
             ).toEqual(['no-restricted-syntax']);
+        });
+
+        it('routes React lifecycle work to bootstrap or event owners in every active scope', /** Exercise import policy through ESLint, including aliases and alternate loading forms. */ async () => {
+            // An unrelated architecture diagnostic must not substitute for the corrective lifecycle restriction.
+            const correction =
+                'Initialize app-owned services in bootstrap before rendering product content. Derive render state or update its owner from events; use named React imports, never useEffect.';
+            for (const file of [
+                'apps/client/src/probe.ts',
+                'apps/server/src/probe.ts',
+                'packages/runtime/src/probe.ts',
+                'packages/ui-modules/src/probe.ts',
+                'tests/boundaries/src/probe.ts',
+            ]) {
+                for (const code of [
+                    "export { useEffect } from 'react';",
+                    "import { useEffect as lifecycle } from 'react'; export { lifecycle };",
+                    "import * as React from 'react'; export const lifecycle = React.useEffect;",
+                    "import React from 'react'; export const lifecycle = React.useEffect;",
+                ]) {
+                    const diagnostics = await rulesInText(file, code);
+                    expect(
+                        diagnostics.some(
+                            /** Require the corrective import rule even where other architecture rules also reject React. */ ([
+                                rule,
+                                message,
+                            ]) => rule === 'no-restricted-imports' && message.endsWith(correction)
+                        )
+                    ).toBe(true);
+                }
+                for (const [code, expected] of [
+                    ["export const react = import('react');", 'no-restricted-syntax'],
+                    ["export const react = require('react');", 'no-restricted-modules'],
+                ]) {
+                    const diagnostics = await rulesInText(file, code ?? '');
+                    expect(
+                        diagnostics.some(
+                            /** Alternate loading cannot recover the forbidden hook through a namespace. */ ([
+                                rule,
+                                message,
+                            ]) => rule === expected && message.endsWith(correction)
+                        )
+                    ).toBe(true);
+                }
+            }
+            expect(
+                await rulesInText(
+                    'apps/client/src/probe.ts',
+                    "export { useState, useSyncExternalStore, createElement } from 'react';"
+                )
+            ).toEqual([]);
+        });
+
+        it('rejects zero-delay UI timers with a correction while preserving real delays and local methods', /** Exercise actual frontend policies, lexical shadows and existing package restrictions together. */ async () => {
+            // Each input isolates the timer rule; an unrelated parse or empty-body error is not proof.
+            for (const file of ['apps/client/src/timer-probe.ts', 'packages/ui-modules/src/timer-probe.ts']) {
+                for (const call of [
+                    'setTimeout(done, 0)',
+                    'setTimeout(done)',
+                    'globalThis.setTimeout(done, 0)',
+                    'window["setTimeout"](done, 0)',
+                    'self.setTimeout(done, -0)',
+                    'globalThis.setTimeout?.(done, +0)',
+                ]) {
+                    expect(await rulesInText(file, `export const defer = (done: () => void) => ${call};`)).toEqual([
+                        [
+                            'eventiva/no-zero-delay-ui-timer',
+                            'Do not defer UI state with a zero-delay timer. Keep state in one owner and update it from the event; use scoped Effect scheduling for genuine timed work.',
+                        ],
+                    ]);
+                }
+                for (const code of [
+                    'export const defer = (done: () => void) => setTimeout(done, 20);',
+                    'export const defer = (args: [() => void, number]) => setTimeout(...args);',
+                    'export const update = (done: () => void) => done();',
+                    'export const local = (setTimeout: (value: number, delay: number) => number) => setTimeout(1, 0);',
+                    'export const local = (window: { setTimeout: (value: number, delay: number) => number }) => window.setTimeout(1, 0);',
+                ]) {
+                    expect(await rulesInText(file, code)).toEqual([]);
+                }
+            }
+            expect(
+                await rulesInText('packages/ui-modules/src/barrel-probe.ts', "export * from './registry.ts';")
+            ).toEqual([['no-restricted-syntax', 'No barrels: export each name explicitly.']]);
+            expect(
+                await rulesInText(
+                    'apps/server/src/timer-probe.ts',
+                    'export const defer = (done: () => void) => setTimeout(done, 0);'
+                )
+            ).toEqual([]);
         });
     }
 );
@@ -199,7 +285,7 @@ describe('package hygiene', /** Verify portable package exports and historical-s
         manifests.map(
             /** Name each hygiene case with its owning package while retaining its absolute read path. */ (file) => [
                 relative(root, dirname(file)),
-                file
+                file,
             ]
         )
     )(

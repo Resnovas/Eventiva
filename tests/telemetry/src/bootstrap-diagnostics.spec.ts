@@ -14,40 +14,22 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from '@effect/vitest';
-import { TelemetrySinkFailure } from '@eventiva/contracts/observability';
+import { describe, expect } from '@effect/vitest';
 import { Effect } from 'effect';
+import { childTests, runChild as probe } from './child-process.ts';
 
-const workspace = fileURLToPath(new URL('../../../', import.meta.url));
 const preload = './tests/telemetry/fixtures/bootstrap-diagnostics.mjs';
-
-/** Execute a real child with the production ten-second bound and isolated configuration. */
-const probe = (args: ReadonlyArray<string>, environment: Readonly<Record<string, string>> = {}, journal = true) =>
-    Effect.try({
-        /** Preserve default signal handling even when the diagnostic descriptor is absent. */
-        try: () =>
-            spawnSync(process.execPath, ['--conditions=@eventiva/source', ...args], {
-                cwd: workspace,
-                encoding: 'utf8',
-                timeout: 10000,
-                maxBuffer: 65536,
-                env: { NODE_NO_WARNINGS: '1', ...environment },
-                stdio: journal ? ['pipe', 'pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe'],
-            }),
-        /** Do not expose raw spawn errors or arguments through the Effect error channel. */
-        catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
-    });
+const childTest = childTests();
 
 /** Remove only generated timestamps and trace identities when comparing two independent server runs. */
 const stableOutput = (output: string) =>
     output.replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<timestamp>').replace(/\b(?:trace|span)=[a-f0-9]+/g, '<correlation>');
 
-describe('bootstrap diagnostic observer', /** Exercise real descriptors and process termination, not mocked lifecycle callbacks. */ () => {
+describe('bootstrap diagnostic observer', /** Exercise real descriptors and process termination, not mocked lifecycle callbacks. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
     // These real children distinguish normal drain, diagnostic noninterference and forced termination; none implies the others.
-    it.effect(
+    childTest(
         'exits a failed bootstrap while native workers await main-thread garbage collection',
+        [10000],
         /** Exercise the actual composition and Node teardown under a controlled native allocation stressor. */ () =>
             Effect.gen(
                 /** Keep the same ten-second process deadline and safe failure contract as ordinary bootstrap tests. */ function* () {
@@ -85,8 +67,9 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
         { EVENTIVA_CLUSTER_PROFILE: 'SECRET_BAD_JSON' },
         { telemetry_enabled: 'false', EVENTIVA_CLUSTER_PROFILE: 'SECRET_BAD_JSON' },
     ]) {
-        it.effect(
+        childTest(
             `preserves server output and exit with settings ${Object.keys(environment).join(',') || 'default'}`,
+            [2300, 2300],
             /** Compare observed and unobserved execution without relaxing existing server assertions. */ () =>
                 Effect.gen(
                     /** Keep the observer's side channel independent from stdout, stderr and process results. */ function* () {
@@ -133,8 +116,9 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
         );
     }
 
-    it.effect(
+    childTest(
         'ignores missing descriptors and malformed or repeated phase payloads',
+        [1000, 1000],
         /** Diagnostic failure cannot change a child's successful business result. */ () =>
             Effect.gen(
                 /** Flood the actual subscriber with untrusted values and keep one closed phase. */ function* () {
@@ -171,8 +155,9 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
             )
     );
 
-    it.effect(
+    childTest(
         'retains the last phase when the actual ten-second timeout sends SIGTERM',
+        [10000],
         /** A deliberately stuck control must retain evidence without catching or changing SIGTERM. */ () =>
             Effect.gen(
                 /** Use a synthetic keepalive, not a modified production bootstrap, to prove timeout capture. */ function* () {

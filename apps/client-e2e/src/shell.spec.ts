@@ -17,8 +17,8 @@
 import { expect, test } from '@playwright/test';
 
 test('the exported web client renders the localised shell with safe flag defaults', /** Verify the exported bundle localizes ICU messages without browser errors or an enabled optional banner. */ async ({
-    page
-}) => {
+    page,
+}, testInfo) => {
     const errors: Array<string> = [];
     page.on(
         'pageerror',
@@ -34,10 +34,12 @@ test('the exported web client renders the localised shell with safe flag default
 
     await page.goto('/');
 
+    await expect(page.getByRole('main')).toHaveCount(1);
     await expect(page.getByRole('heading', { name: 'Eventiva' })).toBeVisible();
     // An ICU plural message, formatted through react-intl and Intl.PluralRules.
     await expect(page.getByTestId('modules')).toHaveText('0 modules installed');
     // No provider is configured, so the optional banner keeps its safe default: off.
     await expect(page.getByTestId('offline-banner')).toHaveCount(0);
+    await testInfo.attach('browser-errors', { body: JSON.stringify(errors), contentType: 'application/json' });
     expect(errors).toEqual([]);
 });

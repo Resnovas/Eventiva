@@ -191,7 +191,7 @@ Run the focused regression with `pnpm exec vitest run --config tests/telemetry/v
 
 ## Diagnose bounded bootstrap subprocess failures
 
-The server process tests keep their 10000 ms child timeout, default SIGTERM behavior, 65536-byte output bound, isolated environment and existing output/redaction assertions. They preload `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` only for testing. The preload writes a deduplicated, closed phase journal of at most 4096 bytes to descriptor 3, never to stdout or stderr. Parent assertion context adds the spawn timestamp and elapsed duration. It validates the entire journal before including it in a failing assertion message; missing, malformed and oversized journals become fixed states with no raw content. Expected exit 1 is not itself a reason to print diagnostics. Successful tests remain silent.
+The server process tests retain default SIGTERM behavior, the 65536-byte output bound, isolated environment and existing output/redaction assertions. Ordinary children now have measured 2300 ms budgets; the intentional stuck/native-pressure controls retain 10000 ms. They preload `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` only for testing. The preload writes a deduplicated, closed phase journal of at most 4096 bytes to descriptor 3, never to stdout or stderr. Parent assertion context adds the spawn timestamp and elapsed duration. It validates the entire journal before including it in a failing assertion message; missing, malformed and oversized journals become fixed states with no raw content. Expected exit 1 is not itself a reason to print business diagnostics. The harness emits mandatory safe numeric timing even when the test succeeds.
 
 Run the complete telemetry suite from the repository root:
 
@@ -199,13 +199,13 @@ Run the complete telemetry suite from the repository root:
 pnpm exec vitest run --config tests/telemetry/vitest.config.mts
 ```
 
-For example, an opted-out invalid-profile assertion failure can report a parent `spawnedAtMs` and `elapsedMs`, status null, signal SIGTERM, errorCode ETIMEDOUT, stdout length and recognized event names, and a validated journal containing `child-start`, module milestones, `root-start` and `bootstrap-failure-logged`. Journal timestamps are integer Unix-epoch milliseconds derived from each process's monotonic performance clock. Subtract the parent spawn timestamp to estimate when each child phase occurred within the ten-second budget. This is phase evidence, not a CPU profile or a proof of a leaked handle.
+For example, an opted-out invalid-profile assertion failure can report a parent `spawnedAtMs` and `elapsedMs`, status null, signal SIGTERM, errorCode ETIMEDOUT, stdout length and recognized event names, and a validated journal containing `child-start`, module milestones, `root-start` and `bootstrap-failure-logged`. Journal timestamps are integer Unix-epoch milliseconds derived from each process's monotonic performance clock. Subtract the parent spawn timestamp to estimate when each child phase occurred within its declared budget. This is phase evidence, not a CPU profile or a proof of a leaked handle.
 
 `module-first`, `module-64`, `module-256` and `module-1024` are completed source-load counts. `entry-source-loaded` and `effect-source-loaded` mean source became available, not that module evaluation completed. `root-start` occurs when the executable Effect starts, before bootstrap layer acquisition. On failure, `main-use-exit:failure` is before main-service release, `main-services-released:failure` is after that release and before main telemetry release, and `main-telemetry-released:failure` is after the nested telemetry scope. Acquisition failures can skip inner markers. `bootstrap-failure-logged` means the sanitized log Effect returned; the asynchronous sink may not yet have written stdout. `bootstrap-use-exit:failure` precedes outer bootstrap release. `root-exit:failure` follows that release but precedes runMain's root observer and exit selection. Success and interruption use the corresponding closed outcome suffixes. `process-before-exit` observes natural event-loop drain; `process-exit-success` or `process-exit-failure` observes Node's exit event. Default SIGTERM does not emit those exit events; the parent result supplies the signal. A missing marker means unobserved, not completed, and cannot by itself identify which finalizer or scheduler operation stalled.
 
 No subscribers means no lifecycle publication and unchanged effect boundaries from the exit observers. The test preload installs no timers, workers, signal handlers, forced exit, retry or exporter. Descriptor write failure disables capture without failing bootstrap. The channel carries phase strings only, never Cause, configuration, paths, raw errors, telemetry payloads or process handles. This diagnostic-only observation adds no application setting, production telemetry export or release authorization.
 
-EVE-261 remains an investigation, not a verified timeout fix. Historical output alone does not distinguish a late bootstrap record near the ten-second deadline from a long post-log shutdown stall. The bounded journal is intended to make that distinction on the next actual occurrence. Keep the original termination bound and assertions; do not rerun CI or weaken checks to hide a recurrence.
+EVE-261 remains an investigation, not a verified correction of the historical aggregate timeout. Historical output alone does not distinguish slow startup from a post-log shutdown stall. The bounded journal is intended to make that distinction on the next actual occurrence. Keep the measured child budgets, original enclosing limits and assertions; do not rerun CI or weaken checks to hide a recurrence.
 
 ## Configure bounds
 
@@ -256,3 +256,79 @@ The focused tests cover types, compiler-resolved direct/transitive/type-only/ali
 On 2026-11-17, the owner approved the existing private Effect 3.22.4 Logger/Tracer callback boundaries described here under EVE-263. The approval permits required vendor `any`/`unknown` only in this extremely limited scope, where opaque input is the correct type and is narrowed or discarded before use. It does not permit erased public types, unchecked casts, suppressions or unrelated opaque inputs. Application services, errors, environments, Config and exporter declarations remain concrete; no authored explicit any/unknown, assertion or suppression is used to hide these inputs. The private built-in logger callback at `packages/runtime/src/telemetry.ts:217-249` receives vendor `Logger.Options` (`effect/dist/dts/Logger.d.ts:54-62`): opaque messages, Cause and annotations. It accepts one Schema-checked code, narrows only finite approved string attributes, and inspects Cause emptiness only. Logging the payload is forbidden.
 
 The private `CentralTracer.context` at line 94 implements the vendor generic callback whose ignored RuntimeFiber uses vendor any (`Tracer.d.ts:24`). Span construction/attribute/end callbacks at runtime lines 254-312 implement vendor opaque attributes and Exit (`Tracer.d.ts:37,72,97,101-103`). The generic callback preserves its return type; no replacement placeholder type is invented. The original Context and rich parent span are discarded before calling the ambient tracer: only a fresh empty Context, validated identifier-only external parent, no links, safe name and stack-disabled options reach it. Attribute values are narrowed; events/links are dropped; only Exit success is inspected and the underlying span is ended with Exit.void. The test suite canaries these vendor-facing context/parent inputs as well as sink output. These are approved private adaptations to Effect's required signatures, not approval of an OTel adapter, arbitrary ambient exporter, production ingestion or opaque public contracts. Combined cycle/type/build gates remain required. Any expansion beyond these existing callbacks requires a separate review; the source/declaration checks are not weakened by this approval.
+
+## Distinguish aggregate test deadlines from child termination
+
+The [2026-11-20 investigation](core-qualification/telemetry-timeouts.md) identifies
+two preserved failures of Vitest's default 5000 ms whole-test deadline, not
+recorded failures of the real children's 10000 ms lifetime bound. Each case
+launches two children serially. The runner can reject after synchronous work
+returns; an elapsed duration above 5000 ms is not by itself a child hang.
+An asynchronous rewrite alone also cannot make over-budget serial work pass.
+Historical slow phases and host contention remain unknown. Preserve failed-run
+evidence and the existing gates; do not treat an unchanged green retry as a
+repair or infer recurrence of the separately proven native forced-exit defect.
+
+Jonathan subsequently confirmed both section and aggregate budgets. The
+telemetry probe harness now uses one declared child-budget vector checked at
+registration and execution against the unchanged enclosing limit. Budgets plus
+100 ms cleanup per child must fit strictly below that limit. Use `childTests`
+and `runChild` from `tests/telemetry/src/child-process.ts`; direct subprocess
+imports in telemetry specs are rejected by required lint. Existing IPC/storage
+and tooling suites are queued for coordinated migration to the same core, not
+permanently exempted.
+
+`telemetry.bootstrap.child-timing` uses the existing Flags service. Timing is
+ON by default in tests; a false or absent evaluation fails before spawn. Its
+declaration retains `safeDefault: false` outside the test harness. There is no
+environment opt-out, remote provisioning or new dependency. Every child emits
+closed JSON timing records for spawn, output, available fd3 lifecycle phases,
+exit and total. Correlate the numeric start timestamp and child ordinal;
+never add raw command/configuration/output to these records.
+
+Run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts` for the
+complete suite with mandatory timing and unchanged coverage. Root `check`
+proves the actual lint restriction rejects original/alternate subprocess
+imports and accepts the harness and unrelated built-ins. See the canonical
+report for measured budgets, retained red evidence and unresolved historical
+causation. A green measured run is still not a recovered historical cause.
+
+## Run the complete verification pipeline
+
+Prepare the documented disposable PostgreSQL test fixture, then run:
+
+```sh
+node --run verify
+```
+
+The default Nx budget is two tasks, one per available CPU on the measured host.
+The integrated funnel remains static-first and fail-fast: builds, lint and
+typecheck, source/emitted boundaries, root check, boundary/type/runner proofs,
+aggregate test/build/parity, smoke, then affected-feature evidence. Independent
+tasks within the non-feature Nx stages may overlap. Feature-evidence commands
+and their Nx prerequisites remain explicitly serial; their runner rejects
+conflicting concurrency overrides. Android export depends on web export because both existing Expo
+commands clear the shared Metro cache. Browser smoke waits for web output;
+server smoke and i18n remain independent. Do not remove these dependency
+barriers or turn off coverage to shorten the gate.
+
+The [same-host comparison](core-qualification/telemetry-timeouts.md#comparable-parallelism-and-independent-smoke---2026-11-20)
+disabled Nx caching at both two and four tasks, kept the same fixture and
+20-minute limit, and recorded actual task intervals on the earlier seven-stage
+candidate at base `4e227d94`. Two passed every stage
+in 15m24.58s. Four failed five test targets in 15m35.82s, despite passing smoke;
+it is not an accepted faster configuration. Nx cache disabling did not flush
+OS/compiler caches. Peak descendant RSS was 1011844/785824 KiB respectively,
+not an aggregate host-memory measurement. The earlier 17m04.72s serial-smoke
+candidate is a separate local pass, not a controlled ratio against a cached run.
+These historical measurements do not qualify the subsequently integrated
+static-first funnel, which requires its own complete execution.
+
+If a higher task budget causes child, compiler-edge or database-test deadlines,
+retain the failed evidence and use the measured passing budget. Do not raise
+limits, skip controls or substitute an unchanged retry for an explanation.
+The manifest proof checks the orchestration contract; actual Nx history proves
+the two exports did not overlap while independent smoke did. New smoke targets
+still need their own state/resource-isolation review. Local verification and
+read-only startup profiling are not publication, production readiness or whole
+EVE-261/Core acceptance. Managed house adoption still requires normal merge/sync.

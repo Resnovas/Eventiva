@@ -197,6 +197,8 @@ For example, frontend extensions may import contracts/schema but not runtime or 
 
 Gates: `node --run check`; `pnpm nx sync:check`; `pnpm nx run-many -t lint typecheck test build parity`; `pnpm nx run-many -t smoke` (server start, `client:i18n`, Android export with Hermes bytecode, web export plus Playwright). `node --run verify` runs all of them. CI's required `application check` aggregates `.github/workflows/ci.yml`.
 
+Installed-hook regression: `node --test --test-name-pattern='installed worktree hook' tools/verification/run.test.mjs` commits through the real hook in a linked worktree, creates independent nested histories in both verification stages and checks the exact outer committed tree. The runner clears Git-local environment only for verification children; its own staged-index guards retain that environment and still reject mutation. No option, bypass or production change is introduced. See the canonical feature registry for setup and failure handling.
+
 Example, compiled as `apps/server/src/status.ts`: a portable specification and the backend module that implements it.
 
 ```ts
@@ -248,7 +250,11 @@ Feature flags: this foundation adds the flag plumbing and one client flag, `clie
 
 Provider diagnostic remediation retains existing recovery/default/teardown behavior while replacing raw vendor causes with bounded operation/reason literals. OpenFeature errors retain initialize|close and provider-failed; server-provider shutdown retains shutdown and shutdown-failed. Never log vendor exception payloads to diagnose provider configuration.
 
-Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. Run frozen install, nx sync:check and verify. verify and CI build declared outputs before tools/resources/boundaries.mjs plus its fixtures, run the complete Nx gate serially, then audit public declarations; the dependency-free house check stays separate. Process conformance intentionally imports the built server, so graph resolution requires those outputs even on a clean checkout. Serial execution bounds memory without skipping targets or weakening coverage. The checker covers disconnected source, type-only/alias edges, manifest cycles and syntax escapes, not vendor-opacity approval or production acceptance. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
+Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. After coding, run `node --run verify:static` before documentation: dependency builds, Nx lint/typecheck, source audit and emitted-declaration audit. Independent root stages use the two-task Nx default and normal input-hashed caching, with no additional options or runtime flags. The feature-evidence runner and its Nx prerequisites remain explicitly serial. Process conformance intentionally imports the built server, so static graph resolution requires those outputs even on a clean checkout. Run frozen install and `pnpm nx sync:check`; inspect `pnpm nx sync` changes when references drift. Full `verify` runs static checks first, then the unchanged house/documentation gate, regression fixtures, Nx tests/builds/parity, smoke and affected-feature proof. CI retains trusted-event PostgreSQL tests and adds the owner-approved isolated PR fixture, not shared credentials or data. A static pass cannot certify full PR integration, production acceptance or native devices. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
+
+The frontend `eventiva/no-zero-delay-ui-timer` rule rejects direct/global-member `setTimeout(updateSelection, 0)` and omitted-delay calls with a corrective state-ownership diagnostic. Invoke the owning event operation directly or remove redundant state; genuine timed work uses scoped Effect scheduling. The real-config boundary suite tests both UI scopes, computed literal properties, optional calls, signed zero and retained export restrictions. Local shadows/nonzero delays/backend/spread calls are controls; aliases and dynamic delay values are not analyzed. Run `pnpm nx test @eventiva/boundaries-tests --skip-nx-cache`. Active-source React imports reject useEffect without exceptions and direct the author to bootstrap or event-owned state. The client registers a shell synchronously, starts flags outside React and exposes product content only after readiness. Its useSyncExternalStore subscription reads one primitive snapshot. Fatal acquisition shows a bounded alert; scoped provider recovery retains safe defaults. Interruption releases providers and clears readiness; tests distinguish registration from asynchronous acquisition and verify failure/cleanup.
+
+The canonical [feature registry](../../../docs/verification/registry.md) records interface reachability, executable commands and limitations. `node tools/verification/run.mjs --base HEAD` defaults to local changes; `--staged` selects index paths and `--check` validates coverage without execution. Source-derived inventory and resolved reverse imports select affected interfaces. Manifests bind source/tree/registry digests, commands, test outcomes and evidence files; empty or malformed proof fails. Evidence runs one feature and one Nx prerequisite at a time; conflicting parallel overrides fail, and the manifest records this tested scheduling contract. Setup installs the pre-commit guard without replacing commit-msg or a foreign hook. It runs static then full verify and rejects unstaged/untracked divergence or index mutation. CI evidence is synthetic, affected-only, seven-day retention and the existing audience; no deployment or external ingestion follows. Shared-house adoption is pending separately and cannot replace the AST documentation ratchet/strict-zero gate.
 
 EVE-263 schema aliases: `checkTypeEscapes` binds each file with the installed TypeScript checker without loading vendor declarations. Import module/original member plus lexical symbol identity identify `Schema as S` from `effect`, namespace imports from `effect/Schema`, named `Unknown`/`Any` imports and direct or local re-exports, qualified type references and import-type queries. `AnyNoContext` is inside the vendor's `Schema` type namespace, not a top-level export. Both modes reject these erased contracts with the existing diagnostic. Typed `S.Struct({ name: S.String, count: S.Number })` remains valid; unrelated application exports/objects and lexical shadows are positive controls. Keep the legacy unbound `Schema.Unknown` diagnostic. This is file-local import provenance, not transitive value-flow soundness. No new option, dependency, flag or policy is introduced; run the existing Node fixtures and both CLI modes after builds. See the complete example in `docs/foundation.md`, "Erased schema import aliases (EVE-263)".
 
@@ -382,6 +388,10 @@ and compiling two-engine `tests/storage/src/approval.spec.ts` for exact grant
 example, scope, options/defaults, regression/gate evidence and troubleshooting.
 The existing consent capability remains default false; no production event
 adapter, renewal, retention cleanup or activation is implied.
+
+### Concurrent consent and HTTP fixture proof
+
+The `backend-fixture-isolation` entry in `docs/verification/registry.md` runs `approval-consent.spec.ts` and `http-client.spec.ts` with two Vitest workers against disposable PostgreSQL. Nx task serialization does not serialize files inside Vitest. The two fixtures previously both listened on 34565; this bounded repair isolates consent on 34566 while retaining every authorization, mutation and replay assertion. The explicit concurrent command failed four tests before the repair and passes all seven after it. Full verification still owns coverage. This fixes the observed collision, not arbitrary fixed-port safety; the requested port-zero fixture migration and corrective enforcement are follow-up work, without permission to weaken the validated deployment-profile contract or release a reserved port before rebinding it.
 
 ---
 
@@ -794,7 +804,7 @@ No additional retry, backlog, exporter or production listener exists. Bootstrap 
 
 The executable's custom `NodeRuntime.runMain` teardown sets `process.exitCode=1` only for a failed, non-interruption root after every application scope closes. Do not call the runtime's forced-exit callback for that branch: pinned Node 24.22.3 can deadlock joining a V8 worker awaiting main-thread GC (nodejs/node#64274). Success and interruption still call the original callback with 0, preserving its signal behavior. No dependency, retry, timeout, production stress flag, logger or scope/fiber ownership changes. See [native-shutdown evidence and reproduction](../../../docs/telemetry.md#drain-failed-roots-without-forced-native-exit); CI's early exit event alone does not identify its native worker. The real-server stress regression fails before the change at the same 10000 ms deadline and passes after with exit 1, safe output, empty stderr and natural beforeExit. Keep finite pressure in `tests/telemetry/fixtures/bootstrap-exit-pressure.mjs`, not application code. Future resources still need correct scoped cleanup; natural drain cannot hide leaked handles. Earlier cause-unknown notes describe the initial diagnostic checkpoint, not this later native reproduction.
 
-`tests/telemetry/src/server.spec.ts` preloads `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` through Node's `--import`. Preserve its 10000 ms timeout, 65536 maxBuffer, default SIGTERM, isolated environment and all existing exit/output/redaction/file-drain assertions. Descriptor 3 is a test-only, deduplicated, at-most-4096-byte journal. Parent assertion context includes monotonic elapsed time, Unix-epoch spawn time and only a completely Schema-validated bounded journal; absence, invalid content and oversize are fixed states. Existing stdout/stderr summaries retain only lengths and at most eight recognized event names. Capture failure never becomes a bootstrap prerequisite or successful-test output.
+`tests/telemetry/src/server.spec.ts` preloads `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` through Node's `--import`. Ordinary measured child budgets are 2300 ms; intentional stuck/native-pressure children retain 10000 ms. Preserve 65536 maxBuffer, default SIGTERM, isolated environment and all existing exit/output/redaction/file-drain assertions, with the unchanged enclosing limits. Descriptor 3 is a test-only, deduplicated, at-most-4096-byte journal. Parent assertion context includes monotonic elapsed time, Unix-epoch spawn time and only a completely Schema-validated bounded journal; absence, invalid content and oversize are fixed states. Existing stdout/stderr summaries retain only lengths and at most eight recognized event names. Capture failure never becomes a bootstrap prerequisite. The harness always emits safe numeric timing, including successful tests, never raw business diagnostics.
 
 The private `eventiva.bootstrap.lifecycle` diagnostics_channel publishes closed phase strings only when subscribed. Exit observers return the original effect unchanged without subscribers. They preserve the supervised fork/Fiber.await/flatten structure, services, results and finalizer ownership. The markers bracket main use, main-service release, nested telemetry release, completion of the bootstrap log Effect, outer bootstrap release and root Effect Exit. Module hooks observe source availability/count milestones, not evaluation completion; `root-start` follows module evaluation. The root-exit marker is after Bootstrap release but before runMain's observer/teardown. Node beforeExit/exit listeners add no scheduled work and do not catch signals. Parent signal is authoritative on timeout. Do not claim an absent event proves finalizer completion, a log call means stdout was written, or root-exit means runMain teardown finished.
 
@@ -847,6 +857,76 @@ The additive [export contract and security guide](02_export.md) supplies `contra
 `telemetry.export.enabled` defaults false and is rechecked with current authority for every write and flush. Bind one pipeline to authoritative tenant/module/version/generation/purpose/profile/operation and an approved opaque destination pseudonym. Deny Restricted/Vault and non-ordinary scopes independently of record claims; replace catalog text and drop attributes before release. The provider checks the complete binding and retains no payload queue or retries. Existing local logging and app composition remain unchanged; no production destination, credentials or remote flag is created.
 
 Run the regular telemetry and PostHog server projects, built declarations and full aggregate for integrated evidence. Their real-SDK transport fixtures cover safe errors, revocation and interruption during delayed SDK preparation, but do not prove kernel-installed exporter lifecycle or production release. See [the runbook](../../../docs/telemetry-export.md).
+
+## EVE-261 aggregate timeout investigation - 2026-11-20
+
+Read [the retained investigation](../../../docs/core-qualification/telemetry-timeouts.md)
+before attributing the preserved 5652/7851 ms test failures to child teardown or
+renewal. Both explicitly hit the runner's aggregate 5000 ms deadline; no failing
+child timing/journal establishes the historical slow phase. Originally two serial children
+each had a separate 10000 ms bound. Pinned Vitest rejects elapsed overrun even
+after synchronous work completes. Controlled sync and async over-budget pairs
+both fail; a short sync control passes. Jonathan then confirmed measured section
+budgets and the unchanged aggregate limit as binding. Telemetry specs now use
+`childTests`/`runChild` from `tests/telemetry/src/child-process.ts`: serial budgets
+plus 100 ms cleanup each must fit strictly below the test limit; undeclared and
+unused launches fail. Actual ESLint restrictions prevent direct subprocess
+imports, with rejection/acceptance proofs in the required root check. No custom
+call-graph rule, suppression, baseline or dependency is introduced.
+
+The existing Flags declaration `telemetry.bootstrap.child-timing` keeps
+`safeDefault: false` for production safety. Test registration provides ON by
+default; a disabling or missing provider rejects before spawning. Every actual
+launch records safe closed phases and numeric timing, with cancellation owning
+termination through pipe close. Preserve business output, serial positive
+controls and existing aggregate/coverage limits. Node IPC/storage/tool callers
+are a separately coordinated migration to the same core, not exempt occurrences.
+No managed AGENTS prose is removed because none duplicates this new rule.
+Shared-house promotion remains proposed, not adopted. Missing historical phase
+evidence still prevents a causal latency claim; EVE-261 remains open.
+
+The correctly configured full step-1 run still hit the unchanged 20-minute
+bound after all 105 main Nx tasks passed in 18m22s (49 cache hits; 5m24s critical
+path). Smoke interrupted client:export-web after 28.1s; that run is not a full
+pass. A subsequent two-task/serial-smoke candidate passed in 17m04.72s, locally
+only and without a controlled ratio to the cache-hit baseline.
+
+The approved candidate uses Nx `parallel: 2`, one task per available CPU on the
+measured host, instead of forced serial validation/smoke. The seven-stage
+comparison is historical evidence, not the current manifest. The integrated
+funnel instead preserves static-first builds, lint and
+typecheck, source/emitted boundaries, root check, boundary/type/runner proofs,
+test/build/parity, smoke and affected-feature evidence. Preserve all dependency
+barriers, assertions, coverage thresholds and the outer 20-minute limit. The additive root
+`export-android -> export-web` dependency serializes only the two Expo `--clear`
+exports that share Metro's temporary cache. Keep server/i18n smoke independent;
+browser smoke still waits for web output. The required
+`tools/verification/pipeline.test.mjs` proof guards the manifest; executed Nx
+history, not that assertion alone, qualifies the resource isolation.
+Feature-evidence commands and their Nx prerequisites remain serial, including
+the existing `NX_PARALLEL=1` enforcement and conflicting-override rejection.
+The integrated manifest needs its own full execution; the old passing run
+cannot stand in for it.
+
+Comparable same-host/fixture measurements disabled Nx cache for both settings
+and retained every stage even after diagnostic failures. Two tasks passed in
+15m24.58s, main/smoke critical paths 359.529/82.231s, peak descendant RSS
+1011844 KiB. Four failed five test targets in 15m35.82s, critical paths
+617.244/90.273s, RSS 785824 KiB; its smoke passed. Do not present a failing
+setting as a speedup or increase its deadlines. At two, web ended 5 ms before
+Android started, while server/web overlapped 1249 ms and browser/Android
+overlapped 4909 ms. OS/compiler caches were not flushed; one observation does
+not prove global optimality. Use `node --run verify` with the documented
+PostgreSQL fixture for the normal fail-fast gate. The measured manifest/Nx
+tree is local evidence, not publication or broad Core acceptance.
+
+Read-only actual-main profiling reached root at 868 ms and Node exit at 982 ms
+with the existing preload; all unobserved/observed/sampled controls exited 0.
+Sampling showed substantial Node compilation/package lookup/GC self time, not
+a demonstrated post-log hang. No production import/source optimization or
+historical latency cause is established. House PR 59 has passing current
+required checks but remains draft; normal human merge/sync precedes managed
+adoption. Repository-wide same-core migration remains a separate checkpoint.
 
 ---
 
@@ -2018,7 +2098,7 @@ Apply the canonical [task lifecycle and verified mapping procedure](../../../doc
 
 `sync.values.TASK_LINEAR_PREFIX: EVE` prepares Eventiva for the canonical offline commit checker; it is not active enforcement until human house acceptance and normal downstream sync. Do not patch downstream managed AGENTS/checker content from an unaccepted proposal. The guard checks reference syntax, not actual tracker links, writes or acceptance. Preserve frozen mirror provenance, regenerate affected outputs from current source and retain independent delivery ownership. The rollout's actual state and pending acceptance are recorded in the [timeline](../../../docs/planning/timeline.md), not inferred from generated snapshot status.
 
-The [2026-11-20 Verify repair checkpoint](../../../docs/planning/timeline.md#bounded-verify-mirror-repair---2026-11-20) records the resumed EVE-266 / Eventiva#1053 slice separately from paused fixture design and adoption acceptance. House PR #61 proposes two generator-derived static host templates because sync does not execute downstream generators. Source/template/host divergence and local-command preservation are exercised; no downstream managed override or privileged dispatch is a repair mechanism. Passing local house gates do not establish merged templates, downstream adoption, whole-issue closure or resolution of the earlier settings-effects uncertainty.
+The [2026-11-20 Verify repair checkpoint](../../../docs/planning/timeline.md#bounded-verify-mirror-repair---2026-11-20) records the EVE-266 / Eventiva#1053 slice separately from paused fixture design and broader adoption. House PR #61 landed through normal protection as signed 7a404d5f; exact-main CI and CodeQL pass. Its generator-derived static host templates preserve the canonical prompt as the authority. Normal bot head 4dc441b8 independently byte-matches both templates and passes the surface check; its separate stale LLMS failure is not an unresolved mirror defect or successful whole adoption. Old-head fixture denials do not establish current-main failure. Original draft-restoration permission remains unproved: the successful rerun exercised only an already-draft no-op. No privileged generator/dispatch, human bot push, whole-issue closure or resolution of the earlier settings-effects uncertainty is implied.
 
 ## Historical canonical tooling checkpoint - 2026-11-17
 
@@ -3004,12 +3084,19 @@ never a global disable flag or independent evidence store.
 Sanitize `invalid`, `denied`, `unavailable` failures without raw SQL/proof data.
 Typed pre-commit failures roll the page back when SQL finalization succeeds,
 including permits and preceding deletions; retry explicitly after fixing the
-cause. The existing SQL driver's commit/rollback errors become defects, not
-normalized typed failures. Forced finalization-fault recovery is unqualified;
-lost commit acknowledgement can mean an already committed page. Do not expose
-defect causes or infer zero committed changes from an unavailable result.
-Trusted lifecycle finalization/error handling needs qualification before
-activation, not a new proof/reversal protocol here. Preserve action_commit,
+cause. The installed SQL driver turns commit/rollback errors into defects;
+the provider maps only `SqlError` leaves in either failure channel to bounded
+`unavailable`. Preserve other typed errors, unrelated defects, interruption and
+sequential/parallel cause structure. Never expose SQL diagnostics through a
+serialized Exit/Cause or acknowledge counts/cursor on a failed Exit.
+Actual two-client SQLite/PostgreSQL finalization tests distinguish rejected
+COMMIT, real COMMIT with lost acknowledgement and rejected ROLLBACK. Lost
+acknowledgement can mean committed deletion; failed rollback is not restoration.
+Keep the original cursor and establish a usable, settled connection before an
+explicit existing-state retry. Fixture-only rollback before retry is not
+provider recovery, automatic pool repair or exactly-once acknowledgement.
+No automatic retry, second transaction owner or reversal protocol is added.
+Production lifecycle recovery/release remains separately qualified. Preserve action_commit,
 receipts, business state/history/dedup and outbox. Do not claim backup, replica,
 WAL/journal, exported evidence or external-processor erasure. Production
 migration/activation, schedule/cadence and operational retention of those

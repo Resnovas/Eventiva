@@ -15,6 +15,7 @@
  */
 
 import { SqlClient } from '@effect/sql';
+import { SqlError } from '@effect/sql/SqlError';
 import { ApprovalRecord, approvalRetentionEnd } from '@eventiva/contracts/approval';
 import {
     ApprovalRetentionFailure,
@@ -23,7 +24,7 @@ import {
 } from '@eventiva/contracts/approval-retention';
 import { CallerIdentity } from '@eventiva/contracts/caller';
 import { CurrentTenant, EpochMillis, Version } from '@eventiva/contracts/storage';
-import { Clock, Effect, Layer, Schema } from 'effect';
+import { Cause, Clock, Effect, Layer, Schema } from 'effect';
 
 /** Decode integer driver representations without coercing malformed SQLite text into revision zero. */
 const Revision = Schema.Union(
@@ -170,10 +171,29 @@ export const approvalRetentionMaintenance = Layer.effect(
                             );
                         }
                     ).pipe(
-                        Effect.catchTag(
-                            'SqlError',
-                            /** Failure is visible and retryable; never report partial committed counts after SQL rollback. */
-                            () => new ApprovalRetentionFailure({ reason: 'unavailable' })
+                        Effect.catchAllCause(
+                            /** Bound driver failures, including finalization orDie, without discarding other cause leaves. */
+                            (cause) =>
+                                Effect.failCause(
+                                    Cause.match(cause, {
+                                        onEmpty: Cause.empty,
+                                        /** Preserve typed validation/authority failures; SQL never carries diagnostics out. */
+                                        onFail: (error) =>
+                                            Cause.fail(
+                                                error instanceof SqlError
+                                                    ? new ApprovalRetentionFailure({ reason: 'unavailable' })
+                                                    : error
+                                            ),
+                                        /** An unavailable acknowledgement says nothing about commit or rollback outcome. */
+                                        onDie: (defect) =>
+                                            defect instanceof SqlError
+                                                ? Cause.fail(new ApprovalRetentionFailure({ reason: 'unavailable' }))
+                                                : Cause.die(defect),
+                                        onInterrupt: Cause.interrupt,
+                                        onSequential: Cause.sequential,
+                                        onParallel: Cause.parallel,
+                                    })
+                                )
                         )
                     ),
             });
