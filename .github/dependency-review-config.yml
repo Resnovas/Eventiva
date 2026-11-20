@@ -31,3 +31,10 @@ allow-licenses:
   - Zlib
 # house:managed:end
 # house:local - add this repository's own policy below this line.
+# Jonathan approved all versions of exactly these packages on 2026-11-20.
+# Provenance: Resnovas/.github#57; see docs/dependency-security.md.
+# Licence exceptions only; vulnerability checks and the seven-day cooldown remain required.
+allow-dependencies-licenses:
+  - pkg:npm/spdx-exceptions
+  - pkg:npm/uri-js
+  - pkg:npm/parse-statements

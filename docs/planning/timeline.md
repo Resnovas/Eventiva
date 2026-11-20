@@ -2,6 +2,28 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## EVE-299 house adoption and licence prerequisite - 2026-11-20
+
+The [funnel owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) resumes from published `d40a76b742468e93bb42369de769b7621a71b8e3`. [Adoption START](https://linear.app/resnovas/issue/EVE-299#comment-00f3bc7e-83ce-43a8-baa2-1b43b143dd97) precedes Jonathan's additional three-package licence prerequisite, relayed by Puck on November 20; exact human-selection times are unknown. The [prerequisite record](https://linear.app/resnovas/issue/EVE-299#comment-c72ad25f-85ea-4c0d-8c52-f7bda0f0a21c) is explicitly [mirrored and read back](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7038687715). This is not a refresh of the frozen issue capture.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed targeted candidate work | Retained prebound TCP composition and port-zero fixtures pass 68 server tests with coverage and real process recovery; configuration still rejects port zero. Static source/declaration audits pass with zero violations. Twenty shared JSDoc rule/options probes pass with mature 65.4.5; cooldown is unchanged. Staged FormatJS and reference import/edit/build/package guards remain uncommitted in preserved stash `023189c6f2d1ccad5fe769a9efceb1dfbb1a22e8` and independent patch/archive backups. These are not full-gate or publication results. |
+| Current prerequisite | Add only the three versionless licence exceptions approved in [house #57](https://github.com/Resnovas/.github/pull/57) to Eventiva's local policy, with [people/agent documentation](../dependency-security.md#jsdoc-licence-prerequisite-eve-299). Keep vulnerability policy and release cooldown unchanged. Static validation passes before documentation. Require this separate signed commit's own unchanged installed hook within 1200 seconds, then main publication and exact-head CI. Failure holds publication without blind retry. |
+| Upcoming adoption | Restore the preserved source candidate after the prerequisite lands. Accepted house #60/#62 are staged, not fully adopted; #63's all-rule header exemption needs its accepted merge revision. Continue package-by-package JSDoc, canonical budget/guidance and shared evidence adoption without removing existing product gates. Upgrade to 65.5.0 after November 26, not through a cooldown exception. |
+| Separate approved performance work | Jonathan subsequently approved genuinely affected-only feature selection and fresh same-run Nx result reuse under exact-tree proof, retaining every required assertion, coverage and isolation obligation. Pipeline/registry reservations are confirmed; exact retained G transfer is requested from its owner. Qualify G under the same 1200-second bound. A normal house PR for the ordered pipeline, snapshot/Git isolation and installed-hook fixtures is also approved; no shared source is changed in this prerequisite. |
+
+The linked-worktree hook defect was Git-local environment inheritance, unrelated to `externals`. Renewal and EVE-44 reservations remain untouched. No deployment, paid resource, new timeout, competing qualification or whole-issue closure is authorized by these checkpoints.
+
+```mermaid
+flowchart LR
+    Probe["Targeted socket/reference/JSDoc proof"] --> Preserve["Preserved candidate"]
+    Preserve --> Policy["Current: three licence exceptions"]
+    Policy --> Hook["Required: normal hook and publication"]
+    Hook --> Adoption["Resume staged house adoption"]
+    Reuse["Approved exact-tree fresh-result reuse"] --> G["Required: retained G qualification <=1200s"]
+```
+
 ## Core approval evidence reconciliation I
 
 START November 20, 2026: the [I owner](https://ampcode.com/threads/T-20b14e85-79c3-4f05-9bbd-92a8f7fc8a09) independently fetches published `origin/main` `c779e486a93d8c5b863b1958c50211745bae6f94` into isolated `agents/eve-275-packet-i`, not the coordinator's older local main or unpublished renewal. The full live discussion reaches terminal pagination; [EVE-275](https://linear.app/resnovas/issue/EVE-275) remains In Progress and actual [GitHub #1063](https://github.com/Resnovas/Eventiva/issues/1063) OPEN with normal linkback6988293684. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-48cb133a-d640-4538-8c9f-96f9ec8e12f8) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036520194). This bounded inspection does not refresh the historical issue capture.

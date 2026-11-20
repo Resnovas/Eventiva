@@ -5,6 +5,23 @@ tracks dependency remediation approved by Jonathan on 2026-11-18, relayed throug
 [the requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a).
 Necessary major upgrades are included; production deployment is not authorized.
 
+## JSDoc licence prerequisite (EVE-299)
+
+Jonathan approved package-wide licence exceptions for exactly `parse-statements`, `spdx-exceptions` and `uri-js`, relayed through [Puck](https://ampcode.com/threads/T-01a1f613-a4ae-7780-b85a-74cc4a1c1727) on 2026-11-20. The original human-selection time is unknown. [House PR #57](https://github.com/Resnovas/.github/pull/57), merged as [ba480286](https://github.com/Resnovas/.github/commit/ba4802860e19870a5110cc7554e0f7b6b7a4158c), contains the same three exceptions, but only for the house repository. Eventiva must carry its own local policy before adopting JSDoc.
+
+The PR/merge-group dependency-review workflow reads `.github/dependency-review-config.yml`. Its shared licence list excludes CC-BY-3.0, which the resolved `spdx-exceptions@2.5.0` package declares. Local metadata for `parse-statements@1.0.11` and `uri-js@4.4.1` declares MIT and BSD-2-Clause respectively; this does not establish what GitHub's dependency graph reports. A direct push does not run dependency review, so passing push CI alone cannot certify that PR-specific result.
+
+Keep this exact addition after the policy's `house:local` marker:
+
+```yaml
+allow-dependencies-licenses:
+  - pkg:npm/spdx-exceptions
+  - pkg:npm/uri-js
+  - pkg:npm/parse-statements
+```
+
+The versionless package URLs cover all versions of those packages only. They do not allow CC-BY-3.0 generally, suppress an advisory or waive the seven-day release cooldown. Any fourth package still needs owner approval. For a review failure, inspect the reported package and dependency-graph licence rather than broadening the allowlist. The [EVE-299 prerequisite record](https://linear.app/resnovas/issue/EVE-299#comment-c72ad25f-85ea-4c0d-8c52-f7bda0f0a21c) and [explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7038687715) distinguish this policy-only delivery from the preserved, uncommitted JSDoc/socket/reference candidate. No dependency version changes in this prerequisite.
+
 ## Reproduce the inventory
 
 Run `pnpm audit --json` at the repository root. Do not use
