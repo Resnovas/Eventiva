@@ -2,6 +2,26 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Approval finalization qualification F
+
+START 2026-11-20T05:24:12Z: [independent F owner](https://ampcode.com/threads/T-5c7c1b4c-f6aa-448d-82f3-f6c5692c1890) starts from fetched `origin/main` `69f9866e4701a1f2ea8ddbe3f326eb75eb235dd0`, not unpublished renewal. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-913b839c-b55a-4584-8bbf-1ad9554afa3b) and its [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7031300107) record the bounded allocation. This does not refresh the historical snapshot or close EVE-275/Core.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed red qualification | [Linear red evidence](https://linear.app/resnovas/issue/EVE-275#comment-15cc7936-b349-4a44-9ef8-d0abe8ae1fff), independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7031377534): unchanged provider fails6/14 cases on real SQLite/PostgreSQL, leaking finalization SQL/connection/proof canaries. Independent observer proves lost-ack deletion committed; rejected COMMIT/ROLLBACK leave unsettled writers, not restoration. |
+| Current local correction | Only SQL Cause leaves normalize to existing bounded unavailable; arbitrary defects/interruption and cause structure remain. New finalization plus unchanged retention specs pass61/61; normal storage333/333 with all coverage thresholds passing and provider50/50 statements,59/59 branches,9/9 functions; static15builds/83tasks and both boundary graphs pass. Root/strict captured planning checks pass. The [canonical report](../core-qualification/approval-retention.md#approval-finalization-qualification-f---2026-11-20) owns commands and limits. |
+| Upcoming | Unchanged installed-hook verification, final docs/clean graph, signed direct-main delivery and exact-head CI. Unknown commit outcome is not zero committed deletions; failed rollback is not restoration. Original-cursor retry requires a usable, settled connection; fixture recovery is not provider pool repair. |
+
+Only SQL `approval-retention.ts`, new `approval-finalization.spec.ts`, retention report/chapter34 and this subsection are authored; LLMS/graph regenerate mechanically. G, renewal, process and instrumentation paths stay untouched. No second transaction owner, new public semantics, automatic retry, activation or EVE-248/budget/settings change is authorized.
+
+```mermaid
+flowchart LR
+    FStart["F: current published SQL and START"] --> FFaults["Real finalization faults and durable observations"]
+    FFaults --> FFix["Only reproduced bounded privacy correction"]
+    FFix --> FGates["Unchanged gates, signed delivery and exact-head CI"]
+    FGates --> FOpen["Whole EVE-275 and Core remain open"]
+```
+
 ## Structural function telemetry START - 2026-11-20
 
 This bounded live checkpoint does not refresh the historical all-issue capture. [This existing owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) starts structural proof from published `50e5dc18`, without adopting D/renewal source or creating another lane. [EVE-44](https://linear.app/resnovas/issue/EVE-44), In Progress, maps to independently OPEN [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) with its matching linkback. The [canonical contract](../architecture/function-telemetry.md) owns Jonathan's seven selections, proposal, exact paths and acceptance.

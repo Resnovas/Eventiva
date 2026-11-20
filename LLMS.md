@@ -3082,12 +3082,19 @@ never a global disable flag or independent evidence store.
 Sanitize `invalid`, `denied`, `unavailable` failures without raw SQL/proof data.
 Typed pre-commit failures roll the page back when SQL finalization succeeds,
 including permits and preceding deletions; retry explicitly after fixing the
-cause. The existing SQL driver's commit/rollback errors become defects, not
-normalized typed failures. Forced finalization-fault recovery is unqualified;
-lost commit acknowledgement can mean an already committed page. Do not expose
-defect causes or infer zero committed changes from an unavailable result.
-Trusted lifecycle finalization/error handling needs qualification before
-activation, not a new proof/reversal protocol here. Preserve action_commit,
+cause. The installed SQL driver turns commit/rollback errors into defects;
+the provider maps only `SqlError` leaves in either failure channel to bounded
+`unavailable`. Preserve other typed errors, unrelated defects, interruption and
+sequential/parallel cause structure. Never expose SQL diagnostics through a
+serialized Exit/Cause or acknowledge counts/cursor on a failed Exit.
+Actual two-client SQLite/PostgreSQL finalization tests distinguish rejected
+COMMIT, real COMMIT with lost acknowledgement and rejected ROLLBACK. Lost
+acknowledgement can mean committed deletion; failed rollback is not restoration.
+Keep the original cursor and establish a usable, settled connection before an
+explicit existing-state retry. Fixture-only rollback before retry is not
+provider recovery, automatic pool repair or exactly-once acknowledgement.
+No automatic retry, second transaction owner or reversal protocol is added.
+Production lifecycle recovery/release remains separately qualified. Preserve action_commit,
 receipts, business state/history/dedup and outbox. Do not claim backup, replica,
 WAL/journal, exported evidence or external-processor erasure. Production
 migration/activation, schedule/cadence and operational retention of those
