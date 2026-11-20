@@ -519,3 +519,28 @@ and signed delivery resume on that integrated base, with exact outcomes on
 [EVE-261](https://linear.app/resnovas/issue/EVE-261) and its independently verified
 [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1035). The failure
 above remains historical evidence, not a claim that the corrected hook fails.
+
+### Corrected installed-hook acceptance
+
+The real signed source commit then passed the unchanged installed pre-commit
+hook under the same disposable fixture/20-minute wrapper: exit 0 in 1023.26s
+(17m03.26s), user/system 1261.25/138.87s and peak descendant RSS 948764 KiB.
+The hook executed `node --run verify:static` and `node --run verify`; its
+nested-history/index-guard regression passed, and staged tree
+`1d5ab20006edb6e4c9bb6bffaca0e0ab549868ef` stayed unchanged until commit.
+First static lint/typecheck passed 83 tasks (62 cache hits); the repeated static
+stage passed with 65 cache hits. Main passed all 38 tasks (15 cache hits) in
+10m56s; all three smoke projects/17 tasks passed (12 cache hits) in 1m14s.
+Selected telemetry 92/92, funnel-policy 33/33 and funnel-runner 9/9 passed,
+including the new installed-hook regression. Manifest
+`8dbf621b-b635-4b6c-85c3-ff63c477f6c1` retains the exact staged changes and serial
+feature/prerequisite execution. Logs and timing are
+`isolated-hook-source-commit.log` and `.time`.
+
+The subsequent delivery fetch found only the owner's graph/documentation
+follow-through; the source was rebased onto `fef2b55f` without changing the
+executable candidate. Final clean-source graph/evidence commit runs the normal
+hook again. Signed publication and exact-head hosted CI are separate outcomes
+on the owning tracker pair, not inferred from these local passes. Shared-house
+promotion, repository-wide process migration and full Core acceptance remain
+outside this step-1 checkpoint; PR59 is not merged by this task.
