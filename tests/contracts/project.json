@@ -11,6 +11,18 @@
         "@eventiva/runtime-tests"
     ],
     "targets": {
+        "test": {
+            "inputs": [
+                "default",
+                "^default",
+                { "fileset": "{projectRoot}/tsconfig.spec.json", "dependencies": true },
+                { "fileset": "{projectRoot}/tsconfig.storybook.json", "dependencies": true },
+                { "json": "{workspaceRoot}/tsconfig.json", "fields": ["compilerOptions"] },
+                { "externalDependencies": ["vitest"] },
+                { "env": "CI" },
+                { "dependentTasksOutputFiles": "**/*.js", "transitive": true }
+            ]
+        },
         "typecheck": {
             "executor": "nx:run-commands",
             "options": { "command": "tsc -p tests/contracts/tsconfig.json --noEmit", "cwd": "{workspaceRoot}" },

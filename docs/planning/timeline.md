@@ -2,6 +2,26 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## EVE-299 hook scope correction - 2026-11-20
+
+Jonathan's 15:16:33 UTC correction limits pre-commit to static checks and affected tests. The [paired source](https://linear.app/resnovas/issue/EVE-299#comment-01ba9869-5019-48dd-a2e9-3a0b74a0eb55) identifies main-push/PR full verification and seven-day uploads as Puck's implementation direction, not the human quote. [This thread](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) owns the change and the separately approved two-project cache repair, with non-closing [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092). This supersedes per-hook tuning and the earlier qualification sequence below; historical outcomes remain intact.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed cancellation | Medium cap qualification owner reports SIGTERM/143 after 635.132416s, not timeout or acceptance. No source commit; exact cap tree and renewal are preserved. No worker cap is adopted in the replacement slice. |
+| Completed local implementation | Hook selects static then affected tests, with the root tooling test group selected by root/tool changes; snapshot/Git isolation is unchanged. CI and standalone verification retain full aggregate, coverage, smoke and feature proof. Only contracts/runtime test input overrides replace inferred `^production` with `^default`. Static passes; 13 hook/cache regressions pass, including real assertion-mutation/restoration and outside-closure controls. |
+| Completed fresh coverage | `nx run-many -t test -p @eventiva/contracts-tests @eventiva/runtime-tests --parallel=1 --skip-nx-cache` passes 580 contracts and 680 runtime tests with unchanged 90% thresholds and the approved disposable PostgreSQL fixture; runtime branches 90.39%, contracts branches 91.97%. No worker cap is adopted. |
+| Current delivery | Accepted house #76 is independently confirmed merged at `a1ddb86429a74cea2ca3ffb46f1a1481972829f7`. Eventiva exposes `test:affected` with exact staged-path stdin and rename/deletion controls. Static, 11 hook fixtures and root checks pass after alignment. The earlier [identity hold](https://linear.app/resnovas/issue/EVE-299#comment-c9ddd4bc-f3a5-4adb-8617-5b7dc48a1859) is resolved by Jonathan's [platform-specific decision](https://linear.app/resnovas/issue/EVE-299#comment-d57175a5-f09b-443a-b5ca-d53c6142ee3c): Amp uses configured Jonathan Stevens identity; other agents never use Jonathan's identity. The local rule is updated; signature-aware shared enforcement remains upstream. Normal signed source/graph commits and exact-head CI remain required, not assumed completed. No identity/settings change or signing bypass. |
+| Upcoming | Push the verified correction and check exact-head CI. The separately approved compiler-readiness probe follows only after landing, then queued consolidation, socket, reference, JSDoc and shared React adoption. G/renewal retain separate reservations and retry disposition; the cache fix alone releases no held lane. |
+
+```mermaid
+flowchart LR
+    Scope["Static + affected hook correction"] --> Cache["Dependency-spec cache proof"]
+    Cache --> Fresh["Fresh package coverage and installed hook"]
+    Fresh --> Land["Separate graph, publication and exact-head CI"]
+    Land --> Queue["Resume queued adoption; retained lane holds"]
+```
+
 ## EVE-299 house adoption and licence prerequisite - 2026-11-20
 
 The [funnel owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) resumes from published `d40a76b742468e93bb42369de769b7621a71b8e3`. [Adoption START](https://linear.app/resnovas/issue/EVE-299#comment-00f3bc7e-83ce-43a8-baa2-1b43b143dd97) precedes Jonathan's additional three-package licence prerequisite, relayed by Puck on November 20; exact human-selection times are unknown. The [prerequisite record](https://linear.app/resnovas/issue/EVE-299#comment-c72ad25f-85ea-4c0d-8c52-f7bda0f0a21c) is explicitly [mirrored and read back](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7038687715). This is not a refresh of the frozen issue capture.

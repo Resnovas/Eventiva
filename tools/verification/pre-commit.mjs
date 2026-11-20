@@ -51,6 +51,7 @@ if (process.argv[2] === '--install') {
     for (const name of git('rev-parse', '--local-env-vars').split('\n')) delete verificationEnv[name];
     runVerification({
         env: verificationEnv,
+        staged: true,
         afterStage() {
             if (snapshot() !== before)
                 throw new Error('The staged tree changed during verification. Review it and rerun the commit.');

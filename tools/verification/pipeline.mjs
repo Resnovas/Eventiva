@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(import.meta.dirname, '../..');
 
-/** One ordered command list for standalone acceptance and the staged-tree hook. */
+/** Full acceptance remains available locally and required in CI, separate from commit admission. */
 export const verificationStages = [
     ['--run', 'verify:static'],
     ['--run', 'check'],
@@ -36,8 +36,9 @@ export const verificationStages = [
 ];
 
 /** Stop at the first failed gate or snapshot barrier; no caller can skip static verification. */
-export function runVerification({ env = process.env, afterStage = () => {} } = {}) {
-    for (const argv of verificationStages) {
+export function runVerification({ env = process.env, afterStage = () => {}, staged = false } = {}) {
+    const stages = staged ? [verificationStages[0], ['--run', 'test:affected']] : verificationStages;
+    for (const argv of stages) {
         const result = spawnSync(process.execPath, argv, { cwd: root, stdio: 'inherit', env });
         if (result.status !== 0 || result.error)
             throw new Error(

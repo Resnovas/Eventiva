@@ -243,11 +243,11 @@ End every task with a message a reader who did not watch you work can act on: wh
 
 # Delivery exception: ship straight to main
 
-The owner of Eventiva (Jonathan, GitHub `TGTGamer`) set this exception on 2026-10-31 for this repository only, recorded on Linear EVE-13 item 12. It overrides, for Eventiva, the `Before a pull request` rules in this file and these AI_POLICY.md rules: AI-20 (drafts), AI-21 (leaving draft), AI-31 (agents open drafts and stop) and, for sign-off only, AI-03. Every other rule still applies.
+The owner of Eventiva (Jonathan, GitHub `TGTGamer`) set this exception on 2026-10-31 for this repository only, recorded on Linear EVE-13 item 12. It overrides, for Eventiva, the `Before a pull request` rules in this file and these AI_POLICY.md rules: AI-20 (drafts), AI-21 (leaving draft) and AI-31 (agents open drafts and stop). Every other rule still applies.
 
 - Agents commit and push straight to `main`. No pull request, no draft, no waiting on review. Break fast, fix faster: a broken `main` is fixed forward by the next commit.
-- This exception also governs delivery where the synced governance describes the generic PR path. The house ruleset's locked `adminBypass: true` renders an `always` bypass for repository administrators, not only for PRs. Use the owner's authorized identity; a token without administrator permission cannot rely on this bypass. House sync and Graphify bot proposals may still use their standard branches and PRs; they do not require coding agents to change delivery paths.
-- Author every agent commit as `Jonathan <11413796+TGTGamer@users.noreply.github.com>` and add `Signed-off-by` with the same identity. The owner set up this standing sign-off for agent commits in this repository; it is his DCO certification, given in advance.
+- This exception also governs delivery where the synced governance describes the generic PR path. The house ruleset's locked `adminBypass: true` renders an `always` bypass for repository administrators, not only for PRs. Use authorized repository credentials; a token without administrator permission cannot rely on this bypass. House sync and Graphify bot proposals may still use their standard branches and PRs; they do not require coding agents to change delivery paths.
+- On Amp, commit as the configured identity (`Jonathan Stevens <jonathan@resnovas.com>`). Agents on other platforms commit and sign with their own agent identity, never Jonathan's.
 - Keep the AI credit: one `Co-authored-by: <Tool Model> <address>` trailer per AI tool (AI-02), conventional subjects, ASCII only.
 - Run `node --run check` (or the affected Nx targets) before each push and put the commands and results in the Linear issue, because the `smartcloud` pull request check does not run on a direct push.
 - Throwaway spikes still live on `spike/*` branches and never merge.

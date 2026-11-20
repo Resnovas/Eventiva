@@ -32,6 +32,7 @@
         "lint": "nx run-many -t lint",
         "typecheck": "nx run-many -t typecheck",
         "test": "nx run-many -t test",
+        "test:affected": "node tools/verification/affected.mjs",
         "build": "nx run-many -t build",
         "smoke": "nx run-many -t smoke",
         "parity": "nx run-many -t parity",

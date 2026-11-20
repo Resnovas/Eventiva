@@ -219,6 +219,14 @@ These files were read to distinguish their rules from active Eventiva policy. Do
 
 ## Migration checkpoint and remaining contract
 
+### Hook scope correction and dependency-spec cache repair - 2026-11-20
+
+Jonathan's 15:16:33 UTC instruction was "I wanted only the static checks and affected tests." The [paired decision record](https://linear.app/resnovas/issue/EVE-299#comment-01ba9869-5019-48dd-a2e9-3a0b74a0eb55) distinguishes that quote from Puck's implementation direction: retain full aggregate, smoke and affected evidence in main-push/PR CI with seven-day uploads. This supersedes the expanded local hook and its timing work, not earlier evidence. The hook now selects static plus affected tests, including the Node tooling test group for root/tool changes. Snapshot barriers and child Git isolation remain. Full standalone verification and CI retain every acceptance gate; smoke waits for verification.
+
+The separate medium worker-cap attempt was owner-cancelled after 635.132416s with SIGTERM/143, not timeout or acceptance. Its owner reports static/root/Node and aggregate 38/38 passing, smoke interrupted and features unreached; no commit or publication followed. Exact staged tree `ad159f2cec59ed05f8db3c6dcfb019f5dc50d2b8` remains preserved. No cap is adopted here; a later CI need requires evidence.
+
+The approved cache repair changes only contracts/runtime test input overrides: retain the current inferred list and replace `^production` with `^default`. Their Vitest includes execute dependency specs which production inputs omit. The real Nx regression fails on the original resource assertion mutation, then passes for every external include family, exact restoration and unrelated-document control after correction. Hook/standalone and cache regressions pass 13/13; static verification passes 83 lint/type/prerequisite tasks with zero source/declaration violations or cycles. Fresh package coverage, installed-hook qualification, publication and exact-head CI remain separate gates, recorded on the owning issue rather than inferred from these focused results. G and renewal remain preserved with their own acceptance holds.
+
 ### Independently implemented and tested locally
 
 - `eslint.config.mjs` adds `eventiva/no-zero-delay-ui-timer` in the existing frontend scope only. The exact corrective message is: `Do not defer UI state with a zero-delay timer. Keep state in one owner and update it from the event; use scoped Effect scheduling for genuine timed work.` Direct and global-member calls, computed literal properties, optional calls, omitted delay and signed zero are covered. This is lexical analysis, not alias tracking or dynamic delay evaluation. Local shadows, real delays, spreads and backend code remain controls.
