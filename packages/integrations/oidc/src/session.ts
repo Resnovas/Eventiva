@@ -14,10 +14,10 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { IdentityStore } from '@eventiva/contracts/identity';
+import { IdentitySession, IdentityStore, SessionActivity, SessionRenewalSettings } from '@eventiva/contracts/identity';
 import type { SessionId } from '@eventiva/contracts/ids';
 import type { StorageFailure } from '@eventiva/contracts/storage';
-import { type Cause, Clock, Data, Effect } from 'effect';
+import { type Cause, Clock, Data, Effect, Schema } from 'effect';
 import type { OidcAccessClaims } from './token.ts';
 
 /** Fields of {@link OidcSessionRefused}: only a closed reason, never input, token or diagnostics. */
@@ -36,20 +36,42 @@ export class OidcSessionRefused extends OidcSessionRefusedBase {}
  * Trusted backend provisioning: open the Eventiva session for a freshly verified access token. Run it only in the
  * server's login completion path with claims from `OidcVerifier.verify`, inside the tenant route the control plane
  * resolved, and within the same Storage transaction as its audit. It never creates principals, links or memberships:
- * an unlinked issuer/subject is refused. `expiresAt` comes from server policy, not the token.
- * Repeating it for an already open session of the same subject is idempotent.
+ * an unlinked issuer/subject is refused. The deadline or bounded rolling settings come from server policy, not the token.
+ * Repeating an already live session is idempotent: token refresh never moves its sign-in/activity/absolute anchors.
  */
 export const openOidcSession = (
     claims: OidcAccessClaims,
-    expiresAt: number
+    expiresAt: number | typeof SessionRenewalSettings.Type
 ): Effect.Effect<SessionId, OidcSessionRefused | StorageFailure, IdentityStore> =>
     Effect.gen(
         /** Serialize with revocation, require an existing human link, then create the session row create-only. */ function* () {
             const store = yield* IdentityStore;
-            const now = yield* Clock.currentTimeMillis;
-            if (expiresAt <= now || claims.expiresAt <= now)
-                return yield* new OidcSessionRefused({ reason: 'expired' });
             yield* store.lock;
+            // A contended login cannot use a clock sampled before another transaction's revocation or expiry boundary.
+            const now = yield* Clock.currentTimeMillis;
+            let deadline: number;
+            let activity: typeof SessionActivity.Type | undefined;
+            if (typeof expiresAt === 'number') deadline = expiresAt;
+            else {
+                const settings = yield* Schema.decode(SessionRenewalSettings)(expiresAt, {
+                    onExcessProperty: 'error',
+                }).pipe(
+                    Effect.mapError(
+                        /** Invalid trusted settings never fall back to an accepting deadline. */
+                        () => new OidcSessionRefused({ reason: 'conflict' })
+                    )
+                );
+                deadline = now + settings.idleMs;
+                activity = {
+                    issuedAt: now,
+                    lastRealActivityAt: now,
+                    absoluteExpiresAt: now + settings.absoluteMs,
+                    idleMs: settings.idleMs,
+                    issuer: claims.issuer,
+                    clientId: claims.clientId,
+                };
+            }
+            if (deadline <= now || claims.expiresAt <= now) return yield* new OidcSessionRefused({ reason: 'expired' });
             // Exact issuer/subject only; never fall back to email or another issuer's subject.
             const subject = yield* store.lookup({ issuer: claims.issuer, subject: claims.subject });
             if (subject === undefined) return yield* new OidcSessionRefused({ reason: 'unlinked' });
@@ -62,14 +84,26 @@ export const openOidcSession = (
             if (existing !== undefined) {
                 // A closed or foreign session is never reopened; the provider must start a new session.
                 const same =
-                    existing.value.subject === subject && existing.value.active && existing.value.delegation === null;
+                    existing.value.subject === subject &&
+                    existing.value.active &&
+                    existing.value.expiresAt > now &&
+                    existing.value.delegation === null;
                 return same ? claims.session : yield* new OidcSessionRefused({ reason: 'conflict' });
             }
-            yield* store.put(
-                'session',
-                { id: claims.session, subject, expiresAt, active: true, delegation: null },
-                null
+            const session = yield* Schema.decode(IdentitySession)({
+                id: claims.session,
+                subject,
+                expiresAt: deadline,
+                active: true,
+                delegation: null,
+                ...(activity === undefined ? {} : { activity }),
+            }).pipe(
+                Effect.mapError(
+                    /** Numeric overflow and contradictory lifecycle metadata are denied before the create-only write. */
+                    () => new OidcSessionRefused({ reason: 'conflict' })
+                )
             );
+            yield* store.put('session', session, null);
             return claims.session;
         }
     );

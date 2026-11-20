@@ -29,6 +29,7 @@ const config = testProject(
         'apps/server/src/telemetry-local.ts',
         'apps/server/src/identity-oidc.ts',
         'apps/server/src/identity-session-policy.ts',
+        'apps/server/src/session-renewal.ts',
         'apps/server/src/approval-consent.ts',
         'apps/server/src/http-actions.ts',
         'apps/server/src/http-entry.ts',

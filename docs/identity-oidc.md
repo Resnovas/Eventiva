@@ -33,10 +33,47 @@ Configure each Keycloak client with `access.token.header.type.rfc9068 = true` an
 
 Sessions are opened by trusted backend code, never by a user-facing action:
 
-- `openOidcSession(claims, expiresAt)` from `@eventiva/integrations.oidc/session` creates the session row for verified claims. It requires an existing link to an active human principal and an expiry chosen by server policy. It never creates principals, links or memberships. Repeating it for the same subject is idempotent; a closed or foreign session is never reopened.
+- `openOidcSession(claims, expiresAt)` from `@eventiva/integrations.oidc/session` remains the legacy fixed-deadline API. Passing trusted `{ idleMs, absoluteMs }` instead records the original sign-in, last real activity, absolute deadline, idle duration and issuer/client provenance. It requires an existing link to an active human principal and never creates principals, links or memberships. Repeating a still-live sign-in is idempotent; an expired, closed or foreign session is never reopened.
 - `closeOidcSession(session)` deactivates the session with compare-and-set. Call it only after the logout or deprovisioning signal is authenticated.
 
 Both run on the tenant's `IdentityStore`, inside the tenant route the control plane chose. Run them in the same storage transaction as their audit record.
+
+## Real-activity renewal
+
+Jonathan selected a one-hour real-activity idle window and an eight-hour absolute maximum from sign-in. Effective expiry is the earlier of `lastRealActivityAt + idleMs` and the original `absoluteExpiresAt`; repeated sign-in/token refresh does not reset either activity or the sign-in anchor. Trusted tenant policy can shorten the idle window from five minutes through one hour, never exceed the selected bounds. The server's existing required `IdentitySessionPolicy.current.sessionLifetimeMs` supplies idle policy; the absolute maximum is eight hours. No production configuration or route is activated here.
+
+Use `openOidcSessionWithPolicy` from the server's `approval-consent.ts` for policy-backed issuance. It locks identity before reading current policy and requires the policy and store to belong to the same routed tenant. Legacy rows without activity metadata remain readable but cannot renew; require a fresh provider sign-in/session rather than guessing issuance time from expiry. Consent still uses the earlier current tenant approval window or actual live SQL session expiry.
+
+Build `sessionRenewal(verifier, registrations)` from `apps/server/src/session-renewal.ts` inside that same tenant route. Supply the actual trusted OIDC verifier, `CurrentTenant`, the paired `IdentityStore`/`Storage`, `IdentityResolver`, `IdentitySessionPolicy`, `Flags` and `InputDigest`. All persistence must share the existing SQL transaction owner. This composition-only Layer exposes `SessionRenewal.renew(route, redactedToken)`; it registers no endpoint, scheduler or module action.
+
+| Registration option                | Default  | Contract                                                                                                                        |
+| ---------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `route`                            | required | Exact server-selected interactive handler identifier, at most 512 trimmed characters. Never copy it from a request body/header. |
+| `clientId`                         | required | Exact verified first-party OAuth client ID, at most 512 trimmed characters.                                                     |
+| `surface`                          | required | `web` or `native` only.                                                                                                         |
+| `activity`                         | required | `human-mutation`, `interactive-read` or `navigation` only.                                                                      |
+| `identity.session-renewal-enabled` | `false`  | Evaluate through the existing flag provider; missing/default-off capability cannot renew.                                       |
+
+Register only explicit human-submitted mutations and interactive reads/navigation. Call the capability from the trusted handler after it accepts actual human activity, never from generic HTTP middleware. A request method, TTY/header boolean or matching app token alone is not human activity. Keep polling, prefetch, background sync, agents and token refresh outside these handlers. A different web/native client may renew the same canonical sign-in when independently allowlisted; the original client provenance remains unchanged.
+
+CLI activity **never** extends a session, including interactive human CLI commands. Sign-in is the human proof; sign in again when idle or absolute expiry occurs. Real allowlisted web/native activity can renew the same canonical session, but a CLI token cannot borrow a web/native route. The [superseding option B decision](planning/decisions.md#cli-renewal-option-b---2026-11-19) rejects the earlier activity-ticket proposal; build no ticket mechanism.
+
+For example, this trusted composition registers one interactive read. The handler supplies its fixed route; it does not accept a route selector from HTTP input:
+
+```ts
+import { Effect, Redacted } from 'effect';
+import { SessionRenewal, sessionRenewal } from './session-renewal.ts';
+
+const renewal = sessionRenewal(verifier, [
+    { route: '/interactive/event', clientId: 'eventiva-web', surface: 'web', activity: 'interactive-read' },
+]);
+// Inside the authenticated tenant composition, after accepting interactive navigation:
+const result = Effect.gen(function* () {
+    return yield* (yield* SessionRenewal).renew('/interactive/event', Redacted.make(accessToken));
+}).pipe(Effect.provide(renewal));
+```
+
+The result contains only `{ expiresAt }`. The operation verifies the bearer anew, takes the shared identity guard as its first transactional statement, samples time after contention, reads live policy and human identity/membership, checks the stored session, then commits versioned renewal and a minimal durable receipt together. Idle/absolute expiry, logout, identity loss or tightened-policy expiry cannot be reversed by activity. An audit failure rolls back the expiry write; callers may explicitly retry, never assume success. Errors expose only `invalid`, `denied` or `unavailable`, not bearer, provider or SQL details. The [qualification report](core-qualification/session-renewal.md) records executed evidence separately from delivery and activation.
 
 ## Example
 
@@ -44,7 +81,7 @@ Both run on the tenant's `IdentityStore`, inside the tenant route the control pl
 import { makeOidcVerifier } from '@eventiva/integrations.oidc/token';
 import { openOidcSession } from '@eventiva/integrations.oidc/session';
 import { authenticateTokenSession } from '@eventiva/runtime/identity';
-import { Clock, Effect, Redacted } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { oidcStandardsVerifier } from './identity-oidc.ts';
 
 // Inside one routed tenant: IdentityStore, CurrentTenant and identitySecurity are provided.
@@ -58,8 +95,7 @@ export const signInThenCall = (accessToken: string) =>
             allowInsecureLoopback: false,
         });
         const token = Redacted.make(accessToken);
-        const now = yield* Clock.currentTimeMillis;
-        yield* openOidcSession(yield* verifier.verify(token), now + 8 * 3_600_000);
+        yield* openOidcSession(yield* verifier.verify(token), { idleMs: 3_600_000, absoluteMs: 28_800_000 });
         return yield* authenticateTokenSession(token, {
             issuer: verifier.issuer,
             audience: 'eventiva-api',

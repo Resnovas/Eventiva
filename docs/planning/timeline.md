@@ -76,6 +76,32 @@ The [canonical correction](../core-qualification/telemetry-timeouts.md#mandatory
 owns behavior/evidence. Later delivery results must preserve the original failed
 diagnostic and all historical captures; no main/renewal/funnel edits are included.
 
+## Renewal current-main qualification resumption
+
+On November 20, Puck directs the [existing renewal owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) to reconcile the retained worktree onto published `d40a76b742468e93bb42369de769b7621a71b8e3` and run its own unchanged installed-hook qualification within 1200 seconds. [EVE-275 resumption](https://linear.app/resnovas/issue/EVE-275#comment-36693985-c8fc-4d6f-9332-8c19e6547164) belongs to OPEN [#1063](https://github.com/Resnovas/Eventiva/issues/1063); no broad closure or new policy is inferred. The [renewal report](../core-qualification/session-renewal.md#authorized-current-main-qualification---2026-11-20) owns detailed contract and historical failures.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed reconciliation | Originals/checksums/stash preserved; existing branch fast-forwarded from a5abfb9a. Source applies without conflict. Additive decision sections both retained and LLMS regenerated. Published import/static-dedup/F/H/I remain intact. |
+| Completed resumed attempt, failed | Staged tree 5c62009eebbf160477e95e7b8e8bc9107ed431de: normal installed pre-commit exit 1 in 1085.840426 seconds by Git Trace2, within unchanged 1200 seconds. Static/root/Node pass; aggregate has 37 successful tasks but runtime 679/680 fails the bounded failed-bootstrap sink-release child with ETIMEDOUT at core-diagnostics-qualification.spec.ts:55:46. Cause unestablished; no renewal-regression inference. |
+| Preserved failed-attempt hold | Process-observer stage seconds: static 199.137720, root 45.242434, Node 32.348591, aggregate 808.776231. Smoke/features never start. Exact attempted patch/logs/Trace2/stash preserved, fixture/service stopped. No source/graph commit, push or CI occurred in that attempt. |
+| Completed bounded diagnosis | Published-main and exact attempted-tree observer runs do not reproduce the failure. Exact-tree ten children and eight interleaved controls pass; schema wall samples do not establish causality. Original journal-off phase is unrecoverable. Published timing source e0fc57a5/head541b18ac now supplies core root/release evidence while preserving genuinely uninstrumented controls and every budget. |
+| Current fresh measured qualification | Existing owner reconciles only retained renewal onto fetched published 541b18acdfda9da19d5d58dacc9918215f53277c; production/test blobs unchanged, additive timeline sections both retained. Run one authorized normal installed source/docs hook within1200s with pinned disposable fixture, exact child phases/Trace2/per-stage CPU/memory observations. No capacity upgrade or causal-fix claim. Any failure/overrun holds without retry-to-green. |
+| Upcoming delivery gates | Source/docs and separate clean graph each require their own normal passing hooks within1200s, then direct-main delivery and independent exact-head CI. Timing-head hosted checks remain separately pending at intake. No acceptance follows merely from finishing a failed hook within budget or from diagnostic passes. |
+
+```mermaid
+flowchart LR
+    Preserved["Retained renewal and failures"] --> Reconciled["Published d40a76b7 reconciled"]
+    Reconciled --> Observed["No reproduction; published timing head541b18ac"]
+    Observed --> Source["One fresh measured source hook within1200s"]
+    Source --> Graph["Required separate graph hook within 1200s"]
+    Graph --> CI["Publication and exact-head CI"]
+    Source --> Hold["Any failure or overrun: hold with timings"]
+    Graph --> Hold
+```
+
+CLI never renews/no tickets and real web/native activity categories are settled. No source/test/tool from G, EVE-291, trust or PR59 is adopted; registry, serial contract, proof reuse, budgets/settings/dependencies and production activation remain unchanged. EVE-248 stays January 2027.
+
 ## Core approval evidence reconciliation I
 
 START November 20, 2026: the [I owner](https://ampcode.com/threads/T-20b14e85-79c3-4f05-9bbd-92a8f7fc8a09) independently fetches published `origin/main` `c779e486a93d8c5b863b1958c50211745bae6f94` into isolated `agents/eve-275-packet-i`, not the coordinator's older local main or unpublished renewal. The full live discussion reaches terminal pagination; [EVE-275](https://linear.app/resnovas/issue/EVE-275) remains In Progress and actual [GitHub #1063](https://github.com/Resnovas/Eventiva/issues/1063) OPEN with normal linkback6988293684. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-48cb133a-d640-4538-8c9f-96f9ec8e12f8) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036520194). This bounded inspection does not refresh the historical issue capture.

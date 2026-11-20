@@ -51,13 +51,50 @@ export const Delegation = Schema.Struct({
     expiresAt: EpochMillis,
     grants: Schema.Array(Grant),
 });
+/** Trusted rolling-session settings; tenant overrides may shorten but never exceed the selected idle/absolute bounds. */
+export const SessionRenewalSettings = Schema.Struct({
+    idleMs: Schema.Number.pipe(Schema.int(), Schema.between(300_000, 3_600_000)),
+    absoluteMs: Schema.Number.pipe(Schema.int(), Schema.between(300_000, 28_800_000)),
+}).pipe(
+    Schema.filter(
+        /** An absolute deadline cannot make the configured idle window an impossible initial lifetime. */
+        (value) => value.idleMs <= value.absoluteMs
+    )
+);
+/** Server-recorded activity and original sign-in boundary; missing legacy metadata is never reconstructed from expiry. */
+export const SessionActivity = Schema.Struct({
+    issuedAt: EpochMillis,
+    lastRealActivityAt: EpochMillis,
+    absoluteExpiresAt: EpochMillis,
+    idleMs: Schema.Number.pipe(Schema.int(), Schema.between(300_000, 3_600_000)),
+    issuer: Schema.NonEmptyString.pipe(Schema.maxLength(2048)),
+    clientId: Schema.NonEmptyString.pipe(Schema.maxLength(512)),
+});
+/** Live session authority; optional lifecycle metadata enables bounded renewal without silently upgrading legacy sessions. */
 export const IdentitySession = Schema.Struct({
     id: SessionId,
     subject: SubjectId,
     expiresAt: EpochMillis,
     active: Schema.Boolean,
     delegation: Schema.NullOr(Delegation),
-});
+    activity: Schema.optional(SessionActivity),
+}).pipe(
+    Schema.filter(
+        /** A renewed session carries one internally consistent expiry and an absolute anchor that activity cannot move. */
+        (value) =>
+            value.activity === undefined ||
+            (value.delegation === null &&
+                value.activity.issuedAt >= 0 &&
+                value.activity.lastRealActivityAt >= value.activity.issuedAt &&
+                value.activity.lastRealActivityAt < value.activity.absoluteExpiresAt &&
+                value.activity.absoluteExpiresAt <= value.activity.issuedAt + 28_800_000 &&
+                value.expiresAt ===
+                    Math.min(
+                        value.activity.lastRealActivityAt + value.activity.idleMs,
+                        value.activity.absoluteExpiresAt
+                    ))
+    )
+);
 export const records = {
     principal: Principal,
     session: IdentitySession,
