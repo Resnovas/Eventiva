@@ -552,14 +552,27 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         yield* f.scoped(
                             f.api.transaction(
                                 Effect.gen(
-                                    /** Seed only a valid synthetic chain; one transaction keeps thousands of test setup round trips bounded. */ function* () {
+                                    /** Batch synthetic setup with the same current rows, schema pins and immutable revisions as individual creates. */ function* () {
                                         // Setup is not evidence of feature authorization; the following create actions are the public boundary proof.
-                                        for (let n = 106; n <= 1025; n++)
-                                            yield* f.api.create(f.definitions.locations, id(n), {
-                                                kind: 'zone',
-                                                name: 'Ancestor',
-                                                parent: id(n - 1),
-                                            });
+                                        const rows = Array.from(
+                                            { length: 920 },
+                                            /** Preserve the existing hexadecimal UUIDs and encoded field order exactly. */ (
+                                                _,
+                                                offset
+                                            ) => ({
+                                                resource: f.definitions.locations.id,
+                                                id: id(offset + 106),
+                                                revision: 1,
+                                                schema_version: f.definitions.locations.version,
+                                                payload: JSON.stringify({
+                                                    kind: 'zone',
+                                                    name: 'Ancestor',
+                                                    parent: id(offset + 105),
+                                                }),
+                                            })
+                                        );
+                                        yield* f.sql`INSERT INTO resource_record ${f.sql.insert(rows)}`;
+                                        yield* f.sql`INSERT INTO resource_revision ${f.sql.insert(rows)}`;
                                     }
                                 )
                             )

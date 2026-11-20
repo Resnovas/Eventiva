@@ -348,6 +348,8 @@ export const storage = (dialect: Dialect) =>
                                         current.state !== command.expectedState
                                     )
                                         return yield* new Conflict({ id: command.id, reason: 'stale' });
+                                    // Validate the retained bytes before UPDATE can erase corruption; preserve expired/stale precedence.
+                                    yield* record(current);
                                     if (!machine[current.state]?.includes(next))
                                         return yield* new Conflict({ id: command.id, reason: 'illegal-transition' });
                                     if (leaseUntil !== undefined) {

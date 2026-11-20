@@ -407,6 +407,22 @@ Authenticate before `TenantRouter.run`. Inject a trusted resolver and an authori
 
 Persistence seam v1 is the existing `Storage.commit` result/replay contract, operational `compareAndSet` with leases and atomic transition history, and `enqueue` outbox staging. No second workflow abstraction is needed. `client` from `@eventiva/integrations.sql/postgres` already supplies upstream `SqlClient.SqlClient` and `PgClient.PgClient`; share one layer instance with `storage('postgres')` and trusted SQL consumers only when database/role routing intentionally matches. The tenant router does not expose a raw SQL client. Within the tenant route, provide `durable` to ActionHost and retain that same Storage for handlers: commit's execute effect runs inside its captured client's transaction, including nested Storage operations. Do not capture another client, replace Storage or detach work. Transport transactions are not implicitly atomic with business actions.
 
+`compareAndSet` must decode the serialized existing row with the same JSON/record
+schemas as `get` before replacement or history insertion. Keep the existing
+expired/deadline and stale state/version guards first, including missing-row
+conflicts; do not introduce an existence oracle through decoding. Malformed retained
+lease/payload denial is sanitized `StorageFailure` / `invalid-data`, preserving
+the original row/payload bytes/version/lease and appending no history. Null/future
+leases remain valid, exact expiry/deadline equality remains expired, and omission
+of the next lease still clears a valid lease on success. Recovery of corrupt data
+needs separate authorization, not a transition retry. The actual-driver public
+regression is `tests/storage/src/retained-record-validation.spec.ts`: SQLite permits
+fixture-only text in its integer lease column; PostgreSQL rejects malformed
+timestamp text (22007) and unsafe versions (23514) without disabling constraints,
+while valid Date/bigint-string representations pass. Invalid retained JSON is
+denied on both. This is persisted-data fail-closed correctness, not a demonstrated
+hostile-ingress exploit or a schema/migration change.
+
 Migration locks are transaction-scoped `pg_advisory_xact_lock`; runtime locking is row/transaction based, with no session advisory locks or `LISTEN`. Transaction pooling does not preserve backend session identity between transactions. Upstream runner lease-row ownership, polling and message storage require their own compatibility verification; installed cluster packages alone do not prove sharding/recovery. Keep migration/direct and runtime/pooled privileges separate. See `docs/storage.md` for exact v1 composition and boundaries.
 
 Integrity serializes scoped keys and atomically stores domain/history/outbox/dedup/success receipt. Audit persists or fails closed; no spool is implemented. External actions enqueue commands, never call providers inside a SQL transaction. Runtime revalidates live gates after waiting and before replay. Conflicts are visible typed failures, not authorization for force writes. Exact money/decimal values are strings, quantities/versions safe integers, times epoch milliseconds, UUIDs application-generated v7. Typed raw canonical/device records remain distinct from JSON projections; device migrations and PowerSync are deferred.
@@ -2897,6 +2913,8 @@ Get reads current state. List returns items/next with exclusive UUID after, limi
 Every mutation acquires a tenant graph guard inside the existing transaction, then checks the full exact ancestor chain (maximum 1024, otherwise refuse) before writing. Missing/corrupt/denied/repeated ancestry fails closed. Only guard CAS/initialization conflicts retry up to three times; refresh authority after waits/retries. No automatic retry of mutation conflict, database uncertainty or policy failure. Preserve original action keys/input for explicit recovery and stable committed receipts. Public errors are finite LocationFailure reasons, not database diagnostics. Unrelated modules must not bypass the guard by directly writing its resources.
 
 The compiling example assumes an already composed authenticated host, not a policy bootstrap. Actual PostgreSQL/SQLite host/reopen/history/paging/rollback/replay/live-policy and independent PostgreSQL graph races are tested in `tests/resources/src/inventory-location.spec.ts`. Definition validation/invocation do not establish provider parity: intact schemas retain explicit UnsupportedSchema discovery controls. No archive exists without the authoritative LocationNotEmpty stock query. Broader EVE-103 ledger/levels/movements/UI/offline acceptance remains open. See `docs/inventory-locations.md` for options, limits and troubleshooting. No activation/spend or January-deferred EVE-248 work is included.
+
+The full-page ancestry test batches only its 920 synthetic setup rows into current/revision tables within the existing Resources transaction. Both dialects were compared against the real 920-call API loop before qualification: ordered record, revision, schema definition/checksum and tenant-pin bytes match exactly, and both rollback to the original state. Preserve the hexadecimal IDs, active schema version, revision 1 and encoded payload field order when maintaining this fixture. Public-host assertions, schema pins, rollback checks and the 60-second budget remain unchanged; direct SQL setup is not feature authorization or permission to bypass the production graph guard/live per-node policy. The people guide records the bounded diagnostic measurements and digest, not production traversal acceptance.
 
 ### locations
 
