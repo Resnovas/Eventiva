@@ -45,11 +45,14 @@ if (process.argv[2] === '--install') {
         return git('write-tree');
     };
     const before = snapshot();
+    // Hook-local Git paths belong to this index, not disposable repositories created by verification.
+    const verificationEnv = { ...process.env };
+    for (const name of git('rev-parse', '--local-env-vars').split('\n')) delete verificationEnv[name];
     for (const argv of [
         ['--run', 'verify:static'],
         ['--run', 'verify'],
     ]) {
-        const result = spawnSync(process.execPath, argv, { cwd: root, stdio: 'inherit' });
+        const result = spawnSync(process.execPath, argv, { cwd: root, stdio: 'inherit', env: verificationEnv });
         if (result.status !== 0 || result.error)
             throw new Error(
                 'Pre-commit verification failed. Fix the reported source or public-path proof; do not bypass the hook.'

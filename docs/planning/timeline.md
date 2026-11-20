@@ -82,6 +82,8 @@ Published on November 20: signed [source 9e379bf6](https://github.com/Resnovas/E
 
 Hosted CI subsequently failed four backend tests with a proven duplicate-listener collision, not the historical replay count. The [diagnosis](https://linear.app/resnovas/issue/EVE-299#comment-6f7eefb4-6c7d-4399-a797-5d5c1c986372) is independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7029279944). Explicit concurrent consent/HTTP-client execution reproduces four failures and three passes at port 34565; the isolated consent listener passes all seven unchanged tests. The registry keeps the concurrent regression as its 31st interface entry. Static analysis passes; full gates and publication of the bounded repair remain pending. The timing owner retains root scheduling; this owner changes the consent fixture only. After delivery, the requested rule rejects fixed fixture listeners with a bind-zero/read-assigned-address diagnostic; complete Cluster migration must preserve validated production profiles and socket ownership. See the [repair evidence and shared candidate](../funnel-review.md#hosted-fixture-collision-and-bounded-repair).
 
+At 2026-11-20T03:46Z, the bounded listener repair is published as [f802d14b](https://github.com/Resnovas/Eventiva/commit/f802d14bfe27666072bdc8c417d47f0ff6d1e729) after the full installed gate and both affected backend proofs passed. [Tracker evidence](https://linear.app/resnovas/issue/EVE-299#comment-a424f63f-1772-4f5f-8752-6a5f1cf6208c) is [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7029751709); hosted acceptance remains pending. Current priority is the separately reproduced installed-hook Git-environment failure blocking EVE-261 linked-worktree commits. The runner amendment passes static checks and nine fixtures, including a real installed-hook nested-history/outer-tree regression that fails before the fix. Full gates/publication follow; the timing owner keeps root scheduling ownership. Upcoming port-zero enforcement needs reviewed prebound-socket composition rather than a reservation/rebind race. Shared JSDoc cooldown, API adoption and managed guidance remain open.
+
 ```mermaid
 flowchart LR
     FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
@@ -91,7 +93,9 @@ flowchart LR
     FeatureProof --> FullFunnel
     FeatureProof --> Delivery["Passed: full gates and 20 affected proofs; signed source"]
     Delivery --> Publication["Published; hosted proof exposed duplicate fixture listener"]
-    Publication --> FixtureRepair["Concurrent red/green passed; full repair gates pending"]
+    Publication --> FixtureRepair["Listener repair published after full local gates"]
+    FixtureRepair --> HookRepair["Current: isolate nested Git histories in installed hook"]
+    HookRepair --> PortPolicy["Upcoming: port-zero seam review and corrective rule"]
     Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
     SharedRules --> FullFunnel
     Delivery --> FullFunnel

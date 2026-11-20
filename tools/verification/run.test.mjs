@@ -315,3 +315,72 @@ test('hook checks static before verification and rejects unstaged files and inde
     assert.notEqual(mutation.status, 0);
     assert.match(mutation.stderr, /staged tree changed/);
 });
+
+test('installed worktree hook isolates nested Git histories while preserving the outer commit and index guard', () => {
+    const primary = fixture();
+    const cwd = `${primary.cwd}-worktree`;
+    primary.git('worktree', 'add', '--quiet', '-b', 'nested-history-proof', cwd);
+    const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+    writeFileSync(
+        join(cwd, 'nested.mjs'),
+        `import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import assert from 'node:assert/strict';
+const stage = process.argv[2];
+const cwd = resolve('test-output', stage);
+mkdirSync(cwd, { recursive: true });
+const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+git('init', '--quiet');
+git('config', 'user.name', 'Nested Fixture');
+git('config', 'user.email', 'nested@example.invalid');
+git('config', 'commit.gpgsign', 'false');
+writeFileSync(cwd + '/receipt', stage);
+git('add', '.');
+git('commit', '--quiet', '-m', stage + ' fixture');
+assert.equal(git('rev-parse', '--show-toplevel'), cwd);
+assert.equal(git('show', 'HEAD:receipt'), stage);
+console.log(stage + '_HISTORY_OK');
+`
+    );
+    writeFileSync(
+        join(cwd, 'package.json'),
+        JSON.stringify({ scripts: { 'verify:static': 'node nested.mjs static', verify: 'node nested.mjs verify' } })
+    );
+    writeFileSync(join(cwd, 'apps/billing/input'), 'outer staged receipt\n');
+    git('add', '.');
+    const tree = git('write-tree');
+    const primaryHead = primary.git('rev-parse', 'HEAD');
+    execFileSync(process.execPath, ['tools/verification/pre-commit.mjs', '--install'], { cwd });
+    const commit = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'outer receipt'], {
+        cwd,
+        encoding: 'utf8',
+    });
+    assert.equal(commit.status, 0, commit.stderr);
+    assert.match(commit.stderr + commit.stdout, /static_HISTORY_OK[\s\S]*verify_HISTORY_OK/);
+    assert.equal(git('rev-parse', 'HEAD^{tree}'), tree);
+    assert.equal(git('write-tree'), tree);
+    assert.equal(git('show', 'HEAD:apps/billing/input'), 'outer staged receipt');
+    assert.equal(primary.git('rev-parse', 'HEAD'), primaryHead);
+
+    // Clearing child environment must not disable detection of real outer-index changes.
+    writeFileSync(
+        join(cwd, 'package.json'),
+        JSON.stringify({
+            scripts: {
+                'verify:static':
+                    "node -e \"require('node:fs').writeFileSync('apps/billing/input', 'mutated'); require('node:child_process').execFileSync('git', ['add', 'apps/billing/input'])\"",
+                verify: 'node -e "console.log(\'VERIFY_OK\')"',
+            },
+        })
+    );
+    git('add', '.');
+    const head = git('rev-parse', 'HEAD');
+    const mutation = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'reject mutation'], {
+        cwd,
+        encoding: 'utf8',
+    });
+    assert.notEqual(mutation.status, 0);
+    assert.match(mutation.stderr, /staged tree changed/);
+    assert.equal(git('rev-parse', 'HEAD'), head);
+});

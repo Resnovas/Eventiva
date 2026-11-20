@@ -23,6 +23,8 @@ For example, frontend extensions may import contracts/schema but not runtime or 
 
 Gates: `node --run check`; `pnpm nx sync:check`; `pnpm nx run-many -t lint typecheck test build parity`; `pnpm nx run-many -t smoke` (server start, `client:i18n`, Android export with Hermes bytecode, web export plus Playwright). `node --run verify` runs all of them. CI's required `application check` aggregates `.github/workflows/ci.yml`.
 
+Installed-hook regression: `node --test --test-name-pattern='installed worktree hook' tools/verification/run.test.mjs` commits through the real hook in a linked worktree, creates independent nested histories in both verification stages and checks the exact outer committed tree. The runner clears Git-local environment only for verification children; its own staged-index guards retain that environment and still reject mutation. No option, bypass or production change is introduced. See the canonical feature registry for setup and failure handling.
+
 Example, compiled as `apps/server/src/status.ts`: a portable specification and the backend module that implements it.
 
 ```ts
