@@ -8,6 +8,15 @@ schema, retention producer or activated endpoint. Preserve the existing default-
 checks. The binding session-renewal policy and trusted-activity classification
 are outside this cancellation correction.
 
+Published evidence (reconciled 2026-11-20): the
+`Current published state - Packet I, 2026-11-20` capsule in
+`docs/core-qualification/resource-cancellation.md`
+maps source `009dc422`, head `3ff2251b` and exact-head application run
+`44638123407` to the clauses below, preserving original failures and fixture approval.
+The same dated capsule in `docs/core-qualification/session-policy.md` records
+delivered permanent coverage and policy-backed SQL issuance; neither capsule
+certifies rolling renewal, production activation or whole EVE-275/Core acceptance.
+
 Use registered `ActionHost.prepareApproval` to derive the review. After codec,
 target authorization and live policy, trusted `ApprovalEvents.resolve(binding,
 canonicalWireInput)` returns an optional `{ event, resource }`. `resource` is the
