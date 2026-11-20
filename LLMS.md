@@ -1506,6 +1506,10 @@ This pure schema library change has no runtime product rollout and therefore no 
 
 The compiling examples and type assertions live in `tests/schema/src/compose.spec.ts`: exact per-key decoded/encoded rows, exact nested schema members, source-schema identity, annotations, Date round trips and preserved nullable metadata. Run strict schema package/test typechecks and the entire schema Vitest project with its existing 90% coverage gate. Each delivering lane regenerates affected LLMS, planning and clean-source Graphify outputs after rebasing; no central integration window is required.
 
+## Core qualification evidence pointers - 2026-11-20
+
+Read `docs/core-qualification/types-boundaries.md` and `docs/core-qualification/bootstrap-diagnostics.md`, starting with their Packet H current-state capsules. Published integration 01517213/head23baec94 includes owned declaration closure and the closed DeploymentProfileFailure boundary; those fixes must not be implemented again from the historical blocked/local-only sections. The reports map each bounded clause to immutable source, historical reported execution, independently checked exact-head CI and remaining limits. H is docs-only reconciliation, not a new test or production qualification. Existing first-party declaration restrictions do not recursively police dependency internals, and SQL import detection remains independent. Exact-head CI is not release authority or whole EVE-277/278/Core acceptance; preserve failed/skipped/cancelled history and distinguish H's fresh delivery gates from earlier commands.
+
 ---
 
 # Exact modular kernel
