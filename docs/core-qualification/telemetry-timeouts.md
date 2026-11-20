@@ -5,6 +5,165 @@ is not recoverable from the preserved logs. Jonathan subsequently confirmed
 that both child and aggregate performance are required contracts, authorizing
 the budgeted, timed harness and enforcement below without increasing limits.
 
+## H follow-up: avoid unrelated bootstrap imports - 2026-11-20
+
+This newer failure is a measured **2300 ms child timeout**, not either historical
+5000 ms aggregate timeout below. The [replacement owner](https://ampcode.com/threads/T-5dcbf3b4-41e4-4df0-906d-93629eebe199)
+read [H's preserved hook evidence](https://ampcode.com/threads/T-191ac145-222c-496f-bac9-a3b9e52e2e1b)
+and started from fetched published `a959f9ea2042fb6d850d06f953e6bf7abda70a20`,
+with its original frozen dependencies, not unpublished renewal or dependency
+reconciliation. [EVE-261 diagnosis checkpoint](https://linear.app/resnovas/issue/EVE-261#comment-edcd0e8f-56a8-4d60-bc09-ca843f514141)
+records the non-closing ownership and measurements. Puck assigned diagnosis;
+the coordinator subsequently cleared exactly the `NodeRuntime` import line in
+`apps/server/src/main.ts`. No lifecycle body, harness, budget, assertion, test,
+configuration, dependency or instrumentation implementation changes.
+
+### Exact failing phase and responsible import
+
+H's `bootstrap-diagnostics.spec.ts:80` failure is the observed half of the
+`telemetry_enabled: false` output/exit noninterference pair. Correlation key
+`startedAtMs=1795157635014`, child 2, distinguishes it from the intentional
+10000 ms timeout and native-pressure controls:
+
+| Phase | Milliseconds after parent launch |
+| --- | ---: |
+| Child observer / entry source available | 38 / 40 |
+| Module 256 / Effect source / module 1024 available | 359 / 1607 / 1983 |
+| Root starts after imports/evaluation | 2123 |
+| Main use / services / telemetry released successfully | 2231 / 2240 / 2249 |
+| Bootstrap use / root complete successfully | 2250 / 2255 |
+| Deadline / OS exit / pipe close | 2303 / 2320 / 2320 |
+
+The unobserved original closed at 1773 ms. Most observed time precedes root
+execution; the scopes completed, but natural process exit was not observed
+before termination. Exit and pipe close coincide, so the record does not show
+an inherited-pipe drain hang. It does not identify the final pre-exit wait or
+prove recurrence of the earlier V8 forced-exit deadlock. Module-source hooks
+are availability milestones, not individual evaluation profiles.
+
+`@effect/platform-node` eagerly exports HTTP, cluster, socket, worker and other
+adapters. Its published index exports the identical `NodeRuntime` namespace
+from `./NodeRuntime.js`; importing that public subpath directly preserves
+`runMain` and avoids unrelated work. A diagnostic load-hook intervention changed
+only this import while leaving actual entry source and dependency versions
+otherwise intact. Completed idle controls counted 1229 modules / 121 platform
+modules / 110 Undici modules before, versus 770 / 13 / 0 after; Effect remained
+362. CPU user/system samples were 1520.677/252.080 ms versus 989.688/71.834 ms;
+reported maximum RSS was 259932 versus 160300 KiB. Idle wall times 1451/832 ms
+are one observation, not a statistical speedup or cold-cache claim.
+
+### Controlled red and green, with the same limits
+
+The orb exposes two CPUs and Node 24.22.3, PNPM 12.18.0 and Vitest 4.1.12.
+Two finite Node loops used `performance.now()` and arithmetic for at most 45 s;
+the parent terminated and awaited them after each diagnostic. This is a stated
+load envelope, not reconstructed evidence of H's contemporaneous CPU pressure.
+No OS/compiler cache flushing, compile cache, retry-until-green or Nx scheduling
+change was used.
+
+The unchanged actual Vitest false-setting control failed with both children
+timing out: original close 2448 ms; observed root 2209 ms, deadline 2306 ms,
+close 2434 ms. A fixed baseline/candidate/candidate/baseline/baseline/candidate
+load comparison then produced three baseline deadlines at 2339/2335/2438 ms
+and three candidate natural exit-0 closes at 1546/1481/1780 ms. The diagnostic
+loader added measurement overhead to both arms. Timeout-censored baseline
+durations cannot support a percentage speedup.
+
+After the literal one-line source correction, the **same actual Vitest command**
+under the same two-process load passed: original close 2222 ms; observed root
+1280 ms, successful root/natural exit 1547 ms, OS exit/close 1575 ms. Both retain
+2300 ms child and 5000 ms enclosing limits. Assertions are unchanged. The
+acceptance execution uses no diagnostic load hook or source override:
+
+```sh
+pnpm exec vitest run --config tests/telemetry/vitest.config.mts tests/telemetry/src/bootstrap-diagnostics.spec.ts --coverage.enabled=false -t 'preserves server output and exit with settings telemetry_enabled$'
+```
+
+That selector is red/green diagnosis, not package coverage: six unselected cases
+are reported as filtered. Full `pnpm nx test @eventiva/telemetry-tests --skip-nx-cache`
+then passed all 92 tests in 59.28 s, without coverage overrides: statements
+96.2%, branches 95.61%, functions 91.76%, lines 96.5%. The existing real-process
+regressions cover output/exit parity, all opt-outs, scope release, bounded
+capture, native pressure, the real timeout and cancellation; no private-import
+snapshot test was added. `node --run verify:static` passed first: 15 builds,
+83 lint/typecheck/dependency tasks, source 296 files/1450 edges and emitted
+100 files/502 edges, zero violations/cycles. Raw before/candidate/after logs,
+module counts and bounded measurement scripts are retained in this owner's
+`bootstrap-load` backup. No throughput, universal host determinism or full-hook
+acceptance is inferred from focused measurements.
+
+### Why H reached 19m39s before smoke/features
+
+Git Trace2 records the outer installed pre-commit from
+`2026-11-20T06:47:36.672865Z` through `07:07:16.191135Z`: 1179.518258 s,
+natural exit 1, not the surrounding 1200 s timeout. The first post-static
+`write-tree` is at `06:49:09.290109Z`, 92.617244 s after hook entry, including
+boundary graphs, launch and snapshot overhead. The hook runs `verify:static`,
+then `verify`, whose first command is **another `verify:static`**. Recorded Nx
+lint/typecheck bodies were 70 s and 75 s; build bodies were 211 ms and 105 ms.
+Boundary source/declaration graphs ran twice too. Four later Node fixture
+groups took 5.404/2.386/9.966/29.835 s; root/tool/graph/launch costs add overhead.
+
+The main Nx aggregate alone reports a rounded **15m18s**, with 37 successful
+tasks and 15 cache hits, and continued other targets after telemetry failed.
+Subtracting that rounded duration leaves approximately 261.5 s before the
+aggregate, not another telemetry wait. Beyond the first 92.617 s, exact internal
+stage start timestamps are unavailable; do not invent precise residual splits
+or sum overlapping task durations. Smoke and serial feature evidence are later
+`&&` stages and were never reached. The funnel owner received this breakdown;
+this patch does not remove duplicate static verification or change parallel 2,
+Android-after-web, hooks, registry or feature serialization.
+
+### Actual corrected-tree hook: aggregate passes, outer deadline blocks delivery
+
+The real signed-commit attempt started at `2026-11-20T07:33:31.385922Z` on
+the same published base and original frozen dependencies, using the unchanged
+installed hook (`node --run verify:static`, then `node --run verify`). Puck
+authorized exactly H's existing pinned, local-only disposable PostgreSQL
+fixture: PostgreSQL 17.12 Alpine 3.24, SCRAM, non-superuser `CREATEDB` role,
+loopback-only connection, two CPUs/1 GiB/256 PIDs and 256 MiB temporary data.
+No new image version, fixture policy, dependency or service configuration.
+
+The surrounding **`timeout 1200` exited 124**, terminating the attempt during
+smoke. This is not a successful installed hook or a new telemetry child failure:
+
+| Gate reached | Actual outcome |
+| --- | --- |
+| First and repeated static | Both pass: 15 builds each; 83 lint/typecheck/dependency tasks each, 78 s/72 s lint/type bodies, zero source/declaration boundary violations/cycles. |
+| Root and Node fixture checks | Pass; normal hook and staged-tree guards remain installed and unchanged. |
+| Main Nx test/build/parity aggregate | All 38 tasks pass in rounded 14m45s, with 15 cache hits, including telemetry, runtime, contracts and storage. |
+| Smoke | Entered; server smoke passes. Remaining client/web smoke interrupted by the outer bound, not claimed passed. |
+| Serial affected-feature proof | Never reached; not inferred from aggregate or earlier focused coverage. |
+| Commit, publication, exact-head CI | None. HEAD remains `a959f9ea2042fb6d850d06f953e6bf7abda70a20`; the authored patch is retained locally. |
+
+The first post-static snapshot is at `07:35:11.189392Z`, 99.754107 s after
+hook entry. Exact other stage start times are not reconstructed from buffered
+Nx output. The 885 s rounded aggregate plus duplicate static/root/tool/smoke
+cost exceeded the unchanged total bound despite passing aggregate targets.
+This exposes a separate full-funnel duration blocker, not permission to raise
+the bound, rerun unchanged code for cache-dependent green, alter parallelism or
+adopt unrelated unpublished source. Coordinator and Puck subsequently authorized
+one bounded integrated snapshot: only this cleared import correction and the
+approved static-dedup source/docs, owned, qualified and delivered by the
+[funnel owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f)
+under EVE-261/#1035 and EVE-299/#1092. This owner transfers exact patch sections
+and evidence, preserving originals; generated LLMS/graph outputs are not
+overwritten by transfer. Every gate, the 1200 s bound, parallel 2 and serial
+feature contract remain unchanged. If the combined attempt still overruns,
+hold and report stages rather than retry blindly. No larger orb/spend or
+independent competing delivery is authorized.
+
+The approved wrapper ran its container/network cleanup; an independent
+`docker ps` reported no remaining containers, and the supervised Docker daemon
+was stopped afterward. Raw command log, Git
+Trace2, staged patch and clean-source graph are retained in the owner's
+`eve261-step2` backup. EVE-261/#1035 records the paired blocker and delivery
+state. H stays held: focused and aggregate proof do not clear its retry.
+The separately reported #1052 compiler/storage deadlines, the funnel owner's
+unpatched telemetry/runtime timeouts and PR59 Windows ownership blocker are
+not accepted or erased by this correction. Step2 still awaits
+human-managed-core acceptance/merge/sync; whole EVE-261/Core remains open.
+
 ## START and ownership - 2026-11-20
 
 Jonathan assigned this bounded investigation through the

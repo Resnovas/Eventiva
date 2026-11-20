@@ -17,6 +17,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { verificationStages } from './pipeline.mjs';
 
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 const nx = JSON.parse(readFileSync(new URL('../../nx.json', import.meta.url), 'utf8'));
@@ -33,15 +34,21 @@ test('verification preserves every gate and dependency barrier without serializi
         'node tools/resources/boundaries.mjs',
         'node tools/resources/boundaries.mjs --declarations',
     ]);
+    assert.equal(manifest.scripts.verify, 'node tools/verification/pipeline.mjs');
     assert.deepEqual(
-        manifest.scripts.verify.split(' && '),
+        verificationStages,
         [
-            'node --run verify:static',
-            'node --run check',
-            'node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs tools/verification/run.test.mjs',
-            'nx run-many -t test build parity',
-            'nx run-many -t smoke',
-            'node --run verify:features',
+            ['--run', 'verify:static'],
+            ['--run', 'check'],
+            [
+                '--test',
+                'tools/resources/boundaries.test.mjs',
+                'tools/resources/types.test.mjs',
+                'tools/verification/run.test.mjs',
+            ],
+            ['node_modules/nx/dist/bin/nx.js', 'run-many', '-t', 'test', 'build', 'parity'],
+            ['node_modules/nx/dist/bin/nx.js', 'run-many', '-t', 'smoke'],
+            ['--run', 'verify:features'],
         ],
         'Retain static-first ordering and every funnel gate; feature evidence keeps its separately tested serial scheduling.'
     );

@@ -37,7 +37,7 @@
         "parity": "nx run-many -t parity",
         "verify:static": "nx run-many -t build && nx run-many -t lint typecheck && node tools/resources/boundaries.mjs && node tools/resources/boundaries.mjs --declarations",
         "verify:features": "node tools/verification/run.mjs",
-        "verify": "node --run verify:static && node --run check && node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs tools/verification/run.test.mjs && nx run-many -t test build parity && nx run-many -t smoke && node --run verify:features",
+        "verify": "node tools/verification/pipeline.mjs",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "graph:open": "node tools/dev/open.mjs graphify-out/graph.html",

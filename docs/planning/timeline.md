@@ -2,6 +2,29 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## EVE-299 static deduplication
+
+On 2026-11-20, Puck relayed approval for the [funnel owner's](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) duplicate-static removal only. Exact human-selection time is unknown. [Linear START](https://linear.app/resnovas/issue/EVE-299#comment-cc14d9dd-20a8-49a4-ad9e-85e14e04c301) is independently [mirrored on GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7033313568), related RES-66. Coordinator cleared the exact pipeline and verification-doc sections; telemetry, storage and renewal work remain separate. The [registry](../verification/registry.md) owns the ordered pipeline and snapshot contract.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed local regression | The installed-hook positive case fails before the fix because it observes STATIC_OK twice. Shared pipeline now passes all 12 runner/pipeline fixtures, including every stage once, standalone execution, static failure before documentation, immediate static/final snapshot rejection and nested Git histories. Static verification passes 15 builds, 83 lint/type tasks and both boundary graphs with zero violations before documentation work. |
+| Retained dedup-only failure | Normal hook naturally exits 1; fixture/commit/cleanup wall upper bound 1123.92s, not exact hook time. Single static lint/type body 79s, aggregate 15m31s with 36 successful tasks/15 cache hits. Telemetry 89/92 and runtime 678/680 fail bounded child ETIMEDOUT; smoke/features never start. No commit/push or retry. Exact patch/tree and logs remain preserved. |
+| Current combined qualification | Coordinator relays Puck approval for exactly this dedup slice plus the cleared NodeRuntime subpath import/docs below. File-tool archive SHA256 f3724bb40bc4fe21e138ebcd2663ce6c9c1cb1d7b2f5ad7d902b7382e45e3158 and all manifest entries verified; only four transferred hunks applied, no generated overwrite. Combined static passes before documentation. Source/docs commit and separate graph chore each require their own normal hook within 1200s; no rule-8 exception, bypass or evidence reuse. |
+| Upcoming and excluded | Publish independently verified source and regenerated graph, record full-hook timing and exact-head CI. Same-run proof reuse and any serial-contract amendment still require Jonathan. Static dedup alone cannot resolve G's measured 479.776-second excess. No dependency, production operation or shared-house edit is included. |
+
+The retained runtime failures both belong to `real diagnostic server telemetry composition` in `tests/telemetry/src/server.spec.ts`: line198, `runs the real main and drains one correlated console diagnostic, never ready or banner` (2341ms, status null, SIGTERM), and line229, `flushes the real file layer before process exit and releases its scoped lock` (2312ms, status0, signal null). Both report `Bounded child did not complete normally.` / `ETIMEDOUT`; successful application exit is not timely parent close. Runtime target took 462.63s; telemetry target 85.30s. No claim that the import correction fixes these two observations precedes combined verification. The [dedup failure and combined authorization record](https://linear.app/resnovas/issue/EVE-299#comment-24e2200d-52ca-444c-b5ec-0e59845cb2e9) is independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7033812502).
+
+```mermaid
+flowchart LR
+    Duplicate["Observed duplicate static pass"] --> Once["One pipeline; snapshot barriers retained"]
+    Once --> Focused["Passed: targeted proof and static checks"]
+    Focused --> Failure["Retained: telemetry/runtime deadlines block hook"]
+    Failure --> Full["Authorized: bounded combined import + dedup"]
+    Full --> Publish["Required: separate source/graph hooks, main and CI"]
+    Reuse["Separate owner decision: same-run proof reuse"]
+```
+
 ## Approval finalization qualification F
 
 START 2026-11-20T05:24:12Z: [independent F owner](https://ampcode.com/threads/T-5c7c1b4c-f6aa-448d-82f3-f6c5692c1890) starts from fetched `origin/main` `69f9866e4701a1f2ea8ddbe3f326eb75eb235dd0`, not unpublished renewal. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-913b839c-b55a-4584-8bbf-1ad9554afa3b) and its [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7031300107) record the bounded allocation. This does not refresh the historical snapshot or close EVE-275/Core.
@@ -122,6 +145,39 @@ flowchart LR
     Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
     SharedRules --> FullFunnel
     Delivery --> FullFunnel
+```
+
+## EVE-261 H bootstrap import correction - 2026-11-20
+
+This additive checkpoint does not rewrite the historical source capture or H's
+separately owned qualification reconciliation. Puck assigned the [existing
+process owner](https://ampcode.com/threads/T-5dcbf3b4-41e4-4df0-906d-93629eebe199)
+to diagnose H's observed `telemetry_enabled: false` child timeout on published
+`a959f9ea`, with frozen dependencies and no unpublished renewal adoption.
+[EVE-261 diagnosis checkpoint](https://linear.app/resnovas/issue/EVE-261#comment-edcd0e8f-56a8-4d60-bc09-ca843f514141)
+records the narrow START; the coordinator cleared exactly one server import
+line, and Puck cleared only the existing pinned local disposable fixture.
+The [canonical report](../core-qualification/telemetry-timeouts.md#h-follow-up-avoid-unrelated-bootstrap-imports---2026-11-20)
+owns phase rows, actual commands, measurements and remaining delivery limits.
+
+| State | Evidence / next step |
+| --- | --- |
+| Completed diagnosis | H child root-start 2123 ms, root success 2255 ms, deadline 2303 ms, exit/close 2320 ms. Controlled two-CPU load reproduces expiry; unrelated platform root-barrel imports account for avoidable startup work. Exact final pre-exit wait and H's contemporaneous CPU pressure are not established. |
+| Corrected and locally qualified | One `NodeRuntime` subpath import, no lifecycle/body/test/budget/configuration changes. Fixed load comparison: baseline 3/3 deadlines, candidate 3/3 natural closes 1481-1780 ms; literal existing control subsequently passes without diagnostic loader. Static 15 builds/83 tasks and uncached telemetry 92/92 with unchanged coverage pass. No speedup percentage or whole-host determinism claim. |
+| Separate pipeline finding | H's natural hook failure took 1179.518258 s: approximately 261.5 s before the rounded 918 s aggregate, with duplicate static lint/typecheck bodies 70/75 s. Other aggregate targets continued after telemetry failure; smoke/features never started. Funnel owner receives the breakdown; this lane changes no pipeline source. |
+| Actual delivery blocker | Normal installed staged-tree hook passed all 38 aggregate tasks in 14m45s, then exited 124 at the unchanged 1200 s outer bound during smoke; serial feature proof was unreached. Both static passes passed (78/72 s lint/type bodies). No commit/push or retry; H remains held. |
+| Approved integrated next step | Coordinator/Puck authorize exactly the import fix plus approved static-dedup source/docs as one snapshot, qualified/delivered by the funnel owner under EVE-261/#1035 and EVE-299/#1092. Transfer exact authored sections/evidence with hashes; preserve originals and regenerate, never overwrite, LLMS/graph. Every gate/budget/serial contract remains; hold on another overrun, no blind retry or larger-orb/spend permission. |
+| Preserved holds | PR59 Windows-native ownership needs Jonathan's decision and normal managed merge/sync; local-suite step2 remains blocked. #1052 compiler/storage failures, renewal and H's five-file patch remain separately owned. EVE-261/Core remains open. |
+
+```mermaid
+flowchart LR
+    HRed["Retained H child timeout"] --> Diagnose["Reproduce and isolate unrelated imports"]
+    Diagnose --> Import["Cleared one-line NodeRuntime subpath"]
+    Import --> Local["Passed: unchanged load control, static, telemetry"]
+    Local --> Hook["Aggregate passes; smoke hits 1200 s bound"]
+    Hook --> Integrated["Authorized: import + static dedup, funnel owner"]
+    Integrated --> Publish["Required: full bounded gates, signed publication, CI"]
+    Publish --> HResume["Then H can resume its own gate"]
 ```
 
 ## EVE-261 aggregate bootstrap timeout investigation - 2026-11-20
