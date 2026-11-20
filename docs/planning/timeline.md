@@ -2,6 +2,31 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Approval retention C START - 2026-11-19T21:20:48Z
+
+This dated C checkpoint supersedes the earlier undispatched-C occupancy below, not A/B evidence or the historical planning capture. The existing proof/B owner starts packet C in isolated `repo-approval-retention` / `agents/eve275-approval-retention` from fetched main `e0efc5e4`, preserving every retained proof/provider/fixture/B ref and checkout. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-9f12d2fd-3761-4cd3-bfda-c9d16fcc79c2) and [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7022745290) own the non-closing lifecycle. The [canonical C report](../core-qualification/approval-retention.md) owns exact paths, typed maintenance handshake and executed evidence.
+
+| State | C evidence and next step |
+| --- | --- |
+| Completed prerequisite | Published A supplies the exact producer/CAS terminal retention anchor; source `29317cb3`, separately approved setup fixtures `ee3f367b`/`63cd0c17` and head `e0efc5e4` independently have valid signatures. Reported A local gates are not rerun C evidence or hosted acceptance. |
+| Completed C local qualification, 2026-11-20 | New contracts/SQL maintenance capability, storage spec/report/chapter34, additive `0013.sql` migrations and only approval-retention exports preserve canonical terminal retention and both expiry/retention floors. Corrected 45-case real-SQL proof passes; normal SQL coverage 47/47 statements, 55/55 conditionals, 7/7 methods. Ordinary rebase onto independently signed D head `3ff2251b`; fixture-backed unchanged full verify passes all 105 aggregate tasks and all three smoke projects. The initial exit124, interruption, missing-fixture failures and pre-correction success remain historical, not substituted for final acceptance. No existing approval source/spec or D cancellation path is changed. |
+| Renewal START, disjoint owner | Existing verified Sol A owner starts at 2026-11-19T21:50:34Z from clean retained `repo-core-integration` at `e0efc5e4`; [binding ingress amendment and START](https://linear.app/resnovas/issue/EVE-275#comment-40e147da-187e-46c8-9d60-e4eb7b183160) independently read. Exact reservation: contracts `identity.ts` session metadata only; OIDC `session.ts` issuance; server `approval-consent.ts` login wrapper only; new server `session-renewal.ts`/spec and permanent coverage include; narrow OIDC session tests; new report/chapter36; identity-OIDC guide and decision index. No C retention/approval schema/CAS/SQL/migration/manifest or D paths. At START, direct-human CLI eligibility was selected but its trusted human-versus-script mechanism remained unresolved; that eligibility is superseded by the later option B decision below. No source acceptance or activation inferred. |
+| Renewal option B, superseding owner decision | [Linear amendment](https://linear.app/resnovas/issue/EVE-275#comment-1c8b5a47-353f-4b7c-a2a8-3ca3d2875791), independently read, recorded 2026-11-19T23:10:43Z; original human-selection time unknown. CLI activity NEVER renews; sign-in is the human proof. Only real human mutations and interactive reads/navigation on server-allowlisted first-party web/native routes can renew one-hour idle within the eight-hour absolute cap; polling, prefetch, background sync, token refresh and agents remain excluded. No tickets or remaining CLI activity-proof mechanism blocker. This supersedes direct-human CLI eligibility, not the disjoint path reservation, C/D boundaries or activation limits. |
+| Renewal diagnosis hold, separately owned | [Explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7025774667) independently read; source Linear `c42e6105-4208-40e1-ab81-213709798e0f`. Renewal stays preserved/unpublished on D main; further retries await the separately owned EVE-261 telemetry diagnosis. Observed failures are Vitest 5000ms deadlines, not child ETIMEDOUT; slow phase/root cause is unproved. C neither adopts renewal nor changes gates, timeouts or that diagnosis scope. |
+| Current delivery / upcoming limits | Finish evidence-only root/strict/build checks and clean-source graph, publish signed C directly and follow exact-head CI through the paired lifecycle. C storage reservations release explicitly at verified delivery; later storage crash-probe harness work awaits its separate exact-path START. Forced SQL finalization/commit-acknowledgement fault recovery remains unqualified, not a rollback guarantee or new protocol. No production migration, scheduler, endpoint or activation is authorized. |
+
+Whole EVE-275/Core remains open. A owns rolling-session follow-up; explicit resource-scoped cancellation is independently owned. EVE-248 stays January 2027; budgets/settings/spend and paused work remain unchanged. Refs: EVE-275. Refs: Resnovas/Eventiva#1063.
+
+```mermaid
+flowchart LR
+    APublished["Published A: stable terminal retention contract"] --> CStart["C: isolated START and trusted maintenance"]
+    APublished --> RenewalStart["Disjoint renewal START: web/native ingress and persistence"]
+    RenewalStart --> CLINever["Option B: CLI never renews; allowlisted real web/native only"]
+    CStart --> CChecks["Passed: actual SQL, normal coverage and full gates"]
+    CChecks --> CDelivery["Signed main delivery; exact-head CI recorded separately"]
+    CDelivery --> CoreOpen["Whole Core and production activation remain open"]
+```
+
 ## Approval A integration and B delivery checkpoint - 2026-11-19
 
 This current checkpoint supersedes the status, not provenance, of the START/planning entries below. [A evidence](https://linear.app/resnovas/issue/EVE-275#comment-8779ba39-b3b1-4487-81d6-d854435971c1) distinguishes executed local work from publication. The [canonical wiring report](../core-qualification/approval-wiring.md#current-implementation-checkpoint---2026-11-19) owns the detailed handshake and limits.

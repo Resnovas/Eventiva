@@ -7,6 +7,11 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./approval-retention": {
+            "@eventiva/source": "./src/approval-retention.ts",
+            "types": "./dist/approval-retention.d.ts",
+            "default": "./dist/approval-retention.js"
+        },
         "./approval": {
             "@eventiva/source": "./src/approval.ts",
             "types": "./dist/approval.d.ts",
