@@ -249,6 +249,44 @@ export default [
         },
     },
     {
+        // Step 1: bootstrap probes share measured child/test budgets; other suites are queued for coordinated migration.
+        files: ['tests/telemetry/src/**/*.spec.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        reactLifecycleRestriction,
+                        { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
+                        ...['node:child_process', 'child_process'].map(
+                            /** Build the finite forbidden-import declarations once. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
+                                name
+                            ) => ({
+                                name,
+                                message:
+                                    'Use childTests/runChild from ./child-process.ts: record every child timing and declare budgets that fit the test timeout.',
+                            })
+                        ),
+                    ],
+                },
+            ],
+            'no-restricted-syntax': [
+                'error',
+                reactDynamicRestriction,
+                {
+                    selector: 'ImportExpression[source.value=/^(node:)?child_process$/]',
+                    message:
+                        'Use childTests/runChild from ./child-process.ts: dynamic subprocess imports bypass timing and budget enforcement.',
+                },
+                {
+                    selector: 'CallExpression[callee.name="require"][arguments.0.value=/^(node:)?child_process$/]',
+                    message:
+                        'Use childTests/runChild from ./child-process.ts: require subprocess calls bypass timing and budget enforcement.',
+                },
+            ],
+        },
+    },
+    {
         files: portableFiles,
         rules: {
             'no-restricted-imports': [
@@ -257,10 +295,14 @@ export default [
                     paths: [
                         reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
-                        ...nodeBuiltins.map((name) => ({
-                            name,
-                            message: 'Portable code runs on Hermes and in browsers: no Node built-ins.',
-                        })),
+                        ...nodeBuiltins.map(
+                            /** Preserve the existing portable boundary declarations. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
+                                name
+                            ) => ({
+                                name,
+                                message: 'Portable code runs on Hermes and in browsers: no Node built-ins.',
+                            })
+                        ),
                     ],
                 },
             ],
@@ -277,11 +319,15 @@ export default [
                     paths: [
                         reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
-                        ...nodeBuiltins.map((name) => ({
-                            name,
-                            message:
-                                'The action runtime takes platform capabilities from services, not Node built-ins.',
-                        })),
+                        ...nodeBuiltins.map(
+                            /** Preserve the existing service-owned platform boundary declarations. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
+                                name
+                            ) => ({
+                                name,
+                                message:
+                                    'The action runtime takes platform capabilities from services, not Node built-ins.',
+                            })
+                        ),
                     ],
                 },
             ],

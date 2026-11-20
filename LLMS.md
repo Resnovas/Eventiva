@@ -250,7 +250,7 @@ Feature flags: this foundation adds the flag plumbing and one client flag, `clie
 
 Provider diagnostic remediation retains existing recovery/default/teardown behavior while replacing raw vendor causes with bounded operation/reason literals. OpenFeature errors retain initialize|close and provider-failed; server-provider shutdown retains shutdown and shutdown-failed. Never log vendor exception payloads to diagnose provider configuration.
 
-Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. After coding, run `node --run verify:static` before documentation: dependency builds, Nx lint/typecheck, source audit and emitted-declaration audit. It uses serial Nx execution and normal input-hashed caching, with no additional options or runtime flags. Process conformance intentionally imports the built server, so static graph resolution requires those outputs even on a clean checkout. Run frozen install and `pnpm nx sync:check`; inspect `pnpm nx sync` changes when references drift. Full `verify` runs static checks first, then the unchanged house/documentation gate, regression fixtures, Nx tests/builds/parity, smoke and affected-feature proof. CI retains trusted-event PostgreSQL tests and adds the owner-approved isolated PR fixture, not shared credentials or data. A static pass cannot certify full PR integration, production acceptance or native devices. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
+Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. After coding, run `node --run verify:static` before documentation: dependency builds, Nx lint/typecheck, source audit and emitted-declaration audit. Independent root stages use the two-task Nx default and normal input-hashed caching, with no additional options or runtime flags. The feature-evidence runner and its Nx prerequisites remain explicitly serial. Process conformance intentionally imports the built server, so static graph resolution requires those outputs even on a clean checkout. Run frozen install and `pnpm nx sync:check`; inspect `pnpm nx sync` changes when references drift. Full `verify` runs static checks first, then the unchanged house/documentation gate, regression fixtures, Nx tests/builds/parity, smoke and affected-feature proof. CI retains trusted-event PostgreSQL tests and adds the owner-approved isolated PR fixture, not shared credentials or data. A static pass cannot certify full PR integration, production acceptance or native devices. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
 
 The frontend `eventiva/no-zero-delay-ui-timer` rule rejects direct/global-member `setTimeout(updateSelection, 0)` and omitted-delay calls with a corrective state-ownership diagnostic. Invoke the owning event operation directly or remove redundant state; genuine timed work uses scoped Effect scheduling. The real-config boundary suite tests both UI scopes, computed literal properties, optional calls, signed zero and retained export restrictions. Local shadows/nonzero delays/backend/spread calls are controls; aliases and dynamic delay values are not analyzed. Run `pnpm nx test @eventiva/boundaries-tests --skip-nx-cache`. Active-source React imports reject useEffect without exceptions and direct the author to bootstrap or event-owned state. The client registers a shell synchronously, starts flags outside React and exposes product content only after readiness. Its useSyncExternalStore subscription reads one primitive snapshot. Fatal acquisition shows a bounded alert; scoped provider recovery retains safe defaults. Interruption releases providers and clears readiness; tests distinguish registration from asynchronous acquisition and verify failure/cleanup.
 
@@ -804,7 +804,7 @@ No additional retry, backlog, exporter or production listener exists. Bootstrap 
 
 The executable's custom `NodeRuntime.runMain` teardown sets `process.exitCode=1` only for a failed, non-interruption root after every application scope closes. Do not call the runtime's forced-exit callback for that branch: pinned Node 24.22.3 can deadlock joining a V8 worker awaiting main-thread GC (nodejs/node#64274). Success and interruption still call the original callback with 0, preserving its signal behavior. No dependency, retry, timeout, production stress flag, logger or scope/fiber ownership changes. See [native-shutdown evidence and reproduction](../../../docs/telemetry.md#drain-failed-roots-without-forced-native-exit); CI's early exit event alone does not identify its native worker. The real-server stress regression fails before the change at the same 10000 ms deadline and passes after with exit 1, safe output, empty stderr and natural beforeExit. Keep finite pressure in `tests/telemetry/fixtures/bootstrap-exit-pressure.mjs`, not application code. Future resources still need correct scoped cleanup; natural drain cannot hide leaked handles. Earlier cause-unknown notes describe the initial diagnostic checkpoint, not this later native reproduction.
 
-`tests/telemetry/src/server.spec.ts` preloads `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` through Node's `--import`. Preserve its 10000 ms timeout, 65536 maxBuffer, default SIGTERM, isolated environment and all existing exit/output/redaction/file-drain assertions. Descriptor 3 is a test-only, deduplicated, at-most-4096-byte journal. Parent assertion context includes monotonic elapsed time, Unix-epoch spawn time and only a completely Schema-validated bounded journal; absence, invalid content and oversize are fixed states. Existing stdout/stderr summaries retain only lengths and at most eight recognized event names. Capture failure never becomes a bootstrap prerequisite or successful-test output.
+`tests/telemetry/src/server.spec.ts` preloads `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` through Node's `--import`. Ordinary measured child budgets are 2300 ms; intentional stuck/native-pressure children retain 10000 ms. Preserve 65536 maxBuffer, default SIGTERM, isolated environment and all existing exit/output/redaction/file-drain assertions, with the unchanged enclosing limits. Descriptor 3 is a test-only, deduplicated, at-most-4096-byte journal. Parent assertion context includes monotonic elapsed time, Unix-epoch spawn time and only a completely Schema-validated bounded journal; absence, invalid content and oversize are fixed states. Existing stdout/stderr summaries retain only lengths and at most eight recognized event names. Capture failure never becomes a bootstrap prerequisite. The harness always emits safe numeric timing, including successful tests, never raw business diagnostics.
 
 The private `eventiva.bootstrap.lifecycle` diagnostics_channel publishes closed phase strings only when subscribed. Exit observers return the original effect unchanged without subscribers. They preserve the supervised fork/Fiber.await/flatten structure, services, results and finalizer ownership. The markers bracket main use, main-service release, nested telemetry release, completion of the bootstrap log Effect, outer bootstrap release and root Effect Exit. Module hooks observe source availability/count milestones, not evaluation completion; `root-start` follows module evaluation. The root-exit marker is after Bootstrap release but before runMain's observer/teardown. Node beforeExit/exit listeners add no scheduled work and do not catch signals. Parent signal is authoritative on timeout. Do not claim an absent event proves finalizer completion, a log call means stdout was written, or root-exit means runMain teardown finished.
 
@@ -857,6 +857,76 @@ The additive [export contract and security guide](02_export.md) supplies `contra
 `telemetry.export.enabled` defaults false and is rechecked with current authority for every write and flush. Bind one pipeline to authoritative tenant/module/version/generation/purpose/profile/operation and an approved opaque destination pseudonym. Deny Restricted/Vault and non-ordinary scopes independently of record claims; replace catalog text and drop attributes before release. The provider checks the complete binding and retains no payload queue or retries. Existing local logging and app composition remain unchanged; no production destination, credentials or remote flag is created.
 
 Run the regular telemetry and PostHog server projects, built declarations and full aggregate for integrated evidence. Their real-SDK transport fixtures cover safe errors, revocation and interruption during delayed SDK preparation, but do not prove kernel-installed exporter lifecycle or production release. See [the runbook](../../../docs/telemetry-export.md).
+
+## EVE-261 aggregate timeout investigation - 2026-11-20
+
+Read [the retained investigation](../../../docs/core-qualification/telemetry-timeouts.md)
+before attributing the preserved 5652/7851 ms test failures to child teardown or
+renewal. Both explicitly hit the runner's aggregate 5000 ms deadline; no failing
+child timing/journal establishes the historical slow phase. Originally two serial children
+each had a separate 10000 ms bound. Pinned Vitest rejects elapsed overrun even
+after synchronous work completes. Controlled sync and async over-budget pairs
+both fail; a short sync control passes. Jonathan then confirmed measured section
+budgets and the unchanged aggregate limit as binding. Telemetry specs now use
+`childTests`/`runChild` from `tests/telemetry/src/child-process.ts`: serial budgets
+plus 100 ms cleanup each must fit strictly below the test limit; undeclared and
+unused launches fail. Actual ESLint restrictions prevent direct subprocess
+imports, with rejection/acceptance proofs in the required root check. No custom
+call-graph rule, suppression, baseline or dependency is introduced.
+
+The existing Flags declaration `telemetry.bootstrap.child-timing` keeps
+`safeDefault: false` for production safety. Test registration provides ON by
+default; a disabling or missing provider rejects before spawning. Every actual
+launch records safe closed phases and numeric timing, with cancellation owning
+termination through pipe close. Preserve business output, serial positive
+controls and existing aggregate/coverage limits. Node IPC/storage/tool callers
+are a separately coordinated migration to the same core, not exempt occurrences.
+No managed AGENTS prose is removed because none duplicates this new rule.
+Shared-house promotion remains proposed, not adopted. Missing historical phase
+evidence still prevents a causal latency claim; EVE-261 remains open.
+
+The correctly configured full step-1 run still hit the unchanged 20-minute
+bound after all 105 main Nx tasks passed in 18m22s (49 cache hits; 5m24s critical
+path). Smoke interrupted client:export-web after 28.1s; that run is not a full
+pass. A subsequent two-task/serial-smoke candidate passed in 17m04.72s, locally
+only and without a controlled ratio to the cache-hit baseline.
+
+The approved candidate uses Nx `parallel: 2`, one task per available CPU on the
+measured host, instead of forced serial validation/smoke. The seven-stage
+comparison is historical evidence, not the current manifest. The integrated
+funnel instead preserves static-first builds, lint and
+typecheck, source/emitted boundaries, root check, boundary/type/runner proofs,
+test/build/parity, smoke and affected-feature evidence. Preserve all dependency
+barriers, assertions, coverage thresholds and the outer 20-minute limit. The additive root
+`export-android -> export-web` dependency serializes only the two Expo `--clear`
+exports that share Metro's temporary cache. Keep server/i18n smoke independent;
+browser smoke still waits for web output. The required
+`tools/verification/pipeline.test.mjs` proof guards the manifest; executed Nx
+history, not that assertion alone, qualifies the resource isolation.
+Feature-evidence commands and their Nx prerequisites remain serial, including
+the existing `NX_PARALLEL=1` enforcement and conflicting-override rejection.
+The integrated manifest needs its own full execution; the old passing run
+cannot stand in for it.
+
+Comparable same-host/fixture measurements disabled Nx cache for both settings
+and retained every stage even after diagnostic failures. Two tasks passed in
+15m24.58s, main/smoke critical paths 359.529/82.231s, peak descendant RSS
+1011844 KiB. Four failed five test targets in 15m35.82s, critical paths
+617.244/90.273s, RSS 785824 KiB; its smoke passed. Do not present a failing
+setting as a speedup or increase its deadlines. At two, web ended 5 ms before
+Android started, while server/web overlapped 1249 ms and browser/Android
+overlapped 4909 ms. OS/compiler caches were not flushed; one observation does
+not prove global optimality. Use `node --run verify` with the documented
+PostgreSQL fixture for the normal fail-fast gate. The measured manifest/Nx
+tree is local evidence, not publication or broad Core acceptance.
+
+Read-only actual-main profiling reached root at 868 ms and Node exit at 982 ms
+with the existing preload; all unobserved/observed/sampled controls exited 0.
+Sampling showed substantial Node compilation/package lookup/GC self time, not
+a demonstrated post-log hang. No production import/source optimization or
+historical latency cause is established. House PR 59 has passing current
+required checks but remains draft; normal human merge/sync precedes managed
+adoption. Repository-wide same-core migration remains a separate checkpoint.
 
 ---
 

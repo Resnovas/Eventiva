@@ -14,36 +14,25 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import * as FileSystem from '@effect/platform/FileSystem';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { describe, expect, it } from '@effect/vitest';
-import { TelemetryRecord, TelemetrySink, TelemetrySinkFailure } from '@eventiva/contracts/observability';
+import { TelemetryRecord, TelemetrySink } from '@eventiva/contracts/observability';
 import { telemetryLayer } from '@eventiva/runtime/telemetry';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Schema } from 'effect';
+import { childTests, runChild } from './child-process.ts';
 
-const workspace = fileURLToPath(new URL('../../../', import.meta.url));
+const childTest = childTests();
 
-/** Launch the unchanged public diagnostic entry with only synthetic local configuration. */
+/** Launch the unchanged public diagnostic entry with only synthetic local configuration. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */
 const launch = (environment: Readonly<Record<string, string>>) =>
-    Effect.try({
-        /** Bound child lifetime and keep ambient credentials and external endpoints out of the child. */
-        try: () =>
-            spawnSync(process.execPath, ['--conditions=@eventiva/source', 'apps/server/src/main.ts'], {
-                cwd: workspace,
-                encoding: 'utf8',
-                timeout: 10000,
-                maxBuffer: 65536,
-                env: { NODE_NO_WARNINGS: '1', ...environment },
-            }),
-        /** Retain no raw child invocation failure in the qualification error channel. */
-        catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
-    });
+    runChild(['apps/server/src/main.ts'], environment, false);
 
-describe('Core failed bootstrap qualification', /** Fill the partial-acquisition and rendered-Cause gaps left by existing bootstrap tests. */ () => {
-    it.effect(
+describe('Core failed bootstrap qualification', /** Fill the partial-acquisition and rendered-Cause gaps left by existing bootstrap tests. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
+    // One declared slot per real process preserves every failure/reacquisition pair under the original aggregate limit.
+    childTest(
         'releases an acquired local sink after invalid Config or Schema and registers only on a later valid launch',
+        [2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300],
         /** Observe lock removal, persisted diagnostics and successful reuse after each distinct rejection boundary. */ () =>
             Effect.gen(
                 /** Exercise the actual main composition rather than a test-only imitation of bootstrap ordering. */ function* () {

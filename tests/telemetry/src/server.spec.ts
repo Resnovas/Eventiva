@@ -14,57 +14,24 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import * as FileSystem from '@effect/platform/FileSystem';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { describe, expect, it } from '@effect/vitest';
-import { TelemetryRecord, TelemetrySinkFailure } from '@eventiva/contracts/observability';
+import { TelemetryRecord } from '@eventiva/contracts/observability';
 import { consoleLoggerLayer, formatConsoleRecord } from '@eventiva/integrations.telemetry.server/logger';
 import { Audit, FailClosed } from '@eventiva/runtime/invocation';
 import { telemetryLayer } from '@eventiva/runtime/telemetry';
 import { Cause, Config, Effect, Exit, Layer, Option, Schema } from 'effect';
+import { childTests, runChild, type ChildResult as LaunchResult } from './child-process.ts';
 
-const workspace = fileURLToPath(new URL('../../../', import.meta.url));
+const childTest = childTests();
 
-/** A launch result retains parent timing independently of child diagnostics or application output. */
-type LaunchResult = SpawnSyncReturns<string> & {
-    readonly spawnedAtMs: number;
-    readonly elapsedMs: number;
-};
-
-/** Run the actual server entry point with isolated configuration and a ten-second child lifetime bound. */
-const launch = (
-    environment: Readonly<Record<string, string>> = {}
-): Effect.Effect<LaunchResult, TelemetrySinkFailure> =>
-    Effect.try({
-        /** Capture child output without inheriting the host environment; subprocess failures remain in the result. */
-        try: () => {
-            const spawnedAtMs = Math.round(performance.timeOrigin + performance.now());
-            const started = performance.now();
-            const result = spawnSync(
-                process.execPath,
-                [
-                    '--conditions=@eventiva/source',
-                    '--import',
-                    './tests/telemetry/fixtures/bootstrap-diagnostics.mjs',
-                    'apps/server/src/main.ts',
-                ],
-                {
-                    cwd: workspace,
-                    encoding: 'utf8',
-                    timeout: 10000,
-                    maxBuffer: 65536,
-                    stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
-                    // Do not inherit keys, endpoints, NODE_OPTIONS or local secrets.
-                    env: { NODE_NO_WARNINGS: '1', ...environment },
-                }
-            );
-            return { ...result, spawnedAtMs, elapsedMs: Math.round(performance.now() - started) };
-        },
-        /** Translate only a synchronous spawn invocation failure, never its raw error or arguments. */
-        catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
-    });
+/** Keep real main composition, isolated configuration and the observer while consuming the test's declared budget. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */
+const launch = (environment: Readonly<Record<string, string>> = {}) =>
+    runChild(
+        ['--import', './tests/telemetry/fixtures/bootstrap-diagnostics.mjs', 'apps/server/src/main.ts'],
+        environment
+    );
 
 /** Count timestamp-prefixed console records independently of non-record output. */
 const headers = (output: string): ReadonlyArray<string> =>
@@ -176,7 +143,7 @@ describe('bounded bootstrap journal validation', /** Reject diagnostic data inde
     });
 });
 
-describe('real diagnostic server telemetry composition', /** Cover real process exit and scoped sinks independently of in-process service checks. */ () => {
+describe('real diagnostic server telemetry composition', /** Cover real process exit and scoped sinks independently of in-process service checks. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
     // Child launches use isolated configuration so these checks exercise bootstrap and finalization, not host credentials.
     it.effect(
         'preserves the production fail-closed audit service with telemetry enabled or opted out',
@@ -220,8 +187,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'runs the real main and drains one correlated console diagnostic, never ready or banner',
+        [2300],
         /** Run the executable without optional configuration to verify its diagnostic-only contract. */ () =>
             Effect.gen(
                 /** Require one correlated startup trace and registration diagnostics, never a readiness claim. */ function* () {
@@ -249,8 +217,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'flushes the real file layer before process exit and releases its scoped lock',
+        [2300],
         /** Exercise the configured file sink through the executable with a scoped disposable directory. */ () =>
             Effect.gen(
                 /** Read persisted diagnostics after process exit to verify draining and lock-file cleanup. */ function* () {
@@ -310,8 +279,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             ).pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer))
     );
 
-    it.effect(
+    childTest(
         'redacts invalid application configuration through the outer bootstrap, including failed span',
+        [2300],
         /** Exercise an invalid profile whose contents must never appear in bootstrap diagnostics. */ () =>
             Effect.gen(
                 /** Require sanitized failure and startup-span output without configuration or raw Effect errors. */ function* () {
@@ -332,8 +302,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'keeps Config-free diagnostics when the main telemetry layer cannot acquire',
+        [2300],
         /** Fail main telemetry configuration to verify the independent bootstrap sink remains usable. */ () =>
             Effect.gen(
                 /** Require a bootstrap failure record rather than leaking the invalid capacity or parsing failure. */ function* () {
@@ -349,8 +320,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'keeps bootstrap diagnostics when the configured server sink fails acquisition',
+        [2300],
         /** Reject a relative file-sink directory before use without losing bootstrap reporting. */ () =>
             Effect.gen(
                 /** Require sanitized fallback output when the configured main sink cannot acquire. */ function* () {
@@ -366,8 +338,9 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'optional telemetry opt-out cannot turn off bootstrap failure diagnostics',
+        [2300, 2300],
         /** Compare opted-out normal startup with invalid-profile failure under the same telemetry setting. */ () =>
             Effect.gen(
                 /** Require silence for successful opt-out but one sanitized bootstrap record when startup fails. */ function* () {
