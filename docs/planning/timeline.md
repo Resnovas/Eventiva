@@ -76,6 +76,8 @@ Later on November 20, [house PR60](https://github.com/Resnovas/.github/pull/60) 
 
 Implementation resumed at 2026-11-20T01:41:14Z, superseding the blocked state above. Jonathan approved only `eslint-plugin-jsdoc@65.5.0` with unchanged ESLint/parser versions, package-by-package enforcement then global activation without baselines/suppressions, and independent passing direct-main slices without waiting for PR60. The [Linear authorization](https://linear.app/resnovas/issue/EVE-299#comment-1fedc63b-0569-45cb-a08e-3899147d4985) is independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027709956). The first slice keeps shared adoption separate. Evidence serialization is now an enforced runner contract: eight fixtures pass, including real Nx prerequisites sharing an exclusive synthetic resource; concurrent control fails with EEXIST. Independent randomized backend databases and distinct ports rule out a single obvious shared database/port; the historical replay failure's precise cause remains unproven. Integrated main is now 80bc555a; final full gates and delivery remain pending.
 
+Local acceptance completed 2026-11-20T02:28:34Z: pre-commit static/full gates and all 20 uncached affected-feature proofs passed, including the unchanged backend replay assertion. Signed source commit `9e379bf6a5c6629752d14e822dd673ae51894c81` carries EVE-299 / Resnovas/Eventiva#1092 / RES-66 references. Graph/evidence publication and exact-head CI follow separately; this does not close EVE-299. The original failed collection remains preserved. Shared enforcement still requires staged adoption; the approved plugin fails the existing seven-day cooldown because it was published November 19. An exact-version exception or waiting until November 26 is the [owner prerequisite](https://linear.app/resnovas/issue/EVE-299#comment-56a2f790-605b-440a-a83c-c1ad84eb2e9a), independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027919574). No cooldown policy change or active-workspace dependency installation occurred.
+
 ```mermaid
 flowchart LR
     FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
@@ -83,7 +85,10 @@ flowchart LR
     OwnerChoices --> FeatureProof["Local registry, runner and hook implemented"]
     HouseSource["House merged; remaining fixes affect later adoption"] --> FullFunnel["Complete funnel acceptance"]
     FeatureProof --> FullFunnel
-    FeatureProof --> Delivery["Resumed: serialized proof, full gates and bounded delivery"]
+    FeatureProof --> Delivery["Passed: full gates and 20 affected proofs; signed source"]
+    Delivery --> Publication["Graph/evidence publication and exact-head CI"]
+    Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
+    SharedRules --> FullFunnel
     Delivery --> FullFunnel
 ```
 
