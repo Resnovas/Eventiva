@@ -2,27 +2,32 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
-## Function telemetry plan checkpoint - 2026-11-20
+## Structural function telemetry START - 2026-11-20
 
-This bounded live checkpoint does not refresh the historical all-issue capture. [This planning owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) inspected signed main `a5abfb9a`, archived helper/history and pinned Effect source in a separate plan worktree. [EVE-44](https://linear.app/resnovas/issue/EVE-44), In Progress, maps to independently OPEN [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) with its normal matching linkback. The [canonical function telemetry plan](../architecture/function-telemetry.md) owns detailed options and acceptance, not this timeline.
+This bounded live checkpoint does not refresh the historical all-issue capture. [This existing owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) starts structural proof from published `50e5dc18`, without adopting D/renewal source or creating another lane. [EVE-44](https://linear.app/resnovas/issue/EVE-44), In Progress, maps to independently OPEN [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) with its matching linkback. The [canonical contract](../architecture/function-telemetry.md) owns Jonathan's seven selections, proposal, exact paths and acceptance.
 
-The [self-contained Linear proposal](https://linear.app/resnovas/issue/EVE-44#comment-34c72c9c-822b-4c01-9afe-3a84d7417d8f) and [explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7026687900) were independently read back. No automatic sync is claimed. Plan-only root check passes 104 documentation fixtures/295 editable TS files with zero findings/ratchet violations; strict captured planning passes 258 issues/692 edges, zero unresolved/stale outputs. Publication and hosted CI are recorded separately, not inferred from local checks.
+The [binding selections and START](https://linear.app/resnovas/issue/EVE-44#comment-78250693-15bd-4e78-9b98-ab1c6bed6d92) supersede the earlier plan's pending decisions, exemptions,4096 capacity and proposed cost thresholds. Earlier plan-only source0553d7fa/head50e5dc18 and its successful104-fixture/295-TS root/strict captured planning checks remain historical, not verification of this new source slice. Current proof and publication evidence belong in the canonical contract and paired lifecycle.
 
 | State | Evidence, ownership and next step |
 | --- | --- |
-| Completed source review | Historical withSpanAndLog establishes broad span/timer/counter use, not every-function enforcement. Current central telemetry already minimizes spans; no active app/package Metric calls were found. Pinned Metric.trackDuration only observes success, requiring explicit all-exit completion in the proposed primitive. No production edit or archive execution. |
-| Current plan review | Jonathan's direction is binding; privacy/exception/capacity/cost/opt-out recommendations await his selection before implementation. This owner holds only new plan/agent source plus isolated decision/timeline entries and mechanical documentation outputs. D's timing/check/spec/guide/chapter17 paths are untouched. |
-| Independent active prerequisites | D retains telemetry timing step1/2, shared harness/root restrictions and the normal house process-runner PR. C reports signed main delivery and has released storage writes, retaining CI follow-up only. Renewal stays separately preserved/unpublished and no source is adopted by this plan. |
-| Upcoming gated work | After owner selections and D's exact-path release: one primitive owner, then one checker/root owner, then at most two disjoint runtime/integration migration owners and one final integrator. Refresh all active occupancy before START; total stays at or below five. Phase-specific extension/security/UI gates still apply. |
-| Blockers and nonblockers | Material policy choices and D's reserved root/telemetry paths block implementation of those portions, not local planning or unrelated verified work. Missing remote metric export is not a requirement to provision credentials now. EVE-248 remains January 2027; settings/budgets unchanged and no paid amount approved. |
+| Completed source review | Historical helper establishes broad instrumentation, not universal coverage. Effect.fn creates spans for Effect execution but changes pure APIs; service proxies miss private calls. Metric.trackDurationWith is success-only. Current wire supports logs/spans, not metric export. No archive execution/edit. |
+| Selected policies | Production-local signals default TRUE, timers production FALSE/tests TRUE and mandatory; remote OFF/opt-in. Counters/pre-approved static strings only; no PII/secrets/raw errors. No first-party exemptions,8192 operations, p95 per-step review and changed-function optimization JSDoc evidence. No unselected performance tolerance. |
+| S1 STARTED | NEW tools/function-telemetry/structure.mjs and structure.test.mjs: executable-body inventory and changed-function record proof. Every occurrence stays BLOCKED pending emitted instrumentation proof; no wrapper-name acceptance or production coverage claim. Canonical architecture/chapter37 and isolated notes only; semantic transform/adapters still need proof. |
+| Independent ownership | D owns step1 final acceptance, step2 shared process/timing migration, normal house PR and exclusive root package.json/nx.json/tools/verification pipeline work. Latest correctly configured fixture target580/580 passed; full gate pending. If that20m run times out, later Puck direction moves measured pipeline work before step1 delivery instead of repeating. C delivered/hosted-CI complete/storage released; renewal remains preserved/unpublished, no adoption. |
+| Upcoming gates | After S1 and D exact-path release: one central-production primitive owner, one shared transform/target-adapter/checker owner, at most two disjoint migrations and one integrator. Refresh occupancy at START, total<=5; existing phase gates remain. No parallel root/Nx/ESLint author here. |
+| Precise blockers | Constructors/default parameters, generators/async/Stream/React lifetime, synchronous fiber context, all-target emission and finite collector self-observation need semantic proof. D root reservation blocks that wiring only. Missing export credentials do not block safe local proofs. EVE-248 January2027; budgets/settings unchanged; paid work needs an explicit amount. |
+
+Later [binding additions](https://linear.app/resnovas/issue/EVE-44#comment-81e08c30-6774-4042-b14e-faa81fa75663) require agent-performed opportunistic nearby optimization with benchmarks/JSDoc evidence, plus tree-shakeability, static unused-source analysis, runtime execution coverage and a joined verification report. The canonical plan owns required negative controls and safe removals; nonobservation is not proof of deadness. **Build-time mechanism decision is PENDING Jonathan: keep this slice PROOF-ONLY.** No production adapter/transform/global wiring or dead-code removal follows before that answer. S1 inventory/review proofs continue locally, without adding a lane or competing with D roots.
 
 ```mermaid
 flowchart LR
-    Review["Completed: archive and current source review"] --> Plan["Current: EVE-44 owner policy selections"]
-    Plan --> Primitive["One primitive owner after D releases paths"]
-    Primitive --> Check["One required-check owner"]
-    Check --> Migrate["Disjoint runtime and integration migration"]
-    Migrate --> Evidence["Full gates, benchmarks and exact-head CI"]
+    Selected["Selected: seven binding policies"] --> S1["STARTED: inventory and semantic proof"]
+    S1 --> Decision["Pending: build-time mechanism answer"]
+    Decision --> Primitive["Central primitive after released paths"]
+    Primitive --> Check["One shared transform and all-target coverage gate"]
+    D["D: timing, pipeline and process ownership"] --> Check
+    Check --> Migrate["At most two disjoint migrations"]
+    Migrate --> Evidence["All-exit signals, per-step p95, full gates and hosted CI"]
 ```
 
 ## Approval retention C START - 2026-11-19T21:20:48Z

@@ -3088,33 +3088,72 @@ activation remain separate acceptance.
 
 ---
 
-# Function telemetry plan: review before implementation
+# Structural function telemetry: binding direction and START
 
-Refs: EVE-44. Refs: Resnovas/Eventiva#811. The issue remains In Progress/open.
+Refs: EVE-44. Refs: Resnovas/Eventiva#811. Whole acceptance stays open.
 
-Read `docs/architecture/function-telemetry.md` for the proposed all-exit
-Effect instrumentation primitive, owner policy options, enforcement fixtures,
-span/metric test strategy and staged migration. Jonathan directed function
-timing/spans/attributes/metrics and tests on 2026-11-20 through the cited relay;
-privacy, exact exceptions, capacity and cost/opt-out choices remain pending.
-No instrumenting behavior, dependency, exporter or new suppression is approved
-by a planning recommendation. No runtime example is supplied because the
-proposed FunctionTelemetry service does not exist yet.
+Read `docs/architecture/function-telemetry.md` for Jonathan's seven binding
+selections and the structural mechanism proposal/START. No manual per-call
+withSpan migration. Existing Flags/Flag defaults TRUE for production-local
+counters/metrics/traces/spans/attributes. Timer defaults FALSE in production,
+TRUE/mandatory in tests. Remote export always opt-in/OFF. Attribute content
+is counters/pre-approved static strings only, never PII/secrets/raw errors.
+Operation-name capacity is8192. No first-party exemptions: tiny/internal
+helpers included; generated bodies are covered through their generator.
+Unsupported forms are BLOCKED, not suppressed or baselined. Existing vendor/
+third-party/immutable-history source policy remains, not an exemption list.
 
-Reuse the existing sanitized tracer and installed Effect Metric primitives;
-never copy archived arbitrary attributes/error logging. Pinned Effect 3.22.4
-Metric.trackDuration observes success only. Plan explicit exit finalization
-for success/failure/defect/interruption while preserving A/E/R, original exit,
-scope, laziness and cancellation. Telemetry assertions supplement business
-assertions. Never label metrics by arbitrary identity or reset shared global
-metrics during concurrent tests. Native metric export is not implemented by
-the current trace-only adapter.
+Review p95 time PER STEP and the slowest5% for improvement. On every touched
+function review optimization, benchmark any candidate against current before
+commit, and attach one precise agent-facing JSDoc optimization evidence line.
+The proposed @agent-optimization syntax/check and per-step report are not yet
+required-root enforcement; no new numeric performance tolerance is approved.
 
-D owns current timing/process-runner/root enforcement changes, including its
-normal Resnovas/.github PR. This plan owns no implementation reservation and
-must not take over D, renewal or C follow-up paths. Refresh exact occupancy
-and allocate the proposed sequential primitive/checker and disjoint migration
-slices only after owner selections and released paths; at most five lanes.
-EVE-248 stays January 2027; budgets/settings/spend and production activation
-remain unchanged. Preserve the archived examples byte-for-byte and do not
-import or execute them as the current implementation.
+S1 STARTED in the existing owner lane: tools/function-telemetry/structure.mjs
+and structure.test.mjs plus canonical plan/chapter37/isolated planning notes.
+One installed-TypeScript structural transform is proposed across emit/source
+targets. Effect.fn handles Effect execution, not arbitrary synchronous pure
+APIs; service proxies cannot observe private helpers. Prove all exits, receiver,
+arguments, closure, lazy execution and emitted coverage before global adoption.
+Collector self-observation/async/framework semantics remain explicit proof
+obligations, not internal-helper exemptions. Do not claim native metric export
+from current trace-only integration or use success-only trackDuration alone.
+
+D exclusively owns current timing/process-runner and pipeline/root
+package.json/nx.json/tools/verification work. If the next correctly configured
+unchanged20m run times out, the later Puck amendment moves measured pipeline
+work before step1 delivery instead of repeating; preserve all gates/bounds.
+This owner makes no competing
+root/Nx/ESLint or D guide/chapter17/source edits. Renewal/SQL remain separate.
+Later production primitive and target adapters need exact path release before
+writing; refresh occupancy at START and keep total at or below five. No new
+dependency, paid amount, provisioning or activation. EVE-248 January2027;
+budgets/settings unchanged. Preserve archived examples byte-for-byte.
+
+S1 initial proof: node --test tools/function-telemetry/structure.test.mjs passes
+five contracts. inspectStructure(source, file='source.ts') inventories bodies,
+including nested/private/pure/generated, with every instrumentation occurrence
+still BLOCKED. inspectOptimizationChange(before, after, file) checks attached
+records on changed functions; it performs no filesystem/Git IO. Parse failures
+block comparisons; fake wrapper names never grant coverage. Self-inventory12
+bodies/zero missing optimization records is not instrumentation acceptance.
+The per-file8192 overflow warning does not prove whole-target catalog capacity.
+Semantic transform/collector/target proof and required-root wiring remain
+unfinished, not waived; the canonical S1 evidence section records exact limits.
+
+Later binding additions: optimization is opportunistic AGENT work when slower
+nearby code is noticed, not a build optimizer. Benchmark current/candidate before
+commit and record the same one-line JSDoc evidence; coordinate active paths.
+Tree-shakeability/dead-source removal are first-class. Existing noUnusedLocals/
+noUnusedParameters and sideEffects=false are not unused-export/bundle proof.
+After the mechanism decision/root release, required installed-TypeScript entry/
+alias/registration analysis, real used-versus-unused emitted-consumer controls
+and joined runtime operation metrics feed one verification report. Zero runtime
+observations without complete instrumentation/flags/window/target coverage are
+NOT proof of deadness. Public external consumers/dynamic roots need evidence;
+unresolved edges BLOCK, never suppress. Remove proven dead first-party source
+at its owner/generator and rerun live/rare-path controls. No deletion yet.
+
+Puck is asking Jonathan about build-time instrumentation. Keep this mechanism
+PROOF-ONLY pending his answer; no production transform/loader/wiring adoption.
+The canonical plan records the selected-policy versus mechanism-decision split.
