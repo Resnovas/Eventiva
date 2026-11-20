@@ -127,6 +127,65 @@ const filesTagged = (...tags) =>
 const portableFiles = filesTagged('layer:shared', 'layer:frontend');
 const runtimeFiles = filesTagged('capability:actions');
 
+const reactLifecycleMessage =
+    'Initialize app-owned services in bootstrap before rendering product content. Derive render state or update its owner from events; use named React imports, never useEffect.';
+const reactLifecycleRestriction = {
+    name: 'react',
+    importNames: ['useEffect', 'default'],
+    message: reactLifecycleMessage,
+};
+const reactDynamicRestriction = {
+    selector: 'ImportExpression[source.value="react"]',
+    message: reactLifecycleMessage,
+};
+
+// A lexical rule distinguishes browser globals from unrelated local methods;
+// adding another no-restricted-syntax block would replace the package export rule.
+const noZeroDelayUiTimer = {
+    meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+            stateOwner:
+                'Do not defer UI state with a zero-delay timer. Keep state in one owner and update it from the event; use scoped Effect scheduling for genuine timed work.',
+        },
+    },
+    create(context) {
+        return {
+            CallExpression(node) {
+                // Spread arguments can supply a real delay; this rule does not evaluate runtime values.
+                if (node.arguments.some((argument) => argument.type === 'SpreadElement')) return;
+                const delay = node.arguments[1];
+                const literal =
+                    delay?.type === 'UnaryExpression' && ['-', '+'].includes(delay.operator) ? delay.argument : delay;
+                if (node.arguments.length !== 1 && !(literal?.type === 'Literal' && literal.value === 0)) return;
+                const callee = node.callee;
+                let global;
+                if (callee.type === 'Identifier' && callee.name === 'setTimeout') global = callee;
+                else if (
+                    callee.type === 'MemberExpression' &&
+                    callee.object.type === 'Identifier' &&
+                    ['globalThis', 'window', 'self'].includes(callee.object.name) &&
+                    ((!callee.computed &&
+                        callee.property.type === 'Identifier' &&
+                        callee.property.name === 'setTimeout') ||
+                        (callee.computed &&
+                            callee.property.type === 'Literal' &&
+                            callee.property.value === 'setTimeout'))
+                )
+                    global = callee.object;
+                if (!global) return;
+                // A same-named local parameter/object is not the browser timer API.
+                const reference = context.sourceCode
+                    .getScope(node)
+                    .references.find((entry) => entry.identifier === global);
+                if (reference?.resolved?.defs.length) return;
+                context.report({ node, messageId: 'stateOwner' });
+            },
+        };
+    },
+};
+
 export default [
     ...nx.configs['flat/base'],
     ...nx.configs['flat/typescript'],
@@ -167,8 +226,15 @@ export default [
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
             'no-restricted-imports': [
                 'error',
-                { paths: [{ name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' }] },
+                {
+                    paths: [
+                        reactLifecycleRestriction,
+                        { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
+                    ],
+                },
             ],
+            'no-restricted-modules': ['error', { paths: [{ name: 'react', message: reactLifecycleMessage }] }],
+            'no-restricted-syntax': ['error', reactDynamicRestriction],
         },
     },
     {
@@ -177,6 +243,7 @@ export default [
         rules: {
             'no-restricted-syntax': [
                 'error',
+                reactDynamicRestriction,
                 { selector: 'ExportAllDeclaration', message: 'No barrels: export each name explicitly.' },
             ],
         },
@@ -188,6 +255,7 @@ export default [
                 'error',
                 {
                     paths: [
+                        reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
                         ...nodeBuiltins.map((name) => ({
                             name,
@@ -207,6 +275,7 @@ export default [
                 'error',
                 {
                     paths: [
+                        reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
                         ...nodeBuiltins.map((name) => ({
                             name,
@@ -220,9 +289,14 @@ export default [
     },
     {
         files: ['apps/client/**/*.tsx', 'apps/client/**/*.ts', 'packages/ui-modules/src/**/*.{ts,tsx}'],
-        plugins: { formatjs, 'react-hooks': reactHooks },
+        plugins: {
+            formatjs,
+            'react-hooks': reactHooks,
+            eventiva: { rules: { 'no-zero-delay-ui-timer': noZeroDelayUiTimer } },
+        },
         rules: {
             ...reactHooks.configs.recommended.rules,
+            'eventiva/no-zero-delay-ui-timer': 'error',
             // Every user-facing string is a message with a key and an en-GB default.
             'formatjs/no-literal-string-in-jsx': 'error',
             'formatjs/enforce-default-message': ['error', 'literal'],

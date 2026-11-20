@@ -1,0 +1,60 @@
+/**
+ * @file tools/verification/pre-commit.mjs
+ *
+ * Copyright 2026 Jonathan Stevens trading as Resnovas. All rights reserved.
+ * Licensed under the Fair Core License, Version 1.0, MIT Future License
+ * (FCL-1.0-MIT); see LICENSE. You may not move, change, disable or circumvent
+ * the licence key functionality, or modify any part of the software that the
+ * licence key protects.
+ *
+ * Contributions are made under the Developer Certificate of Origin (DCO.md) and
+ * the Contributing Guidelines (CONTRIBUTING.md), subject to the Code of Conduct
+ * (CODE_OF_CONDUCT.md) and the Cooperation Commitment (COOPERATION_COMMITMENT.md).
+ *
+ * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
+ */
+
+import { execFileSync, spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const root = resolve(import.meta.dirname, '../..');
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+const marker = '# eventiva:verified-staged-snapshot';
+const hook = resolve(root, git('rev-parse', '--git-path', 'hooks/pre-commit'));
+
+if (process.argv[2] === '--install') {
+    if (existsSync(hook) && !readFileSync(hook, 'utf8').includes(marker)) {
+        throw new Error(
+            `A foreign pre-commit hook owns ${hook}. Integrate the Eventiva runner explicitly; nothing was overwritten.`
+        );
+    }
+    writeFileSync(hook, `#!/bin/sh\n${marker}\nset -eu\nnode tools/verification/pre-commit.mjs\n`);
+    chmodSync(hook, 0o755);
+    console.log('Eventiva pre-commit installed; commit-msg preserved.');
+} else {
+    const snapshot = () => {
+        if (
+            spawnSync('git', ['diff', '--quiet'], { cwd: root }).status !== 0 ||
+            git('ls-files', '--others', '--exclude-standard')
+        ) {
+            throw new Error(
+                'Verification must inspect the staged tree. Stage or separately preserve all working-tree changes and untracked files before committing; nothing was stashed or overwritten.'
+            );
+        }
+        return git('write-tree');
+    };
+    const before = snapshot();
+    for (const argv of [
+        ['--run', 'verify:static'],
+        ['--run', 'verify'],
+    ]) {
+        const result = spawnSync(process.execPath, argv, { cwd: root, stdio: 'inherit' });
+        if (result.status !== 0 || result.error)
+            throw new Error(
+                'Pre-commit verification failed. Fix the reported source or public-path proof; do not bypass the hook.'
+            );
+        if (snapshot() !== before)
+            throw new Error('The staged tree changed during verification. Review it and rerun the commit.');
+    }
+}

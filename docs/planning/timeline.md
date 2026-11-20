@@ -57,6 +57,36 @@ flowchart LR
     CDelivery --> CoreOpen["Whole Core and production activation remain open"]
 ```
 
+## EVE-299 funnel review and local migration - 2026-11-20
+
+The [existing owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) owns [EVE-299](https://linear.app/resnovas/issue/EVE-299) and independently verified [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7024950683). Investigation preceded issue creation at 23:17:55Z on November 19; its exact start time is unavailable. The earlier [owner hold](https://linear.app/resnovas/issue/EVE-299#comment-6a0a4d03) was independently read on [GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7025280225). Linear resumed In Progress at 23:50:28Z and was independently reread on November 20; the intake thread avoided duplicate implementation. Related house work is now RES-66/RES-67, formerly SMC-174/175. This bounded live update does not refresh the frozen issue snapshot.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed local review | [Canonical Markdown](../funnel-review.md) and [review artifact](https://ampcode.com/artifacts/eventiva-funnel-review-76ce8e7a-41cf-435b-b045-18c080f149b8) classify source examples, static checks, verification, retained authority and redundant guidance. Vendor/history ownership is preserved. |
+| Approved implementation choices | Jonathan's Puck relays approve a synchronously registered minimal shell, then flag initialization before product rendering, with no useEffect; isolated synthetic PR PostgreSQL fixtures alongside trusted-event tests after trust review; affected-only CI evidence retained seven days under the existing artifact audience. The latest shell decision supersedes before-registration acquisition. Exact owner-selection times are unavailable; no production authority is implied. |
+| Implemented locally, not delivered | Corrective React/timer lint, bootstrap readiness/failure/cleanup proof, static-first verify/CI, 30-entry Markdown interface-family registry with independent source/reverse-import coverage, evidence runner, staged-tree pre-commit guard, isolated PR fixture and seven-day upload. Local AGENTS links canonical mechanics and retains the promotion loop; managed house content is preserved. |
+| Executed verification | Rebased onto main a5abfb9a. Static command passes 15 builds and 83 tasks; root check passes 104 documentation fixtures and strict zero across 298 editable TypeScript files. Full test/build/parity and three smoke projects pass. Affected evidence then fails backend replay counts 3/0/0 versus 2/0/0; the other 19 families pass. Pre-commit refuses the commit. Serialized server proof now passes all 13 prerequisites and server tests in 2m54s; full final-tree evidence must rerun. Ready/loading/failed web states are inspected, not native-device proof. |
+| Shared adoption blocked | House PR56 is merged at 6cabf3afd23652fe1816c81bc1041ab2bf4b000f; Puck requested adoption on November 20. Exact merged docs-budget checker fails with Git ENOBUFS on Eventiva's 3,303,046-byte path inventory. It also counts generated mirror regions despite its exclusion contract. Both defects are reported to the RES-67 pod; no downstream suppression or shared edit. Shared JSDoc rules remain unenforced: retain global guidance. |
+| Upcoming | Canonical fixes and reviewed sync; enable shared JSDoc/source-absence rules while preserving AST gates; remediate authored documentation budgets; migrate table/evidence to accepted APIs with source-derived interfaces and explicit unsupported outcomes. Complete final-tree verification, graph publication, signed delivery and hosted CI. No deployment follows from build-info tooling. |
+
+EVE-299 moved to Blocked with Handoff Blocked at 2026-11-20T01:37:28Z. The [Linear checkpoint](https://linear.app/resnovas/issue/EVE-299#comment-ca75ae96-db96-4a00-ae13-30ab26eb8725) was independently verified on [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027649075). No new dependency, thread, production operation, access change or shared `Resnovas/.github` edit. All work remains local/uncommitted; no change to unrelated issue status or EVE-248 deferral.
+
+Later on November 20, [house PR60](https://github.com/Resnovas/.github/pull/60) at bedb6abe4770137f9247b2e1d842620368dc3835 was independently confirmed OPEN/draft. Its exact document checker runs against Eventiva without the inventory failure and reports 13 remaining authored/managed budget findings. This is a read-only candidate probe, not adoption; acceptance/merge and reviewed sync remain pending.
+
+Implementation resumed at 2026-11-20T01:41:14Z, superseding the blocked state above. Jonathan approved only `eslint-plugin-jsdoc@65.5.0` with unchanged ESLint/parser versions, package-by-package enforcement then global activation without baselines/suppressions, and independent passing direct-main slices without waiting for PR60. The [Linear authorization](https://linear.app/resnovas/issue/EVE-299#comment-1fedc63b-0569-45cb-a08e-3899147d4985) is independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027709956). The first slice keeps shared adoption separate. Evidence serialization is now an enforced runner contract: eight fixtures pass, including real Nx prerequisites sharing an exclusive synthetic resource; concurrent control fails with EEXIST. Independent randomized backend databases and distinct ports rule out a single obvious shared database/port; the historical replay failure's precise cause remains unproven. Integrated main is now 80bc555a; final full gates and delivery remain pending.
+
+```mermaid
+flowchart LR
+    FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
+    StaticSlice --> OwnerChoices["Shell, PR trust and evidence approved"]
+    OwnerChoices --> FeatureProof["Local registry, runner and hook implemented"]
+    HouseSource["House merged; remaining fixes affect later adoption"] --> FullFunnel["Complete funnel acceptance"]
+    FeatureProof --> FullFunnel
+    FeatureProof --> Delivery["Resumed: serialized proof, full gates and bounded delivery"]
+    Delivery --> FullFunnel
+```
+
 ## Approval A integration and B delivery checkpoint - 2026-11-19
 
 This current checkpoint supersedes the status, not provenance, of the START/planning entries below. [A evidence](https://linear.app/resnovas/issue/EVE-275#comment-8779ba39-b3b1-4487-81d6-d854435971c1) distinguishes executed local work from publication. The [canonical wiring report](../core-qualification/approval-wiring.md#current-implementation-checkpoint---2026-11-19) owns the detailed handshake and limits.

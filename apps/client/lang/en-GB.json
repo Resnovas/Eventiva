@@ -1,5 +1,7 @@
 {
-    "client.shell.modules": "{count, plural, one {# module installed} other {# modules installed}}",
-    "client.shell.offline-banner": "Changes are saved on this device first.",
-    "client.shell.title": "Eventiva"
+  "client.shell.failed": "Unable to start. Restart the app to try again.",
+  "client.shell.loading": "Starting Eventiva...",
+  "client.shell.modules": "{count, plural, one {# module installed} other {# modules installed}}",
+  "client.shell.offline-banner": "Changes are saved on this device first.",
+  "client.shell.title": "Eventiva"
 }

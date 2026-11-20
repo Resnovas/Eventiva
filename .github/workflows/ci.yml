@@ -29,7 +29,8 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Full acceptance plus uncached affected proof took 49 minutes locally.
+    timeout-minutes: 90
     permissions:
       contents: read
     steps:
@@ -51,6 +52,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Static analysis before documentation
+        run: node --run verify:static
 
       # Candidate HEAD cannot certify its own new-code documentation debt.
       # A manual event without earlier trusted history fails rather than resetting the ledger.
@@ -79,16 +83,53 @@ jobs:
       - name: Source, type-only and declared package boundaries
         run: |
           node tools/resources/boundaries.mjs
-          node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs
+          node --test tools/resources/boundaries.test.mjs tools/resources/types.test.mjs tools/verification/run.test.mjs
+          node tools/verification/run.mjs --check
 
       # Standing owner acceptance (2026-11-18, EVE-42) is synthetic-fixture-only.
       # Compare Bookworm/Alpine scans routinely; prefer fewer findings after
-      # compatibility checks. No calendar gate; untrusted PR code stays denied.
+      # compatibility checks. The separately approved PR fixture is below.
       - name: Start bounded disposable PostgreSQL fixture
+        if: github.event_name == 'push' || github.event_name == 'merge_group'
         env:
           TRUSTED_FIXTURE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'merge_group' }}
         run: |
           test "$TRUSTED_FIXTURE" = true
+          bootstrap=$(openssl rand -hex 32)
+          STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
+          export STORAGE_FIXTURE_PASSWORD
+          echo "::add-mask::$bootstrap"
+          echo "::add-mask::$STORAGE_FIXTURE_PASSWORD"
+          export POSTGRES_PASSWORD="$bootstrap"
+          docker network create eventiva-storage-test
+          docker run --detach --rm --name eventiva-storage-test \
+            --network eventiva-storage-test --publish 127.0.0.1:5432:5432 \
+            --cpus 2 --memory 1g --pids-limit 256 --security-opt no-new-privileges \
+            --tmpfs /var/lib/postgresql/data:rw,size=256m \
+            --env POSTGRES_DB=eventiva_test --env POSTGRES_PASSWORD \
+            --env 'POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256' \
+            docker.io/library/postgres:17.12-alpine3.24@sha256:a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7
+          export PGPASSWORD="$bootstrap"
+          for _ in {1..30}; do
+            if docker exec --env PGPASSWORD eventiva-storage-test \
+              psql -h 127.0.0.1 -U postgres -d eventiva_test -c 'SELECT 1' >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec -i --env PGPASSWORD --env STORAGE_FIXTURE_PASSWORD eventiva-storage-test \
+            psql -h 127.0.0.1 -U postgres -d eventiva_test -v ON_ERROR_STOP=1 <<'SQL'
+          \getenv fixture_password STORAGE_FIXTURE_PASSWORD
+          CREATE ROLE eventiva_fixture LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'fixture_password';
+          ALTER DATABASE eventiva_test OWNER TO eventiva_fixture;
+          SQL
+          echo "STORAGE_TEST_POSTGRES_URL=postgres://eventiva_fixture:$STORAGE_FIXTURE_PASSWORD@127.0.0.1:5432/eventiva_test" >> "$GITHUB_ENV"
+
+      # EVE-299 owner approval, 2026-11-19: PR code gets a separate synthetic
+      # database on this ephemeral read-only-token runner, never shared data or
+      # secrets. No pull_request_target, host mounts, privileged container or
+      # trusted-cache publication. Trusted-event fixture/tests above remain.
+      - name: Start isolated PR PostgreSQL fixture
+        if: github.event_name == 'pull_request'
+        run: |
           bootstrap=$(openssl rand -hex 32)
           STORAGE_FIXTURE_PASSWORD=$(openssl rand -hex 32)
           export STORAGE_FIXTURE_PASSWORD
@@ -122,6 +163,27 @@ jobs:
 
       - name: Public declaration type boundaries
         run: node tools/resources/boundaries.mjs --declarations
+
+      - name: Install Chromium for affected web evidence
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Verify affected feature paths and retain proof
+        env:
+          VERIFICATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          test -n "$VERIFICATION_BASE"
+          node tools/verification/run.mjs --base "$VERIFICATION_BASE"
+
+      # Owner-approved synthetic evidence only, same Actions artifact audience.
+      # Retain failed runs too; neither upload nor logs turn a failed proof green.
+      - name: Upload affected-feature evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: feature-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: test-output/verification/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Remove disposable PostgreSQL fixture
         if: always()

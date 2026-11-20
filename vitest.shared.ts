@@ -42,6 +42,12 @@ export const testProject = (name: string, covers: ReadonlyArray<string>, configU
             name,
             dir: projectRoot,
             watch: false,
+            ...(process.env['EVE_EVIDENCE_DIR'] === undefined
+                ? {}
+                : {
+                      reporters: ['default', 'json'] as const,
+                      outputFile: { json: join(process.env['EVE_EVIDENCE_DIR'], 'test-results.json') },
+                  }),
             environment: 'node',
             include: ['src/**/*.spec.ts'],
             coverage: {
