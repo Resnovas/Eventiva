@@ -2,6 +2,12 @@
 
 Last checked: 2026-11-17. This is an index, not a new approval register. The owning Linear decision governs; detailed contracts stay in the linked architecture/feature document. `Approved direction` does not mean every implementation or target is accepted.
 
+## Function telemetry direction and pending policy - 2026-11-20
+
+Jonathan's architecture direction, relayed by [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), calls for function timers/spans/attributes/counters/histograms and telemetry assertions in tests. Exact original selection time is unknown. [EVE-44](https://linear.app/resnovas/issue/EVE-44) owns this standard; [OPEN GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) has the independently read normal [Linear linkback](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-6550014547). The [canonical plan](../architecture/function-telemetry.md) records historical/current source evidence, the all-exit Effect primitive, required static verification, public telemetry tests and staged path boundaries. This is plan-only, not implementation acceptance.
+
+Privacy/PII classes, exact pure/framework/recursive-instrumentation exceptions, catalog capacity, overhead/sampling limits and production opt-out remain concrete owner choices in that plan. Recommendations are not selected policy or measured passing budgets. D retains timing/process-runner and root wiring ownership; renewal remains separately preserved. No instrumentation, dependency, metric exporter, provisioning, paid amount or activation follows from this entry. Resnovas/.github changes are newly authorized only through its normal PR/check workflow. EVE-248 remains deferred until January 2027 with budgets/settings unchanged.
+
 ## Rolling sessions and resource-scoped cancellation - 2026-11-19
 
 Jonathan's binding decisions, relayed by [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a), are recorded on [EVE-275](https://linear.app/resnovas/issue/EVE-275#comment-4f74873f-8a81-4b4a-9b81-7810b246c3e5) and the independently read [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7021527992). Exact human-selection time was not supplied. These decisions supersede the unselected duration/configuration/event-authority wording below, not historical evidence or implementation acceptance. The [wiring report](../core-qualification/approval-wiring.md#binding-policy-amendment---2026-11-19) owns the detailed contract and remaining technical gaps.

@@ -2,6 +2,29 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Function telemetry plan checkpoint - 2026-11-20
+
+This bounded live checkpoint does not refresh the historical all-issue capture. [This planning owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) inspected signed main `a5abfb9a`, archived helper/history and pinned Effect source in a separate plan worktree. [EVE-44](https://linear.app/resnovas/issue/EVE-44), In Progress, maps to independently OPEN [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) with its normal matching linkback. The [canonical function telemetry plan](../architecture/function-telemetry.md) owns detailed options and acceptance, not this timeline.
+
+The [self-contained Linear proposal](https://linear.app/resnovas/issue/EVE-44#comment-34c72c9c-822b-4c01-9afe-3a84d7417d8f) and [explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7026687900) were independently read back. No automatic sync is claimed. Plan-only root check passes 104 documentation fixtures/295 editable TS files with zero findings/ratchet violations; strict captured planning passes 258 issues/692 edges, zero unresolved/stale outputs. Publication and hosted CI are recorded separately, not inferred from local checks.
+
+| State | Evidence, ownership and next step |
+| --- | --- |
+| Completed source review | Historical withSpanAndLog establishes broad span/timer/counter use, not every-function enforcement. Current central telemetry already minimizes spans; no active app/package Metric calls were found. Pinned Metric.trackDuration only observes success, requiring explicit all-exit completion in the proposed primitive. No production edit or archive execution. |
+| Current plan review | Jonathan's direction is binding; privacy/exception/capacity/cost/opt-out recommendations await his selection before implementation. This owner holds only new plan/agent source plus isolated decision/timeline entries and mechanical documentation outputs. D's timing/check/spec/guide/chapter17 paths are untouched. |
+| Independent active prerequisites | D retains telemetry timing step1/2, shared harness/root restrictions and the normal house process-runner PR. C reports signed main delivery and has released storage writes, retaining CI follow-up only. Renewal stays separately preserved/unpublished and no source is adopted by this plan. |
+| Upcoming gated work | After owner selections and D's exact-path release: one primitive owner, then one checker/root owner, then at most two disjoint runtime/integration migration owners and one final integrator. Refresh all active occupancy before START; total stays at or below five. Phase-specific extension/security/UI gates still apply. |
+| Blockers and nonblockers | Material policy choices and D's reserved root/telemetry paths block implementation of those portions, not local planning or unrelated verified work. Missing remote metric export is not a requirement to provision credentials now. EVE-248 remains January 2027; settings/budgets unchanged and no paid amount approved. |
+
+```mermaid
+flowchart LR
+    Review["Completed: archive and current source review"] --> Plan["Current: EVE-44 owner policy selections"]
+    Plan --> Primitive["One primitive owner after D releases paths"]
+    Primitive --> Check["One required-check owner"]
+    Check --> Migrate["Disjoint runtime and integration migration"]
+    Migrate --> Evidence["Full gates, benchmarks and exact-head CI"]
+```
+
 ## Approval retention C START - 2026-11-19T21:20:48Z
 
 This dated C checkpoint supersedes the earlier undispatched-C occupancy below, not A/B evidence or the historical planning capture. The existing proof/B owner starts packet C in isolated `repo-approval-retention` / `agents/eve275-approval-retention` from fetched main `e0efc5e4`, preserving every retained proof/provider/fixture/B ref and checkout. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-9f12d2fd-3761-4cd3-bfda-c9d16fcc79c2) and [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7022745290) own the non-closing lifecycle. The [canonical C report](../core-qualification/approval-retention.md) owns exact paths, typed maintenance handshake and executed evidence.
