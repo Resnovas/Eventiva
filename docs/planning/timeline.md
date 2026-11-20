@@ -39,8 +39,13 @@ the non-closing lifecycle. Exact human-selection time is unknown.
   verification passes before documentation follow-through.
 - Current qualification: core launches use the existing observer; genuine
   no-preload/no-fd3 controls retain asserted outer timing. Every existing budget
-  and business assertion remains. Normal installed source/docs hook within1200s
-  and separate clean graph hook/publication/CI remain required.
+  and business assertion remains. Installed source/docs pre-commit passes in
+  1172.466983s; fixture/commit/cleanup wall 1179.44s remains below 1200s. Aggregate
+  38/38 tasks and smoke 3 projects/17 tasks pass; serial telemetry evidence 92/92
+  passes in manifest `1958c84e-89fa-41f6-8169-11bd3a82ebd4`. Rebased source
+  `e0fc57a5` preserves the executable candidate atop published licence prerequisite
+  `d9efa5cf`; separate clean graph hook/integrated revalidation/publication/CI
+  remain required. This is not a cold-run guarantee or whole-issue acceptance.
 - Upcoming: after separately qualified delivery, renewal's owner may run one
   fresh measured qualification with full timing. No renewal adoption or retry
   occurs here. PR59 Windows decision/checks still block managed-core sync and

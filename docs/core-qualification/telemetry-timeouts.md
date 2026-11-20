@@ -50,6 +50,28 @@ after separately qualified publication may renewal's owner run one fresh measure
 attempt. No main/renewal source, managed core, scheduling or verification
 implementation changes belong to this fix; EVE-261 remains open.
 
+### Source hook passed; final integrated delivery remains separate
+
+The actual installed source/docs pre-commit passed at
+2026-11-20T12:22:40.996461Z, 1172.466983s after entry at
+12:03:08.529459Z. Fixture/commit/cleanup wall time was 1179.44s, within 1200s.
+All 38 aggregate tasks passed in rounded 13m27s (27 cache hits); all 3 smoke
+projects/17 tasks passed in 1m51s (12 hits), preserving web-before-Android.
+Serial feature manifest `1958c84e-89fa-41f6-8169-11bd3a82ebd4` passed telemetry
+92/92 with featureConcurrency 1/NxParallel 1. The staged tree stayed
+`9e9ea0602b7080ac0c412d6ffb557e90107daaf9`; no failed gate or retry occurred.
+This is measured cache-aware execution, not a cold-run guarantee.
+
+During delivery, fetched main advanced only policy/docs/graph for the separate
+licence prerequisite to `d9efa5cf51f4ab1aafecfaabba245ea5a961e9b1`. Rebase
+preserved both additive timeline sections and left the executable candidate
+unchanged; source is now `e0fc57a5a565800abb03dc1ccf2242eeb891622c`.
+Regenerate the clean graph and reverify the integrated staged tree through its
+own normal hook before publication. Final graph-hook, remote and exact-head
+CI results belong on the same non-closing lifecycle pair, not inferred here.
+The disposable fixture/container/network/daemon were stopped after the source
+hook; originals, raw logs, Trace2 and feature manifest remain retained.
+
 ## H follow-up: avoid unrelated bootstrap imports - 2026-11-20
 
 This newer failure is a measured **2300 ms child timeout**, not either historical
