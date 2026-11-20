@@ -25,6 +25,31 @@ flowchart LR
     Reuse["Approved exact-tree fresh-result reuse"] --> G["Required: retained G qualification <=1200s"]
 ```
 
+## EVE-261 mandatory child-phase evidence
+
+On 2026-11-20, Puck relayed Jonathan's mandatory timing correction after the
+exact attempted renewal-tree diagnosis. The coordinator confirmed four telemetry
+harness/spec paths and this isolated documentation slice on published `d40a76b7`.
+[EVE-261 START](https://linear.app/resnovas/issue/EVE-261#comment-77d21146-ce70-4759-ab3f-53258432f492)
+and OPEN [GitHub #1035](https://github.com/Resnovas/Eventiva/issues/1035) retain
+the non-closing lifecycle. Exact human-selection time is unknown.
+
+- Completed regression: missing core root/finalizer journal and explicit close
+  fail before correction; all 14 affected focused tests pass afterward. Static
+  verification passes before documentation follow-through.
+- Current qualification: core launches use the existing observer; genuine
+  no-preload/no-fd3 controls retain asserted outer timing. Every existing budget
+  and business assertion remains. Normal installed source/docs hook within1200s
+  and separate clean graph hook/publication/CI remain required.
+- Upcoming: after separately qualified delivery, renewal's owner may run one
+  fresh measured qualification with full timing. No renewal adoption or retry
+  occurs here. PR59 Windows decision/checks still block managed-core sync and
+  step2; whole EVE-261 remains open.
+
+The [canonical correction](../core-qualification/telemetry-timeouts.md#mandatory-phase-evidence)
+owns behavior/evidence. Later delivery results must preserve the original failed
+diagnostic and all historical captures; no main/renewal/funnel edits are included.
+
 ## Core approval evidence reconciliation I
 
 START November 20, 2026: the [I owner](https://ampcode.com/threads/T-20b14e85-79c3-4f05-9bbd-92a8f7fc8a09) independently fetches published `origin/main` `c779e486a93d8c5b863b1958c50211745bae6f94` into isolated `agents/eve-275-packet-i`, not the coordinator's older local main or unpublished renewal. The full live discussion reaches terminal pagination; [EVE-275](https://linear.app/resnovas/issue/EVE-275) remains In Progress and actual [GitHub #1063](https://github.com/Resnovas/Eventiva/issues/1063) OPEN with normal linkback6988293684. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-48cb133a-d640-4538-8c9f-96f9ec8e12f8) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036520194). This bounded inspection does not refresh the historical issue capture.

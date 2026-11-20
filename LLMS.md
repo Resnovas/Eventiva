@@ -889,6 +889,14 @@ launch records safe closed phases and numeric timing, with cancellation owning
 termination through pipe close. Preserve business output, serial positive
 controls and existing aggregate/coverage limits. Node IPC/storage/tool callers
 are a separately coordinated migration to the same core, not exempt occurrences.
+Ordinary core qualification uses the existing bootstrap preload and asserts
+root/finalizer evidence. Preserve genuinely uninstrumented observer-parity
+and missing-fd3 controls: they still assert outer `spawn-request`, `spawned`,
+`exit` and `close`, with the existing `total` retained. `spawned` means OS
+process creation, not application readiness. A false journal argument disables
+only fd3, not timing. The [phase correction](../../../docs/core-qualification/telemetry-timeouts.md#mandatory-phase-evidence)
+separates regression proof from full-hook qualification and renewal's later
+measured attempt. No budget or business assertion is removed.
 No managed AGENTS prose is removed because none duplicates this new rule.
 Shared-house promotion remains proposed, not adopted. Missing historical phase
 evidence still prevents a causal latency claim; EVE-261 remains open.

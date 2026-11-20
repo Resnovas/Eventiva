@@ -83,6 +83,16 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
                         expect(observed.stderr).toBe(original.stderr);
                         expect(stableOutput(observed.stdout)).toBe(stableOutput(original.stdout));
                         expect(original.output[3]).toBeUndefined();
+                        // Observer parity needs an uninstrumented control, not an untimed child.
+                        for (const result of [original, observed])
+                            expect(result.timings).toEqual(
+                                expect.arrayContaining([
+                                    expect.objectContaining({ phase: 'spawn-request' }),
+                                    expect.objectContaining({ phase: 'spawned' }),
+                                    expect.objectContaining({ phase: 'exit' }),
+                                    expect.objectContaining({ phase: 'close' }),
+                                ])
+                            );
                         const journal = observed.output[3];
                         expect(typeof journal).toBe('string');
                         if (typeof journal !== 'string') return;
@@ -142,6 +152,15 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
                         expect(result.status).toBe(0);
                         expect(result.stdout).toBe('business-result');
                         expect(result.stderr).toBe('');
+                        // A deliberately missing fd3 must still retain the outer process lifetime.
+                        expect(result.timings).toEqual(
+                            expect.arrayContaining([
+                                expect.objectContaining({ phase: 'spawn-request' }),
+                                expect.objectContaining({ phase: 'spawned' }),
+                                expect.objectContaining({ phase: 'exit' }),
+                                expect.objectContaining({ phase: 'close' }),
+                            ])
+                        );
                         if (descriptor) {
                             const journal = result.output[3] ?? '';
                             expect(Buffer.byteLength(journal)).toBeLessThanOrEqual(4096);

@@ -278,7 +278,7 @@ const launch = (
                     );
                     child.once(
                         'close',
-                        /** Complete only after output drains and cancel both termination timers. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
+                        /** Emit mandatory close timing even without fd3, then complete after output drains. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#mandatory-phase-evidence */ (
                             status,
                             signal
                         ) => {
@@ -286,6 +286,7 @@ const launch = (
                             closed = true;
                             clearTimeout(deadline);
                             clearTimeout(forced);
+                            phase('close');
                             phase('total');
                             resume(
                                 Effect.succeed({

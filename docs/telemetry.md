@@ -283,7 +283,12 @@ ON by default in tests; a false or absent evaluation fails before spawn. Its
 declaration retains `safeDefault: false` outside the test harness. There is no
 environment opt-out, remote provisioning or new dependency. Every child emits
 closed JSON timing records for spawn, output, available fd3 lifecycle phases,
-exit and total. Correlate the numeric start timestamp and child ordinal;
+exit, close and total. Ordinary core qualification includes the existing
+bootstrap observer so root and finalizer phases survive a later failure.
+Only observer-parity and missing-descriptor controls intentionally omit that
+channel; their outer spawn-request, spawned, exit and close timing remains
+mandatory and asserted. Spawned means OS process creation, not application
+readiness. Correlate the numeric start timestamp and child ordinal;
 never add raw command/configuration/output to these records.
 
 Run `pnpm exec vitest run --config tests/telemetry/vitest.config.mts` for the

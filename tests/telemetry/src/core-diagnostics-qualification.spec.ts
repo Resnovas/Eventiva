@@ -24,9 +24,12 @@ import { childTests, runChild } from './child-process.ts';
 
 const childTest = childTests();
 
-/** Launch the unchanged public diagnostic entry with only synthetic local configuration. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */
+/** Observe bootstrap acquisition and release without changing the public entry or synthetic configuration. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#mandatory-phase-evidence */
 const launch = (environment: Readonly<Record<string, string>>) =>
-    runChild(['apps/server/src/main.ts'], environment, false);
+    runChild(
+        ['--import', './tests/telemetry/fixtures/bootstrap-diagnostics.mjs', 'apps/server/src/main.ts'],
+        environment
+    );
 
 describe('Core failed bootstrap qualification', /** Fill the partial-acquisition and rendered-Cause gaps left by existing bootstrap tests. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
     // One declared slot per real process preserves every failure/reacquisition pair under the original aggregate limit.
@@ -56,6 +59,8 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
                         expect(failed.status).toBe(1);
                         expect(failed.signal).toBeNull();
                         expect(failed.stderr).toBe('');
+                        expect(failed.output[3]).toContain('root-start');
+                        expect(failed.output[3]).toContain('main-telemetry-released:failure');
                         expect(failed.stdout).toContain('bootstrap.failure');
                         expect(failed.stdout).not.toMatch(
                             /diagnostic.registered|modules registered|CORE_SECRET|ParseError|InvalidData/
@@ -91,6 +96,8 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
                         expect(valid.error).toBeUndefined();
                         expect(valid.status).toBe(0);
                         expect(valid.stderr).toBe('');
+                        expect(valid.output[3]).toContain('root-start');
+                        expect(valid.output[3]).toContain('root-exit:success');
                         expect(valid.stdout).toContain('diagnostic.registered');
                         expect(valid.stdout).not.toContain('bootstrap.failure');
                         expect(yield* fs.exists(`${directory}/.eventiva-telemetry.lock`)).toBe(false);

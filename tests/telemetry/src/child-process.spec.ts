@@ -96,15 +96,20 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
                     try {
                         const result = yield* withChildBudgets(
                             [1000],
-                            runChild([
-                                '--eval',
-                                'process.stdout.write("SECRET_CANARY"); process.stderr.write("business-error"); process.exitCode=7',
-                            ])
+                            runChild(
+                                [
+                                    '--eval',
+                                    'process.stdout.write("SECRET_CANARY"); process.stderr.write("business-error"); process.exitCode=7',
+                                ],
+                                {},
+                                false
+                            )
                         ).pipe(Effect.provide(ChildTimingEnabled));
                         expect(result.status).toBe(7);
                         expect(result.error).toBeUndefined();
                         expect(result.stdout).toBe('SECRET_CANARY');
                         expect(result.stderr).toBe('business-error');
+                        expect(result.output[3]).toBeUndefined();
                         expect(
                             result.timings?.map(
                                 /** Compare only contractual phase names, not volatile timestamps. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
@@ -112,7 +117,14 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
                                 ) => row.phase
                             )
                         ).toEqual(
-                            expect.arrayContaining(['spawn-request', 'spawned', 'output-first', 'exit', 'total'])
+                            expect.arrayContaining([
+                                'spawn-request',
+                                'spawned',
+                                'output-first',
+                                'exit',
+                                'close',
+                                'total',
+                            ])
                         );
                         expect(
                             result.timings?.every(

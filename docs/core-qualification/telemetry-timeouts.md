@@ -5,6 +5,51 @@ is not recoverable from the preserved logs. Jonathan subsequently confirmed
 that both child and aggregate performance are required contracts, authorizing
 the budgeted, timed harness and enforcement below without increasing limits.
 
+## Mandatory phase evidence
+
+On 2026-11-20, [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a)
+relayed Jonathan's binding correction after the exact renewal-tree diagnostic:
+ordinary bootstrap probes must retain root and finalizer phases, not only outer
+process timing. Exact human-selection time is unknown. The coordinator cleared
+the four telemetry harness/spec paths and this isolated documentation slice on
+published `d40a76b7`. [EVE-261 START](https://linear.app/resnovas/issue/EVE-261#comment-77d21146-ce70-4759-ab3f-53258432f492)
+owns the fix, separately from renewal qualification and PR59/step2 adoption.
+
+Core qualification previously passed `journal=false` and omitted the preload.
+Outer timing already existed; module/root/finalizer evidence did not. Its ten
+launches now use the existing `--import ./tests/telemetry/fixtures/bootstrap-diagnostics.mjs`
+and assert root/release evidence. Every 2300ms child budget, the 30000ms test
+limit and all business assertions remain unchanged. The prior failed child's
+unobserved phase cannot be recovered retroactively.
+
+Observer parity still needs its no-preload arm, and missing-descriptor coverage
+still needs fd3 absent. Both now assert outer `spawn-request`, `spawned`, `exit`
+and `close`. `spawned` means OS process creation, not application readiness;
+output readiness is recorded separately only when observed. The harness emits
+explicit `close` before the existing `total`, even without fd3 or after
+cancellation. `journal=false` controls fd3 only; the test timing flag remains
+mandatory ON. No payload enters these numeric, closed-phase records.
+
+Regression checks first failed on unchanged source for the missing core journal
+and explicit close. After correction all 14 affected core/harness/observer tests
+passed in 30.57s; `node --run verify:static` then passed before documentation.
+The focused command below disables coverage for regression diagnosis only:
+
+```sh
+pnpm exec vitest run --config tests/telemetry/vitest.config.mts tests/telemetry/src/core-diagnostics-qualification.spec.ts tests/telemetry/src/child-process.spec.ts tests/telemetry/src/bootstrap-diagnostics.spec.ts --coverage.enabled=false
+```
+
+The touched launch/close callbacks reuse the existing observer and timing writer,
+not another loader/process owner. No performance optimization is implemented or
+speedup claimed; the [preceding diagnostic](https://ampcode.com/artifacts/renewal-bootstrap-diagnosis-3ff1fb68-04f0-41b2-a59c-504e10dbc0b4)
+retains scheduling-sensitive measurements, not causal CPU-cost evidence.
+JSDoc now explains ordinary observation and mandatory close without fd3.
+Normal installed-hook qualification within1200s, the approved pinned disposable
+PostgreSQL fixture and separate clean graph delivery remain required. Only
+after separately qualified publication may renewal's owner run one fresh measured
+attempt. No main/renewal source, managed core, scheduling or verification
+implementation changes belong to this fix; EVE-261 remains open.
+
 ## H follow-up: avoid unrelated bootstrap imports - 2026-11-20
 
 This newer failure is a measured **2300 ms child timeout**, not either historical
