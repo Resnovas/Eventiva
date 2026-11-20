@@ -220,7 +220,8 @@ const fixture = (dialect: Dialect) =>
             ).pipe(Layer.provideMerge(identitySecurity));
             const profile = yield* Schema.decode(DeploymentProfile)({
                 edition: 'community',
-                port: 34565,
+                // Vitest runs this fixture alongside the HTTP client suite, which owns listener 34565.
+                port: 34566,
                 shards: 24,
                 assignmentRefreshMs: 50,
             });

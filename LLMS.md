@@ -387,6 +387,10 @@ example, scope, options/defaults, regression/gate evidence and troubleshooting.
 The existing consent capability remains default false; no production event
 adapter, renewal, retention cleanup or activation is implied.
 
+### Concurrent consent and HTTP fixture proof
+
+The `backend-fixture-isolation` entry in `docs/verification/registry.md` runs `approval-consent.spec.ts` and `http-client.spec.ts` with two Vitest workers against disposable PostgreSQL. Nx task serialization does not serialize files inside Vitest. The two fixtures previously both listened on 34565; this bounded repair isolates consent on 34566 while retaining every authorization, mutation and replay assertion. The explicit concurrent command failed four tests before the repair and passes all seven after it. Full verification still owns coverage. This fixes the observed collision, not arbitrary fixed-port safety; the requested port-zero fixture migration and corrective enforcement are follow-up work, without permission to weaken the validated deployment-profile contract or release a reserved port before rebinding it.
+
 ---
 
 # SQL storage increment

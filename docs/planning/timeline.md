@@ -80,6 +80,8 @@ Local acceptance completed 2026-11-20T02:28:34Z: pre-commit static/full gates an
 
 Published on November 20: signed [source 9e379bf6](https://github.com/Resnovas/Eventiva/commit/9e379bf6a5c6629752d14e822dd673ae51894c81) and [graph/evidence 5ca8059d](https://github.com/Resnovas/Eventiva/commit/5ca8059d15d582bdc0165b975db52fa0a17eeb86) are on main. This supersedes the local-only delivery state above; exact-head [application CI](https://github.com/Resnovas/Eventiva/actions/runs/44663334032) is running and subscribed. The separate EVE-261 timing owner is CLEARED for measured parallelism of two in non-feature stages and Android-to-web ordering, retaining stage order and the tested serial feature-evidence runner. Root serial settings were inherited, not a new correctness requirement; the EVE-299 registry wording is corrected here. No root edits collide. Shared JSDoc/cooldown, shared registry/evidence adoption, authored budget remediation and managed-guidance reduction remain upcoming; the whole issue stays open.
 
+Hosted CI subsequently failed four backend tests with a proven duplicate-listener collision, not the historical replay count. The [diagnosis](https://linear.app/resnovas/issue/EVE-299#comment-6f7eefb4-6c7d-4399-a797-5d5c1c986372) is independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7029279944). Explicit concurrent consent/HTTP-client execution reproduces four failures and three passes at port 34565; the isolated consent listener passes all seven unchanged tests. The registry keeps the concurrent regression as its 31st interface entry. Static analysis passes; full gates and publication of the bounded repair remain pending. The timing owner retains root scheduling; this owner changes the consent fixture only. After delivery, the requested rule rejects fixed fixture listeners with a bind-zero/read-assigned-address diagnostic; complete Cluster migration must preserve validated production profiles and socket ownership. See the [repair evidence and shared candidate](../funnel-review.md#hosted-fixture-collision-and-bounded-repair).
+
 ```mermaid
 flowchart LR
     FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
@@ -88,7 +90,8 @@ flowchart LR
     HouseSource["House merged; remaining fixes affect later adoption"] --> FullFunnel["Complete funnel acceptance"]
     FeatureProof --> FullFunnel
     FeatureProof --> Delivery["Passed: full gates and 20 affected proofs; signed source"]
-    Delivery --> Publication["Published source and graph/evidence; hosted CI running"]
+    Delivery --> Publication["Published; hosted proof exposed duplicate fixture listener"]
+    Publication --> FixtureRepair["Concurrent red/green passed; full repair gates pending"]
     Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
     SharedRules --> FullFunnel
     Delivery --> FullFunnel
