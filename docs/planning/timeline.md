@@ -19,12 +19,14 @@ The [binding selections and START](https://linear.app/resnovas/issue/EVE-44#comm
 
 Later [binding additions](https://linear.app/resnovas/issue/EVE-44#comment-81e08c30-6774-4042-b14e-faa81fa75663) require agent-performed opportunistic nearby optimization with benchmarks/JSDoc evidence, plus tree-shakeability, static unused-source analysis, runtime execution coverage and a joined verification report. The canonical plan owns required negative controls and safe removals; nonobservation is not proof of deadness. **Build-time mechanism decision is PENDING Jonathan: keep this slice PROOF-ONLY.** No production adapter/transform/global wiring or dead-code removal follows before that answer. S1 inventory/review proofs continue locally, without adding a lane or competing with D roots.
 
+Later interim Puck relay, NOT a final mechanism selection: Jonathan leans toward decorators; compiler-specific transform proof is now FROZEN. Only inventory and semantics applicable to both designs continues. The [canonical interim checkpoint](../architecture/function-telemetry.md#interim-source-level-direction-and-transform-proof-freeze) records unchanged strict-TS decorator acceptance versus direct-Node source rejection, concurrent-fiber parent-read evidence and construction-time non-generator Effect.fn behavior. No production decorator/helper wrapper, loader/config change or implicit tiny/internal exemption follows. Await Jonathan's final mechanism answer; D retains root/process ownership.
+
 ```mermaid
 flowchart LR
-    Selected["Selected: seven binding policies"] --> S1["STARTED: inventory and semantic proof"]
-    S1 --> Decision["Pending: build-time mechanism answer"]
+    Selected["Selected: seven binding policies"] --> S1["Inventory and shared semantic proof"]
+    S1 --> Decision["Pending: final instrumentation mechanism"]
     Decision --> Primitive["Central primitive after released paths"]
-    Primitive --> Check["One shared transform and all-target coverage gate"]
+    Primitive --> Check["Approved mechanism and all-target coverage gate"]
     D["D: timing, pipeline and process ownership"] --> Check
     Check --> Migrate["At most two disjoint migrations"]
     Migrate --> Evidence["All-exit signals, per-step p95, full gates and hosted CI"]

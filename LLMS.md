@@ -3157,3 +3157,16 @@ at its owner/generator and rerun live/rare-path controls. No deletion yet.
 Puck is asking Jonathan about build-time instrumentation. Keep this mechanism
 PROOF-ONLY pending his answer; no production transform/loader/wiring adoption.
 The canonical plan records the selected-policy versus mechanism-decision split.
+
+Later interim signal, NOT a final mechanism decision: Jonathan leans toward
+decorators. Do not extend compiler-transform proof; only shared inventory and
+semantic work continues. Proposed method decorator/Effect.fn/sync-definition
+instrument forms do not create a tiny/internal-helper exemption. Installed
+TS6.0.3 accepts the standard method decorator under unchanged strict root
+options, but direct Node24.22.3 TS loading rejects its token. Existing target
+lowering/source routes still need qualification, not config weakening. A bounded
+concurrent-fiber getter probe retains distinct parent names, not a qualified
+typed primitive; vendor opacity, nested restoration, async/native behavior,
+per-step profiling and collector self-observation remain unresolved. Ordinary
+non-generator Effect.fn bodies execute at construction: verify actual execution
+coverage rather than accepting a wrapper name. No production adoption yet.
