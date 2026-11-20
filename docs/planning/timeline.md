@@ -306,6 +306,27 @@ flowchart LR
     Verify --> Acceptance
 ```
 
+### Bounded Verify mirror repair - 2026-11-20
+
+This dated checkpoint supersedes the historical pending-house-acceptance row above only for current activity. House PR #50 is merged; the broader evidence remains separately proposed in [Eventiva PR #1089](https://github.com/Resnovas/Eventiva/pull/1089). The existing [EVE-266 owner](https://ampcode.com/threads/T-aab6c3a2-486c-4ef0-a267-8df2b3e6996e) resumes only deterministic generated-surface repair, not fixture design, governance-adoption acceptance or the read-only audit. Existing Eventiva/bot PR branches and application sources remain untouched.
+
+| Transition | Actual activity and evidence | Remaining whole-issue acceptance |
+| --- | --- | --- |
+| Resumed; tracker transition 2026-11-20T02:11:41.736Z | Initial investigation time is unknown. [Linear start](https://linear.app/resnovas/issue/EVE-266#comment-b0ba6cf0-9dd0-4e0c-8c3d-67b31ac52549) independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1053#issuecomment-7028186053). In Progress / Code refers only to this repair. Direct [job read](https://github.com/Resnovas/Eventiva/actions/jobs/136016933904) confirms bot head 337343cb fails at 01:33:35Z on stale `.claude/commands/verify.md` and `.cursor/commands/verify.md`; the separate fixture denial remains. | Broader fixture design and adoption acceptance stay paused. Neither whole issue is Done/closed; preserve the unresolved settings-effects assurance gap. |
+| Ownership coordinated and canonical repair verified locally | [House/funnel owner](https://ampcode.com/threads/T-01a1f637-2241-770e-aa29-22cf10bd727e) confirms both missing template paths are free of RES-67 / house #60 work. [House PR #61](https://github.com/Resnovas/.github/pull/61) contains only the two existing-generator-derived transport templates, regression and required documentation/graph evidence. Focused render suite is 6 pass / 1 fail before, 7 pass / 0 fail after. Source-only and either host-only drift fail; local prompt/host controls survive. House static/full gates pass 105 tests, 100% renderer lines / 98.57% branches, 316 rendered files, 19 headers and clean-source graph consistency. | Published scoped proposal, not upstream merge or repaired downstream head. No canonical prompt change, sync-engine/privilege expansion, candidate generator in privileged CI, combined dispatch, human bot-branch push, trust/settings/fixture-policy change or unrelated house adoption. |
+| Current follow-through | Signed house [source 93e1ed5](https://github.com/Resnovas/.github/commit/93e1ed5) and [graph head 6d0c9e4](https://github.com/Resnovas/.github/commit/6d0c9e4) reference EVE-266 / Eventiva#1053 without closure; both signatures independently verified. This branch records only canonical timeline/agent evidence and regenerated outputs over current Eventiva main 80bc555a. | Normal house review/landing, safe downstream synchronization and exact refreshed-head checks remain required. Hosted results are separate from local proof. The existing fixture-policy blocker and dispatch-effects uncertainty are not solved by this transport repair. |
+| Implementation handoff; 2026-11-20T02:21:50.052Z | Linear records On Hold / Product / Handoff Needed after a complete issue/comment read found no other active slice. Only evidence publication and CI follow-through remain, not running implementation. [House CI](https://github.com/Resnovas/.github/actions/runs/44659856023) passes all six OS/Node jobs, rendered and aggregate check; hosted Graphify, workflow lint and CodeQL also pass. Linear's bot readied PR #61 at 02:18:41Z. [Draft restoration](https://github.com/Resnovas/.github/actions/runs/44659864127/job/136035163453) failed with `Resource not accessible by integration (convertPullRequestToDraft)`; smartcloud required aggregated that failure. After verifying no later human readiness, this owner restored draft with `gh pr ready 61 --undo` and independently read `isDraft: true`. | Jonathan and the normal house readiness/review owners are the next acceptance owners, not assumed active workers. Readiness access remains a real blocker; no permission/workflow expansion, blind rerun or bypass. No upstream merge or downstream repair is claimed. Broader fixture design and governance-adoption acceptance stay paused, both whole issues stay open, and the earlier settings-effects uncertainty remains. |
+
+```mermaid
+flowchart LR
+    Drift["Verify host drift: independent CI failure"] --> Transport["Generator-derived static templates: local red/green"]
+    Transport --> HousePR["House PR 61: proposed, not merged"]
+    HousePR --> Readiness["Draft restored; automation permission failure remains"]
+    HousePR --> Downstream["Safe normal downstream adoption and exact-head checks"]
+    Downstream --> Open["EVE-266 / #1053 whole acceptance remains open"]
+    Fixture["Fixture design and settings assurance remain paused"] --> Open
+```
+
 ## Authenticated client discovery checkpoint - 2026-11-18
 
 The revision-11 rank-1 [packet](https://ampcode.com/artifacts/next-implementation-packets-cd16f2fd-d187-4163-9463-9270422c87b0)

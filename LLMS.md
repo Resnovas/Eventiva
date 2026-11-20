@@ -2018,6 +2018,8 @@ Apply the canonical [task lifecycle and verified mapping procedure](../../../doc
 
 `sync.values.TASK_LINEAR_PREFIX: EVE` prepares Eventiva for the canonical offline commit checker; it is not active enforcement until human house acceptance and normal downstream sync. Do not patch downstream managed AGENTS/checker content from an unaccepted proposal. The guard checks reference syntax, not actual tracker links, writes or acceptance. Preserve frozen mirror provenance, regenerate affected outputs from current source and retain independent delivery ownership. The rollout's actual state and pending acceptance are recorded in the [timeline](../../../docs/planning/timeline.md), not inferred from generated snapshot status.
 
+The [2026-11-20 Verify repair checkpoint](../../../docs/planning/timeline.md#bounded-verify-mirror-repair---2026-11-20) records the resumed EVE-266 / Eventiva#1053 slice separately from paused fixture design and adoption acceptance. House PR #61 proposes two generator-derived static host templates because sync does not execute downstream generators. Source/template/host divergence and local-command preservation are exercised; no downstream managed override or privileged dispatch is a repair mechanism. Passing local house gates do not establish merged templates, downstream adoption, whole-issue closure or resolution of the earlier settings-effects uncertainty.
+
 ## Historical canonical tooling checkpoint - 2026-11-17
 
 The canonical house tooling JSDoc packet was accepted by Jonathan in
