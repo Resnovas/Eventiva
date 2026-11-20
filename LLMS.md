@@ -3214,6 +3214,15 @@ required; trusted tenant idle settings may shorten but cannot exceed that bound.
 The existing policy's approval window cannot exceed the live session deadline.
 See docs/identity-oidc.md and docs/core-qualification/session-renewal.md.
 
+Qualification checkpoint, 2026-11-20: retained renewal source2693f31b on exact
+published515a62ff passes its normal static-plus-affected hook in496.534675s;
+pinned fixture/hook/cleanup exits0 in500.844678s within unchanged1200s.
+Fresh server80 cases include13 real SQLite/PostgreSQL lifecycle cases; coverage
+is97.37/93.97/96.65/97.95%, renewal94.44/94.59/90/94.33%. No budgets/assertions
+or thresholds changed. Separate clean graph hook, publication and exact-head
+full main-push CI remain required. The report preserves earlier failed attempts
+and finalization limits; local admission is not whole-Core or release acceptance.
+
 IdentitySession.activity is optional for compatibility, not automatic migration.
 Legacy rows require fresh sign-in to acquire lifecycle metadata. Its issuedAt,
 lastRealActivityAt, absoluteExpiresAt, idleMs and original issuer/client provenance

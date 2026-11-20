@@ -2,6 +2,25 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Renewal static-plus-affected requalification - 2026-11-20
+
+The [replacement owner](https://ampcode.com/threads/T-01a1f91d-763b-70be-8b45-ed204d33d101) resumes only after the coordinator independently verifies exact `515a62ffeb82a30ef1965d599d1652411a6efdda` CI GREEN. Puck authorizes the later ordinary delivery sequence. The [renewal report](../core-qualification/session-renewal.md#static-plus-affected-requalification-and-delivery---2026-11-20) owns exact evidence; non-closing [EVE-275](https://linear.app/resnovas/issue/EVE-275) / [#1063](https://github.com/Resnovas/Eventiva/issues/1063) remain open. This dated checkpoint supersedes renewal's earlier current-attempt rows, not historical failures or the frozen all-issue capture.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed preservation/integration | Original ca05d90f tree/base541b18ac, failed logs and separate later patches retained. Fourteen renewal paths transplant cleanly onto exact515a62ff; production/test/example blobs unchanged. Worker-cap and G are not adopted. |
+| Completed source admission | Signed local2693f31b, treeade7d03f: one normal installed static-plus-affected hook exits0. Independent pre-commit496.534675s/commit-msg0.078787s, whole pinned fixture/hook/cleanup500.844678s <1200s. Static15builds/83tasks, affected31tasks and323tooling tests pass. Fresh runtime680/contracts580/server80/storage333/resource68 cases; server97.37/93.97/96.65/97.95% coverage. No threshold, assertion, scheduling or budget change. |
+| Current delivery | Puck authorizes separate clean graph/evidence normal hook, ordinary push and exact-head CI. Fresh main remains515a62ff; no rebase/source retry required at this checkpoint. Graph hook/publication/CI are pending, not acceptance. Original medium/2CPU failures remain historical, not green. |
+| Upcoming acceptance | Verify exact pushed head's full aggregate/parity/smoke/feature evidence in main-push CI. No whole-Core closure, readiness probe, endpoint or activation. CLI never renews; default-off web/native capability and1h idle/8h absolute remain. EVE-248 January2027 unchanged. |
+
+```mermaid
+flowchart LR
+    Base["Exact prerequisite CI green"] --> Source["Passed: retained renewal source hook"]
+    Source --> Graph["Required: clean graph and normal evidence hook"]
+    Graph --> Push["Ordinary main push"]
+    Push --> Hosted["Required: exact-head full CI; Core remains open"]
+```
+
 ## EVE-299 hook scope correction - 2026-11-20
 
 Jonathan's 15:16:33 UTC correction limits pre-commit to static checks and affected tests. The [paired source](https://linear.app/resnovas/issue/EVE-299#comment-01ba9869-5019-48dd-a2e9-3a0b74a0eb55) identifies main-push/PR full verification and seven-day uploads as Puck's implementation direction, not the human quote. [This thread](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) owns the change and the separately approved two-project cache repair, with non-closing [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092). This supersedes per-hook tuning and the earlier qualification sequence below; historical outcomes remain intact.
