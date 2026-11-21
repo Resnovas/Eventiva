@@ -1,7 +1,7 @@
 {
     "version": 1,
     "policy": "Ban non-JSDoc inline and block comments; monotonic ratchet allows only downward reduction until zero.",
-    "total": 2111,
+    "total": 2109,
     "files": {
         "ai-docs/src/13_storage/01_transaction.ts": 2,
         "ai-docs/src/13_storage/02_hook_producer.ts": 1,
@@ -228,7 +228,7 @@
         "tests/telemetry/src/server.spec.ts": 13,
         "tests/telemetry/src/stored-correlation.spec.ts": 6,
         "tests/telemetry/src/telemetry.spec.ts": 40,
-        "tests/ui-modules/src/declarative-module.spec.tsx": 57,
+        "tests/ui-modules/src/declarative-module.spec.tsx": 55,
         "tests/ui-modules/src/screen-context.spec.ts": 15
     }
 }
