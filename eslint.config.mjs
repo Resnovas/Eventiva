@@ -193,6 +193,7 @@ const eventivaPlugin = {
 };
 
 const jsdocAdoptedFiles = [
+    'packages/integrations/telemetry.server/src/**/*.ts',
     'tests/contracts/{src/**/*.ts,vitest.config.mts}',
     'tests/ui-modules/{src/**/*.{ts,tsx},vitest.config.mts}',
     'packages/ui-modules/src/**/*.{ts,tsx}',
