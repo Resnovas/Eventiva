@@ -201,6 +201,7 @@ const jsdocAdoptedFiles = [
     'packages/integrations/openfeature-server/src/**/*.ts',
     'packages/integrations/posthog-client/src/**/*.ts',
     'tools/function-telemetry/**/*.mjs',
+    'packages/integrations/posthog-server/src/**/*.ts',
 ];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';

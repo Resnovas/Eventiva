@@ -1,7 +1,7 @@
 {
     "version": 1,
     "policy": "Ban non-JSDoc inline and block comments; monotonic ratchet allows only downward reduction until zero.",
-    "total": 2136,
+    "total": 2128,
     "files": {
         "ai-docs/src/13_storage/01_transaction.ts": 2,
         "ai-docs/src/13_storage/02_hook_producer.ts": 1,
@@ -91,8 +91,6 @@
         "packages/integrations/http-client/src/action.ts": 12,
         "packages/integrations/oidc/src/session.ts": 5,
         "packages/integrations/oidc/src/token.ts": 6,
-        "packages/integrations/posthog-server/src/flags.ts": 1,
-        "packages/integrations/posthog-server/src/telemetry.ts": 7,
         "packages/integrations/sql/src/agent-output.ts": 6,
         "packages/integrations/sql/src/approval-retention.ts": 6,
         "packages/integrations/sql/src/approval.ts": 7,
