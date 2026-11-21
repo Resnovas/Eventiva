@@ -192,7 +192,14 @@ const eventivaPlugin = {
     },
 };
 
-const jsdocAdoptedFiles = ['packages/integrations/formatjs/src/**/*.{ts,tsx}', 'apps/client-e2e/**/*.{ts,mts}', 'tools/toolchain/**/*.mjs', 'tools/test-process/**/*.mjs'];
+const jsdocAdoptedFiles = [
+    'packages/integrations/formatjs/src/**/*.{ts,tsx}',
+    'apps/client-e2e/**/*.{ts,mts}',
+    'tools/toolchain/**/*.mjs',
+    'tools/test-process/**/*.mjs',
+    'packages/integrations/openfeature-client/src/**/*.ts',
+    'packages/integrations/openfeature-server/src/**/*.ts',
+];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
 const permissionPattern = '/^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+(\\s|$)/';
@@ -271,7 +278,8 @@ const jsdocContracts = {
             'error',
             {
                 contexts: [contractComment],
-                matchDescription: '^\\s*(?:-\\s*)?[\\p{Upper}`][\\s\\S]*[.!?](?:\\s+@agent-optimization\\s[^\\n]*)?\\s*$',
+                matchDescription:
+                    '^\\s*(?:-\\s*)?[\\p{Upper}`][\\s\\S]*[.!?](?:\\s+@agent-optimization\\s[^\\n]*)?\\s*$',
                 tags: { param: true, returns: true, template: true, fails: true, fires: true, yields: true },
                 message:
                     'Write a complete sentence with an initial capital and closing punctuation; explain the contract rather than repeating the name.',
