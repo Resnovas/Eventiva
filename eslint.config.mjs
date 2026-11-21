@@ -208,6 +208,7 @@ const jsdocAdoptedFiles = [
     'packages/integrations/oidc/src/**/*.ts',
     'packages/integrations/http-client/src/**/*.ts',
     'packages/integrations/trust.server/src/**/*.ts',
+    'tests/boundaries/{src/**/*.ts,vitest.config.mts}',
 ];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
