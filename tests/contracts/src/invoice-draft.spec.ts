@@ -42,7 +42,12 @@ const snapshot = {
 
 it.effect(
     'draft specifications reuse exact canonical snapshots and strict financial fields',
-    /** Independently calculated decimal strings distinguish exact arithmetic from Number rounding or per-unit tax. */ () =>
+    /**
+     * Independently calculated decimal strings distinguish exact arithmetic from Number rounding or per-unit tax.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Refuse financial corrections, coercions and state injection at the public contract boundary. */ function* () {
                 // Expected total: 3*9007199254740993 + 7 + 2*11 + 5 = 27021597764223013.
@@ -95,13 +100,26 @@ it.effect(
 
 it.effect(
     'draft actions are default-off sensitive online-only preparation, not provider execution',
-    /** Check exact public inventory names and permission mapping without claiming full provider-schema parity. */ () =>
+    /**
+     * Check exact public inventory names and permission mapping without claiming full provider-schema parity.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Validate definitions independently from runtime registration and preserve the safe rollout default. */ function* () {
                 // Dotted permissions map issue colon labels; none of these actions issues a statutory invoice.
                 yield* validateDefinitions(invoiceDraftActions);
                 expect(
-                    invoiceDraftActions.map(/** Preserve the canonical declaration order for callers. */ (a) => a.name)
+                    invoiceDraftActions.map(
+                        /**
+                         * Preserve the canonical declaration order for callers.
+                         *
+                         * @param a - One declared invoice draft action.
+                         * @returns The action's canonical name.
+                         */
+                        (a) => a.name
+                    )
                 ).toEqual([
                     'accounting.invoice.draft',
                     'accounting.invoice.update',

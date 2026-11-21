@@ -34,7 +34,12 @@ const evidence: FulfilmentAssessment = {
 
 it.effect(
     'applies each versioned delay and the exact inclusive boundary with the fake clock',
-    /** Distinguish 14, 7 and 3 days from confirmation rather than the contract date. */ () =>
+    /**
+     * Distinguish 14, 7 and 3 days from confirmation rather than the contract date.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Assert one millisecond before and exactly at each independent expected release time. */ function* () {
                 // Asymmetric event times expose implementations anchored to the wrong contractual timestamp.
@@ -60,7 +65,12 @@ it.effect(
 
 it.effect(
     'requires reminders before no-response eligibility and never backdates late fulfilment',
-    /** Separate the fourteen-day buyer-response window from the supplier maturity delay. */ () =>
+    /**
+     * Separate the fourteen-day buyer-response window from the supplier maturity delay.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Exercise unanswered and late obligations without granting eligibility to another milestone. */ function* () {
                 // Late fulfilment starts a new delay rather than borrowing the older no-response deadline.
@@ -89,7 +99,12 @@ it.effect(
 
 it.effect(
     'validates exact canonical invoice revisions without rounding or accepting inconsistent totals',
-    /** Separate invoice identity and supplier/customer identity from all later provider mappings. */ () =>
+    /**
+     * Separate invoice identity and supplier/customer identity from all later provider mappings.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Use amounts beyond safe floating-point precision and independently derived tax-inclusive totals. */ function* () {
                 // A one-unit total mismatch must survive decoding even where Number arithmetic would erase the difference.
@@ -131,7 +146,12 @@ it.effect(
 
 it.effect(
     'blocks disputes and unsupported holds even after the delay elapses',
-    /** Capability failure cannot silently become a local escrow or override a dispute. */ () =>
+    /**
+     * Capability failure cannot silently become a local escrow or override a dispute.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Reevaluate the same accepted milestone after a dispute or capability change. */ function* () {
                 // Establish elapsed-time eligibility first so the negative controls isolate dispute and provider-hold gates.
@@ -151,7 +171,12 @@ it.effect(
 
 it.effect(
     'rejects invalid evidence instead of manufacturing financial eligibility',
-    /** Check contradictory confirmation, missing fulfilment, unknown policy and excess private fields. */ () =>
+    /**
+     * Check contradictory confirmation, missing fulfilment, unknown policy and excess private fields.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Invalid schemas fail before policy evaluation; future confirmation remains pending. */ function* () {
                 // Distinguish structurally invalid evidence from valid evidence whose confirmation time has not arrived.

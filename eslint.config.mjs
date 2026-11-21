@@ -193,6 +193,7 @@ const eventivaPlugin = {
 };
 
 const jsdocAdoptedFiles = [
+    'tests/contracts/{src/**/*.ts,vitest.config.mts}',
     'tests/ui-modules/{src/**/*.{ts,tsx},vitest.config.mts}',
     'packages/ui-modules/src/**/*.{ts,tsx}',
     'packages/integrations/formatjs/src/**/*.{ts,tsx}',

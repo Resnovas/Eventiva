@@ -32,7 +32,12 @@ const now = 1_800_000_000_000;
 describe('freshness', /** Group the freshness cases. */ () => {
     it('classifies each step on both sides of its maximum age', /** Distinguish inclusive freshness limits from the next stale millisecond for each workflow stage. */ () => {
         // Keep expiry in the future so only assertion age, not expiration, explains the change in classification.
-        /** Build an assertion `age` ms old that has not yet expired. */
+        /**
+         * Build an assertion `age` ms old that has not yet expired.
+         *
+         * @param age - How many milliseconds before `now` the assertion was made.
+         * @returns Assertion timestamps that expire a day after `now`.
+         */
         const at = (age: number) => ({
             asOf: now - age,
             expiresAt: now + day,

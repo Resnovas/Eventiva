@@ -20,17 +20,23 @@ import {
     Flags,
     FlagsSafeDefaults,
     byPrecedence,
-    safeDefault
+    safeDefault,
 } from '@eventiva/contracts/flags';
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Schema } from 'effect';
 
-/** Build a flag fixture whose key and fallback value vary independently of fixed ownership metadata. */
+/**
+ * Build a flag fixture whose key and fallback value vary independently of fixed ownership metadata.
+ *
+ * @param key - The flag key to validate.
+ * @param value - The safe default the fixture declares.
+ * @returns A flag definition with fixed description and owner.
+ */
 const flag = (key: string, value: boolean) => ({
     key,
     description: 'Test flag.',
     owner: 'platform',
-    safeDefault: value
+    safeDefault: value,
 });
 
 describe('flag keys and definitions', /** Cover portable flag naming and lifecycle metadata validation. */ () => {
@@ -65,7 +71,13 @@ describe('byPrecedence', /** Cover policy source ordering independently of flag 
         ] as const);
         expect(
             ordered.map(
-                /** Expose fixture identities without obscuring the resulting precedence order. */ (entry) => entry.id
+                /**
+                 * Expose fixture identities without obscuring the resulting precedence order.
+                 *
+                 * @param entry - One ordered fixture.
+                 * @returns The fixture's numeric identifier.
+                 */
+                (entry) => entry.id
             )
         ).toEqual([6, 3, 5, 4, 2, 1]);
     });
@@ -74,7 +86,12 @@ describe('byPrecedence', /** Cover policy source ordering independently of flag 
 describe('FlagsSafeDefaults', /** Cover the offline-safe fallback layer without a remote flag provider. */ () => {
     it.effect(
         'answers every flag with its own safe default and marks it a fallback',
-        /** Provide only the safe-default layer to exercise fallback evaluation in isolation. */ () =>
+        /**
+         * Provide only the safe-default layer to exercise fallback evaluation in isolation.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Verify fallback values come from each definition and preserve an explicit failure reason. */ function* () {
                     // Both boolean defaults matter: fallback must not become a blanket disable policy.

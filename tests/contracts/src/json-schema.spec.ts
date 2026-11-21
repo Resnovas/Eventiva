@@ -23,7 +23,12 @@ import { Effect, Schema } from 'effect';
 
 it.effect(
     'normalizes only the pinned UUID grammar without losing ASCII case or version semantics',
-    /** Compare compiled regex acceptance to the unchanged runtime schemas over asymmetric boundaries. */ () =>
+    /**
+     * Compare compiled regex acceptance to the unchanged runtime schemas over asymmetric boundaries.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Generic flagged regexes, fake UUID annotations and unsupported Google patterns must continue to refuse. */ function* () {
                 // Uppercase and invalid version/variant controls distinguish exact normalization from weaker UUID validation.
@@ -66,7 +71,12 @@ it.effect(
 
 it.effect(
     'retains union, nullable and tool-input restrictions independently from structural output support',
-    /** Distinguish a structural array output from a prohibited root tool-array input; no provider capability is inferred. */ () =>
+    /**
+     * Distinguish a structural array output from a prohibited root tool-array input; no provider capability is inferred.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Verify exact optional/required/object shape and fail closed for unrepresentable nullable or mixed unions. */ function* () {
                 // Array output is a positive control: the same root shape must remain invalid for tool input.
