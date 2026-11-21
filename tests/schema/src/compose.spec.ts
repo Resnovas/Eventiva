@@ -57,7 +57,14 @@ const Venue = Resource.make('venues.venue', {
     fields: { id: Field.id().pipe(Field.classify('restricted')) },
 });
 
-/** Enumerate every arrival order of three distinct declarations without modifying caller-owned inputs. */
+/**
+ * Enumerate every arrival order of three distinct declarations without modifying caller-owned inputs.
+ *
+ * @param a - The first contribution.
+ * @param b - The second contribution.
+ * @param c - The third contribution.
+ * @returns All six orders of the three contributions.
+ */
 const permutations = (a: Contribution, b: Contribution, c: Contribution) => [
     [a, b, c],
     [a, c, b],
@@ -67,20 +74,40 @@ const permutations = (a: Contribution, b: Contribution, c: Contribution) => [
     [c, b, a],
 ];
 
-/** Project successful composition into ordered owner-qualified field names while preserving composition failures. */
+/**
+ * Project successful composition into ordered owner-qualified field names while preserving composition failures.
+ *
+ * @param composed - The composition result.
+ * @returns For success, each resource's `module:field` names in order; a failure is passed through unchanged.
+ */
 const names = (composed: Either.Either<{ readonly resources: ReadonlyArray<Resource.Resource | object> }, unknown>) =>
     Either.map(
         composed,
-        /** Preserve resource order when reducing a successful composition to its field ownership evidence. */ ({
-            resources,
-        }) =>
-            resources.map(
-                /** Extract composed array-form fields; uncomposed or opaque resources contribute no names. */ (
-                    resource
-                ) =>
+        /**
+         * Preserve resource order when reducing a successful composition to its field ownership evidence.
+         *
+         * @param success - The successful composition.
+         * @returns The owner-qualified field names of each resource.
+         */
+        (success) =>
+            success.resources.map(
+                /**
+                 * Extract composed array-form fields; uncomposed or opaque resources contribute no names.
+                 *
+                 * @param resource - One composed or opaque resource.
+                 * @returns Its owner-qualified field names, or none.
+                 */
+                (resource) =>
                     'fields' in resource && Array.isArray(resource.fields)
                         ? resource.fields.map(
-                              /** Qualify each field with its owning module so contributed fields remain distinguishable. */
+                              /**
+                               * Qualify each field with its owning module so contributed fields remain distinguishable.
+                               *
+                               * @param field - One composed field and its owning module.
+                               * @param field.module - The module that contributed the field.
+                               * @param field.name - The field key it was declared under.
+                               * @returns The field as `module:name`.
+                               */
                               (field: { readonly module: string; readonly name: string }) =>
                                   `${field.module}:${field.name}`
                           )
@@ -212,7 +239,12 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
 
     it.effect(
         'keeps composition errors tagged, field-bearing and yieldable',
-        /** Exercise each composition error as both a diagnostic object and an Effect failure. */ () =>
+        /**
+         * Exercise each composition error as both a diagnostic object and an Effect failure.
+         *
+         * @returns The scenario as an Effect.
+         */
+        () =>
             Effect.gen(
                 /** Verify errors retain tags and enumerable diagnostic fields when yielded into the typed failure channel. */ function* () {
                     // Constructor typing alone does not prove runtime Error identity, diagnostic payloads or Effect yieldability.
@@ -231,8 +263,13 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
                     ];
                     expect(
                         errors.map(
-                            /** Expose discriminants in fixture order to pin the closed error vocabulary. */ (error) =>
-                                error._tag
+                            /**
+                             * Expose discriminants in fixture order to pin the closed error vocabulary.
+                             *
+                             * @param error - One composition error.
+                             * @returns Its tag.
+                             */
+                            (error) => error._tag
                         )
                     ).toEqual([
                         'DuplicateResource',
@@ -255,9 +292,13 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
                     }
                     expect(
                         errors.map(
-                            /** Inspect enumerable diagnostic payloads independently of Error prototype properties. */ (
-                                error
-                            ) => ({ ...error })
+                            /**
+                             * Inspect enumerable diagnostic payloads independently of Error prototype properties.
+                             *
+                             * @param error - One composition error.
+                             * @returns A copy of its enumerable fields.
+                             */
+                            (error) => ({ ...error })
                         )
                     ).toMatchObject([
                         { resource: 'events.event', modules: ['events', 'other'] },
@@ -436,8 +477,13 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
             ...Object.values(third.fields),
         ];
         const originalDescriptors = inputs.map(
-            /** Snapshot caller metadata without traversing schema ASTs or executing schema functions. */ (input) =>
-                Object.getOwnPropertyDescriptors(input)
+            /**
+             * Snapshot caller metadata without traversing schema ASTs or executing schema functions.
+             *
+             * @param input - One caller-owned resource, field map or field.
+             * @returns Its own property descriptors.
+             */
+            (input) => Object.getOwnPropertyDescriptors(input)
         );
         for (const order of permutations(first, second, third)) {
             const originalOrder = [...order];
@@ -454,8 +500,13 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
                             : Venue.fields;
                     expect(
                         composed.fields.map(
-                            /** Require every declared field exactly once in canonical output order. */ (field) =>
-                                field.name
+                            /**
+                             * Require every declared field exactly once in canonical output order.
+                             *
+                             * @param field - One composed field.
+                             * @returns Its name.
+                             */
+                            (field) => field.name
                         )
                     ).toEqual(Object.keys(expected).sort());
                     for (const field of composed.fields) {
@@ -473,8 +524,13 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
         expect(Object.keys(first.fields)).toEqual(['zeta', 'alpha']);
         expect(
             inputs.map(
-                /** Detect writes through retained caller-owned resource, field-map and field references. */ (input) =>
-                    Object.getOwnPropertyDescriptors(input)
+                /**
+                 * Detect writes through retained caller-owned resource, field-map and field references.
+                 *
+                 * @param input - One caller-owned resource, field map or field.
+                 * @returns Its own property descriptors after composition.
+                 */
+                (input) => Object.getOwnPropertyDescriptors(input)
             )
         ).toEqual(originalDescriptors);
         expect(metadata.schema.fields.at).toBe(Schema.Date);
@@ -501,12 +557,22 @@ describe('compose', /** Cover deterministic resource merging, contribution owner
     });
 
     it('refuses unknown targets, duplicate resources and names that are not canonical', /** Verify missing targets and malformed or duplicate identities yield stable typed composition errors. */ () => {
-        /** Select the failure tag without turning successful composition into an error. */
+        /**
+         * Select the failure tag without turning successful composition into an error.
+         *
+         * @param result - The composition result.
+         * @returns The failure's tag, or none on success.
+         */
         const left = (result: Either.Either<unknown, { readonly _tag: string }>) =>
             Either.getLeft(result).pipe(
                 Option.map(
-                    /** Reduce diagnostic details to the discriminant asserted by this failure matrix. */ (error) =>
-                        error._tag
+                    /**
+                     * Reduce diagnostic details to the discriminant asserted by this failure matrix.
+                     *
+                     * @param error - The composition error.
+                     * @returns Its tag.
+                     */
+                    (error) => error._tag
                 )
             );
         // Missing referenced resources and missing contribution targets are distinct routes to UnknownTarget.

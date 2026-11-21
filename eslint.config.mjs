@@ -21,12 +21,9 @@ import { fileURLToPath } from 'node:url';
 import nx from '@nx/eslint-plugin';
 import prettier from 'eslint-config-prettier';
 import formatjs from 'eslint-plugin-formatjs';
+import jsdoc from 'eslint-plugin-jsdoc';
 import reactHooks from 'eslint-plugin-react-hooks';
-
-// Module boundaries (EVE-13, EVE-23 package architecture). Every project
-// carries one type, one layer and one capability tag. Types depend only
-// downwards, layers never cross between backend and frontend, and a capability
-// depends only on the contracts it implements. Nx reports dependency cycles.
+import { noInlineCommentsRule } from './tools/comments/no-inline-comments.mjs';
 
 const typeConstraints = [
     { sourceTag: 'type:core', onlyDependOnLibsWithTags: ['type:core'] },
@@ -52,7 +49,6 @@ const capabilityConstraints = [
     { sourceTag: 'capability:i18n', onlyDependOnLibsWithTags: ['capability:contracts', 'capability:i18n'] },
 ];
 
-// Packages that need Node, a server or a database. Portable code never imports them.
 const serverOnly = [
     '@effect/platform-node',
     '@effect/platform-node-shared',
@@ -88,15 +84,12 @@ const layerConstraints = [
     },
 ];
 
-// Contracts and schema depend on effect alone, and so does the action runtime:
-// drivers, vendor SDKs, Node platform layers and Cluster arrive through apps and integrations.
 const portableOnly = [
     { sourceTag: 'type:core', allowedExternalImports: ['effect', 'effect/*'] },
     { sourceTag: 'type:shared', allowedExternalImports: ['effect', 'effect/*'] },
     { sourceTag: 'capability:actions', allowedExternalImports: ['effect', 'effect/*'] },
 ];
 
-// The Node globals portable code must not touch; Hermes and browsers lack them.
 const nodeGlobals = ['process', 'Buffer', 'require', 'module', 'global', '__dirname', '__filename', 'setImmediate'].map(
     (name) => ({ name, message: 'Portable code runs on Hermes and in browsers: take this from a service.' })
 );
@@ -104,8 +97,6 @@ const nodeBuiltins = [
     ...new Set(builtinModules.flatMap((name) => [name.replace(/^node:/, ''), `node:${name.replace(/^node:/, '')}`])),
 ];
 
-// Source globs per tag, read from each project.json when the config loads, so
-// the rules follow tags rather than directory names.
 const root = dirname(fileURLToPath(import.meta.url));
 const skip = new Set(['node_modules', 'dist', '.git', '.nx', 'examples', 'graphify-out', 'test-output', '.expo']);
 const projects = [];
@@ -138,9 +129,19 @@ const reactDynamicRestriction = {
     selector: 'ImportExpression[source.value="react"]',
     message: reactLifecycleMessage,
 };
+const noEmptyCatchRestriction = {
+    selector: 'CatchClause > BlockStatement[body.length=0]',
+    message:
+        'Do not swallow errors in an empty catch block. Handle the specific expected error code (for example ENOENT or EBADF) and rethrow all other errors.',
+};
+const noPositionalUnionMemberIndexRestriction = {
+    selector:
+        'MemberExpression[computed=true][property.type="Literal"][property.raw=/^[0-9]+$/][object.type="MemberExpression"][object.computed=false][object.property.name="members"]',
+    message:
+        'Do not index Schema.Union.members by numeric position. Extract named schema constants and reference them directly in both unions.',
+};
+const baseSyntaxRestrictions = [reactDynamicRestriction, noEmptyCatchRestriction];
 
-// A lexical rule distinguishes browser globals from unrelated local methods;
-// adding another no-restricted-syntax block would replace the package export rule.
 const noZeroDelayUiTimer = {
     meta: {
         type: 'problem',
@@ -153,7 +154,6 @@ const noZeroDelayUiTimer = {
     create(context) {
         return {
             CallExpression(node) {
-                // Spread arguments can supply a real delay; this rule does not evaluate runtime values.
                 if (node.arguments.some((argument) => argument.type === 'SpreadElement')) return;
                 const delay = node.arguments[1];
                 const literal =
@@ -175,7 +175,6 @@ const noZeroDelayUiTimer = {
                 )
                     global = callee.object;
                 if (!global) return;
-                // A same-named local parameter/object is not the browser timer API.
                 const reference = context.sourceCode
                     .getScope(node)
                     .references.find((entry) => entry.identifier === global);
@@ -183,6 +182,171 @@ const noZeroDelayUiTimer = {
                 context.report({ node, messageId: 'stateOwner' });
             },
         };
+    },
+};
+
+const eventivaPlugin = {
+    rules: {
+        'no-zero-delay-ui-timer': noZeroDelayUiTimer,
+        'no-inline-comments': noInlineCommentsRule,
+    },
+};
+
+const jsdocAdoptedFiles = [
+    'packages/integrations/formatjs/src/**/*.{ts,tsx}',
+    'apps/client-e2e/**/*.{ts,mts}',
+    'tools/toolchain/**/*.mjs',
+    'tools/test-process/**/*.mjs',
+    'packages/integrations/openfeature-client/src/**/*.ts',
+    'packages/integrations/openfeature-server/src/**/*.ts',
+    'packages/integrations/posthog-client/src/**/*.ts',
+    'tools/function-telemetry/**/*.mjs',
+    'packages/integrations/posthog-server/src/**/*.ts',
+    'tools/references/**/*.mjs',
+    'tests/schema/**/*.{ts,mts}',
+    'apps/client/**/*.{ts,tsx,mts,js}',
+    'packages/integrations/oidc/src/**/*.ts',
+    'packages/integrations/http-client/src/**/*.ts',
+    'packages/integrations/trust.server/src/**/*.ts',
+    'tests/boundaries/{src/**/*.ts,vitest.config.mts}',
+    'tools/comments/**/*.mjs',
+    'tools/verification/**/*.mjs',
+];
+const effectGenCallback =
+    'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
+const permissionPattern = '/^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+(\\s|$)/';
+const contractComment = { context: 'any', comment: 'JsdocBlock:not(:has(JsdocTag[tag="file"]))' };
+const bannedJsdocTags = [
+    {
+        comment: 'JsdocBlock:not(:has(JsdocTag[tag="since"]))',
+        context: 'ExportNamedDeclaration[declaration]',
+        message: 'Record when this export arrived with @since <package version>.',
+    },
+    {
+        comment: 'JsdocBlock:has(JsdocTag[tag=/^(throws|exception)$/])',
+        context: 'any',
+        message:
+            'Do not use @throws or @exception. Effect code never throws: document each typed failure in the Effect error channel with @fails {ErrorTag} and when it happens.',
+    },
+    {
+        comment: 'JsdocBlock:has(JsdocTag[tag="author"])',
+        context: 'any',
+        message: 'Do not use @author. Git records who wrote the code.',
+    },
+    {
+        comment: 'JsdocBlock:has(JsdocTag[tag="license"])',
+        context: 'any',
+        message: 'Do not use @license. The file header holds the licence terms.',
+    },
+    {
+        comment: 'JsdocBlock:has(JsdocTag[tag="version"])',
+        context: 'any',
+        message:
+            'Do not use @version: a hand-written symbol version goes stale. Record when the symbol arrived with @since <package version>.',
+    },
+    {
+        comment: `JsdocBlock:has(JsdocTag[tag="access"]:not([description=${permissionPattern}]))`,
+        context: 'any',
+        message:
+            'Write @access as the resource or action permission a caller must hold, dotted and lower case (for example @access inventory.catalogue.write), never a role or a TypeScript visibility.',
+    },
+];
+const jsdocContracts = {
+    plugins: { jsdoc },
+    settings: {
+        jsdoc: {
+            mode: 'typescript',
+            tagNamePreference: { arg: 'param', argument: 'param', return: 'returns', emits: 'fires' },
+        },
+    },
+    rules: {
+        'jsdoc/require-jsdoc': [
+            'error',
+            {
+                require: {
+                    ArrowFunctionExpression: false,
+                    ClassDeclaration: true,
+                    ClassExpression: true,
+                    FunctionDeclaration: true,
+                    FunctionExpression: true,
+                    MethodDefinition: true,
+                },
+                contexts: [
+                    ':matches(ArrowFunctionExpression)',
+                    'TSInterfaceDeclaration',
+                    'TSTypeAliasDeclaration',
+                    'TSMethodSignature',
+                    'TSDeclareFunction',
+                    'ExportNamedDeclaration',
+                    'ExportDefaultDeclaration',
+                ],
+                checkAllFunctionExpressions: true,
+                exemptEmptyConstructors: false,
+                exemptEmptyFunctions: false,
+            },
+        ],
+        'jsdoc/require-description': ['error', { contexts: [contractComment] }],
+        'jsdoc/match-description': [
+            'error',
+            {
+                contexts: [contractComment],
+                matchDescription:
+                    '^\\s*(?:-\\s*)?[\\p{Upper}`][\\s\\S]*[.!?](?:\\s+@agent-optimization\\s[^\\n]*)?\\s*$',
+                tags: { param: true, returns: true, template: true, fails: true, fires: true, yields: true },
+                message:
+                    'Write a complete sentence with an initial capital and closing punctuation; explain the contract rather than repeating the name.',
+            },
+        ],
+        'jsdoc/informative-docs': ['error', { aliases: { run: ['runs', 'running'], main: ['entry', 'point'] } }],
+        'jsdoc/no-blank-block-descriptions': 'error',
+        'jsdoc/require-param': [
+            'error',
+            {
+                contexts: [
+                    `:not(${effectGenCallback}):matches(ArrowFunctionExpression, FunctionDeclaration, FunctionExpression, TSDeclareFunction, TSMethodSignature)`,
+                ],
+            },
+        ],
+        'jsdoc/require-param-description': 'error',
+        'jsdoc/check-param-names': 'error',
+        'jsdoc/require-returns': [
+            'error',
+            {
+                contexts: [
+                    `:not(${effectGenCallback}):matches(ArrowFunctionExpression, FunctionDeclaration, FunctionExpression, TSDeclareFunction, TSMethodSignature)`,
+                ],
+            },
+        ],
+        'jsdoc/require-returns-description': 'error',
+        'jsdoc/require-yields': [
+            'error',
+            {
+                contexts: [
+                    `FunctionDeclaration[generator=true], :not(${effectGenCallback})FunctionExpression[generator=true]`,
+                ],
+            },
+        ],
+        'jsdoc/check-tag-names': ['error', { definedTags: ['fails', 'file', 'internal', 'agent-optimization'] }],
+        'jsdoc/no-types': 'error',
+        'jsdoc/valid-types': 'error',
+        'jsdoc/require-template': 'error',
+        'jsdoc/empty-tags': 'error',
+        'jsdoc/check-alignment': 'error',
+        'jsdoc/multiline-blocks': 'error',
+        'jsdoc/tag-lines': ['error', 'never', { startLines: 1 }],
+        'jsdoc/no-restricted-syntax': ['error', { contexts: bannedJsdocTags }],
+        'jsdoc/require-example': [
+            'error',
+            {
+                enableFixer: false,
+                contexts: [
+                    'ExportNamedDeclaration',
+                    'ExportDefaultDeclaration',
+                    ':matches(ExportNamedDeclaration,ExportDefaultDeclaration) > ClassDeclaration > ClassBody > MethodDefinition:not([accessibility="private"]):not([accessibility="protected"]):not([key.type="PrivateIdentifier"])',
+                    'ExportNamedDeclaration > TSInterfaceDeclaration > TSInterfaceBody > TSMethodSignature',
+                ],
+            },
+        ],
     },
 };
 
@@ -202,12 +366,17 @@ export default [
             'examples/**',
             'externals/**',
             'graphify-out/**',
-            // Boundary fixtures break the rules on purpose; tests/boundaries lints them.
+            '.claude/**',
+            '.cursor/**',
+            '.opencode/**',
             'tests/boundaries/fixtures/**',
         ],
     },
     {
         files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.js', '**/*.mjs'],
+        plugins: {
+            eventiva: eventivaPlugin,
+        },
         rules: {
             '@nx/enforce-module-boundaries': [
                 'error',
@@ -224,6 +393,7 @@ export default [
             ],
             '@typescript-eslint/no-explicit-any': 'error',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+            'eventiva/no-inline-comments': ['error', { ratchetPath: 'tools/comments/ratchet.json', root }],
             'no-restricted-imports': [
                 'error',
                 {
@@ -234,22 +404,31 @@ export default [
                 },
             ],
             'no-restricted-modules': ['error', { paths: [{ name: 'react', message: reactLifecycleMessage }] }],
-            'no-restricted-syntax': ['error', reactDynamicRestriction],
+            'no-restricted-syntax': ['error', ...baseSyntaxRestrictions],
         },
     },
     {
-        // Package entry points: explicit named exports only, so subpaths stay tree-shakeable.
         files: ['packages/**/src/**/*.ts'],
         rules: {
             'no-restricted-syntax': [
                 'error',
-                reactDynamicRestriction,
+                ...baseSyntaxRestrictions,
                 { selector: 'ExportAllDeclaration', message: 'No barrels: export each name explicitly.' },
             ],
         },
     },
     {
-        // Step 1: bootstrap probes share measured child/test budgets; other suites are queued for coordinated migration.
+        files: ['packages/contracts/src/**/*.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                ...baseSyntaxRestrictions,
+                { selector: 'ExportAllDeclaration', message: 'No barrels: export each name explicitly.' },
+                noPositionalUnionMemberIndexRestriction,
+            ],
+        },
+    },
+    {
         files: ['tests/telemetry/src/**/*.spec.ts'],
         rules: {
             'no-restricted-imports': [
@@ -310,7 +489,6 @@ export default [
         },
     },
     {
-        // The action runtime is backend code but owns no platform: Node arrives through an app's layers.
         files: runtimeFiles,
         rules: {
             'no-restricted-imports': [
@@ -338,17 +516,18 @@ export default [
         plugins: {
             formatjs,
             'react-hooks': reactHooks,
-            eventiva: { rules: { 'no-zero-delay-ui-timer': noZeroDelayUiTimer } },
+            eventiva: eventivaPlugin,
         },
         rules: {
             ...reactHooks.configs.recommended.rules,
             'eventiva/no-zero-delay-ui-timer': 'error',
-            // Every user-facing string is a message with a key and an en-GB default.
             'formatjs/no-literal-string-in-jsx': 'error',
             'formatjs/enforce-default-message': ['error', 'literal'],
             'formatjs/enforce-placeholders': 'error',
             'formatjs/no-offset': 'error',
         },
     },
+    { files: jsdocAdoptedFiles, ...jsdocContracts },
+    { files: ['**/*.{js,mjs,cjs}'], plugins: { jsdoc }, rules: { 'jsdoc/no-types': 'off' } },
     prettier,
 ];

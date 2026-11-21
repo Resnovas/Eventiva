@@ -22,7 +22,6 @@ import { inspectRepository, inspectSource, isEditableTypeScript } from './check.
 
 const ledgerPath = 'tools/documentation/debt.json';
 const rules = ['missing-jsdoc', 'review-jsdoc', 'review-internal-rationale'];
-// Rationale is a semantic review queue, not a calibrated automatic failure predicate.
 const blocking = (entry) => entry.rule !== 'review-internal-rationale';
 const entryKeys = ['id', 'file', 'line', 'kind', 'name', 'rule'];
 const count = (entries, file) => entries.filter((entry) => entry.file === file && blocking(entry)).length;
@@ -130,7 +129,6 @@ export const evaluate = ({
         if (!blocking(finding)) continue;
         if (finding.rule === 'parse-error' || recorded.get(finding.id) !== identity(finding))
             errors.push(`New or changed undocumented syntax: ${finding.file}:${finding.line} ${finding.rule}`);
-        // A copied identical callback cannot reuse an old fingerprint on an added source line.
         if ((added.get(finding.file) ?? []).some(([start, end]) => finding.line >= start && finding.line <= end))
             errors.push(`Changed source must comply immediately: ${finding.file}:${finding.line} ${finding.rule}`);
     }
@@ -168,7 +166,6 @@ export const history = (root, input) => {
     const canonicalPairs = new Map();
     const fingerprintChanges = [];
     for (const file of paths.filter(isEditableTypeScript)) {
-        // Both identities come from the exact same trusted bytes and declaration order, never candidate source.
         const text = git(['show', `${base}:${file}`]);
         const canonical = inspectSource(file, text);
         const legacy = inspectSource(file, text, { internalLegacyFingerprint: true });
@@ -192,7 +189,6 @@ export const history = (root, input) => {
         if (canonicalPairs.has(id) && canonicalPairs.get(id).id !== current.id)
             throw new Error('Overlapping legacy and canonical fingerprint identities');
     }
-    // Keep the mapping private to this trusted history; callers cannot supply a map or broaden accepted debt.
     const normalizeLedger = (ledger) => {
         validateLedger(ledger);
         const entries = ledger.entries.map((entry) => {

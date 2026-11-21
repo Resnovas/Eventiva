@@ -22,7 +22,12 @@ import { createBootstrap, type StartupState } from './bootstrap.ts';
 describe('client bootstrap', /** Verify registration observes readiness and retains provider ownership until shutdown. */ () => {
     it.effect(
         'registers synchronously before flags resolve, then publishes readiness and releases exactly once',
-        /** Use a real scope and readiness barrier rather than timing-dependent sleeps. */ () =>
+        /**
+         * Use a real scope and readiness barrier rather than timing-dependent sleeps.
+         *
+         * @returns The scenario as an Effect.
+         */
+        () =>
             Effect.gen(
                 /** Separate shell registration from product readiness with an unresolved acquisition barrier. */ function* () {
                     // The barrier distinguishes native registration from provider readiness without a timing assumption.
@@ -46,7 +51,12 @@ describe('client bootstrap', /** Verify registration observes readiness and reta
                             Effect.zipRight(Deferred.succeed(acquiring, undefined), Deferred.await(ready)).pipe(
                                 Effect.zipRight(Effect.provide(Flags, FlagsSafeDefaults))
                             ),
-                            /** Count actual finalization so returning immediately after registration fails this scenario. */ () =>
+                            /**
+                             * Count actual finalization so returning immediately after registration fails this scenario.
+                             *
+                             * @returns An Effect that records the release.
+                             */
+                            () =>
                                 Effect.sync(
                                     /** Observe scope disposal without replacing its release behavior. */ () => {
                                         released += 1;
@@ -84,7 +94,12 @@ describe('client bootstrap', /** Verify registration observes readiness and reta
 
     it.effect(
         'keeps the shell available on fatal acquisition failure without exposing product content',
-        /** A failed flag layer must not expose a partially initialized application. */ () =>
+        /**
+         * A failed flag layer must not expose a partially initialized application.
+         *
+         * @returns The scenario as an Effect.
+         */
+        () =>
             Effect.gen(
                 /** Distinguish fail-closed startup from successful registration followed by an error. */ function* () {
                     // A failure after acquiring a dependency must close that dependency before showing the bounded failure state.
@@ -104,7 +119,12 @@ describe('client bootstrap', /** Verify registration observes readiness and reta
                                 // Partial acquisition is intentional: the regression concerns release on failed startup.
                                 yield* Effect.acquireRelease(
                                     Effect.void,
-                                    /** Dispose even when initialization does not yield a service. */ () =>
+                                    /**
+                                     * Dispose even when initialization does not yield a service.
+                                     *
+                                     * @returns An Effect that records the release.
+                                     */
+                                    () =>
                                         Effect.sync(
                                             /** Observe dependency release on failed acquisition. */ () => {
                                                 released = true;

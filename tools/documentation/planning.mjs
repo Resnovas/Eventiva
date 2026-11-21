@@ -123,7 +123,6 @@ export const buildGraph = (snapshot, annotations = []) => {
                 annotation.date.slice(0, 10) < (snapshot.enumeratedAt ?? snapshot.capturedOn).slice(0, 10)
             )
                 throw new Error(`Invalid later-status evidence: ${key}`);
-            // Later reported verification changes planning readiness, never the captured service fields.
             node.effectiveStatusType = annotation.statusType;
         }
         node.annotations ??= [];
@@ -163,7 +162,6 @@ export const buildGraph = (snapshot, annotations = []) => {
         layer(node.id);
         node.prerequisites = sorted(node.prerequisites);
         node.unlocks = sorted(node.unlocks);
-        // Closing duplicate/canceled work does not deliver its recorded prerequisite contract.
         node.blockers = node.prerequisites.filter((id) => {
             const prerequisite = nodes.get(id);
             return (prerequisite.effectiveStatusType ?? prerequisite.statusType) !== 'completed';
@@ -329,7 +327,6 @@ export const renderSvg = (graph, title, compact = false) => {
     for (const node of graph.nodes) {
         const { x, y } = positions.get(node.id);
         const [fill, stroke] = palette[node.blocked ? 'BLOCKED' : node.state];
-        // A conservative character bound also covers unbroken identifiers and wide glyphs without browser font metrics.
         const words = displayText(node.title)
             .split(/\s+/)
             .flatMap((word) => word.match(/.{1,23}/gu) ?? []);
@@ -474,7 +471,6 @@ export const renderPlanning = (snapshot, data, artifacts) => {
         'docs/planning/roadmap/decision-sources.md',
         `# Decision evidence review queue\n\n${review.sources.length} exact sources inventoried, ${review.unresolved.length} unresolved. Every mirrored description and comment is included regardless of author or keywords, plus the governed repository artifacts declared in planning-data.json. Raw text stays in the separately authorized mirror, not this summary. A source may contain multiple decisions: a source-to-record link is not proof that every clause was semantically extracted.\n\nRun strict acceptance with \`node tools/documentation/planning.mjs --check --require-reviewed\`; it fails while unresolved sources remain. Do not relabel sources to make it pass. Review the full source, extract independently scoped decisions with explicit provenance, and resolve conflicting or missing authority openly. Agent evidence and historical imported discussion may contain reported owner directions and are not silently excluded.\n\n| Source | Evidence timestamp | Recorded author | Review disposition | Reason / remaining work |\n| --- | --- | --- | --- | --- |\n${sourceRows}\n`
     );
-    // Only public-safe presentations are normalized; the snapshot and issue mirror remain byte-faithful evidence.
     return {
         files: new Map([...files].map(([path, text]) => [path, displayText(text)])),
         graph,

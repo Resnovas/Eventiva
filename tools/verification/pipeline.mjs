@@ -20,7 +20,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(import.meta.dirname, '../..');
 
-/** Full acceptance remains available locally and required in CI, separate from commit admission. */
+/**
+ * Full acceptance remains available locally and required in CI, separate from commit admission.
+ *
+ * @since 0.0.1
+ * @example
+ * for (const argv of verificationStages) spawnSync(process.execPath, argv);
+ */
 export const verificationStages = [
     ['--run', 'verify:static'],
     ['--run', 'check'],
@@ -35,8 +41,25 @@ export const verificationStages = [
     ['--run', 'verify:features'],
 ];
 
-/** Stop at the first failed gate or snapshot barrier; no caller can skip static verification. */
-export function runVerification({ env = process.env, afterStage = () => {}, staged = false } = {}) {
+/**
+ * The default after-stage hook: a full local run has no staged snapshot to re-check.
+ *
+ * @returns {undefined} Nothing.
+ */
+const noStageCheck = () => undefined;
+
+/**
+ * Stop at the first failed gate or snapshot barrier; no caller can skip static verification.
+ *
+ * @since 0.0.1
+ * @param {{ env?: object, afterStage?: () => void, staged?: boolean }} [options] - How to run the stages.
+ * @param {object} [options.env] - The environment for each stage; defaults to this process's.
+ * @param {() => void} [options.afterStage] - Called after each passing stage, for example to check the staged tree is unchanged.
+ * @param {boolean} [options.staged] - Run only the static gate and affected tests, for commit admission.
+ * @example
+ * runVerification({ staged: true });
+ */
+export function runVerification({ env = process.env, afterStage = noStageCheck, staged = false } = {}) {
     const stages = staged ? [verificationStages[0], ['--run', 'test:affected']] : verificationStages;
     for (const argv of stages) {
         const result = spawnSync(process.execPath, argv, { cwd: root, stdio: 'inherit', env });

@@ -100,9 +100,6 @@ function sqlFiles(directory, prefix = '') {
     });
 }
 
-// Keep delimiters out of keyword matching, while preserving statement boundaries.
-// PostgreSQL nested block comments and dollar quotes, and SQLite identifiers,
-// need handling before a semicolon can be treated as a statement terminator.
 function statements(sql) {
     const result = [];
     let words = [];
@@ -157,7 +154,6 @@ function statements(sql) {
                 consume(end + dollar.length);
             } else if (["'", '"', '`', '['].includes(rest[0])) {
                 const close = rest[0] === '[' ? ']' : rest[0];
-                // Backslash escapes apply to PostgreSQL E'...' strings only.
                 const escaped = rest[0] === "'" && words.at(-1) === 'E' && /[eE]$/.test(sql.slice(0, i));
                 let end = i + 1;
                 let closed = false;

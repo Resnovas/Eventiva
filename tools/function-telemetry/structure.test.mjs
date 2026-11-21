@@ -22,6 +22,7 @@ const record = '@agent-optimization reviewed=2026-11-20; result=best-found; evid
 
 /**
  * Compare diverse executable forms with bodyless declarations and wrapper-name camouflage.
+ *
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function inventoryContract() {
@@ -46,6 +47,9 @@ const camouflage = Effect.fn('fake')(() => 5);`;
         result.functions.every(
             /**
              * No recognized syntax constitutes an emitted instrumentation certificate.
+             *
+             * @param {object} entry - One inventoried function.
+             * @returns {boolean} Whether it is still blocked with the do-not-suppress reason.
              * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
              */
             (entry) => entry.status === 'blocked' && entry.reason.includes('do not suppress')
@@ -56,6 +60,9 @@ const camouflage = Effect.fn('fake')(() => 5);`;
             result.functions.map(
                 /**
                  * Every nested body needs its own offline occurrence, not only its exported parent.
+                 *
+                 * @param {object} entry - One inventoried function.
+                 * @returns {string} Its offline identity.
                  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
                  */
                 (entry) => entry.id
@@ -70,6 +77,7 @@ const camouflage = Effect.fn('fake')(() => 5);`;
 
 /**
  * A missing record in one changed function must not create findings for an unchanged sibling.
+ *
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function changeContract() {
@@ -92,6 +100,7 @@ function changeContract() {
 
 /**
  * Tiny helpers must carry their own optimization record even inside a reviewed parent.
+ *
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function attachmentContract() {
@@ -105,6 +114,7 @@ function attachmentContract() {
 
 /**
  * Deliberately plausible invalid records must fail instead of validating a magic substring.
+ *
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function invalidRecordContract() {
@@ -119,6 +129,7 @@ function invalidRecordContract() {
 
 /**
  * A parse failure must not masquerade as empty successful coverage.
+ *
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function parseContract() {

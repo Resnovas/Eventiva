@@ -34,7 +34,6 @@ const workspaceRoot = dirname(fileURLToPath(import.meta.url));
 export const testProject = (name: string, covers: ReadonlyArray<string>, configUrl: string) => {
     const projectRoot = dirname(fileURLToPath(configUrl));
     return defineConfig({
-        // Vitest only transforms uncovered TypeScript inside the Vite root.
         root: workspaceRoot,
         resolve: { conditions: ['@eventiva/source'] },
         ssr: { resolve: { conditions: ['@eventiva/source'] } },

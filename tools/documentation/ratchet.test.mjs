@@ -49,7 +49,6 @@ test('new/changed code cannot be accepted by ledger edits or traded against a lo
     assert.match(check(changed, forged, { touched: ['packages/a.ts'] }).join('\n'), /Debt addition or mutation/);
     const added = inspectSource('packages/new.ts', 'const helper = () => 1;');
     assert.match(check([...original, ...added]).join('\n'), /New or changed undocumented syntax/);
-    // Pruning never adds the new finding, even when requested after a legitimate deletion.
     assert.equal(refreshLedger(changed, accepted, base).entries.length, 0);
 });
 
@@ -119,32 +118,28 @@ test('trusted history requires an explicit immutable SHA or local HEAD and does 
         assert.throws(() => history(process.cwd(), value), /Pass --base HEAD/);
 });
 
-test('the complete inventory distinguishes mechanical debt and heuristic queues across bounded batches', () => {
+test('the complete inventory renders bounded batches cleanly after retiring internal rationale', () => {
     const findings = [
         ...inspectSource('packages/runtime/src/guard.ts', 'function guard() { if (denied) return 0; return read(); }'),
         ...inspectSource('tests/runtime/guard.spec.ts', 'const fixture = () => 1;'),
     ];
     const ledger = refreshLedger(findings, null, base);
     const rendered = renderInventory(ledger);
-    assert.match(rendered, /3 remaining findings across 2 files: 2 mechanically missing JSDoc/);
-    assert.match(rendered, /0 prose-review candidates; 1 internal-rationale review candidates/);
-    assert.match(rendered, /D02.*guard\.ts.*1 \| 0 \| 1/);
+    assert.match(rendered, /2 remaining findings across 2 files: 2 mechanically missing JSDoc/);
+    assert.match(rendered, /0 prose-review candidates; 0 internal-rationale review candidates/);
+    assert.match(rendered, /D02.*guard\.ts.*1 \| 0 \| 0/);
     assert.match(rendered, /D05.*guard\.spec\.ts.*1 \| 0 \| 0/);
     assert.match(renderInventory(refreshLedger([], ledger, base)), /0 remaining findings across 0 files/);
     assert.equal(renderInventory(ledger), rendered);
 });
 
-test('uncalibrated rationale candidates require semantic review but cannot be misrepresented as new code failures', () => {
+test('complex bodies with attached JSDoc pass while undocumented declarations still fail', () => {
     const adequate = inspectSource(
         'packages/new.ts',
         '/** Reauthorize the payload-free provider barrier instead of replaying queued metadata. */ function flush() { authorize(); barrier(); }'
     );
-    assert.deepEqual(
-        adequate.map((entry) => entry.rule),
-        ['review-internal-rationale']
-    );
+    assert.deepEqual(adequate, []);
     assert.deepEqual(check([...original, ...adequate]), []);
-    // New review candidates are not silently appended to the accepted ledger.
     assert.deepEqual(refreshLedger([...original, ...adequate], accepted, base), accepted);
     const missing = inspectSource('packages/new.ts', 'function flush() { authorize(); barrier(); }');
     assert.match(check([...original, ...missing]).join('\n'), /New or changed undocumented syntax/);
@@ -195,27 +190,21 @@ const historicalFixture = (t, text = contextualSource) => {
     return { root, file, base, ledger, writeLedger, run, git };
 };
 
-test('strict CLI rejects accepted and never-ledgered rationale while documented source passes', (t) => {
-    const undocumented =
-        '/** Recheck live authorization before the provider barrier. */ function flush() { authorize(); barrier(); }';
+test('strict CLI rejects missing JSDoc while documented source passes without inline comments', (t) => {
+    const undocumented = 'function flush() { authorize(); barrier(); }';
     const fixture = historicalFixture(t, undocumented);
     const strict = (...args) =>
         spawnSync(process.execPath, ['tools/documentation/check.mjs', ...args], {
             cwd: fixture.root,
             encoding: 'utf8',
         });
-    // Accepted historical rationale passes the migration ratchet, never the separate strict scanner.
     assert.equal(fixture.run().status, 0);
     assert.equal(fixture.ledger.entries.length, 1);
     assert.equal(strict().status, 1);
-    assert.match(strict().stdout, /review-internal-rationale/);
-    const documented = undocumented.replace(
-        '{ authorize();',
-        '{ /* Revocation must precede provider work. */ authorize();'
-    );
+    assert.match(strict().stdout, /missing-jsdoc/);
+    const documented = `/** Recheck live authorization before the provider barrier. */ ${undocumented}`;
     writeFileSync(join(fixture.root, fixture.file), documented);
     assert.equal(strict().status, 0);
-    // New untracked source must not evade strict enforcement by staying outside the accepted ledger or Git index.
     writeFileSync(join(fixture.root, 'packages/new.ts'), undocumented);
     const result = strict('--json');
     assert.equal(result.status, 1);
@@ -223,7 +212,7 @@ test('strict CLI rejects accepted and never-ledgered rationale while documented 
     assert.equal(inventory.checked, 2);
     assert.deepEqual(
         inventory.findings.map(({ file, rule }) => ({ file, rule })),
-        [{ file: 'packages/new.ts', rule: 'review-internal-rationale' }]
+        [{ file: 'packages/new.ts', rule: 'missing-jsdoc' }]
     );
 });
 
@@ -258,13 +247,12 @@ test('same-node comment and line shifts keep canonical identity while touched de
     const fixture = historicalFixture(t);
     const shifted = contextualSource.replace(
         '; return',
-        ';\n/* Retain query ownership through finalization. */\nreturn'
+        ';\n/** Retain query ownership through finalization. */\nreturn'
     );
     writeFileSync(join(fixture.root, fixture.file), shifted);
     const trusted = history(fixture.root, fixture.base);
     const current = inspectSource(fixture.file, shifted);
     assert.equal(current[0].id, trusted.previousFindings[0].id);
-    // Internal rationale has genuinely been supplied, reducing this file's accepted review queue only.
     const normalized = trusted.normalizeLedger(fixture.ledger);
     const ledger = refreshLedger(current, normalized, fixture.base);
     const errors = evaluate({ findings: current, ledger, ...trusted });
@@ -276,21 +264,16 @@ test('same-node comment and line shifts keep canonical identity while touched de
     assert.notEqual(fixture.run('--update-ledger').status, 0);
 });
 
-test('comment-only remapping permits real contract remediation without erasing an independent rationale candidate', (t) => {
+test('comment-only remapping permits real contract remediation while retaining remaining missing-jsdoc debt', (t) => {
     const text = contextualSource
         .replace('const read', '/** Retain query identity through row projection. */ const read')
         .replace('return finish(query)', 'const rows = values.map(value => value.id); return finish(query, rows)');
     const fixture = historicalFixture(t, text);
     const documented = text.replace('value =>', '\n/** Project existing row identifiers in source order. */\nvalue =>');
     writeFileSync(join(fixture.root, fixture.file), documented);
-    const trusted = history(fixture.root, fixture.base);
-    const current = inspectSource(fixture.file, documented);
-    const before = trusted.previousFindings.find((entry) => entry.rule === 'review-internal-rationale');
-    assert.ok(current.some((entry) => entry.id === before.id));
     const result = fixture.run('--update-ledger');
     assert.equal(result.status, 0, result.stderr);
     const written = JSON.parse(readFileSync(join(fixture.root, 'tools/documentation/debt.json'), 'utf8'));
-    assert.ok(written.entries.some((entry) => entry.id === before.id));
     assert.equal(written.entries.filter((entry) => entry.rule === 'missing-jsdoc').length, 1);
 });
 
@@ -350,7 +333,6 @@ test('duplicate substitutions on added lines cannot inherit a reconciled legacy 
     const second = 'values.map(value => `other:${value.id}`);';
     const third = 'values.map(value => `last:${value.id}`);';
     const fixture = historicalFixture(t, `${first}\n${second}\n${third}\n`);
-    // Retain the original, delete another and replace the remaining callback with a copy: a lower total is insufficient.
     writeFileSync(join(fixture.root, fixture.file), `${first}\n${first}\n`);
     const result = fixture.run('--update-ledger');
     assert.notEqual(result.status, 0);
