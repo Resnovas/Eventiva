@@ -81,14 +81,39 @@ test('verification preserves every gate and dependency barrier without serializi
         'node tools/resources/boundaries.mjs --declarations',
         'node tools/verification/run.mjs --base "$VERIFICATION_BASE"',
     ];
-    const offsets = commands.map((command) => ci.indexOf(command));
+    const offsets = commands.map(
+        /**
+         * Locate a CI stage in the workflow text.
+         *
+         * @param {string} command - One required CI command.
+         * @returns {number} Its offset, or -1 when missing.
+         */
+        (command) => ci.indexOf(command)
+    );
     assert.ok(
-        offsets.every((offset) => offset >= 0),
+        offsets.every(
+            /**
+             * Require the stage to be present.
+             *
+             * @param {number} offset - One stage's offset.
+             * @returns {boolean} Whether it was found.
+             */
+            (offset) => offset >= 0
+        ),
         'Retain every full CI verification stage.'
     );
     assert.deepEqual(
         offsets,
-        [...offsets].sort((a, b) => a - b),
+        [...offsets].sort(
+            /**
+             * Sort offsets ascending.
+             *
+             * @param {number} a - One offset.
+             * @param {number} b - Another offset.
+             * @returns {number} Their difference.
+             */
+            (a, b) => a - b
+        ),
         'CI must remain static-first.'
     );
     assert.match(ci, /smoke:\s+name: smoke\s+#[^\n]*\n\s+needs: \[verify\]/);
@@ -98,8 +123,7 @@ test('verification preserves every gate and dependency barrier without serializi
     assert.match(ci, /needs: \[verify, smoke\]/);
 });
 
-/** Exercise installed Nx against real configs and source bytes, never a hand-written hash approximation. */
-test('Nx test hashes include every reused spec family and restore exactly without hashing unrelated docs', () => {
+test('Nx test hashes include every reused spec family and restore exactly without hashing unrelated docs', /** Exercise installed Nx against real configs and source bytes, never a hand-written hash approximation. */ () => {
     const root = resolve(import.meta.dirname, '../..');
     const parent = join(root, '.amp/in/orb-backup/test-output/cache-input-regression');
     mkdirSync(parent, { recursive: true });
@@ -148,6 +172,11 @@ const { createTaskGraph } = req('./node_modules/nx/dist/src/tasks-runner/create-
     process.stdout.write(JSON.stringify(hashes.map(hash => hash.value)));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 `;
+    /**
+     * Compute Nx's test-target hashes for the fixture workspace in a child process.
+     *
+     * @returns {Array<string>} The hash of each test target.
+     */
     const hashes = () =>
         JSON.parse(
             execFileSync(process.execPath, ['-e', probe], {

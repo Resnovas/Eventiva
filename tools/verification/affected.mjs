@@ -25,12 +25,32 @@ const paths = execFileSync('git', ['diff', '--cached', '--name-only', '--no-rena
 })
     .split('\0')
     .filter(Boolean);
-if (paths.some((path) => path.includes('\n')))
+if (
+    paths.some(
+        /**
+         * Detect a path Nx's line-based stdin cannot carry.
+         *
+         * @param {string} path - One changed path.
+         * @returns {boolean} Whether it contains a newline.
+         */
+        (path) => path.includes('\n')
+    )
+)
     throw new Error('Rename newline-containing paths before testing; Nx stdin accepts one path per line.');
 
 if (paths.length) {
     const commands = [['node_modules/nx/dist/bin/nx.js', 'affected', '-t', 'test', '--stdin']];
-    if (paths.some((path) => !path.includes('/') || /^(tools|scripts|\.github\/workflows)\//.test(path))) {
+    if (
+        paths.some(
+            /**
+             * Detect a root, tooling, script or workflow change, which can affect the root tooling tests.
+             *
+             * @param {string} path - One changed path.
+             * @returns {boolean} Whether it is at the root or under tools, scripts or the workflows.
+             */
+            (path) => !path.includes('/') || /^(tools|scripts|\.github\/workflows)\//.test(path)
+        )
+    ) {
         const tests = globSync('tools/**/*.test.mjs', { cwd: root }).sort();
         if (tests.length) commands.push(['--test', ...tests]);
     }
