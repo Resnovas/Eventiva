@@ -233,6 +233,68 @@ describe(
                 )
             ).toEqual([]);
         });
+
+        it('holds adopted packages to the JSDoc contract and refuses banned tags', /** Exercise the jsdoc rule set through ESLint on an adopted package path, with a passing control. */ async () => {
+            const filePath = join(root, 'packages/integrations/formatjs/src/jsdoc-probe.ts');
+            /** Build a fully documented export carrying the given extra tag lines. */
+            const documented = (tags: string) =>
+                [
+                    '/**',
+                    ' * Read one catalogue entry for the caller.',
+                    ' *',
+                    ' * @since 0.0.1',
+                    tags,
+                    ' * @param key - The catalogue key to read.',
+                    ' * @returns The entry text, or the key itself when the entry is missing.',
+                    ' * @example',
+                    " * entry('shell.title');",
+                    ' */',
+                    'export const entry = (key: string): string => key;',
+                    '',
+                ].join('\n');
+            /** Lint source as an adopted formatjs file and keep each rule with its message. */
+            const lint = async (code: string) =>
+                (await eslint.lintText(code, { filePath }))[0]?.messages.map(
+                    /** Keep the rule and its corrective message, not positions. */ (message) => ({
+                        rule: message.ruleId,
+                        message: message.message,
+                    })
+                ) ?? [];
+            expect(
+                await lint(
+                    documented(
+                        ' * @access inventory.catalogue.read\n * @fails {CatalogueMissing} When the catalogue is not loaded.'
+                    )
+                )
+            ).toEqual([]);
+            for (const [tag, correction] of [
+                [' * @throws {Error} Never.', /@fails/],
+                [' * @exception {Error} Never.', /@fails/],
+                [' * @author Someone', /Git records/],
+                [' * @license MIT', /file header/],
+                [' * @version 1.0.0', /@since/],
+                [' * @access admin', /resource or action permission/],
+                [' * @access public', /resource or action permission/],
+            ] as const) {
+                const messages = await lint(documented(tag));
+                expect(
+                    messages.some(
+                        /** Require the corrective diagnostic from the tag ban, not just any failure. */ (entry) =>
+                            entry.rule === 'jsdoc/no-restricted-syntax' && correction.test(entry.message)
+                    )
+                ).toBe(true);
+            }
+            expect(await lint('/** Read one entry. */\nexport const entry = (key: string): string => key;\n')).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ rule: 'jsdoc/require-param' }),
+                    expect.objectContaining({ rule: 'jsdoc/require-returns' }),
+                    expect.objectContaining({ rule: 'jsdoc/require-example' }),
+                    expect.objectContaining({
+                        message: 'Record when this export arrived with @since <package version>.',
+                    }),
+                ])
+            );
+        });
     }
 );
 
