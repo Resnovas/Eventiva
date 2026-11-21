@@ -30,6 +30,13 @@ import {
 import { Context, Effect, Layer, Option, Schema, type Scope } from 'effect';
 import type { UiRenderer } from './DeclarativeModule.tsx';
 
+/**
+ * Foundation gate for declarative UI; it defaults off, so no admitted module projects until the platform owner enables it.
+ *
+ * @since 0.0.1
+ * @example
+ * const foundation = yield* flags.evaluate(declarativeUiFlag);
+ */
 export const declarativeUiFlag: Flag = {
     key: 'client.declarative-ui.enabled',
     owner: 'platform',
@@ -37,7 +44,13 @@ export const declarativeUiFlag: Flag = {
     safeDefault: false,
 };
 
-/** Scoped module handle whose lazy operations recheck caller admission and become stale after replacement or disposal. */
+/**
+ * Scoped module handle whose lazy operations recheck caller admission and become stale after replacement or disposal.
+ *
+ * @since 0.0.1
+ * @example
+ * const projection = yield* registration.project.pipe(Effect.provideService(Caller, caller));
+ */
 export interface UiRegistration {
     readonly project: Effect.Effect<UiProjection, UiModuleFailure, Caller>;
     /** Execute a visible canonical node binding, never an action name or caller-supplied input. */
@@ -46,7 +59,13 @@ export interface UiRegistration {
     readonly mount: Effect.Effect<void, UiModuleFailure, Caller | Scope.Scope | UiScreenContext>;
 }
 
-/** Host-local registry service; tenant-scoped publication does not make serialized definitions executable. */
+/**
+ * Host-local registry service; tenant-scoped publication does not make serialized definitions executable.
+ *
+ * @since 0.0.1
+ * @example
+ * const registration = yield* (yield* DeclarativeRegistry).register(json);
+ */
 export class DeclarativeRegistry extends Context.Tag('@eventiva/client/DeclarativeRegistry')<
     DeclarativeRegistry,
     {
@@ -59,13 +78,33 @@ export class DeclarativeRegistry extends Context.Tag('@eventiva/client/Declarati
     }
 >() {}
 
-/** Expose only the bounded failure reason, not serialized input or private adapter details. */
+/**
+ * Expose only the bounded failure reason, not serialized input or private adapter details.
+ *
+ * @param reason - Bounded public reason code for the refusal.
+ * @returns A typed module failure carrying only that reason.
+ */
 const failure = (reason: UiModuleFailure['reason']) => new UiModuleFailure({ reason });
-/** Identify the only node kinds permitted to carry canonical action bindings. */
+/**
+ * Identify the only node kinds permitted to carry canonical action bindings.
+ *
+ * @param node - Definition node to classify.
+ * @returns Whether the node is an `action` or `menu` control.
+ */
 const control = (node: UiNode): boolean => node.kind === 'action' || node.kind === 'menu';
-/** Detach format-1 scalar input so adapter validation or dispatch cannot rewrite the canonical binding. */
+/**
+ * Detach format-1 scalar input so adapter validation or dispatch cannot rewrite the canonical binding.
+ *
+ * @param binding - Canonical binding retained by the registry.
+ * @returns A shallow copy whose input record is also copied.
+ */
 const copyBinding = (binding: UiActionBinding): UiActionBinding => ({ ...binding, input: { ...binding.input } });
-/** Copy every mutable node container before viewer policy receives it; config values are flat scalars. */
+/**
+ * Copy every mutable node container before viewer policy receives it; config values are flat scalars.
+ *
+ * @param node - Retained definition node.
+ * @returns A detached node with copied component, config, children and binding.
+ */
 const copyNode = (node: UiNode): UiNode => ({
     ...node,
     component: { ...node.component },
@@ -73,20 +112,39 @@ const copyNode = (node: UiNode): UiNode => ({
     children: [...node.children],
     ...(node.binding === undefined ? {} : { binding: copyBinding(node.binding) }),
 });
-/** Admission inspects a detached definition, never the registry's retained protection and identity floor. */
+/**
+ * Admission inspects a detached definition, never the registry's retained protection and identity floor.
+ *
+ * @param definition - Retained module definition.
+ * @returns A detached definition with copied messages and nodes.
+ */
 const copyDefinition = (definition: UiModuleDefinition): UiModuleDefinition => ({
     ...definition,
     messages: { ...definition.messages },
     nodes: definition.nodes.map(copyNode),
 });
-/** Trace lazy module operations and annotate typed failures without logging module payloads. */
+/**
+ * Trace lazy module operations and annotate typed failures without logging module payloads.
+ *
+ * @template A - Success value of the traced operation.
+ * @template R - Services the traced operation requires.
+ * @param effect - Module operation to trace.
+ * @param span - Span name identifying the project, invoke or mount operation.
+ * @returns The same effect wrapped in a span, logging the failure reason before re-failing.
+ */
 const observe = <A, R>(
     effect: Effect.Effect<A, UiModuleFailure, R>,
     span: 'ui.module.project' | 'ui.module.invoke' | 'ui.module.mount'
 ) =>
     effect.pipe(
         Effect.tapError(
-            /** Record a bounded reason while preserving the original failure channel. */ (error) =>
+            /**
+             * Record a bounded reason while preserving the original failure channel.
+             *
+             * @param error - Typed module failure raised by the traced operation.
+             * @returns A warning log effect annotated with the failure reason.
+             */
+            (error) =>
                 Effect.logWarning('ui.module.failed').pipe(Effect.annotateLogs('ui.failure.reason', error.reason))
         ),
         Effect.withSpan(span)
@@ -96,6 +154,12 @@ const observe = <A, R>(
  * Only lower-level contracts are imported. No kernel/runtime/feature reverse
  * edge, no global registry, no route/listener side effects. A single scoped
  * publication owns the complete view/menu/slot/projection graph.
+ *
+ * @param renderers - Trusted preinstalled adapters that definitions may select by exact id and version.
+ * @returns A layer providing a fresh registry whose publications are owned by their registering scopes.
+ * @since 0.0.1
+ * @example
+ * const RegistryLive = declarativeRegistry([textRenderer, actionRenderer]);
  */
 export const declarativeRegistry = (
     renderers: ReadonlyArray<UiRenderer>
@@ -120,7 +184,12 @@ export const declarativeRegistry = (
                 >();
                 const decode = Schema.decodeUnknown(Schema.parseJson(UiModuleDefinition));
 
-                /** Require foundation and module flags on every projection, both with disabled fallback. */
+                /**
+                 * Require foundation and module flags on every projection, both with disabled fallback.
+                 *
+                 * @param definition - Admitted definition whose own flag is evaluated next to the foundation flag.
+                 * @returns An effect yielding true only when both flags are on.
+                 */
                 const enabled = (definition: UiModuleDefinition) =>
                     Effect.gen(
                         /** Evaluate both gates with their declared ownership rather than caching registration-time values. */ function* () {
@@ -136,21 +205,29 @@ export const declarativeRegistry = (
                         }
                     );
 
-                /** Resolve caller-visible action metadata and validate the bound version and input before use. */
+                /**
+                 * Resolve caller-visible action metadata and validate the bound version and input before use.
+                 *
+                 * @param node - Control node whose binding is resolved.
+                 * @returns An effect yielding the inventory entry for the bound action.
+                 * @fails {UiModuleFailure} When the node is unbound, the action is unknown, inaccessible or of another version, or its input is rejected.
+                 */
                 const action = (node: UiNode) =>
                     Effect.gen(
                         /** Reject unknown or inaccessible inventory entries before delegating input validation to the platform. */ function* () {
                             // Inventory lookup is caller-scoped; a JSON binding is not authorization to execute it.
                             if (node.binding === undefined) return yield* failure('unbound-action');
                             const caller = yield* Caller;
-                            const found = yield* inventory
-                                .find(caller, node.binding.action)
-                                .pipe(
-                                    Effect.mapError(
-                                        /** Hide inventory failure details behind the public denial reason. */ () =>
-                                            failure('denied')
-                                    )
-                                );
+                            const found = yield* inventory.find(caller, node.binding.action).pipe(
+                                Effect.mapError(
+                                    /**
+                                     * Hide inventory failure details behind the public denial reason.
+                                     *
+                                     * @returns A `denied` module failure.
+                                     */
+                                    () => failure('denied')
+                                )
+                            );
                             if (Option.isNone(found)) return yield* failure('unknown-action');
                             if (found.value.version !== node.binding.version) return yield* failure('unknown-action');
                             yield* platform.checkInput(copyBinding(node.binding));
@@ -158,20 +235,35 @@ export const declarativeRegistry = (
                         }
                     );
 
-                /** Validate catalog, tree, message ownership and canonical bindings without publishing partial state. */
+                /**
+                 * Validate catalog, tree, message ownership and canonical bindings without publishing partial state.
+                 *
+                 * @param definition - Decoded definition to check before registration.
+                 * @returns An effect that succeeds with no value when the definition is valid.
+                 * @fails {UiModuleFailure} When the catalog, tree, adapters, configs, bindings, protection or messages are invalid.
+                 */
                 const validate = (definition: UiModuleDefinition) =>
                     Effect.gen(
                         /** Enforce a bounded rooted tree and installed adapter schemas before registration becomes visible. */ function* () {
                             const keys = renderers.map(
-                                /** Detect ambiguous identity/version pairs in the trusted catalog. */ (entry) =>
-                                    `${entry.id}@${entry.version}`
+                                /**
+                                 * Detect ambiguous identity/version pairs in the trusted catalog.
+                                 *
+                                 * @param entry - Installed adapter in the catalog.
+                                 * @returns The adapter's `id@version` key.
+                                 */
+                                (entry) => `${entry.id}@${entry.version}`
                             );
                             if (new Set(keys).size !== keys.length) return yield* failure('invalid-config');
                             const nodes = new Map(
                                 definition.nodes.map(
-                                    /** Index identifiers so duplicate declarations cannot silently overwrite. */ (
-                                        node
-                                    ) => [node.id, node]
+                                    /**
+                                     * Index identifiers so duplicate declarations cannot silently overwrite.
+                                     *
+                                     * @param node - Declared node to index.
+                                     * @returns The node paired with its id for the lookup map.
+                                     */
+                                    (node) => [node.id, node]
                                 )
                             );
                             if (nodes.size !== definition.nodes.length) return yield* failure('invalid-definition');
@@ -179,15 +271,26 @@ export const declarativeRegistry = (
                                 return yield* failure('invalid-definition');
                             const messages = [definition.unavailable, definition.offline];
                             const reached = new Set<string>();
-                            /** Reject missing, multiply reached or over-depth nodes; shared descendants are not a tree. */
+                            /**
+                             * Reject missing, multiply reached or over-depth nodes; shared descendants are not a tree.
+                             *
+                             * @param id - Node id reached from the root or a parent.
+                             * @param depth - Distance from the root; nodes deeper than 16 are rejected.
+                             * @returns Whether this node and all its descendants form a valid subtree.
+                             */
                             const visit = (id: string, depth: number): boolean => {
                                 // One global reached set catches cycles and multiple-parent aliases alike.
                                 const node = nodes.get(id);
                                 if (node === undefined || reached.has(id) || depth > 16) return false;
                                 reached.add(id);
                                 return node.children.every(
-                                    /** Apply the same depth budget to every descendant edge. */ (child) =>
-                                        visit(child, depth + 1)
+                                    /**
+                                     * Apply the same depth budget to every descendant edge.
+                                     *
+                                     * @param child - Child id referenced by the current node.
+                                     * @returns Whether the child's subtree is valid one level deeper.
+                                     */
+                                    (child) => visit(child, depth + 1)
                                 );
                             };
                             if (!visit(definition.root, 0) || reached.size !== nodes.size) {
@@ -197,7 +300,12 @@ export const declarativeRegistry = (
                                 messages.push(node.label);
                                 if (node.terminology !== undefined) messages.push(node.terminology);
                                 const renderer = renderers.find(
-                                    /** Accept only the exact preinstalled adapter selected by the definition. */
+                                    /**
+                                     * Accept only the exact preinstalled adapter selected by the definition.
+                                     *
+                                     * @param entry - Installed adapter being considered for the node.
+                                     * @returns Whether the adapter's id and version both equal the node's component reference.
+                                     */
                                     (entry) =>
                                         entry.id === node.component.id && entry.version === node.component.version
                                 );
@@ -205,11 +313,15 @@ export const declarativeRegistry = (
                                     return yield* failure('unknown-component');
                                 }
                                 yield* Schema.decodeUnknown(renderer.config)(node.config, {
-                                    onExcessProperty: 'error'
+                                    onExcessProperty: 'error',
                                 }).pipe(
                                     Effect.mapError(
-                                        /** Keep renderer schema diagnostics out of the public failure payload. */ () =>
-                                            failure('invalid-config')
+                                        /**
+                                         * Keep renderer schema diagnostics out of the public failure payload.
+                                         *
+                                         * @returns An `invalid-config` module failure.
+                                         */
+                                        () => failure('invalid-config')
                                     )
                                 );
                                 if (node.kind === 'field' ? node.field === undefined : node.field !== undefined) {
@@ -227,14 +339,22 @@ export const declarativeRegistry = (
                                 // A hidden ancestor would also remove a protected descendant.
                                 if (
                                     definition.nodes.some(
-                                        /** Detect modules whose protected content must remain structurally visible. */ (
-                                            entry
-                                        ) => entry.protected
+                                        /**
+                                         * Detect modules whose protected content must remain structurally visible.
+                                         *
+                                         * @param entry - Node in the definition.
+                                         * @returns Whether the node is protected.
+                                         */
+                                        (entry) => entry.protected
                                     ) &&
                                     definition.nodes.some(
-                                        /** Reject author-controlled hiding anywhere in a protected module. */ (
-                                            entry
-                                        ) => !entry.project || entry.permission !== undefined
+                                        /**
+                                         * Reject author-controlled hiding anywhere in a protected module.
+                                         *
+                                         * @param entry - Node in the definition.
+                                         * @returns Whether the node is excluded from projection or gated by a declared permission.
+                                         */
+                                        (entry) => !entry.project || entry.permission !== undefined
                                     )
                                 ) {
                                     return yield* failure('protected-node');
@@ -242,11 +362,21 @@ export const declarativeRegistry = (
                             }
                             if (
                                 Object.keys(definition.messages).some(
-                                    /** Prevent messages from claiming another module's namespace. */ (key) =>
-                                        !key.startsWith(`${definition.id}.`)
+                                    /**
+                                     * Prevent messages from claiming another module's namespace.
+                                     *
+                                     * @param key - Message id declared by the definition.
+                                     * @returns Whether the id falls outside the module's own prefix.
+                                     */
+                                    (key) => !key.startsWith(`${definition.id}.`)
                                 ) ||
                                 messages.some(
-                                    /** Every referenced label and state message needs a nonblank owned default. */
+                                    /**
+                                     * Every referenced label and state message needs a nonblank owned default.
+                                     *
+                                     * @param key - Message id referenced by a node or state.
+                                     * @returns Whether the id is foreign or lacks a nonblank default.
+                                     */
                                     (key) => !key.startsWith(`${definition.id}.`) || !definition.messages[key]?.trim()
                                 )
                             ) {
@@ -270,7 +400,14 @@ export const declarativeRegistry = (
                             return visible.sort();
                         }
                     ),
-                    /** Decode and validate JSON before atomically acquiring scoped publication ownership. */
+                    /**
+                     * Decode and validate JSON before atomically acquiring scoped publication ownership.
+                     *
+                     * @param json - Untrusted definition text, at most 131072 characters.
+                     * @param replace - Whether an existing unprotected publication with the same tenant and id may be replaced; defaults to false.
+                     * @returns A scoped effect yielding the registration handle.
+                     * @fails {UiModuleFailure} When decoding, admission or validation fails, the module is a duplicate, or a protected publication would be replaced.
+                     */
                     register: (json, replace = false) =>
                         Effect.gen(
                             /** Build a lazy handle only after admission; invalid replacement attempts preserve the old publication. */ function* () {
@@ -278,8 +415,12 @@ export const declarativeRegistry = (
                                 if (json.length > 131072) return yield* failure('invalid-definition');
                                 const definition = yield* decode(json, { onExcessProperty: 'error' }).pipe(
                                     Effect.mapError(
-                                        /** Collapse malformed input diagnostics to the safe public reason. */ () =>
-                                            failure('invalid-definition')
+                                        /**
+                                         * Collapse malformed input diagnostics to the safe public reason.
+                                         *
+                                         * @returns An `invalid-definition` module failure.
+                                         */
+                                        () => failure('invalid-definition')
                                     )
                                 );
                                 // Adapter authority is evaluated live, but its writable arguments never own registry state.
@@ -296,7 +437,13 @@ export const declarativeRegistry = (
                                         if (entries.get(key)?.token !== token) return yield* failure('stale');
                                     }
                                 );
-                                /** Preserve canonical protected defaults; localize only labels the module may customize. */
+                                /**
+                                 * Preserve canonical protected defaults; localize only labels the module may customize.
+                                 *
+                                 * @param key - Message id owned by the module.
+                                 * @param protectedLabel - Whether to return the canonical default without localization; defaults to false.
+                                 * @returns The localized message, or the declared default for protected labels.
+                                 */
                                 const message = (key: string, protectedLabel = false): string => {
                                     const defaultMessage = definition.messages[key] ?? '';
                                     return protectedLabel ? defaultMessage : i18n.format({ id: key, defaultMessage });
@@ -327,14 +474,25 @@ export const declarativeRegistry = (
                                                     nodes: [],
                                                 } satisfies UiProjection;
                                             const nodes: Array<UiProjection['nodes'][number]> = [];
-                                            /** Traverse visible descendants in definition order without exposing bindings or hidden child references. */
+                                            /**
+                                             * Traverse visible descendants in definition order without exposing bindings or hidden child references.
+                                             *
+                                             * @param id - Node id to release, starting from the root.
+                                             * @returns An effect that appends the visible node and its visible descendants to the projection.
+                                             * @fails {UiModuleFailure} When the node is missing, a protected module would be suppressed, or action, visibility or value checks fail.
+                                             */
                                             const walk = (id: string): Effect.Effect<void, UiModuleFailure, Caller> =>
                                                 Effect.gen(
                                                     /** Apply platform visibility and field masking under the current caller before appending a node. */ function* () {
                                                         // Skipping an ancestor prunes its subtree; protected modules refuse such suppression entirely.
                                                         const node = definition.nodes.find(
-                                                            /** Resolve only validated definition ids. */ (entry) =>
-                                                                entry.id === id
+                                                            /**
+                                                             * Resolve only validated definition ids.
+                                                             *
+                                                             * @param entry - Definition node being matched.
+                                                             * @returns Whether the node has the requested id.
+                                                             */
+                                                            (entry) => entry.id === id
                                                         );
                                                         if (node === undefined)
                                                             return yield* failure('invalid-definition');
@@ -342,9 +500,13 @@ export const declarativeRegistry = (
                                                         if (!(yield* platform.visible(definition.id, copyNode(node)))) {
                                                             if (
                                                                 definition.nodes.some(
-                                                                    /** Any protected node makes viewer suppression a module-level failure. */ (
-                                                                        entry
-                                                                    ) => entry.protected
+                                                                    /**
+                                                                     * Any protected node makes viewer suppression a module-level failure.
+                                                                     *
+                                                                     * @param entry - Node in the definition.
+                                                                     * @returns Whether the node is protected.
+                                                                     */
+                                                                    (entry) => entry.protected
                                                                 )
                                                             )
                                                                 return yield* failure('protected-node');
@@ -377,8 +539,8 @@ export const declarativeRegistry = (
                                                                 : {
                                                                       action: {
                                                                           id: metadata.id,
-                                                                          version: metadata.version
-                                                                      }
+                                                                          version: metadata.version,
+                                                                      },
                                                                   }),
                                                             ...(value === undefined ? {} : { value }),
                                                         });
@@ -391,9 +553,13 @@ export const declarativeRegistry = (
                                             // Remove even references to nodes suppressed by viewer policy.
                                             const visible = new Set(
                                                 nodes.map(
-                                                    /** Build the allow-set from nodes actually released to this viewer. */ (
-                                                        node
-                                                    ) => node.id
+                                                    /**
+                                                     * Build the allow-set from nodes actually released to this viewer.
+                                                     *
+                                                     * @param node - Released projection node.
+                                                     * @returns The node's id.
+                                                     */
+                                                    (node) => node.id
                                                 )
                                             );
                                             return yield* Schema.decode(UiProjection)({
@@ -403,21 +569,33 @@ export const declarativeRegistry = (
                                                 state,
                                                 message: message(definition.unavailable),
                                                 nodes: nodes.map(
-                                                    /** Preserve masked node data while removing references to suppressed children. */ (
-                                                        node
-                                                    ) => ({
+                                                    /**
+                                                     * Preserve masked node data while removing references to suppressed children.
+                                                     *
+                                                     * @param node - Released projection node.
+                                                     * @returns The node with only released child ids.
+                                                     */
+                                                    (node) => ({
                                                         ...node,
                                                         children: node.children.filter(
-                                                            /** Retain only references resolvable in the released projection. */ (
-                                                                id
-                                                            ) => visible.has(id)
+                                                            /**
+                                                             * Retain only references resolvable in the released projection.
+                                                             *
+                                                             * @param id - Child id referenced by the node.
+                                                             * @returns Whether the child was released to this viewer.
+                                                             */
+                                                            (id) => visible.has(id)
                                                         ),
                                                     })
                                                 ),
                                             }).pipe(
                                                 Effect.mapError(
-                                                    /** Reject invalid adapter output rather than releasing malformed masked data. */ () =>
-                                                        failure('invalid-projection')
+                                                    /**
+                                                     * Reject invalid adapter output rather than releasing malformed masked data.
+                                                     *
+                                                     * @returns An `invalid-projection` module failure.
+                                                     */
+                                                    () => failure('invalid-projection')
                                                 )
                                             );
                                         }
@@ -426,7 +604,13 @@ export const declarativeRegistry = (
                                 );
                                 const registration: UiRegistration = {
                                     project,
-                                    /** Serialize a fresh projection and canonical dispatch against publication replacement. */
+                                    /**
+                                     * Serialize a fresh projection and canonical dispatch against publication replacement.
+                                     *
+                                     * @param id - Canonical node id of a visible control.
+                                     * @returns A traced effect that dispatches the node's retained binding through the platform.
+                                     * @fails {UiModuleFailure} When the projection is unavailable, the node is not a visible bound control, or the platform refuses the action.
+                                     */
                                     invoke: (id) =>
                                         observe(
                                             mutex.withPermits(1)(
@@ -437,13 +621,22 @@ export const declarativeRegistry = (
                                                         if (projection.state !== 'available')
                                                             return yield* failure(projection.state);
                                                         const visible = projection.nodes.find(
-                                                            /** A matching action name is insufficient; the requested node itself must be visible and interactive. */
+                                                            /**
+                                                             * A matching action name is insufficient; the requested node itself must be visible and interactive.
+                                                             *
+                                                             * @param node - Released projection node.
+                                                             * @returns Whether it is the requested node and carries action metadata.
+                                                             */
                                                             (node) => node.id === id && node.action !== undefined
                                                         );
                                                         const node = definition.nodes.find(
-                                                            /** Recover canonical input from the admitted definition, never projected/client input. */ (
-                                                                node
-                                                            ) => node.id === id
+                                                            /**
+                                                             * Recover canonical input from the admitted definition, never projected/client input.
+                                                             *
+                                                             * @param node - Admitted definition node.
+                                                             * @returns Whether it is the requested node.
+                                                             */
+                                                            (node) => node.id === id
                                                         );
                                                         if (visible === undefined || node?.binding === undefined)
                                                             return yield* failure('unbound-action');
@@ -462,13 +655,21 @@ export const declarativeRegistry = (
                                                 const screens = yield* UiScreenContext;
                                                 yield* screens.mount({
                                                     read: project,
-                                                    /** Forward canonical node ids through the same revalidating registration path. */ invoke: (
-                                                        id
-                                                    ) => registration.invoke(id)
+                                                    /**
+                                                     * Forward canonical node ids through the same revalidating registration path.
+                                                     *
+                                                     * @param id - Canonical node id requested by the screen.
+                                                     * @returns The registration's revalidating invoke effect.
+                                                     */
+                                                    invoke: (id) => registration.invoke(id),
                                                 });
                                                 yield* Effect.addFinalizer(
-                                                    /** Record scope release without retaining projection data or performing screen disposal twice. */ () =>
-                                                        Effect.withSpan(Effect.void, 'ui.module.unmount')
+                                                    /**
+                                                     * Record scope release without retaining projection data or performing screen disposal twice.
+                                                     *
+                                                     * @returns An empty effect traced as `ui.module.unmount`.
+                                                     */
+                                                    () => Effect.withSpan(Effect.void, 'ui.module.unmount')
                                                 );
                                             }
                                         ),
@@ -485,9 +686,13 @@ export const declarativeRegistry = (
                                                     return yield* failure('duplicate');
                                                 if (
                                                     previous?.definition.nodes.some(
-                                                        /** Protected content cannot be replaced, even by an otherwise valid definition. */ (
-                                                            node
-                                                        ) => node.protected
+                                                        /**
+                                                         * Protected content cannot be replaced, even by an otherwise valid definition.
+                                                         *
+                                                         * @param node - Node of the existing publication.
+                                                         * @returns Whether the node is protected.
+                                                         */
+                                                        (node) => node.protected
                                                     )
                                                 ) {
                                                     return yield* failure('protected-node');
@@ -496,7 +701,11 @@ export const declarativeRegistry = (
                                             }
                                         )
                                     ),
-                                    /** Dispose only the publication acquired by this scope, not a later replacement. */
+                                    /**
+                                     * Dispose only the publication acquired by this scope, not a later replacement.
+                                     *
+                                     * @returns An effect that removes the entry under the lock when this scope still owns it.
+                                     */
                                     () =>
                                         mutex.withPermits(1)(
                                             Effect.sync(

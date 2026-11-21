@@ -193,6 +193,7 @@ const eventivaPlugin = {
 };
 
 const jsdocAdoptedFiles = [
+    'packages/ui-modules/src/**/*.{ts,tsx}',
     'packages/integrations/formatjs/src/**/*.{ts,tsx}',
     'apps/client-e2e/**/*.{ts,mts}',
     'tools/toolchain/**/*.mjs',
