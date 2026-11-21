@@ -107,7 +107,11 @@ const renderer: UiRenderer = {
     version: '1.0.0',
     kinds: ['view', 'field', 'action'],
     config: UiConfig,
-    /** Keep registry tests independent of React rendering; only installed catalog identity matters here. */
+    /**
+     * Keep registry tests independent of React rendering; only installed catalog identity matters here.
+     *
+     * @returns No element, because these tests never render the component.
+     */
     component: () => null,
 };
 const metadata: ActionMetadata = {
@@ -126,7 +130,11 @@ const metadata: ActionMetadata = {
         google: { input: { type: 'object' }, output: { type: 'null' } },
     },
 };
-/** Provide controllable admission, flags, connectivity and viewer-specific values around the real registry. */
+/**
+ * Provide controllable admission, flags, connectivity and viewer-specific values around the real registry.
+ *
+ * @returns The mutable fixture state and the registry layer wired to it.
+ */
 const fixture = () => {
     // Mutations are observed lazily so tests can revoke access after mounting without rebuilding the layer.
     const state = {
@@ -141,22 +149,45 @@ const fixture = () => {
         Layer.provide(
             Layer.mergeAll(
                 Layer.succeed(UiPlatform, {
-                    /** Model revocation without freezing admission at registration time. */
+                    /**
+                     * Model revocation without freezing admission at registration time.
+                     *
+                     * @returns An effect that re-reads the admission switch each time it runs.
+                     */
                     admit: () =>
                         Effect.suspend(
-                            /** Reflect the latest admission switch on every platform check. */ () =>
+                            /**
+                             * Reflect the latest admission switch on every platform check.
+                             *
+                             * @returns Success while admitted, otherwise a denied failure.
+                             */
+                            () =>
                                 state.admitted ? Effect.void : Effect.fail(new UiModuleFailure({ reason: 'denied' }))
                         ),
-                    /** Accept only the fixture's canonical summary target. */
+                    /**
+                     * Accept only the fixture's canonical summary target.
+                     *
+                     * @param entry - Action binding whose input is checked.
+                     * @returns Success for the summary target, otherwise an invalid-config failure.
+                     */
                     checkInput: (entry) =>
                         Schema.decodeUnknown(Schema.Struct({ target: Schema.Literal('summary') }))(entry.input).pipe(
                             Effect.asVoid,
                             Effect.mapError(
-                                /** Match the platform's bounded input-rejection channel. */ () =>
-                                    new UiModuleFailure({ reason: 'invalid-config' })
+                                /**
+                                 * Match the platform's bounded input-rejection channel.
+                                 *
+                                 * @returns The invalid-config failure that replaces the schema error.
+                                 */
+                                () => new UiModuleFailure({ reason: 'invalid-config' })
                             )
                         ),
-                    /** Record dispatch identity only after the simulated authorization check. */
+                    /**
+                     * Record dispatch identity only after the simulated authorization check.
+                     *
+                     * @param entry - Canonical binding being dispatched.
+                     * @returns An effect that records the call or fails with denied.
+                     */
                     invoke: (entry) =>
                         Effect.gen(
                             /** Fail revocation before recording an invocation under the executing viewer. */ function* () {
@@ -166,9 +197,17 @@ const fixture = () => {
                                 state.calls.push({ subject: current.subject, action: entry.action });
                             }
                         ),
-                    /** Keep every fixture node visible so failures isolate screen ownership and action gates. */
+                    /**
+                     * Keep every fixture node visible so failures isolate screen ownership and action gates.
+                     *
+                     * @returns An effect that always reports the node as visible.
+                     */
                     visible: () => Effect.succeed(true),
-                    /** Delay masking when requested, then derive the value from the current viewer. */
+                    /**
+                     * Delay masking when requested, then derive the value from the current viewer.
+                     *
+                     * @returns An effect yielding 37 for the owner and 5 for any other subject.
+                     */
                     value: () =>
                         Effect.gen(
                             /** Expose a deterministic field barrier without capturing the mounting subject. */ function* () {
@@ -178,30 +217,61 @@ const fixture = () => {
                                 return current.subject === caller.subject ? 37 : 5;
                             }
                         ),
-                    online: Effect.sync(/** Observe connectivity changes after mount. */ () => state.online),
+                    online: Effect.sync(
+                        /**
+                         * Observe connectivity changes after mount.
+                         *
+                         * @returns The current connectivity switch.
+                         */
+                        () => state.online
+                    ),
                 }),
                 Layer.succeed(Flags, {
-                    /** Apply the fixture toggle to either required flag. */
+                    /**
+                     * Apply the fixture toggle to either required flag.
+                     *
+                     * @param flag - Flag definition whose key is echoed in the decision.
+                     * @returns An effect yielding a decision built from the current toggle.
+                     */
                     evaluate: (flag) =>
                         Effect.sync(
-                            /** Re-evaluate rather than caching the mount-time toggle. */ () => ({
+                            /**
+                             * Re-evaluate rather than caching the mount-time toggle.
+                             *
+                             * @returns A test decision carrying the requested key and the current toggle.
+                             */
+                            () => ({
                                 flag: flag.key,
                                 value: state.enabled,
                                 reason: 'TEST',
-                                fallback: false
+                                fallback: false,
                             })
                         ),
                 }),
                 Layer.succeed(I18n, {
                     locale: 'en-GB',
-                    /** Preserve fixture defaults so assertions measure masking, not translation. */ format: (
-                        message
-                    ) => message.defaultMessage
+                    /**
+                     * Preserve fixture defaults so assertions measure masking, not translation.
+                     *
+                     * @param message - Message descriptor whose default text is returned.
+                     * @returns The untranslated default message.
+                     */
+                    format: (message) => message.defaultMessage,
                 }),
                 Layer.succeed(ActionInventory, {
-                    /** Expose only the canonical action; invocation authorization is controlled separately. */
+                    /**
+                     * Expose only the canonical action; invocation authorization is controlled separately.
+                     *
+                     * @param _caller - Caller identity, unused because inventory visibility is fixed.
+                     * @param id - Action id being looked up.
+                     * @returns Some metadata for the canonical id, otherwise none.
+                     */
                     find: (_caller, id) => Effect.succeed(id === metadata.id ? Option.some(metadata) : Option.none()),
-                    /** Supply the same singleton inventory for discovery consumers. */
+                    /**
+                     * Supply the same singleton inventory for discovery consumers.
+                     *
+                     * @returns An effect yielding the single fixture action.
+                     */
                     list: () => Effect.succeed([metadata]),
                 })
             )
@@ -209,7 +279,12 @@ const fixture = () => {
     );
     return { state, layer };
 };
-/** Minimal available projection identifying a synthetic screen without registry behavior. */
+/**
+ * Minimal available projection identifying a synthetic screen without registry behavior.
+ *
+ * @param module - Module id the synthetic projection reports.
+ * @returns An available projection with no nodes.
+ */
 const projection = (module: string): UiProjection => ({
     format: 1,
     module,
@@ -218,18 +293,39 @@ const projection = (module: string): UiProjection => ({
     message: '',
     nodes: [],
 });
-/** Supply an inert capability to isolate slot ownership from registry validation. */
+/**
+ * Supply an inert capability to isolate slot ownership from registry validation.
+ *
+ * @param module - Module id the synthetic projection reports.
+ * @returns A screen capability whose read succeeds and whose invoke does nothing.
+ */
 const screen = (module: string) => ({
     read: Effect.succeed(projection(module)),
-    /** Synthetic screens perform no action work. */ invoke: () => Effect.void
+    /**
+     * Synthetic screens perform no action work.
+     *
+     * @returns An effect that completes without side effects.
+     */
+    invoke: () => Effect.void,
 });
-/** Attach acquisition to a separately closable scope so tests can control mount and host lifetimes independently. */
+/**
+ * Attach acquisition to a separately closable scope so tests can control mount and host lifetimes independently.
+ *
+ * @param effect - Scoped effect to run.
+ * @param scope - Closeable scope that will own the acquired resources.
+ * @returns The effect with its scope requirement satisfied by the given scope.
+ */
 const mountIn = <A, E, R>(effect: Effect.Effect<A, E, R | Scope.Scope>, scope: Scope.CloseableScope) =>
     effect.pipe(Effect.provideService(Scope.Scope, scope));
 
 it.scoped(
     'reads real mounted registrations under the current viewer and invokes only canonical nodes',
-    /** Prove empty, mounted, revoked and stale states never dispatch noncanonical or unauthorized requests. */ () => {
+    /**
+     * Prove empty, mounted, revoked and stale states never dispatch noncanonical or unauthorized requests.
+     *
+     * @returns The scoped test effect.
+     */
+    () => {
         // Shared mutable policy and mounted capabilities expose stale authorization across successive context reads.
         const { state, layer } = fixture();
         return Effect.gen(
@@ -245,19 +341,36 @@ it.scoped(
                 const first = Option.getOrThrow(yield* context.read);
                 expect(
                     first.nodes.find(
-                        /** Select the caller-masked field rather than action metadata. */ (node) => node.id === 'total'
+                        /**
+                         * Select the caller-masked field rather than action metadata.
+                         *
+                         * @param node - Projected node under inspection.
+                         * @returns Whether the node is the total field.
+                         */
+                        (node) => node.id === 'total'
                     )?.value
                 ).toBe(37);
                 const masked = Option.getOrThrow(yield* context.read.pipe(Effect.provideService(Caller, viewer)));
                 expect(
                     masked.nodes.find(
-                        /** Compare the same field under the alternate subject. */ (node) => node.id === 'total'
+                        /**
+                         * Compare the same field under the alternate subject.
+                         *
+                         * @param node - Projected node under inspection.
+                         * @returns Whether the node is the total field.
+                         */
+                        (node) => node.id === 'total'
                     )?.value
                 ).toBe(5);
                 expect(
                     Option.getOrThrow(yield* context.read).nodes.find(
-                        /** Verify alternate-viewer reads did not overwrite owner masking. */ (node) =>
-                            node.id === 'total'
+                        /**
+                         * Verify alternate-viewer reads did not overwrite owner masking.
+                         *
+                         * @param node - Projected node under inspection.
+                         * @returns Whether the node is the total field.
+                         */
+                        (node) => node.id === 'total'
                     )?.value
                 ).toBe(37);
                 expect(JSON.stringify(masked)).not.toMatch(/target|permission|input/);
@@ -290,7 +403,12 @@ it.scoped(
 
 it.scoped(
     'isolates tenant/session pairs without freezing a subject or sharing independent factory state',
-    /** Verify isolation keys exclude subject but include tenant and session. */ () =>
+    /**
+     * Verify isolation keys exclude subject but include tenant and session.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Contrast separate factories and separate slot keys while allowing a subject change in the owner session. */ function* () {
                 // Each foreign caller receives its own slot rather than access to the owner's capability.
@@ -323,7 +441,12 @@ it.scoped(
 
 it.scoped(
     'keeps B after closing replaced A, then empties on B close with no restoration',
-    /** Prove scope cleanup is identity-bound and does not restore screen history. */ () =>
+    /**
+     * Prove scope cleanup is identity-bound and does not restore screen history.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Close the replaced scope first, then its successor, checking active capability ownership at both boundaries. */ function* () {
                 // Distinct closeable scopes expose accidental deletion by A's finalizer.
@@ -343,7 +466,12 @@ it.scoped(
 
 it.scoped(
     'keeps the existing tenantless platform-service identity separate from tenant sessions',
-    /** Verify a tenantless service cannot inherit a tenant screen despite sharing subject/session ids. */ () =>
+    /**
+     * Verify a tenantless service cannot inherit a tenant screen despite sharing subject/session ids.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Mount both identity shapes and confirm independent active slots. */ function* () {
                 // Only tenant presence differs; matching subject/session must not collapse the keys.
@@ -367,7 +495,12 @@ it.scoped(
 for (const change of ['replace', 'unmount', 'interrupt'] as const) {
     it.scoped(
         `never releases a suspended real projection after ${change}`,
-        /** Prove a field read cannot release an invalidated or interrupted screen projection. */ () => {
+        /**
+         * Prove a field read cannot release an invalidated or interrupted screen projection.
+         *
+         * @returns The scoped test effect for this ownership change.
+         */
+        () => {
             // Each race gets fresh mounted state, while its masking barrier spans the ownership change being tested.
             const { state, layer } = fixture();
             return Effect.gen(
@@ -406,7 +539,12 @@ for (const change of ['replace', 'unmount', 'interrupt'] as const) {
 for (const change of ['replace', 'unmount'] as const) {
     it.scoped(
         `cancels canonical invocation suspended in projection on screen ${change}`,
-        /** Prove losing the screen during projection prevents canonical dispatch. */ () => {
+        /**
+         * Prove losing the screen during projection prevents canonical dispatch.
+         *
+         * @returns The scoped test effect for this ownership change.
+         */
+        () => {
             // Suspend the real projection dependency rather than dispatch itself, testing cancellation before the platform boundary.
             const { state, layer } = fixture();
             return Effect.gen(
@@ -441,7 +579,12 @@ for (const change of ['replace', 'unmount'] as const) {
 
 it.scoped(
     'suppresses an old result even when the capability delays interruption',
-    /** Verify identity checks remain effective for uninterruptible adapters. */ () =>
+    /**
+     * Verify identity checks remain effective for uninterruptible adapters.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Release a delayed old result only after a replacement has taken ownership. */ function* () {
                 // A noncooperative capability must not turn delayed interruption into stale-data release.
@@ -455,7 +598,11 @@ it.scoped(
                             Effect.as(projection('a'))
                         )
                     ),
-                    /** Keep this capability focused on the noncooperative read path. */
+                    /**
+                     * Keep this capability focused on the noncooperative read path.
+                     *
+                     * @returns An effect that completes without side effects.
+                     */
                     invoke: () => Effect.void,
                 });
                 const pending = yield* Effect.fork(context.read);
@@ -470,7 +617,12 @@ it.scoped(
 
 it.scoped(
     'clears all sessions on factory close, rejects later mount, and invalidates pending reads',
-    /** Verify host disposal revokes all slots and permanently closes publication. */ () =>
+    /**
+     * Verify host disposal revokes all slots and permanently closes publication.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Close the host with an active blocked read and another session still mounted. */ function* () {
                 // Host lifetime is independent of the test's mount scope and must dominate every session.
@@ -479,7 +631,11 @@ it.scoped(
                 const entered = yield* Deferred.make<void>();
                 yield* context.service.mount({
                     read: Deferred.succeed(entered, undefined).pipe(Effect.zipRight(Effect.never)),
-                    /** No dispatch is needed to exercise host-wide read invalidation. */
+                    /**
+                     * No dispatch is needed to exercise host-wide read invalidation.
+                     *
+                     * @returns An effect that completes without side effects.
+                     */
                     invoke: () => Effect.void,
                 });
                 yield* context.service.mount(screen('other')).pipe(Effect.provideService(Caller, otherSession));
@@ -496,21 +652,34 @@ it.scoped(
 
 it.scoped(
     'treats typed failures as absence but preserves defects instead of hiding broken adapters',
-    /** Distinguish expected capability refusal from programmer defects at the context boundary. */ () =>
+    /**
+     * Distinguish expected capability refusal from programmer defects at the context boundary.
+     *
+     * @returns The scoped test effect.
+     */
+    () =>
         Effect.gen(
             /** Compare typed failures with dying adapters for both read and invocation operations. */ function* () {
                 // Absence is the public refusal shape, not a catch-all for broken implementations.
                 const context = yield* makeScreenContext;
                 yield* context.service.mount({
                     read: Effect.fail(new UiModuleFailure({ reason: 'denied' })),
-                    /** Model an expected stale capability failure. */
+                    /**
+                     * Model an expected stale capability failure.
+                     *
+                     * @returns A stale module failure.
+                     */
                     invoke: () => Effect.fail(new UiModuleFailure({ reason: 'stale' })),
                 });
                 expect(yield* context.read).toEqual(Option.none());
                 expect(yield* context.invoke('open')).toEqual(Option.none());
                 yield* context.service.mount({
                     read: Effect.die('broken adapter'),
-                    /** Model an implementation defect that must remain a failed exit. */
+                    /**
+                     * Model an implementation defect that must remain a failed exit.
+                     *
+                     * @returns An effect that dies with an adapter defect.
+                     */
                     invoke: () => Effect.die('broken adapter'),
                 });
                 expect(Exit.isFailure(yield* Effect.exit(context.read))).toBe(true);
