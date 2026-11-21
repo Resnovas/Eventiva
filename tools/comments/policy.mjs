@@ -14,6 +14,7 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
+import { readFileSync } from 'node:fs';
 import { isAbsolute, relative } from 'node:path';
 
 const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
@@ -56,4 +57,14 @@ export const isExemptComment = ({ type, value, raw }, { filename = '' } = {}) =>
         if (TEST_FILE.test(normalized) && TS_EXPECT_ERROR.test(value)) return true;
     }
     return false;
+};
+
+/** Read a UTF-8 file, returning undefined only when it does not exist; every other error propagates. */
+export const readIfPresent = (path) => {
+    try {
+        return readFileSync(path, 'utf8');
+    } catch (error) {
+        if (error?.code === 'ENOENT') return undefined;
+        throw error;
+    }
 };

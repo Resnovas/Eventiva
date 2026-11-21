@@ -18,7 +18,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Linter } from 'eslint';
 import { noInlineCommentsRule } from './no-inline-comments.mjs';
-import { isExemptComment, isInScopeCommentFile } from './policy.mjs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { isExemptComment, isInScopeCommentFile, readIfPresent } from './policy.mjs';
 import {
     buildRatchetLedger,
     evaluateRatchet,
@@ -193,4 +196,13 @@ test('strips banned comments while keeping exempt ones and code intact', () => {
             '',
         ].join('\n')
     );
+});
+
+test('reads a ledger without a check-then-use race: only a missing file is absent', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'comment-ratchet-'));
+    const file = join(dir, 'ratchet.json');
+    assert.equal(readIfPresent(file), undefined);
+    writeFileSync(file, '{}\n');
+    assert.equal(readIfPresent(file), '{}\n');
+    assert.throws(() => readIfPresent(dir), { code: 'EISDIR' });
 });

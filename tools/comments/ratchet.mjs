@@ -15,11 +15,17 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { isExemptComment, isHouseSyncedSource, isInScopeCommentFile, normalizeRelPath } from './policy.mjs';
+import {
+    isExemptComment,
+    isHouseSyncedSource,
+    isInScopeCommentFile,
+    normalizeRelPath,
+    readIfPresent,
+} from './policy.mjs';
 
 const LEDGER_REL_PATH = 'tools/comments/ratchet.json';
 const POLICY_DESCRIPTION =
@@ -208,8 +214,8 @@ export const inspectRepositoryComments = (root) => {
 
     for (const file of files) {
         const fullPath = join(root, file);
-        if (!existsSync(fullPath)) continue;
-        const text = readFileSync(fullPath, 'utf8');
+        const text = readIfPresent(fullPath);
+        if (text === undefined) continue;
         checked += 1;
         const fileFindings = scanBannedComments(file, text);
         if (fileFindings.length > 0) {
@@ -271,7 +277,7 @@ const main = () => {
 
     if (args.includes('--bootstrap')) {
         const ledger = buildRatchetLedger(actualCounts);
-        writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+        writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 4)}\n`);
         console.log(
             `Comment ratchet bootstrapped: ${checked} files checked; ${ledger.total} comments across ${Object.keys(ledger.files).length} files.`
         );
@@ -279,26 +285,28 @@ const main = () => {
     }
 
     if (args.includes('--update')) {
-        if (!existsSync(ledgerPath)) {
+        const priorText = readIfPresent(ledgerPath);
+        if (priorText === undefined) {
             console.error(`Missing ${LEDGER_REL_PATH}; run with --bootstrap first.`);
             return 1;
         }
-        const prior = JSON.parse(readFileSync(ledgerPath, 'utf8'));
+        const prior = JSON.parse(priorText);
         const next = tightenRatchetLedger(actualCounts, prior);
-        writeFileSync(ledgerPath, `${JSON.stringify(next, null, 2)}\n`);
+        writeFileSync(ledgerPath, `${JSON.stringify(next, null, 4)}\n`);
         console.log(
             `Comment ratchet tightened: ${prior.total} -> ${next.total} comments across ${Object.keys(next.files).length} files.`
         );
         return 0;
     }
 
-    if (!existsSync(ledgerPath)) {
+    const ledgerText = readIfPresent(ledgerPath);
+    if (ledgerText === undefined) {
         console.error(`Missing ${LEDGER_REL_PATH}.`);
         return 1;
     }
     const baseIndex = args.indexOf('--base');
     const baseRef = baseIndex !== -1 ? args[baseIndex + 1] : undefined;
-    const ledger = JSON.parse(readFileSync(ledgerPath, 'utf8'));
+    const ledger = JSON.parse(ledgerText);
     const previousLedger = readBaseLedger(root, baseRef);
     const errors = evaluateRatchet({ actualCounts, ledger, previousLedger });
 

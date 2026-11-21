@@ -14,9 +14,14 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { isExemptComment, isHouseSyncedSource, isInScopeCommentFile, normalizeRelPath } from './policy.mjs';
+import {
+    isExemptComment,
+    isHouseSyncedSource,
+    isInScopeCommentFile,
+    normalizeRelPath,
+    readIfPresent,
+} from './policy.mjs';
 
 const ledgerCache = new Map();
 
@@ -24,8 +29,8 @@ const ledgerCache = new Map();
 const loadRatchetBudget = (ratchetPath, root) => {
     if (!ratchetPath) return {};
     const absolute = resolve(root, ratchetPath);
-    if (!existsSync(absolute)) return {};
-    const raw = readFileSync(absolute, 'utf8');
+    const raw = readIfPresent(absolute);
+    if (raw === undefined) return {};
     const cached = ledgerCache.get(absolute);
     if (cached && cached.raw === raw) return cached.files;
     const parsed = JSON.parse(raw);
