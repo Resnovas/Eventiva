@@ -31,6 +31,14 @@ import {
     validateRatchetLedger,
 } from './ratchet.mjs';
 
+/**
+ * Lint code with only the comment rule enabled.
+ *
+ * @param {string} code - The source text.
+ * @param {string} filename - The path to lint it as.
+ * @param {object} [options] - The rule's options, such as `root` and `budget`.
+ * @returns {Array<object>} ESLint's diagnostics.
+ */
 const lintWithRule = (code, filename, options = {}) => {
     const linter = new Linter();
     return linter.verify(
@@ -46,7 +54,7 @@ const lintWithRule = (code, filename, options = {}) => {
     );
 };
 
-test('rejects inline and block comments while preserving JSDoc, FCL headers, effect-boundary and test @ts-expect-error', () => {
+test('rejects inline and block comments while preserving JSDoc, FCL headers, effect-boundary and test @ts-expect-error', /** Exempt comments pass in both scanners while ordinary comments are reported with the corrective message. */ () => {
     const license =
         '/**\n * @file packages/runtime/src/sample.ts\n * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.\n */\n';
     const clean = [
@@ -70,7 +78,7 @@ test('rejects inline and block comments while preserving JSDoc, FCL headers, eff
     assert.match(messages[0].message, /\/delete-comment/);
 });
 
-test('allows @ts-expect-error only in test files and rejects it in production code', () => {
+test('allows @ts-expect-error only in test files and rejects it in production code', /** The compiler assertion exemption applies only to test paths. */ () => {
     const code = '// @ts-expect-error Invalid literal state.\nconst bad = 1;\n';
     assert.deepEqual(scanBannedComments('tests/contracts/src/storage.spec.ts', code), []);
     assert.deepEqual(lintWithRule(code, 'tests/contracts/src/storage.spec.js', { root: '' }), []);
@@ -78,14 +86,14 @@ test('allows @ts-expect-error only in test files and rejects it in production co
     assert.equal(lintWithRule(code, 'packages/runtime/src/storage.js', { root: '' }).length, 1);
 });
 
-test('skips house-synced files managed by Resnovas/.github', () => {
+test('skips house-synced files managed by Resnovas/.github', /** Synced files are owned upstream, so neither scanner reports them. */ () => {
     const synced =
         '// Synced from Resnovas/.github templates/tools/dev/example.mjs.\n// Local note.\nexport const x = 1;\n';
     assert.deepEqual(scanBannedComments('tools/dev/example.mjs', synced), []);
     assert.deepEqual(lintWithRule(synced, 'tools/dev/example.mjs', { root: '' }), []);
 });
 
-test('enforces per-file ratchet budgets in ESLint and rejects excess comments', () => {
+test('enforces per-file ratchet budgets in ESLint and rejects excess comments', /** A file may keep its budgeted comments but not add more. */ () => {
     const twoComments = '// One.\n// Two.\nexport const x = 1;\n';
     const threeComments = '// One.\n// Two.\n// Three.\nexport const x = 1;\n';
     const budget = { 'packages/runtime/src/legacy.js': 2 };
@@ -105,7 +113,7 @@ test('enforces per-file ratchet budgets in ESLint and rejects excess comments', 
     assert.match(unbudgeted[0].message, /Do not add inline or block comments/);
 });
 
-test('monotonic ratchet rejects increases, flags stale loose budgets and tightens downward cleanly', () => {
+test('monotonic ratchet rejects increases, flags stale loose budgets and tightens downward cleanly', /** Budgets may only fall, and must be tightened when they do. */ () => {
     const prior = buildRatchetLedger({ 'packages/runtime/src/a.ts': 2, 'packages/runtime/src/b.ts': 1 });
     assert.deepEqual(
         evaluateRatchet({
@@ -134,17 +142,41 @@ test('monotonic ratchet rejects increases, flags stale loose budgets and tighten
         ledger: raised,
         previousLedger: prior,
     });
-    assert.ok(increaseErrors.some((message) => /Ratchet budget increased/.test(message)));
+    assert.ok(
+        increaseErrors.some(
+            /**
+             * Find the raised-budget error.
+             *
+             * @param {string} message - One ratchet error.
+             * @returns {boolean} Whether it reports a raised budget.
+             */
+            (message) => /Ratchet budget increased/.test(message)
+        )
+    );
 
-    assert.throws(() =>
-        tightenRatchetLedger({ 'packages/runtime/src/a.ts': 3, 'packages/runtime/src/b.ts': 1 }, prior)
+    assert.throws(
+        /** Expect tightening to refuse a raised count. */ () => {
+            tightenRatchetLedger({ 'packages/runtime/src/a.ts': 3, 'packages/runtime/src/b.ts': 1 }, prior);
+        }
     );
 });
 
-test('validates ratchet ledger schema and scope boundaries', () => {
-    assert.throws(() => validateRatchetLedger({ version: 1, policy: 'test', total: 2, files: { 'packages/a.ts': 1 } }));
-    assert.throws(() => validateRatchetLedger({ version: 1, policy: 'test', total: 1, files: { 'packages/*.ts': 1 } }));
-    assert.throws(() => validateRatchetLedger({ version: 1, policy: 'test', total: 0, files: { 'packages/a.ts': 0 } }));
+test('validates ratchet ledger schema and scope boundaries', /** Malformed totals, globs, zero counts and out-of-scope paths are refused. */ () => {
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            validateRatchetLedger({ version: 1, policy: 'test', total: 2, files: { 'packages/a.ts': 1 } });
+        }
+    );
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            validateRatchetLedger({ version: 1, policy: 'test', total: 1, files: { 'packages/*.ts': 1 } });
+        }
+    );
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            validateRatchetLedger({ version: 1, policy: 'test', total: 0, files: { 'packages/a.ts': 0 } });
+        }
+    );
     assert.equal(isInScopeCommentFile('packages/runtime/src/a.ts'), true);
     assert.equal(isInScopeCommentFile('examples/old/a.ts'), false);
     assert.equal(isInScopeCommentFile('.opencode/skills/monitor-ci/scripts/a.mjs'), false);
@@ -153,7 +185,7 @@ test('validates ratchet ledger schema and scope boundaries', () => {
     assert.equal(isExemptComment({ type: 'Block', value: '** banner **', raw: '/*** banner ***/' }), false);
 });
 
-test('counts only real comments, never regex or template text, and agrees with ESLint', () => {
+test('counts only real comments, never regex or template text, and agrees with ESLint', /** Regex and template text never count, and both scanners agree. */ () => {
     const code = [
         '#!/usr/bin/env node',
         "export const strip = (value) => value.replace(/^\\.\\//, '').replace(/\\/\\*.*\\*\\//g, '');",
@@ -164,13 +196,21 @@ test('counts only real comments, never regex or template text, and agrees with E
     ].join('\n');
     const scanned = scanBannedComments('packages/runtime/src/strings.ts', code);
     assert.deepEqual(
-        scanned.map(({ line, raw }) => ({ line, raw })),
+        scanned.map(
+            /**
+             * Keep a finding's line and text.
+             *
+             * @param {{ line: number, raw: string }} finding - One banned comment.
+             * @returns {{ line: number, raw: string }} Its line and raw text.
+             */
+            (finding) => ({ line: finding.line, raw: finding.raw })
+        ),
         [{ line: 5, raw: '// Real trailing comment.' }]
     );
     assert.equal(lintWithRule(code, 'packages/runtime/src/strings.mjs', { root: '' }).length, 1);
 });
 
-test('strips banned comments while keeping exempt ones and code intact', () => {
+test('strips banned comments while keeping exempt ones and code intact', /** Stripping removes only banned comments and the blank lines they leave. */ () => {
     const code = [
         '/** Contract. */',
         'export const a = 1; // Trailing.',
@@ -198,11 +238,16 @@ test('strips banned comments while keeping exempt ones and code intact', () => {
     );
 });
 
-test('reads a ledger without a check-then-use race: only a missing file is absent', () => {
+test('reads a ledger without a check-then-use race: only a missing file is absent', /** Only ENOENT reads as absent; other read errors propagate. */ () => {
     const dir = mkdtempSync(join(tmpdir(), 'comment-ratchet-'));
     const file = join(dir, 'ratchet.json');
     assert.equal(readIfPresent(file), undefined);
     writeFileSync(file, '{}\n');
     assert.equal(readIfPresent(file), '{}\n');
-    assert.throws(() => readIfPresent(dir), { code: 'EISDIR' });
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            readIfPresent(dir);
+        },
+        { code: 'EISDIR' }
+    );
 });

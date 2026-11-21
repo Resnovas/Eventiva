@@ -25,7 +25,13 @@ import {
 
 const ledgerCache = new Map();
 
-/** Load and cache a comment ratchet budget map from disk. */
+/**
+ * Load and cache a comment ratchet budget map from disk.
+ *
+ * @param {string | undefined} ratchetPath - The ledger path relative to the root, if configured.
+ * @param {string} root - The workspace root.
+ * @returns {Record<string, number>} Each file's comment budget; empty when no ledger exists.
+ */
 const loadRatchetBudget = (ratchetPath, root) => {
     if (!ratchetPath) return {};
     const absolute = resolve(root, ratchetPath);
@@ -39,7 +45,13 @@ const loadRatchetBudget = (ratchetPath, root) => {
     return files;
 };
 
-/** ESLint rule banning non-JSDoc inline and block comments with monotonic per-file ratchet support. */
+/**
+ * ESLint rule banning non-JSDoc inline and block comments with monotonic per-file ratchet support.
+ *
+ * @since 0.0.1
+ * @example
+ * const plugin = { rules: { 'no-inline-comments': noInlineCommentsRule } };
+ */
 export const noInlineCommentsRule = {
     meta: {
         type: 'problem',
@@ -68,6 +80,12 @@ export const noInlineCommentsRule = {
                 'This file has {{actual}} inline/block comments, exceeding its ratchet budget of {{budget}}. Delete comments (run /delete-comment) instead of adding new ones; move non-obvious decisions to docs/adr/ and document callable contracts in attached JSDoc (/** ... */).',
         },
     },
+    /**
+     * Build the per-file visitor, resolving the file's budget from the options or the ratchet ledger.
+     *
+     * @param {object} context - ESLint's rule context for one file.
+     * @returns {object} A visitor that reports comments beyond the budget, or none for out-of-scope files.
+     */
     create(context) {
         const option = context.options[0] ?? {};
         const root = option.root ?? context.cwd;
@@ -78,15 +96,27 @@ export const noInlineCommentsRule = {
         const budget = Number.isInteger(rawBudget) && rawBudget > 0 ? rawBudget : 0;
 
         return {
+            /** Report every banned comment beyond this file's budget, skipping house-synced files. */
             Program() {
                 const sourceCode = context.sourceCode;
                 const text = sourceCode.getText();
                 if (isHouseSyncedSource(text)) return;
 
-                const banned = sourceCode.getAllComments().filter((comment) => {
-                    const raw = text.slice(comment.range[0], comment.range[1]);
-                    return !isExemptComment({ type: comment.type, value: comment.value, raw }, { filename: relPath });
-                });
+                const banned = sourceCode.getAllComments().filter(
+                    /**
+                     * Keep comments the policy does not exempt.
+                     *
+                     * @param {object} comment - One ESLint comment token.
+                     * @returns {boolean} Whether it is banned.
+                     */
+                    (comment) => {
+                        const raw = text.slice(comment.range[0], comment.range[1]);
+                        return !isExemptComment(
+                            { type: comment.type, value: comment.value, raw },
+                            { filename: relPath }
+                        );
+                    }
+                );
 
                 if (banned.length <= budget) return;
 
