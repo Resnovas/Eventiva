@@ -205,6 +205,7 @@ const jsdocAdoptedFiles = [
     'tools/references/**/*.mjs',
     'tests/schema/**/*.{ts,mts}',
     'apps/client/**/*.{ts,tsx,mts,js}',
+    'packages/integrations/oidc/src/**/*.ts',
 ];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
