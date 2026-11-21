@@ -1,7 +1,7 @@
 {
     "version": 1,
     "policy": "Ban non-JSDoc inline and block comments; monotonic ratchet allows only downward reduction until zero.",
-    "total": 2128,
+    "total": 2122,
     "files": {
         "ai-docs/src/13_storage/01_transaction.ts": 2,
         "ai-docs/src/13_storage/02_hook_producer.ts": 1,
@@ -25,10 +25,8 @@
         "ai-docs/src/32_invoice_drafts/01_drafts.ts": 3,
         "apps/client-e2e/src/shell.spec.ts": 2,
         "apps/client/metro.config.js": 3,
-        "apps/client/src/App.tsx": 2,
+        "apps/client/src/App.tsx": 1,
         "apps/client/src/bootstrap.spec.ts": 4,
-        "apps/client/src/bootstrap.ts": 2,
-        "apps/client/src/http-client.typecheck.ts": 3,
         "apps/client/src/polyfills.ts": 4,
         "apps/server/src/agent-output.ts": 2,
         "apps/server/src/agent-run.ts": 20,

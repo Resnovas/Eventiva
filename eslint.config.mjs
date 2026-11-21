@@ -204,6 +204,7 @@ const jsdocAdoptedFiles = [
     'packages/integrations/posthog-server/src/**/*.ts',
     'tools/references/**/*.mjs',
     'tests/schema/**/*.{ts,mts}',
+    'apps/client/**/*.{ts,tsx,mts,js}',
 ];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
