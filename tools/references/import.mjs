@@ -26,6 +26,13 @@ const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
 const root = resolve(destination);
 mkdirSync(root);
 const cache = mkdtempSync(join(tmpdir(), 'eventiva-upstream-'));
+/**
+ * Run one Git command in a directory and return its text output.
+ *
+ * @param {string} cwd - The repository directory to run in.
+ * @param {Array<string>} args - The Git arguments.
+ * @returns {string} Git's standard output.
+ */
 const git = (cwd, args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 try {
     const sources = [];
@@ -47,20 +54,55 @@ try {
         const notices = git(repo, ['ls-tree', '-r', '--name-only', actual, '--', ...entry.paths])
             .trim()
             .split('\n')
-            .filter((path) => noticeName.test(path.split('/').at(-1)));
-        notices.push(...top.filter((path) => noticeName.test(path)));
+            .filter(
+                /**
+                 * Keep licence and notice files anywhere in the pinned paths.
+                 *
+                 * @param {string} path - One file path in the pinned source.
+                 * @returns {boolean} Whether its file name is a licence or notice.
+                 */
+                (path) => noticeName.test(path.split('/').at(-1))
+            );
+        notices.push(
+            ...top.filter(
+                /**
+                 * Keep root-level licence and notice files.
+                 *
+                 * @param {string} path - One root entry.
+                 * @returns {boolean} Whether it is a licence or notice.
+                 */
+                (path) => noticeName.test(path)
+            )
+        );
         if (notices.length === 0) throw new Error(`Missing upstream licence: ${entry.id}`);
         const paths = [
             ...new Set([
                 ...entry.paths,
                 ...notices,
-                ...top.filter((path) => /^(?:README(?:\.[^/]+)?|package.json)$/.test(path)),
+                ...top.filter(
+                    /**
+                     * Keep the root README and package manifest as original metadata.
+                     *
+                     * @param {string} path - One root entry.
+                     * @returns {boolean} Whether it is a README or package.json.
+                     */
+                    (path) => /^(?:README(?:\.[^/]+)?|package.json)$/.test(path)
+                ),
             ]),
         ];
         for (const path of paths) {
             if (
                 path !== '.' &&
-                (path.startsWith('/') || path.split('/').some((part) => part === '..' || part === '.git'))
+                (path.startsWith('/') ||
+                    path.split('/').some(
+                        /**
+                         * Reject traversal and Git metadata segments.
+                         *
+                         * @param {string} part - One path segment.
+                         * @returns {boolean} Whether it is `..` or `.git`.
+                         */
+                        (part) => part === '..' || part === '.git'
+                    ))
             )
                 throw new Error(`Unsafe source path: ${path}`);
             git(repo, ['cat-file', '-e', `${actual}:${path === '.' ? '' : path}`]);
@@ -72,7 +114,15 @@ try {
         });
         execFileSync('tar', ['-xf', '-', '-C', target, '--no-same-owner'], { input: archive });
         const trees = Object.fromEntries(
-            paths.map((path) => [path, git(repo, ['rev-parse', `${actual}:${path === '.' ? '' : path}`]).trim()])
+            paths.map(
+                /**
+                 * Record the upstream tree or blob identity of one exported path.
+                 *
+                 * @param {string} path - One exported path, or `.` for the whole tree.
+                 * @returns {[string, string]} The path and its Git object identity.
+                 */
+                (path) => [path, git(repo, ['rev-parse', `${actual}:${path === '.' ? '' : path}`]).trim()]
+            )
         );
         sources.push({ ...entry, paths, notices, trees });
         console.log(`Prepared ${entry.id} at ${actual}`);
