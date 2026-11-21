@@ -50,7 +50,7 @@ const isArchitectureDiagnostic = (message: { readonly ruleId: string | null }) =
 const rulesIn = async (file: string) => {
     // Exercise real on-disk project tags rather than a duplicate rule configuration in the test.
     const [result] = await eslint.lintFiles([join(root, fixtures, file)]);
-    return (result?.messages ?? []).map(
+    return (result?.messages ?? []).filter(isArchitectureDiagnostic).map(
         /**
          * Keep each diagnostic's rule identity, including duplicates for distinct violations.
          *
