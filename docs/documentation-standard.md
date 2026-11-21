@@ -42,7 +42,13 @@ As of 2026-11-21 ([ADR-0001](adr/0001-no-inline-comments-and-ratchet.md)), non-J
 
 ## JSDoc tags and the lint rule set
 
-Since 2026-11-21, `eslint.config.mjs` holds editable production TypeScript to a JSDoc tag contract with `eslint-plugin-jsdoc` 65.4.6. It is switched on one package at a time through `jsdocAdoptedFiles`. Today that list holds `packages/integrations/formatjs`. When a package's findings reach zero, add its source glob to the list in the same commit. The standalone checker below still runs on every file.
+Since 2026-11-21, `eslint.config.mjs` holds editable production TypeScript to a JSDoc tag contract with `eslint-plugin-jsdoc` 65.4.6. The target is every JavaScript and TypeScript file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`, which are fixed there. It is switched on one package or tool at a time through `jsdocAdoptedFiles`, without baselines or suppressions: when a group's findings reach zero, add its glob to the list in the same commit. The standalone checker below still runs on every file.
+
+Three details:
+
+- JavaScript files may keep JSDoc types (`@param {string} file - ...`), because they have no other type information. TypeScript files may not.
+- A review marker may follow the description on the same line (`/** Retain the diagnostics. @agent-optimization reviewed=...; result=...; evidence=... */`), because `tools/function-telemetry` reads it there.
+- When a callback that needs `@param` follows another argument, as in `it('name', fn)` or `page.on('error', fn)`, Prettier keeps its JSDoc on the call's line and the stars cannot align. Name the callback in a `const`, document the `const`, and pass the name.
 
 Every callable and exported type needs a description written as a full sentence. Then add:
 

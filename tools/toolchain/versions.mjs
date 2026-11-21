@@ -17,14 +17,20 @@
 
 /**
  * Check that every file pinning the toolchain names the same versions, and print them with the versions running.
- * package.json is the source: engines.node holds the minimum Node release and packageManager the pnpm release;
- * .node-version, .nvmrc and .tool-versions repeat the Node release for version managers and CI.
+ * The source is package.json: engines.node holds the minimum Node release and packageManager the pnpm release.
+ * The files .node-version, .nvmrc and .tool-versions repeat the Node release for version managers and CI.
  * Run without flags to print pinned and active versions, or with --check to also fail when a pin disagrees.
  */
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
+/**
+ * Read a repository file as trimmed UTF-8 text.
+ *
+ * @param {string} file - The path relative to the repository root.
+ * @returns {string} The file's contents without surrounding whitespace.
+ */
 const read = (file) => readFileSync(file, 'utf8').trim()
 const pkg = JSON.parse(read('package.json'))
 

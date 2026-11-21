@@ -192,7 +192,7 @@ const eventivaPlugin = {
     },
 };
 
-const jsdocAdoptedFiles = ['packages/integrations/formatjs/src/**/*.{ts,tsx}'];
+const jsdocAdoptedFiles = ['packages/integrations/formatjs/src/**/*.{ts,tsx}', 'apps/client-e2e/**/*.{ts,mts}', 'tools/toolchain/**/*.mjs', 'tools/test-process/**/*.mjs'];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
 const permissionPattern = '/^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+(\\s|$)/';
@@ -271,7 +271,7 @@ const jsdocContracts = {
             'error',
             {
                 contexts: [contractComment],
-                matchDescription: '^\\s*(?:-\\s*)?[\\p{Upper}`][\\s\\S]*[.!?]\\s*$',
+                matchDescription: '^\\s*(?:-\\s*)?[\\p{Upper}`][\\s\\S]*[.!?](?:\\s+@agent-optimization\\s[^\\n]*)?\\s*$',
                 tags: { param: true, returns: true, template: true, fails: true, fires: true, yields: true },
                 message:
                     'Write a complete sentence with an initial capital and closing punctuation; explain the contract rather than repeating the name.',
@@ -306,7 +306,7 @@ const jsdocContracts = {
                 ],
             },
         ],
-        'jsdoc/check-tag-names': ['error', { definedTags: ['fails', 'file', 'internal'] }],
+        'jsdoc/check-tag-names': ['error', { definedTags: ['fails', 'file', 'internal', 'agent-optimization'] }],
         'jsdoc/no-types': 'error',
         'jsdoc/valid-types': 'error',
         'jsdoc/require-template': 'error',
@@ -508,5 +508,6 @@ export default [
         },
     },
     { files: jsdocAdoptedFiles, ...jsdocContracts },
+    { files: ['**/*.{js,mjs,cjs}'], plugins: { jsdoc }, rules: { 'jsdoc/no-types': 'off' } },
     prettier,
 ];

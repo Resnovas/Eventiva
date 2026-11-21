@@ -1,6 +1,6 @@
 # The JSDoc tag contract
 
-`eslint.config.mjs` applies `eslint-plugin-jsdoc` 65.4.6 to the packages listed in `jsdocAdoptedFiles`. Today that is `packages/integrations/formatjs`. Add a package's glob in the commit that clears its findings. Read the table in `docs/documentation-standard.md` before writing JSDoc.
+`eslint.config.mjs` applies `eslint-plugin-jsdoc` 65.4.6 to the globs in `jsdocAdoptedFiles`. The target is every JS/TS file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`. Add a group's glob in the commit that clears its findings; never add a baseline or suppression. Read the table in `docs/documentation-standard.md` before writing JSDoc.
 
 - Each callable gets a sentence description, `@param` per parameter and `@returns` when it returns a value.
 - Each export gets `@since <package version>` and `@example`.
@@ -8,6 +8,8 @@
 - `@access` names the resource or action permission a caller must hold, in the dotted form of the `Permission` schema in `packages/contracts/src/action.ts`. Never a role.
 - Callbacks passed to `Effect.gen` need only a description.
 - Never write `@throws`, `@exception`, `@author`, `@license` or `@version`.
+- JavaScript files may keep JSDoc types; TypeScript files may not.
+- A callback that needs `@param` and follows another argument (`it('name', fn)`) becomes a named, documented `const`.
 
 ```ts
 /**
