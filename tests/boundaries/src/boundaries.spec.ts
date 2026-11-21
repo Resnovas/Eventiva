@@ -31,6 +31,15 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const fixtures = 'tests/boundaries/fixtures';
 const eslint = new ESLint({ cwd: root, ignore: false });
 
+/**
+ * Keep architecture and policy diagnostics, dropping the JSDoc contract's findings on undocumented probe snippets.
+ * The JSDoc rules have their own test, so these probes stay focused on the rule they exercise.
+ *
+ * @param message - One ESLint diagnostic.
+ * @returns Whether it comes from a rule other than the JSDoc contract.
+ */
+const isArchitectureDiagnostic = (message: { readonly ruleId: string | null }) => !message.ruleId?.startsWith('jsdoc/');
+
 /** Lint a deliberately violating tagged fixture and expose rule ids without depending on diagnostic wording. */
 const rulesIn = async (file: string) => {
     // Exercise real on-disk project tags rather than a duplicate rule configuration in the test.
@@ -85,11 +94,13 @@ describe(
         const rulesInText = async (file: string, code: string) => {
             // The supplied workspace path determines Nx ownership even though the violating import stays in memory.
             const [result] = await eslint.lintText(code, { filePath: join(root, file) });
-            return (result?.messages ?? []).map(
-                /** Preserve message wording where the assertion must distinguish a cycle from a generic forbidden edge. */ (
-                    message
-                ) => [message.ruleId, message.message] as const
-            );
+            return (result?.messages ?? [])
+                .filter(isArchitectureDiagnostic)
+                .map(
+                    /** Preserve message wording where the assertion must distinguish a cycle from a generic forbidden edge. */ (
+                        message
+                    ) => [message.ruleId, message.message] as const
+                );
         };
 
         // Real packages, so the check follows the actual graph: runtime -> schema -> contracts.
@@ -126,9 +137,9 @@ describe(
                 { filePath: join(root, 'apps/client/src/Bad.tsx') }
             );
             expect(
-                result?.messages.map(
-                    /** Isolate the localization rule from message wording. */ (message) => message.ruleId
-                )
+                result?.messages
+                    .filter(isArchitectureDiagnostic)
+                    .map(/** Isolate the localization rule from message wording. */ (message) => message.ruleId)
             ).toEqual(['formatjs/no-literal-string-in-jsx']);
         });
 
