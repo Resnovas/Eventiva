@@ -203,6 +203,7 @@ const jsdocAdoptedFiles = [
     'tools/function-telemetry/**/*.mjs',
     'packages/integrations/posthog-server/src/**/*.ts',
     'tools/references/**/*.mjs',
+    'tests/schema/**/*.{ts,mts}',
 ];
 const effectGenCallback =
     'CallExpression[callee.type="MemberExpression"][callee.object.name="Effect"][callee.property.name="gen"] > FunctionExpression';
