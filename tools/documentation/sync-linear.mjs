@@ -165,7 +165,6 @@ export const preserveAttachmentContext = (snapshot, prior) => ({
             comments: issue.comments.map((comment) => {
                 const captured = previous?.comments.find((candidate) => candidate.id === comment.id);
                 if (!captured?.attachments.length) return comment;
-                // An edited source cannot inherit enrichment whose current accuracy is inaccessible here.
                 if (captured.body !== comment.body || captured.updatedAt !== comment.updatedAt)
                     throw new Error(
                         `Attachment context needs MCP reacquisition for ${issue.id} comment ${comment.id}; no files changed`
@@ -219,7 +218,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         await acquire(graphqlRequest(key ?? `Bearer ${token}`), new Date().toISOString().slice(0, 10)),
         prior
     );
-    // Preflight generated markers/removals before changing the normalized snapshot or any page.
     const stale = synchronize(root, snapshot, true);
     const changed =
         JSON.stringify({ ...snapshot, capturedOn: '', enumeratedAt: null }) !==

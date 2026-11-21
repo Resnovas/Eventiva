@@ -15,14 +15,12 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-// Checks that every file pinning the toolchain names the same versions, and
-// prints them with the versions actually running. package.json is the source:
-// engines.node holds the minimum Node release and packageManager the pnpm
-// release. .node-version, .nvmrc and .tool-versions repeat the Node release
-// for version managers and CI.
-//
-//   node tools/toolchain/versions.mjs           print pinned and active versions
-//   node tools/toolchain/versions.mjs --check   also fail when a pin disagrees
+/**
+ * Check that every file pinning the toolchain names the same versions, and print them with the versions running.
+ * package.json is the source: engines.node holds the minimum Node release and packageManager the pnpm release;
+ * .node-version, .nvmrc and .tool-versions repeat the Node release for version managers and CI.
+ * Run without flags to print pinned and active versions, or with --check to also fail when a pin disagrees.
+ */
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -49,8 +47,8 @@ for (const [file, value] of Object.entries(pins)) {
 let activePnpm = '(not on PATH)'
 try {
     activePnpm = execFileSync('pnpm', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim()
-} catch {
-    // pnpm is optional for the check: the house check job runs without it.
+} catch (error) {
+    if (!error || typeof error !== 'object' || error.code !== 'ENOENT') throw error
 }
 
 console.log(`Node ${node} pinned, ${process.versions.node} active`)

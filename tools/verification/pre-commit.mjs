@@ -46,7 +46,6 @@ if (process.argv[2] === '--install') {
         return git('write-tree');
     };
     const before = snapshot();
-    // Hook-local Git paths belong to this index, not disposable repositories created by verification.
     const verificationEnv = { ...process.env };
     for (const name of git('rev-parse', '--local-env-vars').split('\n')) delete verificationEnv[name];
     runVerification({

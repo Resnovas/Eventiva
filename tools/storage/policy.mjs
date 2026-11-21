@@ -20,9 +20,6 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// HEAD protects local applied history. CI supplies the trusted base SHA from
-// its event, never a candidate-edited checksum file. Deployment additionally
-// exports its protected storage_migration table to guard.mjs --applied.
 const base = process.env.STORAGE_MIGRATION_BASE || 'HEAD';
 if (base !== 'HEAD' && !/^[a-f0-9]{40}$/.test(base))
     throw new Error('Migration base must be HEAD or a full trusted commit SHA');

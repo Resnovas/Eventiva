@@ -148,7 +148,6 @@ export function inspectOptimizationChange(before, after, file = 'source.ts') {
     }
     for (const entry of current.functions) {
         const prior = byIdentity.get(entry.id);
-        // A copied anonymous sibling cannot inherit a previously unreviewed occurrence's ordinal.
         const sameMultiplicity = previousGroups.get(entry.identityGroup) === currentGroups.get(entry.identityGroup);
         if (prior && sameMultiplicity && prior.text === entry.text && prior.documentation === entry.documentation)
             continue;

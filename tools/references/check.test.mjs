@@ -136,7 +136,6 @@ for (const [label, change, expected] of [
 
 /** Verify the repository's scanner policy without modifying preserved reference trees. */
 test('excludes every case/depth of reference directories while retaining active scans and house protections', () => {
-    // Reuse Nx's installed parser rather than adding a new tooling dependency.
     const { parse } = createRequire(import.meta.resolve('nx/package.json'))('yaml');
     const read = (file) => parse(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
     const dependabot = read('.github/dependabot.yml');
@@ -157,7 +156,6 @@ test('excludes every case/depth of reference directories while retaining active 
         policies.push(update['exclude-paths']);
     }
     for (const word of ['examples', 'externals']) {
-        // Build combinations independently of the literal list's bit-mask generation.
         let variants = [''];
         for (const letter of word)
             variants = variants.flatMap((prefix) => [prefix + letter, prefix + letter.toUpperCase()]);
@@ -197,7 +195,6 @@ test('OSV gitignore policy excludes reference directory segments but retains act
         assert.ok(house.sync.exclude.includes('.github/workflows/house-scorecard.yml'));
         const steps = workflow.jobs['house-scorecard'].steps;
         const scanner = steps.find((step) => step.uses?.startsWith('ossf/scorecard-action@'));
-        // This reviewed release reads PNPM's application document, not just its bootstrap document.
         assert.equal(scanner.uses, 'ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e');
         assert.equal(scanner.with.results_format, 'sarif');
         assert.equal(scanner.with.publish_results, false);
@@ -218,7 +215,6 @@ test('OSV gitignore policy excludes reference directory segments but retains act
             'nested/externals-copy/yarn.lock',
             'nested/examples.ts',
         ];
-        // --no-index also checks already tracked files, as the scanner does in its remote archive.
         const ignored = execFileSync('git', ['-C', root, 'check-ignore', '--no-index', '--stdin'], {
             input: [...excluded, ...retained].join('\n') + '\n',
             encoding: 'utf8',

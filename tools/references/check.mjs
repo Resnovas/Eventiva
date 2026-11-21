@@ -87,7 +87,6 @@ export const checkReferences = (root) => {
             if (actual !== entry.trees[path])
                 throw new Error(`Upstream source changed or incomplete: ${entry.id}/${path}`);
         }
-        // Check all supplementary metadata too, not only implementation directories.
         for (const [path, expected] of Object.entries(entry.trees))
             if (sourceIdentity(join(base, path), base).hash.toString('hex') !== expected)
                 throw new Error(`Upstream metadata changed: ${entry.id}/${path}`);

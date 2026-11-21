@@ -149,7 +149,6 @@ function fixture({ pipeline = false } = {}) {
         })
     );
     if (pipeline) {
-        // Exercise real process orchestration with lightweight, observable gate bodies.
         for (const [path, marker] of [
             ['tools/resources/boundaries.test.mjs', 'BOUNDARIES'],
             ['tools/resources/types.test.mjs', 'TYPES'],
@@ -182,7 +181,6 @@ else process.exit(9);
         '-m',
         'synthetic baseline'
     );
-    // NODE_TEST_CONTEXT would make nested node --test silently skip its files.
     const env = { PATH: process.env.PATH, HOME: cwd };
     const run = (file, ...args) =>
         spawnSync(process.execPath, [`tools/verification/${file}.mjs`, ...args], {
@@ -308,7 +306,6 @@ test('hook installs idempotently without replacing foreign hooks or commit-msg',
     writeFileSync(hook, '#!/bin/sh\nexit 9\n');
     assert.notEqual(run('pre-commit', '--install').status, 0);
     assert.equal(readFileSync(hook, 'utf8'), '#!/bin/sh\nexit 9\n');
-    // A second independent checkout tests ownership without deleting a foreign hook to make installation pass.
     const fresh = fixture();
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
@@ -338,7 +335,6 @@ test('installed hook runs only static and affected tests while standalone retain
     assert.equal(git('write-tree'), tree);
     assert.deepEqual(JSON.parse(readFileSync(join(cwd, 'test-output/affected-paths.json'))), ['apps/billing/input']);
 
-    // Explicit staged stdin preserves spaces/commas and both sides of a rename; unstaged paths stay out.
     git('mv', 'apps/billing/input', 'apps/billing/renamed, input');
     writeFileSync(join(cwd, 'apps/billing/unstaged'), 'not selected\n');
     const renamed = run('affected');
@@ -488,7 +484,6 @@ console.log(stage + '_HISTORY_OK');
     assert.equal(git('show', 'HEAD:apps/billing/input'), 'outer staged receipt');
     assert.equal(primary.git('rev-parse', 'HEAD'), primaryHead);
 
-    // Clearing child environment must not disable static or final outer-index barriers.
     for (const stage of ['verify:static', 'affected']) {
         manifest.scripts['verify:static'] = 'node -e "console.log(\'STATIC_OK\')"';
         writeFileSync(affectedPath, "console.log('AFFECTED_OK');\n");

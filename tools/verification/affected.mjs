@@ -19,7 +19,6 @@ import { globSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
-// Disable rename collapsing so both the old and new owners are selected.
 const paths = execFileSync('git', ['diff', '--cached', '--name-only', '--no-renames', '-z'], {
     cwd: root,
     encoding: 'utf8',
@@ -31,7 +30,6 @@ if (paths.some((path) => path.includes('\n')))
 
 if (paths.length) {
     const commands = [['node_modules/nx/dist/bin/nx.js', 'affected', '-t', 'test', '--stdin']];
-    // Root tooling is one test group outside Nx; root/config changes can affect its file-reading tests.
     if (paths.some((path) => !path.includes('/') || /^(tools|scripts|\.github\/workflows)\//.test(path))) {
         const tests = globSync('tools/**/*.test.mjs', { cwd: root }).sort();
         if (tests.length) commands.push(['--test', ...tests]);

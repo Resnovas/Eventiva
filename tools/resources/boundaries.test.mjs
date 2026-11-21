@@ -426,7 +426,6 @@ for (const erased of ['any', 'unknown'])
                     'packages/a/src/api.ts': 'export type Value = string',
                     'packages/a/dist/api.d.ts': `export type { Value } from './bridge.js'`,
                     'packages/a/dist/bridge.d.ts': `export type Value = import('${firstParty ? '@bridge' : 'vendor'}').Value`,
-                    // No manifest exports this file: only traversal can audit the owned alias target.
                     'packages/b/dist/hidden.d.ts': `export type Value = ${erased}`,
                     'node_modules/vendor/package.json': JSON.stringify({ name: 'vendor', types: './index.d.ts' }),
                     'node_modules/vendor/index.d.ts': `export type Value = ${erased}`,
@@ -472,7 +471,6 @@ test('workspace package symlinks do not turn owned declarations into vendor exem
             'packages/b/package.json': JSON.stringify({
                 name: '@eventiva/b',
                 type: 'module',
-                // This declaration is reachable through default, not an independently audited types entry.
                 exports: { './hidden': { default: './dist/hidden.d.ts' } },
             }),
             'packages/b/dist/hidden.d.ts': 'export type Value = unknown',

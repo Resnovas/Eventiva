@@ -41,7 +41,6 @@ const relationKeys = ['blockedBy', 'blocks', 'relatedTo', 'duplicateOf'];
 const order = (a, b) => Number(a.replace('EVE-', '')) - Number(b.replace('EVE-', ''));
 const lexical = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const sortedIds = (ids) => [...ids].sort(order);
-// Jonathan, 2026-11-17: EVE-10 was mistakenly opened in this repository and must not enter its mirror.
 const includedIssue = (id) => id !== 'EVE-10';
 const digest = (ids) => createHash('sha256').update(sortedIds(ids).join('\n')).digest('hex');
 const safeText = (value) =>

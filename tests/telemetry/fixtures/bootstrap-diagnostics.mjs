@@ -25,8 +25,8 @@ let available = false;
 try {
     const descriptor = fstatSync(3);
     available = descriptor.isFIFO() || descriptor.isSocket();
-} catch {
-    // An absent diagnostic descriptor must not affect the application.
+} catch (error) {
+    if (!error || typeof error !== 'object' || error.code !== 'EBADF') throw error;
 }
 
 /** Keep a deduplicated, phase-only journal below one pipe buffer, including under malformed event floods. */

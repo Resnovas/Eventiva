@@ -51,30 +51,34 @@ export type HookPin = typeof HookPin.Type;
 const ModuleState = Schema.NullOr(
     Schema.Literal('registered', 'validated', 'installed', 'active', 'ready', 'inactive', 'failed', 'retired')
 );
+const ModuleLifecycleObservation = Schema.Struct({
+    kind: Schema.Literal('module.lifecycle'),
+    operation: Schema.Literal(
+        'register',
+        'validate',
+        'install',
+        'activate',
+        'ready',
+        'deactivate',
+        'unregister',
+        'retire',
+        'update',
+        'recover'
+    ),
+    identity: HookModuleIdentity,
+    from: ModuleState,
+    to: ModuleState,
+}).annotations(strict);
+
+const PlatformReadyObservation = Schema.Struct({
+    kind: Schema.Literal('platform.ready'),
+    runtimeId: Schema.UUID,
+    generation: Version,
+}).annotations(strict);
+
 export const HookObservation = Schema.Union(
-    Schema.Struct({
-        kind: Schema.Literal('module.lifecycle'),
-        operation: Schema.Literal(
-            'register',
-            'validate',
-            'install',
-            'activate',
-            'ready',
-            'deactivate',
-            'unregister',
-            'retire',
-            'update',
-            'recover'
-        ),
-        identity: HookModuleIdentity,
-        from: ModuleState,
-        to: ModuleState,
-    }).annotations(strict),
-    Schema.Struct({
-        kind: Schema.Literal('platform.ready'),
-        runtimeId: Schema.UUID,
-        generation: Version,
-    }).annotations(strict),
+    ModuleLifecycleObservation,
+    PlatformReadyObservation,
     Schema.Struct({
         kind: Schema.Literal('execution', 'step'),
         phase: Schema.Literal('start', 'finish', 'fail', 'retry', 'cancel', 'pause', 'resume'),
@@ -360,8 +364,7 @@ export const HookProducerBinding = Schema.Struct({
     purpose: Name,
     profile: SecurityProfile,
     operation: HookEvent.fields.operation,
-    // Reuse the exact lifecycle/ready schemas without admitting execution or domain facts in the type.
-    projection: Schema.Union(HookObservation.members[0], HookObservation.members[1]),
+    projection: Schema.Union(ModuleLifecycleObservation, PlatformReadyObservation),
 }).annotations(strict);
 export type HookProducerBinding = typeof HookProducerBinding.Type;
 export const HookProducerAttempt = Schema.Struct({

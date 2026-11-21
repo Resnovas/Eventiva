@@ -94,7 +94,6 @@ export function selectFeatures(features, paths, edges = []) {
         throw new Error(
             `Map affected application paths in docs/verification/registry.md before claiming proof: ${missing.join(', ')}`
         );
-    // Follow actual resolved imports back to consumers, so changing a shared contract cannot omit its interface proof.
     const affected = new Set(paths);
     let size;
     do {
@@ -197,7 +196,6 @@ export function main() {
         head: git('rev-parse', 'HEAD').trim(),
         committedTree: git('rev-parse', 'HEAD^{tree}').trim(),
         base,
-        // Include untracked contents as well as staged/unstaged diffs; SHA alone is not local evidence provenance.
         treeDigest: treeDigest(),
         registryDigest: digest(markdown),
         inventoryDigest: digest(JSON.stringify({ inventory, edges: graph.edges })),
@@ -210,7 +208,6 @@ export function main() {
     };
     const save = () => writeFileSync(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     save();
-    // No inherited provider/API secrets enter synthetic verification. The database URL is local fixture-only.
     const environment = Object.fromEntries(
         ['PATH', 'HOME', 'TMPDIR', 'CI', 'PLAYWRIGHT_BROWSERS_PATH', 'SYSTEMROOT']
             .filter((key) => process.env[key])
@@ -229,7 +226,6 @@ export function main() {
         const start = new Date().toISOString();
         const result = spawnSync(feature.argv[0], feature.argv.slice(1), {
             cwd: root,
-            // SQL databases are unique, but lease-sensitive process fixtures share the runner's CPU and database service.
             env: {
                 ...environment,
                 NX_DAEMON: 'false',

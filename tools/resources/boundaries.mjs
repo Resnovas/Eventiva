@@ -220,11 +220,11 @@ export const dependencyCycles = (edges) => {
     return cycles;
 };
 
-// EVE-263: owner message1982 in T-01a189ae-399d-7162-9765-4488b9600016 approves
-// only the private reflection ingress, immediately recursively validated. This
-// reviewed whole-function AST fingerprint pins the validator, descriptor guard,
-// recursion, failure propagation and every local use, not just their names.
-// Do not regenerate it automatically on failure: structural changes need review.
+/**
+ * EVE-263 owner-approved AST fingerprint of the private reflection ingress and its recursive validator.
+ * It pins the validator, descriptor guard, recursion, failure propagation and every local use, not just names.
+ * Never regenerate it automatically on failure: a structural change needs owner review.
+ */
 const approvedCanonicalJson = 'cf74c13f411ebc48645c639b78988c97caf0d26975a7768f2b2644b9be9275cc';
 const astShape = (node, ast) => {
     const children = [];
@@ -290,7 +290,6 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
         const ast = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
         if (declarations) {
             const options = optionsFor(root, path);
-            // Expand only owned emitted files; the separate graph gate diagnoses unresolved/source edges.
             references(ast, (specifier) => {
                 if (!ts.isStringLiteralLike(specifier)) return;
                 const target = ts.resolveModuleName(
@@ -307,8 +306,6 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
                 if (target && /\.d\.[cm]?ts$/.test(target) && ownedDeclaration(target)) paths.add(realpathSync(target));
             });
         }
-        // The approved fingerprint covers parser flags. Binding annotates those
-        // flags, so evaluate the unchanged exception before TypeScript binds.
         const reflectionApprovals = new Set();
         const reviewReflection = (node) => {
             if (
@@ -319,8 +316,6 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
             ts.forEachChild(node, reviewReflection);
         };
         reviewReflection(ast);
-        // Bind this file without loading vendor declarations: import provenance, not
-        // assignability or vendor-internal erased types, defines this syntax gate.
         const options = { noResolve: true, noLib: true, target: ts.ScriptTarget.Latest };
         const host = ts.createCompilerHost(options);
         host.getSourceFile = (name) => (name === path ? ast : undefined);
@@ -348,8 +343,6 @@ export const checkTypeEscapes = (root, { entries, declarations = false } = {}) =
             if (ts.isIdentifier(node)) {
                 if (origin) return memberOrigin(origin, node.text);
                 const symbol = checker.getSymbolAtLocation(node);
-                // Keep the existing unbound direct-form diagnostic; a real local
-                // Schema binding (including a lexical shadow) is not Effect.
                 return symbolOrigin(symbol) ?? (!symbol?.declarations && node.text === 'Schema' ? 'schema' : undefined);
             }
             if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node))
@@ -490,7 +483,6 @@ export const checkResourceBoundaries = (root, { entries, compilerOptions, declar
             const name = specifier.text;
             const next = [...chain, name];
             const options = optionsFor(root, path, compilerOptions);
-            // Consumer declarations must not silently follow the development source condition.
             const resolved = ts.resolveModuleName(
                 name,
                 path,

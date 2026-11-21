@@ -19,14 +19,12 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-// Prepare a local, source-only upstream bundle. No upstream install/build scripts run.
-// Import the resulting repository with git subtree; this program never changes Eventiva history.
 const [catalogPath, destination] = process.argv.slice(2);
 if (!catalogPath || !destination)
     throw new Error('Usage: node tools/references/import.mjs <catalog.json> <empty-directory>');
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
 const root = resolve(destination);
-mkdirSync(root); // Refuse to overwrite an existing directory.
+mkdirSync(root);
 const cache = mkdtempSync(join(tmpdir(), 'eventiva-upstream-'));
 const git = (cwd, args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 try {
@@ -45,7 +43,6 @@ try {
         const actual = git(repo, ['rev-parse', 'FETCH_HEAD']).trim();
         if (actual !== entry.commit) throw new Error(`Revision mismatch: ${entry.id}`);
         const top = git(repo, ['ls-tree', '--name-only', actual]).trim().split('\n');
-        // Preserve every upstream root licence/notice and the original root metadata.
         const noticeName = /^(?:licen[cs]e|notice|copying|copyright|patents|authors)(?:[.-]|$)/i;
         const notices = git(repo, ['ls-tree', '-r', '--name-only', actual, '--', ...entry.paths])
             .trim()
@@ -70,7 +67,6 @@ try {
         }
         const target = join(root, entry.id);
         mkdirSync(target);
-        // git archive never follows symlinks or initializes submodules, and exports exact pinned bytes.
         const archive = execFileSync('git', ['-C', repo, 'archive', '--worktree-attributes', actual, '--', ...paths], {
             maxBuffer: 384 * 1024 * 1024,
         });

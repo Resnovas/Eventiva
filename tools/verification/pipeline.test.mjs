@@ -128,7 +128,6 @@ test('Nx test hashes include every reused spec family and restore exactly withou
         { cwd: root, maxBuffer: 128 * 1024 * 1024 }
     );
     execFileSync('tar', ['-xf', '-'], { cwd, input: archive });
-    // Check the candidate configs, not only their last committed versions.
     for (const path of ['tests/contracts/project.json', 'tests/runtime/project.json'])
         copyFileSync(join(root, path), join(cwd, path));
     symlinkSync(join(root, 'node_modules'), join(cwd, 'node_modules'), 'dir');
