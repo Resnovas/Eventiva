@@ -26,10 +26,18 @@ const base = '1'.repeat(40);
 const source = 'const read = () => 1;\nconst write = () => 2;';
 const original = inspectSource('packages/a.ts', source);
 const accepted = refreshLedger(original, null, base);
+/**
+ * Evaluate findings against the accepted fixture ledger and its trusted history.
+ *
+ * @param {object[]} findings - Current findings to judge.
+ * @param {object} [ledger] - The candidate ledger; defaults to the accepted fixture ledger.
+ * @param {object} [extras] - Extra `evaluate` options such as `touched` or `added`; defaults to none.
+ * @returns {string[]} The ratchet violations.
+ */
 const check = (findings, ledger = accepted, extras = {}) =>
     evaluate({ findings, ledger, previousFindings: original, previousLedger: accepted, ...extras });
 
-test('unchanged exact debt is visible and passes, while a touched indebted file must improve', () => {
+test('unchanged exact debt is visible and passes, while a touched indebted file must improve', /** Accepted debt passes untouched, and touching the file demands a lower count. */ () => {
     assert.deepEqual(check(original), []);
     assert.match(check(original, accepted, { touched: ['packages/a.ts'] }).join('\n'), /Touched file must reduce debt/);
     const improved = inspectSource(
@@ -42,7 +50,7 @@ test('unchanged exact debt is visible and passes, while a touched indebted file 
     assert.match(check(improved).join('\n'), /Resolved\/stale debt must be removed/);
 });
 
-test('new/changed code cannot be accepted by ledger edits or traded against a lower count', () => {
+test('new/changed code cannot be accepted by ledger edits or traded against a lower count', /** Changed or added undocumented code fails even when the ledger is rewritten to include it. */ () => {
     const changed = inspectSource('packages/a.ts', 'const read = () => 3;');
     assert.match(check(changed).join('\n'), /New or changed undocumented syntax/);
     const forged = refreshLedger(changed, null, base);
@@ -52,7 +60,7 @@ test('new/changed code cannot be accepted by ledger edits or traded against a lo
     assert.equal(refreshLedger(changed, accepted, base).entries.length, 0);
 });
 
-test('copied identical callbacks on added lines cannot inherit old accepted identities', () => {
+test('copied identical callbacks on added lines cannot inherit old accepted identities', /** A finding on an added line fails even when its fingerprint matches accepted debt. */ () => {
     assert.match(
         check([original[0]], refreshLedger([original[0]], accepted, base), {
             added: new Map([['packages/a.ts', [[1, 1]]]]),
@@ -61,34 +69,69 @@ test('copied identical callbacks on added lines cannot inherit old accepted iden
     );
 });
 
-test('ledger tampering, duplicate/wildcard entries, parse errors and rewritten provenance fail closed', () => {
+test('ledger tampering, duplicate/wildcard entries, parse errors and rewritten provenance fail closed', /** Every tampered ledger shape and parse error is rejected. */ () => {
     for (const mutate of [
+        /**
+         * Duplicate the first entry.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         * @returns {number} The new entry count.
+         */
         (ledger) => ledger.entries.push(ledger.entries[0]),
+        /**
+         * Replace the first entry's file with a wildcard.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].file = 'packages/*.ts';
         },
+        /**
+         * Record a parse error as accepted debt.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].rule = 'parse-error';
         },
+        /**
+         * Add an unrecognized field to the first entry.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].ignore = true;
         },
+        /**
+         * Point the first entry outside the repository.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].file = '../outside.ts';
         },
     ]) {
         const candidate = structuredClone(accepted);
         mutate(candidate);
-        assert.throws(() => validateLedger(candidate));
+        assert.throws(
+            /** Validate the corrupted ledger. */ () => {
+                validateLedger(candidate);
+            }
+        );
     }
     const forged = structuredClone(accepted);
     forged.initialBase = '2'.repeat(40);
-    assert.throws(() => check(original, forged), /provenance/);
+    assert.throws(
+        /** Evaluate against a ledger with a rewritten base. */ () => {
+            check(original, forged);
+        },
+        /provenance/
+    );
     const malformed = inspectSource('packages/broken.ts', 'const broken = ( => ;');
     assert.match(check(malformed).join('\n'), /parse-error/);
 });
 
-test('bootstrap can record only preexisting trusted-source findings, never new in-flight source', () => {
+test('bootstrap can record only preexisting trusted-source findings, never new in-flight source', /** Bootstrap accepts only findings present at the trusted base. */ () => {
     assert.deepEqual(evaluate({ findings: original, ledger: accepted, previousFindings: original }), []);
     const extra = inspectSource('packages/inflight.ts', 'const run = () => 1;');
     const candidate = refreshLedger([...original, ...extra], null, base);
@@ -98,7 +141,7 @@ test('bootstrap can record only preexisting trusted-source findings, never new i
     );
 });
 
-test('source locations may shift but exact declaration metadata may not be reassigned', () => {
+test('source locations may shift but exact declaration metadata may not be reassigned', /** Line shifts pass while renaming a recorded declaration fails. */ () => {
     const shifted = inspectSource('packages/a.ts', '\n' + source);
     assert.deepEqual(check(shifted), []);
     const altered = structuredClone(accepted);
@@ -106,19 +149,24 @@ test('source locations may shift but exact declaration metadata may not be reass
     assert.match(check(original, altered).join('\n'), /Debt addition or mutation/);
 });
 
-test('added-range parser respects single additions, deletions and asymmetric offsets', () => {
+test('added-range parser respects single additions, deletions and asymmetric offsets', /** Hunk headers yield inclusive added ranges and skip pure deletions. */ () => {
     assert.deepEqual(addedRanges('@@ -2 +5,3 @@\n+x\n@@ -10,2 +14,0 @@\n-x\n@@ -20,0 +24 @@\n+x'), [
         [5, 7],
         [24, 24],
     ]);
 });
 
-test('trusted history requires an explicit immutable SHA or local HEAD and does not accept arbitrary refs', () => {
+test('trusted history requires an explicit immutable SHA or local HEAD and does not accept arbitrary refs', /** Branch names, options and short SHAs are refused as trusted bases. */ () => {
     for (const value of [undefined, 'main', 'origin/main', '--help', 'abc123'])
-        assert.throws(() => history(process.cwd(), value), /Pass --base HEAD/);
+        assert.throws(
+            /** Load history from the refused base. */ () => {
+                history(process.cwd(), value);
+            },
+            /Pass --base HEAD/
+        );
 });
 
-test('the complete inventory renders bounded batches cleanly after retiring internal rationale', () => {
+test('the complete inventory renders bounded batches cleanly after retiring internal rationale', /** The inventory counts findings per batch and renders deterministically. */ () => {
     const findings = [
         ...inspectSource('packages/runtime/src/guard.ts', 'function guard() { if (denied) return 0; return read(); }'),
         ...inspectSource('tests/runtime/guard.spec.ts', 'const fixture = () => 1;'),
@@ -133,7 +181,7 @@ test('the complete inventory renders bounded batches cleanly after retiring inte
     assert.equal(renderInventory(ledger), rendered);
 });
 
-test('complex bodies with attached JSDoc pass while undocumented declarations still fail', () => {
+test('complex bodies with attached JSDoc pass while undocumented declarations still fail', /** Documented complex bodies pass and the same body without JSDoc fails. */ () => {
     const adequate = inspectSource(
         'packages/new.ts',
         '/** Reauthorize the payload-free provider barrier instead of replaying queued metadata. */ function flush() { authorize(); barrier(); }'
@@ -148,12 +196,28 @@ test('complex bodies with attached JSDoc pass while undocumented declarations st
 const contextualSource =
     'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };\nconst write = () => 2;\n';
 
-/** Build an isolated, disposable history so reconciliation never trusts candidate source or synthetic maps. */
+/**
+ * Build an isolated, disposable history so reconciliation never trusts candidate source or synthetic maps.
+ *
+ * @param {import('node:test').TestContext} t - The test context; the fixture repository is removed after the test.
+ * @param {string} [text] - The source committed as `packages/a.ts`; defaults to the contextual fixture source.
+ * @returns {{ root: string, file: string, base: string, ledger: object, writeLedger: (value: object) => void, run: (...args: string[]) => import('node:child_process').SpawnSyncReturns<string>, git: (...args: string[]) => string }} The fixture repository, its accepted ledger and helpers to rewrite the ledger, run the ratchet and run Git.
+ */
 const historicalFixture = (t, text = contextualSource) => {
     const scratch = resolve('.amp/in/orb-backup');
     mkdirSync(scratch, { recursive: true });
     const root = mkdtempSync(join(scratch, 'fingerprint-history-'));
-    t.after(() => rmSync(root, { recursive: true, force: true }));
+    t.after(
+        /** Remove the fixture repository. */ () => {
+            rmSync(root, { recursive: true, force: true });
+        }
+    );
+    /**
+     * Run Git in the fixture repository with a fixed, unsigned identity.
+     *
+     * @param {...string} args - The Git arguments.
+     * @returns {string} The trimmed standard output.
+     */
     const git = (...args) =>
         execFileSync(
             'git',
@@ -173,6 +237,11 @@ const historicalFixture = (t, text = contextualSource) => {
     const initialBase = git('rev-parse', 'HEAD');
     const findings = inspectSource(file, text, { internalLegacyFingerprint: true });
     const ledger = refreshLedger(findings, null, initialBase);
+    /**
+     * Write a ledger and its rendered backlog inventory into the fixture.
+     *
+     * @param {object} value - The ledger to write.
+     */
     const writeLedger = (value) => {
         writeFileSync(join(root, 'tools/documentation/debt.json'), `${JSON.stringify(value, null, 2)}\n`);
         writeFileSync(join(root, 'docs/planning/documentation-backlog.md'), renderInventory(value));
@@ -181,6 +250,12 @@ const historicalFixture = (t, text = contextualSource) => {
     git('add', '.');
     git('commit', '--quiet', '-m', 'fixture accepted ledger');
     const base = git('rev-parse', 'HEAD');
+    /**
+     * Run the fixture's ratchet CLI against the accepted base.
+     *
+     * @param {...string} args - Extra CLI arguments, such as `--update-ledger`.
+     * @returns {import('node:child_process').SpawnSyncReturns<string>} The finished process result.
+     */
     const run = (...args) =>
         spawnSync(process.execPath, ['tools/documentation/ratchet.mjs', '--base', base, ...args], {
             cwd: root,
@@ -190,9 +265,20 @@ const historicalFixture = (t, text = contextualSource) => {
     return { root, file, base, ledger, writeLedger, run, git };
 };
 
-test('strict CLI rejects missing JSDoc while documented source passes without inline comments', (t) => {
+/**
+ * The strict scanner fails on missing JSDoc, passes once it is attached, and reports only the new undocumented file.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const strictCliContract = (t) => {
     const undocumented = 'function flush() { authorize(); barrier(); }';
     const fixture = historicalFixture(t, undocumented);
+    /**
+     * Run the fixture's strict documentation scanner.
+     *
+     * @param {...string} args - Extra CLI arguments, such as `--json`.
+     * @returns {import('node:child_process').SpawnSyncReturns<string>} The finished process result.
+     */
     const strict = (...args) =>
         spawnSync(process.execPath, ['tools/documentation/check.mjs', ...args], {
             cwd: fixture.root,
@@ -211,12 +297,22 @@ test('strict CLI rejects missing JSDoc while documented source passes without in
     const inventory = JSON.parse(result.stdout);
     assert.equal(inventory.checked, 2);
     assert.deepEqual(
-        inventory.findings.map(({ file, rule }) => ({ file, rule })),
+        inventory.findings.map(
+            /**
+             * Keep only the file and rule of a finding.
+             *
+             * @param {{ file: string, rule: string }} finding - One reported finding.
+             * @returns {{ file: string, rule: string }} Its file and rule.
+             */
+            (finding) => ({ file: finding.file, rule: finding.rule })
+        ),
         [{ file: 'packages/new.ts', rule: 'missing-jsdoc' }]
     );
-});
+};
 
-test('root and uncached Nx documentation wiring retain the ratchet and end with the strict scanner', () => {
+test('strict CLI rejects missing JSDoc while documented source passes without inline comments', strictCliContract);
+
+test('root and uncached Nx documentation wiring retain the ratchet and end with the strict scanner', /** The package scripts and Nx target run the ratchet and finish with the strict scanner, uncached. */ () => {
     const { scripts, nx } = JSON.parse(readFileSync('package.json', 'utf8'));
     const commands = scripts.documentation.split(' && ');
     assert.equal(commands.at(-1), 'node tools/documentation/check.mjs');
@@ -226,7 +322,12 @@ test('root and uncached Nx documentation wiring retain the ratchet and end with 
     assert.equal(nx.targets.documentation.options.command, 'node --run documentation');
 });
 
-test('trusted history reconciles exact legacy pairs without changing provenance, metadata or classification', (t) => {
+/**
+ * Legacy fingerprints map to canonical ones without altering provenance, metadata or the written ledger.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const legacyReconciliationContract = (t) => {
     const fixture = historicalFixture(t);
     const trusted = history(fixture.root, fixture.base);
     const canonical = inspectSource(fixture.file, contextualSource);
@@ -241,9 +342,19 @@ test('trusted history reconciles exact legacy pairs without changing provenance,
     const written = JSON.parse(readFileSync(join(fixture.root, 'tools/documentation/debt.json'), 'utf8'));
     assert.deepEqual(written, trusted.previousLedger);
     assert.deepEqual(evaluate({ findings: canonical, ledger: written, ...trusted }), []);
-});
+};
 
-test('same-node comment and line shifts keep canonical identity while touched debt must still decrease', (t) => {
+test(
+    'trusted history reconciles exact legacy pairs without changing provenance, metadata or classification',
+    legacyReconciliationContract
+);
+
+/**
+ * A comment and line shift keeps the canonical fingerprint, yet the touched file must still reduce its debt.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const identityShiftContract = (t) => {
     const fixture = historicalFixture(t);
     const shifted = contextualSource.replace(
         '; return',
@@ -256,15 +367,44 @@ test('same-node comment and line shifts keep canonical identity while touched de
     const normalized = trusted.normalizeLedger(fixture.ledger);
     const ledger = refreshLedger(current, normalized, fixture.base);
     const errors = evaluate({ findings: current, ledger, ...trusted });
-    assert.ok(!errors.some((error) => /New or changed undocumented syntax/.test(error)), errors.join('\n'));
     assert.ok(
-        errors.some((error) => /Touched file must reduce debt/.test(error)),
+        !errors.some(
+            /**
+             * Detect a new-syntax violation.
+             *
+             * @param {string} error - One ratchet violation.
+             * @returns {boolean} Whether it reports new or changed undocumented syntax.
+             */
+            (error) => /New or changed undocumented syntax/.test(error)
+        ),
+        errors.join('\n')
+    );
+    assert.ok(
+        errors.some(
+            /**
+             * Detect a touched-file violation.
+             *
+             * @param {string} error - One ratchet violation.
+             * @returns {boolean} Whether it reports that the touched file must reduce debt.
+             */
+            (error) => /Touched file must reduce debt/.test(error)
+        ),
         errors.join('\n')
     );
     assert.notEqual(fixture.run('--update-ledger').status, 0);
-});
+};
 
-test('comment-only remapping permits real contract remediation while retaining remaining missing-jsdoc debt', (t) => {
+test(
+    'same-node comment and line shifts keep canonical identity while touched debt must still decrease',
+    identityShiftContract
+);
+
+/**
+ * Documenting one callback is accepted while the remaining missing-JSDoc entry stays recorded.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const remediationContract = (t) => {
     const text = contextualSource
         .replace('const read', '/** Retain query identity through row projection. */ const read')
         .replace('return finish(query)', 'const rows = values.map(value => value.id); return finish(query, rows)');
@@ -274,10 +414,31 @@ test('comment-only remapping permits real contract remediation while retaining r
     const result = fixture.run('--update-ledger');
     assert.equal(result.status, 0, result.stderr);
     const written = JSON.parse(readFileSync(join(fixture.root, 'tools/documentation/debt.json'), 'utf8'));
-    assert.equal(written.entries.filter((entry) => entry.rule === 'missing-jsdoc').length, 1);
-});
+    assert.equal(
+        written.entries.filter(
+            /**
+             * Keep missing-JSDoc entries.
+             *
+             * @param {{ rule: string }} entry - One written ledger entry.
+             * @returns {boolean} Whether the entry records missing JSDoc.
+             */
+            (entry) => entry.rule === 'missing-jsdoc'
+        ).length,
+        1
+    );
+};
 
-test('migration never maps changed code, renamed contracts or candidate-provided debt into accepted history', (t) => {
+test(
+    'comment-only remapping permits real contract remediation while retaining remaining missing-jsdoc debt',
+    remediationContract
+);
+
+/**
+ * Changed code, renamed declarations and forged ledgers are refused instead of mapped into history.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const migrationContract = (t) => {
     const fixture = historicalFixture(t);
     for (const changed of [
         contextualSource.replace('${table}', '${otherTable}'),
@@ -294,41 +455,90 @@ test('migration never maps changed code, renamed contracts or candidate-provided
         assert.match(forged.stderr, /Debt addition or mutation/);
         fixture.writeLedger(fixture.ledger);
     }
-});
+};
 
-test('reconciliation rejects malformed entries, metadata reassignment, duplicates and provenance resets', (t) => {
+test(
+    'migration never maps changed code, renamed contracts or candidate-provided debt into accepted history',
+    migrationContract
+);
+
+/**
+ * Normalization refuses corrupted ledgers, and the CLI refuses provenance resets and ledger deletion.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const reconciliationRejectionContract = (t) => {
     const fixture = historicalFixture(t);
     const trusted = history(fixture.root, fixture.base);
     assert.equal(typeof trusted.normalizeLedger, 'function');
     for (const mutate of [
+        /**
+         * Reassign the first entry to another declaration name.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].name = 'write';
         },
+        /**
+         * Reassign the first entry to another file.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].file = 'packages/unrelated.ts';
         },
+        /**
+         * Reclassify the first entry under another rule.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries[0].rule = 'review-jsdoc';
         },
+        /**
+         * Add a duplicate of the first entry under its canonical fingerprint.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.entries.push({ ...ledger.entries[0], id: trusted.previousFindings[0].id });
         },
+        /**
+         * Add a candidate-provided fingerprint mapping.
+         *
+         * @param {{ entries: object[] }} ledger - A cloned ledger to corrupt.
+         */
         (ledger) => {
             ledger.mapping = { [ledger.entries[0].id]: trusted.previousFindings[0].id };
         },
     ]) {
         const malformed = structuredClone(fixture.ledger);
         mutate(malformed);
-        assert.throws(() => trusted.normalizeLedger(malformed));
+        assert.throws(
+            /** Normalize the corrupted ledger. */ () => {
+                trusted.normalizeLedger(malformed);
+            }
+        );
     }
     const reset = { ...fixture.ledger, initialBase: '2'.repeat(40) };
     fixture.writeLedger(reset);
     assert.match(fixture.run().stderr, /provenance/);
     rmSync(join(fixture.root, 'tools/documentation/debt.json'));
     assert.match(fixture.run('--update-ledger').stderr, /cannot be deleted or reset/);
-});
+};
 
-test('duplicate substitutions on added lines cannot inherit a reconciled legacy identity', (t) => {
+test(
+    'reconciliation rejects malformed entries, metadata reassignment, duplicates and provenance resets',
+    reconciliationRejectionContract
+);
+
+/**
+ * Duplicated lines added in place of others cannot take over a reconciled legacy fingerprint.
+ *
+ * @param {import('node:test').TestContext} t - The node:test context, used to register fixture clean-up.
+ */
+const duplicateSubstitutionContract = (t) => {
     const first = 'values.map(value => `id:${value.id}`);';
     const second = 'values.map(value => `other:${value.id}`);';
     const third = 'values.map(value => `last:${value.id}`);';
@@ -338,4 +548,9 @@ test('duplicate substitutions on added lines cannot inherit a reconciled legacy 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /New or changed undocumented syntax/);
     assert.match(result.stderr, /Changed source must comply immediately/);
-});
+};
+
+test(
+    'duplicate substitutions on added lines cannot inherit a reconciled legacy identity',
+    duplicateSubstitutionContract
+);

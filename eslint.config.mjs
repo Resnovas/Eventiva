@@ -193,6 +193,7 @@ const eventivaPlugin = {
 };
 
 const jsdocAdoptedFiles = [
+    'tools/documentation/**/*.mjs',
     'tests/resources/{src/**/*.ts,vitest.config.mts}',
     'tools/resources/**/*.mjs',
     'packages/schema/src/**/*.ts',
