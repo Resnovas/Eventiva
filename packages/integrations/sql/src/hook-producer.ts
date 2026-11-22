@@ -34,33 +34,78 @@ import type { Dialect } from './migrations.ts';
 import { transactionScope } from './transaction.ts';
 import { uuidV7 } from './values.ts';
 
-/** Emit bounded adapter failures, never SQL/policy text or rejected values. */
+/**
+ * Emit bounded adapter failures, never SQL/policy text or rejected values.
+ *
+ * @param reason - The bounded outbox failure reason to report.
+ * @returns A HookOutboxFailure carrying only that reason.
+ */
 const failure = (reason: HookOutboxFailure['reason']) => new HookOutboxFailure({ reason });
-/** Decode policy and retained SQL metadata before granting it producer meaning. */
+/**
+ * Decode policy and retained SQL metadata before granting it producer meaning.
+ *
+ * @template A - The decoded value.
+ * @template I - The encoded form the schema accepts.
+ * @template Input - The static type of the supplied value, which is still decoded as unknown.
+ * @param schema - The schema the value must satisfy.
+ * @param input - The policy output or retained SQL value to decode.
+ * @returns The decoded value.
+ * @fails {HookOutboxFailure} With `invalid` when the value does not decode.
+ */
 const decode = <A, I, Input>(schema: Schema.Schema<A, I>, input: Input) =>
     Schema.decodeUnknown(schema)(input).pipe(
         Effect.mapError(
-            /** Discard rejected metadata and parser diagnostics at the persistence boundary. */ () =>
-                failure('invalid')
+            /**
+             * Discard rejected metadata and parser diagnostics at the persistence boundary.
+             *
+             * @returns A HookOutboxFailure with the `invalid` reason.
+             */
+            () => failure('invalid')
         )
     );
-/** Sanitize infrastructure defects while preserving typed denial/conflict and interruption. */
+/**
+ * Sanitize infrastructure defects while preserving typed denial/conflict and interruption.
+ *
+ * @template A - The work's success value.
+ * @template E - The work's typed failure other than SQL errors.
+ * @template R - The work's required services.
+ * @param effect - The producer work whose SQL errors and defects are sanitized.
+ * @returns The work's result.
+ * @fails {HookOutboxFailure} With `unavailable` when SQL fails or the work dies; other typed failures pass through.
+ */
 const safe = <A, E, R>(effect: Effect.Effect<A, E | SqlError, R>) =>
     effect.pipe(
         Effect.catchTag(
             'SqlError',
-            /** Never expose SQL text or connection details through producer errors. */ () =>
-                Effect.fail(failure('unavailable'))
+            /**
+             * Never expose SQL text or connection details through producer errors.
+             *
+             * @returns A failure with the `unavailable` reason.
+             */
+            () => Effect.fail(failure('unavailable'))
         ),
         Effect.catchAllDefect(
-            /** A defective authority must fail closed without retaining its cause. */ () =>
-                Effect.fail(failure('unavailable'))
+            /**
+             * A defective authority must fail closed without retaining its cause.
+             *
+             * @returns A failure with the `unavailable` reason.
+             */
+            () => Effect.fail(failure('unavailable'))
         )
     );
 
-/** Explicit trusted-host opt-in, not application bootstrap or a plugin capability.
+/**
+ * Explicit trusted-host opt-in, not application bootstrap or a plugin capability.
  * One build persists one NEW incarnation. No callback executes inside a SQL transaction.
  * The existing paired outbox is the sole publisher; this is not another delivery engine.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @param logicalRuntime - The dotted lower-case runtime name, at most 128 characters, that scopes every attempt.
+ * @returns A scoped layer providing the HookProducer for the current tenant.
+ * @fails {HookOutboxFailure} With `invalid` for a malformed runtime name, `transaction-active` inside an ambient transaction, or `unavailable` when the incarnation cannot be recorded.
+ * @since 0.0.1
+ * @example
+ * const layer = hookProducer('postgres', 'eventiva.server');
  */
 export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
     Layer.scoped(
@@ -84,14 +129,27 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                     yield* outside;
                     const incarnation = yield* uuidV7.pipe(
                         Effect.mapError(
-                            /** Keep UUID acquisition failures bounded and non-sensitive. */ () =>
-                                failure('unavailable')
+                            /**
+                             * Keep UUID acquisition failures bounded and non-sensitive.
+                             *
+                             * @returns A HookOutboxFailure with the `unavailable` reason.
+                             */
+                            () => failure('unavailable')
                         )
                     );
                     yield* sql`INSERT INTO hook_runtime (tenant, incarnation, logical_runtime) VALUES (${tenant}, ${incarnation}, ${runtime})`;
                     const owner = yield* transactionScope(dialect, 'hook-foreign-transaction');
                     const outbox = Context.get(yield* hookContext(dialect, owner), HookOutbox);
-                    /** Serialize tenant facts across incarnations, retaining locks through the paired commit. */
+                    /**
+                     * Serialize tenant facts across incarnations, retaining locks through the paired commit.
+                     *
+                     * @template A - The work's success value.
+                     * @template E - The work's typed failure.
+                     * @template R - The work's required services.
+                     * @param effect - The journal work to run while the tenant journal head row is locked.
+                     * @returns The work's result once the paired transaction and its staged publication commit.
+                     * @fails {HookOutboxFailure} With `transaction-active` inside an ambient transaction, or `unavailable` when the paired storage transaction fails.
+                     */
                     const atomic = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
                         Effect.gen(
                             /** Own a standalone transaction so confirmation and publication share one outcome. */ function* () {
@@ -110,11 +168,22 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                         ).pipe(
                             Effect.catchTag(
                                 'StorageFailure',
-                                /** Hide storage internals while preserving failed atomic publication. */ () =>
-                                    Effect.fail(failure('unavailable'))
+                                /**
+                                 * Hide storage internals while preserving failed atomic publication.
+                                 *
+                                 * @returns A failure with the `unavailable` reason.
+                                 */
+                                () => Effect.fail(failure('unavailable'))
                             )
                         );
-                    /** Read only the captured tenant/logical runtime; validate retained body against its key. */
+                    /**
+                     * Read only the captured tenant/logical runtime; validate retained body against its key.
+                     *
+                     * @param request - The attempt id, decoded as a UUID.
+                     * @returns The retained attempt and its status, or undefined when none exists for this tenant.
+                     * @fails {HookOutboxFailure} With `invalid` for a malformed id or row, or `conflict` when the body names another id or tenant.
+                     * @fails {HookDenied} With `policy-denied` when the attempt belongs to another logical runtime.
+                     */
                     const read = (request: string) =>
                         Effect.gen(
                             /** Decode retained intent only within its captured tenant and logical-runtime boundary. */ function* () {
@@ -133,7 +202,15 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                                 return { attempt, status };
                             }
                         );
-                    /** Release attempt metadata only after fresh trusted producer authorization. */
+                    /**
+                     * Release attempt metadata only after fresh trusted producer authorization.
+                     *
+                     * @param request - The attempt id to inspect.
+                     * @param operation - The producer operation the policy is asked to authorize.
+                     * @returns The retained attempt and its status.
+                     * @fails {HookOutboxFailure} With `transaction-active`, `invalid` or `conflict` as for the retained read.
+                     * @fails {HookDenied} When the attempt is absent, foreign or not authorized for the operation.
+                     */
                     const inspect = (request: string, operation: 'inspect' | 'confirm' | 'reconcile') =>
                         Effect.gen(
                             /** Reauthorize each retained attempt without distinguishing absent and foreign identities. */ function* () {
@@ -145,7 +222,14 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                                 return current;
                             }
                         );
-                    /** Compare immutable intent under lock, then commit its status and original fact together. */
+                    /**
+                     * Compare immutable intent under lock, then commit its status and original fact together.
+                     *
+                     * @param attempt - The attempt as previously read; it must still match the stored body exactly.
+                     * @param next - The status to record.
+                     * @returns The status now recorded, which is the existing status when the attempt was already resolved the same way.
+                     * @fails {HookOutboxFailure} With `conflict` for a changed attempt, a contradictory resolution or a duplicate committed fact, or `invalid` or `unavailable` from the journal.
+                     */
                     const settle = (attempt: HookProducerAttempt, next: HookProducerStatus) =>
                         atomic(
                             Effect.gen(
@@ -207,7 +291,15 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                         );
                     return HookProducer.of({
                         runtime: { logical: runtime, incarnation },
-                        /** Only the first durable admission permits callback execution; duplicates never do. */
+                        /**
+                         * Only the first durable admission permits callback execution; duplicates never do.
+                         *
+                         * @param request - The caller-chosen attempt id, decoded as a UUID.
+                         * @param input - The producer target the attempt is for.
+                         * @returns The attempt, its status and `fresh`, which is true only for the first durable admission.
+                         * @fails {HookOutboxFailure} With `transaction-active`, `invalid`, `conflict` or `unavailable` when admission cannot be recorded.
+                         * @fails {HookDenied} When the policy refuses the binding or inspection.
+                         */
                         begin: (request, input) =>
                             safe(
                                 Effect.gen(
@@ -270,9 +362,23 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                                     }
                                 )
                             ),
-                        /** Read status without issuing or inferring any operation outcome. */
+                        /**
+                         * Read status without issuing or inferring any operation outcome.
+                         *
+                         * @param request - The attempt id to inspect.
+                         * @returns The retained attempt and its status.
+                         * @fails {HookOutboxFailure} With `transaction-active`, `invalid`, `conflict` or `unavailable` when the attempt cannot be read.
+                         * @fails {HookDenied} When the attempt is absent, foreign or not authorized.
+                         */
                         inspect: (request) => safe(inspect(request, 'inspect')),
-                        /** Only the originating incarnation may directly confirm its mutation owner's result. */
+                        /**
+                         * Only the originating incarnation may directly confirm its mutation owner's result.
+                         *
+                         * @param request - The attempt id to confirm.
+                         * @returns The recorded status, `committed` once the fact has been staged.
+                         * @fails {HookOutboxFailure} With `conflict` when another incarnation began the attempt or the resolution contradicts it, or `transaction-active`, `invalid` or `unavailable`.
+                         * @fails {HookDenied} When the attempt is absent, foreign or not authorized for confirmation.
+                         */
                         confirm: (request) =>
                             safe(
                                 Effect.gen(
@@ -285,7 +391,14 @@ export const hookProducer = (dialect: Dialect, logicalRuntime: string) =>
                                     }
                                 )
                             ),
-                        /** Query authoritative status outside SQL, then fence contradictory concurrent decisions. */
+                        /**
+                         * Query authoritative status outside SQL, then fence contradictory concurrent decisions.
+                         *
+                         * @param request - The attempt id to reconcile.
+                         * @returns The recorded status after the policy's authoritative lookup.
+                         * @fails {HookOutboxFailure} With `conflict` for a contradictory concurrent resolution, or `transaction-active`, `invalid` or `unavailable`.
+                         * @fails {HookDenied} When the attempt is absent, foreign or not authorized for reconciliation.
+                         */
                         reconcile: (request) =>
                             safe(
                                 Effect.gen(

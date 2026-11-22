@@ -46,7 +46,13 @@ const Decision = Schema.Struct({
     retainUntil: EpochMillis,
 });
 
-/** Build an unactivated maintenance capability for the routed tenant SQL client, not a transport or business handler. */
+/**
+ * Build an unactivated maintenance capability for the routed tenant SQL client, not a transport or business handler.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(runRetention, approvalRetentionMaintenance);
+ */
 export const approvalRetentionMaintenance = Layer.effect(
     ApprovalRetentionMaintenance,
     Effect.gen(
@@ -54,17 +60,36 @@ export const approvalRetentionMaintenance = Layer.effect(
         function* () {
             const tenant = yield* CurrentTenant;
             const sql = yield* SqlClient.SqlClient;
-            /** Sanitize rejected requests, malformed persistence and clock values at this public service boundary. */
+            /**
+             * Sanitize rejected requests, malformed persistence and clock values at this public service boundary.
+             *
+             * @template A - The decoded value.
+             * @template I - The encoded input accepted by the schema.
+             * @param schema - The exact schema the value must satisfy, with no excess properties.
+             * @param value - The request, persisted row field or clock reading to decode.
+             * @returns The decoded value.
+             * @fails {ApprovalRetentionFailure} With `invalid` when the value does not decode.
+             */
             const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
                 Schema.decode(schema)(value, { onExcessProperty: 'error' }).pipe(
                     Effect.mapError(
-                        /** Do not attach rejected proof content or parser causes to maintenance failures. */
+                        /**
+                         * Do not attach rejected proof content or parser causes to maintenance failures.
+                         *
+                         * @returns An ApprovalRetentionFailure with the `invalid` reason.
+                         */
                         () => new ApprovalRetentionFailure({ reason: 'invalid' })
                     )
                 );
             return ApprovalRetentionMaintenance.of({
                 tenant: tenant.id,
-                /** Explicitly inspect a bounded page; raw SQL permits exist only while this transaction holds the identity guard. */
+                /**
+                 * Explicitly inspect a bounded page; raw SQL permits exist only while this transaction holds the identity guard.
+                 *
+                 * @param request - The maintenance request naming the tenant, an optional `after` cursor and the page limit.
+                 * @returns How many proofs were scanned and how many decisions and proofs were deleted, plus `next` when more rows remain.
+                 * @fails {ApprovalRetentionFailure} With `denied` for another tenant, `invalid` for a malformed request or corrupt proof or decision, or `unavailable` when the guard row is missing or SQL fails.
+                 */
                 run: (request) =>
                     Effect.gen(
                         /** Validate routing before touching SQL and sample the trusted clock after acquiring the serialization guard. */
@@ -172,19 +197,34 @@ export const approvalRetentionMaintenance = Layer.effect(
                         }
                     ).pipe(
                         Effect.catchAllCause(
-                            /** Bound driver failures, including finalization orDie, without discarding other cause leaves. */
+                            /**
+                             * Bound driver failures, including finalization orDie, without discarding other cause leaves.
+                             *
+                             * @param cause - The full failure cause of the maintenance run.
+                             * @returns A failure with the same cause structure, with SQL failures and SQL defects replaced by `unavailable`.
+                             */
                             (cause) =>
                                 Effect.failCause(
                                     Cause.match(cause, {
                                         onEmpty: Cause.empty,
-                                        /** Preserve typed validation/authority failures; SQL never carries diagnostics out. */
+                                        /**
+                                         * Preserve typed validation/authority failures; SQL never carries diagnostics out.
+                                         *
+                                         * @param error - A typed failure leaf from the cause.
+                                         * @returns A failure leaf carrying the original error, or `unavailable` for an SQL error.
+                                         */
                                         onFail: (error) =>
                                             Cause.fail(
                                                 error instanceof SqlError
                                                     ? new ApprovalRetentionFailure({ reason: 'unavailable' })
                                                     : error
                                             ),
-                                        /** An unavailable acknowledgement says nothing about commit or rollback outcome. */
+                                        /**
+                                         * An unavailable acknowledgement says nothing about commit or rollback outcome.
+                                         *
+                                         * @param defect - A defect leaf from the cause.
+                                         * @returns A typed `unavailable` failure for an SQL defect, otherwise the original defect.
+                                         */
                                         onDie: (defect) =>
                                             defect instanceof SqlError
                                                 ? Cause.fail(new ApprovalRetentionFailure({ reason: 'unavailable' }))

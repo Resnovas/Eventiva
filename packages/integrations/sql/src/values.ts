@@ -18,15 +18,31 @@ import { randomBytes } from 'node:crypto';
 import { UuidV7, StorageFailure } from '@eventiva/contracts/storage';
 import { Clock, Effect, Schema } from 'effect';
 
-/** Application-generated UUIDv7: PostgreSQL 17 needs no extension or PG18-only function. */
+/**
+ * Application-generated UUIDv7: PostgreSQL 17 needs no extension or PG18-only function.
+ *
+ * @returns A fresh UUIDv7 whose leading 48 bits carry the current clock millisecond.
+ * @fails {StorageFailure} With `randomness` when entropy is unavailable, or `invalid-data` when the generated value does not decode.
+ * @since 0.0.1
+ * @example
+ * const id = yield* uuidV7;
+ */
 export const uuidV7 = Effect.gen(
     /** Encode the current millisecond timestamp with fresh random bits; no monotonic ordering is promised. */ function* () {
         const now = yield* Clock.currentTimeMillis;
         const bytes = yield* Effect.try({
-            /** Acquire random bytes locally; entropy failures become a bounded storage error. */
+            /**
+             * Acquire random bytes locally; entropy failures become a bounded storage error.
+             *
+             * @returns Sixteen cryptographically secure random bytes.
+             */
             // effect-boundary: cryptographically secure randomness is a Node capability
             try: () => randomBytes(16),
-            /** Hide entropy-provider diagnostics from the storage port. */
+            /**
+             * Hide entropy-provider diagnostics from the storage port.
+             *
+             * @returns A StorageFailure with the `randomness` reason and no provider detail.
+             */
             catch: () => new StorageFailure({ operation: 'uuid-randomness', reason: 'randomness' }),
         });
         // Reserve the UUID version and variant bits without discarding the remaining random entropy.
@@ -38,8 +54,12 @@ export const uuidV7 = Effect.gen(
             `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
         ).pipe(
             Effect.mapError(
-                /** Report malformed generated identifiers without leaking their value. */ () =>
-                    new StorageFailure({ operation: 'uuid-v7', reason: 'invalid-data' })
+                /**
+                 * Report malformed generated identifiers without leaking their value.
+                 *
+                 * @returns A StorageFailure with the `invalid-data` reason.
+                 */
+                () => new StorageFailure({ operation: 'uuid-v7', reason: 'invalid-data' })
             )
         );
     }

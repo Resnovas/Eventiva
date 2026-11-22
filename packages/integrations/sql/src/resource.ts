@@ -40,13 +40,29 @@ import { hookContext } from './hook.ts';
 import type { Dialect } from './migrations.ts';
 import { transactionScope, type TransactionScope } from './transaction.ts';
 
-/** Construct a resource-domain failure with an explicit detail and a storage reason unless overridden. */
+/**
+ * Construct a resource-domain failure with an explicit detail and a storage reason unless overridden.
+ *
+ * @param detail - The fixed, caller-safe explanation of the failure.
+ * @param reason - The resource failure reason; defaults to `storage`.
+ * @returns A ResourceFailure with that reason and detail.
+ */
 const fail = (detail: string, reason: ResourceFailure['reason'] = 'storage') => new ResourceFailure({ reason, detail });
-/** Keep underlying driver or codec errors redacted while exposing only a fixed resource-storage failure detail. */
+/**
+ * Keep underlying driver or codec errors redacted while exposing only a fixed resource-storage failure detail.
+ *
+ * @param cause - The driver or codec error to redact.
+ * @returns A `storage` ResourceFailure whose cause is redacted.
+ */
 const sqlFailure = (cause: Error) =>
     new ResourceFailure({ reason: 'storage', detail: 'Resource SQL operation failed', cause: Redacted.make(cause) });
 // Migrations and provider acquisition never inherit an ambient connection, even from a trusted root.
-/** Refuse any ambient SQL transaction before migration or provider acquisition, including a different trusted root. */
+/**
+ * Refuse any ambient SQL transaction before migration or provider acquisition, including a different trusted root.
+ *
+ * @returns An effect that succeeds only when no SQL transaction is in scope.
+ * @fails {ResourceFailure} With `denied` when any ambient SQL transaction is present.
+ */
 const checkTransaction = () =>
     Effect.gen(
         /** Reject an inherited transaction instead of allowing Effect SQL to reuse a foreign connection. */ function* () {
@@ -60,7 +76,13 @@ const checkTransaction = () =>
         }
     );
 const definitionJson = Schema.parseJson(ResourceDefinition);
-/** Decode persisted definition JSON exactly; canonical agreement is checked separately by migration or binding. */
+/**
+ * Decode persisted definition JSON exactly; canonical agreement is checked separately by migration or binding.
+ *
+ * @param text - The stored definition JSON.
+ * @returns The decoded resource definition.
+ * @fails {ResourceFailure} With `storage` when the JSON or definition is malformed.
+ */
 const decodeDefinition = (text: string) =>
     Schema.decodeUnknown(definitionJson)(text, { onExcessProperty: 'error' }).pipe(Effect.mapError(sqlFailure));
 const StoredSchemaRow = Schema.Struct({
@@ -75,9 +97,18 @@ const StoredRow = Schema.Struct({
     schema_version: Schema.Number.pipe(Schema.int(), Schema.between(1, 2147483647)),
     payload: Schema.String,
 });
+/**
+ * One stored resource record row as decoded from SQL, before its payload is parsed.
+ */
 type Row = typeof StoredRow.Type;
 // Vendor data stays private and is decoded, not asserted into a domain record by SqlClient's generic.
-/** Decode row identity, version pins and scalar payload shape; runtime retains resource-specific field validation. */
+/**
+ * Decode row identity, version pins and scalar payload shape; runtime retains resource-specific field validation.
+ *
+ * @param input - The raw row returned by a record or revision query.
+ * @returns The portable record with id, revision, schema version and scalar field values.
+ * @fails {ResourceFailure} With `storage` when the row or payload is malformed.
+ */
 const decodeRow = (input: Row) =>
     Effect.gen(
         /** Translate validated SQL metadata and JSON scalar fields into the portable record representation. */ function* () {
@@ -100,7 +131,17 @@ const decodeRow = (input: Row) =>
         }
     ).pipe(Effect.mapError(sqlFailure));
 
-/** Pure preflight. Retained generations/restarts/staged changes are refused before client acquisition or DDL. */
+/**
+ * Pure preflight. Retained generations/restarts/staged changes are refused before client acquisition or DDL.
+ *
+ * @param history - Every resource definition version in order, each history starting at version 1.
+ * @param policy - The migration admission policy, decoded with excess properties refused.
+ * @returns A ready plan with checked history and per-version evidence, or `restart-required` with its reason.
+ * @fails {ResourceFailure} With `unsafe-migration` when a history does not start at version 1, or another reason when a definition or the policy is invalid.
+ * @since 0.0.1
+ * @example
+ * const plan = yield* planResourceMigrations(history, { kind: 'additive', retainedGenerations: 0, restartRequired: false });
+ */
 export const planResourceMigrations = (
     history: ReadonlyArray<ResourceDefinition>,
     policy: ResourceMigrationPolicy
@@ -146,7 +187,19 @@ export const planResourceMigrations = (
         }
     );
 
-/** Privileged forward-only gate re-plans rather than trusting a caller-forged plan. Kernel must fence leases first. */
+/**
+ * Privileged forward-only gate re-plans rather than trusting a caller-forged plan. Kernel must fence leases first.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @param tenant - The tenant the resource database is, or becomes, bound to.
+ * @param history - Every resource definition version in order; applied versions must be unchanged.
+ * @param policy - The migration admission policy, re-checked here rather than trusting a prior plan.
+ * @returns The applied migration evidence, or the `restart-required` plan when online admission is refused.
+ * @fails {ResourceFailure} With `denied` inside an ambient transaction or for a database bound to another tenant, `unsafe-migration` when applied history was changed or removed, or `storage` when SQL fails.
+ * @since 0.0.1
+ * @example
+ * const result = yield* migrateResources('postgres', tenant, history, policy);
+ */
 export const migrateResources = (
     dialect: Dialect,
     tenant: TenantId,
@@ -217,7 +270,12 @@ export const migrateResources = (
                             const candidate = candidates.get(row.resource)?.[row.version - 1];
                             const previous = yield* decodeDefinition(row.definition);
                             const evidence = plan.migrations.find(
-                                /** Match immutable applied rows to their independently recomputed migration evidence. */
+                                /**
+                                 * Match immutable applied rows to their independently recomputed migration evidence.
+                                 *
+                                 * @param migration - One planned migration evidence entry.
+                                 * @returns Whether it is the evidence for this applied row's resource and version.
+                                 */
                                 (migration) => migration.resource === row.resource && migration.to === row.version
                             );
                             if (
@@ -235,8 +293,13 @@ export const migrateResources = (
                             for (const definition of versions) {
                                 if (
                                     applied.some(
-                                        /** Do not rewrite an already validated immutable schema version. */ (row) =>
-                                            row.resource === definition.id && row.version === definition.version
+                                        /**
+                                         * Do not rewrite an already validated immutable schema version.
+                                         *
+                                         * @param row - One already applied schema row.
+                                         * @returns Whether that row is this definition's resource and version.
+                                         */
+                                        (row) => row.resource === definition.id && row.version === definition.version
                                     )
                                 )
                                     continue;
@@ -244,7 +307,12 @@ export const migrateResources = (
                                     Effect.mapError(sqlFailure)
                                 );
                                 const evidence = plan.migrations.find(
-                                    /** Use the planned checksum for this exact resource/version insertion. */
+                                    /**
+                                     * Use the planned checksum for this exact resource/version insertion.
+                                     *
+                                     * @param migration - One planned migration evidence entry.
+                                     * @returns Whether it is the evidence for this definition's resource and version.
+                                     */
                                     (migration) =>
                                         migration.resource === definition.id && migration.to === definition.version
                                 );
@@ -265,12 +333,27 @@ export const migrateResources = (
     ).pipe(
         Effect.catchTag(
             'SqlError',
-            /** Redact database details without changing explicit migration/admission failures. */ (cause) =>
-                Effect.fail(sqlFailure(cause))
+            /**
+             * Redact database details without changing explicit migration/admission failures.
+             *
+             * @param cause - The SQL error, kept only in redacted form.
+             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+             */
+            (cause) => Effect.fail(sqlFailure(cause))
         )
     );
 
-/** Bind checked active definitions and provider identity to a tenant database and its private transaction owner. */
+/**
+ * Bind checked active definitions and provider identity to a tenant database and its private transaction owner.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @param tenant - The tenant the resource database must already be bound to.
+ * @param identity - The provider identity, decoded with excess properties refused.
+ * @param definitions - The active resource definitions; each must equal its highest applied version.
+ * @param owner - The private transaction scope whose storage the provider exposes.
+ * @returns The resource provider with checked definitions, the owner's storage and a SQL driver.
+ * @fails {ResourceFailure} With `denied` inside an ambient transaction or for another tenant's database, `schema-mismatch` when a definition is not the applied active version, or `storage` when SQL or decoding fails.
+ */
 const bindResourceProvider = (
     dialect: Dialect,
     tenant: TenantId,
@@ -287,8 +370,12 @@ const bindResourceProvider = (
             const sql = yield* SqlClient.SqlClient;
             const checkOwner = owner.check.pipe(
                 Effect.mapError(
-                    /** Translate a foreign-root connection into a denied resource operation without exposing its details. */ () =>
-                        fail('Resource operation cannot inherit an unowned SQL transaction', 'denied')
+                    /**
+                     * Translate a foreign-root connection into a denied resource operation without exposing its details.
+                     *
+                     * @returns A `denied` ResourceFailure.
+                     */
+                    () => fail('Resource operation cannot inherit an unowned SQL transaction', 'denied')
                 )
             );
             const [binding] = yield* sql<{ tenant: string }>`SELECT tenant FROM resource_tenant WHERE singleton = 1`;
@@ -301,8 +388,13 @@ const bindResourceProvider = (
             for (const input of definitions) {
                 const definition = yield* validateDefinition(input);
                 const applied = active.find(
-                    /** Locate this resource's highest applied version for canonical comparison. */ (row) =>
-                        row.resource === definition.id
+                    /**
+                     * Locate this resource's highest applied version for canonical comparison.
+                     *
+                     * @param row - One active applied schema row.
+                     * @returns Whether that row belongs to this definition's resource.
+                     */
+                    (row) => row.resource === definition.id
                 );
                 if (
                     !applied ||
@@ -312,7 +404,14 @@ const bindResourceProvider = (
                 checked.push(definition);
             }
             const driver: ResourceDriver = {
-                /** Read a record from the captured database, rejecting foreign ambient transactions and preserving schema pins. */
+                /**
+                 * Read a record from the captured database, rejecting foreign ambient transactions and preserving schema pins.
+                 *
+                 * @param resource - The resource id.
+                 * @param id - The record id.
+                 * @returns The record, or undefined when it does not exist.
+                 * @fails {ResourceFailure} With `denied` under a foreign transaction, or `storage` when SQL or decoding fails.
+                 */
                 get: (resource, id) =>
                     Effect.gen(
                         /** Check transaction provenance before loading and decoding an optional stored row. */ function* () {
@@ -324,11 +423,23 @@ const bindResourceProvider = (
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Redact driver details on record lookup failure. */ (cause) =>
-                                Effect.fail(sqlFailure(cause))
+                            /**
+                             * Redact driver details on record lookup failure.
+                             *
+                             * @param cause - The SQL error, kept only in redacted form.
+                             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+                             */
+                            (cause) => Effect.fail(sqlFailure(cause))
                         )
                     ),
-                /** Run the runtime-validated keyset query with bound values and dialect-specific scalar JSON equality. */
+                /**
+                 * Run the runtime-validated keyset query with bound values and dialect-specific scalar JSON equality.
+                 *
+                 * @param resource - The validated resource definition being queried.
+                 * @param query - The validated keyset query: optional single-field equality, `after` cursor and limit.
+                 * @returns Up to `limit` records after the cursor in id order.
+                 * @fails {ResourceFailure} With `denied` under a foreign transaction, or `storage` when SQL or decoding fails.
+                 */
                 query: (resource, query) =>
                     Effect.gen(
                         /** Preserve transaction ownership and normalize only dialect-specific comparison representations. */ function* () {
@@ -357,11 +468,25 @@ const bindResourceProvider = (
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Keep database query details redacted from resource failures. */ (cause) =>
-                                Effect.fail(sqlFailure(cause))
+                            /**
+                             * Keep database query details redacted from resource failures.
+                             *
+                             * @param cause - The SQL error, kept only in redacted form.
+                             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+                             */
+                            (cause) => Effect.fail(sqlFailure(cause))
                         )
                     ),
-                /** Perform an optimistic write and append its revision; callers must supply the atomic storage transaction. Zero means create. */
+                /**
+                 * Perform an optimistic write and append its revision; callers must supply the atomic storage transaction. Zero means create.
+                 *
+                 * @param resource - The active resource definition the write is validated against.
+                 * @param id - The record id.
+                 * @param revision - The expected current revision, or zero to create the record.
+                 * @param value - The record payload, decoded as JSON before it is stored.
+                 * @returns The record as written, with its new revision.
+                 * @fails {ResourceFailure} With `conflict` when the record exists on create or the revision changed, `schema-mismatch` when a migration changed the active definition, `denied` under a foreign transaction, or `storage` when SQL or encoding fails.
+                 */
                 write: (resource, id, revision, value) =>
                     Effect.gen(
                         /** Fence migrations and recheck the active schema before updating the record and immutable revision history. */ function* () {
@@ -400,12 +525,23 @@ const bindResourceProvider = (
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Preserve explicit schema/revision conflicts while redacting SQL diagnostics. */ (
-                                cause
-                            ) => Effect.fail(sqlFailure(cause))
+                            /**
+                             * Preserve explicit schema/revision conflicts while redacting SQL diagnostics.
+                             *
+                             * @param cause - The SQL error, kept only in redacted form.
+                             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+                             */
+                            (cause) => Effect.fail(sqlFailure(cause))
                         )
                     ),
-                /** Read all immutable revisions in ascending order, retaining each version's original schema pin. */
+                /**
+                 * Read all immutable revisions in ascending order, retaining each version's original schema pin.
+                 *
+                 * @param resource - The resource id.
+                 * @param id - The record id.
+                 * @returns Every stored revision of the record in ascending revision order.
+                 * @fails {ResourceFailure} With `denied` under a foreign transaction, or `storage` when SQL or decoding fails.
+                 */
                 history: (resource, id) =>
                     Effect.gen(
                         /** Verify transaction provenance before decoding the ordered stored revision sequence. */ function* () {
@@ -417,8 +553,13 @@ const bindResourceProvider = (
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Keep revision-query driver details behind the redacted storage failure. */ (cause) =>
-                                Effect.fail(sqlFailure(cause))
+                            /**
+                             * Keep revision-query driver details behind the redacted storage failure.
+                             *
+                             * @param cause - The SQL error, kept only in redacted form.
+                             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+                             */
+                            (cause) => Effect.fail(sqlFailure(cause))
                         )
                     ),
             };
@@ -433,12 +574,30 @@ const bindResourceProvider = (
     ).pipe(
         Effect.catchTag(
             'SqlError',
-            /** Do not expose provider-acquisition SQL details in the public error representation. */ (cause) =>
-                Effect.fail(sqlFailure(cause))
+            /**
+             * Do not expose provider-acquisition SQL details in the public error representation.
+             *
+             * @param cause - The SQL error, kept only in redacted form.
+             * @returns A failure carrying the redacted SQL error as a `storage` ResourceFailure.
+             */
+            (cause) => Effect.fail(sqlFailure(cause))
         )
     );
 
-/** Captures one scoped client and private transaction root. Runtime owns policy orchestration. */
+/**
+ * Captures one scoped client and private transaction root. Runtime owns policy orchestration.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @param tenant - The tenant the resource database must already be bound to.
+ * @param identity - The provider identity, decoded with excess properties refused.
+ * @param definitions - The active resource definitions; each must equal its highest applied version.
+ * @returns The resource provider bound to a fresh private transaction root.
+ * @fails {ResourceFailure} With `denied`, `schema-mismatch` or `storage` when binding fails.
+ * @fails {StorageFailure} When the paired storage layer cannot be built.
+ * @since 0.0.1
+ * @example
+ * const provider = yield* resourceProvider('postgres', tenant, identity, definitions);
+ */
 export const resourceProvider = (
     dialect: Dialect,
     tenant: TenantId,
@@ -453,8 +612,21 @@ export const resourceProvider = (
         }
     );
 
-/** Trusted composition: resources, durable Integrity and hook staging use ONE Storage transaction owner.
+/**
+ * Trusted composition: resources, durable Integrity and hook staging use ONE Storage transaction owner.
  * This grants no release/sink authority and executes no observer in the originating transaction.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @param tenant - The tenant, which must equal the authenticated CurrentTenant and the database binding.
+ * @param identity - The provider identity, decoded with excess properties refused.
+ * @param definitions - The active resource definitions; each must equal its highest applied version.
+ * @returns The resource provider plus the hook outbox, change feed and recovery sharing its transaction owner.
+ * @fails {ResourceFailure} With `denied` for a tenant mismatch, or `schema-mismatch` or `storage` when binding fails.
+ * @fails {StorageFailure} When the paired storage layer cannot be built.
+ * @fails {HookOutboxFailure} With `transaction-required` when the owner's client is not the ambient SQL client.
+ * @since 0.0.1
+ * @example
+ * const provider = yield* resourceHookProvider('postgres', tenant, identity, definitions);
  */
 export const resourceHookProvider = (
     dialect: Dialect,
