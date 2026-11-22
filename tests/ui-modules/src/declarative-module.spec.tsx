@@ -1923,8 +1923,11 @@ it('interprets exact installed components and uses injected unavailable renderin
  */
 const auditSources = (
     entry: string,
-    read: (file: string) => string,
-    resolveImport: (name: string, from: string) => string | undefined
+    /** Read one source file's text. */ read: (file: string) => string,
+    /** Resolve an import to an audited source, or undefined to stop. */ resolveImport: (
+        name: string,
+        from: string
+    ) => string | undefined
 ) => {
     // Active-path and completed sets must remain separate: a shared dependency is not a cycle.
     const active = new Set<string>();

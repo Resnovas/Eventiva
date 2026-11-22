@@ -225,7 +225,7 @@ export type ComposeError = DuplicateResource | DuplicateField | UnknownTarget | 
  * @returns A comparator for `Array.prototype.sort`.
  */
 const byName =
-    <A>(key: (a: A) => string) =>
+    <A>(/** Project one value to its ordering key. */ key: (a: A) => string) =>
     /**
      * Preserve equal-key order while comparing without locale-specific collation.
      *

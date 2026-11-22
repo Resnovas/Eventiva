@@ -63,6 +63,15 @@ export const formatConsoleRecord = (record: TelemetryRecord): string =>
 const filenamePattern = /^\d{4}-\d{2}-\d{2}\.\d{6}\.jsonl$/;
 
 /**
+ * Write one formatted record through Effect's console service, so bootstrap output needs no application or file
+ * configuration and no Node-only primitive.
+ *
+ * @param text - The formatted record to print.
+ * @returns An Effect that logs the record and never fails.
+ */
+const writeToConsole = (text: string): Effect.Effect<void, TelemetrySinkFailure> => Console.log(text);
+
+/**
  * Config-free bootstrap sink. Install before acquiring even the file sink or main configuration.
  *
  * @param write - The formatted-record writer; it defaults to Effect's console service.
@@ -73,13 +82,7 @@ const filenamePattern = /^\d{4}-\d{2}-\d{2}\.\d{6}\.jsonl$/;
  */
 export const consoleLoggerLayer = (
     /** Accept only schema-validated formatted records; failures must use the closed sink error type. */
-    /**
-     * Use Effect's console service so bootstrap output needs no application or file configuration.
-     *
-     * @param text - The formatted record.
-     * @returns The console log effect.
-     */
-    write: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = (text) => Console.log(text)
+    write: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = writeToConsole
 ): Layer.Layer<TelemetrySink> =>
     Layer.succeed(TelemetrySink, {
         /**
@@ -137,13 +140,7 @@ export const consoleLoggerLayer = (
 export const serverLoggerLayer = (
     configuration: Config.Config<ServerLoggerOptions> = serverLoggerConfig,
     /** Emit schema-validated formatted records independently of the file result, with closed sink failures only. */
-    /**
-     * Keep default console output within Effect's console service rather than a Node-only primitive.
-     *
-     * @param text - The formatted record.
-     * @returns The console log effect.
-     */
-    consoleWrite: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = (text) => Console.log(text)
+    consoleWrite: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = writeToConsole
 ): Layer.Layer<TelemetrySink, TelemetrySinkFailure, FileSystem.FileSystem> =>
     Layer.scoped(
         TelemetrySink,
