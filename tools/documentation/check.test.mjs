@@ -19,6 +19,12 @@ import { test } from 'node:test';
 import { inspectSource, isEditableTypeScript, usefulDescription } from './check.mjs';
 
 const contract = '/** Preserve tenant boundaries before exposing records to an observer. */';
+/**
+ * Inspect a TypeScript fixture as if it were the file `fixture.ts`.
+ *
+ * @param {string} source - The fixture source text.
+ * @returns {object[]} Every documentation finding the checker reports for it.
+ */
 const findings = (source) => inspectSource('fixture.ts', source);
 
 for (const [name, source, count = 1] of [
@@ -50,8 +56,19 @@ for (const [name, source, count = 1] of [
     ['variable function type', 'let read: () => void;'],
     ['overloads', 'function read(id: string): string; function read(id: number): number;', 2],
 ]) {
-    test(`requires a separate contract for ${name}`, () => {
-        assert.equal(findings(source).filter((finding) => finding.rule === 'missing-jsdoc').length, count);
+    test(`requires a separate contract for ${name}`, /** Count the missing-contract findings for the undocumented fixture. */ () => {
+        assert.equal(
+            findings(source).filter(
+                /**
+                 * Keep only findings for a missing contract.
+                 *
+                 * @param {object} finding - One checker finding.
+                 * @returns {boolean} Whether its rule is `missing-jsdoc`.
+                 */
+                (finding) => finding.rule === 'missing-jsdoc'
+            ).length,
+            count
+        );
     });
 }
 
@@ -81,10 +98,12 @@ for (const [name, source] of [
         `${contract}\n// effect-boundary: only the approved SDK constructs this client.\nconst read = () => 1;`,
     ],
 ]) {
-    test(`accepts useful attached JSDoc on ${name}`, () => assert.deepEqual(findings(source), []));
+    test(`accepts useful attached JSDoc on ${name}`, /** Expect no findings for the documented fixture. */ () => {
+        assert.deepEqual(findings(source), []);
+    });
 }
 
-test('rejects licence headers, ordinary comments, tags alone, placeholders and name-only repetition', () => {
+test('rejects licence headers, ordinary comments, tags alone, placeholders and name-only repetition', /** Attach each unhelpful comment to a function and expect it to be flagged. */ () => {
     for (const doc of [
         '/** @file fixture.ts\n * Preserve tenant boundaries before exposing records to an observer. */',
         '// Preserve tenant boundaries before exposing records to an observer.\n',
@@ -97,13 +116,13 @@ test('rejects licence headers, ordinary comments, tags alone, placeholders and n
     assert.deepEqual(findings('/** Normalize locale tags. */ const normalizeLocale = () => 1;'), []);
 });
 
-test('does not borrow a sibling, enclosing contract or multi-declaration statement comment', () => {
+test('does not borrow a sibling, enclosing contract or multi-declaration statement comment', /** Place one contract before several functions and count the uncovered ones. */ () => {
     assert.equal(findings(`${contract} const first = () => 1; const second = () => 2;`).length, 1);
     assert.equal(findings(`${contract} const first = () => 1, second = () => 2;`).length, 2);
     assert.equal(findings(`${contract} class Registry { read() {} }`).length, 1);
 });
 
-test('retired review-internal-rationale: complex bodies with attached JSDoc pass without inline comments', () => {
+test('retired review-internal-rationale: complex bodies with attached JSDoc pass without inline comments', /** Check documented bodies of growing complexity raise no rationale finding. */ () => {
     for (const body of [
         'const value = decode(); return authorize(value);',
         'if (denied) return 0; return read();',
@@ -115,7 +134,15 @@ test('retired review-internal-rationale: complex bodies with attached JSDoc pass
         `${contract} function read() { const inner = () => { const value = decode(); return authorize(value); }; return finish(inner()); }`
     );
     assert.deepEqual(
-        nested.map(({ name, rule }) => ({ name, rule })),
+        nested.map(
+            /**
+             * Keep only the name and rule of a finding.
+             *
+             * @param {object} finding - One checker finding.
+             * @returns {{ name: string, rule: string }} The fields the assertion compares.
+             */
+            (finding) => ({ name: finding.name, rule: finding.rule })
+        ),
         [{ name: 'inner', rule: 'missing-jsdoc' }]
     );
     for (const expression of [
@@ -128,13 +155,21 @@ test('retired review-internal-rationale: complex bodies with attached JSDoc pass
     ]) {
         assert.deepEqual(findings(`${contract} const read = ${expression};`), []);
         assert.deepEqual(
-            findings(`const read = ${expression};`).map((f) => f.rule),
+            findings(`const read = ${expression};`).map(
+                /**
+                 * Read the rule of a finding.
+                 *
+                 * @param {object} f - One checker finding.
+                 * @returns {string} Its rule name.
+                 */
+                (f) => f.rule
+            ),
             ['missing-jsdoc']
         );
     }
 });
 
-test('exact finding identity survives prose/line shifts but not changed code, names or duplicate additions', () => {
+test('exact finding identity survives prose/line shifts but not changed code, names or duplicate additions', /** Compare finding identities across shifted, edited, renamed and duplicated code. */ () => {
     const first = findings('const read = (value: string) => value;');
     const shifted = findings('\n// Existing surrounding context.\nconst read = (value: string) => value;');
     assert.equal(first[0].id, shifted[0].id);
@@ -144,21 +179,51 @@ test('exact finding identity survives prose/line shifts but not changed code, na
     assert.notEqual(duplicate[0].id, duplicate[1].id);
 });
 
-test('finding identity uses parser context across interpolated template tails', () => {
+test('finding identity uses parser context across interpolated template tails', /** Compare identities when a comment shifts the code and when the template changes. */ () => {
     const before = 'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };';
     const shifted = before.replace('; return', ';\n/* Context retained for the next review. */\nreturn');
-    const id = findings(before).find((finding) => finding.rule === 'missing-jsdoc').id;
-    assert.equal(id, findings(shifted).find((finding) => finding.rule === 'missing-jsdoc').id);
+    const id = findings(before).find(
+        /**
+         * Select the missing-contract finding.
+         *
+         * @param {object} finding - One checker finding.
+         * @returns {boolean} Whether its rule is `missing-jsdoc`.
+         */
+        (finding) => finding.rule === 'missing-jsdoc'
+    ).id;
+    assert.equal(
+        id,
+        findings(shifted).find(
+            /**
+             * Select the missing-contract finding.
+             *
+             * @param {object} finding - One checker finding.
+             * @returns {boolean} Whether its rule is `missing-jsdoc`.
+             */
+            (finding) => finding.rule === 'missing-jsdoc'
+        ).id
+    );
     for (const changed of [
         before.replace('${table}', '${otherTable}'),
         before.replace('where id =', 'where key ='),
         before.replace('${id}', '${id + 1}'),
         before.replace('return finish(query)', 'return finish(query, 1)'),
     ])
-        assert.notEqual(id, findings(changed).find((finding) => finding.rule === 'missing-jsdoc').id);
+        assert.notEqual(
+            id,
+            findings(changed).find(
+                /**
+                 * Select the missing-contract finding.
+                 *
+                 * @param {object} finding - One checker finding.
+                 * @returns {boolean} Whether its rule is `missing-jsdoc`.
+                 */
+                (finding) => finding.rule === 'missing-jsdoc'
+            ).id
+        );
 });
 
-test('parser-context identities ignore nested contracts but retain contextual literal contents', () => {
+test('parser-context identities ignore nested contracts but retain contextual literal contents', /** Compare identities of regex, JSX and nested template fixtures with and without a nested contract. */ () => {
     for (const [file, before, changed] of [
         ['fixture.ts', 'const read = () => /[/*]/gu.test(value);', 'const read = () => /[/*]/g.test(value);'],
         ['fixture.tsx', 'const read = () => <Text>{value}</Text>;', 'const read = () => <Text>{other}</Text>;'],
@@ -174,21 +239,47 @@ test('parser-context identities ignore nested contracts but retain contextual li
     assert.equal(findings(before)[0].id, findings(documented)[0].id);
 });
 
-test('internal legacy fingerprints change only identities, never classification or order', () => {
+test('internal legacy fingerprints change only identities, never classification or order', /** Inspect one fixture with current and legacy fingerprints. */ () => {
     const source = 'const read = () => { const query = sql`select ${table} where id = ${id}`; return finish(query); };';
     const current = inspectSource('fixture.ts', source);
     const legacy = inspectSource('fixture.ts', source, { internalLegacyFingerprint: true });
-    const metadata = (entries) => entries.map(({ id: _id, ...entry }) => entry);
+    /**
+     * Strip the identity from every finding so only classification and order remain.
+     *
+     * @param {object[]} entries - Findings from one inspection.
+     * @returns {object[]} The same findings without their `id`.
+     */
+    const metadata = (entries) =>
+        entries.map(
+            /**
+             * Drop the identity of one finding.
+             *
+             * @param {object} finding - One checker finding.
+             * @param {string} finding.id - Its fingerprint identity, which is discarded.
+             * @returns {object} The remaining fields of the finding.
+             */
+            ({ id: _id, ...entry }) => entry
+        );
     assert.deepEqual(metadata(current), metadata(legacy));
     assert.notEqual(current[0].id, legacy[0].id);
 });
 
-test('parses TSX and rejects malformed TypeScript without skipping its declarations', () => {
+test('parses TSX and rejects malformed TypeScript without skipping its declarations', /** Inspect a documented TSX view and an unparsable fixture. */ () => {
     assert.deepEqual(inspectSource('fixture.tsx', `${contract} const View = () => <Text>Content</Text>;`), []);
-    assert.ok(findings('const read = ( => 1;').some((f) => f.rule === 'parse-error'));
+    assert.ok(
+        findings('const read = ( => 1;').some(
+            /**
+             * Detect a parse failure finding.
+             *
+             * @param {object} f - One checker finding.
+             * @returns {boolean} Whether its rule is `parse-error`.
+             */
+            (f) => f.rule === 'parse-error'
+        )
+    );
 });
 
-test('covers editable declarations, configs, tests, examples and tools; excludes only history/vendor/output', () => {
+test('covers editable declarations, configs, tests, examples and tools; excludes only history/vendor/output', /** Classify editable and excluded paths. */ () => {
     for (const file of [
         'packages/a/src/a.ts',
         'apps/a/src/a.tsx',

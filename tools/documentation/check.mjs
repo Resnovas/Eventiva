@@ -21,7 +21,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-/** Exclude only upstream/history and reproducible output, never editable tests or declarations. */
+/**
+ * Exclude only upstream/history and reproducible output, never editable tests or declarations.
+ *
+ * @since 0.0.1
+ * @param {string} path - A repository-relative path using forward slashes.
+ * @returns {boolean} Whether the path is TypeScript source that the documentation contract covers.
+ * @example
+ * isEditableTypeScript('packages/schema/src/index.ts'); // true
+ */
 export const isEditableTypeScript = (path) =>
     /\.(?:[cm]?ts|tsx)$/.test(path) &&
     !/^(?:Examples|examples|externals|graphify-out|\.amp)\//.test(path) &&
@@ -30,7 +38,16 @@ export const isEditableTypeScript = (path) =>
         path
     );
 
-/** Reject placeholders and name-only paraphrases; semantic accuracy still requires human review. */
+/**
+ * Reject placeholders and name-only paraphrases; semantic accuracy still requires human review.
+ *
+ * @since 0.0.1
+ * @param {string} text - The raw JSDoc body, with or without leading `*` gutters and tags.
+ * @param {string} [name] - The documented declaration's identifier, whose words do not count as information.
+ * @returns {boolean} Whether the prose has at least two distinct words and one that does not just repeat the name.
+ * @example
+ * usefulDescription('Load the catalogue from storage.', 'loadCatalogue'); // true
+ */
 export const usefulDescription = (text, name = '') => {
     const prose = text
         .replace(/^\s*\*\s?/gm, '')
@@ -47,12 +64,23 @@ export const usefulDescription = (text, name = '') => {
             .match(/[a-z]+/g) ?? []
     );
     const informative = words.filter(
+        /**
+         * Keep words that add meaning beyond the declaration name and filler words.
+         *
+         * @param {string} word - One lower-case word from the description.
+         * @returns {boolean} Whether the word is neither part of the name nor a filler word.
+         */
         (word) => !names.has(word) && !['the', 'a', 'an', 'function', 'method', 'class', 'interface'].includes(word)
     );
     return words.length >= 2 && informative.length >= 1 && new Set(words).size >= 2;
 };
 
-/** Include executable and type-level callable syntax, including anonymous callbacks and accessors. */
+/**
+ * Include executable and type-level callable syntax, including anonymous callbacks and accessors.
+ *
+ * @param {ts.Node} node - Any syntax node of the parsed file.
+ * @returns {boolean} Whether the node is a callable, class or interface declaration that requires a contract.
+ */
 const needsDocumentation = (node) =>
     ts.isFunctionDeclaration(node) ||
     ts.isFunctionExpression(node) ||
@@ -70,7 +98,12 @@ const needsDocumentation = (node) =>
     ts.isCallSignatureDeclaration(node) ||
     ts.isConstructSignatureDeclaration(node);
 
-/** A binding's doc describes its direct initializer, not arbitrary callbacks nested inside it. */
+/**
+ * A binding's doc describes its direct initializer, not arbitrary callbacks nested inside it.
+ *
+ * @param {ts.Node} node - A declaration selected by `needsDocumentation`.
+ * @returns {ts.Node} The statement, property, alias or parameter whose leading comment documents the node, or the node itself.
+ */
 const documentationOwner = (node) => {
     let owner = node;
     while (
@@ -93,14 +126,38 @@ const documentationOwner = (node) => {
     return owner;
 };
 
-/** Select only the adjacent contract, allowing the required vendor-boundary marker between it and its owner. */
+/**
+ * Select only the adjacent contract, allowing the required vendor-boundary marker between it and its owner.
+ *
+ * @param {ts.Node} node - A declaration selected by `needsDocumentation`.
+ * @param {ts.SourceFile} source - The parsed file that holds the node.
+ * @param {string} text - The full source text the file was parsed from.
+ * @returns {ts.CommentRange | undefined} The range of the JSDoc block directly above the owner, or undefined when none is attached.
+ */
 const documentationRange = (node, source, text) => {
     const owner = documentationOwner(node);
     const ranges = [
         ...(ts.getLeadingCommentRanges(text, owner.pos) ?? []),
         ...(ts.getTrailingCommentRanges(text, owner.pos) ?? []),
-    ].sort((a, b) => a.pos - b.pos);
-    const last = ranges.findLast((range) => !/^\/\/\s*effect-boundary:/.test(text.slice(range.pos, range.end)));
+    ].sort(
+        /**
+         * Order comment ranges by where they start in the file.
+         *
+         * @param {ts.CommentRange} a - The first range to compare.
+         * @param {ts.CommentRange} b - The second range to compare.
+         * @returns {number} A negative number when `a` starts first, positive when `b` does.
+         */
+        (a, b) => a.pos - b.pos
+    );
+    const last = ranges.findLast(
+        /**
+         * Skip vendor-boundary markers so the comment above them is found.
+         *
+         * @param {ts.CommentRange} range - One leading or trailing comment of the owner.
+         * @returns {boolean} Whether the comment is anything other than an `effect-boundary` marker.
+         */
+        (range) => !/^\/\/\s*effect-boundary:/.test(text.slice(range.pos, range.end))
+    );
     return last &&
         text.slice(last.pos, last.end).startsWith('/**') &&
         text
@@ -111,18 +168,51 @@ const documentationRange = (node, source, text) => {
         : undefined;
 };
 
-/** Inspect the same declarations in both modes; the internal legacy option exists only for trusted-history reconciliation. */
+/**
+ * Inspect the same declarations in both modes; the internal legacy option exists only for trusted-history reconciliation.
+ *
+ * @since 0.0.1
+ * @param {string} file - The repository-relative path recorded on every finding and hashed into its id.
+ * @param {string} text - The TypeScript source to parse.
+ * @param {object} [options] - How finding ids are fingerprinted.
+ * @param {boolean} [options.internalLegacyFingerprint] - Hash scanner tokens, including JSDoc, as older trusted history did; defaults to false.
+ * @returns {Array<{ id?: string, file: string, line: number, kind: string, name: string, rule: string }>} One finding per parse error, undocumented declaration or uninformative description.
+ * @example
+ * const findings = inspectSource('src/a.ts', 'export const a = () => 1;');
+ */
 export const inspectSource = (file, text, { internalLegacyFingerprint = false } = {}) => {
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const findings = [];
     const declarations = [];
+    /**
+     * Gather every declaration that needs a contract, depth first.
+     *
+     * @param {ts.Node} node - The subtree to walk.
+     */
     const collect = (node) => {
         if (needsDocumentation(node)) declarations.push(node);
         ts.forEachChild(node, collect);
     };
     collect(source);
-    const contracts = new Map(declarations.map((node) => [node, documentationRange(node, source, text)]));
+    const contracts = new Map(
+        declarations.map(
+            /**
+             * Pair a declaration with its attached JSDoc range.
+             *
+             * @param {ts.Node} node - A declaration that needs a contract.
+             * @returns {[ts.Node, ts.CommentRange | undefined]} The declaration and its JSDoc range, if any.
+             */
+            (node) => [node, documentationRange(node, source, text)]
+        )
+    );
     const occurrences = new Map();
+    /**
+     * Record a finding whose id is a stable hash of the declaration's code tokens, numbered per duplicate.
+     *
+     * @param {ts.Node} node - The declaration being reported.
+     * @param {string} rule - Either `missing-jsdoc` or `review-jsdoc`.
+     * @param {string} name - The declaration's name, or `<anonymous>`.
+     */
     const report = (node, rule, name) => {
         const tokens = [];
         if (internalLegacyFingerprint) {
@@ -134,6 +224,11 @@ export const inspectSource = (file, text, { internalLegacyFingerprint = false } 
             );
             while (scanner.scan() !== ts.SyntaxKind.EndOfFileToken) tokens.push(scanner.getTokenText());
         } else {
+            /**
+             * Append the text of every non-JSDoc token below a node, so editing docs keeps the id stable.
+             *
+             * @param {ts.Node} child - The node whose tokens are collected.
+             */
             const collectTokens = (child) => {
                 if (child.kind === ts.SyntaxKind.JSDocComment) return;
                 if (ts.isToken(child)) {
@@ -185,7 +280,15 @@ export const inspectSource = (file, text, { internalLegacyFingerprint = false } 
     return findings;
 };
 
-/** Enumerate Git-visible source, including new files, without traversing ignored builds or upstream trees. */
+/**
+ * Enumerate Git-visible source, including new files, without traversing ignored builds or upstream trees.
+ *
+ * @since 0.0.1
+ * @param {string} root - The repository root to list with `git ls-files`.
+ * @returns {{ checked: number, findings: object[] }} How many files were read and every finding from `inspectSource`.
+ * @example
+ * const { checked, findings } = inspectRepository(process.cwd());
+ */
 export const inspectRepository = (root) => {
     const paths = [
         ...new Set(
