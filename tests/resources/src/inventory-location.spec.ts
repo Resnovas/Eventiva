@@ -58,17 +58,32 @@ import { Approvals, InputDigest, InvocationDenied } from '@eventiva/runtime/invo
 import { resourceRuntime } from '@eventiva/runtime/resource';
 import { durable } from '@eventiva/runtime/storage';
 
-/** Stable UUID ordering differs from deliberately shuffled creation order. */
+/**
+ * Stable UUID ordering differs from deliberately shuffled creation order.
+ *
+ * @param n - Small fixture ordinal encoded into the final UUID segment.
+ * @returns A deterministic UUIDv7 string whose sort order follows the ordinal.
+ */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const tenant = TenantId.make(id(900));
 const caller = Schema.decodeUnknownSync(CallerIdentity)({ tenant, subject: id(901), session: id(902), kind: 'human' });
 const role = RoleId.make(id(903));
 const canary = 'SYNTHETIC-LOCATION-PRIVATE-SENTINEL';
 const local = process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test';
-/** Keep SQL clients independent even when their immutable layer descriptions target the same database. */
+/**
+ * Keep SQL clients independent even when their immutable layer descriptions target the same database.
+ *
+ * @param url - Connection string of the disposable PostgreSQL database.
+ * @returns A SQL client layer configured with that connection string only.
+ */
 const pg = (url: string) =>
     client.pipe(Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]])))));
-/** Own one disposable physical database outside the independently scoped connection lifetimes. */
+/**
+ * Own one disposable physical database outside the independently scoped connection lifetimes.
+ *
+ * @param dialect - SQL dialect whose disposable database is allocated.
+ * @returns A scoped effect yielding a client layer for the new database, dropped or deleted when the scope closes.
+ */
 const database = (dialect: Dialect) =>
     Effect.gen(
         /** Validate the loopback fixture before creating any isolated synthetic database. */ function* () {
@@ -84,28 +99,58 @@ const database = (dialect: Dialect) =>
                 const name = `location_${randomUUID().replaceAll('-', '')}`;
                 yield* admin`CREATE DATABASE ${admin(name)} TEMPLATE template0`;
                 yield* Effect.addFinalizer(
-                    /** Drop only the owned database after nested clients close. */ () =>
-                        admin`DROP DATABASE ${admin(name)}`.pipe(Effect.orDie)
+                    /**
+                     * Drop only the owned database after nested clients close.
+                     *
+                     * @returns An effect that drops the database and dies if the drop fails.
+                     */
+                    () => admin`DROP DATABASE ${admin(name)}`.pipe(Effect.orDie)
                 );
                 url.pathname = `/${name}`;
                 return pg(url.toString());
             }
             const dir = fileURLToPath(new URL('../../../.amp/in/orb-backup/location/', import.meta.url));
             yield* Effect.tryPromise(
-                /** Allocate only a private fixture directory. */ () => mkdir(dir, { recursive: true })
+                /**
+                 * Allocate only a private fixture directory.
+                 *
+                 * @returns The directory creation promise.
+                 */
+                () => mkdir(dir, { recursive: true })
             );
             const path = `${dir}${randomUUID()}.db`;
             yield* Effect.addFinalizer(
-                /** Remove only this owned synthetic database file. */ () =>
-                    Effect.tryPromise(/** Never remove a caller-supplied path. */ () => rm(path, { force: true })).pipe(
-                        Effect.orDie
-                    )
+                /**
+                 * Remove only this owned synthetic database file.
+                 *
+                 * @returns An effect that deletes the SQLite file and dies if deletion fails.
+                 */
+                () =>
+                    Effect.tryPromise(
+                        /**
+                         * Never remove a caller-supplied path.
+                         *
+                         * @returns The file removal promise.
+                         */
+                        () => rm(path, { force: true })
+                    ).pipe(Effect.orDie)
             );
             return localFile(Redacted.make(path));
         }
     );
+/** Fixture boundary at which a test may pause or inject a storage failure; none disables both. */
 type Point = 'none' | 'read-guard' | 'guard' | 'before' | 'after';
-/** Compose actual SQL identity/resources/durable host with explicit fixture-only failure barriers at real write boundaries. */
+/**
+ * Compose actual SQL identity/resources/durable host with explicit fixture-only failure barriers at real write boundaries.
+ *
+ * @template E - Failure type of the connection layer.
+ * @param dialect - SQL dialect the storage, migrations and identity store run on.
+ * @param connection - Client layer for the database this fixture owns.
+ * @param currentTenant - Tenant every invocation and resource read is scoped to; defaults to the shared test tenant.
+ * @param seed - Whether to seed the caller, role and grants before returning; defaults to true.
+ * @param isolateGraph - Whether to drop the identity store mutex so only the location guard serializes graph races; defaults to false.
+ * @returns A scoped effect yielding the host, invoker, resource API, definitions and barrier controls.
+ */
 const fixture = <E>(
     dialect: Dialect,
     connection: Layer.Layer<SqlClient.SqlClient, E>,
@@ -173,7 +218,12 @@ const fixture = <E>(
             const fault = yield* Ref.make<Point>('none');
             const arrived = yield* Deferred.make<void>();
             const release = yield* Deferred.make<void>();
-            /** Pause/fail after actual SQL work when requested; tests can revoke authority while the real guard remains held. */
+            /**
+             * Pause/fail after actual SQL work when requested; tests can revoke authority while the real guard remains held.
+             *
+             * @param point - Write boundary that has just been reached.
+             * @returns An effect that pauses or fails when the test configured this boundary, and otherwise does nothing.
+             */
             const step = (point: Point) =>
                 Effect.gen(
                     /** Completion barriers distinguish a write fault from an early preflight rejection. */ function* () {
@@ -205,17 +255,33 @@ const fixture = <E>(
                         ...provider,
                         driver: {
                             ...provider.driver,
-                            /** Synchronize guard observations across independent PostgreSQL clients, not through feature state. */
+                            /**
+                             * Synchronize guard observations across independent PostgreSQL clients, not through feature state.
+                             *
+                             * @param resource - Identifier of the resource being read.
+                             * @param key - Record key being read.
+                             * @returns The real driver read, followed by the read-guard barrier for guard records.
+                             */
                             get: (resource, key) =>
-                                provider.driver
-                                    .get(resource, key)
-                                    .pipe(
-                                        Effect.tap(
-                                            /** Retain the original observed revision while the competing transaction starts. */ () =>
-                                                resource === definitions.guard.id ? step('read-guard') : Effect.void
-                                        )
-                                    ),
-                            /** Interpose solely at actual driver write boundaries, preserving real transactional persistence. */
+                                provider.driver.get(resource, key).pipe(
+                                    Effect.tap(
+                                        /**
+                                         * Retain the original observed revision while the competing transaction starts.
+                                         *
+                                         * @returns The read-guard barrier for guard records, otherwise a no-op effect.
+                                         */
+                                        () => (resource === definitions.guard.id ? step('read-guard') : Effect.void)
+                                    )
+                                ),
+                            /**
+                             * Interpose solely at actual driver write boundaries, preserving real transactional persistence.
+                             *
+                             * @param resource - Resource definition being written.
+                             * @param key - Record key being written.
+                             * @param revision - Expected revision for the optimistic write.
+                             * @param value - Encoded record value to persist.
+                             * @returns An effect yielding the real write result, with barriers before and after it.
+                             */
                             write: (resource, key, revision, value) =>
                                 Effect.gen(
                                     /** Signal each tested boundary before/after actual SQL, never replace storage with a mock. */ function* () {
@@ -228,23 +294,36 @@ const fixture = <E>(
                                 ),
                         },
                     },
-                    /** Independently deny Resources even when the action permission is still granted. */ (
-                        c,
-                        _resource,
-                        operation
-                    ) =>
+                    /**
+                     * Independently deny Resources even when the action permission is still granted.
+                     *
+                     * @param c - Caller identity requesting resource access.
+                     * @param _resource - Resource being accessed; unused because grants are tenant-wide.
+                     * @param operation - Whether the access is a read or a write.
+                     * @returns An effect that succeeds when resources are not denied and the live grant allows the matching location action.
+                     */
+                    (c, _resource, operation) =>
                         Ref.get(denied).pipe(
                             Effect.flatMap(
-                                /** A live resource decision is separate from admission-time action authority. */ (
-                                    deny
-                                ) =>
+                                /**
+                                 * A live resource decision is separate from admission-time action authority.
+                                 *
+                                 * @param deny - Whether the test has switched resource access off.
+                                 * @returns A denied resource failure when switched off, otherwise the live grant check.
+                                 */
+                                (deny) =>
                                     deny
                                         ? Effect.fail(new ResourceFailure({ reason: 'denied', detail: canary }))
                                         : policy
                                               .canInvoke(c, operation === 'write' ? locationCreate : locationGet)
                                               .pipe(
                                                   Effect.mapError(
-                                                      /** Do not surface SQL identity diagnostics. */ () =>
+                                                      /**
+                                                       * Do not surface SQL identity diagnostics.
+                                                       *
+                                                       * @returns A bounded denied resource failure without the underlying identity detail.
+                                                       */
+                                                      () =>
                                                           new ResourceFailure({
                                                               reason: 'denied',
                                                               detail: 'Location fixture denied',
@@ -258,12 +337,22 @@ const fixture = <E>(
             const api = Context.get(resources, Resources);
             const platform = Layer.mergeAll(
                 Layer.succeed(Flags, {
-                    /** Resolve a mutable fixture flag with the real production safe default preserved. */ evaluate: (
-                        flag
-                    ) =>
+                    /**
+                     * Resolve a mutable fixture flag with the real production safe default preserved.
+                     *
+                     * @param flag - Feature flag declaration being evaluated.
+                     * @returns An effect yielding the flag evaluation, falling back to the safe default when unset.
+                     */
+                    evaluate: (flag) =>
                         Ref.get(enabled).pipe(
                             Effect.map(
-                                /** Missing flag evaluates to safeDefault, never implicit true. */ (value) => ({
+                                /**
+                                 * Missing flag evaluates to safeDefault, never implicit true.
+                                 *
+                                 * @param value - Test override for the flag, if one is set.
+                                 * @returns The flag evaluation envelope with its value, reason and fallback marker.
+                                 */
+                                (value) => ({
                                     flag: flag.key,
                                     value: value ?? flag.safeDefault,
                                     reason: value === undefined ? 'SAFE_DEFAULT' : 'TEST',
@@ -273,26 +362,52 @@ const fixture = <E>(
                         ),
                 }),
                 Layer.succeed(InputDigest, {
-                    /** Hash private inputs without retaining raw metadata in receipts. */ digest: (text) =>
+                    /**
+                     * Hash private inputs without retaining raw metadata in receipts.
+                     *
+                     * @param text - Serialized invocation input to digest.
+                     * @returns An effect yielding the hex SHA-256 digest of the input.
+                     */
+                    digest: (text) =>
                         Effect.sync(
-                            /** Keep the digest deterministic for exact original-key replay checks. */ () =>
-                                createHash('sha256').update(text).digest('hex')
+                            /**
+                             * Keep the digest deterministic for exact original-key replay checks.
+                             *
+                             * @returns The hex SHA-256 digest of the input.
+                             */
+                            () => createHash('sha256').update(text).digest('hex')
                         ),
                 }),
                 Layer.succeed(Approvals, {
-                    /** Unknown approval proofs fail closed; routine human metadata writes need none. */ get: () =>
-                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
-                    /** Missing proof cannot acknowledge successful approval use. */ use: () =>
-                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
-                    /** Keep protected read callbacks outside this denying fixture capability. */ transaction: () =>
-                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * Unknown approval proofs fail closed; routine human metadata writes need none.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * Missing proof cannot acknowledge successful approval use.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    use: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * Keep protected read callbacks outside this denying fixture capability.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    transaction: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
                 }),
                 Layer.succeed(Authorizer, {
                     canInvoke: policy.canInvoke,
-                    /** Fixture provisions tenant-wide target grants only, checked live on every invocation. */ check: (
-                        c,
-                        spec
-                    ) => policy.canInvoke(c, spec),
+                    /**
+                     * Fixture provisions tenant-wide target grants only, checked live on every invocation.
+                     *
+                     * @param c - Caller identity requesting the target action.
+                     * @param spec - Action declaration being authorized.
+                     * @returns The live tenant grant check for the action.
+                     */
+                    check: (c, spec) => policy.canInvoke(c, spec),
                 })
             );
             const services = Layer.merge(Layer.succeedContext(security), platform);
@@ -312,7 +427,15 @@ const fixture = <E>(
                 ActionHost
             );
             yield* host.register(module);
-            /** All feature scenarios invoke the common host, including its real SQL idempotency/identity boundary. */
+            /**
+             * All feature scenarios invoke the common host, including its real SQL idempotency/identity boundary.
+             *
+             * @param operation - Location action suffix to invoke.
+             * @param input - JSON input for the action.
+             * @param key - Idempotency key; defaults to a fresh random key.
+             * @param presented - Caller identity presented to the host; defaults to the test caller in the current tenant.
+             * @returns The host invocation effect using the given idempotency key.
+             */
             const invoke = (
                 operation: string,
                 input: JsonValue,
@@ -322,7 +445,15 @@ const fixture = <E>(
                 host
                     .invoke(`inventory.location.${operation}`, input, { idempotencyKey: key })
                     .pipe(Effect.provideService(Caller, presented));
-            /** Inspect retained resource state/history through its authorized public API. */
+            /**
+             * Inspect retained resource state/history through its authorized public API.
+             *
+             * @template A - Success value of the wrapped effect.
+             * @template E - Failure type of the wrapped effect.
+             * @template R - Remaining environment of the wrapped effect, besides the resource scope.
+             * @param effect - Resource effect that needs a caller and tenant scope.
+             * @returns The same effect with the test caller and current tenant provided.
+             */
             const scoped = <A, E, R>(effect: Effect.Effect<A, E, R | ResourceScope>) =>
                 effect.pipe(
                     Effect.provideService(Caller, { ...caller, tenant: currentTenant }),
@@ -350,7 +481,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} physical locations`, /** Run the same observable contract against both real SQL dialects. */ () => {
         it.scoped(
             'persists immutable kind/history, reopens, pages/root-filters and replays original committed evidence',
-            /** Fresh scopes rule out a feature cache satisfying persistence or replay. */ () =>
+            /**
+             * Fresh scopes rule out a feature cache satisfying persistence or replay.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Deliberately unsorted IDs and duplicate names distinguish UUID order and identity from insertion/name order. */ function* () {
                         // Keep the physical connection description, but close all original service/client scopes before reopen.
@@ -366,8 +502,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                     expect(yield* f.host.actions).toEqual(
                                         locationActions
                                             .map(
-                                                /** Compare the complete registered metadata surface. */ (spec) =>
-                                                    spec.name
+                                                /**
+                                                 * Compare the complete registered metadata surface.
+                                                 *
+                                                 * @param spec - Registered action declaration.
+                                                 * @returns The action name used for comparison.
+                                                 */
+                                                (spec) => spec.name
                                             )
                                             .sort()
                                     );
@@ -442,9 +583,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                     const history = yield* f.scoped(f.api.history(f.definitions.locations, id(10)));
                                     expect(
                                         history.map(
-                                            /** Preserve original parent/name values rather than backfilling old revisions. */ (
-                                                row
-                                            ) => [row.revision, row.value['parent'], row.value['name']]
+                                            /**
+                                             * Preserve original parent/name values rather than backfilling old revisions.
+                                             *
+                                             * @param row - One retained history row.
+                                             * @returns The row revision with its parent and name, in assertion order.
+                                             */
+                                            (row) => [row.revision, row.value['parent'], row.value['name']]
                                         )
                                     ).toEqual([
                                         [1, id(30), canary],
@@ -494,7 +639,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
 
         it.scoped(
             'refuses self/indirect/missing/corrupt ancestry and checks past a full page',
-            /** A late ancestor cycle must fail even beyond the default and maximum query page lengths. */ () =>
+            /**
+             * A late ancestor cycle must fail even beyond the default and maximum query page lengths.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Seed a long valid chain through the authorized resource fixture to bound setup cost without mocking traversal. */ function* () {
                         // Each mutation must walk exact parent records, not truncate a query at 50 or 100 rows.
@@ -556,10 +706,14 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                         // Setup is not evidence of feature authorization; the following create actions are the public boundary proof.
                                         const rows = Array.from(
                                             { length: 920 },
-                                            /** Preserve the existing hexadecimal UUIDs and encoded field order exactly. */ (
-                                                _,
-                                                offset
-                                            ) => ({
+                                            /**
+                                             * Preserve the existing hexadecimal UUIDs and encoded field order exactly.
+                                             *
+                                             * @param _ - Unused placeholder element from the array template.
+                                             * @param offset - Position of the row in the seeded chain.
+                                             * @returns One raw location row whose parent is the previous row in the chain.
+                                             */
+                                            (_, offset) => ({
                                                 resource: f.definitions.locations.id,
                                                 id: id(offset + 106),
                                                 revision: 1,
@@ -598,7 +752,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
 
         it.scoped(
             'rolls back guard and tentative writes on failure/interruption and recovers only through original keys',
-            /** Controlled write barriers prove no leaked locks, half history or success commits. */ () =>
+            /**
+             * Controlled write barriers prove no leaked locks, half history or success commits.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Probe after guard acquisition and both sides of the actual location driver write. */ function* () {
                         // Fresh fixtures give each interruption barrier a single owner; no gate from a previous trial can release it.
@@ -640,7 +799,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
 
         it.scoped(
             'rechecks flags/resources after guard acquisition without blocking a foreign tenant',
-            /** Revocation while the SQL guard is held must roll it back and preserve cross-tenant progress. */ () =>
+            /**
+             * Revocation while the SQL guard is held must roll it back and preserve cross-tenant progress.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Pause only the owning tenant transaction, with ordinary SQL identity locking intact. */ function* () {
                         // A process-global lock would incorrectly stall the other tenant's host while this guard is held.
@@ -673,7 +837,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
 
         it.scoped(
             'denies fresh policy/identity/flag/resource changes, excess fields and foreign parent routing',
-            /** A retained host and original retry key grant no lasting authority. */ () =>
+            /**
+             * A retained host and original retry key grant no lasting authority.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Mutate live SQL identity and resource policy without rebuilding the action host. */ function* () {
                         // Reuse identical record IDs across distinct physical tenant routes to detect accidental global graph/caller state.
@@ -744,7 +913,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
 
 it.scoped(
     'serializes independent PostgreSQL reverse and disjoint longer cycles, including concurrent guard initialization',
-    /** Both clients observe the same pre-lock revision so a per-target-CAS-only implementation would admit a cycle. */ () =>
+    /**
+     * Both clients observe the same pre-lock revision so a per-target-CAS-only implementation would admit a cycle.
+     *
+     * @returns The scoped test effect that runs the scenario.
+     */
+    () =>
         Effect.gen(
             /** Interleave real transactions across independently constructed client pools and transaction owners. */ function* () {
                 // No shared module, resource provider, mutex or SQL client exists between these fixtures.

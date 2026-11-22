@@ -16,6 +16,13 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
+/**
+ * Vitest project for the resource conformance tests, with coverage measured over the contract, runtime and SQL resource modules.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run @eventiva/resource-tests:test
+ */
 export default testProject(
     'resource-tests',
     [
