@@ -24,19 +24,45 @@ const Deadline = Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_S
 const Revision = Schema.Number.pipe(Schema.int(), Schema.between(0, Number.MAX_SAFE_INTEGER - 1));
 const Stored = Schema.Struct({ expiresAt: Deadline, version: Revision });
 
-/** Persistent exact-scope consent on the already routed tenant database; never auto-grants or provisions a user. */
+/**
+ * Persistent exact-scope consent on the already routed tenant database; never auto-grants or provisions a user.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(exportTelemetry, telemetryConsentStore);
+ */
 export const telemetryConsentStore = Layer.effect(
     TelemetryConsent,
     Effect.gen(
         /** Capture only the routed client; every operation validates the complete caller binding before SQL. */ function* () {
             const tenant = yield* CurrentTenant;
             const sql = yield* SqlClient.SqlClient;
-            /** Discard schema/driver details, which may contain identity or query parameters. */
+            /**
+             * Discard schema/driver details, which may contain identity or query parameters.
+             *
+             * @returns The bounded `unavailable` telemetry sink failure.
+             */
             const failure = () => new TelemetrySinkFailure({ reason: 'unavailable' });
-            /** Decode internal typed inputs too, preventing invalid values reaching persistent authority. */
+            /**
+             * Decode internal typed inputs too, preventing invalid values reaching persistent authority.
+             *
+             * @template A - The decoded value.
+             * @template I - The encoded input accepted by the schema.
+             * @param schema - The schema the input must satisfy exactly, with no excess properties.
+             * @param input - The value to decode.
+             * @returns The decoded value.
+             * @fails {TelemetrySinkFailure} With `unavailable` when the input does not decode.
+             */
             const decode = <A, I>(schema: Schema.Schema<A, I>, input: NoInfer<I>) =>
                 Schema.decode(schema)(input, { onExcessProperty: 'error' }).pipe(Effect.mapError(failure));
-            /** Frame exact case-sensitive identity/session and all release fields; renewal deadlines are not identity. */
+            /**
+             * Frame exact case-sensitive identity/session and all release fields; renewal deadlines are not identity.
+             *
+             * @param binding - The export binding whose tenant must match the routed tenant.
+             * @param identity - The correlation identity whose namespace, subject and session join the key.
+             * @returns The JSON array key for the exact consent scope.
+             * @fails {TelemetrySinkFailure} With `unavailable` for an invalid input or a binding for another tenant.
+             */
             const key = (binding: TelemetryExportBinding, identity: CorrelationIdentity) =>
                 Effect.gen(
                     /** Keep one tenant database from authorizing a binding routed to a different tenant. */ function* () {
@@ -60,7 +86,14 @@ export const telemetryConsentStore = Layer.effect(
                     }
                 );
             return TelemetryConsent.of({
-                /** Read fresh committed state on every authorization; no accepting cache or missing-row fallback. */
+                /**
+                 * Read fresh committed state on every authorization; no accepting cache or missing-row fallback.
+                 *
+                 * @param binding - The export binding being authorized.
+                 * @param identity - The correlation identity being authorized.
+                 * @returns The stored expiry and version, or undefined when no consent exists for the exact scope.
+                 * @fails {TelemetrySinkFailure} With `unavailable` for invalid input, stored data or a database error.
+                 */
                 get: (binding, identity) =>
                     Effect.gen(
                         /** Return validated scalar state only, never stored subject material or SQL diagnostics. */ function* () {
@@ -76,7 +109,16 @@ export const telemetryConsentStore = Layer.effect(
                                 : undefined;
                         }
                     ).pipe(Effect.catchTag('SqlError', failure)),
-                /** Compare-and-set a trusted consent decision; stale writers cannot resurrect a later revocation. */
+                /**
+                 * Compare-and-set a trusted consent decision; stale writers cannot resurrect a later revocation.
+                 *
+                 * @param binding - The export binding the decision applies to.
+                 * @param identity - The correlation identity the decision applies to.
+                 * @param expiresAt - The new consent deadline, a non-negative safe integer timestamp.
+                 * @param expectedVersion - The revision the writer last saw, or null to insert the first row.
+                 * @returns An effect that completes once exactly one row was inserted or updated.
+                 * @fails {TelemetrySinkFailure} With `unavailable` when the row exists, the revision is stale, or SQL fails.
+                 */
                 put: (binding, identity, expiresAt, expectedVersion) =>
                     Effect.gen(
                         /** A retained revoked row preserves its revision across process restarts and concurrent clients. */ function* () {
