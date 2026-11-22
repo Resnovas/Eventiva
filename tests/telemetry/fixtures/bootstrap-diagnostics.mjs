@@ -29,7 +29,11 @@ try {
     if (!error || typeof error !== 'object' || error.code !== 'EBADF') throw error;
 }
 
-/** Keep a deduplicated, phase-only journal below one pipe buffer, including under malformed event floods. */
+/**
+ * Keep a deduplicated, phase-only journal below one pipe buffer, including under malformed event floods.
+ *
+ * @param {unknown} phase - A lifecycle value from the diagnostics channel or this preload; only a known phase name of at most 64 characters is written.
+ */
 const record = (phase) => {
     if (!available || typeof phase !== 'string' || phase.length > 64 || seen.has(phase)) return;
     // Reject terminal line breaks too: JavaScript's dollar anchor alone permits a final newline.
@@ -55,7 +59,14 @@ record('child-start');
 subscribe('eventiva.bootstrap.lifecycle', record);
 let modules = 0;
 registerHooks({
-    /** Observe source availability, not evaluation; return the loader's result untouched. */
+    /**
+     * Observe source availability, not evaluation; return the loader's result untouched.
+     *
+     * @param {string} url - The resolved URL of the module being loaded.
+     * @param {object} context - The load context Node passes to the hook.
+     * @param {Function} nextLoad - The next load hook in the chain.
+     * @returns {object} The result of the next load hook, unchanged.
+     */
     load(url, context, nextLoad) {
         const source = nextLoad(url, context);
         modules += 1;
@@ -70,10 +81,20 @@ registerHooks({
 });
 process.on(
     'beforeExit',
-    /** Observe natural drain without scheduling work or retaining resources. */ () => record('process-before-exit')
+    /**
+     * Observe natural drain without scheduling work or retaining resources.
+     *
+     * @returns {void} Nothing; the phase is written to the journal.
+     */
+    () => record('process-before-exit')
 );
 process.on(
     'exit',
-    /** Observe Node teardown without replacing runMain's exit or installing signal handlers. */ (code) =>
-        record(code === 0 ? 'process-exit-success' : 'process-exit-failure')
+    /**
+     * Observe Node teardown without replacing runMain's exit or installing signal handlers.
+     *
+     * @param {number} code - The process exit code.
+     * @returns {void} Nothing; the success or failure phase is written to the journal.
+     */
+    (code) => record(code === 0 ? 'process-exit-success' : 'process-exit-failure')
 );
