@@ -72,18 +72,32 @@ const identity: FixtureCorrelationIdentity = {
     expiresAt: 10 * hour,
 };
 const keys: FixtureCorrelationKeys = {
-    /** Published non-secret fixture bytes only; deliberate repetition across scopes tests HMAC domain separation. */
+    /**
+     * Published non-secret fixture bytes only; deliberate repetition across scopes tests HMAC domain separation.
+     *
+     * @param scope - Key scope the issuer asks for.
+     * @returns An effect yielding 32 fixture bytes derived only from the scope epoch.
+     */
     get: (scope) => Effect.succeed({ scope, material: Redacted.make(new Uint8Array(32).fill(scope.epoch + 1)) }),
 };
 const consent = Effect.succeed(10 * hour);
 const fixture = fixtureCorrelationLayer(binding, identity, keys, consent);
 const environment = ConfigProvider.fromMap(new Map([['NODE_ENV', 'test']]));
 const enabled = Layer.succeed(Flags, {
-    /** Explicit test opt-in, independent of user consent and the ordinary export grant. */
+    /**
+     * Explicit test opt-in, independent of user consent and the ordinary export grant.
+     *
+     * @param flag - Flag definition the sink asks about.
+     * @returns An effect yielding the safe-default evaluation with its value switched on.
+     */
     evaluate: (flag) => Effect.succeed({ ...safeDefault(flag), value: true }),
 });
 const release = Layer.succeed(TelemetryExportAuthority, {
-    /** Model destination release only; this does not replace current user consent. */
+    /**
+     * Model destination release only; this does not replace current user consent.
+     *
+     * @returns An effect that grants every release request.
+     */
     authorize: () => Effect.void,
 });
 const record: TelemetryRecord = {
@@ -106,14 +120,33 @@ const catalog = { messages: { 'request.failed': 'Request failed.' } };
 /** Read through the issuer port, never by calling private HMAC helpers. */
 const issue = Effect.flatMap(
     CorrelationIssuer,
-    /** Each fixture issuance is an explicit request opt-in. */ (issuer) => issuer.issue(true)
+    /**
+     * Each fixture issuance is an explicit request opt-in.
+     *
+     * @param issuer - Correlation issuer from the current context.
+     * @returns An effect yielding a freshly issued request token.
+     */
+    (issuer) => issuer.issue(true)
 );
 
-/** Collect the final minimized public channel after the same final release check a transport must perform. */
+/**
+ * Collect the final minimized public channel after the same final release check a transport must perform.
+ *
+ * @param before - Work run before the dispatch check, used to delay or revoke; defaults to nothing.
+ * @returns The captured writes and a provider layer that fills them.
+ */
 const collector = (before: Effect.Effect<void> = Effect.void) => {
     const writes: Array<{ readonly record: TelemetryRecord; readonly correlation: TelemetryCorrelation }> = [];
     const layer = Layer.succeed(CorrelationProvider, {
-        /** Simulate asynchronous preparation; only a fresh dispatch check permits the local write. */
+        /**
+         * Simulate asynchronous preparation; only a fresh dispatch check permits the local write.
+         *
+         * @param _binding - Export scope of the write, unused by this provider.
+         * @param projected - Minimized record being delivered.
+         * @param correlation - Correlation pair attached to the record.
+         * @param check - Final release check that must pass before the write is kept.
+         * @returns An effect that runs the preparation and the check, then records the write.
+         */
         write: (_binding, projected, correlation, check) =>
             before.pipe(
                 Effect.zipRight(check),
@@ -129,7 +162,16 @@ const collector = (before: Effect.Effect<void> = Effect.void) => {
     return { writes, layer };
 };
 
-/** Compose the ordinary minimizer with a request-scoped correlation lease and fixture-only output. */
+/**
+ * Compose the ordinary minimizer with a request-scoped correlation lease and fixture-only output.
+ *
+ * @param token - Request correlation token the lease carries.
+ * @param provider - Correlation provider that receives released records.
+ * @param optIn - Whether the request opted in to correlation; defaults to true.
+ * @param scope - Export binding of the sink; defaults to the fixture binding.
+ * @param flags - Flags layer for the sink; defaults to everything enabled.
+ * @returns A sink layer with the governed minimizer, release authority and flags provided.
+ */
 const sinkLayer = (
     token: TelemetryCorrelation,
     provider: Layer.Layer<CorrelationProvider, TelemetrySinkFailure>,
@@ -149,7 +191,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
         for (const mutation of ['pair', 'lease'] as const) {
             it.effect(
                 `preserves request correlation after retained ${adapter} ${mutation} mutation`,
-                /** Previously released adapter views cannot relabel the next write or extend an hourly lease. */ () =>
+                /**
+                 * Previously released adapter views cannot relabel the next write or extend an hourly lease.
+                 *
+                 * @returns The scenario that corrupts retained adapter views and crosses the hourly boundary.
+                 */
+                () =>
                     Effect.gen(
                         /** Mutate retained references only after successful dispatch, then cross the exact UTC boundary. */ function* () {
                             // Keep expected scalars separate from adapter views so retained writes cannot rewrite the oracle.
@@ -189,7 +236,15 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                     sinkLayer(
                                         token,
                                         Layer.succeed(CorrelationProvider, {
-                                            /** Run the final release fence before retaining the provider's view. */
+                                            /**
+                                             * Run the final release fence before retaining the provider's view.
+                                             *
+                                             * @param scope - Binding view passed to the provider.
+                                             * @param _record - Minimized record, unused by this provider.
+                                             * @param pair - Correlation pair passed to the provider.
+                                             * @param check - Final release check that must pass first.
+                                             * @returns An effect that runs the check and then snapshots the views.
+                                             */
                                             write: (scope, _record, pair, check) =>
                                                 check.pipe(
                                                     Effect.zipRight(
@@ -207,7 +262,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                     ).pipe(
                                         Layer.provide(
                                             Layer.succeed(CorrelationAuthority, {
-                                                /** Permit release while retaining only this authority's disposable view. */
+                                                /**
+                                                 * Permit release while retaining only this authority's disposable view.
+                                                 *
+                                                 * @param scope - Binding view passed to the authority.
+                                                 * @param pair - Correlation pair passed to the authority.
+                                                 * @returns An effect that snapshots the views, may corrupt them, and grants the request.
+                                                 */
                                                 authorize: (scope, pair) =>
                                                     Effect.sync(
                                                         /** Retain the token for later corruption and rewrite only this binding view now. */ () => {
@@ -236,7 +297,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'rechecks each independent live flag on writes and flush without losing the admitted pair',
-        /** Disabling either flag revokes an existing sink, while reenabling it cannot change its request token. */ () =>
+        /**
+         * Disabling either flag revokes an existing sink, while reenabling it cannot change its request token.
+         *
+         * @returns The scenario that turns each flag off and on again on a live sink.
+         */
+        () =>
             Effect.gen(
                 /** Use a permissive authority so only the runtime flag fence can deny delivery. */ function* () {
                     // Each gate gets a fresh sink and mutable decision; revoking one must not rely on the other being off.
@@ -251,13 +317,22 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         const active = yield* Ref.make(true);
                         const output = collector();
                         const flags = Layer.succeed(Flags, {
-                            /** All flags except the selected live gate remain explicitly enabled. */
+                            /**
+                             * All flags except the selected live gate remain explicitly enabled.
+                             *
+                             * @param flag - Flag definition the sink asks about.
+                             * @returns An effect yielding the evaluation, which is off only for the selected gate while it is revoked.
+                             */
                             evaluate: (flag) =>
                                 Ref.get(active).pipe(
                                     Effect.map(
-                                        /** Read live state rather than caching acquisition-time permission. */ (
-                                            value
-                                        ) => ({
+                                        /**
+                                         * Read live state rather than caching acquisition-time permission.
+                                         *
+                                         * @param value - Current live state of the selected gate.
+                                         * @returns The safe-default evaluation with the live value applied to the selected gate.
+                                         */
+                                        (value) => ({
                                             ...safeDefault(flag),
                                             value: flag.key !== key || value,
                                         })
@@ -291,7 +366,11 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                 sinkLayer(token, output.layer, true, binding, flags).pipe(
                                     Layer.provide(
                                         Layer.succeed(CorrelationAuthority, {
-                                            /** Isolate runtime gates from fixture identity and consent validation. */
+                                            /**
+                                             * Isolate runtime gates from fixture identity and consent validation.
+                                             *
+                                             * @returns An effect that grants every release request.
+                                             */
                                             authorize: () => Effect.void,
                                         })
                                     )
@@ -305,29 +384,51 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'sends only the current pseudonymous pair over a real loopback OTLP socket and rejects late dispatch',
-        /** Use actual HTTP rather than a fetch mock to prove the serialized release boundary. */ () =>
+        /**
+         * Use actual HTTP rather than a fetch mock to prove the serialized release boundary.
+         *
+         * @returns The scenario that exports through a real loopback HTTP collector and inspects the received bytes.
+         */
+        () =>
             Effect.scoped(
                 Effect.gen(
                     /** Own the disposable loopback collector and inspect every byte received by it. */ function* () {
                         const writes: Array<{ readonly body: string; readonly headers: string }> = [];
                         const server = yield* Effect.acquireRelease(
                             Effect.promise(
-                                /** Bind only an ephemeral loopback port; no external destination is contacted. */ () =>
+                                /**
+                                 * Bind only an ephemeral loopback port; no external destination is contacted.
+                                 *
+                                 * @returns A promise of the collector server once it is listening.
+                                 */
+                                () =>
                                     new Promise<ReturnType<typeof createServer>>(
-                                        /** Resolve only once the collector can accept a real socket. */ (resolve) => {
+                                        /**
+                                         * Resolve only once the collector can accept a real socket.
+                                         *
+                                         * @param resolve - Settles the outer promise with the listening server.
+                                         */
+                                        (resolve) => {
                                             // Await listen completion so a refused socket cannot masquerade as export denial.
                                             const collector = createServer(
-                                                /** Acknowledge only after retaining the complete synthetic request. */ (
-                                                    request,
-                                                    response
-                                                ) => {
+                                                /**
+                                                 * Acknowledge only after retaining the complete synthetic request.
+                                                 *
+                                                 * @param request - Incoming collector request.
+                                                 * @param response - Response used to acknowledge the request.
+                                                 */
+                                                (request, response) => {
                                                     // Accumulate the complete body; chunk-local assertions could miss split private values.
                                                     const chunks: Buffer[] = [];
                                                     request.on(
                                                         'data',
-                                                        /** Fixture payloads are bounded by the production serializer. */ (
-                                                            chunk: Buffer
-                                                        ) => chunks.push(chunk)
+                                                        /**
+                                                         * Fixture payloads are bounded by the production serializer.
+                                                         *
+                                                         * @param chunk - Part of the request body.
+                                                         * @returns The new number of buffered chunks.
+                                                         */
+                                                        (chunk: Buffer) => chunks.push(chunk)
                                                     );
                                                     request.on(
                                                         'end',
@@ -348,20 +449,40 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                             collector.listen(
                                                 0,
                                                 '127.0.0.1',
-                                                /** Listening is the fixture's sole readiness signal. */ () =>
-                                                    resolve(collector)
+                                                /**
+                                                 * Listening is the fixture's sole readiness signal.
+                                                 *
+                                                 * @returns Nothing; the promise is settled with the server.
+                                                 */
+                                                () => resolve(collector)
                                             );
                                         }
                                     )
                             ),
-                            /** Release fixture sockets even when an assertion fails. */ (server) =>
+                            /**
+                             * Release fixture sockets even when an assertion fails.
+                             *
+                             * @param server - Collector server acquired above.
+                             * @returns An effect that completes once the server and its connections are closed.
+                             */
+                            (server) =>
                                 Effect.promise(
                                     /** Close idle keep-alive sockets as part of fixture ownership. */ () =>
                                         new Promise<void>(
-                                            /** Await the Node server's completion callback. */ (resolve) => {
+                                            /**
+                                             * Await the Node server's completion callback.
+                                             *
+                                             * @param resolve - Settles the promise once the server has closed.
+                                             */
+                                            (resolve) => {
                                                 // Force-close keep-alive sockets as well as the listener so fixture ownership cannot escape.
                                                 server.close(
-                                                    /** No request survives the scoped test. */ () => resolve()
+                                                    /**
+                                                     * No request survives the scoped test.
+                                                     *
+                                                     * @returns Nothing; the close promise is settled.
+                                                     */
+                                                    () => resolve()
                                                 );
                                                 server.closeAllConnections();
                                             }
@@ -497,7 +618,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'matches independent Python HMAC outputs and keeps raw fixture identity out of tokens',
-        /** Fixed expected values were calculated with Python hmac/hashlib, not the implementation formatter. */ () =>
+        /**
+         * Fixed expected values were calculated with Python hmac/hashlib, not the implementation formatter.
+         *
+         * @returns The scenario that issues a token and compares it with independently computed HMAC values.
+         */
+        () =>
             Effect.gen(
                 /** Compare fixture issuance with an independently computed wire token. */ function* () {
                     // Fixed external HMAC vectors detect shared implementation mistakes that comparing two issued tokens would miss.
@@ -517,7 +643,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'separates scopes, subjects, sessions, framing and epochs while preserving same-person linkage',
-        /** Asymmetric fixture identities distinguish a session hash from a person hash and delimiter concatenation. */ () =>
+        /**
+         * Asymmetric fixture identities distinguish a session hash from a person hash and delimiter concatenation.
+         *
+         * @returns The scenario that changes one identity domain at a time and checks which linkage values change.
+         */
+        () =>
             Effect.gen(
                 /** Domain changes must alter only their intended linkage dimensions. */ function* () {
                     // Same-person/new-session controls distinguish domain separation from simply randomizing every issuance.
@@ -581,7 +712,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'denies absent/production environment, protected profiles and every nonordinary operation',
-        /** A permissive consent fixture must never waive the hard host floor. */ () =>
+        /**
+         * A permissive consent fixture must never waive the hard host floor.
+         *
+         * @returns The scenario that issues under each missing environment and protection floor and expects denial.
+         */
+        () =>
             Effect.gen(
                 /** Exercise the deployment floor independently of consent policy. */ function* () {
                     // Consent remains permissive in every case, so it cannot hide a missing environment or protection floor.
@@ -620,7 +756,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'denies missing authority, opt-out, expired consent/session and revoked or invalid fixture keys',
-        /** Negative controls use valid pseudonym syntax so rejection cannot hide behind malformed inputs. */ () =>
+        /**
+         * Negative controls use valid pseudonym syntax so rejection cannot hide behind malformed inputs.
+         *
+         * @returns The scenario that issues under unavailable consent, expired identity and bad keys and expects denial.
+         */
+        () =>
             Effect.gen(
                 /** Fail closed on unavailable fixture authority rather than selecting a fallback. */ function* () {
                     // Vary authority, lifetime and key validity separately; no substitute key or cached opt-in is acceptable.
@@ -632,7 +773,11 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             binding,
                             identity,
                             {
-                                /** No fallback on unavailable key. */
+                                /**
+                                 * No fallback on unavailable key.
+                                 *
+                                 * @returns An unavailable failure, used directly as a failing effect.
+                                 */
                                 get: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
                             },
                             consent
@@ -641,7 +786,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             binding,
                             identity,
                             {
-                                /** Reject wrong-size material rather than stretching it. */
+                                /**
+                                 * Reject wrong-size material rather than stretching it.
+                                 *
+                                 * @param scope - Key scope the issuer asks for.
+                                 * @returns An effect yielding 31 bytes of key material, one short of the required length.
+                                 */
                                 get: (scope) => Effect.succeed({ scope, material: Redacted.make(new Uint8Array(31)) }),
                             },
                             consent
@@ -652,8 +802,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     }
                     const denied = yield* Effect.flatMap(
                         CorrelationIssuer,
-                        /** A session's previous opt-in is not inherited by this request. */ (issuer) =>
-                            issuer.issue(false)
+                        /**
+                         * A session's previous opt-in is not inherited by this request.
+                         *
+                         * @param issuer - Correlation issuer from the current context.
+                         * @returns An effect that issues without opt-in.
+                         */
+                        (issuer) => issuer.issue(false)
                     ).pipe(Effect.provide(fixture), Effect.exit);
                     expect(Exit.isFailure(denied)).toBe(true);
                 }
@@ -662,7 +817,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'binds tokens to the exact caller, session, binding and current consent',
-        /** Test substitution, replay and shortened consent through the authority's public interface. */ () =>
+        /**
+         * Test substitution, replay and shortened consent through the authority's public interface.
+         *
+         * @returns The scenario that substitutes, replays and shortens consent against one live authority.
+         */
+        () =>
             Effect.gen(
                 /** Current consent changes remain visible inside an already-issued request lease. */ function* () {
                     // Keep one authority scope alive so revocation cannot be explained by disposal or reacquisition.
@@ -699,9 +859,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                 Exit.isFailure(
                                     yield* Effect.flatMap(
                                         CorrelationAuthority,
-                                        /** Keep the other principal's authority live so denial proves substitution, not scope closure. */ (
-                                            other
-                                        ) => other.authorize(binding, token)
+                                        /**
+                                         * Keep the other principal's authority live so denial proves substitution, not scope closure.
+                                         *
+                                         * @param other - Correlation authority for a different principal.
+                                         * @returns An effect that tries to authorize the first principal token there.
+                                         */
+                                        (other) => other.authorize(binding, token)
                                     ).pipe(
                                         Effect.provide(
                                             fixtureCorrelationLayer(
@@ -731,7 +895,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'rechecks consent and epoch after suspended key preparation',
-        /** Revoke or rotate during key access; an earlier grant or epoch cannot authorize completed derivation. */ () =>
+        /**
+         * Revoke or rotate during key access; an earlier grant or epoch cannot authorize completed derivation.
+         *
+         * @returns The scenario that revokes consent or rotates the epoch while key access is suspended.
+         */
+        () =>
             Effect.gen(
                 /** Suspend preparation at a real Effect barrier before revoking its policy. */ function* () {
                     // Both races occur after key access starts, exposing stale admission state rather than ordinary initial denial.
@@ -740,7 +909,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         const resume = yield* Deferred.make<void>();
                         const grant = yield* Ref.make(10 * hour);
                         const delayed: FixtureCorrelationKeys = {
-                            /** Model an asynchronous server-only key handle. */
+                            /**
+                             * Model an asynchronous server-only key handle.
+                             *
+                             * @param scope - Key scope the issuer asks for.
+                             * @returns An effect that signals entry, waits for the test, then yields the fixture key.
+                             */
                             get: (scope) =>
                                 Deferred.succeed(started, undefined).pipe(
                                     Effect.zipRight(Deferred.await(resume)),
@@ -763,7 +937,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'minimizes local log/error records and denies opt-out/default-off dispatch',
-        /** Generic record attributes remain stripped; only the separate pair channel can carry correlation. */ () =>
+        /**
+         * Generic record attributes remain stripped; only the separate pair channel can carry correlation.
+         *
+         * @returns The scenario that writes a record with private attributes and checks the delivered output.
+         */
+        () =>
             Effect.gen(
                 /** Verify secret canaries in observable output, not private helper calls. */ function* () {
                     // A successful delivery anchors the opt-out controls; an always-denied sink would fail this case.
@@ -771,7 +950,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     const output = collector();
                     const use = Effect.flatMap(
                         TelemetrySink,
-                        /** A scoped caller cannot bypass the minimizer. */ (sink) => sink.write(record)
+                        /**
+                         * A scoped caller cannot bypass the minimizer.
+                         *
+                         * @param sink - Telemetry sink from the current context.
+                         * @returns An effect that writes the fixture record.
+                         */
+                        (sink) => sink.write(record)
                     );
                     yield* use.pipe(Effect.provide(sinkLayer(token, output.layer)));
                     expect(output.writes).toEqual([
@@ -791,7 +976,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'drops revoked telemetry prepared before dispatch and never replays on flush',
-        /** The transport's final check detects changes after worker admission. */ () =>
+        /**
+         * The transport's final check detects changes after worker admission.
+         *
+         * @returns The scenario that revokes consent between worker authorization and transport dispatch.
+         */
+        () =>
             Effect.gen(
                 /** Revoke between worker authorization and transport dispatch. */ function* () {
                     // Share mutable consent with the live issuer so dispatch sees a change without rebuilding request authority.
@@ -819,7 +1009,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.scoped(
         'automatically refreshes a long-running session across four UTC epochs without blocking actions',
-        /** Advancing Clock, not request reads, triggers issuance; each boundary resets linkage only. */ () =>
+        /**
+         * Advancing Clock, not request reads, triggers issuance; each boundary resets linkage only.
+         *
+         * @returns The scenario that advances the clock across epochs and checks scheduled token renewal.
+         */
+        () =>
             Effect.gen(
                 /** Advance background issuance alongside synthetic work, not an ActionHost integration or latency probe. */ function* () {
                     // Advance Clock before reading; reads alone must not be what drives scheduled epoch renewal.
@@ -844,7 +1039,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.scoped(
         'lets a request in flight finish across rotation without relabeling its old telemetry',
-        /** Synthetic work executes once; its old telemetry fails closed while the next request uses the new epoch. */ () =>
+        /**
+         * Synthetic work executes once; its old telemetry fails closed while the next request uses the new epoch.
+         *
+         * @returns The scenario that suspends business work over an epoch boundary and checks old and new telemetry.
+         */
+        () =>
             Effect.gen(
                 /** Suspend synthetic business work over the exact UTC boundary; this does not invoke ActionHost. */ function* () {
                     // Capture the old pair before crossing expiry, then compare old-work omission with fresh-request delivery.
@@ -863,7 +1063,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             yield* Deferred.await(continueRequest);
                             yield* Ref.update(
                                 count,
-                                /** Business work is independent of optional telemetry. */ (n) => n + 1
+                                /**
+                                 * Business work is independent of optional telemetry.
+                                 *
+                                 * @param n - Synthetic business counter.
+                                 * @returns The counter plus one.
+                                 */
+                                (n) => n + 1
                             );
                             yield* sink.write(record).pipe(Effect.ignore);
                             return 'accepted';
@@ -880,7 +1086,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     expect(fresh.epoch).toBe(1);
                     yield* Effect.flatMap(
                         TelemetrySink,
-                        /** The next request uses only the new pair. */ (sink) => sink.write(record)
+                        /**
+                         * The next request uses only the new pair.
+                         *
+                         * @param sink - Telemetry sink from the current context.
+                         * @returns An effect that writes the fixture record.
+                         */
+                        (sink) => sink.write(record)
                     ).pipe(Effect.provide(sinkLayer(fresh, output.layer)));
                     expect(output.writes[0]?.correlation).toEqual(fresh);
                 }
@@ -889,7 +1101,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.scoped(
         'omits linkage during an issuer outage and recovers automatically without a business retry',
-        /** Renewal is bounded to one second; a stale token is never used during timeout/recovery. */ () =>
+        /**
+         * Renewal is bounded to one second; a stale token is never used during timeout/recovery.
+         *
+         * @returns The scenario that stalls renewal and checks the cache expires and later recovers.
+         */
+        () =>
             Effect.gen(
                 /** Cache expiry is independent of a stalled issuer and successful user work. */ function* () {
                     // Stall renewal only after an initial token exists, exposing stale-cache reuse as well as recovery.
@@ -897,13 +1114,22 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     const realIssuer = yield* CorrelationIssuer;
                     const session = yield* correlationSession.pipe(
                         Effect.provideService(CorrelationIssuer, {
-                            /** Simulate a slow issuer only, not failing or retrying application requests. */
+                            /**
+                             * Simulate a slow issuer only, not failing or retrying application requests.
+                             *
+                             * @param optIn - Whether the request opted in to correlation.
+                             * @returns An effect that never completes while the issuer is down, otherwise the real issuance.
+                             */
                             issue: (optIn) =>
                                 Ref.get(down).pipe(
                                     Effect.flatMap(
-                                        /** A stalled optional issuer must not stall business reads. */ (
-                                            unavailable
-                                        ) => (unavailable ? Effect.never : realIssuer.issue(optIn))
+                                        /**
+                                         * A stalled optional issuer must not stall business reads.
+                                         *
+                                         * @param unavailable - Whether the issuer is currently down.
+                                         * @returns A never-completing effect when down, otherwise the real issuance.
+                                         */
+                                        (unavailable) => (unavailable ? Effect.never : realIssuer.issue(optIn))
                                     )
                                 ),
                         })
@@ -924,7 +1150,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'rejects forged schema fields and closed issuer/session handles',
-        /** Closing ownership revokes even retained references; token syntax is never authority. */ () =>
+        /**
+         * Closing ownership revokes even retained references; token syntax is never authority.
+         *
+         * @returns The scenario that closes the owning scope and uses retained readers afterwards.
+         */
+        () =>
             Effect.gen(
                 /** Scope disposal revokes retained readers without remote cleanup work. */ function* () {
                     // Clock stays fixed so retained-handle refusals prove ownership closure, not time expiry.
@@ -947,7 +1178,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'rejects malformed capabilities and denies keys from another scope or epoch',
-        /** Invalid runtime inputs are rejected without leaking their identity-bearing decoder details. */ () =>
+        /**
+         * Invalid runtime inputs are rejected without leaking their identity-bearing decoder details.
+         *
+         * @returns The scenario that passes invalid keys, bindings and request metadata and expects safe rejection.
+         */
+        () =>
             Effect.gen(
                 /** Probe public boundaries with structurally typed but semantically invalid values. */ function* () {
                     // Correctly sized key bytes are insufficient when their scope or epoch metadata belongs elsewhere.
@@ -958,7 +1194,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             binding,
                             identity,
                             {
-                                /** A key returned for a different epoch is not a fallback. */
+                                /**
+                                 * A key returned for a different epoch is not a fallback.
+                                 *
+                                 * @param scope - Key scope the issuer asks for.
+                                 * @returns An effect yielding the key for the following epoch.
+                                 */
                                 get: (scope) => keys.get({ ...scope, epoch: scope.epoch + 1 }),
                             },
                             consent
@@ -967,7 +1208,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             binding,
                             identity,
                             {
-                                /** Scope metadata must match even when key bytes have the right size. */
+                                /**
+                                 * Scope metadata must match even when key bytes have the right size.
+                                 *
+                                 * @param scope - Key scope the issuer asks for.
+                                 * @returns An effect yielding a key derived for an unrelated purpose.
+                                 */
                                 get: (scope) => keys.get({ ...scope, purpose: 'unrelated' }),
                             },
                             consent
@@ -996,8 +1242,13 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                             const output = collector();
                             const use = Effect.flatMap(
                                 TelemetrySink,
-                                /** No provider is consulted for invalid request metadata. */ (sink) =>
-                                    sink.write(record)
+                                /**
+                                 * No provider is consulted for invalid request metadata.
+                                 *
+                                 * @param sink - Telemetry sink from the current context.
+                                 * @returns An effect that writes the fixture record.
+                                 */
+                                (sink) => sink.write(record)
                             );
                             for (const layer of [
                                 sinkLayer({ ...token, session: 'raw' }, output.layer),
@@ -1006,7 +1257,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                                 expect(Exit.isFailure(yield* use.pipe(Effect.provide(layer), Effect.exit))).toBe(true);
                             }
                             const flags = Layer.succeed(Flags, {
-                                /** Ordinary export stays enabled so this specifically tests the correlation flag. */
+                                /**
+                                 * Ordinary export stays enabled so this specifically tests the correlation flag.
+                                 *
+                                 * @param flag - Flag definition the sink asks about.
+                                 * @returns An effect yielding the evaluation, off only for the correlation flag.
+                                 */
                                 evaluate: (flag) =>
                                     Effect.succeed({
                                         ...safeDefault(flag),
@@ -1030,7 +1286,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.scoped(
         'treats rejected issuance as optional linkage loss, including at initial session startup',
-        /** Failing issuer requests must not escape into the action path or keep an old token alive. */ () =>
+        /**
+         * Failing issuer requests must not escape into the action path or keep an old token alive.
+         *
+         * @returns The scenario that fails issuance and checks that requests still succeed without a stale pair.
+         */
+        () =>
             Effect.gen(
                 /** Background failures are contained and do not require a prompt or client retry. */ function* () {
                     // Observe both initial denial and a scheduled retry; neither may surface a failed request or stale pair.
@@ -1045,7 +1306,12 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
 
     it.effect(
         'keeps interleaved request spans and error logs isolated through the central telemetry worker',
-        /** Distinct request-scoped pipelines never lend one caller's pair to another's queued record. */ () =>
+        /**
+         * Distinct request-scoped pipelines never lend one caller's pair to another's queued record.
+         *
+         * @returns The scenario that runs two overlapping requests and checks each output carries only its own pair.
+         */
+        () =>
             Effect.gen(
                 /** Use real central logging/tracing rather than invoking transport helpers directly. */ function* () {
                     // Distinct subjects and sessions make any cross-request pair substitution observable after interleaving.
@@ -1064,7 +1330,15 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                     const right = yield* issue.pipe(Effect.provide(second));
                     const leftReady = yield* Deferred.make<void>();
                     const rightReady = yield* Deferred.make<void>();
-                    /** Retain an asymmetric request overlap while each worker observes only its own private lease. */
+                    /**
+                     * Retain an asymmetric request overlap while each worker observes only its own private lease.
+                     *
+                     * @param token - Correlation token for this request.
+                     * @param output - Collector that receives this request output.
+                     * @param mine - Signalled when this request has entered.
+                     * @param theirs - Awaited until the other request has entered.
+                     * @returns An effect that logs an error in a span, waits for the other request and flushes.
+                     */
                     const request = (
                         token: TelemetryCorrelation,
                         output: ReturnType<typeof collector>,
@@ -1111,15 +1385,25 @@ describe('fixture-only pseudonymous correlation', /** Exercise public issuer, re
                         expect(
                             output.writes
                                 .map(
-                                    /** Observable signal coverage includes the failed/error log and its span. */ (
-                                        entry
-                                    ) => entry.record.signal
+                                    /**
+                                     * Observable signal coverage includes the failed/error log and its span.
+                                     *
+                                     * @param entry - One captured write.
+                                     * @returns Whether the write is a log or a span.
+                                     */
+                                    (entry) => entry.record.signal
                                 )
                                 .sort()
                         ).toEqual(['log', 'span']);
                         expect(
                             output.writes.every(
-                                /** No request context crosses the private lease boundary. */ (entry) =>
+                                /**
+                                 * No request context crosses the private lease boundary.
+                                 *
+                                 * @param entry - One captured write.
+                                 * @returns Whether the write carries this request pair.
+                                 */
+                                (entry) =>
                                     entry.correlation.person === token.person &&
                                     entry.correlation.session === token.session
                             )
