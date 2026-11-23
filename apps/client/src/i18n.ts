@@ -18,16 +18,40 @@ import { canonicalLocale } from '@eventiva/contracts/i18n';
 import { getLocales } from 'expo-localization';
 import enGB from '../lang/en-GB.json';
 
-/** Offline catalogues bundled with the app, by locale. */
+/**
+ * Offline catalogues bundled with the app, by locale.
+ *
+ * @since 0.0.1
+ * @example
+ * const messages = catalogues[deviceLocale()];
+ */
 export const catalogues: Readonly<Record<string, Readonly<Record<string, string>>>> = { [canonicalLocale]: enGB };
 
-/** The device's first preferred locale that has a catalogue, else en-GB. */
+/**
+ * The device's first preferred locale that has a catalogue, else en-GB.
+ *
+ * @since 0.0.1
+ * @returns The BCP 47 tag of the locale to format in.
+ * @example
+ * const locale = deviceLocale();
+ */
 export const deviceLocale = (): string =>
     getLocales()
         .map(
-            /** Preserve device preference order while extracting catalogue lookup keys. */ (locale) =>
-                locale.languageTag
+            /**
+             * Preserve device preference order while extracting catalogue lookup keys.
+             *
+             * @param locale - One of the device's preferred locales.
+             * @returns Its BCP 47 language tag.
+             */
+            (locale) => locale.languageTag
         )
         .find(
-            /** Accept only an exact bundled catalogue key, without network negotiation. */ (tag) => tag in catalogues
+            /**
+             * Accept only an exact bundled catalogue key, without network negotiation.
+             *
+             * @param tag - A preferred language tag.
+             * @returns Whether a catalogue is bundled for it.
+             */
+            (tag) => tag in catalogues
         ) ?? canonicalLocale;

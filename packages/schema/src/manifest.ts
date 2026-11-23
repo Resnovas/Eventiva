@@ -25,18 +25,56 @@ import { Schema } from 'effect';
  * declaration.
  */
 
-/** A resource name: the owning module followed by the record, such as `events.event`. */
+/**
+ * A resource name: the owning module followed by the record, such as `events.event`.
+ *
+ * @since 0.0.1
+ * @example
+ * const valid = Schema.is(ResourceName)('events.event');
+ */
 export const ResourceName = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$/));
+/**
+ * A string already checked against the resource-name pattern.
+ *
+ * @since 0.0.1
+ * @example
+ * const name: ResourceName = 'events.event';
+ */
 export type ResourceName = typeof ResourceName.Type;
 
-/** A module id: lower case, optionally dotted, such as `events` or `events.tickets`. */
+/**
+ * A module id: lower case, optionally dotted, such as `events` or `events.tickets`.
+ *
+ * @since 0.0.1
+ * @example
+ * const module = Schema.decodeUnknownSync(ModuleId)('events.tickets');
+ */
 export const ModuleId = Schema.String.pipe(Schema.pattern(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/));
+/**
+ * A string already checked against the module-id pattern.
+ *
+ * @since 0.0.1
+ * @example
+ * const module: ModuleId = 'events';
+ */
 export type ModuleId = typeof ModuleId.Type;
 
-/** The manifest format this package reads. A host rejects any other format. */
+/**
+ * The manifest format this package reads. A host rejects any other format.
+ *
+ * @since 0.0.1
+ * @example
+ * const manifest = { format: manifestFormat, id: 'events', version: '1.0.0', description: 'Events.', actions: [], flags: [] };
+ */
 export const manifestFormat = 1;
 
-/** A module manifest. */
+/**
+ * The schema of what a module contributes: its id, version, actions, flags and resources, checked before a host registers it.
+ *
+ * @since 0.0.1
+ * @example
+ * const manifest = Schema.decodeUnknownSync(ModuleManifest)(json);
+ */
 export const ModuleManifest = Schema.Struct({
     format: Schema.Literal(manifestFormat),
     id: ModuleId,
@@ -52,4 +90,11 @@ export const ModuleManifest = Schema.Struct({
     /** Names of every resource the module declares; omitted when it declares none. */
     resources: Schema.optional(Schema.Array(ResourceName)),
 });
+/**
+ * A decoded module manifest, as a host reads it before registering the module.
+ *
+ * @since 0.0.1
+ * @example
+ * const manifest: ModuleManifest = { format: 1, id: 'events', version: '1.0.0', description: 'Events.', actions: [], flags: [] };
+ */
 export type ModuleManifest = typeof ModuleManifest.Type;

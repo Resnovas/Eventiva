@@ -36,7 +36,12 @@ const stock = { manufacturer: 'fixture audio', model: 'a-10', variant: null, sup
 
 it.effect(
     'preserves model punctuation and variants while matching case and zero stock',
-    /** Prevent optimistic fuzzy matching from conflating different physical models. */ () =>
+    /**
+     * Prevent optimistic fuzzy matching from conflating different physical models.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Compare exact, punctuation-different, variant and manufacturer-different stock rows. */ function* () {
                 // Vary model punctuation and variant separately so case normalization cannot accidentally become fuzzy matching.
@@ -64,7 +69,12 @@ it.effect(
 
 it.effect(
     'rejects every colliding SKU and never chooses an ambiguous public reference',
-    /** Input order must not choose a duplicate stock winner or a technical model. */ () =>
+    /**
+     * Input order must not choose a duplicate stock winner or a technical model.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Keep invalid rows in place and ensure valid neighboring rows remain independently previewable. */ function* () {
                 // Both colliding rows lose, while the independent SKU still matches; input order must not select a winner.
@@ -91,7 +101,12 @@ it.effect(
 
 it.effect(
     'reports invalid rows without echoing rejected private values',
-    /** Unknown columns, unsafe quantities and incomplete identities cannot reach staged stock. */ () =>
+    /**
+     * Unknown columns, unsafe quantities and incomplete identities cannot reach staged stock.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Validate each row separately without losing its original one-based position. */ function* () {
                 // Retain a valid final control so rejecting the entire batch cannot masquerade as safe row-level validation.
@@ -119,7 +134,12 @@ it.effect(
 
 it.effect(
     'bounds whole previews and rejects private fields in public references',
-    /** Caller-supplied catalogue rows are not permission to mix tenant stock with public model identity. */ () =>
+    /**
+     * Caller-supplied catalogue rows are not permission to mix tenant stock with public model identity.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Check both sides of batch limits and preserve the original inputs across deterministic retries. */ function* () {
                 // Exact limits must pass before overflow/private-field failures; retries must not mutate either input domain.
@@ -143,7 +163,12 @@ it.effect(
 
 it.effect(
     'requires complete reviewed metadata and stable identities without accepting writable SKU or quantities',
-    /** These are public transport contracts, not defaults inferred from a matched model or supplier quantity. */ () =>
+    /**
+     * These are public transport contracts, not defaults inferred from a matched model or supplier quantity.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Reject each absent mapping independently, plus legacy direct-CSV intake and untrusted extra metadata. */ function* () {
                 // Asymmetric IDs and row position distinguish an explicit mapping from order-based identity guessing.
@@ -199,7 +224,15 @@ it.effect(
                 ).toBe('Left');
                 expect(stockImportFlag.safeDefault).toBe(false);
                 expect(
-                    importActions.map(/** Compare the exact portable action identity set. */ (action) => action.name)
+                    importActions.map(
+                        /**
+                         * Compare the exact portable action identity set.
+                         *
+                         * @param action - One declared import action.
+                         * @returns The action's portable name.
+                         */
+                        (action) => action.name
+                    )
                 ).toEqual([
                     'inventory.import.stage',
                     'inventory.import.get',
@@ -217,7 +250,12 @@ it.effect(
 
 it.effect(
     'preserves an independent mixed-outcome oracle across bounded permutations and perturbations',
-    /** Row and reference order may change positions, but must never choose winners or detach private stock. */ () =>
+    /**
+     * Row and reference order may change positions, but must never choose winners or detach private stock.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Exercise fixed synthetic outcomes without reimplementing matching, SKU counting or schema validation. */ function* () {
                 /** A handwritten disposition is independent of the implementation's keys and matching algorithm. */
@@ -237,8 +275,13 @@ it.effect(
                     ambiguous,
                     { ...ambiguous, id: '55555555-5555-4555-8555-555555555555' },
                 ].map(
-                    /** Freeze flat public identities so mutation cannot hide behind a later retry. */ (entry) =>
-                        Object.freeze({ ...entry })
+                    /**
+                     * Freeze flat public identities so mutation cannot hide behind a later retry.
+                     *
+                     * @param entry - One public product reference.
+                     * @returns A frozen shallow copy of the reference.
+                     */
+                    (entry) => Object.freeze({ ...entry })
                 );
                 // Expected dispositions are reviewed fixture facts, not derived from reference lookup or SKU normalization.
                 const fixtures: readonly Fixture[] = [
@@ -277,38 +320,68 @@ it.effect(
                     { input: { ...stock, supplierSku: 'DUPLICATE', quantity: 43 }, result: { state: 'duplicate-sku' } },
                     { input: { ...stock, supplierSku: 'UNIQUE-ZERO', quantity: -9 }, result: { state: 'invalid' } },
                 ];
-                /** Rotate in both directions to move every fixture through every position without factorial growth. */
+                /**
+                 * Rotate in both directions to move every fixture through every position without factorial growth.
+                 *
+                 * @template A - The element type being reordered.
+                 * @param values - The sequence to rotate.
+                 * @returns Every rotation followed by its reversal.
+                 */
                 const orders = <A>(values: readonly A[]): readonly (readonly A[])[] =>
                     values.flatMap(
-                        /** Reverse each rotation to expose different neighbors and first/last candidates. */ (
-                            _,
-                            offset
-                        ) => {
+                        /**
+                         * Reverse each rotation to expose different neighbors and first/last candidates.
+                         *
+                         * @param _ - The element at this position, unused because only the offset matters.
+                         * @param offset - How far to rotate the values.
+                         * @returns The rotation and its reversal.
+                         */
+                        (_, offset) => {
                             // Fresh arrays keep reversal from changing the fixture order used by subsequent rotations.
                             const rotated = [...values.slice(offset), ...values.slice(0, offset)];
                             return [rotated, rotated.toReversed()];
                         }
                     );
-                /** Attach only the current input position and exact private stock to the literal fixture verdict. */
+                /**
+                 * Attach only the current input position and exact private stock to the literal fixture verdict.
+                 *
+                 * @param rows - Fixtures in the order they are previewed.
+                 * @returns The expected preview rows for that order.
+                 */
                 const oracle = (rows: readonly Fixture[]) =>
                     rows.map(
-                        /** Nonmatches deliberately have no reference, stock or private quantity fields. */ (
-                            entry,
-                            index
-                        ) =>
+                        /**
+                         * Nonmatches deliberately have no reference, stock or private quantity fields.
+                         *
+                         * @param entry - One fixture with its handwritten verdict.
+                         * @param index - The fixture's zero-based input position.
+                         * @returns The expected public preview row.
+                         */
+                        (entry, index) =>
                             entry.result.state === 'matched'
                                 ? { row: index + 1, ...entry.result, stock: entry.input }
                                 : { row: index + 1, ...entry.result }
                     );
-                /** Check full public results twice and reject mutation of either frozen input domain. */
+                /**
+                 * Check full public results twice and reject mutation of either frozen input domain.
+                 *
+                 * @param rows - Fixtures in the order they are previewed.
+                 * @param publicRows - Public references in the order they are supplied.
+                 * @param label - Assertion label naming this permutation.
+                 * @returns The Effect that runs the checks.
+                 */
                 const check = (rows: readonly Fixture[], publicRows: readonly ProductReference[], label: string) =>
                     Effect.gen(
                         /** Preserve a pre-call snapshot so deterministic retries cannot conceal input mutation. */ function* () {
                             const inputs = Object.freeze(
                                 rows.map(
-                                    /** Each row is flat, so freezing its fields covers all writable input. */ (
-                                        entry
-                                    ) => Object.freeze({ ...entry.input })
+                                    /**
+                                     * Each row is flat, so freezing its fields covers all writable input.
+                                     *
+                                     * @param entry - One fixture whose input row is copied.
+                                     * @returns A frozen shallow copy of the input row.
+                                     */
+                                    (entry) => Object.freeze({ ...entry.input })
                                 )
                             );
                             const catalogue = Object.freeze([...publicRows]);
@@ -353,9 +426,13 @@ it.effect(
                 );
                 yield* check(
                     fixtures.map(
-                        /** Increase private quantities without changing any matching identity or verdict. */ (
-                            entry
-                        ) =>
+                        /**
+                         * Increase private quantities without changing any matching identity or verdict.
+                         *
+                         * @param entry - One fixture to perturb.
+                         * @returns The fixture with a larger quantity when it matches, otherwise unchanged.
+                         */
+                        (entry) =>
                             entry.result.state === 'matched'
                                 ? { ...entry, input: { ...entry.input, quantity: entry.input.quantity + 97 } }
                                 : entry
@@ -365,25 +442,39 @@ it.effect(
                 );
                 yield* check(
                     fixtures.map(
-                        /** Only the zero-stock fixture becomes ambiguous when its second public candidate appears. */ (
-                            entry,
-                            index
-                        ): Fixture => (index === 0 ? { input: entry.input, result: { state: 'ambiguous' } } : entry)
+                        /**
+                         * Only the zero-stock fixture becomes ambiguous when its second public candidate appears.
+                         *
+                         * @param entry - One fixture to adjust.
+                         * @param index - The fixture's zero-based position.
+                         * @returns The fixture, marked ambiguous only at position zero.
+                         */
+                        (entry, index): Fixture =>
+                            index === 0 ? { input: entry.input, result: { state: 'ambiguous' } } : entry
                     ),
                     [...references, Object.freeze({ ...reference, id: '77777777-7777-4777-8777-777777777777' })],
                     'second candidate cannot select by order'
                 );
                 yield* check(
                     fixtures.map(
-                        /** Removing the null-variant identity must not let the explicit variant substitute for it. */ (
-                            entry,
-                            index
-                        ): Fixture => (index === 1 ? { input: entry.input, result: { state: 'unmatched' } } : entry)
+                        /**
+                         * Removing the null-variant identity must not let the explicit variant substitute for it.
+                         *
+                         * @param entry - One fixture to adjust.
+                         * @param index - The fixture's zero-based position.
+                         * @returns The fixture, marked unmatched only at position one.
+                         */
+                        (entry, index): Fixture =>
+                            index === 1 ? { input: entry.input, result: { state: 'unmatched' } } : entry
                     ),
                     references.filter(
-                        /** Remove exactly the handwritten null-variant control, not an identity inferred by the matcher. */ (
-                            entry
-                        ) => entry.id !== second.id
+                        /**
+                         * Remove exactly the handwritten null-variant control, not an identity inferred by the matcher.
+                         *
+                         * @param entry - One public product reference.
+                         * @returns Whether the reference is kept.
+                         */
+                        (entry) => entry.id !== second.id
                     ),
                     'null and explicit variant remain distinct'
                 );

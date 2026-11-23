@@ -30,13 +30,26 @@ const id = '019b0000-0000-7000-8000-000000000001';
 describe('physical location contracts', /** Preserve strict local codecs independently of incomplete provider discovery. */ () => {
     it.effect(
         'declares only four sensitive online metadata actions and two resources',
-        /** Importing metadata grants no host or resource authority. */ () =>
+        /**
+         * Importing metadata grants no host or resource authority.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Verify canonical permissions and discovery refusal rather than weakening schemas to obtain provider parity. */ function* () {
                     // Definitions are registrable even while optional discovery rejects unsupported composed bounds.
                     yield* validateDefinitions(locationActions);
                     expect(
-                        locationActions.map(/** Compare public names, not helper identities. */ (spec) => spec.name)
+                        locationActions.map(
+                            /**
+                             * Compare public names, not helper identities.
+                             *
+                             * @param spec - One declared location action.
+                             * @returns The action's public name.
+                             */
+                            (spec) => spec.name
+                        )
                     ).toEqual([
                         'inventory.location.create',
                         'inventory.location.update',

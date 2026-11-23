@@ -18,7 +18,13 @@ import * as FileSystem from '@effect/platform/FileSystem';
 import { TelemetryRecord, TelemetrySink, TelemetrySinkFailure } from '@eventiva/contracts/observability';
 import { Clock, Config, Console, Effect, Layer, Option, Redacted, Schema } from 'effect';
 
-/** Read local telemetryFile settings with a redacted required directory; acquisition validates the numeric limits. */
+/**
+ * Read local telemetryFile settings with a redacted required directory; acquisition validates the numeric limits.
+ *
+ * @since 0.0.1
+ * @example
+ * const layer = serverLoggerLayer(serverLoggerConfig);
+ */
 export const serverLoggerConfig = Config.all({
     directory: Config.redacted('directory'),
     maxFileBytes: Config.integer('maxFileBytes').pipe(Config.withDefault(1048576)),
@@ -30,6 +36,10 @@ export const serverLoggerConfig = Config.all({
  * Dedicated private absolute directory and local retention limits: 1024-67108864
  * bytes per segment, 1-1024 segments and 1-365 UTC days, all integral.
  * The scoped sink validates injected settings as well as configuration-derived values.
+ *
+ * @since 0.0.1
+ * @example
+ * const options: ServerLoggerOptions = { directory: Redacted.make('/var/lib/eventiva/telemetry'), maxFileBytes: 1048576, maxFiles: 7, retentionDays: 7 };
  */
 export interface ServerLoggerOptions {
     readonly directory: Redacted.Redacted<string>;
@@ -38,33 +48,75 @@ export interface ServerLoggerOptions {
     readonly retentionDays: number;
 }
 
-/** Trusted newlines survive verbatim after the header. Untrusted text never reaches this formatter. */
+/**
+ * Trusted newlines survive verbatim after the header. Untrusted text never reaches this formatter.
+ *
+ * @param record - A record already decoded against the telemetry wire schema.
+ * @returns A header line with timestamp, level, code, trace and span, followed by the record text.
+ * @since 0.0.1
+ * @example
+ * const line = formatConsoleRecord(record);
+ */
 export const formatConsoleRecord = (record: TelemetryRecord): string =>
     `${record.timestamp} ${record.level} ${record.code} trace=${record.traceId || '-'} span=${record.spanId || '-'}\n${record.text}`;
 
 const filenamePattern = /^\d{4}-\d{2}-\d{2}\.\d{6}\.jsonl$/;
 
-/** Config-free bootstrap sink. Install before acquiring even the file sink or main configuration. */
+/**
+ * Write one formatted record through Effect's console service, so bootstrap output needs no application or file
+ * configuration and no Node-only primitive.
+ *
+ * @param text - The formatted record to print.
+ * @returns An Effect that logs the record and never fails.
+ */
+const writeToConsole = (text: string): Effect.Effect<void, TelemetrySinkFailure> => Console.log(text);
+
+/**
+ * Config-free bootstrap sink. Install before acquiring even the file sink or main configuration.
+ *
+ * @param write - The formatted-record writer; it defaults to Effect's console service.
+ * @returns A sink layer that decodes every record and reports only closed failures.
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(main, consoleLoggerLayer());
+ */
 export const consoleLoggerLayer = (
     /** Accept only schema-validated formatted records; failures must use the closed sink error type. */
-    write: (text: string) => Effect.Effect<void, TelemetrySinkFailure> =
-        /** Use Effect's console service so bootstrap output needs no application or file configuration. */
-        (text) => Console.log(text)
+    write: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = writeToConsole
 ): Layer.Layer<TelemetrySink> =>
     Layer.succeed(TelemetrySink, {
-        /** Decode even typed callers and replace all output failures or defects with a bounded write reason. */
+        /**
+         * Decode even typed callers and replace all output failures or defects with a bounded write reason.
+         *
+         * @param input - The record to emit, decoded again before formatting.
+         * @returns An effect that completes once the record is written.
+         * @fails {TelemetrySinkFailure} With `invalid-record` for a malformed record, otherwise `write`.
+         */
         write: (input) =>
             Schema.decode(TelemetryRecord)(input).pipe(
                 Effect.mapError(
-                    /** Do not retain malformed record contents in the decoder's error representation. */
+                    /**
+                     * Do not retain malformed record contents in the decoder's error representation.
+                     *
+                     * @returns The bounded `invalid-record` failure.
+                     */
                     () => new TelemetrySinkFailure({ reason: 'invalid-record' })
                 ),
                 Effect.flatMap(
-                    /** Format only decoded records; caller-controlled text must already satisfy the wire schema. */
+                    /**
+                     * Format only decoded records; caller-controlled text must already satisfy the wire schema.
+                     *
+                     * @param record - The decoded record.
+                     * @returns The injected writer's effect for the formatted record.
+                     */
                     (record) => write(formatConsoleRecord(record))
                 ),
                 Effect.catchAllCause(
-                    /** Keep even defects in the injected writer from escaping as arbitrary diagnostic payloads. */
+                    /**
+                     * Keep even defects in the injected writer from escaping as arbitrary diagnostic payloads.
+                     *
+                     * @returns A failure with the bounded `write` reason.
+                     */
                     () => Effect.fail(new TelemetrySinkFailure({ reason: 'write' }))
                 )
             ),
@@ -76,13 +128,19 @@ export const consoleLoggerLayer = (
  * store. No Node filesystem capability leaks into runtime or feature packages.
  * Disk writes rotate bounded JSONL segments and sync each record; valid records
  * still reach the console after disk failure. Flush waits for serialized disk work.
+ *
+ * @param configuration - The logger settings; defaults to {@link serverLoggerConfig}.
+ * @param consoleWrite - The formatted-record console writer; defaults to Effect's console service.
+ * @returns A scoped sink layer that owns the directory lock until its scope closes.
+ * @fails {TelemetrySinkFailure} With `configuration` when settings, the directory, the lock or existing segments are unsafe.
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(main, serverLoggerLayer().pipe(Layer.provide(NodeFileSystem.layer)));
  */
 export const serverLoggerLayer = (
     configuration: Config.Config<ServerLoggerOptions> = serverLoggerConfig,
     /** Emit schema-validated formatted records independently of the file result, with closed sink failures only. */
-    consoleWrite: (text: string) => Effect.Effect<void, TelemetrySinkFailure> =
-        /** Keep default console output within Effect's console service rather than a Node-only primitive. */
-        (text) => Console.log(text)
+    consoleWrite: (text: string) => Effect.Effect<void, TelemetrySinkFailure> = writeToConsole
 ): Layer.Layer<TelemetrySink, TelemetrySinkFailure, FileSystem.FileSystem> =>
     Layer.scoped(
         TelemetrySink,
@@ -91,7 +149,11 @@ export const serverLoggerLayer = (
                 const fs = yield* FileSystem.FileSystem;
                 const config = yield* configuration.pipe(
                     Effect.mapError(
-                        /** Discard configuration errors that may retain the private directory or malformed values. */
+                        /**
+                         * Discard configuration errors that may retain the private directory or malformed values.
+                         *
+                         * @returns The bounded `configuration` failure.
+                         */
                         () => new TelemetrySinkFailure({ reason: 'configuration' })
                     )
                 );
@@ -102,11 +164,21 @@ export const serverLoggerLayer = (
                     directory.endsWith('/') ||
                     directory.includes('//') ||
                     Array.from(directory).some(
-                        /** Reject path control characters before any filesystem work or diagnostic rendering. */
+                        /**
+                         * Reject path control characters before any filesystem work or diagnostic rendering.
+                         *
+                         * @param character - One code point of the directory path.
+                         * @returns Whether the character is a C0 control or DEL.
+                         */
                         (character) => (character.codePointAt(0) ?? 0) < 32 || character === '\u007f'
                     ) ||
                     directory.split('/').some(
-                        /** Disallow dot-segment aliases rather than normalizing a caller's sensitive directory. */
+                        /**
+                         * Disallow dot-segment aliases rather than normalizing a caller's sensitive directory.
+                         *
+                         * @param part - One slash-separated path segment.
+                         * @returns Whether the segment is `.` or `..`.
+                         */
                         (part) => part === '.' || part === '..'
                     ) ||
                     !Number.isInteger(config.maxFileBytes) ||
@@ -132,11 +204,19 @@ export const serverLoggerLayer = (
                 // Acquire the exclusive lock before looking at or changing managed files.
                 yield* Effect.acquireRelease(
                     fs.open(lockPath, { flag: 'wx', mode: 0o600 }),
-                    /** Release the ownership marker on scope exit; cleanup failure must not silently imply reacquisition is safe. */
+                    /**
+                     * Release the ownership marker on scope exit; cleanup failure must not silently imply reacquisition is safe.
+                     *
+                     * @returns The lock removal effect, which dies with a bounded `flush` failure.
+                     */
                     () =>
                         fs.remove(lockPath).pipe(
                             Effect.orDieWith(
-                                /** Replace path-bearing cleanup errors even when shutdown must report a defect. */
+                                /**
+                                 * Replace path-bearing cleanup errors even when shutdown must report a defect.
+                                 *
+                                 * @returns The bounded `flush` failure used as the defect.
+                                 */
                                 () => new TelemetrySinkFailure({ reason: 'flush' })
                             )
                         )
@@ -147,7 +227,12 @@ export const serverLoggerLayer = (
                 // Validate surviving segments before promising a byte bound. Never truncate an oversized file.
                 const initial = (yield* fs.readDirectory(directory))
                     .filter(
-                        /** Manage only date-and-sequence JSONL segments; unrelated directory entries are not retention targets. */
+                        /**
+                         * Manage only date-and-sequence JSONL segments; unrelated directory entries are not retention targets.
+                         *
+                         * @param file - A directory entry name.
+                         * @returns Whether the entry is a managed segment name.
+                         */
                         (file) => filenamePattern.test(file)
                     )
                     .sort();
@@ -169,7 +254,13 @@ export const serverLoggerLayer = (
                             return yield* new TelemetrySinkFailure({ reason: 'configuration' });
                     }
                 }
-                /** Serialize disk mutation and sync before console delivery; preserve the disk result if console succeeds. */
+                /**
+                 * Serialize disk mutation and sync before console delivery; preserve the disk result if console succeeds.
+                 *
+                 * @param input - The record to persist and print, decoded again on both paths.
+                 * @returns An effect that completes once the record is synced to disk and printed.
+                 * @fails {TelemetrySinkFailure} With `invalid-record`, `unavailable` or `write`; console failure takes precedence.
+                 */
                 const write = (input: TelemetryRecord): Effect.Effect<void, TelemetrySinkFailure> =>
                     lock
                         .withPermits(1)(
@@ -178,7 +269,11 @@ export const serverLoggerLayer = (
                                     // Exporter boundary: validate even typed input (JS, IPC and malformed callers exist).
                                     const record = yield* Schema.decode(TelemetryRecord)(input).pipe(
                                         Effect.mapError(
-                                            /** Malformed input is rejected without retaining its decoder details or contents. */
+                                            /**
+                                             * Malformed input is rejected without retaining its decoder details or contents.
+                                             *
+                                             * @returns The bounded `invalid-record` failure.
+                                             */
                                             () => new TelemetrySinkFailure({ reason: 'invalid-record' })
                                         )
                                     );
@@ -192,7 +287,12 @@ export const serverLoggerLayer = (
                                         .slice(0, 10);
                                     let files = (yield* fs.readDirectory(directory))
                                         .filter(
-                                            /** Restrict disk accounting and retention deletion to managed segment names. */
+                                            /**
+                                             * Restrict disk accounting and retention deletion to managed segment names.
+                                             *
+                                             * @param file - A directory entry name.
+                                             * @returns Whether the entry is a managed segment name.
+                                             */
                                             (file) => filenamePattern.test(file)
                                         )
                                         .sort();
@@ -203,13 +303,23 @@ export const serverLoggerLayer = (
                                         }
                                     }
                                     files = files.filter(
-                                        /** Exclude expired segments from subsequent count and sequence calculations. */
+                                        /**
+                                         * Exclude expired segments from subsequent count and sequence calculations.
+                                         *
+                                         * @param file - A managed segment name.
+                                         * @returns Whether the segment's day is within retention.
+                                         */
                                         (file) => file.slice(0, 10) >= cutoff
                                     );
                                     let fresh = false;
                                     if (!current.startsWith(`${day}.`) || size + bytes.length > config.maxFileBytes) {
                                         const today = files.filter(
-                                            /** Sequence numbers advance within the current UTC day, not across day boundaries. */
+                                            /**
+                                             * Sequence numbers advance within the current UTC day, not across day boundaries.
+                                             *
+                                             * @param file - A managed segment name.
+                                             * @returns Whether the segment belongs to the current UTC day.
+                                             */
                                             (file) => file.startsWith(`${day}.`)
                                         );
                                         const last = today.at(-1);
@@ -231,7 +341,7 @@ export const serverLoggerLayer = (
                                             /** Own the open descriptor only through validation, append and sync for this record. */ function* () {
                                                 const file = yield* fs.open(path, {
                                                     flag: fresh ? 'wx' : 'a',
-                                                    mode: 0o600
+                                                    mode: 0o600,
                                                 });
                                                 const stat = yield* file.stat;
                                                 // Recheck the opened file, not just its name, before trusting permissions and byte accounting.
@@ -253,7 +363,12 @@ export const serverLoggerLayer = (
                                 }
                             ).pipe(
                                 Effect.catchAllCause(
-                                    /** Sanitize all disk failures and force a fresh segment after an uncertain append. */ () => {
+                                    /**
+                                     * Sanitize all disk failures and force a fresh segment after an uncertain append.
+                                     *
+                                     * @returns A failure with the bounded `write` reason.
+                                     */
+                                    () => {
                                         current = ''; // Never append after a partial/uncertain write.
                                         return Effect.fail(new TelemetrySinkFailure({ reason: 'write' }));
                                     }
@@ -263,16 +378,29 @@ export const serverLoggerLayer = (
                         .pipe(
                             Effect.exit,
                             Effect.flatMap(
-                                /** Attempt independent console delivery before replaying the disk result; console failure takes precedence. */ (
-                                    result
-                                ) =>
+                                /**
+                                 * Attempt independent console delivery before replaying the disk result; console failure takes precedence.
+                                 *
+                                 * @param result - The settled disk outcome, replayed after console delivery succeeds.
+                                 * @returns The console effect followed by the disk outcome.
+                                 */
+                                (result) =>
                                     Schema.decode(TelemetryRecord)(input).pipe(
                                         Effect.mapError(
-                                            /** Disk failure does not authorize malformed input to reach the independent console path. */
+                                            /**
+                                             * Disk failure does not authorize malformed input to reach the independent console path.
+                                             *
+                                             * @returns The bounded `invalid-record` failure.
+                                             */
                                             () => new TelemetrySinkFailure({ reason: 'invalid-record' })
                                         ),
                                         Effect.flatMap(
-                                            /** Console delivery still runs after disk failure, but only with a decoded record. */
+                                            /**
+                                             * Console delivery still runs after disk failure, but only with a decoded record.
+                                             *
+                                             * @param record - The decoded record.
+                                             * @returns The console writer's effect for the formatted record.
+                                             */
                                             (record) => consoleWrite(formatConsoleRecord(record))
                                         ),
                                         Effect.zipRight(result)
@@ -283,7 +411,11 @@ export const serverLoggerLayer = (
             }
         ).pipe(
             Effect.mapError(
-                /** Hide filesystem paths and configuration details from every acquisition error. */
+                /**
+                 * Hide filesystem paths and configuration details from every acquisition error.
+                 *
+                 * @returns The bounded `configuration` failure.
+                 */
                 () => new TelemetrySinkFailure({ reason: 'configuration' })
             )
         )

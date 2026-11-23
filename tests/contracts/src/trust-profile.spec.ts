@@ -34,7 +34,12 @@ describe('RFC 8785 canonicalization', /** Register byte-level canonicalization v
     // These vectors pin signed bytes independently of signatures that could otherwise share the same serializer bug.
     it.effect(
         'sorts properties by UTF-16 code units (RFC 8785 section 3.2.3 example)',
-        /** Check that it sorts properties by UTF-16 code units (RFC 8785 section 3.2.3 example). */ () =>
+        /**
+         * Check that it sorts properties by UTF-16 code units (RFC 8785 section 3.2.3 example).
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Run the scenario steps in order inside the provided layer. */ function* () {
                     const input = {
@@ -57,7 +62,12 @@ describe('RFC 8785 canonicalization', /** Register byte-level canonicalization v
 
     it.effect(
         'serializes numbers with ECMAScript rules and nests without whitespace',
-        /** Check that it serializes numbers with ECMAScript rules and nests without whitespace. */ () =>
+        /**
+         * Check that it serializes numbers with ECMAScript rules and nests without whitespace.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Pin exponent thresholds, negative zero and legal Unicode without whitespace normalization. */ function* () {
                     // Exact text distinguishes ECMAScript number spelling from numerically equivalent but differently signed bytes.
@@ -69,6 +79,12 @@ describe('RFC 8785 canonicalization', /** Register byte-level canonicalization v
             )
     );
 
+    /**
+     * A function has no JSON form and must be refused.
+     *
+     * @returns A number, never reached because the function itself is the fixture.
+     */
+    const refusedFunction = () => 1;
     it.effect.each([
         ['NaN', Number.NaN],
         ['Infinity', [Number.POSITIVE_INFINITY]],
@@ -76,14 +92,20 @@ describe('RFC 8785 canonicalization', /** Register byte-level canonicalization v
         ['lone surrogate key', { '\udc00': 1 }],
         ['undefined member', { a: undefined }],
         ['class instance', new Date(0)],
-        ['function', /** A function has no JSON form and must be refused. */ () => 1],
+        ['function', refusedFunction],
         ['bigint', 1n],
     ])(
         'refuses %s',
-        /** Expect each unsupported value to fail canonicalization as invalid. */ ([, value]) =>
+        /**
+         * Expect each unsupported value to fail canonicalization as invalid.
+         *
+         * @param entry - One case: its label and the value that must be refused.
+         * @returns The Effect that runs these assertions.
+         */
+        (entry) =>
             Effect.gen(
                 /** Run the scenario steps in order inside the provided layer. */ function* () {
-                    expect(yield* Effect.flip(canonicalize(value as never))).toEqual(
+                    expect(yield* Effect.flip(canonicalize(entry[1] as never))).toEqual(
                         new CryptoFailure({ reason: 'invalid' })
                     );
                 }
@@ -165,7 +187,12 @@ describe('envelope schema and safe defaults', /** Register wire-format admission
 
     it.effect(
         'fails every crypto port closed when nothing is provisioned',
-        /** Check that it fails every crypto port closed when nothing is provisioned. */ () =>
+        /**
+         * Check that it fails every crypto port closed when nothing is provisioned.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Require typed unavailable failures from every unprovisioned crypto port, not fabricated key material. */ function* () {
                     // Exercise each port independently; one unavailable service must not conceal an accepting fallback in another.

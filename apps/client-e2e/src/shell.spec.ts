@@ -14,20 +14,34 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { expect, test } from '@playwright/test';
+import { type Page, type TestInfo, expect, test } from '@playwright/test';
 
-test('the exported web client renders the localised shell with safe flag defaults', /** Verify the exported bundle localizes ICU messages without browser errors or an enabled optional banner. */ async ({
-    page,
-}, testInfo) => {
+/**
+ * Verify the exported bundle localizes ICU messages without browser errors or an enabled optional banner.
+ *
+ * @param root0 - Playwright's per-test fixtures.
+ * @param root0.page - The browser page showing the exported client.
+ * @param testInfo - Playwright's metadata for this test, used to attach evidence.
+ */
+const rendersLocalisedShell = async ({ page }: { readonly page: Page }, testInfo: TestInfo) => {
     const errors: Array<string> = [];
     page.on(
         'pageerror',
-        /** Retain uncaught browser failures for the final assertion. */ (error) => errors.push(error.message)
+        /**
+         * Retain uncaught browser failures for the final assertion.
+         *
+         * @param error - The uncaught page error.
+         * @returns The new number of recorded errors.
+         */ (error) => errors.push(error.message)
     );
     page.on(
         'console',
-        /** Treat error-level console output as a shell regression, ignoring routine diagnostics. */ (message) => {
-            // Uncaught exceptions are captured separately; console diagnostics fail this proof only at error level.
+        /**
+         * Treat error-level console output as a shell regression, ignoring routine diagnostics. Uncaught exceptions
+         * are captured separately by the page error listener.
+         *
+         * @param message - The browser console message.
+         */ (message) => {
             if (message.type() === 'error') errors.push(message.text());
         }
     );
@@ -42,4 +56,6 @@ test('the exported web client renders the localised shell with safe flag default
     await expect(page.getByTestId('offline-banner')).toHaveCount(0);
     await testInfo.attach('browser-errors', { body: JSON.stringify(errors), contentType: 'application/json' });
     expect(errors).toEqual([]);
-});
+};
+
+test('the exported web client renders the localised shell with safe flag defaults', rendersLocalisedShell);

@@ -22,6 +22,14 @@ const shared = testProject(
     ['packages/contracts/src/ui-module.ts', 'packages/ui-modules/src/*.ts', 'packages/ui-modules/src/*.tsx'],
     import.meta.url
 );
+/**
+ * The UI module test project: declarative module, registry and screen context specs, measuring coverage of the UI
+ * module contract and the ui-modules package.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run @eventiva/ui-module-tests:test
+ */
 export default defineConfig({
     ...shared,
     test: { ...shared.test, include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx'] },

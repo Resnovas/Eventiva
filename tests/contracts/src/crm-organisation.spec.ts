@@ -34,13 +34,24 @@ import { make } from '@eventiva/contracts/json-schema';
 describe('CRM organisation contracts', /** Keep bounded wire validation independent of incomplete provider discovery. */ () => {
     it.effect(
         'declares six canonical private actions and paired resource identities',
-        /** Validate metadata without falsely claiming all provider profiles compile. */ () =>
+        /**
+         * Validate metadata without falsely claiming all provider profiles compile.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Check declarations and explicit discovery refusal on intact schemas rather than replacing them with primitives. */ function* () {
                     yield* validateDefinitions(organisationActions);
                     expect(
                         organisationActions.map(
-                            /** Compare the exact implemented public operations. */ (spec) => spec.name
+                            /**
+                             * Compare the exact implemented public operations.
+                             *
+                             * @param spec - One declared organisation action.
+                             * @returns The action's public name.
+                             */
+                            (spec) => spec.name
                         )
                     ).toEqual([
                         'crm.organisation.create',
@@ -85,13 +96,26 @@ describe('CRM organisation contracts', /** Keep bounded wire validation independ
     );
     it.effect(
         'keeps work contacts sensitive, bounded and outside claimed provider parity',
-        /** All contact specifications use the same live CRM gate without a transport exemption. */ () =>
+        /**
+         * All contact specifications use the same live CRM gate without a transport exemption.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Distinguish local definition validity from the explicitly unsupported provider projection. */ function* () {
                     // Keep metadata admission and actual runtime decoding separate from conservative provider-schema compatibility.
                     yield* validateDefinitions(contactPointActions);
                     expect(
-                        contactPointActions.map(/** Assert the six canonical additions only. */ (spec) => spec.name)
+                        contactPointActions.map(
+                            /**
+                             * Assert the six canonical additions only.
+                             *
+                             * @param spec - One declared contact-point action.
+                             * @returns The action's public name.
+                             */
+                            (spec) => spec.name
+                        )
                     ).toEqual([
                         'crm.contact-point.add',
                         'crm.contact-point.update',

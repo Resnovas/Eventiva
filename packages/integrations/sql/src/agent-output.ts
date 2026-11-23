@@ -34,17 +34,40 @@ const Stored = Schema.Struct({
     offset: Schema.Union(Schema.String, Schema.Number),
     payload: Schema.String,
 });
-/** Strip driver/parser details before errors can reach logs, RPC replies or telemetry. */
+/**
+ * Strip driver/parser details before errors can reach logs, RPC replies or telemetry.
+ *
+ * @returns An AgentOutputFailure with the `unavailable` reason and no driver detail.
+ */
 const unavailable = () => new AgentOutputFailure({ reason: 'unavailable' });
-/** Validate even typed callers, rejecting excess fields rather than silently persisting protected data. */
+/**
+ * Validate even typed callers, rejecting excess fields rather than silently persisting protected data.
+ *
+ * @template A - The decoded value.
+ * @template I - The encoded form the schema accepts.
+ * @template Input - The static type of the supplied value, which is still decoded as unknown.
+ * @param schema - The exact schema the value must satisfy, with no excess properties.
+ * @param value - The caller input or persisted row to decode.
+ * @returns The decoded value.
+ * @fails {AgentOutputFailure} With `invalid` when the value does not decode.
+ */
 const decode = <A, I, Input>(schema: Schema.Schema<A, I>, value: Input) =>
     Schema.decodeUnknown(schema)(value, { onExcessProperty: 'error' }).pipe(
         Effect.mapError(
-            /** Never attach the rejected value to a public failure. */ () =>
-                new AgentOutputFailure({ reason: 'invalid' })
+            /**
+             * Never attach the rejected value to a public failure.
+             *
+             * @returns An AgentOutputFailure with the `invalid` reason.
+             */
+            () => new AgentOutputFailure({ reason: 'invalid' })
         )
     );
-/** Canonicalize only the closed payload union so property insertion order cannot create retry conflicts. */
+/**
+ * Canonicalize only the closed payload union so property insertion order cannot create retry conflicts.
+ *
+ * @param payload - The decoded output payload, either text or a completed step.
+ * @returns The payload as JSON with a fixed property order.
+ */
 const payloadJson = (payload: typeof OutputPayload.Type) =>
     JSON.stringify(
         payload._tag === 'Text'
@@ -52,7 +75,15 @@ const payloadJson = (payload: typeof OutputPayload.Type) =>
             : { _tag: 'StepCompleted', stepIndex: payload.stepIndex }
     );
 
-/** Resolve tenant clients from trusted composition only; no database URL or tenant selector is accepted in event input. */
+/**
+ * Resolve tenant clients from trusted composition only; no database URL or tenant selector is accepted in event input.
+ *
+ * @param resolve - Trusted composition's lookup from tenant id to that tenant's SQL client.
+ * @returns A layer providing the agent output log for routed tenants.
+ * @since 0.0.1
+ * @example
+ * const layer = agentOutputLog(() => Effect.succeed(sql));
+ */
 export const agentOutputLog = (
     /** Supply only the routed tenant capability; unknown tenants fail closed without provisioning. */
     resolve: (tenant: TenantId) => Effect.Effect<SqlClient.SqlClient, AgentOutputFailure>
@@ -60,7 +91,13 @@ export const agentOutputLog = (
     Layer.succeed(
         AgentOutputLog,
         AgentOutputLog.of({
-            /** Serialize each tenant/run allocator, deduplicate before incrementing and commit event/counter together. */
+            /**
+             * Serialize each tenant/run allocator, deduplicate before incrementing and commit event/counter together.
+             *
+             * @param input - The append request naming the run, the caller's event id and the payload.
+             * @returns The stored event with its tenant and allocated offset; a matching retry returns the original offset.
+             * @fails {AgentOutputFailure} With `invalid` for malformed input, `conflict` when the event id was stored with a different payload, or `unavailable` for a stale run fence, an unfenced pinned module run, an exhausted offset counter or an SQL failure.
+             */
             append: (input) =>
                 Effect.gen(
                     /** Never inherit a business transaction: return only after this independent output transaction commits. */ function* () {
@@ -116,13 +153,24 @@ export const agentOutputLog = (
                     }
                 ).pipe(
                     Effect.mapInputContext(
-                        /** Strip the shared SQL transaction tag while retaining the authenticated route. */ (
-                            context: Context.Context<CurrentTenant>
-                        ) => Context.omit(SqlClient.TransactionConnection)(context)
+                        /**
+                         * Strip the shared SQL transaction tag while retaining the authenticated route.
+                         *
+                         * @param context - The caller's context, carrying the authenticated tenant.
+                         * @returns The same context without any inherited SQL transaction connection.
+                         */
+                        (context: Context.Context<CurrentTenant>) =>
+                            Context.omit(SqlClient.TransactionConnection)(context)
                     ),
                     Effect.catchTag('SqlError', unavailable)
                 ),
-            /** Use the primary-key range scan, with no volatile RPC result or unbounded backfill. */
+            /**
+             * Use the primary-key range scan, with no volatile RPC result or unbounded backfill.
+             *
+             * @param input - The read request naming the run, the exclusive `after` offset and the page limit.
+             * @returns Up to `limit` events after the given offset, in offset order.
+             * @fails {AgentOutputFailure} With `invalid` for malformed input or corrupt stored rows, or `unavailable` when SQL fails.
+             */
             read: (input) =>
                 Effect.gen(
                     /** Tenant predicates remain mandatory even if multiple trusted tenants share one physical database. */ function* () {
@@ -135,9 +183,13 @@ export const agentOutputLog = (
                 ORDER BY "offset" LIMIT ${value.limit}`;
                         return yield* Effect.forEach(
                             rows,
-                            /** Decode persisted rows without disclosing corruption or raw driver diagnostics. */ (
-                                raw
-                            ): Effect.Effect<OutputEvent, AgentOutputFailure> =>
+                            /**
+                             * Decode persisted rows without disclosing corruption or raw driver diagnostics.
+                             *
+                             * @param raw - One row returned by the page query.
+                             * @returns The decoded output event for the routed tenant.
+                             */
+                            (raw): Effect.Effect<OutputEvent, AgentOutputFailure> =>
                                 Effect.gen(
                                     /** Stored text is parsed through the same closed payload schema as append. */ function* () {
                                         // Persistence is not a trust bypass: corrupt offsets or payloads fail the page instead of leaking raw rows.
@@ -155,9 +207,14 @@ export const agentOutputLog = (
                     }
                 ).pipe(
                     Effect.mapInputContext(
-                        /** Reads observe committed output, never a transaction inherited from another client. */ (
-                            context: Context.Context<CurrentTenant>
-                        ) => Context.omit(SqlClient.TransactionConnection)(context)
+                        /**
+                         * Reads observe committed output, never a transaction inherited from another client.
+                         *
+                         * @param context - The caller's context, carrying the authenticated tenant.
+                         * @returns The same context without any inherited SQL transaction connection.
+                         */
+                        (context: Context.Context<CurrentTenant>) =>
+                            Context.omit(SqlClient.TransactionConnection)(context)
                     ),
                     Effect.catchTag('SqlError', unavailable)
                 ),

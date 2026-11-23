@@ -28,7 +28,13 @@ import { FieldName, type Fields, type Resource } from './resource.ts';
  * result or the first error in a fixed order, whatever order modules arrive in.
  */
 
-/** Fields one module adds to a resource another module owns. */
+/**
+ * Fields one module adds to a resource another module owns.
+ *
+ * @since 0.0.1
+ * @example
+ * const extra: Contribution = contribute('events.event', 'tickets', { capacity: Field.integer() });
+ */
 export interface Contribution {
     readonly _tag: 'Contribution';
     readonly target: string;
@@ -36,7 +42,17 @@ export interface Contribution {
     readonly fields: Fields;
 }
 
-/** Declares a contribution. Pure: it is checked when the schema is composed. */
+/**
+ * Declares a contribution. Pure: it is checked when the schema is composed.
+ *
+ * @since 0.0.1
+ * @param target - The resource receiving the fields, or its resource name.
+ * @param module - The id of the contributing module.
+ * @param fields - The fields to add, by field name.
+ * @returns The contribution, unchecked until it is composed.
+ * @example
+ * const capacity = contribute(Event, 'tickets', { capacity: Field.integer() });
+ */
 export const contribute = (target: Resource | string, module: ModuleId, fields: Fields): Contribution => ({
     _tag: 'Contribution',
     target: typeof target === 'string' ? target : target.name,
@@ -44,20 +60,38 @@ export const contribute = (target: Resource | string, module: ModuleId, fields: 
     fields,
 });
 
-/** A field of a composed resource, with the module that declared it. */
+/**
+ * A field of a composed resource, with the module that declared it.
+ *
+ * @since 0.0.1
+ * @example
+ * const owners = composed.fields.map((entry: ComposedField) => entry.module);
+ */
 export interface ComposedField {
     readonly name: string;
     readonly module: ModuleId;
     readonly field: Field;
 }
 
-/** A resource with its own and contributed fields, sorted by field name. */
+/**
+ * A resource with its own and contributed fields, sorted by field name.
+ *
+ * @since 0.0.1
+ * @example
+ * const event: ComposedResource | undefined = schema.resources.find((entry) => entry.resource.name === 'events.event');
+ */
 export interface ComposedResource {
     readonly resource: Resource;
     readonly fields: ReadonlyArray<ComposedField>;
 }
 
-/** Every resource, sorted by name. */
+/**
+ * The checked schema: every resource with its composed fields, sorted by resource name.
+ *
+ * @since 0.0.1
+ * @example
+ * const names = Either.map(compose([Event, Venue], []), (schema: Composed) => schema.resources.length);
+ */
 export interface Composed {
     readonly resources: ReadonlyArray<ComposedResource>;
 }
@@ -129,38 +163,102 @@ const invalidNameBase: new (
     'InvalidName'
 )<InvalidNameFields>;
 
-/** Two resources share a name. */
+/**
+ * Two resources share a name.
+ *
+ * @since 0.0.1
+ * @example
+ * const failure = new DuplicateResource({ resource: 'events.event', modules: ['events', 'legacy'] });
+ */
 export class DuplicateResource extends duplicateResourceBase {}
 
-/** Two declarations give a resource the same field. */
+/**
+ * Two declarations give a resource the same field.
+ *
+ * @since 0.0.1
+ * @example
+ * const failure = new DuplicateField({ resource: 'events.event', field: 'title', modules: ['events', 'tickets'] });
+ */
 export class DuplicateField extends duplicateFieldBase {}
 
-/** A contribution or reference names a resource nobody declares. */
+/**
+ * A contribution or reference names a resource nobody declares.
+ *
+ * @since 0.0.1
+ * @example
+ * const failure = new UnknownTarget({ resource: 'events.event', module: 'tickets', target: 'venues.venue' });
+ */
 export class UnknownTarget extends unknownTargetBase {}
 
-/** A field would be stored with less protection than its resource requires. */
+/**
+ * A field would be stored with less protection than its resource requires.
+ *
+ * @since 0.0.1
+ * @example
+ * const failure = new WeakerClassification({ resource: 'venues.venue', field: 'id', module: 'venues', profile: 'baseline', floor: 'restricted' });
+ */
 export class WeakerClassification extends weakerClassificationBase {}
 
-/** A resource or field name is not canonical. */
+/**
+ * A resource or field name is not canonical.
+ *
+ * @since 0.0.1
+ * @example
+ * const failure = new InvalidName({ module: 'events', name: 'Events.Event' });
+ */
 export class InvalidName extends invalidNameBase {}
 
+/**
+ * Every failure `compose` can report; it reports only the first, in a fixed order.
+ *
+ * @since 0.0.1
+ * @example
+ * const message = Either.match(compose(resources, contributions), { onLeft: (error: ComposeError) => error._tag, onRight: () => 'ok' });
+ */
 export type ComposeError = DuplicateResource | DuplicateField | UnknownTarget | WeakerClassification | InvalidName;
 
-/** Compare projected keys by code-unit order, avoiding locale-dependent schema and diagnostic ordering. */
+/**
+ * Compare projected keys by code-unit order, avoiding locale-dependent schema and diagnostic ordering.
+ *
+ * @template A - The type of the values being sorted.
+ * @param key - Project the deterministic resource, module or field ordering key without mutating the declaration.
+ * @returns A comparator for `Array.prototype.sort`.
+ */
 const byName =
-    <A>(
-        /** Project the deterministic resource, module or field ordering key without mutating the declaration. */ key: (
-            a: A
-        ) => string
-    ) =>
-    /** Preserve equal-key order while comparing without locale-specific collation. */
+    <A>(/** Project one value to its ordering key. */ key: (a: A) => string) =>
+    /**
+     * Preserve equal-key order while comparing without locale-specific collation.
+     *
+     * @param a - The first value.
+     * @param b - The second value.
+     * @returns A negative number, zero or a positive number as the first key sorts before, with or after the second.
+     */
     (a: A, b: A) =>
         key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
 
-/** Return sorted diagnostic module names without reordering caller-owned arrays. */
+/**
+ * Return sorted diagnostic module names without reordering caller-owned arrays.
+ *
+ * @param modules - The module names to report.
+ * @returns A new array of the names in code-unit order.
+ */
 const sortedModules = (...modules: ReadonlyArray<string>) => [...modules].sort();
 
-/** Composes resources and contributions into one checked schema. */
+/**
+ * Composes resources and contributions into one checked schema, independent of the order either arrives in.
+ *
+ * @since 0.0.1
+ * @param resources - Every resource the installed modules declare.
+ * @param contributions - Every field contribution the installed modules declare.
+ * @returns The composed schema on the right, or the first failure in a fixed order on the left.
+ * @fails {InvalidName} When a resource or field name is not canonical.
+ * @fails {DuplicateResource} When two resources share a name.
+ * @fails {DuplicateField} When two declarations give a resource the same field.
+ * @fails {WeakerClassification} When a field's profile is weaker than its resource's protection floor.
+ * @fails {UnknownTarget} When a contribution or reference names an undeclared resource.
+ * @example
+ * const schema = compose([Event, Venue], [contribute(Event, 'tickets', { capacity: Field.integer() })]);
+ */
 export const compose = (
     resources: ReadonlyArray<Resource>,
     contributions: ReadonlyArray<Contribution>
@@ -168,8 +266,13 @@ export const compose = (
     // Sorting first makes every error, and the result, independent of input order.
     const ordered = [...resources].sort(
         byName(
-            /** Order resource identities before validating ownership collisions. */ (resource) =>
-                `${resource.name}\u0000${resource.module}`
+            /**
+             * Order resource identities before validating ownership collisions.
+             *
+             * @param resource - The resource to order.
+             * @returns Its name and owning module, joined by a NUL separator.
+             */
+            (resource) => `${resource.name}\u0000${resource.module}`
         )
     );
     const declared = new Map<string, Resource>();
@@ -191,28 +294,48 @@ export const compose = (
 
     const sources = [
         ...ordered.map(
-            /** Treat owner fields as the first declaration source while retaining their original module provenance. */ (
-                resource
-            ) => ({ target: resource.name, module: resource.module, fields: resource.fields })
+            /**
+             * Treat owner fields as the first declaration source while retaining their original module provenance.
+             *
+             * @param resource - The declared resource.
+             * @returns A declaration source targeting the resource with its own fields and owner.
+             */
+            (resource) => ({ target: resource.name, module: resource.module, fields: resource.fields })
         ),
         ...[...contributions].sort(
             byName(
-                /** Break target/module ties using only canonical metadata that can affect validation diagnostics. */ (
-                    contribution
-                ) =>
+                /**
+                 * Break target/module ties using only canonical metadata that can affect validation diagnostics.
+                 *
+                 * @param contribution - The contribution to order.
+                 * @returns Its target, module and serialised field metadata, joined by NUL separators.
+                 */
+                (contribution) =>
                     `${contribution.target}\u0000${contribution.module}\u0000${JSON.stringify(
                         Object.entries(contribution.fields)
                             .sort(
                                 byName(
-                                    /** Ignore field-object insertion order when ordering tied sources. */ ([name]) =>
-                                        name
+                                    /**
+                                     * Ignore field-object insertion order when ordering tied sources.
+                                     *
+                                     * @param entry - The field name and its declaration.
+                                     * @returns The field name.
+                                     */
+                                    (entry) => entry[0]
                                 )
                             )
                             .map(
-                                /** Keep schemas opaque; only names, protection and reference targets affect first-error selection. */ ([
-                                    name,
-                                    field,
-                                ]) => [name, field.security, field.target._tag === 'Some' ? field.target.value : null]
+                                /**
+                                 * Keep schemas opaque; only names, protection and reference targets affect first-error selection.
+                                 *
+                                 * @param entry - The field name and its declaration.
+                                 * @returns The name, security profile and reference target, or `null` when there is none.
+                                 */
+                                (entry) => [
+                                    entry[0],
+                                    entry[1].security,
+                                    entry[1].target._tag === 'Some' ? entry[1].target.value : null,
+                                ]
                             )
                     )}`
             )
@@ -230,10 +353,13 @@ export const compose = (
         fields.set(source.target, composed);
         for (const [name, field] of Object.entries(source.fields).sort(
             byName(
-                /** Use field identity, not object insertion order, to select validation order. */ ([name]: [
-                    string,
-                    Field,
-                ]) => name
+                /**
+                 * Use field identity, not object insertion order, to select validation order.
+                 *
+                 * @param entry - The field name and its declaration.
+                 * @returns The field name.
+                 */
+                (entry: [string, Field]) => entry[0]
             )
         )) {
             if (!Schema.is(FieldName)(name)) return Either.left(new InvalidName({ module: source.module, name }));
@@ -269,14 +395,23 @@ export const compose = (
 
     return Either.right({
         resources: [...declared.values()].map(
-            /** Publish each checked resource with its owner/contributor provenance in field-name order. */ (
-                resource
-            ) => ({
+            /**
+             * Publish each checked resource with its owner/contributor provenance in field-name order.
+             *
+             * @param resource - The checked resource.
+             * @returns The resource with its composed fields.
+             */
+            (resource) => ({
                 resource,
                 fields: [...(fields.get(resource.name)?.values() ?? [])].sort(
                     byName(
-                        /** Keep the composed field sequence independent of declaration insertion order. */ (field) =>
-                            field.name
+                        /**
+                         * Keep the composed field sequence independent of declaration insertion order.
+                         *
+                         * @param field - The composed field.
+                         * @returns Its field name.
+                         */
+                        (field) => field.name
                     )
                 ),
             })

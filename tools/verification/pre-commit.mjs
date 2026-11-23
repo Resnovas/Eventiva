@@ -20,6 +20,12 @@ import { resolve } from 'node:path';
 import { runVerification } from './pipeline.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
+/**
+ * Run Git in the repository and return its trimmed output.
+ *
+ * @param {...string} args - The Git arguments.
+ * @returns {string} Git's trimmed standard output.
+ */
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const marker = '# eventiva:verified-staged-snapshot';
 const hook = resolve(root, git('rev-parse', '--git-path', 'hooks/pre-commit'));
@@ -34,6 +40,11 @@ if (process.argv[2] === '--install') {
     chmodSync(hook, 0o755);
     console.log('Eventiva pre-commit installed; commit-msg preserved.');
 } else {
+    /**
+     * Record the staged tree, refusing to run while unstaged or untracked changes exist.
+     *
+     * @returns {string} The staged tree's object identity.
+     */
     const snapshot = () => {
         if (
             spawnSync('git', ['diff', '--quiet'], { cwd: root }).status !== 0 ||
@@ -46,12 +57,12 @@ if (process.argv[2] === '--install') {
         return git('write-tree');
     };
     const before = snapshot();
-    // Hook-local Git paths belong to this index, not disposable repositories created by verification.
     const verificationEnv = { ...process.env };
     for (const name of git('rev-parse', '--local-env-vars').split('\n')) delete verificationEnv[name];
     runVerification({
         env: verificationEnv,
         staged: true,
+        /** Refuse to continue when the staged tree changed during verification. */
         afterStage() {
             if (snapshot() !== before)
                 throw new Error('The staged tree changed during verification. Review it and rerun the commit.');
