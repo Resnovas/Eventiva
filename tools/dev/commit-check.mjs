@@ -140,18 +140,12 @@ export const checkMessage = (message, author, linearPrefix = 'none') => {
       .filter((line) => line.toLowerCase().startsWith(`${key.toLowerCase()}: `))
       .map((line) => line.slice(key.length + 2).trim())
 
-  if (isAi(author)) {
-    problems.push(
-      `The commit author "${author.name} <${author.email}>" is an AI tool. Set the author to the accountable human: git -c user.name="Name" -c user.email="you@example.com" commit ..., or GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL. See ${POLICY}/AI_POLICY.md#ai-03`,
-    )
-  }
+  // Before signing, identity text proves neither platform nor human consent.
+  // An agent's matching trailer records provenance; PR certification is separate.
   const signOffs = trailer('Signed-off-by').map(parseIdentity).filter((identity) => identity !== undefined)
-  for (const signer of signOffs) {
-    if (isAi(signer)) problems.push(`Signed-off-by "${signer.name} <${signer.email}>" names an AI tool; only a person certifies the DCO (AI-03). See ${POLICY}/AI_POLICY.md#ai-03`)
-  }
-  if (!signOffs.some((signer) => !isAi(signer) && signer.email === author.email)) {
+  if (!signOffs.some((signer) => signer.email === author.email.toLowerCase())) {
     problems.push(
-      `No Signed-off-by matching the author <${author.email}>. The accountable human must certify with git commit -s; agents must not delegate certification except under AI-03's narrow owner-session exception in loaded personal instructions. See ${POLICY}/AI_POLICY.md#ai-03`,
+      `No Signed-off-by matching the author <${author.email}>. Use git commit -s with your authorized identity. An agent's own trailer is provenance only and needs separate human PR certification. See ${POLICY}/AI_POLICY.md#ai-03`,
     )
   }
   for (const value of trailer('Co-authored-by')) {
@@ -169,6 +163,63 @@ export const checkMessage = (message, author, linearPrefix = 'none') => {
       problems.push(`Remove the host attribution line "${line.trim()}"; the Co-authored-by trailer and the sign-off are the only attribution (AI-02). See ${POLICY}/AI_POLICY.md#ai-02`)
   }
   return [...new Set(problems)]
+}
+
+/**
+ * Bind a commit to its author's own GitHub-verified signing account.
+ * A trusted CI adapter supplies immutable-commit API data. This pure
+ * evaluator neither classifies authors nor runs in the pre-signature hook;
+ * the same account-binding rule works without a per-tool fingerprint list.
+ *
+ * @param {object} commit - GitHub commit data, never candidate-authored evidence.
+ * @param {object} commit.author - Git actor including its resolved user account.
+ * @param {object|null} commit.signature - GitHub signature validity, state and signer.
+ * @returns {string[]} Corrective failures; passing does not certify the human DCO.
+ */
+export const checkAuthorSignature = ({ author, signature }) => {
+  const authorId = author?.user?.databaseId
+  const signerId = signature?.signer?.databaseId
+  if (signature?.isValid !== true || signature.state !== 'VALID' || !Number.isSafeInteger(authorId) || authorId <= 0 || signerId !== authorId) {
+    return ['Sign with your own identity: require a VALID GitHub signature whose signer account matches the resolved author account. Agent-authored commits must use that agent account, not a human signing account.']
+  }
+  return []
+}
+
+/**
+ * Evaluate human certification for PRs containing agent-authored commits.
+ *
+ * Pure policy only, not called by the pre-signature hook. A trusted CI adapter
+ * must supply complete author classifications from trusted account policy,
+ * configured human accounts, and complete authenticated GitHub review data.
+ * No CI adapter is activated by this function.
+ *
+ * @param {object} evidence - Trusted normalized PR evidence, never PR-supplied JSON.
+ * @param {string} evidence.headSha - Immutable PR head being certified.
+ * @param {boolean} evidence.commitsComplete - Whether all PR commits were classified.
+ * @param {string[]} evidence.commitKinds - agent, human or trusted-bot; unknown fails closed.
+ * @param {string[]} [evidence.humanLogins] - Human certifiers from trusted policy, not the PR body.
+ * @param {string} [evidence.accountableHuman] - Existing AI-21 accountable-human field.
+ * @param {string} [evidence.humanReview] - Existing AI-21 human-review field.
+ * @param {boolean} [evidence.reviewsComplete] - Whether every review page was read successfully.
+ * @param {object[]} [evidence.reviews] - GitHub review objects, including id, state, commit_id, body and user.
+ * @returns {string[]} Unsatisfied certification requirements; empty does not grant merge authority.
+ */
+export const checkPullRequestCertification = ({ headSha, commitsComplete, commitKinds, humanLogins, accountableHuman, humanReview, reviewsComplete, reviews }) => {
+  if (commitsComplete !== true || !Array.isArray(commitKinds) || commitKinds.length === 0 || commitKinds.some((kind) => !['agent', 'human', 'trusted-bot'].includes(kind))) {
+    return ['Classify every PR author using trusted account policy before deciding whether human PR certification is required.']
+  }
+  // Ordinary human sign-off and existing AI-21 gates remain independent.
+  // GitHub forbids self-approval, so human-authored PRs do not use this path.
+  if (!commitKinds.includes('agent')) return []
+  const failure = ['Obtain an exact-head human DCO approval from the named accountable human. Agent sign-offs and PR description fields alone never certify the DCO.']
+  const login = accountableHuman?.replace(/^@/, '').toLowerCase()
+  if (!/^[a-f0-9]{40}$/.test(headSha ?? '') || !login || !humanReview?.trim() || reviewsComplete !== true || !Array.isArray(reviews)) return failure
+  if (!humanLogins?.some((human) => human.toLowerCase() === login)) return failure
+  const ownReviews = reviews.filter((review) => review.user?.login?.toLowerCase() === login)
+  if (ownReviews.length === 0 || ownReviews.some((review) => !Number.isSafeInteger(review.id) || review.id <= 0)) return failure
+  const latest = ownReviews.reduce((newest, review) => review.id > newest.id ? review : newest)
+  const certificate = 'DCO certification: I certify the Developer Certificate of Origin for all changes in this pull request.'
+  return latest.user.type === 'User' && latest.state === 'APPROVED' && latest.commit_id === headSha && latest.body?.trim() === certificate ? [] : failure
 }
 
 /**

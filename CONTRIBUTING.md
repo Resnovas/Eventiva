@@ -34,7 +34,7 @@ Follow [the Security Policy](SECURITY.md) instead.
 This project does **not** use a Contributor Licence Agreement.
 Every contribution is made under the [Developer Certificate of Origin 1.1](DCO.md) (DCO), and there is nothing to sign in advance.
 
-You certify the DCO by adding a `Signed-off-by` trailer, with your real name and the email address of the commit author, to **every** commit:
+For human-authored commits, certify the DCO with a `Signed-off-by` trailer containing your real name and the commit author's email:
 
 ```shell
 git commit -s
@@ -46,11 +46,10 @@ feat(billing): add proration preview
 Signed-off-by: Jane Doe <jane@example.com>
 ```
 
-- The sign-off applies to every contribution, however small.
-There is no size below which it is not needed.
+- Every ordinary commit needs an author-matched sign-off, however small. An agent identity's trailer is provenance, not certification. The human certifies agent-authored contributions through the exact-head approved-review path in [AI-03](AI_POLICY.md#ai-03) and reviews/merges the PR. A later push needs a fresh certification. Human-authored PRs retain ordinary sign-off and AI-21 fields without self-approval.
 - The address in the sign-off **must** match the commit author's address, or the check fails.
-- By signing off you also certify any part of the commit an AI tool produced.
-Agents cannot delegate human certification except under the narrow owner-session exception in [AI-03](AI_POLICY.md#ai-03).
+- A human certification covers the AI-produced parts as well as the human's own.
+An agent's own sign-off never supplies that human certification.
 - If you forgot, add it to existing commits with `git rebase --signoff main` and force-push your branch.
 - Commits made in the GitHub web interface are signed off automatically; the repository requires it.
 
