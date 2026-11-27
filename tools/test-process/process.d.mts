@@ -73,7 +73,12 @@ export interface ChildOptions {
 /** Public process-control surface, also supported by delegated handles; stdin is supplied through options.input. */
 export type ChildHandle = Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode' | 'connected' | 'stdout' | 'stderr' |
   'on' | 'once' | 'off' | 'kill'> & {
-    readonly send: (message: Parameters<ChildProcess['send']>[0], callback?: (error: Error | null) => void) => boolean
+    /** Send a message over child IPC; the return value is not an acknowledgement from the receiving process. */
+    readonly send: (
+      message: Parameters<ChildProcess['send']>[0],
+      /** Report a transport error or null on successful send, not completion of work in the child. */
+      callback?: (error: Error | null) => void
+    ) => boolean
   }
 
 /**
