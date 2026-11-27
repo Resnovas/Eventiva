@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "devDependencies": {
-        "@effect/platform": "0.97.3",
+        "@effect/platform": "0.97.4",
         "@eventiva/contracts": "workspace:*",
         "@eventiva/integrations.http-client": "workspace:*"
     }
