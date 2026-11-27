@@ -16,7 +16,7 @@
     },
     "dependencies": {
         "@eventiva/contracts": "workspace:*",
-        "@formatjs/intl": "6.1.4"
+        "@formatjs/intl": "6.2.0"
     },
     "peerDependencies": {
         "effect": "catalog:"

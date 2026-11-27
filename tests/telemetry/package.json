@@ -7,7 +7,7 @@
         "@eventiva/contracts": "workspace:*",
         "@eventiva/runtime": "workspace:*",
         "@eventiva/integrations.telemetry.server": "workspace:*",
-        "@effect/platform": "0.97.3",
+        "@effect/platform": "0.97.4",
         "@effect/platform-node": "0.108.4"
     }
 }
