@@ -209,6 +209,7 @@ const jsdocAdoptedFiles = [
     'tools/function-telemetry/**/*.mjs',
     'tools/references/**/*.mjs',
     'tools/resources/**/*.mjs',
+    'tools/test/**/*.ts',
     'tools/test-process/**/*.mjs',
     'tools/toolchain/**/*.mjs',
     'tools/verification/**/*.mjs',
