@@ -20,12 +20,19 @@ At 07:48 UTC the [handoff](https://linear.app/resnovas/issue/EVE-44#comment-8700
 
 At 08:55 UTC the [strict-gate delivery slice](https://linear.app/resnovas/issue/EVE-44#comment-2a5f29b2-0b6c-4e4a-bd05-27688d388708) resumed on verified main `9c669cf1`, coordinated with the backlog and recovery owners. Required: below 3x in both modes, PR and normal protected merge. The 2x goal stays open. Full qualification and exact-head landing are separate from this authorization.
 
+At 09:21 UTC the [publication handoff](https://linear.app/resnovas/issue/EVE-44#comment-ac23f000-a7d1-41fe-94ff-c156a6617440) and [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7214575176) recorded production/profiling at 2.39x/2.71x, repeated at 2.43x/2.72x with fresh flags, sanitation and all-exit observation intact. Source committed locally; 102 telemetry tests passed. The feature registry mapping was missing and is corrected locally. Publication is held because this orb disables the required AI co-author credit. Jonathan owns the attribution disposition. No PR, hosted qualification, queue or merge; 2x and the broader migration remain open.
+
+At 09:29 UTC the [full local gate](https://linear.app/resnovas/issue/EVE-44#comment-c97cb20f-0105-45c7-83dc-a98cd88adffe) and [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7214732368) recorded 2.40x production and 2.69x profiling. `node --run verify` exited 0. Uncached proof against the main base passed 690 runtime-core, 102 telemetry and 11 verification-runner assertions. The disposable fixture was removed. Publication and whole-issue acceptance remain separate.
+
+At 09:43 UTC the [attribution check](https://linear.app/resnovas/issue/EVE-44#comment-6e5edb96-7a14-42a6-a796-1710da2868f4) and [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7215008655) confirmed that the project-only co-author setting took effect in this orb. The new local registry commit passed the repository hook but contained only an author sign-off, with no AI co-author. AI-02 therefore still blocks publication until a supported model-qualified credit path is verified. No PR or merge.
+
 ```mermaid
 flowchart LR
     Transfer[Source recovered] --> Measure[Both matched p50 ratios below 5x]
     Measure --> Policy[Narrow compiler directive policy qualified]
     Policy --> Verify[2x not reached]
     Verify --> Decide[Strict sub-3x delivery gate; continue toward 2x]
+    Decide --> Credit[Both modes below 3x; publication awaits attribution]
 ```
 
 ## Renewal static-plus-affected requalification - 2026-11-20
