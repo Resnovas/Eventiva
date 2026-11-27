@@ -57,6 +57,11 @@
             "types": "./dist/telemetry-correlation.d.ts",
             "default": "./dist/telemetry-correlation.js"
         },
+        "./function-instrumentation": {
+            "@eventiva/source": "./src/function-instrumentation.ts",
+            "types": "./dist/function-instrumentation.d.ts",
+            "default": "./dist/function-instrumentation.js"
+        },
         "./telemetry-export": {
             "@eventiva/source": "./src/telemetry-export.ts",
             "types": "./dist/telemetry-export.d.ts",

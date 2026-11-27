@@ -24,6 +24,7 @@ import {
     isHouseSyncedSource,
     isInScopeCommentFile,
     normalizeRelPath,
+    pureDefinitionOffsets,
     readIfPresent,
 } from './policy.mjs';
 
@@ -78,6 +79,7 @@ export const scanBannedComments = (filename, text) => {
     remember(ts.getLeadingCommentRanges(text, sourceFile.endOfFileToken.getFullStart()));
 
     const findings = [];
+    const pure = pureDefinitionOffsets(text, relPath);
     for (const range of [...ranges.values()].sort(
         /**
          * Order ranges by position in the file.
@@ -89,6 +91,7 @@ export const scanBannedComments = (filename, text) => {
         (left, right) => left.pos - right.pos
     )) {
         const raw = text.slice(range.pos, range.end);
+        if (pure.has(range.pos)) continue;
         const type = range.kind === ts.SyntaxKind.SingleLineCommentTrivia ? 'Line' : 'Block';
         const value = type === 'Line' ? raw.slice(2) : raw.slice(2, -2);
         if (isExemptComment({ type, value, raw }, { filename: relPath })) continue;
@@ -470,6 +473,12 @@ const main = () => {
     const ledger = JSON.parse(ledgerText);
     const previousLedger = readBaseLedger(root, baseRef);
     const errors = evaluateRatchet({ actualCounts, ledger, previousLedger });
+    for (const finding of findings) {
+        if (/[@#]__PURE__/.test(finding.raw))
+            errors.push(
+                `${finding.file}:${finding.line}: invalid purity directive outside an admitted generator definition`
+            );
+    }
 
     for (const error of errors) console.error(`comment-ratchet: ${error}`);
     console.log(
