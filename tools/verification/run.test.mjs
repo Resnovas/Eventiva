@@ -216,7 +216,9 @@ function fixture({ pipeline = false } = {}) {
         })
     );
     if (pipeline) {
+        mkdirSync(join(cwd, 'tests/telemetry/benchmark'), { recursive: true });
         for (const [path, marker] of [
+            ['tests/telemetry/benchmark/check.mjs', 'TELEMETRY'],
             ['tools/resources/boundaries.test.mjs', 'BOUNDARIES'],
             ['tools/resources/types.test.mjs', 'TYPES'],
             ['tools/verification/run.test.mjs', 'RUNNER'],
@@ -450,9 +452,9 @@ test('installed hook runs only static and affected tests while standalone retain
     assert.deepEqual((commit.stdout + commit.stderr).match(/\b[A-Z]+_OK\b/g), ['STATIC_OK', 'AFFECTED_OK']);
     assert.equal(standalone.status, 0, standalone.stderr);
     const stages = (standalone.stdout + standalone.stderr).match(/\b[A-Z]+_OK\b/g);
-    assert.deepEqual(stages.slice(0, 2), ['STATIC_OK', 'CHECK_OK']);
-    assert.deepEqual(stages.slice(2, 5).sort(), ['BOUNDARIES_OK', 'RUNNER_OK', 'TYPES_OK']);
-    assert.deepEqual(stages.slice(5), ['AGGREGATE_OK', 'SMOKE_OK', 'FEATURES_OK']);
+    assert.deepEqual(stages.slice(0, 3), ['STATIC_OK', 'CHECK_OK', 'TELEMETRY_OK']);
+    assert.deepEqual(stages.slice(3, 6).sort(), ['BOUNDARIES_OK', 'RUNNER_OK', 'TYPES_OK']);
+    assert.deepEqual(stages.slice(6), ['AGGREGATE_OK', 'SMOKE_OK', 'FEATURES_OK']);
     assert.equal(git('rev-parse', 'HEAD^{tree}'), tree);
     assert.equal(git('write-tree'), tree);
     assert.deepEqual(JSON.parse(readFileSync(join(cwd, 'test-output/affected-paths.json'))), ['apps/billing/input']);

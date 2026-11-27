@@ -20,6 +20,7 @@ import {
     isHouseSyncedSource,
     isInScopeCommentFile,
     normalizeRelPath,
+    pureDefinitionOffsets,
     readIfPresent,
 } from './policy.mjs';
 
@@ -101,6 +102,7 @@ export const noInlineCommentsRule = {
                 const sourceCode = context.sourceCode;
                 const text = sourceCode.getText();
                 if (isHouseSyncedSource(text)) return;
+                const pure = pureDefinitionOffsets(text, relPath);
 
                 const banned = sourceCode.getAllComments().filter(
                     /**
@@ -111,6 +113,15 @@ export const noInlineCommentsRule = {
                      */
                     (comment) => {
                         const raw = text.slice(comment.range[0], comment.range[1]);
+                        if (pure.has(comment.range[0])) return false;
+                        if (/[@#]__PURE__/.test(comment.value)) {
+                            context.report({
+                                loc: comment.loc,
+                                message:
+                                    'Place the exact purity directive only on the outer initializer of a module-level named Effect.fn generator definition.',
+                            });
+                            return false;
+                        }
                         return !isExemptComment(
                             { type: comment.type, value: comment.value, raw },
                             { filename: relPath }
