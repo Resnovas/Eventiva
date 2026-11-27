@@ -14,13 +14,23 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Record bounded sign-in anchors without treating token refresh as user activity */
+/**
+ * Open a session at sign-in; refreshing a token must not reset its activity deadline.
+ *
+ * @title Record bounded sign-in anchors without treating token refresh as user activity
+ */
 import { openOidcSession } from '@eventiva/integrations.oidc/session';
 import type { OidcAccessClaims } from '@eventiva/integrations.oidc/token';
 
 /**
  * Lower-level example with explicit selected bounds, not production configuration. Supply freshly verified claims
  * inside the trusted tenant Storage transaction with its required audit; server login normally uses the policy wrapper.
+ *
+ * @param claims - Freshly verified access-token claims for the linked subject.
+ * @returns The opening Effect with a one-hour idle bound and an eight-hour absolute bound.
+ * @since 0.0.0
+ * @example
+ * const session = openBoundedSession(verifiedClaims);
  */
 export const openBoundedSession = (claims: OidcAccessClaims) =>
     openOidcSession(claims, { idleMs: 3_600_000, absoluteMs: 28_800_000 });

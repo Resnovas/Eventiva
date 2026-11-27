@@ -14,7 +14,11 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Verify a Keycloak access token, open its session, then authenticate inside one routed tenant */
+/**
+ * Complete sign-in only for a previously linked human subject on the tenant route.
+ *
+ * @title Verify a Keycloak access token, open its session, then authenticate inside one routed tenant
+ */
 import { openOidcSession } from '@eventiva/integrations.oidc/session';
 import { makeOidcVerifier } from '@eventiva/integrations.oidc/token';
 import { authenticateTokenSession, StandardsTokenVerifier } from '@eventiva/runtime/identity';
@@ -30,7 +34,15 @@ const settings = {
     allowInsecureLoopback: false,
 };
 
-/** Sign-in completion: IdentityStore, CurrentTenant and identitySecurity are provided by the tenant composition root. */
+/**
+ * Open a bounded session and resolve the live caller using the tenant root's identity services.
+ *
+ * @param accessToken - Credential presented to the configured issuer verifier; never log it.
+ * @returns An Effect that refuses unlinked subjects rather than provisioning a principal.
+ * @since 0.0.0
+ * @example
+ * const completion = signIn(presentedToken);
+ */
 export const signIn = (accessToken: string) =>
     Effect.gen(
         /** Verify, provision the session with a server-chosen expiry, then resolve the caller from live SQL. */ function* () {
@@ -42,7 +54,6 @@ export const signIn = (accessToken: string) =>
             const token = Redacted.make(accessToken);
             const claims = yield* verifier.verify(token);
             const now = yield* Clock.currentTimeMillis;
-            // openOidcSession refuses unlinked or non-human subjects; it never creates principals or links.
             yield* openOidcSession(claims, now + 8 * 3_600_000);
             return yield* authenticateTokenSession(token, {
                 issuer: verifier.issuer,
@@ -50,14 +61,30 @@ export const signIn = (accessToken: string) =>
                 scopes: ['eventiva.invoke'],
             }).pipe(
                 Effect.provideService(StandardsTokenVerifier, {
-                    /** Hand the runtime only the claim fields its policy reads. */
+                    /**
+                     * Hand the runtime only the claim fields its policy reads.
+                     *
+                     * @param presented - Redacted credential supplied for this verification.
+                     * @returns Verified runtime claims or a denial with a bounded reason.
+                     */
                     verify: (presented) =>
                         verifier.verify(presented).pipe(
                             Effect.map(
-                                /** Drop the provider-only client ID. */ ({ clientId: _clientId, ...rest }) => rest
+                                /**
+                                 * Drop the provider-only client ID.
+                                 *
+                                 * @param claims - Claims that passed issuer verification.
+                                 * @param claims.clientId - Client identifier already checked against server configuration.
+                                 * @returns The remaining claims for session authentication.
+                                 */ ({ clientId: _clientId, ...rest }) => rest
                             ),
                             Effect.mapError(
-                                /** Collapse refusal detail into a safe reason. */ (error) =>
+                                /**
+                                 * Report the refusal category without exposing the presented token.
+                                 *
+                                 * @param error - Verifier failure with a closed reason code.
+                                 * @returns A runtime denial suitable for the authentication boundary.
+                                 */ (error) =>
                                     new InvocationDenied({ action: '<token>', reason: `oidc-${error.reason}` })
                             )
                         ),

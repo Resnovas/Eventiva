@@ -15,15 +15,25 @@
  */
 
 /**
- * @title Refuse preflight without approved verifiers
  * The policy comes from trusted composition, never from a caller's request.
  * This example fails unavailable. Even a fully verified metadata preflight
  * never grants key release or permission to decrypt.
+ *
+ * @title Refuse preflight without approved verifiers
  */
 import { TrustUnavailable, type TrustPolicy, type TrustRequest } from '@eventiva/contracts/trust';
 import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect } from 'effect';
 
-/** Demonstrate fail-closed metadata preflight with unavailable verifiers; no private release is authorized. */
+/**
+ * Evaluate metadata with unavailable verifiers; no private release is authorized.
+ *
+ * @param request - Proposed exchange whose evidence must be checked independently.
+ * @param trustedPolicy - Preflight policy from the composition root.
+ * @returns A preflight Effect that fails unavailable rather than granting trust.
+ * @since 0.0.0
+ * @example
+ * const check = refusedPreflight(candidate, serverPolicy);
+ */
 export const refusedPreflight = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     trustPreflight(request, trustedPolicy).pipe(Effect.provide(TrustUnavailable));

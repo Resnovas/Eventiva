@@ -24,6 +24,14 @@ import { Effect, Exit, Scope } from 'effect';
  * Portable state only. The trusted host has already authenticated both callers
  * and admitted the registration. Keep its registration scope alive throughout.
  * Callers sharing a tenant/session share selection, not field masking authority.
+ *
+ * @param registration - Admitted screen registration with a live owner scope.
+ * @param mountingCaller - Authenticated identity that mounts the screen.
+ * @param currentViewer - Identity whose permissions apply to each subsequent read and invocation.
+ * @returns Visible state and invocation outcome before unmount, plus the result of reading after scope closure.
+ * @since 0.0.0
+ * @example
+ * const inspection = inspectMountedScreen(admitted, owner, viewer);
  */
 export const inspectMountedScreen = (
     registration: UiRegistration,
@@ -36,7 +44,11 @@ export const inspectMountedScreen = (
                 const context = yield* makeScreenContext;
                 const screenScope = yield* Scope.make();
                 yield* Effect.addFinalizer(
-                    /** Close the child even if mounting or inspection fails before the explicit unmount. */ () =>
+                    /**
+                     * Release the child even if inspection fails before the explicit unmount.
+                     *
+                     * @returns The Effect that closes the screen scope.
+                     */ () =>
                         Scope.close(screenScope, Exit.void)
                 );
                 yield* registration.mount.pipe(
@@ -44,7 +56,6 @@ export const inspectMountedScreen = (
                     Effect.provideService(Scope.Scope, screenScope),
                     Effect.provideService(Caller, mountingCaller)
                 );
-                // These effects retain Caller as a requirement until each call.
                 const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
                 const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
                 yield* Scope.close(screenScope, Exit.void);

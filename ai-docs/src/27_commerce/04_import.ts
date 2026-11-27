@@ -23,6 +23,10 @@ import { Effect } from 'effect';
  * Register after importResources/productResources migration on the same tenant provider and durable host.
  * Supply StockImportSources, Resources, InputDigest, Flags, Authorizer, IdentityResolver and CurrentTenant.
  * Keep inventory.import.enabled and inventory.f6-inventory default-off; no application installation occurs here.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerMetadataImport.pipe(Effect.provide(tenantHost));
  */
 export const registerMetadataImport = Effect.gen(
     /** Capture the actual common host so nested product invocation joins its same-owner SQL savepoints. */ function* () {
@@ -35,10 +39,13 @@ export const registerMetadataImport = Effect.gen(
  * Demonstrate an explicitly reviewed synthetic one-row source with stable plan/row/product UUIDv7 identities.
  * Call only after registration and trusted routing with a canonical Caller. Reconcile an ambiguous apply reply
  * with this exact input and row idempotency key; never generate replacement identities or apply quantity.
+ *
+ * @since 0.0.0
+ * @example
+ * const importRun = Effect.zipRight(registerMetadataImport, reviewedMetadataExample);
  */
 export const reviewedMetadataExample = Effect.gen(
     /** A matched public model supplies provenance only; all product fields absent from CSV are explicitly reviewed here. */ function* () {
-        // This example assumes the trusted synthetic source has exactly one matching data row, not arbitrary caller CSV.
         const host = yield* ActionHost;
         const plan = '019b0000-0000-7000-8000-000000000100';
         const row = '019b0000-0000-7000-8000-000000000101';

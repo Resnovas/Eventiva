@@ -15,11 +15,19 @@
  */
 
 /**
- * @title Refuse private marketplace release
  * Metadata authorization and pending local intents never grant private processing.
  * This result is always Left with the closed trust-unapproved reason.
+ *
+ * @title Refuse private marketplace release
  */
 import { privateExchangeUnavailable } from '@eventiva/runtime/marketplace';
 import { Effect } from 'effect';
 
+/**
+ * Expose the refusal as data so the caller can distinguish it from a successful release.
+ *
+ * @since 0.0.0
+ * @example
+ * const refusal = Effect.runSync(privateReleaseResult);
+ */
 export const privateReleaseResult = privateExchangeUnavailable.pipe(Effect.either);

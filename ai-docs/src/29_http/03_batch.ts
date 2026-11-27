@@ -14,7 +14,11 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Preserve caller-owned keys and ordered wire inputs for explicit non-atomic batch recovery */
+/**
+ * Retain the decoded envelope after a partial failure; earlier writes may already have committed.
+ *
+ * @title Preserve caller-owned keys and ordered wire inputs for explicit non-atomic batch recovery
+ */
 import { JsonValue } from '@eventiva/contracts/storage';
 import { Schema } from 'effect';
 
@@ -25,7 +29,13 @@ const Call = Schema.Struct({
 });
 const Envelope = Schema.Struct({ calls: Schema.Array(Call).pipe(Schema.minItems(1), Schema.maxItems(10)) });
 
-/** Pure synthetic payload validation only; neither possession of this envelope nor a specification grants authority. */
+/**
+ * Validate the synthetic envelope without invoking any action or granting authority.
+ *
+ * @since 0.0.0
+ * @example
+ * const decodedEnvelope = batchExample;
+ */
 export const batchExample = Schema.decodeUnknown(Envelope)(
     {
         calls: [
@@ -36,6 +46,3 @@ export const batchExample = Schema.decodeUnknown(Envelope)(
     },
     { onExcessProperty: 'error' }
 );
-
-// Keep this same decoded envelope for recovery. The server independently preflights current visibility, then reauthorizes each invocation.
-// After failure the committed prefix stays committed. A replay has fresh attempt receipt IDs and must not be mistaken for an atomic rollback.

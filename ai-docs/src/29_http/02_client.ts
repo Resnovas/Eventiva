@@ -14,7 +14,11 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Invoke a canonical specification with portable domain types and separately protected current proof */
+/**
+ * Bind credentials independently of action input and evaluate them when the Effect runs.
+ *
+ * @title Invoke a canonical specification with portable domain types and separately protected current proof
+ */
 import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
 import {
     discoverHttpActions,
@@ -29,6 +33,15 @@ import { Effect, Layer, Schema } from 'effect';
  * Build an unexecuted canonical call; the caller still provides its platform HttpClient and runs the Effect.
  * The protected store effect is evaluated on every call, while server identity/consent/policy remain live authority.
  * This is the spec-typed single-action boundary, not generated inventory, streaming or offline support.
+ *
+ * @param spec - Canonical specification defining the wire codec and inferred result.
+ * @param input - Domain input accepted by that specification.
+ * @param target - Trusted endpoint and caller-retained mutation key when required.
+ * @param currentProof - Protected credential lookup evaluated for the call.
+ * @returns An unexecuted invocation requiring the platform HTTP client.
+ * @since 0.0.0
+ * @example
+ * const call = callWithCurrentProof(reserve, { units: 7 }, target, readProof);
  */
 export const callWithCurrentProof = <S extends ActionSpec>(
     spec: S,
@@ -45,6 +58,13 @@ export const callWithCurrentProof = <S extends ActionSpec>(
  * Provide an unretried platform HttpClient to execute; references/servers remain inert JSON, never destinations.
  * Actual body intake is capped at 1 MiB, 64 nested containers and 100000 structural tokens before JSON decoding.
  * A refresh failure is not permission to reuse a prior snapshot as current authority; invocation still needs canonical specs.
+ *
+ * @param target - Discovery endpoint selected by the caller, not by a returned reference.
+ * @param currentProof - Protected credential lookup for this GET.
+ * @returns A deferred read of the caller's private discovery snapshot.
+ * @since 0.0.0
+ * @example
+ * const discovery = discoverWithCurrentProof(target, readProof);
  */
 export const discoverWithCurrentProof = (
     target: Omit<HttpActionTarget, 'idempotencyKey'>,
@@ -53,7 +73,12 @@ export const discoverWithCurrentProof = (
     discoverHttpActions(target).pipe(
         Effect.provideService(HttpActionCredentials, { proof: currentProof }),
         Effect.map(
-            /** The typed envelope retains optional components and arbitrary JSON extensions without compiling them. */ (
+            /**
+             * Project the typed envelope without compiling JSON extensions.
+             *
+             * @param document - Validated private snapshot from this GET.
+             * @returns Its discovery fields alongside the complete inert document.
+             */ (
                 document
             ) => ({
                 version: document.openapi,
@@ -89,6 +114,13 @@ const annotate = define('example.annotate', {
  * Prepare one heterogeneous sequential batch without executing it. Supply an unretried platform HttpClient to run.
  * Retain these exact keys and inputs for explicit recovery: a failure may follow a committed prefix and supplies
  * no partial results/index or rollback guarantee. Wire receipts can change while original SQL commits remain stable.
+ *
+ * @param target - Batch endpoint; each enclosed mutation owns its idempotency key.
+ * @param currentProof - Protected credential lookup for this request.
+ * @returns A deferred batch yielding positional results and both receipt identifiers on success.
+ * @since 0.0.0
+ * @example
+ * const batch = batchWithCurrentProof(target, readProof);
  */
 export const batchWithCurrentProof = (
     target: Omit<HttpActionTarget, 'idempotencyKey'>,
@@ -104,7 +136,12 @@ export const batchWithCurrentProof = (
     ).pipe(
         Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof })),
         Effect.map(
-            /** Each result retains its canonical position without a union, cast or copied DTO. */ (results) => ({
+            /**
+             * Project typed outputs in request order.
+             *
+             * @param results - Successful reserve and annotate results, respectively.
+             * @returns Both values and their attempt receipts without widening them to a union.
+             */ (results) => ({
                 reserved: results[0].output.reserved,
                 accepted: results[1].output.accepted,
                 receipts: [results[0].receiptId, results[1].receiptId],

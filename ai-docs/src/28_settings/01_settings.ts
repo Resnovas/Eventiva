@@ -19,10 +19,15 @@ import { declareSetting, settingsRead, settingsWrite, settingsResource } from '@
 import { ActionHost } from '@eventiva/runtime/host';
 import { settingsModule } from '@eventiva/runtime/settings';
 
-/** Return unactivated composition helpers; the trusted caller supplies Resources, digest, tenant and durable host services. */
+/**
+ * Prepare the resource and deferred registration and use Effects. Revision zero is create-only on the tenant store.
+ *
+ * @since 0.0.0
+ * @example
+ * const resource = example.pipe(Effect.map((prepared) => prepared.resource));
+ */
 export const example = Effect.gen(
     /** Validate metadata before returning resource migration and registration inputs. */ function* () {
-        // Return deferred operations, not activation: metadata validation supplies neither tenant authority nor a migrated store.
         const definition = yield* declareSetting({
             module: 'calendar',
             instance: 'primary',
@@ -36,14 +41,12 @@ export const example = Effect.gen(
         const resource = yield* settingsResource;
         const register = Effect.gen(
             /** Resources migrations/provider and a matching durable integrity owner must exist before this effect runs. */ function* () {
-                // Registration uses the caller's trusted host composition rather than installing a separate preference store.
                 const host = yield* ActionHost;
                 yield* host.register(yield* settingsModule([definition]));
             }
         );
         const use = Effect.gen(
             /** Invoke only after separately approved activation and authenticated permission checks. */ function* () {
-                // Revision zero is create-only; this example is an initial intent, not an unconditional overwrite recipe.
                 const host = yield* ActionHost;
                 const target = { module: 'calendar', instance: 'primary', key: 'page-size', scope: 'user' } as const;
                 const before = yield* host.invoke(settingsRead.name, target);

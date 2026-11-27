@@ -25,10 +25,15 @@ import { ActionHost } from '@eventiva/runtime/host';
 import { invoiceDraftModule, invoiceDraftResources } from '@eventiva/runtime/invoice-draft';
 import { Effect } from 'effect';
 
-/** Unactivated example: trusted composition supplies migrated Organisation/Resources and matching durable tenant host services. */
+/**
+ * Prepare registration and draft operations for migrated tenant resources. Neither registration nor declaration grants reference access.
+ *
+ * @since 0.0.0
+ * @example
+ * const declaration = example.pipe(Effect.map((prepared) => prepared.resource));
+ */
 export const example = Effect.gen(
     /** Return deferred operations, never prepare invoices, register services or enable flags merely by importing documentation. */ function* () {
-        // These synthetic references must already exist as accessible active Organisation Parties before use.
         const snapshot: InvoiceRevision = {
             invoice: '019b0000-0000-7000-8000-000000000010',
             revision: 1,
@@ -45,14 +50,12 @@ export const example = Effect.gen(
         const resource = yield* invoiceDraftResources;
         const register = Effect.gen(
             /** Defer until a trusted host and the exact tenant Resources/Storage owner have been composed. */ function* () {
-                // Neither this resource declaration nor a module registration grants accounting or reference access.
                 const host = yield* ActionHost;
                 yield* host.register(yield* invoiceDraftModule);
             }
         );
         const use = Effect.gen(
             /** Full explicit replacement is preparation only; no provider, issue number or payment result exists. */ function* () {
-                // Reuse original key/input only to reconcile this first write, never to submit the changed revision.
                 const host = yield* ActionHost;
                 const original = yield* host.invoke(
                     invoiceDraft.name,
