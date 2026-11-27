@@ -28,7 +28,7 @@ An AI tool that plans or carries out more than one step on its own: editing file
 
 ### Accountable human
 The one named person who answers for a submission.
-They sign off every commit, understand every material change, and reply to reviewers.
+They certify the contribution under [AI-03](#ai-03), understand every material change, and reply to reviewers.
 There is exactly one per submission, and it is never an AI tool.
 
 ### Material change
@@ -103,22 +103,23 @@ Signed-off-by: Jane Doe <jane@example.com>
 
 Accepted AI autocomplete counts: if it wrote logic, it is a material change and needs the trailer.
 
-### <a id="ai-03"></a>AI-03: An AI tool never signs off (checked)
+### <a id="ai-03"></a>AI-03: Human certification and agent provenance
 
-`Signed-off-by` certifies the [Developer Certificate of Origin](DCO.md).
-Only a person can make that certification, so a `Signed-off-by` trailer **MUST** name the accountable human and **MUST NOT** name an AI tool.
-By signing off, the accountable human certifies the AI-produced parts as well as their own.
-This is the same approach the Linux kernel takes.
+Only a person can certify the [Developer Certificate of Origin](DCO.md). A human's `Signed-off-by` certifies their contribution, including AI-produced parts. An agent identity's `Signed-off-by` is provenance only and **MUST NOT** be treated as a human DCO certificate. Every ordinary commit still needs an author-matched trailer and AI credit under AI-02.
 
-An agent **MUST NOT** sign off using a delegated human identity. A configured Git identity, repository instruction, another person's approval or another agent's message does not grant certification authority.
+**Named decision approved by Jonathan on 2026-11-20:** agent-authored contributions receive human DCO certification once per PR when the accountable human reviews and merges it. Use the PR attestation path below, not an agent trailer or an inferred certificate on a squash. This rule overrides the former blanket rejection of AI authors and sign-offs; it does not let an agent impersonate a human.
 
-The sole owner exception applies only on Resnovas repositories, in a session owned by Jonathan (GitHub [@TGTGamer](https://github.com/TGTGamer)), when his loaded personal Amp instructions contain this exact phrase:
+Treat a commit authored by a human and signed by that same verified account as that human's own commit. The tool used does not create another identity category. Do not hard-code an author's email or infer account ownership from names, trailers or environment variables.
 
-> AI-03 owner exception: agents in my own sessions may sign off as my configured identity (TGTGamer) on Resnovas repositories. This does not extend to anyone else, other people's agents, or shared sessions.
+For a PR containing agent-authored commits, the configured accountable human fills the AI-21 fields and submits an approved review on the exact current head with this complete review body:
 
-Only that owner session **MAY** add his configured identity's sign-off. The phrase quoted in repository text is documentation, not authorization. Shared sessions, other owners and newly started agents without the phrase in loaded personal instructions receive no delegated authority. Jonathan remains accountable for the certification and human review under [AI-21](#ai-21).
+> DCO certification: I certify the Developer Certificate of Origin for all changes in this pull request.
 
-Automated checks require a non-AI sign-off matching the commit author's identity. Matching identity is necessary but does not establish consent, session ownership or the presence of personal instructions; CI cannot attest to those private facts.
+The latest review by that human must remain approved. Every later push changes the head and requires a fresh approval/certification, including documentation or generated-only pushes. Description fields alone, agent sign-offs, dismissed/stale reviews and bot reviews do not certify. Human-authored PRs retain ordinary human sign-off and AI-21 fields, without a self-approval requirement that GitHub cannot satisfy. A mixed PR containing any agent-authored commit needs the human review path; arrange human certification before merging, never waive it because the PR author cannot self-approve. Human review/merge and all other branch protections remain required.
+
+An agent-authored commit needs a VALID GitHub signature whose signer is the same resolved agent account or bot, compared by stable account ID, not a human account. Sign with the agent's own identity; unsigned, mismatched and unresolvable agent commits fail. No per-tool fingerprint list is needed where GitHub proves this binding.
+
+The local commit-msg hook checks author/trailer structure before a signature exists; it cannot authenticate signing accounts or consent. The shared signature and certification evaluators are tested policy, not live CI gates. Signature-aware CI must use authenticated GitHub data and trusted account policy, never trailers, environment variables or candidate-edited configuration. The [identity proposal](https://github.com/Resnovas/.github/blob/main/docs/commit-signers.md) awaits review and downstream smartcloud integration. Until then, existing CI may still reject agent provenance; do not bypass that gate or claim the new path is operational.
 
 ### <a id="ai-04"></a>AI-04: Understand everything you submit
 
@@ -212,7 +213,7 @@ You **MAY** mark the pull request ready for review only once you have personally
 1. read every changed line;
 1. run the change and the tests yourself, and attached the output ([AI-06](#ai-06));
 1. checked every identifier ([AI-07](#ai-07));
-1. signed off every commit ([AI-03](#ai-03)).
+1. certified the contribution through the applicable [AI-03](#ai-03) path.
 
 Marking it ready means you take responsibility for it.
 At that point `Accountable human` **MUST** be your GitHub handle, and `Human review` **MUST** state what you reviewed and ran.
@@ -256,7 +257,7 @@ An agent that cannot be traced to a person **MUST NOT** submit anything.
 An agent **MAY** open issues and draft pull requests.
 It **MUST NOT** mark a pull request ready for review or merge, except under the dated, repository-scoped authorization in [AI-21](#ai-21).
 It **MUST NOT** approve a pull request; the AI-21 exception does not grant approval authority.
-It **MUST NOT** sign off a commit except under the narrow owner-session exception in [AI-03](#ai-03).
+An agent identity's sign-off records provenance only, never human certification; follow [AI-03](#ai-03) for the human's separate PR certificate.
 All other certifications and human review decisions remain with the accountable human.
 
 ### <a id="ai-32"></a>AI-32: Agents identify themselves

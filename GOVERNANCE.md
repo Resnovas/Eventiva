@@ -56,6 +56,8 @@ How many depends on how many maintainers the project has.
 
 A review of an AI-assisted pull request follows [AI-40](AI_POLICY.md#ai-40): an approval states that the reviewer read every changed line and checked the evidence.
 
+For PRs containing agent-authored commits, human DCO certification additionally follows [AI-03](AI_POLICY.md#ai-03), even with one maintainer. Human-authored PRs retain ordinary sign-off and AI-21 fields without GitHub self-approval. The proposed exact-head certification evaluator is not yet a live gate; AI-03 records the activation prerequisites.
+
 An automated approval agent may approve a low-risk pull request under the [Approval Policy](APPROVAL_POLICY.md), which says what it may approve, what always goes to a maintainer, and the evidence it checks first.
 Its approval never counts towards the table above.
 
@@ -65,7 +67,7 @@ Its approval never counts towards the table above.
 The house ruleset makes the `smartcloud` check required on the default branch; it fails on any policy error, including too few approvals, and, as the aggregate check, on any other check on the pull request that fails.
 Until a repository lists its main CI check under `required.expect`, keep that check required beside `smartcloud` (`settings.ruleset.statusChecks.checks`), because a restricted run from a fork or Dependabot skips the private house preset.
 As soon as the preset names two or more maintainers, the ruleset also requires one approval, the minimum both columns share, and the `smartcloud` check enforces the second approval an outside contribution needs.
-With a single maintainer the review gate is always open and no approval is required, so a sole maintainer is never blocked.
+With a single maintainer this review-count gate is open; the separate AI-03 human certification requirement for agent-authored contributions still applies.
 The owner can always bypass the ruleset, including the review gate, whatever the number of maintainers; a bypass is recorded in the pull request.
 
 ## <a id="review-bots"></a>Review bots

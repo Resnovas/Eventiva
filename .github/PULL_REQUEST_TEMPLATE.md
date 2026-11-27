@@ -35,8 +35,10 @@ AI tools: every tool and model, e.g. Claude Code (claude-opus-5-5), or none.
 Accountable human: your GitHub handle, filled in when you mark this ready.
 Human review: what you personally read, ran and checked, filled in when you mark this ready.
 Every commit an AI tool materially changed needs a Co-authored-by trailer
-naming the tool and model, and every commit needs your Signed-off-by
-(git commit -s).
+naming the tool and model, and an author-matched Signed-off-by (git commit -s).
+Agent sign-offs are provenance only. Follow AI-03 for the human's
+exact-head PR certification; later pushes require renewed approval.
+Human-authored PRs retain ordinary sign-off and AI-21 fields, not self-approval.
 -->
 
 AI level:
