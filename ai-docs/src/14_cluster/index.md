@@ -1,6 +1,6 @@
 ## Mandatory Cluster composition (EVE-252)
 
-HTTP integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. Bind loopback port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend so the advertised port does not require a second bind.
+HTTP integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. With the default host, bind `127.0.0.1` on port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend. The advertised host stays unchanged; only the port comes from the socket.
 
 Canonical Markdown: `docs/cluster.md`. Compiling typed composition: `apps/server/tests/backend.spec.ts`. Production owners: `apps/server/src/{backend,cluster,cluster-profile,cluster-actions}.ts`. Shared/client contracts and packages/runtime remain Cluster/driver-free. The archived EVE-18 spike is not integrated.
 

@@ -8,7 +8,7 @@ The `main` executable remains an inventory/parity diagnostic, reports `unavailab
 
 ## One execution path
 
-For concurrent HTTP fixtures, bind a scoped TCP socket to loopback port `0` and pass the open service to `backend`. The runner advertises its assigned port without closing or rebinding the listener. The deployment profile still requires a port from 1 through 65535; ordinary servers bind their configured port.
+For concurrent HTTP fixtures using the default host, bind a scoped TCP socket to `127.0.0.1` on port `0` and pass the open service to `backend`. The runner advertises the assigned port without changing the profile's host or rebinding the listener. The deployment profile still requires a port from 1 through 65535; ordinary servers bind their configured port.
 
 Community defaults to one cluster-capable runner on one host. Self-hosted operators may increase the count. Cloud defaults to two independent runner processes, with disjoint acquired shard ownership. Two processes on one physical host are not host-level redundancy. Production requires independently failure-isolated hosts, shared reachable coordination storage and verified capacity and recovery before being called ready.
 
