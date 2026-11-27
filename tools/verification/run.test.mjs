@@ -188,6 +188,8 @@ function fixture({ pipeline = false } = {}) {
     git('config', 'user.name', 'Synthetic Fixture');
     git('config', 'user.email', 'fixture@example.invalid');
     mkdirSync(join(cwd, 'tools/verification'), { recursive: true });
+    mkdirSync(join(cwd, 'tools/dev'), { recursive: true });
+    copyFileSync(resolve(import.meta.dirname, '../dev/pre-commit.mjs'), join(cwd, 'tools/dev/pre-commit.mjs'));
     mkdirSync(join(cwd, 'tools/resources'), { recursive: true });
     copyFileSync(
         resolve(import.meta.dirname, '../resources/boundaries.mjs'),
@@ -206,6 +208,7 @@ function fixture({ pipeline = false } = {}) {
             scripts: {
                 'verify:static': 'node -e "console.log(\'STATIC_OK\')"',
                 'test:affected': 'node tools/verification/affected.mjs',
+                'verify:staged': 'node tools/verification/pre-commit.mjs',
                 check: 'node -e "console.log(\'CHECK_OK\')"',
                 'verify:features': 'node -e "console.log(\'FEATURES_OK\')"',
                 verify: 'node tools/verification/pipeline.mjs',
@@ -411,6 +414,26 @@ test('hook installs idempotently without replacing foreign hooks or commit-msg',
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
     assert.equal(readFileSync(commitMsg, 'utf8'), 'existing commit validation\n');
+    const custom = '#!/bin/sh\n# eventiva:verified-staged-snapshot\necho custom-check\nexit 17\n';
+    writeFileSync(hook, custom);
+    assert.notEqual(run('pre-commit', '--install').status, 0);
+    assert.equal(readFileSync(hook, 'utf8'), custom);
+    for (const legacy of [
+        '#!/bin/sh\n# house:pre-commit\nexec node "$(git rev-parse --show-toplevel)/tools/dev/pre-commit.mjs" run\n',
+        '#!/bin/sh\n# eventiva:verified-staged-snapshot\nset -eu\nnode tools/verification/pre-commit.mjs\n',
+    ]) {
+        const migrated = fixture();
+        const path = join(migrated.cwd, '.git/hooks/pre-commit');
+        writeFileSync(path, legacy);
+        assert.equal(migrated.run('pre-commit', '--install').status, 0);
+        assert.equal(readFileSync(`${path}.before-eventiva-composition`, 'utf8'), legacy);
+        assert.equal(readFileSync(path, 'utf8'), '#!/bin/sh\n# eventiva:verified-staged-snapshot\nexec node --run verify:staged\n');
+        assert.equal(migrated.run('pre-commit', '--install').status, 0);
+        writeFileSync(`${path}.before-eventiva-composition`, 'preserved owner backup\n');
+        writeFileSync(path, legacy);
+        assert.equal(migrated.run('pre-commit', '--install').status, 0);
+        assert.equal(readFileSync(`${path}.before-eventiva-composition`, 'utf8'), 'preserved owner backup\n');
+    }
 });
 
 test('installed hook runs only static and affected tests while standalone retains full acceptance', /** The hook runs the commit subset; the standalone run keeps every stage. */ () => {
