@@ -2173,6 +2173,16 @@ The combined full repeat at 78c0e17a also passes all 104 documentation fixtures,
 
 The full settings-integrated repeat at dcab6a3b exits zero: 104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate tasks (18 cached), 16 smoke/dependency tasks (11 cached), zero source/emitted boundary violations/cycles and PostgreSQL cleanup. The backlog records the cumulative lane count separately: 2,972 attachments and 1,055 rationale findings resolved through documentation, versus 32 bounded classifier false positives; fingerprint reconciliation clears no semantic finding. Independent implementation/canonical improvements and diagnostic identity replacements are not documentation credit. Final root/clean-source graph publication and exact-head remote CI remain separately reported evidence.
 
+## Banned JSDoc tags
+
+Never write `@throws`, `@exception`, `@author` or `@license` (owner decision, 2026-11-21). Effect failures travel in the typed error channel, git records authors and the file header holds the licence. `eslint.config.mjs` enforces these bans (plus `@version`) on `jsdocAdoptedFiles` through `jsdocContracts` with `eslint-plugin-jsdoc` 65.4.6 (see `ai-docs/src/39_jsdoc_contract/index.md`). Outside the synced `tools/lint/funnel.mjs`, `tools/documentation/jsdoc-tags.mjs` also exports `jsdocTagBan(files)`, a standalone flat-config override entry setting `jsdoc/no-restricted-syntax` to error for composing after `{ ...contracts, files }` without editing the synced module. See `docs/documentation-standard.md#banned-jsdoc-tags`.
+
+```js
+import { jsdocTagBan } from './tools/documentation/jsdoc-tags.mjs';
+
+const entry = jsdocTagBan(['packages/*/src/**/*.ts']);
+```
+
 ---
 
 ## Payment eligibility and catalogue preview
