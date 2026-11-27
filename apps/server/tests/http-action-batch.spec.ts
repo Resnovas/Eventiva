@@ -20,6 +20,7 @@ import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
 import * as HttpBody from '@effect/platform/HttpBody';
 import * as HttpClient from '@effect/platform/HttpClient';
 import * as HttpClientRequest from '@effect/platform/HttpClientRequest';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
 import { define } from '@eventiva/contracts/action';
@@ -329,9 +330,9 @@ const fixture = Effect.gen(
             Effect.provideService(CurrentTenant, { id: tenant }),
             Effect.provideService(Storage, store)
         );
+        const socket = yield* NodeSocketServer.make({ host: '127.0.0.1', port: 0 });
         const profile = yield* Schema.decodeUnknown(DeploymentProfile)({
             edition: 'community',
-            port: 34574,
             shards: 8,
             assignmentRefreshMs: 25,
             messagePollMs: 25,
@@ -351,7 +352,7 @@ const fixture = Effect.gen(
                 )
         );
         const runner = yield* Layer.build(
-            backend(profile, initialize, Effect.void, dependencies).pipe(
+            backend(profile, initialize, Effect.void, dependencies, undefined, socket).pipe(
                 Layer.provide(
                     sqlRouter(
                         'postgres',

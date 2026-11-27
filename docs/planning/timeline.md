@@ -2,6 +2,10 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## EVE-261 HTTP fixture listener recovery - 2026-11-27
+
+At 09:41 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) isolated three failing HTTP cases in [the #1113 run](https://github.com/Resnovas/Eventiva/actions/runs/45973498358/job/140419413699), tracked in [EVE-261](https://linear.app/resnovas/issue/EVE-261#comment-a862243d) / [#1035](https://github.com/Resnovas/Eventiva/issues/1035). With both former ports occupied continuously, the original tests failed 3/3 and the retained-listener implementation passed 3/3 against disposable PostgreSQL. This qualifies the local HTTP fixture only, not the documentation stack, process migration or wider integration gate.
+
 ## Renewal static-plus-affected requalification - 2026-11-20
 
 The [replacement owner](https://ampcode.com/threads/T-01a1f91d-763b-70be-8b45-ed204d33d101) resumes only after the coordinator independently verifies exact `515a62ffeb82a30ef1965d599d1652411a6efdda` CI GREEN. Puck authorizes the later ordinary delivery sequence. The [renewal report](../core-qualification/session-renewal.md#static-plus-affected-requalification-and-delivery---2026-11-20) owns exact evidence; non-closing [EVE-275](https://linear.app/resnovas/issue/EVE-275) / [#1063](https://github.com/Resnovas/Eventiva/issues/1063) remain open. This dated checkpoint supersedes renewal's earlier current-attempt rows, not historical failures or the frozen all-issue capture.

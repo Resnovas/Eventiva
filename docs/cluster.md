@@ -8,6 +8,8 @@ The `main` executable remains an inventory/parity diagnostic, reports `unavailab
 
 ## One execution path
 
+For concurrent HTTP fixtures, bind a scoped TCP socket to loopback port `0` and pass the open service to `backend`. The runner advertises its assigned port without closing or rebinding the listener. The deployment profile still requires a port from 1 through 65535; ordinary servers bind their configured port.
+
 Community defaults to one cluster-capable runner on one host. Self-hosted operators may increase the count. Cloud defaults to two independent runner processes, with disjoint acquired shard ownership. Two processes on one physical host are not host-level redundancy. Production requires independently failure-isolated hosts, shared reachable coordination storage and verified capacity and recovery before being called ready.
 
 Both editions use `backend` and its `clusterRunner` in `apps/server/src/cluster.ts`, the same `EventivaAction` entity, serial mailbox handling and `ActionHost.execute`. No profile selects local/noop storage. The deployment schema, not a rollout flag, selects topology; the binding core security architecture cannot be disabled by a feature flag. Existing module/action feature gates remain enforced by ActionHost.
