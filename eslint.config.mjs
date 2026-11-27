@@ -91,15 +91,36 @@ const portableOnly = [
 ];
 
 const nodeGlobals = ['process', 'Buffer', 'require', 'module', 'global', '__dirname', '__filename', 'setImmediate'].map(
+    /**
+     * Direct portable callers to inject the host capability instead.
+     *
+     * @param name - Node global unavailable on other hosts.
+     * @returns The restricted-global entry ESLint reports at the use site.
+     */
     (name) => ({ name, message: 'Portable code runs on Hermes and in browsers: take this from a service.' })
 );
 const nodeBuiltins = [
-    ...new Set(builtinModules.flatMap((name) => [name.replace(/^node:/, ''), `node:${name.replace(/^node:/, '')}`])),
+    ...new Set(
+        builtinModules.flatMap(
+            /**
+             * Cover both spellings of a built-in when restricting imports.
+             *
+             * @param name - Module identifier supplied by the installed Node runtime.
+             * @returns The bare and protocol-prefixed identifiers.
+             */
+            (name) => [name.replace(/^node:/, ''), `node:${name.replace(/^node:/, '')}`]
+        )
+    ),
 ];
 
 const root = dirname(fileURLToPath(import.meta.url));
 const skip = new Set(['node_modules', 'dist', '.git', '.nx', 'examples', 'graphify-out', 'test-output', '.expo']);
 const projects = [];
+/**
+ * Collect workspace-relative project roots and their declared tags, excluding generated trees.
+ *
+ * @param dir - Directory to scan for Nx project manifests.
+ */
 const walk = (dir) => {
     for (const entry of readdirSync(dir)) {
         if (skip.has(entry)) continue;
@@ -111,10 +132,41 @@ const walk = (dir) => {
     }
 };
 for (const top of ['apps', 'packages', 'tests']) walk(join(root, top));
+/**
+ * Scope a lint rule to projects carrying at least one requested tag.
+ *
+ * @param tags - Alternative Nx tags, not a required combination.
+ * @returns TypeScript source globs relative to the workspace.
+ */
 const filesTagged = (...tags) =>
     projects
-        .filter((project) => tags.some((tag) => project.tags.includes(tag)))
-        .map((project) => `${project.root}/**/*.{ts,tsx,mts}`);
+        .filter(
+            /**
+             * Include a project only when its manifest opts into this restriction.
+             *
+             * @param project - Root and tags read from one manifest.
+             * @returns Whether any requested tag applies.
+             */
+            (project) =>
+                tags.some(
+                    /**
+                     * Compare complete Nx labels without matching prefixes.
+                     *
+                     * @param tag - One alternative requested by the rule.
+                     * @returns Whether the manifest declares this label.
+                     */
+                    (tag) => project.tags.includes(tag)
+                )
+        )
+        .map(
+            /**
+             * Include source and configuration TypeScript beneath the matched root.
+             *
+             * @param project - Manifest selected by its tags.
+             * @returns The flat-config files pattern for this project.
+             */
+            (project) => `${project.root}/**/*.{ts,tsx,mts}`
+        );
 const portableFiles = filesTagged('layer:shared', 'layer:frontend');
 const runtimeFiles = filesTagged('capability:actions');
 
@@ -151,10 +203,32 @@ const noZeroDelayUiTimer = {
                 'Do not defer UI state with a zero-delay timer. Keep state in one owner and update it from the event; use scoped Effect scheduling for genuine timed work.',
         },
     },
+    /**
+     * Check timer calls against their lexical bindings so local substitutes are not flagged.
+     *
+     * @param context - ESLint rule context for this source file.
+     * @returns The call visitor used during traversal.
+     */
     create(context) {
         return {
+            /**
+             * Report global timeouts with an omitted delay or literal zero.
+             *
+             * @param node - Call whose arguments and callee can establish the violation.
+             */
             CallExpression(node) {
-                if (node.arguments.some((argument) => argument.type === 'SpreadElement')) return;
+                if (
+                    node.arguments.some(
+                        /**
+                         * Identify calls whose effective delay cannot be located by argument position.
+                         *
+                         * @param argument - One syntactic argument of the timer candidate.
+                         * @returns Whether it expands an iterable at runtime.
+                         */
+                        (argument) => argument.type === 'SpreadElement'
+                    )
+                )
+                    return;
                 const delay = node.arguments[1];
                 const literal =
                     delay?.type === 'UnaryExpression' && ['-', '+'].includes(delay.operator) ? delay.argument : delay;
@@ -175,9 +249,15 @@ const noZeroDelayUiTimer = {
                 )
                     global = callee.object;
                 if (!global) return;
-                const reference = context.sourceCode
-                    .getScope(node)
-                    .references.find((entry) => entry.identifier === global);
+                const reference = context.sourceCode.getScope(node).references.find(
+                    /**
+                     * Locate the binding for this occurrence rather than matching identifier text.
+                     *
+                     * @param entry - Reference recorded by ESLint for the current scope.
+                     * @returns Whether it describes the exact callee or receiver under inspection.
+                     */
+                    (entry) => entry.identifier === global
+                );
                 if (reference?.resolved?.defs.length) return;
                 context.report({ node, messageId: 'stateOwner' });
             },
@@ -193,6 +273,8 @@ const eventivaPlugin = {
 };
 
 const jsdocAdoptedFiles = [
+    'eslint.config.mjs',
+    'vitest.shared.ts',
     'apps/client/**/*.{ts,tsx,mts,js}',
     'apps/client-e2e/**/*.{ts,mts}',
     'packages/integrations/*/src/**/*.{ts,tsx}',
@@ -352,6 +434,14 @@ const jsdocContracts = {
     },
 };
 
+/**
+ * Apply workspace boundaries before project-specific restrictions and formatting overrides.
+ *
+ * @since 0.0.1
+ * @example
+ * import config from './eslint.config.mjs';
+ * const eslint = new ESLint({ overrideConfigFile: true, overrideConfig: config });
+ */
 export default [
     ...nx.configs['flat/base'],
     ...nx.configs['flat/typescript'],
@@ -440,9 +530,12 @@ export default [
                         reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
                         ...['node:child_process', 'child_process'].map(
-                            /** Build the finite forbidden-import declarations once. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                name
-                            ) => ({
+                            /**
+                             * Restrict both spellings of direct child-process imports. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                             *
+                             * @param name - Built-in specifier bypassing the measured test harness.
+                             * @returns An import diagnostic pointing to the bounded runner.
+                             */ (name) => ({
                                 name,
                                 message:
                                     'Use childTests/runChild from ./child-process.ts: record every child timing and declare budgets that fit the test timeout.',
@@ -477,9 +570,12 @@ export default [
                         reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
                         ...nodeBuiltins.map(
-                            /** Preserve the existing portable boundary declarations. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                name
-                            ) => ({
+                            /**
+                             * Restrict host-specific imports in shared and frontend code. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                             *
+                             * @param name - Bare or protocol-prefixed Node module identifier.
+                             * @returns An import diagnostic explaining the portability boundary.
+                             */ (name) => ({
                                 name,
                                 message: 'Portable code runs on Hermes and in browsers: no Node built-ins.',
                             })
@@ -500,9 +596,12 @@ export default [
                         reactLifecycleRestriction,
                         { name: 'zod', message: 'Eventiva is Zod-free: use effect/Schema.' },
                         ...nodeBuiltins.map(
-                            /** Preserve the existing service-owned platform boundary declarations. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                name
-                            ) => ({
+                            /**
+                             * Require action runtime code to obtain host capabilities from services. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                             *
+                             * @param name - Bare or protocol-prefixed Node module identifier.
+                             * @returns An import diagnostic naming the service boundary.
+                             */ (name) => ({
                                 name,
                                 message:
                                     'The action runtime takes platform capabilities from services, not Node built-ins.',

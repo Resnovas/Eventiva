@@ -2,6 +2,10 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Root ESLint and Vitest contracts - 2026-11-27
+
+Layer two of the [scheduled backlog](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) documents the root ESLint and Vitest configurations without replacing rules or changing test thresholds. Applying the contract before adoption reported 18 and six findings respectively. Neither file has counted inline comments. [Layer one, PR #1110](https://github.com/Resnovas/Eventiva/pull/1110), passed the normal hook on the post-sync base: static checks, 32 affected Nx tasks and 320 tooling tests. PR delivery is for review, not whole-issue acceptance; [EVE-299](https://linear.app/resnovas/issue/EVE-299) and [#1092](https://github.com/Resnovas/Eventiva/issues/1092) remain open.
+
 ## Test launcher JSDoc adoption - 2026-11-27
 
 The [scheduled executor](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) verified main `f46ecad1`, merged PR #1099 and open PR ownership before [starting tools/test](https://linear.app/resnovas/issue/EVE-299#comment-41d34e7d-86fa-4e53-a4df-7d2e5687ed3c). Its only file passes the existing JSDoc contract without source edits; a synthetic undocumented export at the same path fails. Static verification passed. The inline-comment ratchet has no counted entries for this group and remains at 2,109.

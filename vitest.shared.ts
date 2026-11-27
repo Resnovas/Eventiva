@@ -27,9 +27,13 @@ const workspaceRoot = dirname(fileURLToPath(import.meta.url));
  * `@eventiva/source` condition. Coverage of the package under test below 90%
  * fails the run.
  *
- * @param name - The test project's name.
- * @param covers - Source globs of the package under test, relative to the workspace root.
+ * @param name - Label displayed beside suite results in Vitest reports.
+ * @param covers - Workspace-relative source globs; an empty list disables coverage.
  * @param configUrl - The suite config's import.meta.url, anchoring discovery and reports.
+ * @returns A Node test configuration that resolves workspace source rather than built packages.
+ * @since 0.0.1
+ * @example
+ * export default testProject('schema-tests', ['packages/schema/src/**'], import.meta.url);
  */
 export const testProject = (name: string, covers: ReadonlyArray<string>, configUrl: string) => {
     const projectRoot = dirname(fileURLToPath(configUrl));
@@ -55,9 +59,12 @@ export const testProject = (name: string, covers: ReadonlyArray<string>, configU
                 reportsDirectory: join(projectRoot, 'test-output/coverage'),
                 allowExternal: true,
                 include: covers.map(
-                    /** Anchor coverage globs at the shared Vite root rather than the suite config directory. */ (
-                        glob
-                    ) => join(workspaceRoot, glob)
+                    /**
+                     * Anchor coverage at the shared Vite root rather than the suite directory.
+                     *
+                     * @param glob - Workspace-relative source pattern for the package under test.
+                     * @returns An absolute include pattern for the V8 provider.
+                     */ (glob) => join(workspaceRoot, glob)
                 ),
                 thresholds: { lines: 90, functions: 90, statements: 90, branches: 90 },
             },
