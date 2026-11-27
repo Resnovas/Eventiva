@@ -64,7 +64,12 @@ import { resourceRuntime } from '@eventiva/runtime/resource';
 import { durable } from '@eventiva/runtime/storage';
 import { TelemetryControl, telemetryLayer } from '@eventiva/runtime/telemetry';
 
-/** Stable UUIDv7 fixtures make independently expected ID ordering visible in paging assertions. */
+/**
+ * Stable UUIDv7 fixtures make independently expected ID ordering visible in paging assertions.
+ *
+ * @param n - Small fixture ordinal encoded into the final UUID segment.
+ * @returns A deterministic UUIDv7 string whose sort order follows the ordinal.
+ */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const tenant = TenantId.make(id(900));
 // Canonical subjects may be UUIDv4 even though CRM record keys must be UUIDv7.
@@ -77,10 +82,21 @@ const caller = Schema.decodeUnknownSync(CallerIdentity)({
 const role = RoleId.make(id(903));
 const privateName = 'SYNTHETIC-CRM-PRIVATE-SENTINEL';
 const local = process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test';
-/** Configure only a validated disposable PostgreSQL target. */
+/**
+ * Configure only a validated disposable PostgreSQL target.
+ *
+ * @param url - Connection string of the disposable PostgreSQL database.
+ * @returns A SQL client layer configured with that connection string only.
+ */
 const pg = (url: string) =>
     client.pipe(Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]])))));
-/** Allocate a persistent disposable database so a later scope really reconnects with fresh SQL clients and services. */
+/**
+ * Allocate a persistent disposable database so a later scope really reconnects with fresh SQL clients and services.
+ *
+ * @param dialect - SQL dialect whose disposable database is allocated.
+ * @returns A scoped effect yielding a client layer for the new database, dropped or deleted when the scope closes.
+ * @fails {ResourceFailure} When the PostgreSQL target is not the loopback test database.
+ */
 const database = (dialect: Dialect) =>
     Effect.gen(
         /** Own physical database cleanup outside the individual connection scopes. */ function* () {
@@ -96,29 +112,54 @@ const database = (dialect: Dialect) =>
                 const name = `crm_${randomUUID().replaceAll('-', '')}`;
                 yield* admin`CREATE DATABASE ${admin(name)} TEMPLATE template0`;
                 yield* Effect.addFinalizer(
-                    /** Drop only this test's database after nested connection scopes close. */ () =>
-                        admin`DROP DATABASE ${admin(name)}`.pipe(Effect.orDie)
+                    /**
+                     * Drop only this test's database after nested connection scopes close.
+                     *
+                     * @returns An effect that drops the database and dies if the drop fails.
+                     */
+                    () => admin`DROP DATABASE ${admin(name)}`.pipe(Effect.orDie)
                 );
                 url.pathname = `/${name}`;
                 return pg(url.toString());
             }
             const dir = fileURLToPath(new URL('../../../.amp/in/orb-backup/crm/', import.meta.url));
             yield* Effect.tryPromise(
-                /** Allocate only the owned fixture directory; no repository or production records are touched. */ () =>
-                    mkdir(dir, { recursive: true })
+                /**
+                 * Allocate only the owned fixture directory; no repository or production records are touched.
+                 *
+                 * @returns The directory creation promise.
+                 */
+                () => mkdir(dir, { recursive: true })
             );
             const path = `${dir}${randomUUID()}.db`;
             yield* Effect.addFinalizer(
-                /** Remove the owned SQLite database once all client scopes are closed. */ () =>
+                /**
+                 * Remove the owned SQLite database once all client scopes are closed.
+                 *
+                 * @returns An effect that deletes the SQLite file and dies if deletion fails.
+                 */
+                () =>
                     Effect.tryPromise(
-                        /** Delete only the fixture-owned file, never a caller-supplied path. */ () =>
-                            rm(path, { force: true })
+                        /**
+                         * Delete only the fixture-owned file, never a caller-supplied path.
+                         *
+                         * @returns The file removal promise.
+                         */
+                        () => rm(path, { force: true })
                     ).pipe(Effect.orDie)
             );
             return localFile(Redacted.make(path));
         }
     );
-/** Build real SQL storage, canonical identity and a tenant-wide CRM test policy; never expose a permissive production provider. */
+/**
+ * Build real SQL storage, canonical identity and a tenant-wide CRM test policy; never expose a permissive production provider.
+ *
+ * @param dialect - SQL dialect the storage, migrations and identity store run on.
+ * @param connection - Client layer for the database this fixture owns.
+ * @param currentTenant - Tenant every invocation and resource read is scoped to; defaults to the shared test tenant.
+ * @param seed - Whether to seed the caller, role and grants before returning; defaults to true.
+ * @returns A scoped effect yielding the host, invokers, resource API, definitions and fault-injection controls.
+ */
 const fixture = <E>(
     dialect: Dialect,
     connection: Layer.Layer<SqlClient.SqlClient, E>,
@@ -194,16 +235,33 @@ const fixture = <E>(
                         ...provider,
                         driver: {
                             ...provider.driver,
-                            /** Inject failure after the real subtype write to prove both real SQL rows and history roll back. */
+                            /**
+                             * Inject failure after the real subtype write to prove both real SQL rows and history roll back.
+                             *
+                             * @param resource - Resource definition being written.
+                             * @param key - Record key being written.
+                             * @param revision - Expected revision for the optimistic write.
+                             * @param value - Encoded record value to persist.
+                             * @returns The real driver write, followed by any configured pause, interruption or injected failure.
+                             */
                             write: (resource, key, revision, value) =>
                                 provider.driver.write(resource, key, revision, value).pipe(
                                     Effect.tap(
-                                        /** Interrupt only after real row/history persistence, proving rollback rather than early refusal. */ () =>
+                                        /**
+                                         * Interrupt only after real row/history persistence, proving rollback rather than early refusal.
+                                         *
+                                         * @returns An effect that interrupts when the configured contact key was just written, and otherwise does nothing.
+                                         */
+                                        () =>
                                             Ref.get(interruptContact).pipe(
                                                 Effect.flatMap(
-                                                    /** A different record cannot trigger this synthetic cancellation. */ (
-                                                        interruptedId
-                                                    ) =>
+                                                    /**
+                                                     * A different record cannot trigger this synthetic cancellation.
+                                                     *
+                                                     * @param interruptedId - Contact key configured to interrupt, if any.
+                                                     * @returns Interruption for the matching contact write, otherwise a no-op effect.
+                                                     */
+                                                    (interruptedId) =>
                                                         resource.id === definitions.contactPoint.id &&
                                                         key === interruptedId
                                                             ? Effect.interrupt
@@ -212,27 +270,44 @@ const fixture = <E>(
                                             )
                                     ),
                                     Effect.tap(
-                                        /** Pause after actual guard acquisition to test authority changes during transaction waits. */ () =>
+                                        /**
+                                         * Pause after actual guard acquisition to test authority changes during transaction waits.
+                                         *
+                                         * @returns The configured pause for primary-guard writes, otherwise a no-op effect.
+                                         */
+                                        () =>
                                             resource.id === definitions.emailPrimary.id ||
                                             resource.id === definitions.phonePrimary.id
                                                 ? Ref.get(guardPause).pipe(
                                                       Effect.flatMap(
-                                                          /** An unset barrier must not alter ordinary persistence or concurrency. */ (
-                                                              pause
-                                                          ) => pause ?? Effect.void
+                                                          /**
+                                                           * An unset barrier must not alter ordinary persistence or concurrency.
+                                                           *
+                                                           * @param pause - Barrier effect configured by the test, if any.
+                                                           * @returns The configured barrier, or a no-op effect when none is set.
+                                                           */
+                                                          (pause) => pause ?? Effect.void
                                                       )
                                                   )
                                                 : Effect.void
                                     ),
                                     Effect.flatMap(
-                                        /** A fixed private sentinel mimics vendor diagnostics; it must not escape the feature failure. */ (
-                                            saved
-                                        ) =>
+                                        /**
+                                         * A fixed private sentinel mimics vendor diagnostics; it must not escape the feature failure.
+                                         *
+                                         * @param saved - Result of the real driver write.
+                                         * @returns The saved result, unless a configured failure applies to this write.
+                                         */
+                                        (saved) =>
                                             Ref.get(failSecond).pipe(
                                                 Effect.flatMap(
-                                                    /** Fail only after the second half has persisted tentatively, not before the transaction does work. */ (
-                                                        fail
-                                                    ) =>
+                                                    /**
+                                                     * Fail only after the second half has persisted tentatively, not before the transaction does work.
+                                                     *
+                                                     * @param fail - Whether the organisation write is configured to fail.
+                                                     * @returns A storage failure for the organisation write when configured, otherwise the contact failure check.
+                                                     */
+                                                    (fail) =>
                                                         fail && resource.id === definitions.organisation.id
                                                             ? Effect.fail(
                                                                   new ResourceFailure({
@@ -242,9 +317,13 @@ const fixture = <E>(
                                                               )
                                                             : Ref.get(failContact).pipe(
                                                                   Effect.flatMap(
-                                                                      /** Fail after a real contact write, including the tentative previous-primary clear in the same transaction. */ (
-                                                                          failedId
-                                                                      ) =>
+                                                                      /**
+                                                                       * Fail after a real contact write, including the tentative previous-primary clear in the same transaction.
+                                                                       *
+                                                                       * @param failedId - Contact key configured to fail, if any.
+                                                                       * @returns A storage failure for the matching contact write, otherwise the saved result.
+                                                                       */
+                                                                      (failedId) =>
                                                                           resource.id === definitions.contactPoint.id &&
                                                                           key === failedId
                                                                               ? Effect.fail(
@@ -262,16 +341,24 @@ const fixture = <E>(
                                 ),
                         },
                     },
-                    /** Tenant-wide fixture grants match the bounded tenant-only visibility contract; refresh live SQL identity each time. */ (
-                        c,
-                        _resource,
-                        operation
-                    ) =>
+                    /**
+                     * Tenant-wide fixture grants match the bounded tenant-only visibility contract; refresh live SQL identity each time.
+                     *
+                     * @param c - Caller identity requesting resource access.
+                     * @param _resource - Resource being accessed; unused because grants are tenant-wide.
+                     * @param operation - Whether the access is a read or a write.
+                     * @returns An effect that succeeds when the live tenant grant allows the matching organisation action.
+                     */
+                    (c, _resource, operation) =>
                         Ref.get(resourceDenied).pipe(
                             Effect.flatMap(
-                                /** Deny resource access independently of action permission so domain operations cannot skip record policy. */ (
-                                    denied
-                                ) =>
+                                /**
+                                 * Deny resource access independently of action permission so domain operations cannot skip record policy.
+                                 *
+                                 * @param denied - Whether the test has switched resource access off.
+                                 * @returns A denied resource failure when switched off, otherwise the live grant check.
+                                 */
+                                (denied) =>
                                     denied
                                         ? Effect.fail(
                                               new ResourceFailure({
@@ -286,7 +373,12 @@ const fixture = <E>(
                                               )
                                               .pipe(
                                                   Effect.mapError(
-                                                      /** Keep authorization diagnostics bounded at the Resources boundary. */ () =>
+                                                      /**
+                                                       * Keep authorization diagnostics bounded at the Resources boundary.
+                                                       *
+                                                       * @returns A bounded denied resource failure without the underlying authorization detail.
+                                                       */
+                                                      () =>
                                                           new ResourceFailure({
                                                               reason: 'denied',
                                                               detail: 'CRM fixture policy denied',
@@ -300,10 +392,22 @@ const fixture = <E>(
             const api = Context.get(resources, Resources);
             const platform = Layer.mergeAll(
                 Layer.succeed(Flags, {
-                    /** Permit live flag revocation without changing its production safe default. */ evaluate: (flag) =>
+                    /**
+                     * Permit live flag revocation without changing its production safe default.
+                     *
+                     * @param flag - Feature flag declaration being evaluated.
+                     * @returns An effect yielding the flag evaluation, falling back to the safe default when unset.
+                     */
+                    evaluate: (flag) =>
                         Ref.get(enabled).pipe(
                             Effect.map(
-                                /** Return only the finite flag evaluation envelope. */ (value) => ({
+                                /**
+                                 * Return only the finite flag evaluation envelope.
+                                 *
+                                 * @param value - Test override for the flag, if one is set.
+                                 * @returns The flag evaluation envelope with its value, reason and fallback marker.
+                                 */
+                                (value) => ({
                                     flag: flag.key,
                                     value: value ?? flag.safeDefault,
                                     reason: value === undefined ? 'SAFE_DEFAULT' : 'TEST',
@@ -313,27 +417,61 @@ const fixture = <E>(
                         ),
                 }),
                 Layer.succeed(InputDigest, {
-                    /** Hash synthetic inputs for the real durable invocation replay boundary. */ digest: (text) =>
+                    /**
+                     * Hash synthetic inputs for the real durable invocation replay boundary.
+                     *
+                     * @param text - Serialized invocation input to digest.
+                     * @returns An effect yielding the hex SHA-256 digest of the input.
+                     */
+                    digest: (text) =>
                         Effect.sync(
-                            /** Avoid retaining the original private input in audit diagnostics. */ () =>
-                                createHash('sha256').update(text).digest('hex')
+                            /**
+                             * Avoid retaining the original private input in audit diagnostics.
+                             *
+                             * @returns The hex SHA-256 digest of the input.
+                             */
+                            () => createHash('sha256').update(text).digest('hex')
                         ),
                 }),
                 Layer.succeed(Approvals, {
-                    /** CRM human routine actions need no approval; a requested unknown proof still fails closed. */ get: () =>
-                        Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * CRM human routine actions need no approval; a requested unknown proof still fails closed.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    get: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * This fixture supplies no accepting proof-use capability.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    use: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
+                    /**
+                     * No approved-read transaction may run through an always-denying provider.
+                     *
+                     * @returns An effect that always fails with a missing approval denial.
+                     */
+                    transaction: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' })),
                 }),
                 Layer.succeed(Authorizer, {
                     canInvoke: policy.canInvoke,
-                    /** This fixture provisions only tenant-wide grants; target authorization is the same live tenant grant check. */ check: (
-                        c,
-                        spec
-                    ) =>
+                    /**
+                     * This fixture provisions only tenant-wide grants; target authorization is the same live tenant grant check.
+                     *
+                     * @param c - Caller identity requesting the target action.
+                     * @param spec - Action declaration being authorized.
+                     * @returns An effect that succeeds when the live tenant grant allows the action and target checks are on.
+                     */
+                    check: (c, spec) =>
                         Ref.get(targetDenied).pipe(
                             Effect.flatMap(
-                                /** Domain target policy remains live on durable replay, independently of resource read/write policy. */ (
-                                    denied
-                                ) =>
+                                /**
+                                 * Domain target policy remains live on durable replay, independently of resource read/write policy.
+                                 *
+                                 * @param denied - Whether the test has switched target authorization off.
+                                 * @returns A forbidden failure when switched off, otherwise the live grant check.
+                                 */
+                                (denied) =>
                                     denied
                                         ? Effect.fail(
                                               new Forbidden({ action: spec.name, reason: 'CRM fixture target denied' })
@@ -360,7 +498,14 @@ const fixture = <E>(
                 ActionHost
             );
             yield* host.register(module);
-            /** Invoke only through public host gates with fresh tenant identity and a distinct durable retry key. */
+            /**
+             * Invoke only through public host gates with fresh tenant identity and a distinct durable retry key.
+             *
+             * @param operation - Organisation action suffix to invoke.
+             * @param input - JSON input for the action.
+             * @param presented - Caller identity presented to the host; defaults to the test caller in the current tenant.
+             * @returns The host invocation effect with a fresh idempotency key.
+             */
             const invoke = (
                 operation: string,
                 input: import('@eventiva/contracts/storage').JsonValue,
@@ -369,7 +514,15 @@ const fixture = <E>(
                 host
                     .invoke(`crm.organisation.${operation}`, input, { idempotencyKey: randomUUID() })
                     .pipe(Effect.provideService(Caller, presented));
-            /** Preserve an explicit retry key so tests can distinguish fresh execution from authorized durable recovery. */
+            /**
+             * Preserve an explicit retry key so tests can distinguish fresh execution from authorized durable recovery.
+             *
+             * @param operation - Contact-point action suffix to invoke.
+             * @param input - JSON input for the action.
+             * @param key - Idempotency key; defaults to a fresh random key.
+             * @param presented - Caller identity presented to the host; defaults to the test caller in the current tenant.
+             * @returns The host invocation effect using the given idempotency key.
+             */
             const contact = (
                 operation: string,
                 input: import('@eventiva/contracts/storage').JsonValue,
@@ -379,7 +532,12 @@ const fixture = <E>(
                 host
                     .invoke(`crm.contact-point.${operation}`, input, { idempotencyKey: key })
                     .pipe(Effect.provideService(Caller, presented));
-            /** Expose resource history through its authorized public port, never through feature-level raw SQL. */
+            /**
+             * Expose resource history through its authorized public port, never through feature-level raw SQL.
+             *
+             * @param effect - Resource effect that needs a caller and tenant scope.
+             * @returns The same effect with the test caller and current tenant provided.
+             */
             const scoped = <A, E, R>(effect: Effect.Effect<A, E, R | ResourceScope>) =>
                 effect.pipe(
                     Effect.provideService(Caller, { ...caller, tenant: currentTenant }),
@@ -409,7 +567,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
     describe(`${dialect} CRM organisation public actions`, /** Apply identical domain scenarios to both real SQL dialects. */ () => {
         it.scoped(
             'persists paired identities, pages, archives/restores and reconnects',
-            /** Close all first-session services before re-reading the same physical database through a new host. */ () =>
+            /**
+             * Close all first-session services before re-reading the same physical database through a new host.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Assert public results and immutable paired history independently of feature helper implementation. */ function* () {
                         // Reuse physical storage, not service layers: otherwise a retained feature cache could satisfy reconnect.
@@ -422,9 +585,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                     expect(yield* f.host.actions).toEqual(
                                         [...organisationActions, ...contactPointActions]
                                             .map(
-                                                /** Compare host registration with canonical action declarations. */ (
-                                                    spec
-                                                ) => spec.name
+                                                /**
+                                                 * Compare host registration with canonical action declarations.
+                                                 *
+                                                 * @param spec - Registered action declaration.
+                                                 * @returns The action name used for comparison.
+                                                 */
+                                                (spec) => spec.name
                                             )
                                             .sort()
                                     );
@@ -491,9 +658,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                         const history = yield* f.scoped(f.api.history(resource, id(2)));
                                         expect(
                                             history.map(
-                                                /** Compare retained writing revisions rather than only the latest row. */ (
-                                                    record
-                                                ) => record.revision
+                                                /**
+                                                 * Compare retained writing revisions rather than only the latest row.
+                                                 *
+                                                 * @param record - One retained history record.
+                                                 * @returns The revision that record was written at.
+                                                 */
+                                                (record) => record.revision
                                             )
                                         ).toEqual([1, 2, 3]);
                                     }
@@ -523,7 +694,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'rolls back paired creates/updates and permits exactly one revision-race winner',
-            /** Fault after the real second write, then race distinct retry keys against the same expected revision. */ () =>
+            /**
+             * Fault after the real second write, then race distinct retry keys against the same expected revision.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Observe domain rows and histories after failures, not just successful error classification. */ function* () {
                         // Fail after actual subtype persistence so absent rows and histories prove transaction rollback, not early rejection.
@@ -581,7 +757,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'rejects forged/excess input and live flag, permission and identity revocation without leaking private values',
-            /** Exercise public host refusals, not only schema decoders or resource mocks. */ () =>
+            /**
+             * Exercise public host refusals, not only schema decoders or resource mocks.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Collect actual logger messages and public error diagnostics while deliberately exercising failures. */ function* () {
                         // Exercise the real minimizer with canaries; an empty exporter alone would make a leakage assertion vacuous.
@@ -602,22 +783,34 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         ).pipe(
                             Layer.provide(
                                 Layer.succeed(TelemetrySink, {
-                                    /** Capture the actual minimizing tracer output, not an assumed logging contract. */
+                                    /**
+                                     * Capture the actual minimizing tracer output, not an assumed logging contract.
+                                     *
+                                     * @param entry - Minimized telemetry record emitted by the tracer.
+                                     * @returns An effect that appends the record to the captured list.
+                                     */
                                     write: (entry) =>
                                         Ref.update(
                                             records,
-                                            /** Preserve every emitted record for a nonvacuous private-value check. */ (
-                                                all
-                                            ) => [...all, entry]
+                                            /**
+                                             * Preserve every emitted record for a nonvacuous private-value check.
+                                             *
+                                             * @param all - Records captured so far.
+                                             * @returns The captured records with the new entry appended.
+                                             */
+                                            (all) => [...all, entry]
                                         ),
                                     flush: Effect.void,
                                 })
                             )
                         );
                         const logger = Logger.make(
-                            /** Retain diagnostics locally solely to assert the synthetic sentinel never reaches logs. */ (
-                                event
-                            ) => {
+                            /**
+                             * Retain diagnostics locally solely to assert the synthetic sentinel never reaches logs.
+                             *
+                             * @param event - Log event emitted by the test logger.
+                             */
+                            (event) => {
                                 logs.push(
                                     inspect({
                                         message: event.message,
@@ -756,9 +949,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         const emitted = yield* Ref.get(records);
                         expect(
                             emitted.some(
-                                /** Require real action/resource spans so redaction cannot pass with a disabled tracer. */ (
-                                    record
-                                ) => record.signal === 'span'
+                                /**
+                                 * Require real action/resource spans so redaction cannot pass with a disabled tracer.
+                                 *
+                                 * @param record - One captured telemetry record.
+                                 * @returns True when the record is a span.
+                                 */
+                                (record) => record.signal === 'span'
                             )
                         ).toBe(true);
                         for (const code of [
@@ -768,9 +965,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         ])
                             expect(
                                 emitted.some(
-                                    /** Require spans from the exercised contact operations and real resource writes, not only unrelated organisation activity. */ (
-                                        entry
-                                    ) => entry.signal === 'span' && entry.code === code
+                                    /**
+                                     * Require spans from the exercised contact operations and real resource writes, not only unrelated organisation activity.
+                                     *
+                                     * @param entry - One captured telemetry record.
+                                     * @returns True when the record is a span for the exercised operation code.
+                                     */
+                                    (entry) => entry.signal === 'span' && entry.code === code
                                 )
                             ).toBe(true);
                         expect(JSON.stringify(emitted)).not.toContain(privateName);
@@ -789,7 +990,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'isolates same record IDs in separate tenant databases',
-            /** Reuse names and IDs across independently routed physical storage to expose accidental global caches. */ () =>
+            /**
+             * Reuse names and IDs across independently routed physical storage to expose accidental global caches.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Reject a foreign caller against the original host and prove the second host sees only its own records. */ function* () {
                         // Reuse the exact ID across tenants to expose accidental global identity caching without guessing a foreign key.
@@ -823,7 +1029,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'persists distinct work contacts, tombstone history, original-key replay and unchanged parent revisions across reopen',
-            /** Reconnect with new clients and the same physical database; discard one committed reply to exercise explicit recovery. */ () =>
+            /**
+             * Reconnect with new clients and the same physical database; discard one committed reply to exercise explicit recovery.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Preserve expected outputs and durable evidence independently of current contact state. */ function* () {
                         // Separate connection scopes prevent retained host/service instances from masquerading as persisted recovery.
@@ -955,9 +1166,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                                     const history = yield* f.scoped(f.api.history(f.definitions.contactPoint, id(11)));
                                     expect(
                                         history.map(
-                                            /** Assert every retained revision rather than inferring history from current output. */ (
-                                                row
-                                            ) => [
+                                            /**
+                                             * Assert every retained revision rather than inferring history from current output.
+                                             *
+                                             * @param row - One retained history row.
+                                             * @returns The row revision with its value, primary and removed fields, in assertion order.
+                                             */
+                                            (row) => [
                                                 row.revision,
                                                 row.value['value'],
                                                 row.value['primary'],
@@ -1066,7 +1281,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'serializes complete multipage primary groups and rolls back real partial switches and creates',
-            /** Put the previous primary beyond the first 100-row storage page, then race separate host/provider connections. */ () =>
+            /**
+             * Put the previous primary beyond the first 100-row storage page, then race separate host/provider connections.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Asymmetric IDs expose first-page scans, while persisted history/commits distinguish rollback from a safe-looking error. */ function* () {
                         const connection = yield* database(dialect);
@@ -1237,17 +1457,37 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                         }
                         expect(all).toHaveLength(107);
                         expect(
-                            new Set(all.map(/** Detect duplicated or skipped cursor boundaries. */ (cp) => cp.id)).size
+                            new Set(
+                                all.map(
+                                    /**
+                                     * Detect duplicated or skipped cursor boundaries.
+                                     *
+                                     * @param cp - One listed contact point.
+                                     * @returns The contact point identifier.
+                                     */
+                                    (cp) => cp.id
+                                )
+                            ).size
                         ).toBe(107);
                         const primaries = all.filter(
-                            /** Same-kind racing updates must leave a single live primary. */ (cp) =>
-                                cp.primary && cp.kind === 'email'
+                            /**
+                             * Same-kind racing updates must leave a single live primary.
+                             *
+                             * @param cp - One listed contact point.
+                             * @returns True when the contact point is the primary email.
+                             */
+                            (cp) => cp.primary && cp.kind === 'email'
                         );
                         expect(primaries).toHaveLength(1);
                         expect(
                             all.filter(
-                                /** Phone primary is independent of email selections. */ (cp) =>
-                                    cp.primary && cp.kind === 'phone'
+                                /**
+                                 * Phone primary is independent of email selections.
+                                 *
+                                 * @param cp - One listed contact point.
+                                 * @returns True when the contact point is the primary phone.
+                                 */
+                                (cp) => cp.primary && cp.kind === 'phone'
                             )
                         ).toMatchObject([{ id: id(1200), revision: 2 }]);
                         const selected = primaries[0]!;
@@ -1257,8 +1497,13 @@ for (const dialect of ['sqlite', 'postgres'] as const)
                             expectedRevision: selected.revision,
                         });
                         for (const cp of all.filter(
-                            /** Check all previously observed email IDs, including the removed primary. */ (cp) =>
-                                cp.kind === 'email'
+                            /**
+                             * Check all previously observed email IDs, including the removed primary.
+                             *
+                             * @param cp - One listed contact point.
+                             * @returns True when the contact point is an email.
+                             */
+                            (cp) => cp.kind === 'email'
                         )) {
                             const row = yield* f.scoped(f.api.get(f.definitions.contactPoint, cp.id));
                             expect(row?.value.primary).toBe(false);
@@ -1282,7 +1527,12 @@ for (const dialect of ['sqlite', 'postgres'] as const)
         );
         it.scoped(
             'refuses foreign parents, forged contact authority and live replay revocation; rolls back interruption and post-guard flag loss',
-            /** Use the same host for revocation/replay and a separate routed tenant for identical record IDs. */ () =>
+            /**
+             * Use the same host for revocation/replay and a separate routed tenant for identical record IDs.
+             *
+             * @returns The scoped test effect that runs the scenario.
+             */
+            () =>
                 Effect.gen(
                     /** Current authority and persisted state, not submitted identity or cached admission, control fresh contacts. */ function* () {
                         // Reuse the original key throughout revocations so a stored success cannot bypass fresh host authorization.

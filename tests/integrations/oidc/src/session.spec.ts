@@ -192,4 +192,68 @@ describe('OIDC session provisioning', /** Trusted open/close of Eventiva session
                 }
             )
     );
+
+    it.effect(
+        'records bounded rolling policy once and refuses invalid settings, overflow and an expired existing sign-in',
+        /** The public issuance path must persist original anchors without interpreting refresh as activity. */ () =>
+            Effect.gen(
+                /** Keep legacy numeric issuance covered above and exercise only the new trusted settings overload here. */
+                function* () {
+                    // A repeat uses the same row and later clock; recreating a fixture would conceal a refresh-induced anchor reset.
+                    const { store, rows } = yield* seeded;
+                    const claims = { ...claimsFor(`ext-${human}`), expiresAt: 100_000_000 };
+                    const settings = { idleMs: 3_600_000, absoluteMs: 28_800_000 };
+                    /** Route every attempt to the same store so a repeat cannot silently create another session. */
+                    const run = <A, E>(effect: Effect.Effect<A, E, IdentityStore>) =>
+                        Effect.provideService(effect, IdentityStore, store);
+                    for (const invalid of [
+                        { ...settings, idleMs: 3_600_001 },
+                        { ...settings, idleMs: 299_999 },
+                        { ...settings, absoluteMs: 28_800_001 },
+                        { idleMs: 600_000, absoluteMs: 300_000 },
+                    ])
+                        expect(yield* Effect.flip(run(openOidcSession(claims, invalid)))).toMatchObject({
+                            reason: 'conflict',
+                        });
+                    yield* run(openOidcSession(claims, settings));
+                    const original = rows.get(`session:${claims.session}`);
+                    expect(original).toMatchObject({
+                        version: 0,
+                        value: {
+                            expiresAt: 3_601_000,
+                            activity: {
+                                issuedAt: 1000,
+                                lastRealActivityAt: 1000,
+                                absoluteExpiresAt: 28_801_000,
+                                idleMs: 3_600_000,
+                                issuer,
+                                clientId: 'eventiva-web',
+                            },
+                        },
+                    });
+                    yield* TestClock.setTime(1001);
+                    yield* run(openOidcSession(claims, settings));
+                    expect(rows.get(`session:${claims.session}`)).toEqual(original);
+                    yield* TestClock.setTime(3_601_000);
+                    expect(yield* Effect.flip(run(openOidcSession(claims, settings)))).toMatchObject({
+                        reason: 'conflict',
+                    });
+                    yield* TestClock.setTime(253402300799999);
+                    expect(
+                        yield* Effect.flip(
+                            run(
+                                openOidcSession(
+                                    {
+                                        ...claims,
+                                        expiresAt: 253402300800000,
+                                        session: claimsFor(`ext-${human}`, 'overflow').session,
+                                    },
+                                    settings
+                                )
+                            )
+                        )
+                    ).toMatchObject({ reason: 'conflict' });
+                }
+            )
+    );
 });

@@ -37,9 +37,13 @@ import { uuidV7 } from './values.ts';
 
 const Integer = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
     Schema.filter(
-        /** Accept exact nonnegative counters and milliseconds after either numeric driver representation is decoded. */ (
-            n
-        ) => Number.isSafeInteger(n) && n >= 0
+        /**
+         * Accept exact nonnegative counters and milliseconds after either numeric driver representation is decoded.
+         *
+         * @param n - The decoded numeric value.
+         * @returns Whether the value is a safe nonnegative integer.
+         */
+        (n) => Number.isSafeInteger(n) && n >= 0
     )
 );
 const Row = Schema.Struct({
@@ -54,21 +58,49 @@ const Row = Schema.Struct({
     lease_until: Integer,
     settlement: Schema.NullOr(Schema.String),
 });
-/** Decode untrusted caller or driver values without retaining their contents in schema diagnostics. */
+/**
+ * Decode untrusted caller or driver values without retaining their contents in schema diagnostics.
+ *
+ * @template A - The decoded value.
+ * @template I - The encoded form the schema accepts.
+ * @template Input - The static type of the supplied value, which is still decoded as unknown.
+ * @param schema - The schema the value must satisfy.
+ * @param input - The caller or driver value to decode.
+ * @returns The decoded value.
+ * @fails {HookOutboxFailure} With `invalid` when the value does not decode.
+ */
 const decode = <A, I, Input>(schema: Schema.Schema<A, I>, input: Input) =>
     Schema.decodeUnknown(schema)(input).pipe(
         Effect.mapError(
-            /** Return a closed invalid reason instead of arbitrary schema diagnostics. */ () =>
-                new HookOutboxFailure({ reason: 'invalid' })
+            /**
+             * Return a closed invalid reason instead of arbitrary schema diagnostics.
+             *
+             * @returns A HookOutboxFailure with the `invalid` reason.
+             */
+            () => new HookOutboxFailure({ reason: 'invalid' })
         )
     );
-/** Encode every observer identity component into one unambiguous tenant/version/generation-bound database key. */
+/**
+ * Encode every observer identity component into one unambiguous tenant/version/generation-bound database key.
+ *
+ * @param pin - The observer pin naming tenant, owner module, version, generation, hook and revision.
+ * @returns A JSON array string that identifies exactly that observer pin.
+ */
 const keyOf = (pin: HookPin) =>
     JSON.stringify([pin.tenant, pin.owner.module, pin.owner.version, pin.owner.generation, pin.hook, pin.revision]);
 
-/** Provide BOTH Storage and HookOutbox on the same captured client and authenticated tenant.
+/**
+ * Provide BOTH Storage and HookOutbox on the same captured client and authenticated tenant.
  * Stage only inside this Storage.transaction/commit; claim/settle reject every ambient SQL transaction.
  * No callback, release policy or observer is executed by this adapter.
+ *
+ * @param dialect - The SQL engine of the tenant client.
+ * @returns A scoped layer providing Storage, HookOutbox, HookChangeFeed and HookRecovery on one transaction owner.
+ * @fails {StorageFailure} When the paired storage layer cannot be built.
+ * @fails {HookOutboxFailure} With `transaction-required` when the owner's client is not the ambient SQL client.
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(publishLifecycle, hookStorage('postgres'));
  */
 export const hookStorage = (dialect: Dialect) =>
     Layer.scopedContext(
@@ -81,7 +113,18 @@ export const hookStorage = (dialect: Dialect) =>
         )
     );
 
-/** @internal Trusted SQL composition only; not an independent transaction root or plugin capability. */
+/**
+ * Trusted SQL composition only; not an independent transaction root or plugin capability.
+ *
+ * @internal
+ * @param dialect - The SQL engine of the tenant client, which selects the database clock query.
+ * @param owner - The transaction scope whose storage and client this context shares.
+ * @returns The Storage, HookOutbox, HookChangeFeed and HookRecovery services bound to the owner and current tenant.
+ * @fails {HookOutboxFailure} With `transaction-required` when the owner's client is not the ambient SQL client.
+ * @since 0.0.1
+ * @example
+ * const outbox = Context.get(yield* hookContext('postgres', owner), HookOutbox);
+ */
 export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
     Effect.gen(
         /** Capture one tenant/client pair and return storage, delivery, recovery and feed capabilities sharing it. */ function* () {
@@ -94,7 +137,14 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                         return yield* new HookOutboxFailure({ reason: 'transaction-active' });
                 }
             );
-            /** Start an adapter-owned transaction only outside every ambient SQL transaction and sanitize driver failures. */
+            /**
+             * Start an adapter-owned transaction only outside every ambient SQL transaction and sanitize driver failures.
+             *
+             * @template A - The work's success value.
+             * @param effect - The worker work to run in its own SQL transaction.
+             * @returns The work's result once the transaction commits.
+             * @fails {HookOutboxFailure} With `transaction-active` inside an ambient transaction, `unavailable` when SQL fails, or the work's own outbox failure.
+             */
             const outside = <A>(effect: Effect.Effect<A, HookOutboxFailure | SqlError>) =>
                 Effect.gen(
                     /** Check transaction isolation before acquiring the worker's independent transaction. */ function* () {
@@ -104,11 +154,21 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                 ).pipe(
                     Effect.catchTag(
                         'SqlError',
-                        /** Preserve outbox domain failures while hiding SQL diagnostics. */ () =>
-                            Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
+                        /**
+                         * Preserve outbox domain failures while hiding SQL diagnostics.
+                         *
+                         * @returns A failure with the `unavailable` reason.
+                         */
+                        () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
                     )
                 );
-            /** Validate the complete observer declaration and bind it to the tenant captured by this adapter. */
+            /**
+             * Validate the complete observer declaration and bind it to the tenant captured by this adapter.
+             *
+             * @param input - The observer declaration; its pin must belong to the captured tenant.
+             * @returns The decoded declaration.
+             * @fails {HookOutboxFailure} With `invalid` when it is malformed or names another tenant.
+             */
             const declaration = (input: HookDeclaration) =>
                 Effect.gen(
                     /** Reject malformed or cross-tenant pins before they can identify a subscription row. */ function* () {
@@ -120,7 +180,13 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                 );
             // Serializes admission and settlement per exact observer pin, never across observers/tenants.
             // Sorted multi-pin staging prevents lock-order cycles; SQLite uses the client's BEGIN IMMEDIATE.
-            /** Lock an existing exact subscription and reject declaration changes under an already admitted observer pin. */
+            /**
+             * Lock an existing exact subscription and reject declaration changes under an already admitted observer pin.
+             *
+             * @param d - The validated observer declaration whose subscription row is locked.
+             * @returns True when the subscription exists and was locked, false when it does not exist yet.
+             * @fails {HookOutboxFailure} With `conflict` when the stored declaration differs from the supplied one.
+             */
             const lock = (d: HookDeclaration) =>
                 Effect.gen(
                     /** Distinguish absent subscriptions from conflicting declarations while retaining the transaction's row lock. */ function* () {
@@ -137,8 +203,12 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                 );
             const freshId = uuidV7.pipe(
                 Effect.mapError(
-                    /** Hide identifier-generation failures behind the outbox's closed availability reason. */ () =>
-                        new HookOutboxFailure({ reason: 'unavailable' })
+                    /**
+                     * Hide identifier-generation failures behind the outbox's closed availability reason.
+                     *
+                     * @returns A HookOutboxFailure with the `unavailable` reason.
+                     */
+                    () => new HookOutboxFailure({ reason: 'unavailable' })
                 )
             );
             // One database clock governs all workers; caller timestamps and process clock skew grant no lease.
@@ -158,14 +228,25 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                 }
             );
             const outbox = HookOutbox.of({
-                /** Stage a committed-fact event and bounded observer deliveries only within this owner's storage mutation. */
+                /**
+                 * Stage a committed-fact event and bounded observer deliveries only within this owner's storage mutation.
+                 *
+                 * @param source - The committed-fact event to publish on the tenant feed.
+                 * @param observers - The observer declarations that each receive one pending delivery.
+                 * @returns An effect that completes once the event and every delivery are staged in the owner's transaction.
+                 * @fails {HookOutboxFailure} With `transaction-required` outside the owner's transaction, `invalid` for a malformed or foreign event or declaration, `conflict` when an id was staged with different content or a later sequence exists, `capacity` when an observer is full, or `unavailable` when SQL fails.
+                 */
                 stage: (source, observers) =>
                     Effect.gen(
                         /** Validate transaction provenance and tenant binding before atomically staging any observer delivery. */ function* () {
                             yield* owner.required.pipe(
                                 Effect.mapError(
-                                    /** Reject staging outside the captured mutation owner without exposing transaction diagnostics. */ () =>
-                                        new HookOutboxFailure({ reason: 'transaction-required' })
+                                    /**
+                                     * Reject staging outside the captured mutation owner without exposing transaction diagnostics.
+                                     *
+                                     * @returns A HookOutboxFailure with the `transaction-required` reason.
+                                     */
+                                    () => new HookOutboxFailure({ reason: 'transaction-required' })
                                 )
                             );
                             const event = yield* decode(HookEvent, source);
@@ -195,10 +276,14 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                                             yield* sql`INSERT INTO hook_event (tenant, cursor, event_id, event) VALUES (${tenant}, ${cursor}, ${event.id}, ${JSON.stringify(event)})`;
                                         }
                                         for (const d of [...declarations].sort(
-                                            /** Acquire multiple subscription locks in a stable pin order to avoid staging lock cycles. */ (
-                                                a,
-                                                b
-                                            ) => keyOf(a.pin).localeCompare(keyOf(b.pin))
+                                            /**
+                                             * Acquire multiple subscription locks in a stable pin order to avoid staging lock cycles.
+                                             *
+                                             * @param a - The first declaration to order.
+                                             * @param b - The second declaration to order.
+                                             * @returns A negative, zero or positive number ordering the two by pin key.
+                                             */
+                                            (a, b) => keyOf(a.pin).localeCompare(keyOf(b.pin))
                                         )) {
                                             if (
                                                 !d.observations.includes(event.projection.kind) ||
@@ -237,11 +322,22 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Preserve admission/capacity failures while hiding driver details. */ () =>
-                                Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
+                            /**
+                             * Preserve admission/capacity failures while hiding driver details.
+                             *
+                             * @returns A failure with the `unavailable` reason.
+                             */
+                            () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
                         )
                     ),
-                /** Lease the earliest eligible per-resource delivery using database time and a bounded attempt budget. */
+                /**
+                 * Lease the earliest eligible per-resource delivery using database time and a bounded attempt budget.
+                 *
+                 * @param input - The observer declaration; its pin must belong to the captured tenant.
+                 * @param requestedAt - The caller's timestamp, validated but never used as the lease clock.
+                 * @returns The leased claim, or undefined when the subscription is absent, nothing is due or the due delivery was dead-lettered for exhausted attempts.
+                 * @fails {HookOutboxFailure} With `transaction-active` inside an ambient transaction, `invalid` for malformed input or inconsistent stored rows, `conflict` when the declaration changed, or `unavailable` when SQL fails.
+                 */
                 claim: (input, requestedAt) =>
                     outside(
                         Effect.gen(
@@ -285,7 +381,14 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                             }
                         )
                     ),
-                /** Require a live lease for first settlement; exact repeats remain idempotent after expiry, but replaced attempts fail. */
+                /**
+                 * Require a live lease for first settlement; exact repeats remain idempotent after expiry, but replaced attempts fail.
+                 *
+                 * @param input - The claim returned when the delivery was leased.
+                 * @param value - The settlement to record: delivered, retry or dead-letter.
+                 * @returns An effect that completes once the settlement is recorded, or immediately for an exact repeat.
+                 * @fails {HookOutboxFailure} With `lease-lost` when the lease expired, was replaced or the delivery was settled differently, `invalid` for malformed input, `transaction-active` inside an ambient transaction, or `unavailable` when SQL fails.
+                 */
                 settle: (input, value) =>
                     outside(
                         Effect.gen(
@@ -327,7 +430,16 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     ),
             });
             const recovery = HookRecovery.of({
-                /** Return an authorized, cursor-bounded page of terminal failure metadata, never full event payloads. */
+                /**
+                 * Return an authorized, cursor-bounded page of terminal failure metadata, never full event payloads.
+                 *
+                 * @param input - The observer declaration; its pin must belong to the captured tenant.
+                 * @param after - The exclusive idempotency-key cursor, or null for the first page.
+                 * @param limit - The page size, from 1 to 100.
+                 * @returns Up to `limit` dead-letter summaries, each with its key, event id, attempt and reason.
+                 * @fails {HookOutboxFailure} With `transaction-active` inside an ambient transaction, `invalid` for malformed input or stored rows, `conflict` when the declaration changed, or `unavailable` when SQL fails.
+                 * @fails {HookDenied} When the operator policy refuses inspection.
+                 */
                 deadLetters: (input, after, limit) =>
                     Effect.gen(
                         /** Validate inspection bounds and operator authority before acquiring a subscription lock. */ function* () {
@@ -350,9 +462,13 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                                         }>`SELECT idempotency_key, event_id, attempt, settlement FROM hook_delivery WHERE subscription = ${keyOf(d.pin)} AND state = 'dead-letter' AND idempotency_key > ${after ?? ''} ORDER BY idempotency_key LIMIT ${limit}`;
                                         return yield* Effect.forEach(
                                             rows,
-                                            /** Decode one stored terminal result into bounded recovery metadata. */ (
-                                                row
-                                            ) =>
+                                            /**
+                                             * Decode one stored terminal result into bounded recovery metadata.
+                                             *
+                                             * @param row - One dead-letter row from the page query.
+                                             * @returns The decoded dead-letter summary.
+                                             */
+                                            (row) =>
                                                 Effect.gen(
                                                     /** Reject inconsistent settlement state before returning a dead-letter reason and attempt. */ function* () {
                                                         const settlement = yield* decode(
@@ -376,7 +492,16 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                             );
                         }
                     ),
-                /** Authorize one idempotent redrive request; retain the sink key while granting a fresh bounded attempt budget. */
+                /**
+                 * Authorize one idempotent redrive request; retain the sink key while granting a fresh bounded attempt budget.
+                 *
+                 * @param input - The observer declaration; its pin must belong to the captured tenant.
+                 * @param idempotencyKey - The dead-lettered delivery's stable sink key.
+                 * @param requestId - The caller's redrive request id, which makes the replay idempotent.
+                 * @returns True when the delivery was reset to pending, false when this request id was already accepted for the same delivery.
+                 * @fails {HookOutboxFailure} With `invalid` for malformed input or an unknown subscription or delivery, `conflict` when the delivery is not dead-lettered, a lease is running or the request id was used for another delivery, `capacity` when the observer is full, `transaction-active` inside an ambient transaction, or `unavailable` when SQL fails.
+                 * @fails {HookDenied} When the operator policy refuses replay.
+                 */
                 replay: (input, idempotencyKey, requestId) =>
                     Effect.gen(
                         /** Validate replay keys and operator authority before opening the independent recovery transaction. */ function* () {
@@ -442,7 +567,14 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     ),
             });
             const feed = HookChangeFeed.of({
-                /** Read a bounded committed tenant feed page after the cursor without taking a writer transaction. */
+                /**
+                 * Read a bounded committed tenant feed page after the cursor without taking a writer transaction.
+                 *
+                 * @param after - The exclusive feed cursor; zero reads from the start.
+                 * @param limit - The page size, from 1 to 100.
+                 * @returns The committed events after the cursor, in cursor order, and the cursor to resume from.
+                 * @fails {HookOutboxFailure} With `transaction-active` inside an ambient transaction, `invalid` for malformed input or feed rows, or `unavailable` when SQL fails.
+                 */
                 read: (after, limit) =>
                     Effect.gen(
                         /** Reject ambient transactions and validate persisted event provenance before publishing a cursor. */ function* () {
@@ -459,7 +591,13 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                             }>`SELECT cursor, event_id, event FROM hook_event WHERE tenant = ${tenant} AND cursor > ${after} ORDER BY cursor LIMIT ${limit}`;
                             const events = yield* Effect.forEach(
                                 rows,
-                                /** Convert one persisted feed row into a validated cursor/event pair. */ (row) =>
+                                /**
+                                 * Convert one persisted feed row into a validated cursor/event pair.
+                                 *
+                                 * @param row - One row from the feed page query.
+                                 * @returns The validated cursor and event pair.
+                                 */
+                                (row) =>
                                     Effect.gen(
                                         /** Cross-check the decoded event against both the tenant boundary and indexed event ID. */ function* () {
                                             const cursor = yield* decode(Integer, row.cursor);
@@ -476,8 +614,12 @@ export const hookContext = (dialect: Dialect, owner: TransactionScope) =>
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Keep malformed feed evidence distinguishable from sanitized SQL unavailability. */ () =>
-                                Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
+                            /**
+                             * Keep malformed feed evidence distinguishable from sanitized SQL unavailability.
+                             *
+                             * @returns A failure with the `unavailable` reason.
+                             */
+                            () => Effect.fail(new HookOutboxFailure({ reason: 'unavailable' }))
                         )
                     ),
             });

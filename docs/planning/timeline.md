@@ -2,6 +2,441 @@
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Renewal static-plus-affected requalification - 2026-11-20
+
+The [replacement owner](https://ampcode.com/threads/T-01a1f91d-763b-70be-8b45-ed204d33d101) resumes only after the coordinator independently verifies exact `515a62ffeb82a30ef1965d599d1652411a6efdda` CI GREEN. Puck authorizes the later ordinary delivery sequence. The [renewal report](../core-qualification/session-renewal.md#static-plus-affected-requalification-and-delivery---2026-11-20) owns exact evidence; non-closing [EVE-275](https://linear.app/resnovas/issue/EVE-275) / [#1063](https://github.com/Resnovas/Eventiva/issues/1063) remain open. This dated checkpoint supersedes renewal's earlier current-attempt rows, not historical failures or the frozen all-issue capture.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed preservation/integration | Original ca05d90f tree/base541b18ac, failed logs and separate later patches retained. Fourteen renewal paths transplant cleanly onto exact515a62ff; production/test/example blobs unchanged. Worker-cap and G are not adopted. |
+| Completed source admission | Signed local2693f31b, treeade7d03f: one normal installed static-plus-affected hook exits0. Independent pre-commit496.534675s/commit-msg0.078787s, whole pinned fixture/hook/cleanup500.844678s <1200s. Static15builds/83tasks, affected31tasks and323tooling tests pass. Fresh runtime680/contracts580/server80/storage333/resource68 cases; server97.37/93.97/96.65/97.95% coverage. No threshold, assertion, scheduling or budget change. |
+| Current delivery | Puck authorizes separate clean graph/evidence normal hook, ordinary push and exact-head CI. Fresh main remains515a62ff; no rebase/source retry required at this checkpoint. Graph hook/publication/CI are pending, not acceptance. Original medium/2CPU failures remain historical, not green. |
+| Upcoming acceptance | Verify exact pushed head's full aggregate/parity/smoke/feature evidence in main-push CI. No whole-Core closure, readiness probe, endpoint or activation. CLI never renews; default-off web/native capability and1h idle/8h absolute remain. EVE-248 January2027 unchanged. |
+
+```mermaid
+flowchart LR
+    Base["Exact prerequisite CI green"] --> Source["Passed: retained renewal source hook"]
+    Source --> Graph["Required: clean graph and normal evidence hook"]
+    Graph --> Push["Ordinary main push"]
+    Push --> Hosted["Required: exact-head full CI; Core remains open"]
+```
+
+## EVE-299 hook scope correction - 2026-11-20
+
+Jonathan's 15:16:33 UTC correction limits pre-commit to static checks and affected tests. The [paired source](https://linear.app/resnovas/issue/EVE-299#comment-01ba9869-5019-48dd-a2e9-3a0b74a0eb55) identifies main-push/PR full verification and seven-day uploads as Puck's implementation direction, not the human quote. [This thread](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) owns the change and the separately approved two-project cache repair, with non-closing [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092). This supersedes per-hook tuning and the earlier qualification sequence below; historical outcomes remain intact.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed cancellation | Medium cap qualification owner reports SIGTERM/143 after 635.132416s, not timeout or acceptance. No source commit; exact cap tree and renewal are preserved. No worker cap is adopted in the replacement slice. |
+| Completed local implementation | Hook selects static then affected tests, with the root tooling test group selected by root/tool changes; snapshot/Git isolation is unchanged. CI and standalone verification retain full aggregate, coverage, smoke and feature proof. Only contracts/runtime test input overrides replace inferred `^production` with `^default`. Static passes; 13 hook/cache regressions pass, including real assertion-mutation/restoration and outside-closure controls. |
+| Completed fresh coverage | `nx run-many -t test -p @eventiva/contracts-tests @eventiva/runtime-tests --parallel=1 --skip-nx-cache` passes 580 contracts and 680 runtime tests with unchanged 90% thresholds and the approved disposable PostgreSQL fixture; runtime branches 90.39%, contracts branches 91.97%. No worker cap is adopted. |
+| Completed source admission | Signed source `d3f0b6b2dcccd72f3b26cd0ee512432b136a878b` passes `git verify-commit` with configured author/committer/sign-off. Initial normal Git commit exits 0 in 984.705440s: static 83 tasks, affected 18 projects plus 14 prerequisites all pass (23 cache hits), tooling 323/323. Jonathan's wording correction arrived during that run; normal signed amendment exits 0 in 188.512715s with tooling 323/323 and no hook bypass. Both stay within 1200s. These are local results, not cold guarantees or hosted acceptance. |
+| Current delivery | Accepted house #76 is independently confirmed merged at `a1ddb86429a74cea2ca3ffb46f1a1481972829f7`. The earlier identity hold is resolved by the [decision](https://linear.app/resnovas/issue/EVE-299#comment-d57175a5-f09b-443a-b5ca-d53c6142ee3c) and [correction](https://linear.app/resnovas/issue/EVE-299#comment-8e1a9b10-a627-4e37-adbf-2290ea1cb4c5): repository guidance states platform identities only; personal authority stays in personal global guidance. The shared house thread provides signature enforcement. Separate clean graph admission, publication and exact-head CI remain required; subsequent receipts belong on this same non-closing EVE-299/#1092 pair. No settings change, signing bypass or held-lane release. |
+| Upcoming | Push the verified correction and check exact-head CI. The separately approved compiler-readiness probe follows only after landing, then queued consolidation, socket, reference, JSDoc and shared React adoption. G/renewal retain separate reservations and retry disposition; the cache fix alone releases no held lane. |
+
+```mermaid
+flowchart LR
+    Scope["Static + affected hook correction"] --> Cache["Dependency-spec cache proof"]
+    Cache --> Fresh["Fresh package coverage and installed hook"]
+    Fresh --> Land["Separate graph, publication and exact-head CI"]
+    Land --> Queue["Resume queued adoption; retained lane holds"]
+```
+
+## EVE-299 house adoption and licence prerequisite - 2026-11-20
+
+The [funnel owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) resumes from published `d40a76b742468e93bb42369de769b7621a71b8e3`. [Adoption START](https://linear.app/resnovas/issue/EVE-299#comment-00f3bc7e-83ce-43a8-baa2-1b43b143dd97) precedes Jonathan's additional three-package licence prerequisite, relayed by Puck on November 20; exact human-selection times are unknown. The [prerequisite record](https://linear.app/resnovas/issue/EVE-299#comment-c72ad25f-85ea-4c0d-8c52-f7bda0f0a21c) is explicitly [mirrored and read back](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7038687715). This is not a refresh of the frozen issue capture.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed targeted candidate work | Retained prebound TCP composition and port-zero fixtures pass 68 server tests with coverage and real process recovery; configuration still rejects port zero. Static source/declaration audits pass with zero violations. Twenty shared JSDoc rule/options probes pass with mature 65.4.5; cooldown is unchanged. Staged FormatJS and reference import/edit/build/package guards remain uncommitted in preserved stash `023189c6f2d1ccad5fe769a9efceb1dfbb1a22e8` and independent patch/archive backups. These are not full-gate or publication results. |
+| Completed prerequisite source hook | Signed local `c8964c59ad2ffe3cc137efe384a763083348a0df`, tree `79f32e1d466869b5017cd411817ad0c8f09bebaf`, adds exactly the three [house #57](https://github.com/Resnovas/.github/pull/57) exceptions and [documentation](../dependency-security.md#jsdoc-licence-prerequisite-eve-299). Normal installed hook exits 0 in 821.476671s, 11:46:48.047029Z to 12:00:29.523715Z on November 20, below 1200s. Trace2 intervals including barriers: static 107.852s, root 52.148s, Node 39.304s, aggregate 601.784s, smoke 15.844s, features 4.368s. All 38 aggregate tasks and three smoke projects/17 tasks pass. Unchanged-registry manifest `2f875f5c-34c0-467d-9f86-89ce5dae2352` naturally selects zero features for six policy/docs paths. The [source checkpoint](https://linear.app/resnovas/issue/EVE-299#comment-b35f38fb-8cb2-4981-8625-6929ec9e7969) distinguishes local proof from publication and PR dependency review. |
+| Current prerequisite graph and delivery | Clean-source Graphify check identifies four added document nodes/four edges. Regenerate mechanically, then require this separate graph/evidence commit's own normal hook within 1200s before publication and exact-head CI. No source-hook evidence substitutes for it. Vulnerability policy, cooldown, registry and all application gates remain unchanged. Failure holds publication without blind retry. |
+| Upcoming adoption | Restore the preserved source candidate after the prerequisite lands. Accepted house #60/#62 are staged, not fully adopted; #63's all-rule header exemption needs its accepted merge revision. Continue package-by-package JSDoc, canonical budget/guidance and shared evidence adoption without removing existing product gates. Upgrade to 65.5.0 after November 26, not through a cooldown exception. |
+| Separate approved performance work | Jonathan subsequently approved genuinely affected-only feature selection and fresh same-run Nx result reuse under exact-tree proof, retaining every required assertion, coverage and isolation obligation. Pipeline/registry reservations are confirmed. G archive `f584c35c094feef30df898d97dcce0a99c64f97513e82717cb652caec271b034`, all 42 internal checksums and both five-path projection trees independently verify; originals are preserved and not integrated. Qualify actual G under the same 1200-second bound. A normal house PR for the ordered pipeline, snapshot/Git isolation and installed-hook fixtures is also approved; no shared source is changed in this prerequisite. |
+
+The linked-worktree hook defect was Git-local environment inheritance, unrelated to `externals`. Renewal and EVE-44 reservations remain untouched. No deployment, paid resource, new timeout, competing qualification or whole-issue closure is authorized by these checkpoints.
+
+```mermaid
+flowchart LR
+    Probe["Targeted socket/reference/JSDoc proof"] --> Preserve["Preserved candidate"]
+    Preserve --> Policy["Passed: policy source hook 821.476671s"]
+    Policy --> Hook["Required: separate graph hook and publication"]
+    Hook --> Adoption["Resume staged house adoption"]
+    Reuse["Approved exact-tree fresh-result reuse"] --> G["Required: retained G qualification <=1200s"]
+```
+
+## EVE-261 mandatory child-phase evidence
+
+On 2026-11-20, Puck relayed Jonathan's mandatory timing correction after the
+exact attempted renewal-tree diagnosis. The coordinator confirmed four telemetry
+harness/spec paths and this isolated documentation slice on published `d40a76b7`.
+[EVE-261 START](https://linear.app/resnovas/issue/EVE-261#comment-77d21146-ce70-4759-ab3f-53258432f492)
+and OPEN [GitHub #1035](https://github.com/Resnovas/Eventiva/issues/1035) retain
+the non-closing lifecycle. Exact human-selection time is unknown.
+
+- Completed regression: missing core root/finalizer journal and explicit close
+  fail before correction; all 14 affected focused tests pass afterward. Static
+  verification passes before documentation follow-through.
+- Current qualification: core launches use the existing observer; genuine
+  no-preload/no-fd3 controls retain asserted outer timing. Every existing budget
+  and business assertion remains. Installed source/docs pre-commit passes in
+  1172.466983s; fixture/commit/cleanup wall 1179.44s remains below 1200s. Aggregate
+  38/38 tasks and smoke 3 projects/17 tasks pass; serial telemetry evidence 92/92
+  passes in manifest `1958c84e-89fa-41f6-8169-11bd3a82ebd4`. Rebased source
+  `e0fc57a5` preserves the executable candidate atop published licence prerequisite
+  `d9efa5cf`; separate clean graph hook/integrated revalidation/publication/CI
+  remain required. This is not a cold-run guarantee or whole-issue acceptance.
+- Upcoming: after separately qualified delivery, renewal's owner may run one
+  fresh measured qualification with full timing. No renewal adoption or retry
+  occurs here. PR59 Windows decision/checks still block managed-core sync and
+  step2; whole EVE-261 remains open.
+
+The [canonical correction](../core-qualification/telemetry-timeouts.md#mandatory-phase-evidence)
+owns behavior/evidence. Later delivery results must preserve the original failed
+diagnostic and all historical captures; no main/renewal/funnel edits are included.
+
+## Renewal current-main qualification resumption
+
+On November 20, Puck directs the [existing renewal owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) to reconcile the retained worktree onto published `d40a76b742468e93bb42369de769b7621a71b8e3` and run its own unchanged installed-hook qualification within 1200 seconds. [EVE-275 resumption](https://linear.app/resnovas/issue/EVE-275#comment-36693985-c8fc-4d6f-9332-8c19e6547164) belongs to OPEN [#1063](https://github.com/Resnovas/Eventiva/issues/1063); no broad closure or new policy is inferred. The [renewal report](../core-qualification/session-renewal.md#authorized-current-main-qualification---2026-11-20) owns detailed contract and historical failures.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed reconciliation | Originals/checksums/stash preserved; existing branch fast-forwarded from a5abfb9a. Source applies without conflict. Additive decision sections both retained and LLMS regenerated. Published import/static-dedup/F/H/I remain intact. |
+| Completed resumed attempt, failed | Staged tree 5c62009eebbf160477e95e7b8e8bc9107ed431de: normal installed pre-commit exit 1 in 1085.840426 seconds by Git Trace2, within unchanged 1200 seconds. Static/root/Node pass; aggregate has 37 successful tasks but runtime 679/680 fails the bounded failed-bootstrap sink-release child with ETIMEDOUT at core-diagnostics-qualification.spec.ts:55:46. Cause unestablished; no renewal-regression inference. |
+| Preserved failed-attempt hold | Process-observer stage seconds: static 199.137720, root 45.242434, Node 32.348591, aggregate 808.776231. Smoke/features never start. Exact attempted patch/logs/Trace2/stash preserved, fixture/service stopped. No source/graph commit, push or CI occurred in that attempt. |
+| Completed bounded diagnosis | Published-main and exact attempted-tree observer runs do not reproduce the failure. Exact-tree ten children and eight interleaved controls pass; schema wall samples do not establish causality. Original journal-off phase is unrecoverable. Published timing source e0fc57a5/head541b18ac now supplies core root/release evidence while preserving genuinely uninstrumented controls and every budget. |
+| Current fresh measured qualification | Existing owner reconciles only retained renewal onto fetched published 541b18acdfda9da19d5d58dacc9918215f53277c; production/test blobs unchanged, additive timeline sections both retained. Run one authorized normal installed source/docs hook within1200s with pinned disposable fixture, exact child phases/Trace2/per-stage CPU/memory observations. No capacity upgrade or causal-fix claim. Any failure/overrun holds without retry-to-green. |
+| Upcoming delivery gates | Source/docs and separate clean graph each require their own normal passing hooks within1200s, then direct-main delivery and independent exact-head CI. Timing-head hosted checks remain separately pending at intake. No acceptance follows merely from finishing a failed hook within budget or from diagnostic passes. |
+
+```mermaid
+flowchart LR
+    Preserved["Retained renewal and failures"] --> Reconciled["Published d40a76b7 reconciled"]
+    Reconciled --> Observed["No reproduction; published timing head541b18ac"]
+    Observed --> Source["One fresh measured source hook within1200s"]
+    Source --> Graph["Required separate graph hook within 1200s"]
+    Graph --> CI["Publication and exact-head CI"]
+    Source --> Hold["Any failure or overrun: hold with timings"]
+    Graph --> Hold
+```
+
+CLI never renews/no tickets and real web/native activity categories are settled. No source/test/tool from G, EVE-291, trust or PR59 is adopted; registry, serial contract, proof reuse, budgets/settings/dependencies and production activation remain unchanged. EVE-248 stays January 2027.
+
+## Retained record validation G - integration qualification
+
+Fixture-only continuation on November 20, 2026: [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) approved batched setup and normal-hook delivery after the separate graph hook timed out in the existing PostgreSQL ancestry test. Signed G source `d26ea6ca9dfa9389910db1aa45148db2f339efed` remains separate and unpublished. The [medium owner](https://ampcode.com/threads/T-01a1f91d-6d34-70ce-8644-3cb0cb84f4e0) independently compared the real 920-call seed with two parameterized inserts on PostgreSQL and SQLite: all four ordered 398159-byte record/revision/schema/tenant-pin captures match SHA256 `0ebe8c223b9b7c7bdb83625b9d56c61b04232312c902984b368879bdef3777f3`; both variants roll back to original empty rows and unchanged pins. Static verification passes before documentation. The [feature guide](../inventory-locations.md#verify-and-troubleshoot) owns the setup boundary and timings. Current work is a separate fixture/docs commit, then a separately qualified clean graph/evidence commit and exact-head main/CI read-back. All assertions, coverage, 60-second test and 1200-second hook budgets remain. Production traversal is design-only pending live-policy/concurrent-snapshot review and a fresh write handshake; no worker-cap extension or slot release follows this checkpoint. EVE-276/#1064 and EVE-299/#1092 remain open.
+
+The [G owner](https://ampcode.com/threads/T-01a1f767-b2f8-70bb-80dd-6e2d18137bc5) transferred immutable evidence on November 20 from base `69f9866e4701a1f2ea8ddbe3f326eb75eb235dd0`, signed source `3d31ced75c67d76428a805fc01bd120ecbe1b47e`. [EVE-276](https://linear.app/resnovas/issue/EVE-276) maps to OPEN [GitHub #1064](https://github.com/Resnovas/Eventiva/issues/1064). The original [START](https://linear.app/resnovas/issue/EVE-276#comment-08d1a331-6b34-4344-b1e7-a3637b9bd957) and [mirror](https://github.com/Resnovas/Eventiva/issues/1064#issuecomment-7031283648), [failure checkpoint](https://linear.app/resnovas/issue/EVE-276#comment-73814a6a-4f07-42ae-bed8-7773a8e20f27) and [mirror](https://github.com/Resnovas/Eventiva/issues/1064#issuecomment-7032283111) remain historical. This capsule does not refresh the frozen issue capture or close broader EVE-276/Core acceptance.
+
+| Step | State and evidence |
+| --- | --- |
+| Retained proof | Original actual-driver regression covers corrupt stored payloads, SQLite-permitted malformed leases, PostgreSQL constraint rejection, valid representations and existing conflict precedence. The original signed G `d26ea6ca9dfa9389910db1aa45148db2f339efed` and separate fixture `57d4b784223bf9326a408fb050954006ce4a8880` remain preserved with their raw evidence. The [storage guide](../storage.md#retained-record-validation) owns behavior; the [qualification report](https://ampcode.com/artifacts/integrated-g-medium-qualification-16f083b7-ec03-4624-a837-546b6086620d) retains failed and passing historical measurements without treating them as current acceptance. |
+| Current bounded integration | On November 20, [Puck](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) directed that published `515a62ffeb82a30ef1965d599d1652411a6efdda` wins the conflict: static plus affected tests only in the hook. The proposed residual keeps G's exact retained-row decoder, regression and storage documentation, with the unchanged fixture replay. Its static gate passes before documentation. No hook has run and no qualification attempt has been consumed. |
+| Explicitly omitted from this proposal | Do not restore G's six-stage hook/session loop, reporter, feature-reuse runner, session-keyed Nx configuration or their reuse-only regression. Published hook, runner tests, foundation chapter, registry, Contracts/Runtime cache repair and CI remain unchanged. CI currently executes aggregate and feature collection in separate steps, with smoke in another job; it never invokes G's session wrapper. Any remaining CI-only reuse needs the [funnel owner's](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) placement decision and a separate concrete diff, not a dormant session wrapper in this delivery. |
+| Next acceptance | Obtain funnel clearance of the exact kept/ported/dropped packet before the one authorized static-plus-affected qualification with fresh Contracts and unchanged coverage. Separate graph, main publication and exact-head acceptance remain required afterward. A conflict or failure holds without retry. The slot remains held; the queued SQL transaction packet has not started. EVE-276/#1064 and EVE-299/#1092 remain open; production ancestry stays design-only. |
+
+```mermaid
+flowchart LR
+    Preserved["Original signed G and fixture preserved"] --> Review["Current: funnel reviews exact residual diff"]
+    Review --> Hook["Required: one static + affected hook, fresh Contracts"]
+    Hook --> Graph["Required: separate clean graph and publication"]
+    Graph --> Accepted["Required: exact-head acceptance before slot release"]
+```
+
+### Replacement source qualified - November 20, 2026
+
+The capsule above is preserved historical intake, including its separate-fixture wording and pre-attempt state. Puck subsequently authorized one combined replacement source commit, funnel cleared the complete session/reporter/reuse subsystem omission, and a first cleared attempt on `515a62ff` failed the unchanged telemetry diamond timeout. Original signed G `d26ea6ca9dfa9389910db1aa45148db2f339efed`, fixture `57d4b784223bf9326a408fb050954006ce4a8880` and every failed measurement remain retained. Puck then authorized exactly one replacement attempt on published `0facfa440f22efd60146307129fcd10a5af423a5`, with only the additive timeline conflict resolved as published renewal followed by the exact G addition. Full-file byte equality passed. Old-base telemetry input isolation does not establish rebased closure identity: published renewal changes `packages/contracts/src/identity.ts`. Neither observation establishes a contention cause.
+
+At 17:38:26 UTC, signed local source `8a21dc28ab76e050dc45a9c9c758e619e797a2d2`, tree `1f3956f1fd0f627b8e69bb41400ec7247e54292c`, passed its genuine installed static-plus-affected hook in 500.545098 seconds; containing Git exited zero in 501.119586 seconds and the unchanged pinned fixture through verified cleanup exited zero in 503.525158 seconds. All 19 affected tasks succeeded: 11 cache hits and eight executions. Contracts executed fresh, hash `3660946553810285288`: 580 tests/35 files, lines 95.81%, branches 90.55%, functions 93% and statements 95.43% coverage. Runtime passed all 680 tests fresh; Resources 68, Storage 339 and Server 80 also passed fresh, with all 323 affected Node checks passing. Every budget, assertion and coverage gate remains unchanged. Sampled workload memory reached 6442405888 bytes including cache against the actual 6 GiB cap; memory-max events increased 357, with no OOM or kill. The [qualification report](https://ampcode.com/artifacts/integrated-g-medium-qualification-16f083b7-ec03-4624-a837-546b6086620d) retains exact Trace2, shared-cache history, reports and four-CPU resource observations.
+
+Current: prepare the separate clean-source Graphify/evidence commit and qualify its normal hook. Upcoming: direct-main push and independent exact-head CI acceptance. This local source pass is not graph acceptance, publication, whole-core closure or feature activation. The slot stays held and SQL has not started; the coordinator releases it only after accepted landing. EVE-276/#1064 and EVE-299/#1092 remain open. Production ancestry remains design-only; no session wrapper, CI reuse change, worker-cap change, test edit or dependency change is adopted.
+
+```mermaid
+flowchart LR
+    Source["Completed: replacement source, fresh Contracts and Runtime"] --> Graph["Current: separate clean graph and normal hook"]
+    Graph --> CI["Required: main push and exact-head acceptance"]
+    CI --> Slot["Only then: release G slot and start queued SQL"]
+```
+
+## Core approval evidence reconciliation I
+
+START November 20, 2026: the [I owner](https://ampcode.com/threads/T-20b14e85-79c3-4f05-9bbd-92a8f7fc8a09) independently fetches published `origin/main` `c779e486a93d8c5b863b1958c50211745bae6f94` into isolated `agents/eve-275-packet-i`, not the coordinator's older local main or unpublished renewal. The full live discussion reaches terminal pagination; [EVE-275](https://linear.app/resnovas/issue/EVE-275) remains In Progress and actual [GitHub #1063](https://github.com/Resnovas/Eventiva/issues/1063) OPEN with normal linkback6988293684. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-48cb133a-d640-4538-8c9f-96f9ec8e12f8) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036520194). This bounded inspection does not refresh the historical issue capture.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed source/publication inspection | B correction/head `8fa5b765`/`129069e0`, A source/head `29317cb3`/`e0efc5e4` and D approved fixture/source/head `84e4ac97`/`009dc422`/`3ff2251b` are ancestors of fetched main. B policy and D runtime files are byte-unchanged there. Permanent policy/consent coverage and actual injected-policy SQL issuance are present; exact captured resource grants replace the historical event-wide follow-up gap. [Session-policy](../core-qualification/session-policy.md#current-published-state---packet-i-2026-11-20), [cancellation](../core-qualification/resource-cancellation.md#current-published-state---packet-i-2026-11-20) and [wiring](../core-qualification/approval-wiring.md#current-published-state---packet-i-2026-11-20) capsules map clauses/source/evidence/limits without rewriting historical bodies. |
+| Completed historical hosted inspection | Fresh `gh api` reads verify B application44519309355, A44617567119 and D44638123407 at their exact heads, each completed/success. D check-runs17success/7skip; older failed/cancelled/duplicate records and B's separate scheduled mirror-freshness failure remain historical, not universal green or I CI. Past fixture-backed full-gate counts remain explicitly reported past execution. |
+| Current I verification | Only the three additive capsules, narrow chapter35 pointer and this isolated subsection are authored; LLMS/clean graph are mechanical. Run unchanged docs/root/docgen/strict captured planning; require natural not-applicable/zero-interface selection with registry unchanged. Normal source/docs hook then separate graph hook must each pass within1200s, approved pinned disposable PostgreSQL, Trace2/per-stage timing. Failure/overrun holds publication with exact patch/logs preserved; no retry-to-green or borrowed proof. |
+| Upcoming I delivery and exclusions | After its own gates: signed direct-main source/docs and separate clean graph, independent remote read-back, non-closing paired lifecycle and exact-head I CI. No source/test/tool/root/registry/config writes, runtime fix, new policy/tests, renewal/G/H/F/trust/EVE-291/PR59 adoption or broad closure. No production/release activation, spend/settings/dependency change; EVE-248 January2027 unchanged. |
+
+**Source/docs hook passed, 2026-11-20T10:16:04Z (second precision):** signed local I source `46ab4e206eefec67e5f441657efe46bdb149654d` independently verifies G. Actual installed pre-commit exits0 in1002.902125s, commit-msg exits0 in0.062792s and containing Git exits0 in1003.548049s, below the unchanged1200s limit with approved pinned disposable PostgreSQL. Trace2 intervals including each following snapshot barrier, not exact subprocess durations: static73.493s, root32.286s, Node27.048s, aggregate773.177s, smoke94.737s, features2.036s. Aggregate38/38tasks (15cache hits), smoke3projects/17tasks (11hits), normal storage/server/runtime/telemetry and actual migration/module-run/Cluster pass. Final manifest `09fe2b53-0d37-4ce1-aec2-3607e61bd472` naturally selects no interfaces/results and is not-applicable for exactly six documentation paths; registry and serial execution remain unchanged. Fresh static, root104documentation fixtures/301editableTS/zero findings, docgen/check and strict captured planning258issues/692edges/zero unresolved or stale also pass; none is live all-issue freshness or cold-budget acceptance. The [source checkpoint](https://linear.app/resnovas/issue/EVE-275#comment-d4de160e-54da-45ed-8bb2-6938cb5bd109) is explicitly [mirrored/read back](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7036984462). Separate clean graph/evidence hook, publication and exact-head hosted CI remain independently required; their subsequent outcomes belong on this same non-closing lifecycle pair, not a retrospective rewrite of this local checkpoint. No failed gate or retry occurred in this I source attempt.
+
+## EVE-299 static deduplication
+
+On 2026-11-20, Puck relayed approval for the [funnel owner's](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) duplicate-static removal only. Exact human-selection time is unknown. [Linear START](https://linear.app/resnovas/issue/EVE-299#comment-cc14d9dd-20a8-49a4-ad9e-85e14e04c301) is independently [mirrored on GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7033313568), related RES-66. Coordinator cleared the exact pipeline and verification-doc sections; telemetry, storage and renewal work remain separate. The [registry](../verification/registry.md) owns the ordered pipeline and snapshot contract.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed local regression | The installed-hook positive case fails before the fix because it observes STATIC_OK twice. Shared pipeline now passes all 12 runner/pipeline fixtures, including every stage once, standalone execution, static failure before documentation, immediate static/final snapshot rejection and nested Git histories. Static verification passes 15 builds, 83 lint/type tasks and both boundary graphs with zero violations before documentation work. |
+| Retained dedup-only failure | Normal hook naturally exits 1; fixture/commit/cleanup wall upper bound 1123.92s, not exact hook time. Single static lint/type body 79s, aggregate 15m31s with 36 successful tasks/15 cache hits. Telemetry 89/92 and runtime 678/680 fail bounded child ETIMEDOUT; smoke/features never start. No commit/push or retry. Exact patch/tree and logs remain preserved. |
+| Current combined qualification | Coordinator relays Puck approval for exactly this dedup slice plus the cleared NodeRuntime subpath import/docs below. File-tool archive SHA256 f3724bb40bc4fe21e138ebcd2663ce6c9c1cb1d7b2f5ad7d902b7382e45e3158 and all manifest entries verified; only four transferred hunks applied, no generated overwrite. Combined static passes before documentation. Source/docs commit and separate graph chore each require their own normal hook within 1200s; no rule-8 exception, bypass or evidence reuse. |
+| Completed combined source hook | Signed source e579dd6d3dacccae14bd1e62b83ddf422ad18685, tree efaf05b697b0c26f95bc0ac295239baef2ae9e38, passed the actual installed hook in 1142.649279s, exit0, from 2026-11-20T08:04:10.471325Z to 08:23:13.120636Z. Trace2 stage intervals including barriers: static95.289s, root44.715s, Node34.500s, aggregate646.659s (38/38 tasks,29 cache hits), smoke126.609s (17 tasks,11 hits), features194.719s. Manifest8b28151e-31cc-4dab-bc98-3f67bc8aa732 passes backend-surfaces and funnel-runner with unchanged serial execution. The 57.350721s margin is this run's result, not a cold-budget guarantee or causal isolation of the import. Separate graph hook, publication and exact-head CI remain independently required and are recorded on the paired issues. |
+| Upcoming and excluded | Publish independently verified source and regenerated graph, record full-hook timing and exact-head CI. Same-run proof reuse and any serial-contract amendment still require Jonathan. Static dedup alone cannot resolve G's measured 479.776-second excess. No dependency, production operation or shared-house edit is included. |
+
+The retained runtime failures both belong to `real diagnostic server telemetry composition` in `tests/telemetry/src/server.spec.ts`: line198, `runs the real main and drains one correlated console diagnostic, never ready or banner` (2341ms, status null, SIGTERM), and line229, `flushes the real file layer before process exit and releases its scoped lock` (2312ms, status0, signal null). Both report `Bounded child did not complete normally.` / `ETIMEDOUT`; successful application exit is not timely parent close. Runtime target took 462.63s; telemetry target 85.30s. No claim that the import correction fixes these two observations precedes combined verification. The [dedup failure and combined authorization record](https://linear.app/resnovas/issue/EVE-299#comment-24e2200d-52ca-444c-b5ec-0e59845cb2e9) is independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7033812502).
+
+```mermaid
+flowchart LR
+    Duplicate["Observed duplicate static pass"] --> Once["One pipeline; snapshot barriers retained"]
+    Once --> Focused["Passed: targeted proof and static checks"]
+    Focused --> Failure["Retained: telemetry/runtime deadlines block hook"]
+    Failure --> Full["Authorized: bounded combined import + dedup"]
+    Full --> Source["Passed: combined source hook 1142.649279s"]
+    Source --> Publish["Required: separate graph hook, main and CI"]
+    Reuse["Separate owner decision: same-run proof reuse"]
+```
+
+## Core qualification reconciliation H
+
+START 2026-11-20T06:39Z (minute precision): [H owner](https://ampcode.com/threads/T-191ac145-222c-496f-bac9-a3b9e52e2e1b) reads Packet H and fetches `origin/main` `a959f9ea2042fb6d850d06f953e6bf7abda70a20` into isolated `agents/core-reconciliation-h`. Verified live pairs remain In Progress [EVE-277](https://linear.app/resnovas/issue/EVE-277) / OPEN [#1065](https://github.com/Resnovas/Eventiva/issues/1065) and In Progress [EVE-278](https://linear.app/resnovas/issue/EVE-278) / OPEN [#1066](https://github.com/Resnovas/Eventiva/issues/1066). [277 START](https://linear.app/resnovas/issue/EVE-277#comment-e55ee2a9-f9f8-477b-975e-8fce10732e9f) / [GitHub read-back](https://github.com/Resnovas/Eventiva/issues/1065#issuecomment-7032467089) and [278 START](https://linear.app/resnovas/issue/EVE-278#comment-d957ad4e-f201-463b-8b80-0952e2124870) / [GitHub read-back](https://github.com/Resnovas/Eventiva/issues/1066#issuecomment-7032467311) preserve non-closing lifecycle evidence. This bounded reread does not refresh the historical all-issue capture.
+
+| State | H evidence and remaining boundary |
+| --- | --- |
+| Completed source/publication reconciliation | [Bootstrap report](../core-qualification/bootstrap-diagnostics.md#current-published-state---packet-h-2026-11-20) and [type-boundary report](../core-qualification/types-boundaries.md#current-published-state---packet-h-2026-11-20) add clause/source/evidence/gap maps. Integration01517213/head23baec94 is published and ancestral to fresh main; helper/gate/type fixture match current source. Later telemetry test orchestration is distinguished from unchanged privacy assertions. Historical failures, amendments and local-only checkpoints remain intact. |
+| Completed historical CI verification | H independently reads application run44493038906: exact23baec94, completed/success; 17 successful checks and seven intentional skips. Reported combined105-task/three-smoke local verification remains historical, including earlier exit124/interrupted storage failures and unknown cause. Later F run44686200946 on34e39ccd independently succeeds; its history includes an older cancelled smartcloud, later successes and skipped duplicate house/release/graph checks, not universal historical success. Neither head is H CI. |
+| Initial preparatory checks and retained hold | Fresh `node --run verify:static` passes15builds/83tasks, source296files/1450edges and emitted100files/502edges, zero violations/cycles. `node --run check` passes104documentation fixtures/301editableTS/zero findings or ratchet violations; docgen and strict captured planning258issues/692edges/zero unresolved/stale pass. Existing feature runner selects zero interfaces with status not-applicable for the five documentation paths, without registry edits. The first unchanged installed hook reports telemetry91pass/1fail: `tests/telemetry/src/bootstrap-diagnostics.spec.ts:80`, observed child ETIMEDOUT in the `telemetry_enabled: 'false'` output/exit control. Cause was unestablished at that checkpoint; no declaration regression or privacy leak was inferred. H commit/publication/CI were held, not passed. No cold/warm acceptance follows from cache hits. |
+| Upcoming / deliberately open | Whole EVE-277/278/Core, future EVE-263 coverage, full credential/provider/native acceptance and production authority remain separate. A new source/test need requires its exact clause/path and another reservation, not H scope expansion. Storage/runtime/resources evidence-budget remediation stays with its funnel owner and Jonathan; no timeout increase, reuse implementation or registry change here. |
+
+H delivery attempt ended 2026-11-20T07:07:16.191135Z with exit1, not timeout124. Git trace2 measures the unchanged installed pre-commit from06:47:36.672865Z at **1179.518258 seconds**, inside1200s but failed. Its static checks pass; aggregate test/build/parity reports37successful tasks (15cache hits) and only `@eventiva/telemetry-tests:test` failed after15m18s. Normal storage/server and actual migration/module-run/Cluster conformance pass in that attempt. Smoke and the final feature stage are not reached; the separately executed docs-only feature manifest is not substituted for them. No commit-msg hook, signed H commit, push or H-specific hosted CI occurs. The reports' original historical bodies remain byte-identical. H is preserved locally pending the exact telemetry control's owner disposition; no blind rerun or scope expansion is authorized by this hold.
+
+**Authorized resumption, 2026-11-20:** [coordinator/Puck relay](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a) clears H to rebase only its held docs patch onto published [e579dd6d](https://github.com/Resnovas/Eventiva/commit/e579dd6d3dacccae14bd1e62b83ddf422ad18685) / [fab62e1b](https://github.com/Resnovas/Eventiva/commit/fab62e1b1a62eff5dd70f7d566510c599b25e472), regenerate mechanical outputs, pass the normal source/docs hook and separate graph hook within1200s each, then push and verify exact-head CI. H fetch independently confirms that main head; only an additive timeline insertion conflicted, resolved without changing the funnel owner's section. [Upstream CI44704251637](https://github.com/Resnovas/Eventiva/actions/runs/44704251637) is independently in progress at resume, not accepted. Permission explicitly does not wait for that run, but any failure requires stopping/reporting. The initial1179.518258s failure, original patch/stash/logs and all unpublished lanes remain preserved. Resumption is not fresh gate success or publication; final H timings/revisions/CI belong on both owning lifecycle pairs.
+
+**Resumed local source/docs gate passed, 2026-11-20T09:01:21Z:** signed H source `c5ecfae47a2faa467715f766d9c608bac0c40ff0` independently verifies G. Installed pre-commit exits0 in986.699353s (08:44:53.949135Z to09:01:20.648509Z), commit-msg exits0 in0.138500s, and containing Git invocation exits0 in987.847146s under the unchanged fixture wrapper's1200s bound. Aggregate38/38tasks passes in10m18s with30cache hits, including normal storage/runtime/server, telemetry and actual migration/module-run/Cluster; smoke passes all3projects/17tasks in2m34s with11cache hits. Final manifest `6e45f361-e0ff-453b-964b-801ee1b2c875` is genuinely not-applicable for exactly5documentation paths/zero interfaces, registry unchanged. Fresh root104fixtures/301TS/zero, docgen and strict captured planning258/692/zero pass; this is not live all-issue freshness or cold/warm acceptance. Later exact-head upstream subscription reports all executed fab62e1b checks successful, with intentional skips retained. Original H failure remains historical, not overwritten. Separate graph/evidence hook, normal direct-main push and H-specific hosted CI are still required, not inferred from this local checkpoint.
+
+Only the two qualification reports, a narrow chapter20 evidence pointer and this isolated subsection are authored, with mechanical LLMS/clean-source graph as required. Renewal, G's held local3d31ced7, telemetry, EVE-291, trust and PR59/step2 remain untouched. EVE-248 stays January2027; budgets/settings/dependencies/spend and release authority are unchanged.
+
+```mermaid
+flowchart LR
+    HStart["H: fresh main and verified live pairs"] --> HRead["Published source and exact-head evidence"]
+    HRead --> HDocs["Current capsules; historical failures preserved"]
+    HDocs --> HGate["Installed hook: telemetry child deadline failure"]
+    HGate --> HResume["Published correction; authorized H requalification"]
+    HResume --> HSource["Passed: H source/docs hook 986.699353s"]
+    HSource --> HOpen["Required: graph hook, publication and hosted CI"]
+```
+
+## Approval finalization qualification F
+
+START 2026-11-20T05:24:12Z: [independent F owner](https://ampcode.com/threads/T-5c7c1b4c-f6aa-448d-82f3-f6c5692c1890) starts from fetched `origin/main` `69f9866e4701a1f2ea8ddbe3f326eb75eb235dd0`, not unpublished renewal. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-913b839c-b55a-4584-8bbf-1ad9554afa3b) and its [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7031300107) record the bounded allocation. This does not refresh the historical snapshot or close EVE-275/Core.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed red qualification | [Linear red evidence](https://linear.app/resnovas/issue/EVE-275#comment-15cc7936-b349-4a44-9ef8-d0abe8ae1fff), independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7031377534): unchanged provider fails6/14 cases on real SQLite/PostgreSQL, leaking finalization SQL/connection/proof canaries. Independent observer proves lost-ack deletion committed; rejected COMMIT/ROLLBACK leave unsettled writers, not restoration. |
+| Completed local correction and full qualification | Only SQL Cause leaves normalize to existing bounded unavailable; arbitrary defects/interruption and cause structure remain. Focused61/61 and normal storage333/333 pass with all coverage thresholds; provider50/50 statements,59/59 branches,9/9 functions. Signed source3f1de76acd7aadacfe89fd421664af576e683316 passes the unchanged installed static/full hook: aggregate38tasks, smoke17tasks and final uncached storage333/333. Root/strict captured planning and both boundary graphs pass. The [canonical report](../core-qualification/approval-retention.md#approval-finalization-qualification-f---2026-11-20) owns commands and the preserved scratch-archive hook failure. |
+| Current evidence and delivery | F-only evidence/clean-source graph accompany signed direct-main delivery; exact published revisions and hosted CI are recorded separately in the paired lifecycle. Local success is not hosted acceptance. Unknown commit outcome is not zero committed deletions; failed rollback is not restoration. Original-cursor retry requires a usable, settled connection; fixture recovery is not provider pool repair. |
+
+Only SQL `approval-retention.ts`, new `approval-finalization.spec.ts`, retention report/chapter34 and this subsection are authored; LLMS/graph regenerate mechanically. G, renewal, process and instrumentation paths stay untouched. No second transaction owner, new public semantics, automatic retry, activation or EVE-248/budget/settings change is authorized.
+
+```mermaid
+flowchart LR
+    FStart["F: current published SQL and START"] --> FFaults["Real finalization faults and durable observations"]
+    FFaults --> FFix["Only reproduced bounded privacy correction"]
+    FFix --> FGates["Unchanged gates, signed delivery and exact-head CI"]
+    FGates --> FOpen["Whole EVE-275 and Core remain open"]
+```
+
+## Structural function telemetry START - 2026-11-20
+
+This bounded live checkpoint does not refresh the historical all-issue capture. [This existing owner](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a) starts structural proof from published `50e5dc18`, without adopting D/renewal source or creating another lane. [EVE-44](https://linear.app/resnovas/issue/EVE-44), In Progress, maps to independently OPEN [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811) with its matching linkback. The [canonical contract](../architecture/function-telemetry.md) owns Jonathan's seven selections, proposal, exact paths and acceptance.
+
+The [binding selections and START](https://linear.app/resnovas/issue/EVE-44#comment-78250693-15bd-4e78-9b98-ab1c6bed6d92) supersede the earlier plan's pending decisions, exemptions,4096 capacity and proposed cost thresholds. Earlier plan-only source0553d7fa/head50e5dc18 and its successful104-fixture/295-TS root/strict captured planning checks remain historical, not verification of this new source slice. Current proof and publication evidence belong in the canonical contract and paired lifecycle.
+
+| State | Evidence, ownership and next step |
+| --- | --- |
+| Completed source review | Historical helper establishes broad instrumentation, not universal coverage. Effect.fn creates spans for Effect execution but changes pure APIs; service proxies miss private calls. Metric.trackDurationWith is success-only. Current wire supports logs/spans, not metric export. No archive execution/edit. |
+| Selected policies | Production-local signals default TRUE, timers production FALSE/tests TRUE and mandatory; remote OFF/opt-in. Counters/pre-approved static strings only; no PII/secrets/raw errors. No first-party exemptions,8192 operations, p95 per-step review and changed-function optimization JSDoc evidence. No unselected performance tolerance. |
+| S1 STARTED | NEW tools/function-telemetry/structure.mjs and structure.test.mjs: executable-body inventory and changed-function record proof. Every occurrence stays BLOCKED pending emitted instrumentation proof; no wrapper-name acceptance or production coverage claim. Canonical architecture/chapter37 and isolated notes only; semantic transform/adapters still need proof. |
+| Independent ownership | D owns step1 final acceptance, step2 shared process/timing migration, normal house PR and exclusive root package.json/nx.json/tools/verification pipeline work. Latest correctly configured fixture target580/580 passed; full gate pending. If that20m run times out, later Puck direction moves measured pipeline work before step1 delivery instead of repeating. C delivered/hosted-CI complete/storage released; renewal remains preserved/unpublished, no adoption. |
+| Upcoming gates | After S1 and D exact-path release: one central-production primitive owner, one shared transform/target-adapter/checker owner, at most two disjoint migrations and one integrator. Refresh occupancy at START, total<=5; existing phase gates remain. No parallel root/Nx/ESLint author here. |
+| Precise blockers | Constructors/default parameters, generators/async/Stream/React lifetime, synchronous fiber context, all-target emission and finite collector self-observation need semantic proof. D root reservation blocks that wiring only. Missing export credentials do not block safe local proofs. EVE-248 January2027; budgets/settings unchanged; paid work needs an explicit amount. |
+
+Later [binding additions](https://linear.app/resnovas/issue/EVE-44#comment-81e08c30-6774-4042-b14e-faa81fa75663) require agent-performed opportunistic nearby optimization with benchmarks/JSDoc evidence, plus tree-shakeability, static unused-source analysis, runtime execution coverage and a joined verification report. The canonical plan owns required negative controls and safe removals; nonobservation is not proof of deadness. **Build-time mechanism decision is PENDING Jonathan: keep this slice PROOF-ONLY.** No production adapter/transform/global wiring or dead-code removal follows before that answer. S1 inventory/review proofs continue locally, without adding a lane or competing with D roots.
+
+Later interim Puck relay, NOT a final mechanism selection: Jonathan leans toward decorators; compiler-specific transform proof is now FROZEN. Only inventory and semantics applicable to both designs continues. The [canonical interim checkpoint](../architecture/function-telemetry.md#interim-source-level-direction-and-transform-proof-freeze) records unchanged strict-TS decorator acceptance versus direct-Node source rejection, concurrent-fiber parent-read evidence and construction-time non-generator Effect.fn behavior. No production decorator/helper wrapper, loader/config change or implicit tiny/internal exemption follows. Await Jonathan's final mechanism answer; D retains root/process ownership.
+
+```mermaid
+flowchart LR
+    Selected["Selected: seven binding policies"] --> S1["Inventory and shared semantic proof"]
+    S1 --> Decision["Pending: final instrumentation mechanism"]
+    Decision --> Primitive["Central primitive after released paths"]
+    Primitive --> Check["Approved mechanism and all-target coverage gate"]
+    D["D: timing, pipeline and process ownership"] --> Check
+    Check --> Migrate["At most two disjoint migrations"]
+    Migrate --> Evidence["All-exit signals, per-step p95, full gates and hosted CI"]
+```
+
+## Approval retention C START - 2026-11-19T21:20:48Z
+
+This dated C checkpoint supersedes the earlier undispatched-C occupancy below, not A/B evidence or the historical planning capture. The existing proof/B owner starts packet C in isolated `repo-approval-retention` / `agents/eve275-approval-retention` from fetched main `e0efc5e4`, preserving every retained proof/provider/fixture/B ref and checkout. [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-9f12d2fd-3761-4cd3-bfda-c9d16fcc79c2) and [independently read explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7022745290) own the non-closing lifecycle. The [canonical C report](../core-qualification/approval-retention.md) owns exact paths, typed maintenance handshake and executed evidence.
+
+| State | C evidence and next step |
+| --- | --- |
+| Completed prerequisite | Published A supplies the exact producer/CAS terminal retention anchor; source `29317cb3`, separately approved setup fixtures `ee3f367b`/`63cd0c17` and head `e0efc5e4` independently have valid signatures. Reported A local gates are not rerun C evidence or hosted acceptance. |
+| Completed C local qualification, 2026-11-20 | New contracts/SQL maintenance capability, storage spec/report/chapter34, additive `0013.sql` migrations and only approval-retention exports preserve canonical terminal retention and both expiry/retention floors. Corrected 45-case real-SQL proof passes; normal SQL coverage 47/47 statements, 55/55 conditionals, 7/7 methods. Ordinary rebase onto independently signed D head `3ff2251b`; fixture-backed unchanged full verify passes all 105 aggregate tasks and all three smoke projects. The initial exit124, interruption, missing-fixture failures and pre-correction success remain historical, not substituted for final acceptance. No existing approval source/spec or D cancellation path is changed. |
+| Renewal START, disjoint owner | Existing verified Sol A owner starts at 2026-11-19T21:50:34Z from clean retained `repo-core-integration` at `e0efc5e4`; [binding ingress amendment and START](https://linear.app/resnovas/issue/EVE-275#comment-40e147da-187e-46c8-9d60-e4eb7b183160) independently read. Exact reservation: contracts `identity.ts` session metadata only; OIDC `session.ts` issuance; server `approval-consent.ts` login wrapper only; new server `session-renewal.ts`/spec and permanent coverage include; narrow OIDC session tests; new report/chapter36; identity-OIDC guide and decision index. No C retention/approval schema/CAS/SQL/migration/manifest or D paths. At START, direct-human CLI eligibility was selected but its trusted human-versus-script mechanism remained unresolved; that eligibility is superseded by the later option B decision below. No source acceptance or activation inferred. |
+| Renewal option B, superseding owner decision | [Linear amendment](https://linear.app/resnovas/issue/EVE-275#comment-1c8b5a47-353f-4b7c-a2a8-3ca3d2875791), independently read, recorded 2026-11-19T23:10:43Z; original human-selection time unknown. CLI activity NEVER renews; sign-in is the human proof. Only real human mutations and interactive reads/navigation on server-allowlisted first-party web/native routes can renew one-hour idle within the eight-hour absolute cap; polling, prefetch, background sync, token refresh and agents remain excluded. No tickets or remaining CLI activity-proof mechanism blocker. This supersedes direct-human CLI eligibility, not the disjoint path reservation, C/D boundaries or activation limits. |
+| Renewal diagnosis hold, separately owned | [Explicit GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7025774667) independently read; source Linear `c42e6105-4208-40e1-ab81-213709798e0f`. Renewal stays preserved/unpublished on D main; further retries await the separately owned EVE-261 telemetry diagnosis. Observed failures are Vitest 5000ms deadlines, not child ETIMEDOUT; slow phase/root cause is unproved. C neither adopts renewal nor changes gates, timeouts or that diagnosis scope. |
+| Current delivery / upcoming limits | Finish evidence-only root/strict/build checks and clean-source graph, publish signed C directly and follow exact-head CI through the paired lifecycle. C storage reservations release explicitly at verified delivery; later storage crash-probe harness work awaits its separate exact-path START. Forced SQL finalization/commit-acknowledgement fault recovery remains unqualified, not a rollback guarantee or new protocol. No production migration, scheduler, endpoint or activation is authorized. |
+
+Whole EVE-275/Core remains open. A owns rolling-session follow-up; explicit resource-scoped cancellation is independently owned. EVE-248 stays January 2027; budgets/settings/spend and paused work remain unchanged. Refs: EVE-275. Refs: Resnovas/Eventiva#1063.
+
+```mermaid
+flowchart LR
+    APublished["Published A: stable terminal retention contract"] --> CStart["C: isolated START and trusted maintenance"]
+    APublished --> RenewalStart["Disjoint renewal START: web/native ingress and persistence"]
+    RenewalStart --> CLINever["Option B: CLI never renews; allowlisted real web/native only"]
+    CStart --> CChecks["Passed: actual SQL, normal coverage and full gates"]
+    CChecks --> CDelivery["Signed main delivery; exact-head CI recorded separately"]
+    CDelivery --> CoreOpen["Whole Core and production activation remain open"]
+```
+
+## EVE-299 funnel review and local migration - 2026-11-20
+
+The [existing owner](https://ampcode.com/threads/T-b650d323-f82a-46fb-bedc-70c527baa29f) owns [EVE-299](https://linear.app/resnovas/issue/EVE-299) and independently verified [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7024950683). Investigation preceded issue creation at 23:17:55Z on November 19; its exact start time is unavailable. The earlier [owner hold](https://linear.app/resnovas/issue/EVE-299#comment-6a0a4d03) was independently read on [GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7025280225). Linear resumed In Progress at 23:50:28Z and was independently reread on November 20; the intake thread avoided duplicate implementation. Related house work is now RES-66/RES-67, formerly SMC-174/175. This bounded live update does not refresh the frozen issue snapshot.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed local review | [Canonical Markdown](../funnel-review.md) and [review artifact](https://ampcode.com/artifacts/eventiva-funnel-review-76ce8e7a-41cf-435b-b045-18c080f149b8) classify source examples, static checks, verification, retained authority and redundant guidance. Vendor/history ownership is preserved. |
+| Approved implementation choices | Jonathan's Puck relays approve a synchronously registered minimal shell, then flag initialization before product rendering, with no useEffect; isolated synthetic PR PostgreSQL fixtures alongside trusted-event tests after trust review; affected-only CI evidence retained seven days under the existing artifact audience. The latest shell decision supersedes before-registration acquisition. Exact owner-selection times are unavailable; no production authority is implied. |
+| Implemented locally, not delivered | Corrective React/timer lint, bootstrap readiness/failure/cleanup proof, static-first verify/CI, 30-entry Markdown interface-family registry with independent source/reverse-import coverage, evidence runner, staged-tree pre-commit guard, isolated PR fixture and seven-day upload. Local AGENTS links canonical mechanics and retains the promotion loop; managed house content is preserved. |
+| Executed verification | Rebased onto main a5abfb9a. Static command passes 15 builds and 83 tasks; root check passes 104 documentation fixtures and strict zero across 298 editable TypeScript files. Full test/build/parity and three smoke projects pass. Affected evidence then fails backend replay counts 3/0/0 versus 2/0/0; the other 19 families pass. Pre-commit refuses the commit. Serialized server proof now passes all 13 prerequisites and server tests in 2m54s; full final-tree evidence must rerun. Ready/loading/failed web states are inspected, not native-device proof. |
+| Shared adoption blocked | House PR56 is merged at 6cabf3afd23652fe1816c81bc1041ab2bf4b000f; Puck requested adoption on November 20. Exact merged docs-budget checker fails with Git ENOBUFS on Eventiva's 3,303,046-byte path inventory. It also counts generated mirror regions despite its exclusion contract. Both defects are reported to the RES-67 pod; no downstream suppression or shared edit. Shared JSDoc rules remain unenforced: retain global guidance. |
+| Upcoming | Canonical fixes and reviewed sync; enable shared JSDoc/source-absence rules while preserving AST gates; remediate authored documentation budgets; migrate table/evidence to accepted APIs with source-derived interfaces and explicit unsupported outcomes. Complete final-tree verification, graph publication, signed delivery and hosted CI. No deployment follows from build-info tooling. |
+
+EVE-299 moved to Blocked with Handoff Blocked at 2026-11-20T01:37:28Z. The [Linear checkpoint](https://linear.app/resnovas/issue/EVE-299#comment-ca75ae96-db96-4a00-ae13-30ab26eb8725) was independently verified on [GitHub #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027649075). No new dependency, thread, production operation, access change or shared `Resnovas/.github` edit. All work remains local/uncommitted; no change to unrelated issue status or EVE-248 deferral.
+
+Later on November 20, [house PR60](https://github.com/Resnovas/.github/pull/60) at bedb6abe4770137f9247b2e1d842620368dc3835 was independently confirmed OPEN/draft. Its exact document checker runs against Eventiva without the inventory failure and reports 13 remaining authored/managed budget findings. This is a read-only candidate probe, not adoption; acceptance/merge and reviewed sync remain pending.
+
+Implementation resumed at 2026-11-20T01:41:14Z, superseding the blocked state above. Jonathan approved only `eslint-plugin-jsdoc@65.5.0` with unchanged ESLint/parser versions, package-by-package enforcement then global activation without baselines/suppressions, and independent passing direct-main slices without waiting for PR60. The [Linear authorization](https://linear.app/resnovas/issue/EVE-299#comment-1fedc63b-0569-45cb-a08e-3899147d4985) is independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027709956). The first slice keeps shared adoption separate. Evidence serialization is now an enforced runner contract: eight fixtures pass, including real Nx prerequisites sharing an exclusive synthetic resource; concurrent control fails with EEXIST. Independent randomized backend databases and distinct ports rule out a single obvious shared database/port; the historical replay failure's precise cause remains unproven. Integrated main is now 80bc555a; final full gates and delivery remain pending.
+
+Local acceptance completed 2026-11-20T02:28:34Z: pre-commit static/full gates and all 20 uncached affected-feature proofs passed, including the unchanged backend replay assertion. Signed source commit `9e379bf6a5c6629752d14e822dd673ae51894c81` carries EVE-299 / Resnovas/Eventiva#1092 / RES-66 references. Graph/evidence publication and exact-head CI follow separately; this does not close EVE-299. The original failed collection remains preserved. Shared enforcement still requires staged adoption; the approved plugin fails the existing seven-day cooldown because it was published November 19. An exact-version exception or waiting until November 26 is the [owner prerequisite](https://linear.app/resnovas/issue/EVE-299#comment-56a2f790-605b-440a-a83c-c1ad84eb2e9a), independently [mirrored on GitHub](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7027919574). No cooldown policy change or active-workspace dependency installation occurred.
+
+Published on November 20: signed [source 9e379bf6](https://github.com/Resnovas/Eventiva/commit/9e379bf6a5c6629752d14e822dd673ae51894c81) and [graph/evidence 5ca8059d](https://github.com/Resnovas/Eventiva/commit/5ca8059d15d582bdc0165b975db52fa0a17eeb86) are on main. This supersedes the local-only delivery state above; exact-head [application CI](https://github.com/Resnovas/Eventiva/actions/runs/44663334032) is running and subscribed. The separate EVE-261 timing owner is CLEARED for measured parallelism of two in non-feature stages and Android-to-web ordering, retaining stage order and the tested serial feature-evidence runner. Root serial settings were inherited, not a new correctness requirement; the EVE-299 registry wording is corrected here. No root edits collide. Shared JSDoc/cooldown, shared registry/evidence adoption, authored budget remediation and managed-guidance reduction remain upcoming; the whole issue stays open.
+
+Hosted CI subsequently failed four backend tests with a proven duplicate-listener collision, not the historical replay count. The [diagnosis](https://linear.app/resnovas/issue/EVE-299#comment-6f7eefb4-6c7d-4399-a797-5d5c1c986372) is independently [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7029279944). Explicit concurrent consent/HTTP-client execution reproduces four failures and three passes at port 34565; the isolated consent listener passes all seven unchanged tests. The registry keeps the concurrent regression as its 31st interface entry. Static analysis passes; full gates and publication of the bounded repair remain pending. The timing owner retains root scheduling; this owner changes the consent fixture only. After delivery, the requested rule rejects fixed fixture listeners with a bind-zero/read-assigned-address diagnostic; complete Cluster migration must preserve validated production profiles and socket ownership. See the [repair evidence and shared candidate](../funnel-review.md#hosted-fixture-collision-and-bounded-repair).
+
+At 2026-11-20T03:46Z, the bounded listener repair is published as [f802d14b](https://github.com/Resnovas/Eventiva/commit/f802d14bfe27666072bdc8c417d47f0ff6d1e729) after the full installed gate and both affected backend proofs passed. [Tracker evidence](https://linear.app/resnovas/issue/EVE-299#comment-a424f63f-1772-4f5f-8752-6a5f1cf6208c) is [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7029751709); hosted acceptance remains pending. Current priority is the separately reproduced installed-hook Git-environment failure blocking EVE-261 linked-worktree commits. The runner amendment passes static checks and nine fixtures, including a real installed-hook nested-history/outer-tree regression that fails before the fix. Full gates/publication follow; the timing owner keeps root scheduling ownership. Upcoming port-zero enforcement needs reviewed prebound-socket composition rather than a reservation/rebind race. Shared JSDoc cooldown, API adoption and managed guidance remain open.
+
+The hook repair subsequently passed full installed pre-commit verification and affected proof, then shipped as [8b3e4b90](https://github.com/Resnovas/Eventiva/commit/8b3e4b90c27c9fa2e53f536708bed04064906904). Its [delivery evidence](https://linear.app/resnovas/issue/EVE-299#comment-8fbd1ee5-50c6-46d6-9e35-0b1614811c96) is [mirrored](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7030092968); the EVE-261 owner was notified directly to rebase and resume normal hook-backed delivery. Listener-repair [hosted application CI passed](https://github.com/Resnovas/Eventiva/actions/runs/44669951611). Hook-head hosted acceptance remains pending; graph/evidence refresh is current. The two owner decisions and shared-adoption work above remain upcoming, not complete.
+
+```mermaid
+flowchart LR
+    FunnelReview["EVE-299: classified guidance"] --> StaticSlice["Corrective static rules verified"]
+    StaticSlice --> OwnerChoices["Shell, PR trust and evidence approved"]
+    OwnerChoices --> FeatureProof["Local registry, runner and hook implemented"]
+    HouseSource["House merged; remaining fixes affect later adoption"] --> FullFunnel["Complete funnel acceptance"]
+    FeatureProof --> FullFunnel
+    FeatureProof --> Delivery["Passed: full gates and 20 affected proofs; signed source"]
+    Delivery --> Publication["Published; hosted proof exposed duplicate fixture listener"]
+    Publication --> FixtureRepair["Listener repair published after full local gates"]
+    FixtureRepair --> HookRepair["Hook isolation published after full local gates"]
+    HookRepair --> GraphEvidence["Current: graph refresh and hosted acceptance"]
+    HookRepair --> PortPolicy["Upcoming: port-zero seam review and corrective rule"]
+    Cooldown["Owner decision: exact-version plugin cooldown"] --> SharedRules["Staged shared JSDoc enforcement"]
+    SharedRules --> FullFunnel
+    Delivery --> FullFunnel
+```
+
+## EVE-261 H bootstrap import correction - 2026-11-20
+
+This additive checkpoint does not rewrite the historical source capture or H's
+separately owned qualification reconciliation. Puck assigned the [existing
+process owner](https://ampcode.com/threads/T-5dcbf3b4-41e4-4df0-906d-93629eebe199)
+to diagnose H's observed `telemetry_enabled: false` child timeout on published
+`a959f9ea`, with frozen dependencies and no unpublished renewal adoption.
+[EVE-261 diagnosis checkpoint](https://linear.app/resnovas/issue/EVE-261#comment-edcd0e8f-56a8-4d60-bc09-ca843f514141)
+records the narrow START; the coordinator cleared exactly one server import
+line, and Puck cleared only the existing pinned local disposable fixture.
+The [canonical report](../core-qualification/telemetry-timeouts.md#h-follow-up-avoid-unrelated-bootstrap-imports---2026-11-20)
+owns phase rows, actual commands, measurements and remaining delivery limits.
+
+| State | Evidence / next step |
+| --- | --- |
+| Completed diagnosis | H child root-start 2123 ms, root success 2255 ms, deadline 2303 ms, exit/close 2320 ms. Controlled two-CPU load reproduces expiry; unrelated platform root-barrel imports account for avoidable startup work. Exact final pre-exit wait and H's contemporaneous CPU pressure are not established. |
+| Corrected and locally qualified | One `NodeRuntime` subpath import, no lifecycle/body/test/budget/configuration changes. Fixed load comparison: baseline 3/3 deadlines, candidate 3/3 natural closes 1481-1780 ms; literal existing control subsequently passes without diagnostic loader. Static 15 builds/83 tasks and uncached telemetry 92/92 with unchanged coverage pass. No speedup percentage or whole-host determinism claim. |
+| Separate pipeline finding | H's natural hook failure took 1179.518258 s: approximately 261.5 s before the rounded 918 s aggregate, with duplicate static lint/typecheck bodies 70/75 s. Other aggregate targets continued after telemetry failure; smoke/features never started. Funnel owner receives the breakdown; this lane changes no pipeline source. |
+| Actual delivery blocker | Normal installed staged-tree hook passed all 38 aggregate tasks in 14m45s, then exited 124 at the unchanged 1200 s outer bound during smoke; serial feature proof was unreached. Both static passes passed (78/72 s lint/type bodies). No commit/push or retry; H remains held. |
+| Approved integrated next step | Coordinator/Puck authorize exactly the import fix plus approved static-dedup source/docs as one snapshot, qualified/delivered by the funnel owner under EVE-261/#1035 and EVE-299/#1092. Transfer exact authored sections/evidence with hashes; preserve originals and regenerate, never overwrite, LLMS/graph. Every gate/budget/serial contract remains; hold on another overrun, no blind retry or larger-orb/spend permission. |
+| Preserved holds | PR59 Windows-native ownership needs Jonathan's decision and normal managed merge/sync; local-suite step2 remains blocked. #1052 compiler/storage failures, renewal and H's five-file patch remain separately owned. EVE-261/Core remains open. |
+
+```mermaid
+flowchart LR
+    HRed["Retained H child timeout"] --> Diagnose["Reproduce and isolate unrelated imports"]
+    Diagnose --> Import["Cleared one-line NodeRuntime subpath"]
+    Import --> Local["Passed: unchanged load control, static, telemetry"]
+    Local --> Hook["Aggregate passes; smoke hits 1200 s bound"]
+    Hook --> Integrated["Authorized: import + static dedup, funnel owner"]
+    Integrated --> Publish["Required: full bounded gates, signed publication, CI"]
+    Publish --> HResume["Then H can resume its own gate"]
+```
+
+## EVE-261 aggregate bootstrap timeout investigation - 2026-11-20
+
+The restored [existing owner](https://ampcode.com/threads/T-01a1f129-c14c-7069-b343-1563380b020c)
+investigates Jonathan's bounded assignment through the
+[coordinator](https://ampcode.com/threads/T-d57222d4-a392-4a67-bcea-43f0bda5323a).
+The [canonical report](../core-qualification/telemetry-timeouts.md) preserves
+exact evidence, controls, source history and superseding timing direction. The live
+pair was independently read: [EVE-261](https://linear.app/resnovas/issue/EVE-261)
+In Progress / [GitHub #1035](https://github.com/Resnovas/Eventiva/issues/1035)
+OPEN, with normal linkback 6901726475. No EVE-275 ownership is inferred.
+
+| State | Evidence / next step |
+| --- | --- |
+| Completed investigation controls | Supplied archive verified at SHA256 `38af69bda4695d07a2eaabb4209c87260f1fbde31452199ec81c303918b1a034`. Historical 5652/7851 ms failures explicitly hit Vitest 5000 ms, not a recorded child 10000 ms timeout. Pinned-runner experiment rejects both over-budget sync/async pairs; short sync control passes. Historical slow phase and contention/native-deadlock attribution remain unknown. |
+| Current step 1 | Fresh initial base `3ff2251b8702be0f5061bff05bb18a3f2ce5228b`; START at 2026-11-20T00:05:51Z after read-only inspection (earlier exact time unknown). [Original START](https://linear.app/resnovas/issue/EVE-261#comment-bdca1ff3-838c-409c-ae08-fc9ce92936ea) is superseded in scope by [binding timing/flag amendment](https://linear.app/resnovas/issue/EVE-261#comment-57c1772f-5827-4972-8569-4ec880c9bce9) and [verified explicit mirror](https://github.com/Resnovas/Eventiva/issues/1035#issuecomment-7026336333). Budgeted async harness, mandatory test-default-ON Flags and actual scoped lint proofs implemented locally. Telemetry 92/92 and unchanged coverage pass; timed run retained records. Integrated verification passed as recorded below; final staged-tree pre-commit, clean graph, publication and exact-head CI remain separate delivery evidence. |
+| Gate blocker and approved optimization | [Checkpoint](https://linear.app/resnovas/issue/EVE-261#comment-c28ccd5a-a236-404a-80bd-3e5326ce22cb), [independently posted mirror](https://github.com/Resnovas/Eventiva/issues/1035#issuecomment-7027653722). Correctly configured unchanged-20m run exited 124 after all 105 main tasks passed in 18m22s (49 cache hits, 5m24s critical path); web export was interrupted, Android/all three smoke targets unrun. Jonathan pulled pipeline optimization before delivery rather than another unchanged retry. First cold-Nx-cache two-task candidate with serial smoke subsequently passed all gates in 17m04.72s on signed base `4e227d94`; this is a local pass, not delivery or a controlled ratio to the cached baseline. |
+| Comparable parallelism and smoke qualification | Same two-CPU host, fixture, seven stages, disabled Nx cache and unchanged 20m wrapper: two tasks passed in 15m24.58s, main/smoke longest paths 359.529/82.231s, peak descendant RSS 1011844 KiB. Four failed five test targets in 15m35.82s, paths 617.244/90.273s, RSS 785824 KiB; all smoke/dependency tasks passed. Diagnostic continuation retains every stage and nonzero exit; normal verify remains fail-fast. Additive root Android -> web dependency prevents shared Metro `--clear` overlap. Actual intervals show 5 ms export gap at both settings, server/web overlap 1249/1013 ms and browser/Android overlap 4909/6027 ms. Retain two, already one task per CPU. Failed four is not a speedup; OS/compiler cache state was not flushed. See canonical report for raw evidence, setup failure and limits. Step 1 remains unpublished/unaccepted. |
+| Read-only startup profile | Unchanged real main, isolated environment and 2300 ms bound: unobserved/preloaded/sampled controls exit 0 in 1.00/1.03/1.20s, empty stderr and startup record. Preloaded root starts at 868 ms and Node exits at 982 ms; sampled self time includes Node compilation/package lookup/GC. No historical causal repair, fastest-possible source claim or protected source/fixture/config change. |
+| Static-first integration | EVE-299 owner explicitly cleared two-task non-feature root stages and the additive Android -> web edge; preserve all upstream stages/order and serial feature commands/prerequisites. On base `5ca8059d`, unchanged-20m fixture command `node --run verify && node tools/verification/run.mjs --base 5ca8059d15d582bdc0165b975db52fa0a17eeb86` passed in 983.71s, exit 0: static 83 tasks, main 38 tasks, all 3 smoke projects/17 tasks, explicit telemetry 92/92, funnel-policy 33/33 and funnel-runner 8/8. This integrated cached pass is separate from the old cold-Nx-cache comparison. Subsequent function-review records preserve the passing executable AST and have zero installed optimization-record findings. Registry-only `b5f3d5e0` was then rebased; normal final gates/publication are not inferred from the earlier run. |
+| Installed-hook delivery blocked | Real staged commit exited 1 in 150.67s before application tests: inherited outer Git-local environment let documentation temporary-history fixtures rewrite the task index, then execute the outer relative hook from the fixture directory and fail missing-runner lookup. HEAD/disk preserved; corrupted index backed up and exact task staging restored. No hook bypass, new commit or push. Funnel owner/Puck hold the narrow environment-isolation correction; installed-hook/nested-history proof and normal final gates must pass before delivery. Earlier direct-run success does not qualify this path. |
+| Hook correction integrated; delivery resumes | Supersedes the active blocker, not the failed-run evidence above: [published owner correction](https://github.com/Resnovas/Eventiva/commit/8b3e4b90c27c9fa2e53f536708bed04064906904) isolates only verification-child Git-local environment and adds a real installed-hook linked-worktree regression. Listener repair is also on main. Rebase preserves both fixes, chapter-11's installed-hook paragraph, parallel-2 root work and serial feature evidence. Normal staged verification, signed delivery and exact-head CI outcomes are recorded on the live EVE-261/#1035 pair; earlier direct-run success does not substitute for those outcomes. No runner, fixture, PR59 merge or broader acceptance scope is adopted here. |
+| Corrected installed-hook acceptance | Real signed source commit passed the unchanged fixture/20m installed hook in 1023.26s, exit 0: static 83 tasks, main 38 tasks/10m56s, all 3 smoke projects/17 tasks/1m14s, selected telemetry 92/92, funnel-policy 33/33 and funnel-runner 9/9. Nested-history/index-guard proof passes and staged tree remains unchanged. Rebased the subsequent graph/docs-only owner follow-through `fef2b55f` without executable changes; final clean-source graph/evidence commit uses the normal hook again. Exact signed publication and hosted CI outcomes remain independently recorded on EVE-261/#1035, not inferred or whole-Core acceptance. |
+| Canonical house proposal | [House PR 59](https://github.com/Resnovas/.github/pull/59) is open/draft at `ed465c31`, not merged or synced. Six OS/Node matrix jobs, aggregate CI and current required checks pass. `linear-code[bot]` marked ready at 01:19:06Z and 01:52:00Z; this agent restored draft through the authorized account at 01:20:57Z and 01:52:55Z, not human readiness. Readiness rerun passed 01:54:36Z; normal smartcloud rerun passed 01:57:41Z. No settings/protection change. Normal human acceptance/merge/sync still precedes managed adoption. |
+| Upcoming step 2 | C released storage at 2026-11-20T00:28:24Z after signed `a5abfb9a`; coordinator subsequently cleared exact same-core extraction, adapters, IPC/storage/tool migration and minimal wiring. Proceed after step-1 checkpoint; preserve valid deadlines and all crash/finalization controls. Managed `tools/typecheck/tests.ts` and editor runner await the authorized canonical house PR's normal merge/sync, not an exclusion/baseline. No whole-renewal/Core acceptance, production activation, dependency/spend, session/retention/cancellation source change or EVE-248 work. |
+
+Dependency: preserved failures -> runner controls -> confirmed performance contract -> timed harness/enforcement -> coordinated repository-wide migration;
+historical causal repair remains dependent on missing slow-case evidence, not
+on a green retry. No shared decision or implementation sequence is replaced.
+
+## Approval A integration and B delivery checkpoint - 2026-11-19
+
+This current checkpoint supersedes the status, not provenance, of the START/planning entries below. [A evidence](https://linear.app/resnovas/issue/EVE-275#comment-8779ba39-b3b1-4487-81d6-d854435971c1) distinguishes executed local work from publication. The [canonical wiring report](../core-qualification/approval-wiring.md#current-implementation-checkpoint---2026-11-19) owns the detailed handshake and limits.
+
+| State | Evidence and next step |
+| --- | --- |
+| Completed B | Source correction `8fa5b765`, graph/head `129069e0` published; bounded `JsonValue \| undefined` ingress replaces rejected erased unknown. Final hosted CI: 17 executed successes, seven skips, zero failures. [CI](https://github.com/Resnovas/Eventiva/actions/runs/44519309355), [Code Quality](https://github.com/Resnovas/Eventiva/actions/runs/44519308302) and [independently read B mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7008934319). No production configuration chosen. |
+| Completed A local acceptance; signed publication tracked on EVE-275/#1063 | Registered consent, invocation-bound get/use/transaction, post-handler transactional use, live replay, approved-read audit/use and same-client routing pass the unchanged full `verify` within 20 minutes: 105 aggregate tasks/79 cache hits, 15 builds, 132 boundary/compiler tests, zero source/declaration violations/cycles and all three smoke projects. Normal reports: runtime 675/675, storage 270/270, contracts 575/575, server 67/67. Both approved synthetic preparations preserve all 63 assertion statements and are isolated into separate signed commits. [Acceptance](https://linear.app/resnovas/issue/EVE-275#comment-7ab6b835-1120-45dd-9239-19ac3c6e8f21). Earlier failures/timeouts remain in the report; local success is not hosted CI or whole-Core acceptance. |
+| Upcoming C, undispatched | Exact terminal retention producer contract checked locally; first use/cancel replaces provisional expiry anchor and replay does not renew it. C owns no files yet. Proposed disjoint retention capability/spec/report and next unallocated migrations await final handshake/publication; cleanup is not implemented. |
+| Approval received; remaining limits | Jonathan explicitly replied `Approved` to BOTH setup-only fixture corrections, relayed by Puck on 2026-11-19; exact human-selection time unknown. [Resumption provenance](https://linear.app/resnovas/issue/EVE-275#comment-05fd0efd-e0fa-4e05-9096-515baa9b5c09) supersedes only those holds, extends module-run preparation ownership and requires one signed commit per correction. All claim/epoch/fence/recovery-required assertions and real migration names remain unchanged. Original staged snapshot/refs/bundles/backups preserved. No step-up, spend or activation. EVE-275/Core open; EVE-248 January 2027, budgets/settings unchanged. |
+| Binding policy selected; technical follow-up remains | [New owner decisions](decisions.md#rolling-sessions-and-resource-scoped-cancellation---2026-11-19) select real-activity-only one-hour sliding idle expiry, a hard eight-hour maximum from sign-in and trusted server authentication settings/optional bounded tenant overrides. [Renewal amendment](https://linear.app/resnovas/issue/EVE-275#comment-242cf365-1011-42c5-bde4-cc046d157bb0) and [verified GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7022234068) resolve idle/absolute bounds; activity classification/trusted ingress still need Jonathan's agreement. Explicit resource-scoped `approvals.cancel` grants, not implicit lead roles, are selected. Renewal and resource-permission reconciliation follow A publication; neither is implemented or activated by A. |
+
+```mermaid
+flowchart LR
+    BPublished["B: published policy, hosted CI green"] --> ALocal["A: routed consent, local focused proof"]
+    ALocal --> AFull["Normal coverage and combined verification"]
+    FixtureApproved["Both setup-only fixture corrections approved"] --> AFull
+    AFull --> APublish["Verified source publication"]
+    APublish --> CNext["C: checked handshake, then retention cleanup"]
+    PermissionChoice["Explicit resource cancellation grants selected"] --> PermissionFollowup["Reconcile resource association and live scoped checks"]
+    RollingChoice["Real activity: one-hour idle, eight-hour absolute cap"] --> RollingFollowup["Agree activity classification and trusted ingress"]
+```
+
+## Approval wiring implementation START - 2026-11-19
+
+Puck assigns the existing Core owner packet A and an existing idle GPT-6.1 Sol owner packet B within the [exact packet reservations](../core-qualification/approval-wiring.md#implementation-start---2026-11-19t112440z). A's actual investigation START is 2026-11-19T11:24:40Z against clean fetched main `e7370b02`, recorded on [Linear](https://linear.app/resnovas/issue/EVE-275#comment-7d344299-2ec9-48b4-ad43-0b058fe1ca3f) and independently verified [GitHub](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7007748173). Only retained provider `bb5df959` is reconciled without a commit; exact 11-file scope is checked. Unaccepted fencing candidate `a5645a1e` is excluded and remains separately retained. No new source acceptance or publication is claimed.
+
+Current: A owns registered consent, routed identity/proof/Storage/Integrity, transactional use and live replay, preserving Caller semantics; event port/binding denies unavailable authority while own/tenant paths proceed. B's actual investigation START is 2026-11-19T11:25:41Z in the existing GPT-6.1 Sol provider owner's separate `repo-session-policy` / `agents/eve275-session-policy` worktree, also from fetched `e7370b02`; only its new session-policy module/spec/report are reserved. Its [Linear START](https://linear.app/resnovas/issue/EVE-275#comment-de8e6c56-629d-4efe-b93f-5d9e8b39301d) has an independently read [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/1063#issuecomment-7007804596). A accepts B's proposed fresh tenant-scoped policy API for implementation, not as completed declarations/tests; A owns the narrow server coverage-include seam. The [handshake and source correction](../core-qualification/approval-wiring.md#accepted-b-integration-handshake---2026-11-19) distinguish the local development/staging onboarding hour from an unselected production maximum. Upcoming: coordinate the shared record/retention port before assigning C. Missing actual session configuration/event-source choices and the exact fixture decision remain with Jonathan/Puck; they do not stop independent technical portions. No new thread/subscription capacity, dependency, spend, activation or EVE-248/budget/settings change. Whole EVE-275/Core remains open.
+
 ## Next approval production wiring - 2026-11-19
 
 The [concrete EVE-275 packet](../core-qualification/approval-wiring.md) reconciles freshly fetched main `b5e16e8ac59ba628b7b240550844496421a1109e`, inspected retained provider source and its live final Linear evidence. This dated checkpoint supersedes earlier pending Caller CI/provider-running observations, without rewriting their history or the frozen planning capture. The packet defines technical implementation scope, not new product approval or implementation acceptance. No new thread or production source adoption occurred.
@@ -196,6 +631,8 @@ paused asset/export, invoice/formatter, stock, real supplier data/rights,
 spending, activation or EVE-248 work is authorized by this proof.
 
 ## Development task traceability rollout - 2026-11-18
+
+Recovery, 2026-11-27 UTC: [the current owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) verified that [#1087](https://github.com/Resnovas/Eventiva/pull/1087) merged at 21:10:56 UTC on November 26. The candidate and fixture-denial rows below describe the November 19 checks, not a current denial. Normal sync landing does not establish all governance enforcement, restore-draft permissions or prior dispatch effects. EVE-266 / #1053 remain open.
 
 [EVE-266](https://linear.app/resnovas/issue/EVE-266) and its independently verified automatic [GitHub mirror #1053](https://github.com/Resnovas/Eventiva/issues/1053) own this bounded house/Eventiva guidance and offline commit-enforcement rollout. The [implementation thread](https://ampcode.com/threads/T-aab6c3a2-486c-4ef0-a267-8df2b3e6996e) follows Jonathan's [requesting thread](https://ampcode.com/threads/T-01a1e940-37a3-7691-a5c0-e935b711c99a). This is contemporary evidence, not a full live refresh of the historical all-issue capture. No application lane, dependency or read-only audit status is changed.
 

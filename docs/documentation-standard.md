@@ -38,7 +38,34 @@ and [backlog](planning/documentation-backlog.md) for bounded delivery evidence.
 
 Document the contract, purpose and important constraints of every editable Eventiva TypeScript function, method, class and interface with attached JSDoc (`/** ... */`). Include private code, callbacks, function expressions, arrows, overloads, constructors/accessors and callable type signatures. A name or parameter list is not a description. Explain what callers can rely on: ownership, validation, failures, authorization, lifetimes or deliberate absence of side effects, as applicable. Do not claim a guarantee that the implementation does not provide.
 
-Inside bodies, explain meaningful phases, invariants, security boundaries and non-obvious decisions. Comments explain why the implementation takes a step, not that an assignment assigns or a return returns. A pure expression or trivial straight-line body does not need invented internal narration. It still needs a useful contract. No code is grandfathered by its age or by being a test.
+As of 2026-11-21 ([ADR-0001](adr/0001-no-inline-comments-and-ratchet.md)), non-JSDoc inline (`//`) and block (`/* */`) comments are banned under a monotonic ratchet (`tools/comments/ratchet.json`, enforced by `eventiva/no-inline-comments` and `tools/comments/ratchet.mjs`) and `review-internal-rationale` is retired from `tools/documentation/check.mjs`. Document callable contracts in attached JSDoc (`/** ... */`), record cross-cutting architectural decisions in `docs/adr/`, fix hacky implementations rather than excusing them, and use `/delete-comment` to process legacy comments. FCL-1.0-MIT license headers, attached JSDoc contracts (including `@agent-optimization`), `// effect-boundary:` markers, test-only `// @ts-expect-error` assertions and house-synced files remain exempt. No code is grandfathered by its age or by being a test.
+
+## JSDoc tags and the lint rule set
+
+Since 2026-11-21, `eslint.config.mjs` holds editable production TypeScript to a JSDoc tag contract with `eslint-plugin-jsdoc` 65.4.6. The target is every JavaScript and TypeScript file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`, which are fixed there. It is switched on one package or tool at a time through `jsdocAdoptedFiles`, without baselines or suppressions: when a group's findings reach zero, add its glob to the list in the same commit. The standalone checker below still runs on every file.
+
+Three details:
+
+- JavaScript files may keep JSDoc types (`@param {string} file - ...`), because they have no other type information. TypeScript files may not.
+- A review marker may follow the description on the same line (`/** Retain the diagnostics. @agent-optimization reviewed=...; result=...; evidence=... */`), because `tools/function-telemetry` reads it there.
+- When a callback that needs `@param` follows another argument, as in `it('name', fn)` or `page.on('error', fn)`, Prettier keeps its JSDoc on the call's line and the stars cannot align. Name the callback in a `const`, document the `const`, and pass the name.
+
+Every callable and exported type needs a description written as a full sentence. Then add:
+
+| Tag | When | Notes |
+| --- | --- | --- |
+| `@param name - text` | Every parameter | One spelling only: `@arg`, `@argument` and `@return` are rejected. |
+| `@returns text` | Every function that returns a value | For an Effect, describe the success value and that it never fails, or name the failures with `@fails`. |
+| `@fails {ErrorTag} text` | Each typed failure in an Effect's error channel | Replaces `@throws`. |
+| `@since version` | Every export | The package version the export first shipped in. Replaces `@version`, which goes stale. |
+| `@example` | Every export and public exported method | A short, real call. |
+| `@access permission` | Code guarded by a resource or action permission | The dotted, lower-case permission a caller must hold, as the `Permission` schema in `packages/contracts/src/action.ts` defines it, for example `@access inventory.catalogue.write`. Never a role or a TypeScript visibility. |
+| `@yields text` | Real generator APIs | Not on callbacks passed to `Effect.gen`: the outer function's `@returns` and `@fails` document the Effect. |
+| `@default`, `@deprecated`, `@fires`, `@implements`, `@inheritdoc`, `@see`, `@this`, `@class`, `@constructs` | When they apply | `@emits` is rewritten to `@fires`. |
+
+Never use `@throws` or `@exception` (Effect code does not throw), `@author` (git records it), `@license` (the file header holds it) or `@version` (use `@since`). The rule's message names the replacement. Tests in `tests/boundaries/src/boundaries.spec.ts` prove each ban and a passing control.
+
+A full example is `make` in `packages/integrations/formatjs/src/i18n.ts`.
 
 ## Run the standalone checker
 

@@ -336,6 +336,10 @@ const additive = (f: Effect.Effect.Success<ReturnType<typeof fixture>>) =>
                 Layer.succeed(Approvals, {
                     /** Deny all human approval lookups so requiring approval cannot silently authorize the service. */
                     get: () => Effect.fail(new InvocationDenied({ action: spec.name, reason: 'approval-missing' })),
+                    /** Accepting use cannot bypass this fixture's missing-proof denial. */
+                    use: () => Effect.fail(new InvocationDenied({ action: spec.name, reason: 'approval-missing' })),
+                    /** This denying adapter never enters an approval-requiring read transaction. */
+                    transaction: () => Effect.fail(new InvocationDenied({ action: spec.name, reason: 'approval-missing' })),
                 })
             );
             const host = Context.get(

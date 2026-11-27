@@ -14,10 +14,10 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { IdentityStore } from '@eventiva/contracts/identity';
+import { IdentitySession, IdentityStore, SessionActivity, SessionRenewalSettings } from '@eventiva/contracts/identity';
 import type { SessionId } from '@eventiva/contracts/ids';
 import type { StorageFailure } from '@eventiva/contracts/storage';
-import { type Cause, Clock, Data, Effect } from 'effect';
+import { type Cause, Clock, Data, Effect, Schema } from 'effect';
 import type { OidcAccessClaims } from './token.ts';
 
 /** Fields of {@link OidcSessionRefused}: only a closed reason, never input, token or diagnostics. */
@@ -29,47 +29,105 @@ const OidcSessionRefusedBase: new (
     args: OidcSessionRefusedFields
 ) => Cause.YieldableError & OidcSessionRefusedFields & { readonly _tag: 'OidcSessionRefused' } =
     Data.TaggedError('OidcSessionRefused');
-/** Session provisioning was refused. Only the closed reason is exposed. */
+/**
+ * Session provisioning was refused. Only the closed reason is exposed.
+ *
+ * @since 0.0.1
+ * @example
+ * const refused = new OidcSessionRefused({ reason: 'unlinked' });
+ */
 export class OidcSessionRefused extends OidcSessionRefusedBase {}
 
 /**
  * Trusted backend provisioning: open the Eventiva session for a freshly verified access token. Run it only in the
  * server's login completion path with claims from `OidcVerifier.verify`, inside the tenant route the control plane
  * resolved, and within the same Storage transaction as its audit. It never creates principals, links or memberships:
- * an unlinked issuer/subject is refused. `expiresAt` comes from server policy, not the token.
- * Repeating it for an already open session of the same subject is idempotent.
+ * an unlinked issuer/subject is refused. The deadline or bounded rolling settings come from server policy, not the token.
+ * Repeating an already live session is idempotent: token refresh never moves its sign-in/activity/absolute anchors.
+ *
+ * The clock is read only after taking the identity lock, so a contended login cannot use a time sampled before another
+ * transaction's revocation or expiry. The link lookup uses the exact issuer and subject, never email or another
+ * issuer's subject. Agents and services need their own delegation or credential path; a user login cannot mint one.
+ * A closed or foreign session is never reopened: the provider must start a new session.
+ *
+ * @since 0.0.1
+ * @param claims - The verified access-token claims.
+ * @param expiresAt - A fixed session deadline in epoch milliseconds, or rolling renewal settings from server policy.
+ * @returns An Effect yielding the session identifier.
+ * @fails {OidcSessionRefused} With `expired`, `unlinked`, `inactive-principal`, `not-human` or `conflict`.
+ * @fails {StorageFailure} When the identity store cannot be read or written.
+ * @example
+ * const session = yield* openOidcSession(claims, { idleMs: 3_600_000, absoluteMs: 28_800_000 });
  */
 export const openOidcSession = (
     claims: OidcAccessClaims,
-    expiresAt: number
+    expiresAt: number | typeof SessionRenewalSettings.Type
 ): Effect.Effect<SessionId, OidcSessionRefused | StorageFailure, IdentityStore> =>
     Effect.gen(
         /** Serialize with revocation, require an existing human link, then create the session row create-only. */ function* () {
             const store = yield* IdentityStore;
-            const now = yield* Clock.currentTimeMillis;
-            if (expiresAt <= now || claims.expiresAt <= now)
-                return yield* new OidcSessionRefused({ reason: 'expired' });
             yield* store.lock;
-            // Exact issuer/subject only; never fall back to email or another issuer's subject.
+            const now = yield* Clock.currentTimeMillis;
+            let deadline: number;
+            let activity: typeof SessionActivity.Type | undefined;
+            if (typeof expiresAt === 'number') deadline = expiresAt;
+            else {
+                const settings = yield* Schema.decode(SessionRenewalSettings)(expiresAt, {
+                    onExcessProperty: 'error',
+                }).pipe(
+                    Effect.mapError(
+                        /**
+                         * Invalid trusted settings never fall back to an accepting deadline.
+                         *
+                         * @returns The `conflict` refusal.
+                         */
+                        () => new OidcSessionRefused({ reason: 'conflict' })
+                    )
+                );
+                deadline = now + settings.idleMs;
+                activity = {
+                    issuedAt: now,
+                    lastRealActivityAt: now,
+                    absoluteExpiresAt: now + settings.absoluteMs,
+                    idleMs: settings.idleMs,
+                    issuer: claims.issuer,
+                    clientId: claims.clientId,
+                };
+            }
+            if (deadline <= now || claims.expiresAt <= now) return yield* new OidcSessionRefused({ reason: 'expired' });
             const subject = yield* store.lookup({ issuer: claims.issuer, subject: claims.subject });
             if (subject === undefined) return yield* new OidcSessionRefused({ reason: 'unlinked' });
             const principal = (yield* store.get('principal', subject))?.value;
             if (principal === undefined || !principal.active)
                 return yield* new OidcSessionRefused({ reason: 'inactive-principal' });
-            // Agents and services need their own delegation/credential path; a user login cannot mint one.
             if (principal.kind !== 'human') return yield* new OidcSessionRefused({ reason: 'not-human' });
             const existing = yield* store.get('session', claims.session);
             if (existing !== undefined) {
-                // A closed or foreign session is never reopened; the provider must start a new session.
                 const same =
-                    existing.value.subject === subject && existing.value.active && existing.value.delegation === null;
+                    existing.value.subject === subject &&
+                    existing.value.active &&
+                    existing.value.expiresAt > now &&
+                    existing.value.delegation === null;
                 return same ? claims.session : yield* new OidcSessionRefused({ reason: 'conflict' });
             }
-            yield* store.put(
-                'session',
-                { id: claims.session, subject, expiresAt, active: true, delegation: null },
-                null
+            const session = yield* Schema.decode(IdentitySession)({
+                id: claims.session,
+                subject,
+                expiresAt: deadline,
+                active: true,
+                delegation: null,
+                ...(activity === undefined ? {} : { activity }),
+            }).pipe(
+                Effect.mapError(
+                    /**
+                     * Numeric overflow and contradictory lifecycle metadata are denied before the create-only write.
+                     *
+                     * @returns The `conflict` refusal.
+                     */
+                    () => new OidcSessionRefused({ reason: 'conflict' })
+                )
             );
+            yield* store.put('session', session, null);
             return claims.session;
         }
     );
@@ -77,11 +135,19 @@ export const openOidcSession = (
 /**
  * Trusted backend revocation for logout or deprovisioning: close the Eventiva session derived from a provider session.
  * Run it only after the logout signal itself is authenticated. Closing an absent or already closed session succeeds.
+ * The read and the versioned revoke are serialized under the identity lock, so concurrent refreshes observe the
+ * revocation; an already inactive or absent session needs no write.
+ *
+ * @since 0.0.1
+ * @param session - The Eventiva session derived from the provider session.
+ * @returns An Effect that closes the session.
+ * @fails {StorageFailure} When the identity store cannot be read or written.
+ * @example
+ * yield* closeOidcSession(session);
  */
 export const closeOidcSession = (session: SessionId): Effect.Effect<void, StorageFailure, IdentityStore> =>
     Effect.gen(
         /** Lock, then CAS the session inactive so concurrent refreshes observe the revocation. */ function* () {
-            // Serialize the read and versioned revoke; an already inactive or absent session needs no replacement write.
             const store = yield* IdentityStore;
             yield* store.lock;
             const existing = yield* store.get('session', session);

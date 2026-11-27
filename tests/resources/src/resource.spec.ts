@@ -74,14 +74,23 @@ import { Kernel, KernelEnvironment, KernelLive, KernelModule, kernelProvider } f
 /** Carry a callable resource service through schema-checked kernel capability composition. */
 class ResourceCapability {
     readonly resources: typeof Resources.Service;
-    /** Preserve the supplied service instance so tenant authorization stays inside its public operations. */
+    /**
+     * Preserve the supplied service instance so tenant authorization stays inside its public operations.
+     *
+     * @param resources - The resource service whose own operations enforce caller and tenant scope.
+     */
     constructor(resources: typeof Resources.Service) {
         this.resources = resources;
     }
 }
 const ResourceCapabilitySchema = Schema.instanceOf(ResourceCapability);
 
-/** Produce stable UUIDv7-shaped references for records, tenants and callers. */
+/**
+ * Produce stable UUIDv7-shaped references for records, tenants and callers.
+ *
+ * @param n - A small fixture number that becomes the UUID suffix.
+ * @returns A UUIDv7-shaped string unique to that number.
+ */
 const id = (n: number) => `019b0000-0000-7000-8000-${n.toString(16).padStart(12, '0')}`;
 const tenant = Schema.decodeUnknownSync(TenantId)(id(900));
 const otherTenant = Schema.decodeUnknownSync(TenantId)(id(901));
@@ -93,7 +102,11 @@ const caller: CallerIdentity = {
 };
 const identity = { key: { module: 'eventiva.sql', instance: 'primary' }, version: '1.0.0' };
 const policy = { kind: 'additive', restartRequired: false, retainedGenerations: 0 } as const;
-/** Declare the initial contact schema with every supported portable scalar family. */
+/**
+ * Declare the initial contact schema with every supported portable scalar family.
+ *
+ * @returns An Effect that validates and yields the base contact definition.
+ */
 const base = () =>
     declareResource({
         id: 'crm.contact',
@@ -121,35 +134,84 @@ const data = {
     occurred: 1794700000123,
     external: id(7),
 };
-/** Supply matching caller and current-tenant services without changing the resource provider's fixed binding. */
+/**
+ * Supply matching caller and current-tenant services without changing the resource provider's fixed binding.
+ *
+ * @template A - The program's success type.
+ * @template E - The program's error type.
+ * @template R - The program's remaining requirements.
+ * @param effect - The resource program that needs caller and tenant scope.
+ * @returns The same program with the fixture caller and tenant provided.
+ */
 const auth = <A, E, R>(effect: Effect.Effect<A, E, R | ResourceScope>) =>
     effect.pipe(Effect.provideService(Caller, caller), Effect.provideService(CurrentTenant, { id: tenant }));
-/** Construct a controlled policy denial with a sentinel-safe fixture detail. */
+/**
+ * Construct a controlled policy denial with a sentinel-safe fixture detail.
+ *
+ * @param detail - A fixture-safe explanation carried by the failure.
+ * @returns A denied ResourceFailure with that detail.
+ */
 const denied = (detail: string) => new ResourceFailure({ reason: 'denied', detail });
-/** Bind a named provider with permissive fixture policy; caller and tenant checks remain enforced by runtime. */
+/**
+ * Bind a named provider with permissive fixture policy; caller and tenant checks remain enforced by runtime.
+ *
+ * @param provider - The named SQL resource provider to bind.
+ * @returns A scoped Effect yielding the bound resource service.
+ */
 const bind = (provider: ResourceProvider) =>
     Layer.build(
         resourceRuntime(
             provider,
-            /** Permit resource policy so built-in scope and schema checks remain independently testable. */ () =>
-                Effect.void
+            /**
+             * Permit resource policy so built-in scope and schema checks remain independently testable.
+             *
+             * @returns An Effect that always permits the request.
+             */
+            () => Effect.void
         )
     ).pipe(
         Effect.map(
-            /** Extract the callable resource port from this provider's scoped layer. */ (context) =>
-                Context.get(context, Resources)
+            /**
+             * Extract the callable resource port from this provider's scoped layer.
+             *
+             * @param context - The context built from the resource runtime layer.
+             * @returns The Resources service from that context.
+             */
+            (context) => Context.get(context, Resources)
         )
     );
 // Remove live services inside the effect, retaining its requirements for type-safe outer provision.
-/** Deliberately erase execution context to prove early-return and missing-scope behavior without a type escape. */
+/**
+ * Deliberately erase execution context to prove early-return and missing-scope behavior without a type escape.
+ *
+ * @template A - The program's success type.
+ * @template E - The program's error type.
+ * @template R - The program's remaining requirements.
+ * @param effect - The program whose ambient services are removed.
+ * @returns The same program run with an empty context.
+ */
 const absent = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(Effect.locally(FiberRef.currentContext, Context.empty()));
 
 const local = process.env['STORAGE_TEST_POSTGRES_URL'] ?? 'postgres://postgres@127.0.0.1:5432/eventiva_test';
-/** Configure a scoped PostgreSQL connection for a validated disposable fixture URL. */
+/**
+ * Configure a scoped PostgreSQL connection for a validated disposable fixture URL.
+ *
+ * @param url - A disposable PostgreSQL connection string.
+ * @returns A layer providing a PostgreSQL SQL client for that URL.
+ */
 const pg = (url: string) =>
     client.pipe(Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map([['DATABASE_URL', url]])))));
-/** Migrate fresh base storage and provide its SQL client for the lifetime of one isolated resource test. */
+/**
+ * Migrate fresh base storage and provide its SQL client for the lifetime of one isolated resource test.
+ *
+ * @template A - The program's success type.
+ * @template E - The program's error type.
+ * @template R - The program's remaining requirements.
+ * @param dialect - The SQL backend to allocate and migrate.
+ * @param effect - The test program that needs the migrated SQL client.
+ * @returns A scoped Effect yielding the test program's result.
+ */
 const withDatabase = <A, E, R>(dialect: Dialect, effect: Effect.Effect<A, E, R | SqlClient.SqlClient>) =>
     Effect.scoped(
         Effect.gen(
@@ -168,8 +230,12 @@ const withDatabase = <A, E, R>(dialect: Dialect, effect: Effect.Effect<A, E, R |
                     const database = `resource_${randomUUID().replaceAll('-', '')}`;
                     yield* admin`CREATE DATABASE ${admin(database)} TEMPLATE template0`;
                     yield* Effect.addFinalizer(
-                        /** Drop only this fixture's database after its scoped clients close. */ () =>
-                            admin`DROP DATABASE ${admin(database)}`.pipe(Effect.orDie)
+                        /**
+                         * Drop only this fixture's database after its scoped clients close.
+                         *
+                         * @returns An Effect that drops the fixture database and dies on failure.
+                         */
+                        () => admin`DROP DATABASE ${admin(database)}`.pipe(Effect.orDie)
                     );
                     target.pathname = '/' + database;
                     connection = yield* Layer.build(pg(target.toString()));
@@ -189,7 +255,12 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
     for (const mutation of ['control', 'query', 'write'] as const) {
         it.effect(
             `preserves admitted declarations after ${mutation} driver access`,
-            /** Compare legitimate writes with an undeclared widening after the selected driver callback runs. */ () =>
+            /**
+             * Compare legitimate writes with an undeclared widening after the selected driver callback runs.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     'sqlite',
                     auth(
@@ -214,7 +285,11 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                 });
                                 yield* migrateResources('sqlite', tenant, [resource], policy);
                                 const provider = yield* resourceProvider('sqlite', tenant, identity, [resource]);
-                                /** Simulate an in-process adapter rewriting nested fields and ownership without a type escape. */
+                                /**
+                                 * Simulate an in-process adapter rewriting nested fields and ownership without a type escape.
+                                 *
+                                 * @param definition - The declaration object handed to the adapter, mutated in place.
+                                 */
                                 const widen = (definition: ResourceDefinition) => {
                                     // A matching owner keeps this a valid but unadmitted declaration, not malformed input.
                                     Object.defineProperty(definition.fields['title'], 'optional', { value: true });
@@ -233,7 +308,13 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                     ...provider,
                                     driver: {
                                         ...provider.driver,
-                                        /** Mutate only the adapter argument; use the known physical declaration for SQL access. */
+                                        /**
+                                         * Mutate only the adapter argument; use the known physical declaration for SQL access.
+                                         *
+                                         * @param definition - The declaration the runtime passes to the adapter.
+                                         * @param query - The portable query to run against the real table.
+                                         * @returns The real driver's query results after the optional mutation.
+                                         */
                                         query: (definition, query) =>
                                             Effect.sync(
                                                 /** Model a query adapter retaining and modifying the supplied schema. */ () => {
@@ -241,7 +322,15 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                                     if (mutation === 'query') widen(definition);
                                                 }
                                             ).pipe(Effect.andThen(provider.driver.query(resource, query))),
-                                        /** Persist through the real transaction while testing runtime admission independently of SQL schema checks. */
+                                        /**
+                                         * Persist through the real transaction while testing runtime admission independently of SQL schema checks.
+                                         *
+                                         * @param definition - The declaration the runtime passes to the adapter.
+                                         * @param recordId - The record being written.
+                                         * @param revision - The revision the write produces.
+                                         * @param value - The decoded payload to persist.
+                                         * @returns The real driver's stored record after the optional mutation.
+                                         */
                                         write: (definition, recordId, revision, value) =>
                                             Effect.sync(
                                                 /** Model a write adapter rewriting the supplied definition before returning. */ () => {
@@ -286,7 +375,12 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
     }
     it.effect(
         'decodes current driver values but preserves historical payloads',
-        /** Keep output validation and transaction rollback distinct from undecoded historical revisions. */ () =>
+        /**
+         * Keep output validation and transaction rollback distinct from undecoded historical revisions.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             withDatabase(
                 'sqlite',
                 auth(
@@ -305,16 +399,36 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
                                 ...provider,
                                 driver: {
                                     ...provider.driver,
-                                    /** Expose a shape invalid under the active declaration at the current-read boundary. */
+                                    /**
+                                     * Expose a shape invalid under the active declaration at the current-read boundary.
+                                     *
+                                     * @returns An Effect yielding a record that does not match the active schema.
+                                     */
                                     get: () => Effect.succeed(historical),
-                                    /** Query results must pass the same active-schema decoder as individual reads. */
+                                    /**
+                                     * Query results must pass the same active-schema decoder as individual reads.
+                                     *
+                                     * @returns An Effect yielding a list containing that mismatched record.
+                                     */
                                     query: () => Effect.succeed([historical]),
-                                    /** Make a real tentative write before returning an invalid current value. */
+                                    /**
+                                     * Make a real tentative write before returning an invalid current value.
+                                     *
+                                     * @param definition - The declaration the runtime passes to the adapter.
+                                     * @param recordId - The record being written.
+                                     * @param revision - The revision the write produces.
+                                     * @param value - The decoded payload to persist.
+                                     * @returns An Effect that writes for real and then yields the mismatched record.
+                                     */
                                     write: (definition, recordId, revision, value) =>
                                         provider.driver
                                             .write(definition, recordId, revision, value)
                                             .pipe(Effect.as(historical)),
-                                    /** Retained history deliberately need not conform to today's required fields. */
+                                    /**
+                                     * Retained history deliberately need not conform to today's required fields.
+                                     *
+                                     * @returns An Effect yielding the retained historical revision.
+                                     */
                                     history: () => Effect.succeed([historical]),
                                 },
                             });
@@ -341,7 +455,12 @@ describe('resource runtime catalogue isolation', /** Register public adapter-iso
 describe('portable resource declarations', /** Register database-free declaration, codec and migration-planning contracts. */ () => {
     it.effect(
         'strict schemas reject unpinned versions, unknown keys, invalid owners and lossy values',
-        /** Verify resource boundaries reject unknown metadata and coercion-prone scalar values without disclosure. */ () =>
+        /**
+         * Verify resource boundaries reject unknown metadata and coercion-prone scalar values without disclosure.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Probe malformed declarations and values, then inspect all supported error renderings. */ function* () {
                     // Exact decimal text and safe integer epochs must not be normalized through lossy numeric coercion.
@@ -405,7 +524,12 @@ describe('portable resource declarations', /** Register database-free declaratio
     );
     it.effect(
         'separate module contributions preserve typing and reject collisions or required additions',
-        /** Verify independently owned optional fields compose without replacing existing contracts. */ () =>
+        /**
+         * Verify independently owned optional fields compose without replacing existing contracts.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Compose successive owners while rejecting collisions and non-additive required fields. */ function* () {
                     // A contributed field must preserve compatibility for records written before that owner was installed.
@@ -431,7 +555,7 @@ describe('portable resource declarations', /** Register database-free declaratio
                         yield* Effect.either(
                             contributeFields(resource, {
                                 ...extra,
-                                fields: { required: { type: 'text', optional: false } }
+                                fields: { required: { type: 'text', optional: false } },
                             })
                         )
                     ).toMatchObject({ left: { reason: 'unsafe-migration' } });
@@ -443,7 +567,12 @@ describe('portable resource declarations', /** Register database-free declaratio
     );
     it.effect(
         'typed codecs detach declarations and reject malformed full and partial records without coercion',
-        /** Verify declarations detach caller-owned field objects and codecs distinguish full records from patches. */ () =>
+        /**
+         * Verify declarations detach caller-owned field objects and codecs distinguish full records from patches.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Mutate original field descriptors after declaration before testing exact codec behavior. */ function* () {
                     // Caller mutation must not retroactively change the schema or contribution optionality.
@@ -472,7 +601,7 @@ describe('portable resource declarations', /** Register database-free declaratio
                         { label: 3 },
                         { label: 'x', extra: true },
                         { label: null },
-                        { label: ['x'] }
+                        { label: ['x'] },
                     ])
                         expect(yield* Effect.either(decodeResource(extended, invalid))).toMatchObject({
                             left: { reason: 'invalid-value' },
@@ -481,7 +610,7 @@ describe('portable resource declarations', /** Register database-free declaratio
                         { note: undefined },
                         { note: 5 },
                         { extra: 'hidden' },
-                        { note: { nested: true } }
+                        { note: { nested: true } },
                     ])
                         expect(yield* Effect.either(decodeResource(extended, invalid, true))).toMatchObject({
                             left: { reason: 'invalid-value' },
@@ -491,7 +620,12 @@ describe('portable resource declarations', /** Register database-free declaratio
     );
     it.effect(
         'restart, retained generation and unsafe plans return before requiring any SQL service',
-        /** Verify unsafe or restart-only plans stop before acquiring a database capability. */ () =>
+        /**
+         * Verify unsafe or restart-only plans stop before acquiring a database capability.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Compare contiguous additive plans with staged, retained-generation and unsafe changes. */ function* () {
                     const resource = yield* base();
@@ -506,7 +640,7 @@ describe('portable resource declarations', /** Register database-free declaratio
                                 to: 2,
                                 dependencies: ['crm.contact.v1'],
                                 compatibleFrom: 1,
-                                compatibleThrough: 2
+                                compatibleThrough: 2,
                             },
                         ],
                     });
@@ -552,7 +686,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
     describe(`${dialect} central resource conformance`, /** Register resource persistence, migration and trusted-transaction contracts for each dialect. */ () => {
         it.effect(
             'shares one trusted resource and hook owner for atomic commit, rollback and replay',
-            /** Verify resources and hook facts commit together only under their shared private transaction owner. */ () =>
+            /**
+             * Verify resources and hook facts commit together only under their shared private transaction owner.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -676,7 +815,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'composes callable SQL resources through the kernel without losing tenant checks',
-            /** Verify kernel capability composition preserves callable resource services and tenant enforcement. */ () =>
+            /**
+             * Verify kernel capability composition preserves callable resource services and tenant enforcement.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -720,12 +864,15 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 const receipt = yield* kernel.compose(
                                     {
                                         modules: [storageManifest, consumerManifest].map(
-                                            /** Pin each composition entry to the exact supplied module version. */ ({
-                                                id,
-                                                version
-                                            }) => ({
-                                                id,
-                                                version,
+                                            /**
+                                             * Pin each composition entry to the exact supplied module version.
+                                             *
+                                             * @param manifest - One module manifest being composed.
+                                             * @returns The manifest's ID and pinned version.
+                                             */
+                                            (manifest) => ({
+                                                id: manifest.id,
+                                                version: manifest.version,
                                             })
                                         ),
                                         bindings: [
@@ -766,11 +913,20 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                                 capability.resources.get(resource, id(71))
                                                             ).pipe(
                                                                 Effect.tap(
-                                                                    /** Verify a resolved capability preserves the exact decimal payload. */ (
-                                                                        row
-                                                                    ) =>
+                                                                    /**
+                                                                     * Verify a resolved capability preserves the exact decimal payload.
+                                                                     *
+                                                                     * @param row - The record read at module readiness, if present.
+                                                                     * @returns An Effect that checks the decimal amount.
+                                                                     */
+                                                                    (row) =>
                                                                         Effect.sync(
-                                                                            /** Observe the ready-time read without mutating its returned record. */ () =>
+                                                                            /**
+                                                                             * Observe the ready-time read without mutating its returned record.
+                                                                             *
+                                                                             * @returns Nothing useful; the assertion is the point.
+                                                                             */
+                                                                            () =>
                                                                                 expect(row?.value.amount).toBe(
                                                                                     data.amount
                                                                                 )
@@ -778,7 +934,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                                 ),
                                                                 Effect.asVoid,
                                                                 Effect.mapError(
-                                                                    /** Translate resource failure into the consumer module's declared lifecycle error channel. */ () =>
+                                                                    /**
+                                                                     * Translate resource failure into the consumer module's declared lifecycle error channel.
+                                                                     *
+                                                                     * @returns The consumer module's lifecycle failure.
+                                                                     */
+                                                                    () =>
                                                                         new KernelError({
                                                                             module: 'app.crm',
                                                                             reason: 'module-failed',
@@ -795,9 +956,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 expect(receipt.emitted).toBe(true);
                                 expect(
                                     (yield* kernel.snapshot).map(
-                                        /** Compare readiness of provider and dependent consumer independent of other snapshot fields. */ ({
-                                            state
-                                        }) => state
+                                        /**
+                                         * Compare readiness of provider and dependent consumer independent of other snapshot fields.
+                                         *
+                                         * @param module - One module entry in the kernel snapshot.
+                                         * @returns The module's lifecycle state.
+                                         */
+                                        (module) => module.state
                                     )
                                 ).toEqual(['ready', 'ready']);
                                 expect(
@@ -813,9 +978,17 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 KernelLive('integration').pipe(
                                     Layer.provide(
                                         Layer.succeed(KernelAuthority, {
-                                            /** Permit fixture manifests so resource capability wiring is the tested admission path. */
+                                            /**
+                                             * Permit fixture manifests so resource capability wiring is the tested admission path.
+                                             *
+                                             * @returns An Effect that always permits the request.
+                                             */
                                             admit: () => Effect.void,
-                                            /** Permit lifecycle operations without bypassing the resource service's own tenant checks. */
+                                            /**
+                                             * Permit lifecycle operations without bypassing the resource service's own tenant checks.
+                                             *
+                                             * @returns An Effect that always permits the request.
+                                             */
                                             authorize: () => Effect.void,
                                         })
                                     )
@@ -828,7 +1001,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'runs unchanged typed CRUD, exact values, equality queries, pagination and concurrent revision checks',
-            /** Verify portable resource CRUD, parameterized equality and revision arbitration on the real backend. */ () =>
+            /**
+             * Verify portable resource CRUD, parameterized equality and revision arbitration on the real backend.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -862,9 +1040,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                     const rows = yield* api.query(resource, { where, limit: 100 });
                                     expect(
                                         rows.map(
-                                            /** Preserve backend result ordering while comparing only record identity. */ (
-                                                row
-                                            ) => row.id
+                                            /**
+                                             * Preserve backend result ordering while comparing only record identity.
+                                             *
+                                             * @param row - One matching record.
+                                             * @returns The record's ID.
+                                             */
+                                            (row) => row.id
                                         )
                                     ).toEqual(
                                         field === 'name' ||
@@ -880,14 +1062,24 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                         where: { field: 'active', equals: false },
                                         limit: 1,
                                     })).map(
-                                        /** Compare the single false-valued match without exposing unrelated payload fields. */ (
-                                            row
-                                        ) => row.id
+                                        /**
+                                         * Compare the single false-valued match without exposing unrelated payload fields.
+                                         *
+                                         * @param row - The record with a false active flag.
+                                         * @returns The record's ID.
+                                         */
+                                        (row) => row.id
                                     )
                                 ).toEqual([id(1)]);
                                 expect(
                                     (yield* api.query(resource, { after: id(1), limit: 1 })).map(
-                                        /** Preserve cursor order when identifying the next record. */ (row) => row.id
+                                        /**
+                                         * Preserve cursor order when identifying the next record.
+                                         *
+                                         * @param row - The record after the cursor.
+                                         * @returns The record's ID.
+                                         */
+                                        (row) => row.id
                                     )
                                 ).toEqual([id(2)]);
                                 expect(
@@ -924,7 +1116,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'additive migration preserves old payload/history, fences stale writers, and deactivation never drops data',
-            /** Verify forward-only schema activation preserves old records and fences stale provider instances. */ () =>
+            /**
+             * Verify forward-only schema activation preserves old records and fences stale provider instances.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1006,7 +1203,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'rolls back a failed multi-version migration and retries each pending version exactly once',
-            /** Verify a failed later schema step rolls back the entire migration batch without invalidating old writers. */ () =>
+            /**
+             * Verify a failed later schema step rolls back the entire migration batch without invalidating old writers.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1062,7 +1264,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 expect(yield* oldApi.get(resource, id(1))).toEqual(original);
                                 expect(yield* oldApi.history(resource, id(1))).toEqual(originalHistory);
                                 const usable = yield* oldApi.update(resource, id(1), 1, {
-                                    name: 'usable after rollback'
+                                    name: 'usable after rollback',
                                 });
                                 const retainedHistory = [original, usable];
                                 expect(yield* oldApi.history(resource, id(1))).toEqual(retainedHistory);
@@ -1073,9 +1275,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 } else yield* sql.unsafe(`DROP TRIGGER fixture_reject_resource_v3`);
 
                                 const expectedChecksums = [resource, extended, latest].map(
-                                    /** Derive expected retained checksums from canonical definitions rather than migration results. */ (
-                                        definition
-                                    ) => ({
+                                    /**
+                                     * Derive expected retained checksums from canonical definitions rather than migration results.
+                                     *
+                                     * @param definition - One resource definition version.
+                                     * @returns The expected retained schema row for that version.
+                                     */
+                                    (definition) => ({
                                         resource: definition.id,
                                         version: definition.version,
                                         checksum: createHash('sha256')
@@ -1092,13 +1298,16 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 expect(retried).toMatchObject({
                                     status: 'applied',
                                     migrations: expectedChecksums.slice(1).map(
-                                        /** Expect only pending adjacent-version steps; the original version must not be reapplied. */ ({
-                                            version,
-                                            checksum
-                                        }) => ({
-                                            from: version - 1,
-                                            to: version,
-                                            checksum,
+                                        /**
+                                         * Expect only pending adjacent-version steps; the original version must not be reapplied.
+                                         *
+                                         * @param expected - One expected schema row carrying its version and checksum.
+                                         * @returns The migration step that should lead to that version.
+                                         */
+                                        (expected) => ({
+                                            from: expected.version - 1,
+                                            to: expected.version,
+                                            checksum: expected.checksum,
                                         })
                                     ),
                                 });
@@ -1106,11 +1315,17 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 expect(after.slice(0, 1)).toEqual(before);
                                 expect(
                                     after.map(
-                                        /** Compare retained identity, version and checksum independently of serialized definition layout. */ ({
-                                            resource,
-                                            version,
-                                            checksum
-                                        }) => ({ resource, version, checksum })
+                                        /**
+                                         * Compare retained identity, version and checksum independently of serialized definition layout.
+                                         *
+                                         * @param row - One stored schema row read back after the retry.
+                                         * @returns Only the identity, version and checksum fields of that row.
+                                         */
+                                        (row) => ({
+                                            resource: row.resource,
+                                            version: row.version,
+                                            checksum: row.checksum,
+                                        })
                                     )
                                 ).toEqual(expectedChecksums);
                                 expect(
@@ -1148,7 +1363,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'real resource spans preserve correlation, redaction, failures and transaction atomicity',
-            /** Verify real resource spans describe outcomes without leaking values or changing transaction durability. */ () =>
+            /**
+             * Verify real resource spans describe outcomes without leaking values or changing transaction durability.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1161,8 +1381,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 const rejected = yield* Layer.build(
                                     resourceRuntime(
                                         provider,
-                                        /** Inject a private denial detail that must never appear in telemetry. */ () =>
-                                            Effect.fail(denied('DENIAL_CANARY'))
+                                        /**
+                                         * Inject a private denial detail that must never appear in telemetry.
+                                         *
+                                         * @returns An Effect that fails with a private denial detail.
+                                         */
+                                        () => Effect.fail(denied('DENIAL_CANARY'))
                                     )
                                 );
                                 const deniedApi = Context.get(rejected, Resources);
@@ -1179,13 +1403,22 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 const telemetry = telemetryLayer({ messages, attributes: {} }).pipe(
                                     Layer.provide(
                                         Layer.succeed(TelemetrySink, {
-                                            /** Retain emitted records in order for trace and redaction inspection. */
+                                            /**
+                                             * Retain emitted records in order for trace and redaction inspection.
+                                             *
+                                             * @param entry - One emitted telemetry record.
+                                             * @returns An Effect that appends the record to the capture list.
+                                             */
                                             write: (entry) =>
                                                 Ref.update(
                                                     records,
-                                                    /** Append without altering previously captured telemetry evidence. */ (
-                                                        all
-                                                    ) => [...all, entry]
+                                                    /**
+                                                     * Append without altering previously captured telemetry evidence.
+                                                     *
+                                                     * @param all - The records captured so far.
+                                                     * @returns A new list with the record appended.
+                                                     */
+                                                    (all) => [...all, entry]
                                                 ),
                                             flush: Effect.void,
                                         })
@@ -1200,7 +1433,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                     // Reads inside the transaction must observe its own create/update and matching revision history.
                                                     yield* api.create(resource, id(1), {
                                                         ...data,
-                                                        name: 'VALUE_CANARY'
+                                                        name: 'VALUE_CANARY',
                                                     });
                                                     yield* api.update(resource, id(1), 1, { seats: 9 });
                                                     expect((yield* api.get(resource, id(1)))?.value.seats).toBe(9);
@@ -1262,50 +1495,79 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 );
 
                                 const spans = (yield* Ref.get(records)).filter(
-                                    /** Exclude non-span signals from trace-parent assertions. */ (entry) =>
-                                        entry.signal === 'span'
+                                    /**
+                                     * Exclude non-span signals from trace-parent assertions.
+                                     *
+                                     * @param entry - One captured telemetry record.
+                                     * @returns Whether the record is a span.
+                                     */
+                                    (entry) => entry.signal === 'span'
                                 );
                                 const root = spans.find(
-                                    /** Locate the consumer root independently of asynchronous export order. */ (
-                                        entry
-                                    ) => entry.code === 'resource.fixture'
+                                    /**
+                                     * Locate the consumer root independently of asynchronous export order.
+                                     *
+                                     * @param entry - One captured span.
+                                     * @returns Whether the span is the consumer root.
+                                     */
+                                    (entry) => entry.code === 'resource.fixture'
                                 );
                                 expect(root).toBeDefined();
                                 expect(
                                     new Set(
                                         spans.map(
-                                            /** Compare trace correlation across successful and failed resource operations. */ (
-                                                entry
-                                            ) => entry.traceId
+                                            /**
+                                             * Compare trace correlation across successful and failed resource operations.
+                                             *
+                                             * @param entry - One captured span.
+                                             * @returns The span's trace ID.
+                                             */
+                                            (entry) => entry.traceId
                                         )
                                     ).size
                                 ).toBe(1);
                                 const transactions = spans.filter(
-                                    /** Isolate transaction boundaries from their individual resource operations. */ (
-                                        entry
-                                    ) => entry.code === 'resource.transaction'
+                                    /**
+                                     * Isolate transaction boundaries from their individual resource operations.
+                                     *
+                                     * @param entry - One captured span.
+                                     * @returns Whether the span is a resource transaction.
+                                     */
+                                    (entry) => entry.code === 'resource.transaction'
                                 );
                                 expect(
                                     transactions
                                         .map(
-                                            /** Compare terminal transaction outcomes without relying on export ordering. */ (
-                                                entry
-                                            ) => entry.outcome
+                                            /**
+                                             * Compare terminal transaction outcomes without relying on export ordering.
+                                             *
+                                             * @param entry - One transaction span.
+                                             * @returns The span's outcome.
+                                             */
+                                            (entry) => entry.outcome
                                         )
                                         .sort()
-                                ).toEqual(['failed', 'failed', 'succeeded',]);
+                                ).toEqual(['failed', 'failed', 'succeeded']);
                                 const committed = transactions.find(
-                                    /** Identify the sole committed transaction for descendant correlation checks. */ (
-                                        entry
-                                    ) => entry.outcome === 'succeeded'
+                                    /**
+                                     * Identify the sole committed transaction for descendant correlation checks.
+                                     *
+                                     * @param entry - One transaction span.
+                                     * @returns Whether the transaction succeeded.
+                                     */
+                                    (entry) => entry.outcome === 'succeeded'
                                 );
                                 expect(committed?.parentSpanId).toBe(root?.spanId);
                                 expect(
                                     spans
                                         .filter(
-                                            /** Include only resource operations descended from the successful transaction, even through intermediate spans. */ (
-                                                entry
-                                            ) => {
+                                            /**
+                                             * Include only resource operations descended from the successful transaction, even through intermediate spans.
+                                             *
+                                             * @param entry - One captured span.
+                                             * @returns Whether the span is a resource operation under the committed transaction.
+                                             */
+                                            (entry) => {
                                                 // Walk parent links instead of assuming operation spans are direct transaction children.
                                                 if (
                                                     !entry.code.startsWith('resource.') ||
@@ -1313,25 +1575,37 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 )
                                                     return false;
                                                 let parent = spans.find(
-                                                    /** Resolve this operation's immediate exported parent by span identity. */ (
-                                                        candidate
-                                                    ) => candidate.spanId === entry.parentSpanId
+                                                    /**
+                                                     * Resolve this operation's immediate exported parent by span identity.
+                                                     *
+                                                     * @param candidate - One captured span.
+                                                     * @returns Whether the candidate is the operation's parent.
+                                                     */
+                                                    (candidate) => candidate.spanId === entry.parentSpanId
                                                 );
                                                 while (parent) {
                                                     if (parent.spanId === committed?.spanId) return true;
                                                     parent = spans.find(
-                                                        /** Advance one ancestor while preserving the original committed-transaction target. */ (
-                                                            candidate
-                                                        ) => candidate.spanId === parent?.parentSpanId
+                                                        /**
+                                                         * Advance one ancestor while preserving the original committed-transaction target.
+                                                         *
+                                                         * @param candidate - One captured span.
+                                                         * @returns Whether the candidate is the current ancestor's parent.
+                                                         */
+                                                        (candidate) => candidate.spanId === parent?.parentSpanId
                                                     );
                                                 }
                                                 return false;
                                             }
                                         )
                                         .map(
-                                            /** Compare the operation vocabulary under the successful transaction. */ (
-                                                entry
-                                            ) => entry.code
+                                            /**
+                                             * Compare the operation vocabulary under the successful transaction.
+                                             *
+                                             * @param entry - One operation span under the committed transaction.
+                                             * @returns The span's operation code.
+                                             */
+                                            (entry) => entry.code
                                         )
                                         .sort()
                                 ).toEqual([
@@ -1344,32 +1618,56 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 expect(
                                     spans
                                         .filter(
-                                            /** Select reads including policy and validation failures. */ (entry) =>
-                                                entry.code === 'resource.get'
+                                            /**
+                                             * Select reads including policy and validation failures.
+                                             *
+                                             * @param entry - One captured span.
+                                             * @returns Whether the span is a resource read.
+                                             */
+                                            (entry) => entry.code === 'resource.get'
                                         )
                                         .map(
-                                            /** Compare read outcomes independently of capture order. */ (entry) =>
-                                                entry.outcome
+                                            /**
+                                             * Compare read outcomes independently of capture order.
+                                             *
+                                             * @param entry - One read span.
+                                             * @returns The span's outcome.
+                                             */
+                                            (entry) => entry.outcome
                                         )
                                         .sort()
                                 ).toEqual(['failed', 'failed', 'succeeded']);
                                 expect(
                                     spans
                                         .filter(
-                                            /** Select successful and stale-revision resource updates. */ (entry) =>
-                                                entry.code === 'resource.update'
+                                            /**
+                                             * Select successful and stale-revision resource updates.
+                                             *
+                                             * @param entry - One captured span.
+                                             * @returns Whether the span is a resource update.
+                                             */
+                                            (entry) => entry.code === 'resource.update'
                                         )
                                         .map(
-                                            /** Compare update outcomes without retaining payload details. */ (entry) =>
-                                                entry.outcome
+                                            /**
+                                             * Compare update outcomes without retaining payload details.
+                                             *
+                                             * @param entry - One update span.
+                                             * @returns The span's outcome.
+                                             */
+                                            (entry) => entry.outcome
                                         )
                                         .sort()
                                 ).toEqual(['failed', 'succeeded']);
                                 expect(
                                     spans.filter(
-                                        /** Count creates from committed, failed and interrupted transactions alike. */ (
-                                            entry
-                                        ) => entry.code === 'resource.create'
+                                        /**
+                                         * Count creates from committed, failed and interrupted transactions alike.
+                                         *
+                                         * @param entry - One captured span.
+                                         * @returns Whether the span is a resource create.
+                                         */
+                                        (entry) => entry.code === 'resource.create'
                                     )
                                 ).toHaveLength(3);
                                 for (const entry of spans) expect(entry.attributes).toEqual({});
@@ -1398,7 +1696,11 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 const unavailable = telemetryLayer({ messages, attributes: {} }).pipe(
                                     Layer.provide(
                                         Layer.succeed(TelemetrySink, {
-                                            /** Model an unavailable exporter without failing the business operation directly. */
+                                            /**
+                                             * Model an unavailable exporter without failing the business operation directly.
+                                             *
+                                             * @returns An Effect that fails with an unavailable sink.
+                                             */
                                             write: () =>
                                                 Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
                                             flush: Effect.void,
@@ -1423,13 +1725,22 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                 ).pipe(
                                     Layer.provide(
                                         Layer.succeed(TelemetrySink, {
-                                            /** Capture any unexpected emission while telemetry is explicitly disabled. */
+                                            /**
+                                             * Capture any unexpected emission while telemetry is explicitly disabled.
+                                             *
+                                             * @param entry - One telemetry record that should never arrive.
+                                             * @returns An Effect that appends the record to the capture list.
+                                             */
                                             write: (entry) =>
                                                 Ref.update(
                                                     records,
-                                                    /** Preserve all unexpected records so disabled-mode leakage cannot be hidden. */ (
-                                                        all
-                                                    ) => [...all, entry]
+                                                    /**
+                                                     * Preserve all unexpected records so disabled-mode leakage cannot be hidden.
+                                                     *
+                                                     * @param all - The records captured so far.
+                                                     * @returns A new list with the record appended.
+                                                     */
+                                                    (all) => [...all, entry]
                                                 ),
                                             flush: Effect.void,
                                         })
@@ -1447,7 +1758,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'resource operations share EVE-42 durable transactions and rollback history/outbox together',
-            /** Verify resource mutations share durable Integrity admission and atomically roll back revision/outbox evidence. */ () =>
+            /**
+             * Verify resource mutations share durable Integrity admission and atomically roll back revision/outbox evidence.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1521,7 +1837,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'enforces live caller/tenant authorization, dedicated DB binding and TenantRouter composition',
-            /** Verify named providers reject absent or mismatched caller scopes and immutable tenant rebinding. */ () =>
+            /**
+             * Verify named providers reject absent or mismatched caller scopes and immutable tenant rebinding.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     Effect.gen(
@@ -1533,8 +1854,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                             let allowed = true;
                             const layer = resourceRuntime(
                                 provider,
-                                /** Consult current permission for each call, not a construction-time authorization snapshot. */ () =>
-                                    allowed ? Effect.void : Effect.fail(denied('revoked'))
+                                /**
+                                 * Consult current permission for each call, not a construction-time authorization snapshot.
+                                 *
+                                 * @returns An Effect that permits while allowed and fails as denied once revoked.
+                                 */
+                                () => (allowed ? Effect.void : Effect.fail(denied('revoked')))
                             );
                             const context = yield* Layer.build(layer);
                             const api = Context.get(context, Resources);
@@ -1587,10 +1912,18 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                             ).pipe(
                                 Effect.provide(
                                     router(
-                                        /** Resolve the already-bound fixture storage after routing authorization. */ () =>
-                                            Effect.succeed(provider.storage),
-                                        /** Permit routing policy while retaining caller/tenant matching in the router. */ () =>
-                                            Effect.void
+                                        /**
+                                         * Resolve the already-bound fixture storage after routing authorization.
+                                         *
+                                         * @returns An Effect yielding the fixture storage.
+                                         */
+                                        () => Effect.succeed(provider.storage),
+                                        /**
+                                         * Permit routing policy while retaining caller/tenant matching in the router.
+                                         *
+                                         * @returns An Effect that always permits the request.
+                                         */
+                                        () => Effect.void
                                     )
                                 ),
                                 Effect.provideService(Caller, caller)
@@ -1604,7 +1937,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'rejects untyped invalid requests and reports backend loss without partial writes or silent empty data',
-            /** Verify dynamic inputs and corrupt or missing tables fail explicitly without partial resource writes. */ () =>
+            /**
+             * Verify dynamic inputs and corrupt or missing tables fail explicitly without partial resource writes.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1632,8 +1970,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                         Layer.build(
                                             resourceRuntime(
                                                 { ...provider, definitions: [resource, resource] },
-                                                /** Permit policy so duplicate provider definitions fail at their own validation boundary. */ () =>
-                                                    Effect.void
+                                                /**
+                                                 * Permit policy so duplicate provider definitions fail at their own validation boundary.
+                                                 *
+                                                 * @returns An Effect that always permits the request.
+                                                 */
+                                                () => Effect.void
                                             )
                                         )
                                     )
@@ -1670,7 +2012,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
 
         it.effect(
             'swaps named providers without feature changes and rejects cross-database transaction inheritance',
-            /** Verify provider substitution preserves feature code without inheriting foreign transaction authority. */ () =>
+            /**
+             * Verify provider substitution preserves feature code without inheriting foreign transaction authority.
+             *
+             * @returns The Effect that runs these assertions.
+             */
+            () =>
                 withDatabase(
                     dialect,
                     auth(
@@ -1694,7 +2041,15 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 [resource]
                                             );
                                             const secondApi = yield* bind(second);
-                                            /** Supply the second tenant's matching caller and scope without altering either provider binding. */
+                                            /**
+                                             * Supply the second tenant's matching caller and scope without altering either provider binding.
+                                             *
+                                             * @template A - The program's success type.
+                                             * @template E - The program's error type.
+                                             * @template R - The program's remaining requirements.
+                                             * @param effect - The resource program that needs the second tenant's scope.
+                                             * @returns The same program with the second tenant's caller and scope provided.
+                                             */
                                             const asOther = <A, E, R>(effect: Effect.Effect<A, E, R | ResourceScope>) =>
                                                 effect.pipe(
                                                     Effect.provideService(Caller, { ...caller, tenant: otherTenant }),
@@ -1717,8 +2072,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                         Effect.provide(
                                                             resourceRuntime(
                                                                 first,
-                                                                /** Permit first-provider policy while retaining its tenant and transaction checks. */ () =>
-                                                                    Effect.void
+                                                                /**
+                                                                 * Permit first-provider policy while retaining its tenant and transaction checks.
+                                                                 *
+                                                                 * @returns An Effect that always permits the request.
+                                                                 */
+                                                                () => Effect.void
                                                             )
                                                         )
                                                     )
@@ -1730,8 +2089,12 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                         Effect.provide(
                                                             resourceRuntime(
                                                                 second,
-                                                                /** Permit second-provider policy without authorizing cross-root transaction inheritance. */ () =>
-                                                                    Effect.void
+                                                                /**
+                                                                 * Permit second-provider policy without authorizing cross-root transaction inheritance.
+                                                                 *
+                                                                 * @returns An Effect that always permits the request.
+                                                                 */
+                                                                () => Effect.void
                                                             )
                                                         )
                                                     )
@@ -1773,7 +2136,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 }),
                                                 second.storage.get(id(3)),
                                                 second.storage.compareAndSet(command, 'next', null, {
-                                                    pending: ['next']
+                                                    pending: ['next'],
                                                 }),
                                                 second.storage.stock(id(3), 10),
                                                 second.storage.available(id(3)),
@@ -1784,9 +2147,13 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 second.storage.enqueue('foreign', null),
                                                 second.storage.audit('foreign', null),
                                             ].map(
-                                                /** Discard heterogeneous success values while preserving each operation's boundary failure. */ (
-                                                    operation
-                                                ) => operation.pipe(Effect.asVoid)
+                                                /**
+                                                 * Discard heterogeneous success values while preserving each operation's boundary failure.
+                                                 *
+                                                 * @param operation - One foreign storage operation.
+                                                 * @returns The operation with its success value discarded.
+                                                 */
+                                                (operation) => operation.pipe(Effect.asVoid)
                                             );
                                             for (const operation of foreignStorage) {
                                                 const rejected = yield* Effect.either(
@@ -1795,7 +2162,7 @@ for (const dialect of ['postgres', 'sqlite'] as const)
                                                 expect(rejected).toMatchObject({
                                                     left: {
                                                         _tag: 'StorageFailure',
-                                                        operation: 'resource-provider-boundary'
+                                                        operation: 'resource-provider-boundary',
                                                     },
                                                 });
                                                 if (Either.isLeft(rejected))

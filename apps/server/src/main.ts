@@ -16,7 +16,7 @@
 
 import { createHash } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
-import { NodeRuntime } from '@effect/platform-node';
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { canonicalLocale } from '@eventiva/contracts/i18n';
 import { ActionInventory, validateInventory, validateParity } from '@eventiva/contracts/inventory';

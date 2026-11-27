@@ -31,7 +31,12 @@ const declaration = {
 
 it.effect(
     'validates explicit defaults and rejects secret-bearing declarations without reflecting the canary',
-    /** Exercise all supported families and malformed declarations through the public codec. */ () =>
+    /**
+     * Exercise all supported families and malformed declarations through the public codec.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Check defaults, strict metadata and sanitized diagnostics independently of runtime storage. */ function* () {
                 expect(yield* declareSetting(declaration)).toEqual(declaration);

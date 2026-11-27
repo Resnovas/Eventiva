@@ -33,7 +33,12 @@ const id = '019b0000-0000-7000-8000-000000000001';
 
 it.effect(
     'keeps products distinct from stock, tenant authority and public-reference publication',
-    /** Reject unknown ownership, valuation and quantity fields instead of silently importing them into private metadata. */ () =>
+    /**
+     * Reject unknown ownership, valuation and quantity fields instead of silently importing them into private metadata.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Assert all tracking modes and independently reject malformed metadata and untrusted authority. */ function* () {
                 // Case equivalence must not erase punctuation or turn private metadata into authority or stock.
@@ -88,13 +93,26 @@ it.effect(
 
 it.effect(
     'declares five private online-only actions with canonical permissions and one default-off gate',
-    /** A legacy issue label must not silently change the shared permission or flag grammar. */ () =>
+    /**
+     * A legacy issue label must not silently change the shared permission or flag grammar.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Reconcile exact action names and verify discoverability metadata independently of a handler implementation. */ function* () {
                 // Explicit expected names and permissions catch accidental additions as well as missing actions.
                 expect(
                     productActions
-                        .map(/** Observe only the canonical inventory identity. */ (action) => action.name)
+                        .map(
+                            /**
+                             * Observe only the canonical inventory identity.
+                             *
+                             * @param action - One declared product action.
+                             * @returns The action's canonical name.
+                             */
+                            (action) => action.name
+                        )
                         .sort()
                 ).toEqual([
                     'inventory.product.archive',

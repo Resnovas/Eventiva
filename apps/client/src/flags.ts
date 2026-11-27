@@ -20,10 +20,22 @@ import { PostHogClientProvider } from '@eventiva/integrations.posthog.client/fla
 import { connect } from '@eventiva/integrations.posthog.client/connect';
 import { postHog } from './config.ts';
 
-/** The OpenFeature domain the client binds; React hooks read the same domain. */
+/**
+ * The OpenFeature domain the client binds; React hooks read the same domain.
+ *
+ * @since 0.0.1
+ * @example
+ * <OpenFeatureProvider domain={domain}>{children}</OpenFeatureProvider>
+ */
 export const domain = 'eventiva';
 
-/** Shows the offline-first banner in the shell. Optional, so it defaults off. */
+/**
+ * Shows the offline-first banner in the shell. Optional, so it defaults off.
+ *
+ * @since 0.0.1
+ * @example
+ * const showBanner = useBooleanFlagValue(offlineBanner.key, offlineBanner.safeDefault);
+ */
 export const offlineBanner: Flag = {
     key: 'client.shell.offline-banner',
     description: 'Show the offline-first notice on the client shell.',
@@ -31,13 +43,24 @@ export const offlineBanner: Flag = {
     safeDefault: false,
 };
 
-/** The Git-managed baseline, then PostHog when a key was configured at build time. */
+/**
+ * The client's `Flags` layer: the Git-managed baseline, then PostHog when a key was configured at build time.
+ *
+ * @since 0.0.1
+ * @example
+ * startup.start(registerRoot, FlagsLive);
+ */
 export const FlagsLive = layer(
     [
         { source: 'git-baseline', provider: staticValues({}) },
         ...(postHog.apiKey === undefined
             ? []
-            : [{ source: 'remote' as const, provider: new PostHogClientProvider(connect(postHog.apiKey, postHog.host)) }]),
+            : [
+                  {
+                      source: 'remote' as const,
+                      provider: new PostHogClientProvider(connect(postHog.apiKey, postHog.host)),
+                  },
+              ]),
     ],
     { domain }
 );

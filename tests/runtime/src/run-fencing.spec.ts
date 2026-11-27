@@ -196,6 +196,13 @@ const fixture = (dialect: Dialect) =>
                             Layer.succeed(Approvals, {
                                 /** Unused approval references never grant permission. */ get: () =>
                                     Effect.fail(new InvocationDenied({ action: action.name, reason: 'missing-proof' })),
+                                /** Preserve missing-proof denial at the accepting-use capability too. */ use: () =>
+                                    Effect.fail(new InvocationDenied({ action: action.name, reason: 'missing-proof' })),
+                                /** No protected read transaction is available from this denying fixture. */ transaction:
+                                    () =>
+                                        Effect.fail(
+                                            new InvocationDenied({ action: action.name, reason: 'missing-proof' })
+                                        ),
                             }),
                             Layer.succeed(InputDigest, {
                                 /** Hash canonical private input with the approved local fixture boundary. */ digest: (
@@ -478,7 +485,12 @@ describe('tenant-local authoritative run fences', /** Test both real engines; mi
                             )
                         ).toBe(true);
                         expect(yield* f.second.getRun(tenant, id(8))).toBeUndefined();
-                        yield* f.b`INSERT INTO storage_migration (name, checksum) VALUES ('0012.sql', ${'a'.repeat(64)})`;
+                        // Derive synthetic incompatible history after the real head so adding a valid migration cannot collide here.
+                        const [latest] = yield* f.b<{
+                            name: string;
+                        }>`SELECT name FROM storage_migration ORDER BY name DESC LIMIT 1`;
+                        const future = `${String(Number(latest?.name.slice(0, -4) ?? '0') + 1).padStart(4, '0')}.sql`;
+                        yield* f.b`INSERT INTO storage_migration (name, checksum) VALUES (${future}, ${'a'.repeat(64)})`;
                         expect(
                             Either.isLeft(
                                 yield* Effect.either(f.second.claimRun(tenant, runId, 2, 'incompatible-schema'))

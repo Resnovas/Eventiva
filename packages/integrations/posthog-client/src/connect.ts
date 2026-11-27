@@ -18,9 +18,16 @@ import { PostHog } from 'posthog-react-native';
 import type { PostHogFlagClient } from './flags.ts';
 
 /**
- * Creates the device PostHog client for flags only. Nothing is captured:
- * analytics are opted out, app lifecycle events, GeoIP and flag-called events
- * are off. The caller passes a key only when one is configured.
+ * Create the device PostHog client for flags only. Nothing is captured:
+ * analytics are opted out, and app lifecycle events, GeoIP and flag-called
+ * events are off. The caller passes a key only when one is configured.
+ *
+ * @since 0.0.1
+ * @param apiKey - The project's public PostHog key.
+ * @param host - The PostHog host the client reads flags from.
+ * @returns The narrow flag client that `PostHogClientProvider` borrows.
+ * @example
+ * const provider = new PostHogClientProvider(connect(apiKey, 'https://eu.i.posthog.com'));
  */
 export const connect = (apiKey: string, host: string): PostHogFlagClient => {
     const client = new PostHog(apiKey, {
@@ -31,9 +38,19 @@ export const connect = (apiKey: string, host: string): PostHogFlagClient => {
         sendFeatureFlagEvent: false,
     });
     return {
-        /** Read the SDK's cached boolean or variant value; absence remains undefined for provider fallback. */
+        /**
+         * Read the SDK's cached boolean or variant value; absence remains undefined for provider fallback.
+         *
+         * @param key - The flag to look up in the cache PostHog last fetched.
+         * @returns The cached value, or undefined when PostHog has none.
+         */
         getFeatureFlag: (key) => client.getFeatureFlag(key),
-        /** Subscribe to SDK flag updates and return its unsubscribe function; the provider owns listener cleanup. */
+        /**
+         * Subscribe to SDK flag updates and return its unsubscribe function; the provider owns listener cleanup.
+         *
+         * @param callback - Called whenever PostHog refreshes its cached flags.
+         * @returns A function that removes this subscription.
+         */
         onFeatureFlags: (callback) => client.onFeatureFlags(callback),
     };
 };

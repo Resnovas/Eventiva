@@ -27,7 +27,13 @@ import { Receipt } from '@eventiva/contracts/receipt';
 import { CurrentTenant, StorageFailure, Version } from '@eventiva/contracts/storage';
 import { Effect, Layer, Schema } from 'effect';
 
-/** Build with the exact tenant client used by Storage; never expose this client through TenantRouter. */
+/**
+ * Build with the exact tenant client used by Storage; never expose this client through TenantRouter.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(signIn, identityStore);
+ */
 export const identityStore = Layer.effect(
     IdentityStore,
     Effect.gen(
@@ -35,27 +41,54 @@ export const identityStore = Layer.effect(
             const tenant = yield* CurrentTenant;
             const sql = yield* SqlClient.SqlClient;
             // All tables belong to the routed database; never choose a tenant from a presented identity record.
-            /** Report only the closed identity failure reason, never driver diagnostics or stored identity contents. */
+            /**
+             * Report only the closed identity failure reason, never driver diagnostics or stored identity contents.
+             *
+             * @param reason - The closed identity failure reason to report.
+             * @returns A StorageFailure for the `identity` operation carrying only that reason.
+             */
             const failure = (reason: NonNullable<StorageFailure['reason']>) =>
                 new StorageFailure({ operation: 'identity', reason });
-            /** Decode exact records and versions at the storage boundary, including values supplied by typed callers. */
+            /**
+             * Decode exact records and versions at the storage boundary, including values supplied by typed callers.
+             *
+             * @template A - The decoded value.
+             * @template I - The encoded input accepted by the schema.
+             * @param schema - The schema the value must satisfy exactly, with no excess properties.
+             * @param value - The value to decode.
+             * @returns The decoded value.
+             * @fails {StorageFailure} With `invalid-data` when the value does not decode.
+             */
             const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
                 Schema.decode(schema)(value, { onExcessProperty: 'error' }).pipe(
                     Effect.mapError(
-                        /** Replace schema diagnostics so malformed identity data cannot escape through errors. */ () =>
-                            failure('invalid-data')
+                        /**
+                         * Replace schema diagnostics so malformed identity data cannot escape through errors.
+                         *
+                         * @returns A StorageFailure with the `invalid-data` reason.
+                         */
+                        () => failure('invalid-data')
                     )
                 );
             const lock = sql`UPDATE identity_guard SET version = version WHERE id = 1 RETURNING id`.pipe(
                 Effect.flatMap(
-                    /** Refuse a database without the singleton guard; an empty update would otherwise provide no lock. */ (
-                        rows
-                    ) => rows.length === 1 ? Effect.void : Effect.fail(failure('identity-guard-missing'))
+                    /**
+                     * Refuse a database without the singleton guard; an empty update would otherwise provide no lock.
+                     *
+                     * @param rows - The rows the guard update returned.
+                     * @returns Success when exactly one guard row was locked.
+                     * @fails {StorageFailure} With `identity-guard-missing` when the guard row is absent.
+                     */
+                    (rows) => (rows.length === 1 ? Effect.void : Effect.fail(failure('identity-guard-missing')))
                 ),
                 Effect.catchTag(
                     'SqlError',
-                    /** Hide database diagnostics while preserving the missing-guard domain failure. */ () =>
-                        Effect.fail(failure('database'))
+                    /**
+                     * Hide database diagnostics while preserving the missing-guard domain failure.
+                     *
+                     * @returns A failure with the `database` reason.
+                     */
+                    () => Effect.fail(failure('database'))
                 )
             );
             const codecs: { readonly [K in IdentityKind]: Schema.Schema<IdentityRecords[K]> } = {
@@ -67,11 +100,29 @@ export const identityStore = Layer.effect(
                 role: Schema.typeSchema(records.role),
                 profile: Schema.typeSchema(records.profile),
             };
-            /** Select the decoded record schema associated with the closed identity kind. */
+            /**
+             * Select the decoded record schema associated with the closed identity kind.
+             *
+             * @template K - The identity kind.
+             * @param kind - The identity kind whose record schema is wanted.
+             * @returns The type-side schema for that kind's record.
+             */
             const codec = <K extends IdentityKind>(kind: K): Schema.Schema<IdentityRecords[K]> => codecs[kind];
-            /** Quote a table identifier derived only from the internal closed identity-kind vocabulary. */
+            /**
+             * Quote a table identifier derived only from the internal closed identity-kind vocabulary.
+             *
+             * @param kind - The identity kind naming the table.
+             * @returns The quoted `identity_<kind>` table identifier.
+             */
             const table = (kind: IdentityKind) => sql(`identity_${kind}`);
-            /** Read one exact record and version; absence is distinct from corrupt persisted data. */
+            /**
+             * Read one exact record and version; absence is distinct from corrupt persisted data.
+             *
+             * @param kind - The identity kind to read.
+             * @param id - The record id, which must match the id embedded in the stored body.
+             * @returns The decoded record and its version, or undefined when no row exists.
+             * @fails {StorageFailure} With `invalid-data`, `identity-key-mismatch` or `database` for corrupt data, a mismatched id or a database error.
+             */
             const get: IdentityStore['Type']['get'] = (kind, id) =>
                 Effect.gen(
                     /** Cross-check persisted body identity and version against the requested row key. */ function* () {
@@ -88,15 +139,27 @@ export const identityStore = Layer.effect(
                 ).pipe(
                     Effect.catchTag(
                         'SqlError',
-                        /** Do not expose SQL or record contents through read failures. */ () =>
-                            Effect.fail(failure('database'))
+                        /**
+                         * Do not expose SQL or record contents through read failures.
+                         *
+                         * @returns A failure with the `database` reason.
+                         */
+                        () => Effect.fail(failure('database'))
                     )
                 );
             return IdentityStore.of({
                 tenant: tenant.id,
                 lock,
                 get,
-                /** Atomically insert at version zero or advance the expected version; callers still own authorization. */
+                /**
+                 * Atomically insert at version zero or advance the expected version; callers still own authorization.
+                 *
+                 * @param kind - The identity kind to write.
+                 * @param value - The record to store, validated before encoding.
+                 * @param expectedVersion - The version the writer last read, or null to insert at version zero.
+                 * @returns An effect that completes once exactly one row was written inside the guarded transaction.
+                 * @fails {StorageFailure} With `identity-version-conflict` when the row exists or the version is stale, `invalid-data` for an invalid record, `identity-guard-missing` without the guard, or `database`.
+                 */
                 put: (kind, value, expectedVersion) =>
                     sql
                         .withTransaction(
@@ -108,8 +171,12 @@ export const identityStore = Layer.effect(
                                     yield* decode(Schema.NullOr(Version), expectedVersion);
                                     const body = yield* Schema.encode(Schema.parseJson(codec(kind)))(checked).pipe(
                                         Effect.mapError(
-                                            /** Keep invalid record details out of persistence failures. */ () =>
-                                                failure('invalid-data')
+                                            /**
+                                             * Keep invalid record details out of persistence failures.
+                                             *
+                                             * @returns A StorageFailure with the `invalid-data` reason.
+                                             */
+                                            () => failure('invalid-data')
                                         )
                                     );
                                     const rows =
@@ -123,11 +190,21 @@ export const identityStore = Layer.effect(
                         .pipe(
                             Effect.catchTag(
                                 'SqlError',
-                                /** Preserve version conflicts but redact driver failures. */ () =>
-                                    Effect.fail(failure('database'))
+                                /**
+                                 * Preserve version conflicts but redact driver failures.
+                                 *
+                                 * @returns A failure with the `database` reason.
+                                 */
+                                () => Effect.fail(failure('database'))
                             )
                         ),
-                /** Return decoded teams containing the subject in stable ID order; this lookup does not authorize a grant. */
+                /**
+                 * Return decoded teams containing the subject in stable ID order; this lookup does not authorize a grant.
+                 *
+                 * @param subject - The subject whose explicit team memberships are wanted.
+                 * @returns The teams listing the subject as a member, ordered by id.
+                 * @fails {StorageFailure} With `invalid-data` when any stored team is corrupt, or `database`.
+                 */
                 teams: (subject) =>
                     Effect.gen(
                         /** Reject corrupt team records before selecting the subject's explicit memberships. */ function* () {
@@ -135,23 +212,43 @@ export const identityStore = Layer.effect(
                             // Validate the complete stored team set rather than silently skipping malformed membership data.
                             const teams = yield* Effect.forEach(
                                 rows,
-                                /** Reject malformed team bodies before testing their membership lists. */ (row) =>
-                                    decode(Schema.parseJson(records.team), row.body)
+                                /**
+                                 * Reject malformed team bodies before testing their membership lists.
+                                 *
+                                 * @param row - The stored team row.
+                                 * @returns The decoded team.
+                                 */
+                                (row) => decode(Schema.parseJson(records.team), row.body)
                             );
                             return teams.filter(
-                                /** Match explicit team membership without deriving roles or permissions here. */ (
-                                    team
-                                ) => team.members.includes(subject)
+                                /**
+                                 * Match explicit team membership without deriving roles or permissions here.
+                                 *
+                                 * @param team - The decoded team to test.
+                                 * @returns Whether the subject is listed as a member.
+                                 */
+                                (team) => team.members.includes(subject)
                             );
                         }
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Hide driver details without swallowing invalid team data. */ () =>
-                                Effect.fail(failure('database'))
+                            /**
+                             * Hide driver details without swallowing invalid team data.
+                             *
+                             * @returns A failure with the `database` reason.
+                             */
+                            () => Effect.fail(failure('database'))
                         )
                     ),
-                /** Idempotently bind an exact issuer/subject pair to an active local principal; never silently relink it. */
+                /**
+                 * Idempotently bind an exact issuer/subject pair to an active local principal; never silently relink it.
+                 *
+                 * @param external - The exact federated issuer and subject pair.
+                 * @param subject - The local principal's subject id, which must be active.
+                 * @returns An effect that completes once the pair is bound to that principal.
+                 * @fails {StorageFailure} With `identity-principal-required` for a missing or inactive principal, `identity-link-collision` when the pair is bound elsewhere, `invalid-data`, `identity-guard-missing` or `database`.
+                 */
                 link: (external, subject) =>
                     sql
                         .withTransaction(
@@ -174,11 +271,21 @@ export const identityStore = Layer.effect(
                         .pipe(
                             Effect.catchTag(
                                 'SqlError',
-                                /** Retain collision failures without returning federation data in SQL diagnostics. */ () =>
-                                    Effect.fail(failure('database'))
+                                /**
+                                 * Retain collision failures without returning federation data in SQL diagnostics.
+                                 *
+                                 * @returns A failure with the `database` reason.
+                                 */
+                                () => Effect.fail(failure('database'))
                             )
                         ),
-                /** Resolve an exact federation key in this tenant database; absence neither provisions nor authenticates a principal. */
+                /**
+                 * Resolve an exact federation key in this tenant database; absence neither provisions nor authenticates a principal.
+                 *
+                 * @param external - The exact federated issuer and subject pair to resolve.
+                 * @returns The bound local subject id, or undefined when the pair is not linked.
+                 * @fails {StorageFailure} With `invalid-data` for an invalid key or stored subject, or `database`.
+                 */
                 lookup: (external) =>
                     Effect.gen(
                         /** Validate both the external key and any stored canonical subject without normalizing either. */ function* () {
@@ -192,11 +299,21 @@ export const identityStore = Layer.effect(
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Do not leak federation keys through database diagnostics. */ () =>
-                                Effect.fail(failure('database'))
+                            /**
+                             * Do not leak federation keys through database diagnostics.
+                             *
+                             * @returns A failure with the `database` reason.
+                             */
+                            () => Effect.fail(failure('database'))
                         )
                     ),
-                /** Read at most 100 newest receipts and reject cross-tenant contents; operator access is authorized elsewhere. */
+                /**
+                 * Read at most 100 newest receipts and reject cross-tenant contents; operator access is authorized elsewhere.
+                 *
+                 * @param limit - The page size, an integer from 1 to 100.
+                 * @returns The newest receipts, newest first.
+                 * @fails {StorageFailure} With `invalid-data` for a bad limit or corrupt receipt, `identity-audit-tenant-mismatch` when any receipt names another tenant, or `database`.
+                 */
                 audit: (limit) =>
                     Effect.gen(
                         /** Bound the receipt page before decoding and checking every entry's captured tenant. */ function* () {
@@ -206,15 +323,24 @@ export const identityStore = Layer.effect(
                             }>`SELECT receipt FROM action_receipt ORDER BY id DESC LIMIT ${bounded}`;
                             const receipts = yield* Effect.forEach(
                                 rows,
-                                /** Decode persisted audit evidence before exposing it as a receipt. */ (row) =>
-                                    decode(Schema.parseJson(Receipt), row.receipt)
+                                /**
+                                 * Decode persisted audit evidence before exposing it as a receipt.
+                                 *
+                                 * @param row - The stored receipt row.
+                                 * @returns The decoded receipt.
+                                 */
+                                (row) => decode(Schema.parseJson(Receipt), row.receipt)
                             );
                             // Database routing alone is insufficient evidence that persisted receipts belong to this tenant.
                             if (
                                 receipts.some(
-                                    /** Fail the whole bounded page if any receipt crosses the captured tenant boundary. */ (
-                                        receipt
-                                    ) => receipt.caller.tenant !== tenant.id
+                                    /**
+                                     * Fail the whole bounded page if any receipt crosses the captured tenant boundary.
+                                     *
+                                     * @param receipt - The decoded receipt to test.
+                                     * @returns Whether the receipt belongs to another tenant.
+                                     */
+                                    (receipt) => receipt.caller.tenant !== tenant.id
                                 )
                             )
                                 return yield* failure('identity-audit-tenant-mismatch');
@@ -223,8 +349,12 @@ export const identityStore = Layer.effect(
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Preserve audit validation failures and redact SQL diagnostics. */ () =>
-                                Effect.fail(failure('database'))
+                            /**
+                             * Preserve audit validation failures and redact SQL diagnostics.
+                             *
+                             * @returns A failure with the `database` reason.
+                             */
+                            () => Effect.fail(failure('database'))
                         )
                     ),
             });

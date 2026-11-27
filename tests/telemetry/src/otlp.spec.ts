@@ -63,15 +63,31 @@ const record: TelemetryRecord = {
     outcome: 'failed',
 };
 const enabled = Layer.succeed(Flags, {
-    /** Enable export without changing other flag defaults. */ evaluate: (flag) =>
-        Effect.succeed({ ...safeDefault(flag), value: true }),
+    /**
+     * Enable export without changing other flag defaults.
+     *
+     * @param flag - Flag definition the exporter asks about.
+     * @returns An effect yielding the safe-default evaluation with its value switched on.
+     */
+    evaluate: (flag) => Effect.succeed({ ...safeDefault(flag), value: true }),
 });
 const allow = Layer.succeed(TelemetryExportAuthority, {
-    /** Model a currently authorized fixture destination, never a production policy. */ authorize: () => Effect.void,
+    /**
+     * Model a currently authorized fixture destination, never a production policy.
+     *
+     * @returns An effect that grants every export request.
+     */
+    authorize: () => Effect.void,
 });
 const catalog = { messages: { 'sample.completed': 'Completed.', 'sample.root': 'Root.' } };
 
-/** Capture serialized HTTP requests through the real FetchHttpClient without permitting network access. */
+/**
+ * Capture serialized HTTP requests through the real FetchHttpClient without permitting network access.
+ *
+ * @param status - HTTP status the fake collector answers with; defaults to 200.
+ * @param response - Response body the fake collector answers with; defaults to an empty JSON object.
+ * @returns The recorded requests, the Fetch mock and an HTTP client layer that uses it.
+ */
 const transport = (status = 200, response = '{}') => {
     // Replace Fetch, not the provider, so serialization and request policy still run without external IO.
     const requests: Array<{
@@ -81,10 +97,14 @@ const transport = (status = 200, response = '{}') => {
         readonly redirect: string | undefined;
     }> = [];
     const fetch = vi.fn<typeof globalThis.fetch>(
-        /** Retain only synthetic fixture requests and return a deterministic collector acknowledgement. */ async (
-            url,
-            options
-        ) => {
+        /**
+         * Retain only synthetic fixture requests and return a deterministic collector acknowledgement.
+         *
+         * @param url - Request target chosen by the exporter.
+         * @param options - Request options carrying the body, headers and redirect policy.
+         * @returns A promise of the configured collector response, resolved after the request is recorded.
+         */
+        async (url, options) => {
             // Decode the actual request body before acknowledging; inspecting provider inputs would miss wire leaks.
             requests.push({
                 url: String(url),
@@ -136,7 +156,12 @@ const Wire = Schema.parseJson(
 describe('optional OTLP span export', /** Exercise wire compatibility, safe defaults and the existing release gates. */ () => {
     it.effect(
         'exports one correlated failed span with exact nanosecond timing and redacted configurable headers',
-        /** Inspect an asymmetric span so timestamp, parent, duration and status regressions cannot hide. */ () =>
+        /**
+         * Inspect an asymmetric span so timestamp, parent, duration and status regressions cannot hide.
+         *
+         * @returns The scenario that exports one span and checks every field on the wire.
+         */
+        () =>
             Effect.gen(
                 /** Write through the real provider and assert only the approved minimal fields cross HTTP. */ function* () {
                     // A valid acknowledgement exactly at the byte ceiling must still succeed.
@@ -198,7 +223,12 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
 
     it.effect(
         'exports actual Effect spans through runtime and the governed sink, not a synthetic tracer replacement',
-        /** Prove nested instrumentation reaches the in-memory OTLP collector through current package subpaths. */ () =>
+        /**
+         * Prove nested instrumentation reaches the in-memory OTLP collector through current package subpaths.
+         *
+         * @returns The scenario that exports nested spans and checks their parent links.
+         */
+        () =>
             Effect.gen(
                 /** Check parent correlation and success without relying on random ID values. */ function* () {
                     // Native nested spans must survive both minimization layers; fabricated provider records would bypass them.
@@ -217,9 +247,13 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
                     expect(http.requests).toHaveLength(2);
                     const records = yield* Effect.forEach(
                         http.requests,
-                        /** Validate collector envelopes before extracting the only span in each request. */ (
-                            request
-                        ) => Schema.decode(Wire)(request.body)
+                        /**
+                         * Validate collector envelopes before extracting the only span in each request.
+                         *
+                         * @param request - One recorded collector request.
+                         * @returns An effect yielding the decoded OTLP envelope, or failing when the body does not match the wire schema.
+                         */
+                        (request) => Schema.decode(Wire)(request.body)
                     );
                     const child = records[0]?.resourceSpans[0]?.scopeSpans[0]?.spans[0];
                     const parent = records[1]?.resourceSpans[0]?.scopeSpans[0]?.spans[0];
@@ -236,7 +270,12 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
 
     it.effect(
         'defaults off, and separate flag, authority and local telemetry opt-outs prevent every request',
-        /** Test each disabled gate with all other prerequisites enabled. */ () =>
+        /**
+         * Test each disabled gate with all other prerequisites enabled.
+         *
+         * @returns The scenario that disables each gate in turn and expects no requests.
+         */
+        () =>
             Effect.gen(
                 /** A default or denial must not create requests during writes, flush or disposal. */ function* () {
                     // One recording transport spans independent denial cases, including scope finalization.
@@ -298,7 +337,12 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
 
     it.effect(
         'reports HTTP, partial, malformed and transport failures safely, without retry on flush or shutdown',
-        /** Failed delivery must differ from acknowledgement even when HTTP status is 200. */ () =>
+        /**
+         * Failed delivery must differ from acknowledgement even when HTTP status is 200.
+         *
+         * @returns The scenario that answers with each failing collector response and checks the typed failure.
+         */
+        () =>
             Effect.gen(
                 /** Verify each failure creates exactly one attempt and retains no collector error or credential. */ function* () {
                     for (const [status, body] of [
@@ -349,7 +393,12 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
 
     it.effect(
         'rejects unsafe configuration, protected/cross-binding use and malformed span identities before HTTP',
-        /** Exercise rejected settings and records at the actual provider boundary. */ () =>
+        /**
+         * Exercise rejected settings and records at the actual provider boundary.
+         *
+         * @returns The scenario that submits invalid settings and records and expects no request.
+         */
+        () =>
             Effect.gen(
                 /** Verify validation never releases a partial request or exposes rejected configuration. */ function* () {
                     // Reuse the transport across acquisition and record failures to expose even a single premature request.
@@ -415,18 +464,33 @@ describe('optional OTLP span export', /** Exercise wire compatibility, safe defa
 
     it.effect(
         'bounds a stalled request, aborts its transport and refuses retained handles after scope closure',
-        /** Prove no asynchronous request survives ownership or gets replayed later. */ () =>
+        /**
+         * Prove no asynchronous request survives ownership or gets replayed later.
+         *
+         * @returns The scenario that stalls a request, lets it time out and uses handles after scope closure.
+         */
+        () =>
             Effect.gen(
                 /** Use the Effect test clock to release a timeout without wall-clock sleeps. */ function* () {
                     const http = transport();
                     let aborted = false;
                     http.fetch.mockImplementation(
-                        /** Keep a fake collector pending until Effect cancels its HTTP request. */ (_url, options) =>
+                        /**
+                         * Keep a fake collector pending until Effect cancels its HTTP request.
+                         *
+                         * @param _url - Request target, unused by the stalled collector.
+                         * @param options - Request options whose abort signal ends the wait.
+                         * @returns A promise that never resolves and rejects once the request is aborted.
+                         */
+                        (_url, options) =>
                             new Promise(
-                                /** Observe only abort state, never retain request credentials in a failure. */ (
-                                    _resolve,
-                                    reject
-                                ) => {
+                                /**
+                                 * Observe only abort state, never retain request credentials in a failure.
+                                 *
+                                 * @param _resolve - Resolver left unused so the request stays pending.
+                                 * @param reject - Rejects the pending request once it is aborted.
+                                 */
+                                (_resolve, reject) => {
                                     options?.signal?.addEventListener(
                                         'abort',
                                         /** Model cancellable network IO at the Fetch boundary. */ () => {

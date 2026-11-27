@@ -16,4 +16,11 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
+/**
+ * The schema test project: runs `tests/schema` with coverage over `packages/schema/src`.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run schema-tests:test
+ */
 export default testProject('schema-tests', ['packages/schema/src/**'], import.meta.url);

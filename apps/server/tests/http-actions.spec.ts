@@ -33,7 +33,7 @@ import { CurrentTenant, EpochMillis, RoutingDenied, Storage } from '@eventiva/co
 import { identityStore } from '@eventiva/integrations.sql/identity';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { storage } from '@eventiva/integrations.sql/storage';
 import { makeOidcVerifier, oidcSessionId } from '@eventiva/integrations.oidc/token';
 import { implement } from '@eventiva/runtime/action';
@@ -176,6 +176,10 @@ const fixture = Effect.gen(
             Layer.succeed(Approvals, {
                 /** No synthetic approval can satisfy a protected operation. */ get: () =>
                     Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** Keep accepting use unavailable under the same denying fixture contract. */ use: () =>
+                    Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
+                /** No approved read can acquire a transaction through this denying fixture. */ transaction: () =>
+                    Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'approval-unavailable' })),
             })
         );
         /** Reuse this exact module initializer for discovery and for the backend's independently routed execution host. */
@@ -253,12 +257,13 @@ const fixture = Effect.gen(
                 )
         );
         const runner = yield* Layer.build(
-            backend(profile, initialize).pipe(
+            backend(profile, initialize, Effect.void, dependencies).pipe(
                 Layer.provide(
-                    router(
+                    sqlRouter(
+                        'postgres',
                         /** A second tenant is not another name for this database. */ (candidate) =>
                             candidate === tenant
-                                ? Effect.succeed(store)
+                                ? Effect.succeed(sql)
                                 : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
                         /** This synthetic fixture owns only its explicitly provisioned trusted route. */ (
                             candidate

@@ -36,7 +36,12 @@ import { Effect, Either, Schema } from 'effect';
 
 it.effect(
     'identity action definitions are portable, explicitly scoped and JSON-encodable',
-    /** Exercise identity definition validation and wire schemas without an identity backend. */ () =>
+    /**
+     * Exercise identity definition validation and wire schemas without an identity backend.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Verify online sensitive identity policy, exact subject preservation and bounded strictly scoped request shapes. */ function* () {
                 const specs = [
@@ -82,7 +87,7 @@ it.effect(
                         Schema.decodeUnknownEither(IdentitySession)({
                             id: 'not-a-uuid',
                             active: true,
-                            expiresAt: Infinity
+                            expiresAt: Infinity,
                         })
                     )
                 ).toBe(true);

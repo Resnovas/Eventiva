@@ -14,66 +14,47 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import * as FileSystem from '@effect/platform/FileSystem';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { describe, expect, it } from '@effect/vitest';
-import { TelemetryRecord, TelemetrySinkFailure } from '@eventiva/contracts/observability';
+import { TelemetryRecord } from '@eventiva/contracts/observability';
 import { consoleLoggerLayer, formatConsoleRecord } from '@eventiva/integrations.telemetry.server/logger';
 import { Audit, FailClosed } from '@eventiva/runtime/invocation';
 import { telemetryLayer } from '@eventiva/runtime/telemetry';
 import { Cause, Config, Effect, Exit, Layer, Option, Schema } from 'effect';
+import { childTests, runChild, type ChildResult as LaunchResult } from './child-process.ts';
 
-const workspace = fileURLToPath(new URL('../../../', import.meta.url));
+const childTest = childTests();
 
-/** A launch result retains parent timing independently of child diagnostics or application output. */
-type LaunchResult = SpawnSyncReturns<string> & {
-    readonly spawnedAtMs: number;
-    readonly elapsedMs: number;
-};
+/**
+ * Keep real main composition, isolated configuration and the observer while consuming the test's declared budget.
+ *
+ * @param environment - Extra environment variables for the child; defaults to none.
+ * @returns An effect yielding the finished child result, including its journal descriptor output.
+ * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+ */
+const launch = (environment: Readonly<Record<string, string>> = {}) =>
+    runChild(
+        ['--import', './tests/telemetry/fixtures/bootstrap-diagnostics.mjs', 'apps/server/src/main.ts'],
+        environment
+    );
 
-/** Run the actual server entry point with isolated configuration and a ten-second child lifetime bound. */
-const launch = (
-    environment: Readonly<Record<string, string>> = {}
-): Effect.Effect<LaunchResult, TelemetrySinkFailure> =>
-    Effect.try({
-        /** Capture child output without inheriting the host environment; subprocess failures remain in the result. */
-        try: () => {
-            const spawnedAtMs = Math.round(performance.timeOrigin + performance.now());
-            const started = performance.now();
-            const result = spawnSync(
-                process.execPath,
-                [
-                    '--conditions=@eventiva/source',
-                    '--import',
-                    './tests/telemetry/fixtures/bootstrap-diagnostics.mjs',
-                    'apps/server/src/main.ts',
-                ],
-                {
-                    cwd: workspace,
-                    encoding: 'utf8',
-                    timeout: 10000,
-                    maxBuffer: 65536,
-                    stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
-                    // Do not inherit keys, endpoints, NODE_OPTIONS or local secrets.
-                    env: { NODE_NO_WARNINGS: '1', ...environment },
-                }
-            );
-            return { ...result, spawnedAtMs, elapsedMs: Math.round(performance.now() - started) };
-        },
-        /** Translate only a synchronous spawn invocation failure, never its raw error or arguments. */
-        catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
-    });
-
-/** Count timestamp-prefixed console records independently of non-record output. */
+/**
+ * Count timestamp-prefixed console records independently of non-record output.
+ *
+ * @param output - Captured stdout from one child run.
+ * @returns Only the lines that start with an ISO timestamp.
+ */
 const headers = (output: string): ReadonlyArray<string> =>
-    output
-        .split('\n')
-        .filter(
-            /** Recognize the ISO-date prefix emitted by the console formatter. */ (line) =>
-                /^\d{4}-\d\d-\d\dT/.test(line)
-        );
+    output.split('\n').filter(
+        /**
+         * Recognize the ISO-date prefix emitted by the console formatter.
+         *
+         * @param line - One line of captured stdout.
+         * @returns Whether the line starts with an ISO date.
+         */
+        (line) => /^\d{4}-\d\d-\d\dT/.test(line)
+    );
 
 const Journal = Schema.parseJson(
     Schema.Array(
@@ -88,7 +69,12 @@ const Journal = Schema.parseJson(
     ).pipe(Schema.maxItems(32))
 );
 
-/** Reject the entire untrusted journal before it can contribute text to assertion messages. */
+/**
+ * Reject the entire untrusted journal before it can contribute text to assertion messages.
+ *
+ * @param input - Raw journal text read from the child descriptor, or nothing when it was not captured.
+ * @returns A closed state, with the decoded phases only when the whole journal is valid.
+ */
 const journalSummary = (input: string | null | undefined) => {
     if (typeof input !== 'string' || input.length === 0) return { state: 'absent' };
     // Validate size before parsing: neither malformed text nor a forged phase can become CI output.
@@ -97,10 +83,20 @@ const journalSummary = (input: string | null | undefined) => {
     return Option.isSome(decoded) ? { state: 'captured', phases: decoded.value } : { state: 'invalid' };
 };
 
-/** Describe child termination without retaining configuration values, raw errors or arbitrary process output. */
+/**
+ * Describe child termination without retaining configuration values, raw errors or arbitrary process output.
+ *
+ * @param result - Finished child process result.
+ * @returns A JSON summary of timing, exit status, a recognized error code, bounded output summaries and the journal state.
+ */
 const launchFailureContext = (result: LaunchResult): string => {
     // Keep only closed diagnostic event names: even an unexpected secret format must never reach CI logs.
-    /** Bound each output summary to its length and eight recognized diagnostic events, excluding all other text. */
+    /**
+     * Bound each output summary to its length and eight recognized diagnostic events, excluding all other text.
+     *
+     * @param output - Captured stdout or stderr, or null when it was not captured.
+     * @returns The character count and at most eight recognized diagnostic event names.
+     */
     const summarize = (output: string | null) => ({
         characters: output?.length ?? 0,
         events: (
@@ -176,11 +172,16 @@ describe('bounded bootstrap journal validation', /** Reject diagnostic data inde
     });
 });
 
-describe('real diagnostic server telemetry composition', /** Cover real process exit and scoped sinks independently of in-process service checks. */ () => {
+describe('real diagnostic server telemetry composition', /** Cover real process exit and scoped sinks independently of in-process service checks. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
     // Child launches use isolated configuration so these checks exercise bootstrap and finalization, not host credentials.
     it.effect(
         'preserves the production fail-closed audit service with telemetry enabled or opted out',
-        /** Verify optional telemetry never replaces the production audit denial service. */ () =>
+        /**
+         * Verify optional telemetry never replaces the production audit denial service.
+         *
+         * @returns The scenario that builds the server with telemetry on and off and expects audit denial.
+         */
+        () =>
             Effect.gen(
                 /** Require AuditUnavailable under both telemetry settings without installing a permissive audit stub. */ function* () {
                     // Telemetry is optional; mandatory audit denial must survive either configuration.
@@ -201,8 +202,12 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                                     ).pipe(
                                         Layer.provide(
                                             consoleLoggerLayer(
-                                                /** Discard console writes; this case tests audit semantics, not output formatting. */ () =>
-                                                    Effect.void
+                                                /**
+                                                 * Discard console writes; this case tests audit semantics, not output formatting.
+                                                 *
+                                                 * @returns An effect that writes nothing.
+                                                 */
+                                                () => Effect.void
                                             )
                                         )
                                     )
@@ -220,9 +225,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'runs the real main and drains one correlated console diagnostic, never ready or banner',
-        /** Run the executable without optional configuration to verify its diagnostic-only contract. */ () =>
+        [2300],
+        /**
+         * Run the executable without optional configuration to verify its diagnostic-only contract.
+         *
+         * @returns The scenario that runs the server once and checks its console diagnostics.
+         */
+        () =>
             Effect.gen(
                 /** Require one correlated startup trace and registration diagnostics, never a readiness claim. */ function* () {
                     // Observe the real child to distinguish diagnostic registration from a claim that the platform is ready.
@@ -239,9 +250,13 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     expect(
                         new Set(
                             [...result.stdout.matchAll(/trace=([a-f0-9]{32})/g)].map(
-                                /** Compare trace identities across records without depending on the randomly generated value. */ (
-                                    match
-                                ) => match[1]
+                                /**
+                                 * Compare trace identities across records without depending on the randomly generated value.
+                                 *
+                                 * @param match - One trace pattern match from stdout.
+                                 * @returns The captured trace identifier.
+                                 */
+                                (match) => match[1]
                             )
                         ).size
                     ).toBe(1);
@@ -249,9 +264,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'flushes the real file layer before process exit and releases its scoped lock',
-        /** Exercise the configured file sink through the executable with a scoped disposable directory. */ () =>
+        [2300],
+        /**
+         * Exercise the configured file sink through the executable with a scoped disposable directory.
+         *
+         * @returns The scenario that runs the server with a file sink and reads the persisted records.
+         */
+        () =>
             Effect.gen(
                 /** Read persisted diagnostics after process exit to verify draining and lock-file cleanup. */ function* () {
                     const fs = yield* FileSystem.FileSystem;
@@ -267,32 +288,61 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     // Validate persisted records independently of the console projection before comparing their rendered forms.
                     const records = yield* Effect.forEach(
                         text.trimEnd().split('\n'),
-                        /** Decode each persisted JSON line through the public telemetry schema. */ (line) =>
-                            Schema.decode(Schema.parseJson(TelemetryRecord))(line)
+                        /**
+                         * Decode each persisted JSON line through the public telemetry schema.
+                         *
+                         * @param line - One persisted JSON line.
+                         * @returns An effect yielding the decoded record, or failing when the line does not match the schema.
+                         */
+                        (line) => Schema.decode(Schema.parseJson(TelemetryRecord))(line)
                     );
                     expect(
                         records.map(
-                            /** Preserve emission order when checking which diagnostics reached disk. */ ({ code }) =>
-                                code
+                            /**
+                             * Preserve emission order when checking which diagnostics reached disk.
+                             *
+                             * @param root0 - One decoded telemetry record.
+                             * @param root0.code - Diagnostic code of the record.
+                             * @returns The diagnostic code.
+                             */
+                            ({ code }) => code
                         )
                     ).toEqual(['diagnostic.unavailable', 'diagnostic.registered', 'diagnostic.startup']);
                     expect(
                         records.map(
-                            /** Distinguish log diagnostics from the completed startup span. */ ({ signal }) => signal
+                            /**
+                             * Distinguish log diagnostics from the completed startup span.
+                             *
+                             * @param root0 - One decoded telemetry record.
+                             * @param root0.signal - Whether the record is a log or a span.
+                             * @returns The record kind.
+                             */
+                            ({ signal }) => signal
                         )
                     ).toEqual(['log', 'log', 'span']);
                     expect(
                         records.map(
-                            /** Compare completion states independently from record codes and signal kinds. */ ({
-                                outcome,
-                            }) => outcome
+                            /**
+                             * Compare completion states independently from record codes and signal kinds.
+                             *
+                             * @param root0 - One decoded telemetry record.
+                             * @param root0.outcome - Completion state of the record.
+                             * @returns The completion state.
+                             */
+                            ({ outcome }) => outcome
                         )
                     ).toEqual(['none', 'none', 'succeeded']);
                     expect(
                         new Set(
                             records.map(
-                                /** Require all persisted records to share one startup trace. */ ({ traceId }) =>
-                                    traceId
+                                /**
+                                 * Require all persisted records to share one startup trace.
+                                 *
+                                 * @param root0 - One decoded telemetry record.
+                                 * @param root0.traceId - Trace the record belongs to.
+                                 * @returns The trace identifier.
+                                 */
+                                ({ traceId }) => traceId
                             )
                         ).size
                     ).toBe(1);
@@ -300,9 +350,14 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
                     expect(records[0]?.spanId).toBe(records[2]?.spanId);
                     expect(
                         records.every(
-                            /** Reject unexpected diagnostic attributes rather than snapshotting arbitrary payloads. */ ({
-                                attributes,
-                            }) => Object.keys(attributes).length === 0
+                            /**
+                             * Reject unexpected diagnostic attributes rather than snapshotting arbitrary payloads.
+                             *
+                             * @param root0 - One decoded telemetry record.
+                             * @param root0.attributes - Attributes carried by the record.
+                             * @returns Whether the record carries no attributes.
+                             */
+                            ({ attributes }) => Object.keys(attributes).length === 0
                         )
                     ).toBe(true);
                     expect(result.stdout).toBe(`${records.map(formatConsoleRecord).join('\n')}\n`);
@@ -310,9 +365,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             ).pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer))
     );
 
-    it.effect(
+    childTest(
         'redacts invalid application configuration through the outer bootstrap, including failed span',
-        /** Exercise an invalid profile whose contents must never appear in bootstrap diagnostics. */ () =>
+        [2300],
+        /**
+         * Exercise an invalid profile whose contents must never appear in bootstrap diagnostics.
+         *
+         * @returns The scenario that starts the server with an invalid profile and checks the sanitized failure.
+         */
+        () =>
             Effect.gen(
                 /** Require sanitized failure and startup-span output without configuration or raw Effect errors. */ function* () {
                     // The escaped newline probes private-data leakage and line injection through decoded diagnostics.
@@ -332,9 +393,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'keeps Config-free diagnostics when the main telemetry layer cannot acquire',
-        /** Fail main telemetry configuration to verify the independent bootstrap sink remains usable. */ () =>
+        [2300],
+        /**
+         * Fail main telemetry configuration to verify the independent bootstrap sink remains usable.
+         *
+         * @returns The scenario that breaks main telemetry configuration and checks the bootstrap failure record.
+         */
+        () =>
             Effect.gen(
                 /** Require a bootstrap failure record rather than leaking the invalid capacity or parsing failure. */ function* () {
                     // Fail the main telemetry layer itself; fallback diagnostics cannot depend on its Config acquisition.
@@ -349,9 +416,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'keeps bootstrap diagnostics when the configured server sink fails acquisition',
-        /** Reject a relative file-sink directory before use without losing bootstrap reporting. */ () =>
+        [2300],
+        /**
+         * Reject a relative file-sink directory before use without losing bootstrap reporting.
+         *
+         * @returns The scenario that sets a relative sink directory and checks the fallback output.
+         */
+        () =>
             Effect.gen(
                 /** Require sanitized fallback output when the configured main sink cannot acquire. */ function* () {
                     // A relative path fails sink acquisition, exercising a different fallback boundary from invalid Config.
@@ -366,9 +439,15 @@ describe('real diagnostic server telemetry composition', /** Cover real process 
             )
     );
 
-    it.effect(
+    childTest(
         'optional telemetry opt-out cannot turn off bootstrap failure diagnostics',
-        /** Compare opted-out normal startup with invalid-profile failure under the same telemetry setting. */ () =>
+        [2300, 2300],
+        /**
+         * Compare opted-out normal startup with invalid-profile failure under the same telemetry setting.
+         *
+         * @returns The scenario that runs an opted-out normal start and an opted-out failing start.
+         */
+        () =>
             Effect.gen(
                 /** Require silence for successful opt-out but one sanitized bootstrap record when startup fails. */ function* () {
                     // The successful control proves opt-out is applied; only mandatory failure reporting must survive it.

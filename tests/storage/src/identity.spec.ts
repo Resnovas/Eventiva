@@ -208,6 +208,17 @@ const fixture = (dialect: Dialect) =>
                                 }
                             )
                         ),
+                    /** Recheck this explicit fixture map at use without claiming a durable decision provider. */
+                    use: (key) => Ref.get(approvals).pipe(
+                        Effect.flatMap(
+                            /** Missing evidence remains denial at the accepting boundary too. */
+                            (entries) => entries.has(key)
+                                ? Effect.void
+                                : Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'missing' }))
+                        )
+                    ),
+                    /** Approved-read transactions are outside this identity-mutation fixture's capabilities. */
+                    transaction: () => Effect.fail(new InvocationDenied({ action: '<approval>', reason: 'read-approval-unavailable' })),
                 }),
                 Layer.succeed(Flags, {
                     /** Enable identity behavior deterministically without using an external flag service. */

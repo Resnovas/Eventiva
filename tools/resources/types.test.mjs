@@ -63,21 +63,43 @@ const cases = [
     ],
 ];
 for (const [name, body, code] of cases)
-    test(`resource compiler contract: ${name}`, () => {
+    test(`resource compiler contract: ${name}`, /** Compile the case against the real contracts and expect its exact diagnostic, or none. */ () => {
         mkdirSync(join(root, '.amp/in'), { recursive: true });
         const directory = mkdtempSync(join(root, '.amp/in/resource-types-'));
         try {
             const path = join(directory, 'case.mts');
             writeFileSync(path, prefix + 'export const result = ' + body);
-            const diagnostics = ts
-                .getPreEmitDiagnostics(ts.createProgram([path], options))
-                .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
+            const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([path], options)).filter(
+                /**
+                 * Keep only errors, ignoring suggestions and messages.
+                 *
+                 * @param {ts.Diagnostic} diagnostic - One pre-emit diagnostic.
+                 * @returns {boolean} Whether it is an error.
+                 */
+                (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error
+            );
             assert.equal(
                 diagnostics.length,
                 code === undefined ? 0 : 1,
                 ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                    /**
+                     * Report the repository root as the working directory, so paths print relative to it.
+                     *
+                     * @returns {string} The repository root.
+                     */
                     getCurrentDirectory: () => root,
+                    /**
+                     * Keep file names as given, since the test paths are already canonical.
+                     *
+                     * @param {string} file - A diagnostic's file name.
+                     * @returns {string} The same name.
+                     */
                     getCanonicalFileName: (file) => file,
+                    /**
+                     * Separate formatted diagnostics with a line feed.
+                     *
+                     * @returns {string} A single newline character.
+                     */
                     getNewLine: () => '\n',
                 })
             );
@@ -90,9 +112,20 @@ for (const [name, body, code] of cases)
         }
     });
 
+/**
+ * Assert that TypeScript text has no erased, placeholder or asserted types and no suppression comments.
+ *
+ * @param {string} path - The file name used to parse the text and label findings.
+ * @param {string} text - The TypeScript source or declaration text to audit.
+ */
 const preciseTypes = (path, text) => {
     const ast = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
     const findings = [];
+    /**
+     * Record `any`, `unknown`, `object`, `{}`, `Object`, `Function`, casts and non-null assertions below a node.
+     *
+     * @param {ts.Node} node - The subtree to audit.
+     */
     const visit = (node) => {
         if (
             [ts.SyntaxKind.AnyKeyword, ts.SyntaxKind.UnknownKeyword, ts.SyntaxKind.ObjectKeyword].includes(node.kind) ||
@@ -112,7 +145,7 @@ const preciseTypes = (path, text) => {
     assert.deepEqual(findings, []);
 };
 
-test('owned resource TypeScript and emitted contract declarations contain no erasure or unsafe assertions', () => {
+test('owned resource TypeScript and emitted contract declarations contain no erasure or unsafe assertions', /** Audit the resource sources and the declaration the contracts module actually emits. */ () => {
     for (const path of [
         'packages/contracts/src/resource.ts',
         'packages/runtime/src/resource.ts',
@@ -130,18 +163,25 @@ test('owned resource TypeScript and emitted contract declarations contain no era
     });
     assert.equal(ts.getPreEmitDiagnostics(program).length, 0);
     let declarations = 0;
-    const result = program.emit(undefined, (name, text) => {
+    /**
+     * Audit the emitted contracts declaration in memory instead of writing it to disk.
+     *
+     * @param {string} name - The path the declaration would be written to.
+     * @param {string} text - The emitted declaration text.
+     */
+    const writeFile = (name, text) => {
         if (name.endsWith('/contracts/src/resource.d.ts')) {
             preciseTypes(name, text);
             declarations++;
         }
-    });
+    };
+    const result = program.emit(undefined, writeFile);
     assert.equal(result.emitSkipped, false);
     assert.equal(result.diagnostics.length, 0);
     assert.equal(declarations, 1);
 });
 
-test('strict type audit rejects erasure, casts, non-null, placeholders and suppressions', () => {
+test('strict type audit rejects erasure, casts, non-null, placeholders and suppressions', /** Prove the audit fails each unsafe shape and passes a precise one. */ () => {
     for (const source of [
         'type T = any',
         'type T = unknown',
@@ -153,6 +193,10 @@ test('strict type audit rejects erasure, casts, non-null, placeholders and suppr
         'const x = value!',
         '// @ts-ignore\nconst x = 1',
     ])
-        assert.throws(() => preciseTypes('negative.ts', source));
+        assert.throws(
+            /** Audit one unsafe snippet, which must fail. */ () => {
+                preciseTypes('negative.ts', source);
+            }
+        );
     preciseTypes('positive.ts', 'type T = {readonly value:string}; const x = {value:"one"} as const');
 });

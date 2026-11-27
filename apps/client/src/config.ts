@@ -22,7 +22,14 @@
 
 declare const process: { readonly env: Readonly<Record<string, string | undefined>> };
 
-/** PostHog for remote flag rollout, only when a project key was set at build time. */
+/**
+ * PostHog for remote flag rollout, only when a project key was set at build time. Reads `EXPO_PUBLIC_POSTHOG_KEY`
+ * and `EXPO_PUBLIC_POSTHOG_HOST` (default `https://eu.i.posthog.com`).
+ *
+ * @since 0.0.1
+ * @example
+ * if (postHog.apiKey !== undefined) connect(postHog.apiKey, postHog.host);
+ */
 export const postHog = {
     apiKey: process.env['EXPO_PUBLIC_POSTHOG_KEY'],
     host: process.env['EXPO_PUBLIC_POSTHOG_HOST'] ?? 'https://eu.i.posthog.com',

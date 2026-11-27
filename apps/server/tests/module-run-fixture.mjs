@@ -24,7 +24,7 @@ import { FlagsSafeDefaults } from '@eventiva/contracts/flags';
 import { CurrentRunFence, CurrentTenant, Storage } from '@eventiva/contracts/storage';
 import { agentOutputLog } from '@eventiva/integrations.sql/agent-output';
 import { client } from '@eventiva/integrations.sql/postgres';
-import { router } from '@eventiva/integrations.sql/router';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { load } from '@eventiva/integrations.sql/migrations';
 import { storage } from '@eventiva/integrations.sql/storage';
 import { implement } from '@eventiva/runtime/action';
@@ -261,10 +261,11 @@ export const makeBackend = (profile) =>
                             }
                         }).pipe(Effect.mapError(() => new AgentRunDenied({ reason: 'denied' }))),
                 }),
-                router(
+                sqlRouter(
+                    'postgres',
                     (tenant) =>
                         tenant === caller().tenant
-                            ? Effect.succeed(store)
+                            ? Effect.succeed(tenantSql)
                             : Effect.fail(new AgentRunDenied({ reason: 'denied' })),
                     () => Effect.void
                 )
@@ -273,7 +274,8 @@ export const makeBackend = (profile) =>
                 backend(
                     profile,
                     () => Effect.fail(new Error('Module runs must never initialize the default executable')),
-                    registerAgentRuns.pipe(Effect.provide(security))
+                    registerAgentRuns.pipe(Effect.provide(security)),
+                    security
                 ).pipe(Layer.provideMerge(security), Layer.provide(Layer.succeed(SqlClient.SqlClient, compute)))
             );
             return Layer.succeedContext(

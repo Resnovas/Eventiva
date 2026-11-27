@@ -15,17 +15,12 @@
  */
 
 import type { ActionSpec, Failure, Input, Output } from '@eventiva/contracts/action';
-import { Authorizer, type CallerIdentity } from '@eventiva/contracts/caller';
-import { ActionFailed, InvalidInput, type Forbidden } from '@eventiva/contracts/errors';
-import { Json, type JsonValue } from '@eventiva/contracts/storage';
+import { ActionFailed, InvalidInput } from '@eventiva/contracts/errors';
+import { Json } from '@eventiva/contracts/storage';
 import { Effect, Option, Schema } from 'effect';
-import {
-    canonicalJson,
-    type ExecutionPolicy,
-    type ExecutionRequirements,
-    type InvocationDenied,
-    type InvokeOptions,
-} from './invocation.ts';
+import { canonicalJson, type ActionBinding, type PreparedAction } from './invocation.ts';
+
+export type { ActionBinding, PreparedAction } from './invocation.ts';
 
 /**
  * Handlers for portable action specifications. A feature module's backend
@@ -39,30 +34,6 @@ export interface Implementation<S extends ActionSpec, R = never> extends ActionB
     readonly spec: S;
     /** Implement the exact decoded specification types; the host owns authorization, execution gates and wire encoding. */
     readonly handler: (input: Input<S>) => Effect.Effect<Output<S>, Failure<S>, R>;
-}
-
-/** A decoded invocation captured without erasing the handler's schema types. */
-export interface PreparedAction<R = never> {
-    readonly canonicalInput: Effect.Effect<string, InvalidInput>;
-    /** Authorize the captured decoded target using the host's freshly resolved caller and trusted authorizer. */
-    readonly authorize: (
-        authorizer: typeof Authorizer.Service,
-        caller: CallerIdentity
-    ) => Effect.Effect<void, Forbidden>;
-    /** Derive live execution requirements from the decoded target and untrusted intent, not from transport claims. */
-    readonly inspect: (
-        policy: typeof ExecutionPolicy.Service,
-        caller: CallerIdentity,
-        intent: InvokeOptions
-    ) => Effect.Effect<ExecutionRequirements, InvocationDenied>;
-    readonly run: Effect.Effect<JsonValue, ActionFailed, R>;
-}
-
-/** Heterogeneous registry capability, not an erased input/output handler. */
-export interface ActionBinding<R = never> {
-    readonly spec: ActionSpec;
-    /** Decode wire input and capture typed operations without executing the handler or granting invocation authority. */
-    readonly prepare: <Wire>(input: Wire) => Effect.Effect<PreparedAction<R>, InvalidInput>;
 }
 
 /**

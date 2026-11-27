@@ -24,8 +24,7 @@ import { SessionId, SubjectId, TenantId } from '@eventiva/contracts/ids';
 import { CurrentTenant, RoutingDenied, Storage } from '@eventiva/contracts/storage';
 import { client } from '@eventiva/integrations.sql/postgres';
 import { load, migrate } from '@eventiva/integrations.sql/migrations';
-import { router } from '@eventiva/integrations.sql/router';
-import { storage } from '@eventiva/integrations.sql/storage';
+import { sqlRouter } from '@eventiva/integrations.sql/router';
 import { implement } from '@eventiva/runtime/action';
 import { ActionHost, InvalidModule } from '@eventiva/runtime/host';
 import { makeTestOnlyHarness } from '@eventiva/runtime/testing';
@@ -79,10 +78,6 @@ describe('SQL backend composition', /** Register real PostgreSQL composition cov
                         'postgres',
                         yield* load(fileURLToPath(new URL('../../../storage/migrations/postgres', import.meta.url)))
                     ).pipe(Effect.provideService(SqlClient.SqlClient, sql));
-                    const store = Context.get(
-                        yield* Layer.build(storage('postgres').pipe(Layer.provide(Layer.succeedContext(connection)))),
-                        Storage
-                    );
                     const h = yield* makeTestOnlyHarness(caller);
                     const failInitialization = yield* Ref.make(false);
                     const profile = yield* Schema.decodeUnknown(DeploymentProfile)({
@@ -140,12 +135,13 @@ describe('SQL backend composition', /** Register real PostgreSQL composition cov
                             }
                         );
                     const context = yield* Layer.build(
-                        backend(profile, initialize).pipe(
+                        backend(profile, initialize, Effect.void, h.TestOnly).pipe(
                             Layer.provide(
-                                router(
+                                sqlRouter(
+                                    'postgres',
                                     /** Reject every tenant other than the fixture's authorized route. */ (tenant) =>
                                         tenant === caller.tenant
-                                            ? Effect.succeed(store)
+                                            ? Effect.succeed(sql)
                                             : Effect.fail(new RoutingDenied({ reason: 'unknown tenant' })),
                                     /** Allow route authorization only in this isolated composition fixture. */ () =>
                                         Effect.void
@@ -165,7 +161,7 @@ describe('SQL backend composition', /** Register real PostgreSQL composition cov
                         Effect.repeat({
                             schedule: Schedule.spaced('25 millis'),
                             /** Wait for real shard ownership before dispatching. */ until: (s) =>
-                                s.status === 'healthy'
+                                s.status === 'healthy',
                         }),
                         Effect.timeout('10 seconds')
                     );

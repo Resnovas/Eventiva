@@ -6,6 +6,22 @@ Authenticate before `TenantRouter.run`. Inject a trusted resolver and an authori
 
 Persistence seam v1 is the existing `Storage.commit` result/replay contract, operational `compareAndSet` with leases and atomic transition history, and `enqueue` outbox staging. No second workflow abstraction is needed. `client` from `@eventiva/integrations.sql/postgres` already supplies upstream `SqlClient.SqlClient` and `PgClient.PgClient`; share one layer instance with `storage('postgres')` and trusted SQL consumers only when database/role routing intentionally matches. The tenant router does not expose a raw SQL client. Within the tenant route, provide `durable` to ActionHost and retain that same Storage for handlers: commit's execute effect runs inside its captured client's transaction, including nested Storage operations. Do not capture another client, replace Storage or detach work. Transport transactions are not implicitly atomic with business actions.
 
+`compareAndSet` must decode the serialized existing row with the same JSON/record
+schemas as `get` before replacement or history insertion. Keep the existing
+expired/deadline and stale state/version guards first, including missing-row
+conflicts; do not introduce an existence oracle through decoding. Malformed retained
+lease/payload denial is sanitized `StorageFailure` / `invalid-data`, preserving
+the original row/payload bytes/version/lease and appending no history. Null/future
+leases remain valid, exact expiry/deadline equality remains expired, and omission
+of the next lease still clears a valid lease on success. Recovery of corrupt data
+needs separate authorization, not a transition retry. The actual-driver public
+regression is `tests/storage/src/retained-record-validation.spec.ts`: SQLite permits
+fixture-only text in its integer lease column; PostgreSQL rejects malformed
+timestamp text (22007) and unsafe versions (23514) without disabling constraints,
+while valid Date/bigint-string representations pass. Invalid retained JSON is
+denied on both. This is persisted-data fail-closed correctness, not a demonstrated
+hostile-ingress exploit or a schema/migration change.
+
 Migration locks are transaction-scoped `pg_advisory_xact_lock`; runtime locking is row/transaction based, with no session advisory locks or `LISTEN`. Transaction pooling does not preserve backend session identity between transactions. Upstream runner lease-row ownership, polling and message storage require their own compatibility verification; installed cluster packages alone do not prove sharding/recovery. Keep migration/direct and runtime/pooled privileges separate. See `docs/storage.md` for exact v1 composition and boundaries.
 
 Integrity serializes scoped keys and atomically stores domain/history/outbox/dedup/success receipt. Audit persists or fails closed; no spool is implemented. External actions enqueue commands, never call providers inside a SQL transaction. Runtime revalidates live gates after waiting and before replay. Conflicts are visible typed failures, not authorization for force writes. Exact money/decimal values are strings, quantities/versions safe integers, times epoch milliseconds, UUIDs application-generated v7. Typed raw canonical/device records remain distinct from JSON projections; device migrations and PowerSync are deferred.

@@ -7,6 +7,16 @@
     "type": "module",
     "sideEffects": false,
     "exports": {
+        "./approval-retention": {
+            "@eventiva/source": "./src/approval-retention.ts",
+            "types": "./dist/approval-retention.d.ts",
+            "default": "./dist/approval-retention.js"
+        },
+        "./approval": {
+            "@eventiva/source": "./src/approval.ts",
+            "types": "./dist/approval.d.ts",
+            "default": "./dist/approval.js"
+        },
         "./inventory-location": {
             "@eventiva/source": "./src/inventory-location.ts",
             "types": "./dist/inventory-location.d.ts",

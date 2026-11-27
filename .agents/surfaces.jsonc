@@ -10,7 +10,7 @@
   "agents": ["claude", "codex"],
   "house": [
     { "id": "setup", "label": "Setup", "script": "setup" },
-    { "id": "check", "label": "Check: everything CI runs", "script": "check" },
+    { "id": "check", "label": "Check: repository consistency", "script": "check" },
     { "id": "test", "label": "Test", "script": "test" },
     { "id": "graph", "label": "Graph: open viewer", "command": "node tools/dev/open.mjs graphify-out/graph.html" },
     { "id": "graph-update", "label": "Graph: update", "command": "sh tools/graphify/graphify update" },
@@ -18,6 +18,7 @@
   // house:managed:end
   // house:local - add this repository's own actions to the list below.
   "actions": [
+    { "id": "static-first", "label": "Static checks before documentation", "script": "verify:static" },
     { "id": "action-parity", "label": "Check action inventory parity", "script": "parity" },
     { "id": "documentation", "label": "Check planning and documentation", "script": "documentation" },
     { "id": "telemetry-local", "label": "Run authenticated local telemetry command", "command": "pnpm nx run @eventiva/server:telemetry" },

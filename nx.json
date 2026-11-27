@@ -1,6 +1,7 @@
 {
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "neverConnectToCloud": true,
+    "parallel": 2,
     "namedInputs": {
         "default": ["{projectRoot}/**/*", "sharedGlobals"],
         "production": ["default", "!{projectRoot}/eslint.config.mjs", "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)"],
@@ -35,6 +36,7 @@
         }
     ],
     "targetDefaults": {
-        "smoke": { "cache": false }
+        "smoke": { "cache": false },
+        "export-android": { "dependsOn": ["export-web"] }
     }
 }

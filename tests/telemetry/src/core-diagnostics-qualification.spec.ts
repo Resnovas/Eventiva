@@ -14,37 +14,40 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import * as FileSystem from '@effect/platform/FileSystem';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import { describe, expect, it } from '@effect/vitest';
-import { TelemetryRecord, TelemetrySink, TelemetrySinkFailure } from '@eventiva/contracts/observability';
+import { TelemetryRecord, TelemetrySink } from '@eventiva/contracts/observability';
 import { telemetryLayer } from '@eventiva/runtime/telemetry';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Schema } from 'effect';
+import { childTests, runChild } from './child-process.ts';
 
-const workspace = fileURLToPath(new URL('../../../', import.meta.url));
+const childTest = childTests();
 
-/** Launch the unchanged public diagnostic entry with only synthetic local configuration. */
+/**
+ * Observe bootstrap acquisition and release without changing the public entry or synthetic configuration.
+ *
+ * @param environment - Extra environment variables for the server child.
+ * @returns The child's captured result, including the diagnostic journal on descriptor 3.
+ * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#mandatory-phase-evidence
+ */
 const launch = (environment: Readonly<Record<string, string>>) =>
-    Effect.try({
-        /** Bound child lifetime and keep ambient credentials and external endpoints out of the child. */
-        try: () =>
-            spawnSync(process.execPath, ['--conditions=@eventiva/source', 'apps/server/src/main.ts'], {
-                cwd: workspace,
-                encoding: 'utf8',
-                timeout: 10000,
-                maxBuffer: 65536,
-                env: { NODE_NO_WARNINGS: '1', ...environment },
-            }),
-        /** Retain no raw child invocation failure in the qualification error channel. */
-        catch: () => new TelemetrySinkFailure({ reason: 'unavailable' }),
-    });
+    runChild(
+        ['--import', './tests/telemetry/fixtures/bootstrap-diagnostics.mjs', 'apps/server/src/main.ts'],
+        environment
+    );
 
-describe('Core failed bootstrap qualification', /** Fill the partial-acquisition and rendered-Cause gaps left by existing bootstrap tests. */ () => {
-    it.effect(
+describe('Core failed bootstrap qualification', /** Fill the partial-acquisition and rendered-Cause gaps left by existing bootstrap tests. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
+    // One declared slot per real process preserves every failure/reacquisition pair under the original aggregate limit.
+    childTest(
         'releases an acquired local sink after invalid Config or Schema and registers only on a later valid launch',
-        /** Observe lock removal, persisted diagnostics and successful reuse after each distinct rejection boundary. */ () =>
+        [2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300],
+        /**
+         * Observe lock removal, persisted diagnostics and successful reuse after each distinct rejection boundary.
+         *
+         * @returns The scoped scenario that pairs each rejected launch with a later valid launch.
+         */
+        () =>
             Effect.gen(
                 /** Exercise the actual main composition rather than a test-only imitation of bootstrap ordering. */ function* () {
                     const fs = yield* FileSystem.FileSystem;
@@ -67,6 +70,8 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
                         expect(failed.status).toBe(1);
                         expect(failed.signal).toBeNull();
                         expect(failed.stderr).toBe('');
+                        expect(failed.output[3]).toContain('root-start');
+                        expect(failed.output[3]).toContain('main-telemetry-released:failure');
                         expect(failed.stdout).toContain('bootstrap.failure');
                         expect(failed.stdout).not.toMatch(
                             /diagnostic.registered|modules registered|CORE_SECRET|ParseError|InvalidData/
@@ -75,20 +80,34 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
                         const before = yield* fs.readDirectory(directory);
                         const failedRecords = yield* Effect.forEach(
                             before,
-                            /** Decode persisted records independently of their console projection. */ (file) =>
-                                fs
-                                    .readFileString(`${directory}/${file}`)
-                                    .pipe(
-                                        Effect.flatMap(
-                                            /** Require schema-valid local JSONL even on failed bootstrap. */ (text) =>
-                                                Effect.forEach(
-                                                    text.trimEnd().split('\n'),
-                                                    /** Reject malformed diagnostic serialization rather than accepting matching text. */ (
-                                                        line
-                                                    ) => Schema.decode(Schema.parseJson(TelemetryRecord))(line)
-                                                )
-                                        )
+                            /**
+                             * Decode persisted records independently of their console projection.
+                             *
+                             * @param file - The name of one file in the telemetry directory.
+                             * @returns The decoded records from that file.
+                             */
+                            (file) =>
+                                fs.readFileString(`${directory}/${file}`).pipe(
+                                    Effect.flatMap(
+                                        /**
+                                         * Require schema-valid local JSONL even on failed bootstrap.
+                                         *
+                                         * @param text - The full contents of one telemetry file.
+                                         * @returns The decoded record for each line.
+                                         */
+                                        (text) =>
+                                            Effect.forEach(
+                                                text.trimEnd().split('\n'),
+                                                /**
+                                                 * Reject malformed diagnostic serialization rather than accepting matching text.
+                                                 *
+                                                 * @param line - One JSON line from a telemetry file.
+                                                 * @returns The record decoded from that line.
+                                                 */
+                                                (line) => Schema.decode(Schema.parseJson(TelemetryRecord))(line)
+                                            )
                                     )
+                                )
                         );
                         expect(JSON.stringify(failedRecords)).not.toMatch(/CORE_SECRET|diagnostic.registered/);
                         expect(failedRecords.flat()).toHaveLength('telemetry_capacity' in invalid ? 0 : 1);
@@ -102,6 +121,8 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
                         expect(valid.error).toBeUndefined();
                         expect(valid.status).toBe(0);
                         expect(valid.stderr).toBe('');
+                        expect(valid.output[3]).toContain('root-start');
+                        expect(valid.output[3]).toContain('root-exit:success');
                         expect(valid.stdout).toContain('diagnostic.registered');
                         expect(valid.stdout).not.toContain('bootstrap.failure');
                         expect(yield* fs.exists(`${directory}/.eventiva-telemetry.lock`)).toBe(false);
@@ -113,11 +134,20 @@ describe('Core failed bootstrap qualification', /** Fill the partial-acquisition
 
     it.effect(
         'replaces malformed telemetry configuration with a secret-free typed Cause before publishing control',
-        /** Check JSON and human Cause rendering as well as the failure tag, with a valid acquisition control. */ () =>
+        /**
+         * Check JSON and human Cause rendering as well as the failure tag, with a valid acquisition control.
+         *
+         * @returns The scenario that compares a valid acquisition with a rejected configuration.
+         */
+        () =>
             Effect.gen(
                 /** Use a local sink so Config rejection cannot be confused with exporter failure. */ function* () {
                     const sink = Layer.succeed(TelemetrySink, {
-                        /** Accept schema-projected records without IO or external ingestion. */
+                        /**
+                         * Accept schema-projected records without IO or external ingestion.
+                         *
+                         * @returns An effect that completes without doing anything.
+                         */
                         write: () => Effect.void,
                         flush: Effect.void,
                     });

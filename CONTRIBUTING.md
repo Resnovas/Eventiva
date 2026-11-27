@@ -34,7 +34,7 @@ Follow [the Security Policy](SECURITY.md) instead.
 This project does **not** use a Contributor Licence Agreement.
 Every contribution is made under the [Developer Certificate of Origin 1.1](DCO.md) (DCO), and there is nothing to sign in advance.
 
-You certify the DCO by adding a `Signed-off-by` trailer, with your real name and the email address of the commit author, to **every** commit:
+For human-authored commits, certify the DCO with a `Signed-off-by` trailer containing your real name and the commit author's email:
 
 ```shell
 git commit -s
@@ -46,11 +46,10 @@ feat(billing): add proration preview
 Signed-off-by: Jane Doe <jane@example.com>
 ```
 
-- The sign-off applies to every contribution, however small.
-There is no size below which it is not needed.
+- Every ordinary commit needs an author-matched sign-off, however small. An agent identity's trailer is provenance, not certification. The human certifies agent-authored contributions through the exact-head approved-review path in [AI-03](AI_POLICY.md#ai-03) and reviews/merges the PR. A later push needs a fresh certification. Human-authored PRs retain ordinary sign-off and AI-21 fields without self-approval.
 - The address in the sign-off **must** match the commit author's address, or the check fails.
-- By signing off you also certify any part of the commit an AI tool produced.
-An AI tool **never** signs off; see [AI-03](AI_POLICY.md#ai-03).
+- A human certification covers the AI-produced parts as well as the human's own.
+An agent's own sign-off never supplies that human certification.
 - If you forgot, add it to existing commits with `git rebase --signoff main` and force-push your branch.
 - Commits made in the GitHub web interface are signed off automatically; the repository requires it.
 
@@ -60,12 +59,7 @@ Licence breaches, including those that come from AI-produced material, are cured
 ## <a id="AiAssisted"></a>AI-assisted contributions
 
 AI tools are allowed, and a human is always accountable for what they produce.
-The full rules are in the [AI Contribution Policy](AI_POLICY.md); these are the parts you will meet first:
-
-- Declare the autonomy level (`unassisted`, `autocomplete`, `chat`, `agent` or `autonomous`) and the tools on every issue and pull request.
-- Credit each AI tool that materially changed a commit with a `Co-authored-by` trailer, and sign off yourself.
-- Open AI-assisted pull requests as drafts, and mark them ready only once you have reviewed and run every change yourself.
-- Reply to reviewers in your own words.
+Follow the [AI Contribution Policy](AI_POLICY.md#everyone) for disclosure and attribution, [draft review requirements](AI_POLICY.md#ai-21) before marking ready, and [own-voice review rules](AI_POLICY.md#ai-05). Those are the canonical rules, not a separate checklist here.
 
 ## <a id="Responsibilities"></a>Responsibilities
 
@@ -199,6 +193,8 @@ Do not repeat what the code already says.
 
 Code quality is never traded for speed.
 Linting, type checking and tests must pass locally before you ask for review.
+
+The [funnel adoption guide](docs/house-funnel.md) owns static-first commands, staged-safe pre-commit installation, Markdown feature registries and synthetic evidence handling. Preserve repository-specific gates; `check` alone need not run product verification. Promote recurring corrections into behavioral tests or corrective lints before adding more agent guidance.
 
 ### <a id="CodeGraph"></a>Code graph
 

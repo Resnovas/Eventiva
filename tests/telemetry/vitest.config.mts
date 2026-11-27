@@ -16,6 +16,12 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
+/**
+ * Vitest project for the telemetry suites, measuring coverage over the observability contracts, runtime telemetry and server telemetry integration sources.
+ *
+ * @since 0.0.1
+ * @example pnpm nx run @eventiva/telemetry-tests:test
+ */
 export default testProject(
     'telemetry-tests',
     [
