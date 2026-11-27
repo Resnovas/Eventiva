@@ -20,9 +20,25 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeF
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { verificationStages } from './pipeline.mjs';
+import { qualify } from '../../tests/telemetry/benchmark/check.mjs';
 
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 const nx = JSON.parse(readFileSync(new URL('../../nx.json', import.meta.url), 'utf8'));
+
+test('rejects a median of exactly three in either composition without rounding or discarding a mode', async () => {
+    for (const failingMode of [false, true, null]) {
+        const counts = [0, 0];
+        const result = qualify((testTimer) => {
+            const index = counts[Number(testTimer)]++;
+            const multiple = index === 0 ? 1 : index === 1 ? 7 : testTimer === failingMode ? 3 : 2.99999;
+            const native = { n: 7200, p50us: 10, p95us: 12, meanUs: 11 };
+            return { testTimer, total: 688800, result: { native, observed: { ...native, p50us: 10 * multiple, p95us: 12 * multiple, meanUs: 11 * multiple } } };
+        });
+        if (failingMode === null) await result;
+        else await assert.rejects(result, /strictly below 3x/);
+        assert.deepEqual(counts, [5, 5]);
+    }
+});
 
 /**
  * Preserve the static-first funnel while allowing measured independent Nx work.
@@ -43,6 +59,7 @@ test('verification preserves every gate and dependency barrier without serializi
         [
             ['--run', 'verify:static'],
             ['--run', 'check'],
+            ['tests/telemetry/benchmark/check.mjs'],
             [
                 '--test',
                 'tools/resources/boundaries.test.mjs',
@@ -77,18 +94,44 @@ test('verification preserves every gate and dependency barrier without serializi
     const commands = [
         'run: node --run verify:static',
         'run: node --run check',
+        'run: node tests/telemetry/benchmark/check.mjs',
         'run: pnpm nx run-many -t lint typecheck test build parity',
         'node tools/resources/boundaries.mjs --declarations',
         'node tools/verification/run.mjs --base "$VERIFICATION_BASE"',
     ];
-    const offsets = commands.map((command) => ci.indexOf(command));
+    const offsets = commands.map(
+        /**
+         * Locate a CI stage in the workflow text.
+         *
+         * @param {string} command - One required CI command.
+         * @returns {number} Its offset, or -1 when missing.
+         */
+        (command) => ci.indexOf(command)
+    );
     assert.ok(
-        offsets.every((offset) => offset >= 0),
+        offsets.every(
+            /**
+             * Require the stage to be present.
+             *
+             * @param {number} offset - One stage's offset.
+             * @returns {boolean} Whether it was found.
+             */
+            (offset) => offset >= 0
+        ),
         'Retain every full CI verification stage.'
     );
     assert.deepEqual(
         offsets,
-        [...offsets].sort((a, b) => a - b),
+        [...offsets].sort(
+            /**
+             * Sort offsets ascending.
+             *
+             * @param {number} a - One offset.
+             * @param {number} b - Another offset.
+             * @returns {number} Their difference.
+             */
+            (a, b) => a - b
+        ),
         'CI must remain static-first.'
     );
     assert.match(ci, /smoke:\s+name: smoke\s+#[^\n]*\n\s+needs: \[verify\]/);
@@ -98,8 +141,7 @@ test('verification preserves every gate and dependency barrier without serializi
     assert.match(ci, /needs: \[verify, smoke\]/);
 });
 
-/** Exercise installed Nx against real configs and source bytes, never a hand-written hash approximation. */
-test('Nx test hashes include every reused spec family and restore exactly without hashing unrelated docs', () => {
+test('Nx test hashes include every reused spec family and restore exactly without hashing unrelated docs', /** Exercise installed Nx against real configs and source bytes, never a hand-written hash approximation. */ () => {
     const root = resolve(import.meta.dirname, '../..');
     const parent = join(root, '.amp/in/orb-backup/test-output/cache-input-regression');
     mkdirSync(parent, { recursive: true });
@@ -128,7 +170,6 @@ test('Nx test hashes include every reused spec family and restore exactly withou
         { cwd: root, maxBuffer: 128 * 1024 * 1024 }
     );
     execFileSync('tar', ['-xf', '-'], { cwd, input: archive });
-    // Check the candidate configs, not only their last committed versions.
     for (const path of ['tests/contracts/project.json', 'tests/runtime/project.json'])
         copyFileSync(join(root, path), join(cwd, path));
     symlinkSync(join(root, 'node_modules'), join(cwd, 'node_modules'), 'dir');
@@ -149,6 +190,11 @@ const { createTaskGraph } = req('./node_modules/nx/dist/src/tasks-runner/create-
     process.stdout.write(JSON.stringify(hashes.map(hash => hash.value)));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 `;
+    /**
+     * Compute Nx's test-target hashes for the fixture workspace in a child process.
+     *
+     * @returns {Array<string>} The hash of each test target.
+     */
     const hashes = () =>
         JSON.parse(
             execFileSync(process.execPath, ['-e', probe], {

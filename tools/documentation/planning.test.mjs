@@ -29,6 +29,15 @@ import {
     validatePlanning,
 } from './planning.mjs';
 
+/**
+ * Build a minimal mirrored issue fixture with a private description that must never reach generated output.
+ *
+ * @param {string} id - The EVE identifier.
+ * @param {string} type - The Linear status type, such as `started` or `completed`.
+ * @param {string[]} [blockedBy] - Identifiers recorded as blocking this issue; defaults to none.
+ * @param {string[]} [blocks] - Identifiers this issue is recorded as blocking; defaults to none.
+ * @returns {object} The issue in snapshot shape.
+ */
 const issue = (id, type, blockedBy = [], blocks = []) => ({
     id,
     title: `${id} <safe & useful>`,
@@ -45,6 +54,11 @@ const issue = (id, type, blockedBy = [], blocks = []) => ({
     description: 'Private specification, never copy into roadmap output.',
     comments: [],
 });
+/**
+ * Build a three-issue chain snapshot, one governed artifact and planning data with every source pending review.
+ *
+ * @returns {{ snapshot: object, artifacts: Record<string, string>, data: object }} Fresh, independently mutable fixtures.
+ */
 const fixture = () => {
     const snapshot = {
         version: 2,
@@ -71,15 +85,28 @@ const fixture = () => {
         artifacts: Object.keys(artifacts),
         snapshotHash: fingerprint(JSON.stringify(snapshot)),
         decisions: [],
-        sources: decisionSources(snapshot, artifacts).map(({ id, hash }) => ({
-            id,
-            hash,
-            disposition: 'pending-review',
-            reason: 'Not yet semantically reviewed; no authority inferred.',
-        })),
+        sources: decisionSources(snapshot, artifacts).map(
+            /**
+             * Record one source as pending review.
+             *
+             * @param {{ id: string, hash: string }} source - One inventoried source record.
+             * @returns {object} A pending review record for the source.
+             */
+            (source) => ({
+                id: source.id,
+                hash: source.hash,
+                disposition: 'pending-review',
+                reason: 'Not yet semantically reviewed; no authority inferred.',
+            })
+        ),
     };
     return { snapshot, artifacts, data };
 };
+/**
+ * Build a valid curated decision record citing the first issue's description.
+ *
+ * @returns {object} A fresh decision record with unknown authority and no timestamp.
+ */
 const decision = () => ({
     id: 'example-direction',
     authority: 'unknown',
@@ -93,11 +120,19 @@ const decision = () => ({
     supersessionNote: 'No supersession established.',
 });
 
-test('asymmetric prerequisite graph derives true layers, blockers and unlocks without confusing completion with dependencies', () => {
+test('asymmetric prerequisite graph derives true layers, blockers and unlocks without confusing completion with dependencies', /** Layers, blockers and unlocks follow prerequisites, and a one-sided relation warns. */ () => {
     const { snapshot } = fixture();
     const graph = buildGraph(snapshot);
     assert.deepEqual(
-        graph.nodes.map((node) => [node.id, node.layer, node.state, node.blocked]),
+        graph.nodes.map(
+            /**
+             * Summarize a node's position and planning state.
+             *
+             * @param {object} node - One graph node.
+             * @returns {[string, number, string, boolean]} Its identifier, layer, state and blocked flag.
+             */
+            (node) => [node.id, node.layer, node.state, node.blocked]
+        ),
         [
             ['EVE-1', 0, 'COMPLETED', false],
             ['EVE-2', 1, 'CURRENT', false],
@@ -111,16 +146,26 @@ test('asymmetric prerequisite graph derives true layers, blockers and unlocks wi
     assert.deepEqual(buildGraph(snapshot).warnings, ['Asymmetric recorded relation: EVE-1 -> EVE-2']);
 });
 
-test('rejects dangling and cyclic prerequisites rather than fabricating order', () => {
+test('rejects dangling and cyclic prerequisites rather than fabricating order', /** Dangling and cyclic prerequisites raise errors. */ () => {
     const { snapshot } = fixture();
     snapshot.issues[0].relations.blocks.push('EVE-99');
-    assert.throws(() => buildGraph(snapshot), /Dangling blocks/);
+    assert.throws(
+        /** Build the graph from the altered snapshot. */ () => {
+            buildGraph(snapshot);
+        },
+        /Dangling blocks/
+    );
     snapshot.issues[0].relations.blocks.pop();
     snapshot.issues[2].relations.blocks.push('EVE-1');
-    assert.throws(() => buildGraph(snapshot), /Blocking cycle/);
+    assert.throws(
+        /** Build the graph from the altered snapshot. */ () => {
+            buildGraph(snapshot);
+        },
+        /Blocking cycle/
+    );
 });
 
-test('duplicate closure is not completed implementation and parents do not create prerequisite edges', () => {
+test('duplicate closure is not completed implementation and parents do not create prerequisite edges', /** A duplicate closure still blocks dependents, and parents add no edges. */ () => {
     const { snapshot } = fixture();
     snapshot.issues[1].statusType = 'duplicate';
     snapshot.issues[1].relations.duplicateOf = 'EVE-1';
@@ -132,7 +177,7 @@ test('duplicate closure is not completed implementation and parents do not creat
     assert.equal(graph.edges.length, 2);
 });
 
-test('Blocked labels coexist with current status and are not discarded when prerequisites are complete', () => {
+test('Blocked labels coexist with current status and are not discarded when prerequisites are complete', /** A Blocked label marks a current issue blocked even with no open prerequisites. */ () => {
     const { snapshot } = fixture();
     snapshot.issues[1].labels = ['Handoff: Blocked'];
     const node = buildGraph(snapshot).nodes[1];
@@ -141,7 +186,7 @@ test('Blocked labels coexist with current status and are not discarded when prer
     assert.deepEqual(node.blockers, []);
 });
 
-test('curated blockers remove candidates and later status evidence changes planning without rewriting the capture', () => {
+test('curated blockers remove candidates and later status evidence changes planning without rewriting the capture', /** Curated annotations change planning state while the snapshot stays untouched, and invalid ones fail. */ () => {
     const { snapshot, data, artifacts } = fixture();
     const before = JSON.stringify(snapshot);
     data.annotations = [
@@ -185,16 +230,31 @@ test('curated blockers remove candidates and later status evidence changes plann
     );
     assert.equal(JSON.stringify(snapshot), before);
     data.annotations[0].date = '2026-11-16';
-    assert.throws(() => renderPlanning(snapshot, data, artifacts), /later-status evidence/);
+    assert.throws(
+        /** Render planning from the altered input. */ () => {
+            renderPlanning(snapshot, data, artifacts);
+        },
+        /later-status evidence/
+    );
     data.annotations[0].date = '2026-11-17';
     data.annotations.push(data.annotations[0]);
-    assert.throws(() => renderPlanning(snapshot, data, artifacts), /duplicate curated annotation/);
+    assert.throws(
+        /** Render planning from the altered input. */ () => {
+            renderPlanning(snapshot, data, artifacts);
+        },
+        /duplicate curated annotation/
+    );
     data.annotations.pop();
     data.annotations[0].sources = [];
-    assert.throws(() => renderPlanning(snapshot, data, artifacts), /curated annotation/);
+    assert.throws(
+        /** Render planning from the altered input. */ () => {
+            renderPlanning(snapshot, data, artifacts);
+        },
+        /curated annotation/
+    );
 });
 
-test('SVG legend matches hatch, dash and double semantics; unbroken wide titles are bounded without losing accessible titles', () => {
+test('SVG legend matches hatch, dash and double semantics; unbroken wide titles are bounded without losing accessible titles', /** The legend encodes each state, long titles wrap to two lines, and decorative punctuation is normalized. */ () => {
     const { snapshot, data, artifacts } = fixture();
     const title = 'W'.repeat(90);
     snapshot.issues[0].title = title;
@@ -207,14 +267,33 @@ test('SVG legend matches hatch, dash and double semantics; unbroken wide titles 
     assert.match(svg, /aria-label="CURRENT: double"><rect[^>]+\/><rect[^>]+fill="none"/);
     const node = svg.split('<a id="EVE-1"')[1].split('</a>')[0];
     assert.ok(node.includes(title));
-    const titleLines = [...node.matchAll(/font-size="12">([^<]+)<\/text>/g)].map((match) => match[1]);
-    assert.ok(titleLines.length === 2 && titleLines.every((line) => line.length <= 23));
+    const titleLines = [...node.matchAll(/font-size="12">([^<]+)<\/text>/g)].map(
+        /**
+         * Read the text of one title line.
+         *
+         * @param {RegExpMatchArray} match - One title text element match.
+         * @returns {string} The line's text.
+         */
+        (match) => match[1]
+    );
+    assert.ok(
+        titleLines.length === 2 &&
+            titleLines.every(
+                /**
+                 * Check that a title line fits the node.
+                 *
+                 * @param {string} line - One rendered title line.
+                 * @returns {boolean} Whether it has at most 23 characters.
+                 */
+                (line) => line.length <= 23
+            )
+    );
     assert.match([...files.values()].join('\n'), /Current - display/);
     assert.doesNotMatch([...files.values()].join('\n'), /[\p{Extended_Pictographic}\u2013\u2014]/u);
     assert.equal(snapshot.issues[1].title, '\u{1f680} Current \u2014 display');
 });
 
-test('all-issue views retain full metadata links, stable accessible SVG nodes and safe escaping without source prose', () => {
+test('all-issue views retain full metadata links, stable accessible SVG nodes and safe escaping without source prose', /** Generated views link and escape every issue, omit private prose, and render deterministically. */ () => {
     const { snapshot, artifacts, data } = fixture();
     const { files } = renderPlanning(snapshot, data, artifacts);
     const svg = files.get('docs/planning/roadmap.svg');
@@ -235,44 +314,95 @@ test('all-issue views retain full metadata links, stable accessible SVG nodes an
     assert.deepEqual([...renderPlanning(snapshot, data, artifacts).files], [...files]);
 });
 
-test('rejects incomplete issue enumeration, snapshot status drift and relation drift', () => {
+test('rejects incomplete issue enumeration, snapshot status drift and relation drift', /** Snapshot drift and incomplete enumeration raise errors. */ () => {
     const { snapshot, data, artifacts } = fixture();
     snapshot.issues[1].status = 'Done';
-    assert.throws(() => renderPlanning(snapshot, data, artifacts), /Snapshot changed/);
+    assert.throws(
+        /** Render planning from the altered input. */ () => {
+            renderPlanning(snapshot, data, artifacts);
+        },
+        /Snapshot changed/
+    );
     data.snapshotHash = fingerprint(JSON.stringify(snapshot));
     snapshot.enumeration.firstIds.push('EVE-4');
     data.snapshotHash = fingerprint(JSON.stringify(snapshot));
-    assert.throws(() => renderPlanning(snapshot, data, artifacts), /count or identifier set/);
+    assert.throws(
+        /** Render planning from the altered input. */ () => {
+            renderPlanning(snapshot, data, artifacts);
+        },
+        /count or identifier set/
+    );
 });
 
-test('every source needs exact review coverage, including new comments and changed governed artifacts', () => {
+test('every source needs exact review coverage, including new comments and changed governed artifacts', /** A missing review or a changed artifact raises an error. */ () => {
     const { snapshot, data, artifacts } = fixture();
     data.sources.pop();
-    assert.throws(() => validatePlanning(snapshot, data, artifacts), /source omission/);
-    data.sources = decisionSources(snapshot, artifacts).map(({ id, hash }) => ({
-        id,
-        hash,
-        disposition: 'pending-review',
-        reason: 'Still pending full semantic review.',
-    }));
+    assert.throws(
+        /** Validate the altered planning data. */ () => {
+            validatePlanning(snapshot, data, artifacts);
+        },
+        /source omission/
+    );
+    data.sources = decisionSources(snapshot, artifacts).map(
+        /**
+         * Record one source as pending review.
+         *
+         * @param {{ id: string, hash: string }} source - One inventoried source record.
+         * @returns {object} A pending review record for the source.
+         */
+        (source) => ({
+            id: source.id,
+            hash: source.hash,
+            disposition: 'pending-review',
+            reason: 'Still pending full semantic review.',
+        })
+    );
     artifacts['docs/architecture/example.md'] += 'New owner direction.';
-    assert.throws(() => validatePlanning(snapshot, data, artifacts), /source drift/);
+    assert.throws(
+        /** Validate the altered planning data. */ () => {
+            validatePlanning(snapshot, data, artifacts);
+        },
+        /source drift/
+    );
 });
 
-test('source record labeled a decision cannot omit its curated record; invalid authority and invented times fail', () => {
+test('source record labeled a decision cannot omit its curated record; invalid authority and invented times fail', /** Decision sources need a record, and invented timestamps or authority fail. */ () => {
     const { snapshot, data, artifacts } = fixture();
-    data.sources.find((source) => source.id === 'EVE-1/description').disposition = 'decision';
-    assert.throws(() => validatePlanning(snapshot, data, artifacts), /Decision omission/);
+    data.sources.find(
+        /**
+         * Match the first issue's description review.
+         *
+         * @param {{ id: string }} source - One source review record.
+         * @returns {boolean} Whether it reviews `EVE-1/description`.
+         */
+        (source) => source.id === 'EVE-1/description'
+    ).disposition = 'decision';
+    assert.throws(
+        /** Validate the altered planning data. */ () => {
+            validatePlanning(snapshot, data, artifacts);
+        },
+        /Decision omission/
+    );
     data.decisions.push(decision());
     validatePlanning(snapshot, data, artifacts);
     data.decisions[0].timestamp = '2026-11-16T00:00:00Z';
-    assert.throws(() => validatePlanning(snapshot, data, artifacts), /Invented decision timestamp/);
+    assert.throws(
+        /** Validate the altered planning data. */ () => {
+            validatePlanning(snapshot, data, artifacts);
+        },
+        /Invented decision timestamp/
+    );
     data.decisions[0].timestamp = null;
     data.decisions[0].authority = 'auto-approved';
-    assert.throws(() => validatePlanning(snapshot, data, artifacts), /authority/);
+    assert.throws(
+        /** Validate the altered planning data. */ () => {
+            validatePlanning(snapshot, data, artifacts);
+        },
+        /authority/
+    );
 });
 
-test('unreviewed work differs from genuinely ambiguous evidence and remains visible in the strict queue', () => {
+test('unreviewed work differs from genuinely ambiguous evidence and remains visible in the strict queue', /** Ambiguous and pending sources both count as unresolved and stay visible. */ () => {
     const { snapshot, data, artifacts } = fixture();
     data.sources[0].disposition = 'ambiguous';
     data.sources[0].reason = 'Conflicting instructions need an owner resolution.';
@@ -283,14 +413,19 @@ test('unreviewed work differs from genuinely ambiguous evidence and remains visi
     assert.match(result.files.get('docs/planning/decisions.md'), /NOT a claim/);
 });
 
-test('authored evidence excludes generated content but never ignores changed authored context', () => {
+test('authored evidence excludes generated content but never ignores changed authored context', /** Fingerprinting ignores the generated region but not authored text, and bad markers fail. */ () => {
     const a = 'Owner record\n<!-- planning:generated:start -->\nold\n<!-- planning:generated:end -->\nContext';
     assert.equal(authoredArtifact(a), authoredArtifact(a.replace('old', 'new')));
     assert.notEqual(authoredArtifact(a), authoredArtifact(a.replace('Context', 'New context')));
-    assert.throws(() => authoredArtifact('<!-- planning:generated:start -->only'), /Malformed/);
+    assert.throws(
+        /** Strip generated content from text with an unmatched marker. */ () => {
+            authoredArtifact('<!-- planning:generated:start -->only');
+        },
+        /Malformed/
+    );
 });
 
-test('generated updates preserve delivered human checkpoint and later repository context exactly', () => {
+test('generated updates preserve delivered human checkpoint and later repository context exactly', /** Merging keeps authored text around the region exactly, and bad markers fail. */ () => {
     const before = '# Delivered human checkpoint\n\nExact command evidence.  \n\n\n';
     const first = mergePlanning(before, 'Generated v1');
     const withContext = `${first}\n## Human context\nKeep verbatim.\n`;
@@ -298,10 +433,15 @@ test('generated updates preserve delivered human checkpoint and later repository
     assert.ok(next.startsWith(before));
     assert.ok(next.endsWith('\n## Human context\nKeep verbatim.\n'));
     assert.doesNotMatch(next, /Generated v1/);
-    assert.throws(() => mergePlanning('<!-- planning:generated:end -->', 'new'), /Malformed/);
+    assert.throws(
+        /** Merge into a document with an unmatched marker. */ () => {
+            mergePlanning('<!-- planning:generated:end -->', 'new');
+        },
+        /Malformed/
+    );
 });
 
-test('filesystem check is read-only, detects SVG drift and strict review blocks incomplete decision acceptance', () => {
+test('filesystem check is read-only, detects SVG drift and strict review blocks incomplete decision acceptance', /** Check mode reports drift without writing, and strict review fails while sources are unresolved. */ () => {
     const { snapshot, data, artifacts } = fixture();
     const scratch = resolve('.amp/in/orb-backup');
     mkdirSync(scratch, { recursive: true });
@@ -313,7 +453,12 @@ test('filesystem check is read-only, detects SVG drift and strict review blocks 
     for (const [path, text] of Object.entries(artifacts)) writeFileSync(join(root, path), text);
     synchronizePlanning(root);
     assert.deepEqual(synchronizePlanning(root, true).stale, []);
-    assert.throws(() => synchronizePlanning(root, true, true), /Decision review incomplete/);
+    assert.throws(
+        /** Check the fixture while requiring complete review. */ () => {
+            synchronizePlanning(root, true, true);
+        },
+        /Decision review incomplete/
+    );
     const svg = join(root, 'docs/planning/roadmap.svg');
     writeFileSync(svg, 'bad SVG');
     assert.deepEqual(synchronizePlanning(root, true).stale, ['docs/planning/roadmap.svg']);

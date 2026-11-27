@@ -23,10 +23,28 @@ import { fileURLToPath } from 'node:url';
 import { checkWorkspaceGraph } from '../resources/boundaries.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
+
+/**
+ * Hash a value with SHA-256.
+ *
+ * @param {string | Buffer} value - The text or bytes to hash.
+ * @returns {string} The hexadecimal digest.
+ */
 const digest = (value) => createHash('sha256').update(value).digest('hex');
+
+/**
+ * Run Git in the repository with a large output buffer.
+ *
+ * @param {...string} args - The Git arguments.
+ * @returns {string} Git's standard output.
+ */
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
-/** Bind local proof to both committed content and all staged, unstaged and untracked source changes. */
+/**
+ * Bind local proof to both committed content and all staged, unstaged and untracked source changes.
+ *
+ * @returns {string} A digest of the committed tree, the working diff against HEAD and every untracked file's bytes.
+ */
 const treeDigest = () =>
     digest(
         git('rev-parse', 'HEAD^{tree}') +
@@ -34,125 +52,340 @@ const treeDigest = () =>
             git('ls-files', '--others', '--exclude-standard', '-z')
                 .split('\0')
                 .filter(Boolean)
-                .map((path) => `${path}\0${digest(readFileSync(join(root, path)))}`)
+                .map(
+                    /**
+                     * Pair an untracked file with its content digest.
+                     *
+                     * @param {string} path - One untracked file.
+                     * @returns {string} The path and digest, NUL-separated.
+                     */
+                    (path) => `${path}\0${digest(readFileSync(join(root, path)))}`
+                )
                 .join('\0')
     );
 
-/** Read the canonical Markdown table without executing code or silently accepting malformed rows. */
+/**
+ * Read the canonical Markdown table without executing code or silently accepting malformed rows.
+ *
+ * @since 0.0.1
+ * @param {string} markdown - The registry document's text.
+ * @returns {Array<object>} Each feature's ID, source paths, interface, reach, proof, command argv and limitations.
+ * @example
+ * const features = parseRegistry(readFileSync('docs/verification/registry.md', 'utf8'));
+ */
 export function parseRegistry(markdown) {
-    const rows = markdown
-        .split('\n')
-        .filter((line) => line.startsWith('| ') && !line.startsWith('| Feature ') && !line.startsWith('| ---'));
+    const rows = markdown.split('\n').filter(
+        /**
+         * Keep table body rows, not the header or divider.
+         *
+         * @param {string} line - One document line.
+         * @returns {boolean} Whether it is a feature row.
+         */
+        (line) => line.startsWith('| ') && !line.startsWith('| Feature ') && !line.startsWith('| ---')
+    );
     const ids = new Set();
-    return rows.map((line) => {
-        const [id, paths, surface, reach, proof, command, limitations, extra] = line
-            .split('|')
-            .slice(1, -1)
-            .map((cell) => cell.trim());
-        if (
-            extra !== undefined ||
-            ![id, paths, surface, reach, proof, command, limitations].every(Boolean) ||
-            !/^[a-z][a-z0-9-]*$/.test(id) ||
-            ids.has(id)
-        ) {
-            throw new Error(
-                `Invalid or duplicate feature row: ${id ?? line}. Supply seven cells and a unique stable ID.`
+    return rows.map(
+        /**
+         * Parse and validate one feature row.
+         *
+         * @param {string} line - One feature row.
+         * @returns {object} The feature's parsed fields.
+         */
+        (line) => {
+            const [id, paths, surface, reach, proof, command, limitations, extra] = line
+                .split('|')
+                .slice(1, -1)
+                .map(
+                    /**
+                     * Trim one table cell.
+                     *
+                     * @param {string} cell - The raw cell text.
+                     * @returns {string} The cell without surrounding spaces.
+                     */
+                    (cell) => cell.trim()
+                );
+            if (
+                extra !== undefined ||
+                ![id, paths, surface, reach, proof, command, limitations].every(Boolean) ||
+                !/^[a-z][a-z0-9-]*$/.test(id) ||
+                ids.has(id)
+            ) {
+                throw new Error(
+                    `Invalid or duplicate feature row: ${id ?? line}. Supply seven cells and a unique stable ID.`
+                );
+            }
+            ids.add(id);
+            const sources = paths.split(';').map(
+                /**
+                 * Trim one declared source path.
+                 *
+                 * @param {string} path - One semicolon-separated path.
+                 * @returns {string} The path without surrounding spaces.
+                 */
+                (path) => path.trim()
             );
+            if (
+                sources.some(
+                    /**
+                     * Detect an absolute, traversing or empty source path.
+                     *
+                     * @param {string} path - One declared source path.
+                     * @returns {boolean} Whether it is unsafe.
+                     */
+                    (path) => path.startsWith('/') || path.includes('..') || !path
+                )
+            )
+                throw new Error(`${id}: use repository-relative paths, never traversal.`);
+            const argv = JSON.parse(command.replace(/^`|`$/g, ''));
+            if (
+                !Array.isArray(argv) ||
+                argv.length < 2 ||
+                !argv.every(
+                    /**
+                     * Require each argument to be a non-empty string.
+                     *
+                     * @param {unknown} part - One command argument.
+                     * @returns {boolean} Whether it is a non-empty string.
+                     */
+                    (part) => typeof part === 'string' && part.length > 0
+                ) ||
+                !['node', 'pnpm'].includes(argv[0])
+            ) {
+                throw new Error(
+                    `${id}: provide an explicit node/pnpm argument array; shell commands are not accepted.`
+                );
+            }
+            if (
+                argv[0] === 'pnpm' &&
+                argv[1] === 'nx' &&
+                argv.some(
+                    /**
+                     * Detect an Nx parallelism override other than serial.
+                     *
+                     * @param {string} part - One command argument.
+                     * @returns {boolean} Whether it raises Nx parallelism.
+                     */
+                    (part) => part.startsWith('--parallel') && part !== '--parallel=1'
+                )
+            ) {
+                throw new Error(`${id}: evidence runs Nx serially. Remove the parallel override or use --parallel=1.`);
+            }
+            return { id, sources, surface, reach, proof, argv, limitations };
         }
-        ids.add(id);
-        const sources = paths.split(';').map((path) => path.trim());
-        if (sources.some((path) => path.startsWith('/') || path.includes('..') || !path))
-            throw new Error(`${id}: use repository-relative paths, never traversal.`);
-        const argv = JSON.parse(command.replace(/^`|`$/g, ''));
-        if (
-            !Array.isArray(argv) ||
-            argv.length < 2 ||
-            !argv.every((part) => typeof part === 'string' && part.length > 0) ||
-            !['node', 'pnpm'].includes(argv[0])
-        ) {
-            throw new Error(`${id}: provide an explicit node/pnpm argument array; shell commands are not accepted.`);
-        }
-        if (
-            argv[0] === 'pnpm' &&
-            argv[1] === 'nx' &&
-            argv.some((part) => part.startsWith('--parallel') && part !== '--parallel=1')
-        ) {
-            throw new Error(`${id}: evidence runs Nx serially. Remove the parallel override or use --parallel=1.`);
-        }
-        return { id, sources, surface, reach, proof, argv, limitations };
-    });
+    );
 }
 
-/** Select only declared feature dependencies; unmapped application changes require a registry entry, not a false empty pass. */
+/**
+ * Select only declared feature dependencies; unmapped application changes require a registry entry, not a false empty pass.
+ *
+ * @since 0.0.1
+ * @param {Array<object>} features - The parsed registry.
+ * @param {Array<string>} paths - The changed repository paths.
+ * @param {Array<[string, string]>} [edges] - Consumer and dependency file pairs, followed transitively.
+ * @returns {Array<object>} The features whose declared sources include a changed path or a consumer of one.
+ * @example
+ * const selected = selectFeatures(features, ['packages/runtime/src/host.ts'], graph.edges);
+ */
 export function selectFeatures(features, paths, edges = []) {
+    /**
+     * Check whether a path belongs to a feature's declared sources.
+     *
+     * @param {{ sources: Array<string> }} feature - One registry feature.
+     * @param {string} path - One repository path.
+     * @returns {boolean} Whether a source equals the path, or is a directory containing it.
+     */
     const matches = (feature, path) =>
-        feature.sources.some((source) => (source.endsWith('/') ? path.startsWith(source) : path === source));
+        feature.sources.some(
+            /**
+             * Match one declared source against the path.
+             *
+             * @param {string} source - A file path, or a directory ending in `/`.
+             * @returns {boolean} Whether it covers the path.
+             */
+            (source) => (source.endsWith('/') ? path.startsWith(source) : path === source)
+        );
     const missing = paths.filter(
-        (path) => /^(apps|packages)\//.test(path) && !features.some((feature) => matches(feature, path))
+        /**
+         * Find application paths no feature declares.
+         *
+         * @param {string} path - One changed path.
+         * @returns {boolean} Whether it is unmapped application source.
+         */
+        (path) =>
+            /^(apps|packages)\//.test(path) &&
+            !features.some(
+                /**
+                 * Check whether a feature declares the path.
+                 *
+                 * @param {object} feature - One registry feature.
+                 * @returns {boolean} Whether it covers the path.
+                 */
+                (feature) => matches(feature, path)
+            )
     );
     if (missing.length)
         throw new Error(
             `Map affected application paths in docs/verification/registry.md before claiming proof: ${missing.join(', ')}`
         );
-    // Follow actual resolved imports back to consumers, so changing a shared contract cannot omit its interface proof.
     const affected = new Set(paths);
     let size;
     do {
         size = affected.size;
         for (const [consumer, dependency] of edges) if (affected.has(dependency)) affected.add(consumer);
     } while (size !== affected.size);
-    return features.filter((feature) => [...affected].some((path) => matches(feature, path)));
+    return features.filter(
+        /**
+         * Keep features touched by an affected path.
+         *
+         * @param {object} feature - One registry feature.
+         * @returns {boolean} Whether any affected path belongs to it.
+         */
+        (feature) =>
+            [...affected].some(
+                /**
+                 * Check one affected path against the feature.
+                 *
+                 * @param {string} path - One affected path.
+                 * @returns {boolean} Whether it belongs to the feature.
+                 */
+                (path) => matches(feature, path)
+            )
+    );
 }
 
-/** Preserve useful diagnostics while removing supplied fixture passwords and common credential-bearing URLs. */
+/**
+ * Preserve useful diagnostics while removing supplied fixture passwords and common credential-bearing URLs.
+ *
+ * @since 0.0.1
+ * @param {string} text - The log text.
+ * @param {Array<string>} [secrets] - Exact secret values to replace.
+ * @returns {string} The text with PostgreSQL credentials and the given secrets replaced by `[REDACTED]`.
+ * @example
+ * redact(log, [password]);
+ */
 export function redact(text, secrets = []) {
     let result = text.replace(/(postgres(?:ql)?:\/\/)[^\s@]+@/g, '$1[REDACTED]@');
     for (const secret of secrets.filter(Boolean)) result = result.split(secret).join('[REDACTED]');
     return result;
 }
 
-/** Normalize actual test-runner reports; a successful command with zero selected tests is not feature proof. */
+/**
+ * Normalize actual test-runner reports; a successful command with zero selected tests is not feature proof.
+ *
+ * @since 0.0.1
+ * @param {object | undefined} report - A Vitest or Playwright JSON report, if the command wrote one.
+ * @param {string} output - The command's log, parsed as node:test TAP when there is no report.
+ * @returns {{ count: number, passed: number, assertions: Array<{ name: string, status: string }> }} The test count, passed count and each test's result.
+ * @example
+ * const proof = summarizeProof(JSON.parse(reportText), log);
+ */
 export function summarizeProof(report, output) {
     if (report?.testResults) {
-        const assertions = report.testResults.flatMap((suite) =>
-            suite.assertionResults.map((entry) => ({ name: entry.fullName, status: entry.status }))
+        const assertions = report.testResults.flatMap(
+            /**
+             * Flatten one Vitest suite's assertions.
+             *
+             * @param {object} suite - One test file's results.
+             * @returns {Array<{ name: string, status: string }>} Its assertions.
+             */
+            (suite) =>
+                suite.assertionResults.map(
+                    /**
+                     * Keep an assertion's name and status.
+                     *
+                     * @param {object} entry - One Vitest assertion result.
+                     * @returns {{ name: string, status: string }} Its full name and status.
+                     */
+                    (entry) => ({ name: entry.fullName, status: entry.status })
+                )
         );
         return {
             count: assertions.length,
-            passed: assertions.filter((entry) => entry.status === 'passed').length,
+            passed: assertions.filter(
+                /**
+                 * Keep passing assertions.
+                 *
+                 * @param {{ status: string }} entry - One assertion.
+                 * @returns {boolean} Whether it passed.
+                 */
+                (entry) => entry.status === 'passed'
+            ).length,
             assertions,
         };
     }
     if (report?.suites) {
+        /**
+         * Flatten one Playwright suite and its nested suites.
+         *
+         * @param {object} suite - One Playwright suite.
+         * @returns {Array<{ name: string, status: string }>} Every test result below it.
+         */
         const visit = (suite) => [
-            ...(suite.specs ?? []).flatMap((spec) =>
-                spec.tests.map((entry) => ({
-                    name: spec.title,
-                    status:
-                        entry.results.at(-1)?.status === entry.expectedStatus && entry.status === 'expected'
-                            ? 'passed'
-                            : 'failed',
-                }))
+            ...(suite.specs ?? []).flatMap(
+                /**
+                 * Flatten one Playwright spec's tests.
+                 *
+                 * @param {object} spec - One Playwright spec.
+                 * @returns {Array<{ name: string, status: string }>} Its test results.
+                 */
+                (spec) =>
+                    spec.tests.map(
+                        /**
+                         * Reduce one Playwright test to its outcome.
+                         *
+                         * @param {object} entry - One Playwright test.
+                         * @returns {{ name: string, status: string }} The spec title and whether its last attempt met the expected status.
+                         */
+                        (entry) => ({
+                            name: spec.title,
+                            status:
+                                entry.results.at(-1)?.status === entry.expectedStatus && entry.status === 'expected'
+                                    ? 'passed'
+                                    : 'failed',
+                        })
+                    )
             ),
             ...(suite.suites ?? []).flatMap(visit),
         ];
         const assertions = report.suites.flatMap(visit);
         return {
             count: assertions.length,
-            passed: assertions.filter((entry) => entry.status === 'passed').length,
+            passed: assertions.filter(
+                /**
+                 * Keep passing tests.
+                 *
+                 * @param {{ status: string }} entry - One test.
+                 * @returns {boolean} Whether it passed.
+                 */
+                (entry) => entry.status === 'passed'
+            ).length,
             assertions,
         };
     }
     const count = Number(output.match(/^# tests (\d+)$/m)?.[1] ?? 0);
     const passed = Number(output.match(/^# pass (\d+)$/m)?.[1] ?? 0);
-    const assertions = [...output.matchAll(/^(ok|not ok) \d+ - (.+)$/gm)].map((match) => ({
-        name: match[2],
-        status: match[1] === 'ok' ? 'passed' : 'failed',
-    }));
+    const assertions = [...output.matchAll(/^(ok|not ok) \d+ - (.+)$/gm)].map(
+        /**
+         * Turn one TAP result line into a test result.
+         *
+         * @param {RegExpMatchArray} match - The `ok` or `not ok` line's match.
+         * @returns {{ name: string, status: string }} The test name and status.
+         */
+        (match) => ({
+            name: match[2],
+            status: match[1] === 'ok' ? 'passed' : 'failed',
+        })
+    );
     return { count, passed, assertions, format: 'node-tap-summary' };
 }
 
-/** Execute uncached public-path checks and retain one manifest/log per affected feature, including failures. */
+/**
+ * Execute uncached public-path checks and retain one manifest/log per affected feature, including failures.
+ *
+ * @since 0.0.1
+ * @example
+ * node tools/verification/run.mjs --base origin/main
+ */
 export function main() {
     const { values } = parseArgs({
         options: { base: { type: 'string', default: 'HEAD' }, staged: { type: 'boolean' }, check: { type: 'boolean' } },
@@ -165,7 +398,15 @@ export function main() {
         ...new Set(
             git('ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', 'apps', 'packages')
                 .split('\0')
-                .filter((path) => /\.(?:[cm]?ts|tsx)$/.test(path))
+                .filter(
+                    /**
+                     * Keep TypeScript sources.
+                     *
+                     * @param {string} path - One application or package path.
+                     * @returns {boolean} Whether it is a TypeScript file.
+                     */
+                    (path) => /\.(?:[cm]?ts|tsx)$/.test(path)
+                )
         ),
     ];
     selectFeatures(features, inventory);
@@ -197,24 +438,52 @@ export function main() {
         head: git('rev-parse', 'HEAD').trim(),
         committedTree: git('rev-parse', 'HEAD^{tree}').trim(),
         base,
-        // Include untracked contents as well as staged/unstaged diffs; SHA alone is not local evidence provenance.
         treeDigest: treeDigest(),
         registryDigest: digest(markdown),
         inventoryDigest: digest(JSON.stringify({ inventory, edges: graph.edges })),
         paths,
-        affectedFeatures: selected.map((feature) => feature.id),
+        affectedFeatures: selected.map(
+            /**
+             * Record a selected feature's ID.
+             *
+             * @param {{ id: string }} feature - One selected feature.
+             * @returns {string} Its ID.
+             */
+            (feature) => feature.id
+        ),
         execution: { featureConcurrency: 1, nxParallel: 1 },
         startedAt: new Date().toISOString(),
         results: [],
         status: selected.length ? 'running' : 'not-applicable',
     };
+
+    /**
+     * Write the current manifest to the evidence directory.
+     *
+     * @returns {undefined} Nothing.
+     */
     const save = () => writeFileSync(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     save();
-    // No inherited provider/API secrets enter synthetic verification. The database URL is local fixture-only.
     const environment = Object.fromEntries(
         ['PATH', 'HOME', 'TMPDIR', 'CI', 'PLAYWRIGHT_BROWSERS_PATH', 'SYSTEMROOT']
-            .filter((key) => process.env[key])
-            .map((key) => [key, process.env[key]])
+            .filter(
+                /**
+                 * Keep environment variables that are set.
+                 *
+                 * @param {string} key - One allowed variable name.
+                 * @returns {boolean} Whether it has a value.
+                 */
+                (key) => process.env[key]
+            )
+            .map(
+                /**
+                 * Pair an allowed variable with its value.
+                 *
+                 * @param {string} key - One set variable name.
+                 * @returns {[string, string]} The name and value.
+                 */
+                (key) => [key, process.env[key]]
+            )
     );
     const database = process.env.STORAGE_TEST_POSTGRES_URL;
     if (database) {
@@ -229,7 +498,6 @@ export function main() {
         const start = new Date().toISOString();
         const result = spawnSync(feature.argv[0], feature.argv.slice(1), {
             cwd: root,
-            // SQL databases are unique, but lease-sensitive process fixtures share the runner's CPU and database service.
             env: {
                 ...environment,
                 NX_DAEMON: 'false',
@@ -282,17 +550,41 @@ export function main() {
             reportError,
             sourceChanged,
             files: readdirSync(evidence, { recursive: true, withFileTypes: true })
-                .filter((entry) => entry.isFile())
-                .map((entry) => {
-                    const path = join(entry.parentPath, entry.name);
-                    return { path: path.slice(directory.length + 1), digest: digest(readFileSync(path)) };
-                }),
+                .filter(
+                    /**
+                     * Keep evidence files, not directories.
+                     *
+                     * @param {object} entry - One directory entry.
+                     * @returns {boolean} Whether it is a file.
+                     */
+                    (entry) => entry.isFile()
+                )
+                .map(
+                    /**
+                     * Record an evidence file's path and digest.
+                     *
+                     * @param {object} entry - One evidence file entry.
+                     * @returns {{ path: string, digest: string }} Its path in the evidence directory and SHA-256 digest.
+                     */
+                    (entry) => {
+                        const path = join(entry.parentPath, entry.name);
+                        return { path: path.slice(directory.length + 1), digest: digest(readFileSync(path)) };
+                    }
+                ),
         });
         save();
         console.log(`${feature.id}: ${manifest.results.at(-1).status}`);
     }
     manifest.finishedAt = new Date().toISOString();
-    manifest.status = manifest.results.some((result) => result.status === 'failed')
+    manifest.status = manifest.results.some(
+        /**
+         * Detect a failed feature.
+         *
+         * @param {{ status: string }} result - One feature result.
+         * @returns {boolean} Whether it failed.
+         */
+        (result) => result.status === 'failed'
+    )
         ? 'failed'
         : selected.length
           ? 'passed'

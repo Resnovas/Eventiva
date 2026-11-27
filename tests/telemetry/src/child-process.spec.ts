@@ -41,24 +41,47 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
 
     it('rejects incompatible budgets during registration', /** Fail collection before a process can be created. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () => {
         expect(
-            /** Invalid registration must not reach the runner. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () =>
+            /**
+             * Invalid registration must not reach the runner.
+             *
+             * @returns Nothing in practice, because registration throws before a test is declared.
+             * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+             */
+            () =>
                 childTests()(
                     'invalid plan',
                     [10000, 10000],
-                    /** No process is needed to reject a malformed plan. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () =>
-                        Effect.void
+                    /**
+                     * No process is needed to reject a malformed plan.
+                     *
+                     * @returns An empty scenario that is never run.
+                     * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                     */
+                    () => Effect.void
                 )
         ).toThrow(/fit below/);
     });
 
     it.live(
         'requires the enabled test flag and rejects undeclared or unused children',
-        /** A false provider must fail, not silently remove the observability invariant. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () =>
+        /**
+         * A false provider must fail, not silently remove the observability invariant.
+         *
+         * @returns The scenario that checks disabled, unused and undeclared child plans.
+         * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+         */
+        () =>
             Effect.gen(
                 /** Catch typed failures as observable scenario outcomes. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ function* () {
                     // Rejected work uses an unmistakable exit code; the permitted control must still complete normally.
                     const disabled = Layer.succeed(Flags, {
-                        /** Simulate a test override that tries to disable mandatory diagnostics. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */
+                        /**
+                         * Simulate a test override that tries to disable mandatory diagnostics.
+                         *
+                         * @param flag - The flag definition the child launcher asks about.
+                         * @returns A static evaluation that reports the flag as off.
+                         * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                         */
                         evaluate: (flag) =>
                             Effect.succeed({ flag: flag.key, value: false, reason: 'STATIC', fallback: false }),
                     });
@@ -88,7 +111,13 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
 
     it.live(
         'records phases without payloads and preserves real output and exit',
-        /** Timing must not alter business output or expose arbitrary data. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () =>
+        /**
+         * Timing must not alter business output or expose arbitrary data.
+         *
+         * @returns The scenario that runs one child and inspects its timings and diagnostic records.
+         * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+         */
+        () =>
             Effect.gen(
                 /** Inspect the public timing journal and emitted diagnostic records. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ function* () {
                     // Capture the external safe records without mocking or changing the child's business streams.
@@ -112,9 +141,14 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
                         expect(result.output[3]).toBeUndefined();
                         expect(
                             result.timings?.map(
-                                /** Compare only contractual phase names, not volatile timestamps. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                    row
-                                ) => row.phase
+                                /**
+                                 * Compare only contractual phase names, not volatile timestamps.
+                                 *
+                                 * @param row - One recorded timing row.
+                                 * @returns The row's phase name.
+                                 * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                                 */
+                                (row) => row.phase
                             )
                         ).toEqual(
                             expect.arrayContaining([
@@ -128,9 +162,14 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
                         );
                         expect(
                             result.timings?.every(
-                                /** No phase may report a negative or unbounded duration. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                    row
-                                ) => Number.isFinite(row.elapsedMs) && row.elapsedMs >= 0
+                                /**
+                                 * No phase may report a negative or unbounded duration.
+                                 *
+                                 * @param row - One recorded timing row.
+                                 * @returns Whether the row's elapsed time is finite and not negative.
+                                 * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                                 */
+                                (row) => Number.isFinite(row.elapsedMs) && row.elapsedMs >= 0
                             )
                         ).toBe(true);
                         const journal = JSON.stringify(output.mock.calls);
@@ -145,7 +184,13 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
 
     it.live(
         'bounds a stuck child and awaits close on interruption',
-        /** Deadline and cancellation must both release the process before the scenario finishes. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ () =>
+        /**
+         * Deadline and cancellation must both release the process before the scenario finishes.
+         *
+         * @returns The scenario that times out one stuck child and interrupts another.
+         * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+         */
+        () =>
             Effect.gen(
                 /** Use a real keepalive instead of relying on mocked signals. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ function* () {
                     // Deadline expiry is a result; parent interruption must also wait for resource release.
@@ -164,9 +209,14 @@ describe('budgeted subprocess contract', /** Test public plans, real child resul
                         );
                         expect(Option.isNone(interrupted)).toBe(true);
                         const phases = output.mock.calls.map(
-                            /** Logs are the public cancellation evidence, not private process internals. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-                                call
-                            ) =>
+                            /**
+                             * Logs are the public cancellation evidence, not private process internals.
+                             *
+                             * @param call - The arguments of one captured stdout write.
+                             * @returns The phase named by that diagnostic record.
+                             * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+                             */
+                            (call) =>
                                 Schema.decodeUnknownSync(Schema.parseJson(Schema.Struct({ phase: Schema.String })))(
                                     String(call[0])
                                 ).phase

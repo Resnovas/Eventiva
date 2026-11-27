@@ -7,11 +7,11 @@ Necessary major upgrades are included; production deployment is not authorized.
 
 ## JSDoc licence prerequisite (EVE-299)
 
-Jonathan approved package-wide licence exceptions for exactly `parse-statements`, `spdx-exceptions` and `uri-js`, relayed through [Puck](https://ampcode.com/threads/T-01a1f613-a4ae-7780-b85a-74cc4a1c1727) on 2026-11-20. The original human-selection time is unknown. [House PR #57](https://github.com/Resnovas/.github/pull/57), merged as [ba480286](https://github.com/Resnovas/.github/commit/ba4802860e19870a5110cc7554e0f7b6b7a4158c), contains the same three exceptions, but only for the house repository. Eventiva must carry its own local policy before adopting JSDoc.
+Jonathan approved package-wide licence exceptions for exactly `parse-statements`, `spdx-exceptions` and `uri-js`, relayed through [Puck](https://ampcode.com/threads/T-01a1f613-a4ae-7780-b85a-74cc4a1c1727) on 2026-11-20. The original human-selection time is unknown. [House PR #57](https://github.com/Resnovas/.github/pull/57) originally applied those exceptions only to the house repository. The synced policy now supplies the same three exceptions to Eventiva.
 
 The PR/merge-group dependency-review workflow reads `.github/dependency-review-config.yml`. Its shared licence list excludes CC-BY-3.0, which the resolved `spdx-exceptions@2.5.0` package declares. Local metadata for `parse-statements@1.0.11` and `uri-js@4.4.1` declares MIT and BSD-2-Clause respectively; this does not establish what GitHub's dependency graph reports. A direct push does not run dependency review, so passing push CI alone cannot certify that PR-specific result.
 
-Keep this exact addition after the policy's `house:local` marker:
+The managed block supplies this list. Do not repeat the YAML key below `house:local`: dependency review rejects duplicate keys before it evaluates dependencies.
 
 ```yaml
 allow-dependencies-licenses:

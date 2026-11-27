@@ -14,27 +14,35 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-// Eventiva's local override of the house JSDoc `contracts` set (owner decision,
-// Jonathan, 2026-11-21). The house set no longer requires @throws; Eventiva goes
-// further and bans the tags it never wants. Effect code fails through its typed
-// error channel, git records authors and the file header holds the licence.
-// The synced tools/lint/funnel.mjs stays unedited: compose this entry after the
-// `contracts` entry for the same files once eslint-plugin-jsdoc is installed.
-
-/** JSDoc tags Eventiva never writes, without the leading `@`. */
+/**
+ * JSDoc tags Eventiva never writes, without the leading `@`.
+ * Effect code fails through its typed error channel, git records authors and the file header holds the licence.
+ *
+ * @since 0.0.1
+ * @example
+ * const forbidden = bannedTags.includes('throws');
+ */
 export const bannedTags = Object.freeze(['throws', 'exception', 'author', 'license']);
 
-/** Corrective message shown on every banned tag. */
+/**
+ * Corrective diagnostic message shown when a JSDoc block uses one of {@link bannedTags}.
+ *
+ * @since 0.0.1
+ * @example
+ * const guidance = bannedTagMessage;
+ */
 export const bannedTagMessage =
     'Do not use @throws, @author or @license. Document Effect failures with @fails, let git record authors, and keep licence terms in the file header.';
 
 /**
- * Build the flat-config entry that bans {@link bannedTags} in the given files.
- * It relies on the `jsdoc` plugin that the house `contracts` entry registers,
- * so place it after that entry; flat config applies the last matching setting.
+ * Build the flat-config override entry that bans {@link bannedTags} in the given files without editing the synced `tools/lint/funnel.mjs`.
+ * Place it after the house `contracts` entry for the same files so flat config applies the override after the `jsdoc` plugin is registered.
  *
- * @param files - The same globs the `contracts` entry uses.
- * @returns A config entry setting `jsdoc/no-restricted-syntax` to error.
+ * @since 0.0.1
+ * @param {string[]} files - File globs matching the house `contracts` entry.
+ * @returns {object} A flat-config entry setting `jsdoc/no-restricted-syntax` to error.
+ * @example
+ * const entry = jsdocTagBan(['packages/schema/src/compose.ts']);
  */
 export const jsdocTagBan = (files) => ({
     files,

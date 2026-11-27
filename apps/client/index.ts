@@ -24,7 +24,11 @@ import { FlagsLive } from './src/flags.ts';
 /** Metro supplies the optional development disposal hook; it is not a production service dependency. */
 declare const module: {
     readonly hot?: {
-        /** Request release of the old application's providers when Metro disposes this entry module. */
+        /**
+         * Request release of the old application's providers when Metro disposes this entry module.
+         *
+         * @param callback - Called by Metro when it disposes the entry module.
+         */
         dispose(/** Metro invokes this callback when disposing the entry module. */ callback: () => void): void;
     };
 };
@@ -32,8 +36,12 @@ declare const module: {
 const application = Effect.runSync(
     startup.start(
         Effect.sync(
-            /** Make the native root available immediately; product content waits for the shared readiness snapshot. */ () =>
-                registerRootComponent(App)
+            /**
+             * Make the native root available immediately; product content waits for the shared readiness snapshot.
+             *
+             * @returns Nothing; Expo registers the root component as a side effect.
+             */
+            () => registerRootComponent(App)
         ),
         FlagsLive
     )

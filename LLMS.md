@@ -14,139 +14,15 @@ documentation covers the same ground in plain words; see the README.
 
 ## House standards
 
-Every Resnovas repository follows the same standards. This section is synced from
-[`Resnovas/.github`](https://github.com/Resnovas/.github); the rules come from
-`AGENTS.md`, `CONTRIBUTING.md`, `AI_POLICY.md` and the PostHog skill
-`coding-preferences`, and those documents win if this summary ever disagrees
-with them. The sections after this one describe this repository itself.
+Use `AGENTS.md` for authority, tool routing and handoff requirements, `AI_POLICY.md` for contribution policy, and the applicable `.agents/skills/` source for engineering decisions. Do not copy those rules into feature documentation.
 
-### Agent checkout isolation
+The funnel is code examples, corrective static checks, executable verification, minimal agent guidance, then human decisions. The adoption contract and commands are in `docs/house-funnel.md`. Preserve existing repository checks when adding shared tooling; a parser or lint pass is not semantic proof.
 
-Use a dedicated task branch in a Git worktree for repository changes. Reuse a
-host-provided task checkout. Prefer T3 or Orca managed worktrees when working
-through those hosts; otherwise use native worktree support or `git worktree`.
-Use ordinary Git for commits and pushes and explicit PR head/base branches.
-GitButler remains the user's personal tool; leave its checkout and metadata
-untouched. The synced `git-worktrees` skill contains the workflow.
+Read package scripts and CI before reporting verification. Pre-commit runs only `verify:static` then staged `test:affected`; full `verify`, smoke and evidence collection run in PR and main-push CI. `check` alone need not include either gate. Feature guides remain canonical Markdown; executable examples and registry entries must agree with reached public paths. Record only affected-feature evidence using synthetic data, the existing artifact audience and seven-day retention.
 
-### Code
+For an existing native hook, declare its exact package `script` and comment `marker` in local `.agents/surfaces.jsonc` `preCommit`; setup preserves matching bytes and refuses other hooks. Follow the complete example in `docs/house-funnel.md#retain-a-repository-owned-hook`. The native runner owns static/affected execution, alternate-index isolation and snapshot/failure proof; registration does not certify those semantics.
 
-- **Effect-TS v3 first.** TypeScript is the primary language, written with
-  Effect v3: services as `Context.Tag` with `Layer`s, `Effect.gen` for
-  sequencing, `Schema` to decode anything from outside the process. Load the
-  PostHog skill `coding-preferences` and its `effect` reference before writing
-  Effect code, and look up current APIs with Context7 rather than from memory.
-- **Strict TypeScript, never `any`.** Keep `strict` on. Decode unknown input
-  with `Schema` instead of casting it.
-- **Typed errors.** Model failures as tagged errors (`Data.TaggedError` or
-  `Schema.TaggedError`) in the error channel, so a caller sees every way a call
-  can fail. Do not throw for expected failures.
-- **Secrets through `Config` and `Redacted`.** Read configuration with
-  Effect `Config`, and hold every secret as `Redacted` (`Config.redacted`)
-  until the boundary that needs its value. Never put a secret in source, logs,
-  telemetry, command-line arguments, issues or pull requests.
-- **PostHog telemetry and feature flags.** Every app ships PostHog feature
-  flags; new behaviour goes behind a flag with a safe default in code, never
-  behind an environment variable or configuration toggle (house skill
-  `feature-flags`). Telemetry events carry no secret or personal data.
-- **Module boundaries.** The core package holds domain-agnostic building
-  blocks only. Vendor SDKs and API clients live in
-  `@resnovas/integrations.<vendor>` (`AI_POLICY.md` AI-13).
-  Use colon-separated Nx tags (`type:core`, `layer:shared`,
-  `capability:contracts`) and intersect every matching constraint in the
-  repository's `eslint.config.mjs`. Type-only imports and `devDependencies`
-  do not bypass boundaries; same-type permission does not permit cycles.
-  Read `coding-preferences/references/architecture.md` for Eventiva's
-  16-row baseline and the distinction between workspace, external and cycle
-  checks. That baseline is not a universal hierarchy or permission for
-  extensions to import integrations.
-- **Comments explain why.** Constraints, trade-offs and anything surprising;
-  never a restatement of the code.
-
-### Tests
-
-- Write tests with `@effect/vitest`. Line and branch coverage never falls
-  below 90%, and most repositories hold 100%.
-- **Never delete, skip or weaken a test** to make a change pass: fix the code
-  (`AI_POLICY.md` AI-11). A flaky test is a bug to fix, not to retry away.
-- Every bug fix comes with a regression test that fails before the fix.
-
-### TypeScript
-
-- Effect-TS v3 is the foundation of all production TypeScript, in every
-  repository (house skill `coding-preferences`, `references/effect.md`).
-  Anything that does IO, can fail, reads configuration, retries, runs
-  concurrently or holds a resource is an `Effect` with `Data.TaggedError`
-  failures, services as `Context.Tag` classes behind a `Layer`, input through
-  `Schema`, configuration through `Config`, tests with `@effect/vitest`, in
-  the shape of the module's existing code.
-- Raw Promise code (`async`, `await`, `try`/`catch`, `throw`, `new Promise`,
-  `.then`) lives only at a vendor boundary inside an integration module, in
-  the one `Effect.tryPromise` or `Effect.try` that wraps the vendor call,
-  marked with `// effect-boundary: <reason>` on the line above. The commit
-  hook refuses it anywhere else in added source lines, and refuses `any`.
-- A pure function with no IO and no failure path stays plain TypeScript. A
-  whole feature in plain TypeScript is never an agent's decision: it is a
-  house-rule override only the accountable human gives, by naming the rule.
-
-### Files
-
-- Every source file carries the FCL-1.0-MIT licence header from
-  `tools/license/header.txt`, with its own path on the second line and the
-  current year. `node tools/license/check-headers.mjs` (the `headers` package
-  script) verifies it and `--fix` writes it; synced house tools carry none.
-- ASCII hyphen-minus only in text an agent writes: no em or en dashes, and no
-  emoji in titles or descriptions (house skill `no-em-or-en-dashes`,
-  `AI_POLICY.md` AI-09).
-
-### Commits and pull requests
-
-- Conventional commits (`type(scope): summary`, imperative mood), one logical
-  change each, and every commit signed off for the Developer Certificate of
-  Origin with the commit author's name and address. An AI tool never signs off
-  (`AI_POLICY.md` AI-03).
-- Every commit an AI tool materially changed carries one `Co-authored-by`
-  trailer per tool naming the tool and the model at the tool's attribution
-  address (`AI_POLICY.md` AI-02); the commit author and the sign-off are the
-  accountable human. No "Generated with" footer, robot emoji or host session
-  line (house skill `commits-and-rd-evidence`). `tools/dev/commit-check.mjs`,
-  installed as the commit-msg hook by setup, refuses a commit that breaks
-  these rules.
-- A pull request an agent opens is a draft (`AI_POLICY.md` AI-20) and states
-  `AI level: autonomous` and every tool and model used (AI-01); the
-  accountable human fills in `Accountable human` and `Human review` when
-  marking it ready (AI-21). No "Generated with" footer or session link.
-- One pull request per batch of work: one stacked branch per issue, each
-  squashed to one conventional, signed-off commit naming its issue, all opened
-  as a single pull request. Once a maintainer approves it, it lands as an owner
-  fast-forward (its signed commits pushed onto the default branch unchanged),
-  so each issue keeps its own commit; the merge queue squashes, because GitHub
-  cannot sign rebased commits. Run the full gate locally first; CI is not the
-  debugger.
-- Deterministic gates (the repository's checks and the `smartcloud` check)
-  decide a merge. AI review bots are advisory.
-- Releases are cut by the synced house release workflow from `release.config.json`
-  at the repository root (what the repository ships: bundles, apps, the major
-  tag, error tracking project, npm package); the tools under `tools/release/`
-  are synced too. The workflow runs on every push to the default branch and
-  releases when the conventional commits call for it (before the first stable
-  `v*` tag, the `firstRelease` version); never add a release that needs
-  starting by hand. Never run `nx release` without `--dry-run`; the workflow
-  is the only release path.
-
-### Document everything twice
-
-Every change to a feature, option, preset or workflow updates both kinds of
-documentation in the same commit:
-
-- **ELI5 docs for people.** Plain words and short sentences; what it is and why
-  you would want it before how; step-by-step setup; one complete example; what
-  you will see when it runs; every option with its default; common problems
-  and their fixes.
-- **ai-docs for agents.** The sections under `ai-docs/src`, with compiling
-  examples in the codebase's own style. `LLMS.md` is generated from them by
-  `node tools/ai-docs/docgen.mjs` and checked in CI with `--check`; never edit
-  it by hand.
+Sections numbered from 10 describe this repository's features and compiling examples. Update the corresponding people guide alongside them, and regenerate `LLMS.md` with `node tools/ai-docs/docgen.mjs`.
 
 ---
 
@@ -163,6 +39,8 @@ Eventiva extends `Resnovas/.github/smartcloud/house-base.yml@main`, not `house.y
 Preserve all `house:local` content. Coding agents deliver straight to `main` under the owner's existing exception in `AGENTS.md`, including where synced governance describes the generic PR path. The house ruleset retains an administrator `always` bypass (repository role 5). Standard house sync/Graphify bot PRs are not coding-agent delivery. A token's admin user role is not proof of administration scope; HTTP 403 or restricted-mode skips leave enrollment incomplete.
 
 Canonical governance is Markdown; obsolete root AsciiDoc compatibility links have been removed. Canonical owners/funding live in `.github/`. `examples/` is historical reference only, excluded from workspace discovery, Graphify, CodeQL and licence checking. Never initialize its private tests gitlink during setup, run its old active checks or treat it as an implementation baseline.
+
+EVE-305 / Eventiva#1108 adopts RES-74 / Resnovas/.github#87: local Graphify output and semantic caches stay ignored. Explicit non-CI setup and post-commit/checkout/merge/rewrite refresh navigation; queries and long-lived MCP reads refresh dirty source too. Daily/manual main automation alone updates the separate tracked `graphify-snapshot/` through a signed PR with normal required checks, retaining revision-labelled seven-day artifacts. PR workflows never generate/publish graphs or enforce freshness. The commit-msg guard rejects manual generated content, including on feature/fix branches, while preserving source/config commits and legacy local-output removals. Hook context is not authentication. See `docs/graphify.md` and the timeline. Native pre-commit setup migrates only exact known hook bodies, backs them up and registers `verify:staged` with the existing installer; custom hooks are refused, not overwritten. No gate is removed. This migration does not authorize the older delivery bypass described above.
 
 EVE-264 changes only the archive parent spelling to `examples/`, not historical content, AsciiDoc, modes or private-tests revision. Package hygiene requires the exact lowercase top-level spelling and rejects archive imports case-insensitively. Preserve the old `Examples/cluster-docker` spelling above as a historical incident reference, not a current path. This repository-only rename introduces no runtime behavior or feature flag.
 
@@ -2134,7 +2012,9 @@ Current documentation enforcement is the 2026-11-18 thirteenth checkpoint at the
 
 Apply the canonical [task lifecycle and verified mapping procedure](../../../docs/planning/README.md#development-task-lifecycle-and-mapping) at actual start, blockage, pause/handoff and verified delivery. Each development task owns its Linear issue, verified linked GitHub issue and authored canonical timeline updates, including this Amp thread, bounded scope/owner, exact evidence and remaining whole-issue acceptance. Read-only requests grant no writes. Preserve other active slices; paused/unassigned work is not running, and shipped slices do not close broader issues. Every mapped task commit, including generated docs/graph commits, carries both verified IDs with non-closing `Refs` for partial delivery. The rollout pair is EVE-266 / Resnovas/Eventiva#1053, not a mapping for other tasks.
 
-`sync.values.TASK_LINEAR_PREFIX: EVE` prepares Eventiva for the canonical offline commit checker; it is not active enforcement until human house acceptance and normal downstream sync. Do not patch downstream managed AGENTS/checker content from an unaccepted proposal. The guard checks reference syntax, not actual tracker links, writes or acceptance. Preserve frozen mirror provenance, regenerate affected outputs from current source and retain independent delivery ownership. The rollout's actual state and pending acceptance are recorded in the [timeline](../../../docs/planning/timeline.md), not inferred from generated snapshot status.
+`sync.values.TASK_LINEAR_PREFIX: EVE` configures Eventiva's accepted canonical offline checker. House PR50 is merged; bot candidate [6cc188f7](https://github.com/Resnovas/Eventiva/commit/6cc188f7d07772ce693c58a72910f7134a7a8bbe) contains the checker plus plaintext data and passes 24 rendered CLI cases, including generated docs/graph subjects. This is candidate proof, not main adoption: protected PR1087 remains blocked by application checks. Never human-push the bot's force-regenerated branch or overwrite managed sources. The guard checks syntax, not actual tracker links, writes or acceptance. Preserve frozen mirror provenance, regenerate affected outputs from current source and retain independent delivery ownership. The [timeline](../../../docs/planning/timeline.md) records delivery, cancellation and settings-effect uncertainty; generated snapshot status cannot establish current acceptance.
+
+Jonathan's [19 November acceptance](https://linear.app/resnovas/issue/EVE-266#comment-5bc07e0d), independently recorded on [house PR50](https://github.com/Resnovas/.github/pull/50#issuecomment-7021346916), supersedes the substantive product hold only. The [canonical decision](../../../docs/planning/decisions.md#development-task-traceability-acceptance---2026-11-19) retains scope and unknown human-selection time. House protected landing, full unchanged six-lane main CI and main CodeQL now pass; a separate deleted-queue-ref SARIF upload failure remains recorded. Protected downstream landing and final adoption evidence still precede full rollout completion. Abandoned, cancelled or skipped required tests are never success. Preserve all unrelated source and fixture/trust policy; acceptance authorizes no settings change, production release or broader issue closure.
 
 ## Historical canonical tooling checkpoint - 2026-11-17
 
@@ -2295,7 +2175,7 @@ The full settings-integrated repeat at dcab6a3b exits zero: 104 documentation fi
 
 ## Banned JSDoc tags
 
-Never write `@throws`, `@exception`, `@author` or `@license` (owner decision, 2026-11-21). Effect failures travel in the typed error channel, git records authors and the file header holds the licence. `tools/documentation/jsdoc-tags.mjs` exports `jsdocTagBan(files)`, a flat-config entry setting `jsdoc/no-restricted-syntax` to error. It becomes active only when the house `contracts` set is adopted: append it after `{ ...contracts, files }` for the same files and never edit the synced `tools/lint/funnel.mjs`. Until `eslint-plugin-jsdoc` is installed the entry is recorded, not enforced. See `docs/documentation-standard.md#banned-jsdoc-tags`.
+Never write `@throws`, `@exception`, `@author` or `@license` (owner decision, 2026-11-21). Effect failures travel in the typed error channel, git records authors and the file header holds the licence. `eslint.config.mjs` enforces these bans (plus `@version`) on `jsdocAdoptedFiles` through `jsdocContracts` with `eslint-plugin-jsdoc` 65.4.6 (see `ai-docs/src/39_jsdoc_contract/index.md`). Outside the synced `tools/lint/funnel.mjs`, `tools/documentation/jsdoc-tags.mjs` also exports `jsdocTagBan(files)`, a standalone flat-config override entry setting `jsdoc/no-restricted-syntax` to error for composing after `{ ...contracts, files }` without editing the synced module. See `docs/documentation-standard.md#banned-jsdoc-tags`.
 
 ```js
 import { jsdocTagBan } from './tools/documentation/jsdoc-tags.mjs';
@@ -3308,9 +3188,380 @@ export const openBoundedSession = (claims: OidcAccessClaims) =>
 
 ---
 
-# Structural function telemetry: binding direction and START
+# Source-wrapper function telemetry
 
 Refs: EVE-44. Refs: Resnovas/Eventiva#811. Whole acceptance stays open.
+
+## Matched native overhead checkpoint - 2026-11-27
+
+Run `node tests/telemetry/benchmark/check.mjs` for the strict release gate: median paired p50 ratio below 3x for each of production and profiling. Exactly 3x fails. Local full verification and hosted CI run five prespecified trials per mode, outside parallel or cached Nx work. The deterministic interpreter-step test is independent. Add `--target-2x` to check the ongoing optimization goal; it has not been achieved. Preserve fresh Flags, ambient restoration, sanitized attributes, caller scope and all-exit metrics. See `docs/architecture/function-telemetry.md` for p50/p95/mean, repeats, negative controls and the compiler-directive policy.
+
+## Optimization and purity correction - 2026-11-20
+
+Jonathan's [binding decisions](https://linear.app/resnovas/issue/EVE-44#comment-3aeb878a-e135-4277-9d1e-7c747b59bd84),
+relayed by Puck on November20 with original decision times unknown, require
+overhead optimization and unused-native-declaration elimination before publication.
+Neither the approximately11x cost nor195KB unused declaration is accepted.
+Native Effect.fn, outer Flags, all assertions/privacy/exits and finite helper
+accounting stay strict. No numeric target, hook/commit/push authority follows.
+
+The [canonical profile and matched measurements](../../../docs/architecture/function-telemetry.md#overhead-optimization-and-declaration-elimination---2026-11-20)
+preserve before-source/CPU profile and non-additive scratch ablations. Scoped
+tracing/context restoration dominates; Flags-only adds about12us over its
+native control. Static attributes and histogram descriptors were already reused.
+Adopted source changes: skip a redundant enabled-tracer scoped write, pretag
+per-operation MetricKeys to use Effect's cached untagged registry hook, and
+sequence setup via native as/apply/flatten instead of dummy service Contexts.
+No new authored helper body, cached mutable flag/start value, cast or exemption.
+The public spec is unchanged; every execution still reacquires Flags/timer state.
+
+Same installed Vite browser build and7200samples per original benchmark variant:
+production observed p50/p95 119.01/205.58us before,89.51/146.54us after;
+test-timer131.04/216.13before,92.89/181.94after. p50 reductions24.79%/29.11%.
+After/native p50 ratios remain8.13x/9.46x, not an approved target. Separate
+native-floor p50 controls: direct0.324us, generator2.807us, withSpan15.102us,
+native fn13.466us. Native call Error/span/clock/parent/Exit work remains by
+contract; the much larger current wrapper remainder is not proven irreducible.
+Jonathan's final target still needs selection. No global p95 claim.
+
+Source annotation fixes the supported unused local declaration: annotate the
+OUTERMOST Effect.fn(...)(generator) call. Same installed Vite build gives26479B
+versus26482B baseline, exact JavaScript equality except generated filename comment.
+Unannotated195436B and inner-only195448B retain the negative canary.
+Used195444B/195465B outputs are identical except filename/21-byte annotation;
+both execute to41. Existing sideEffects:false alone was insufficient. The two
+owned native generator definitions now carry the outer annotation. No dependency,
+upstream Effect change, package metadata amendment or build rewriting was needed.
+
+Purity lint/autofix is a separate later packet assigned to this worker AFTER
+primitive publication, not started now. Only a new rule/tests in existing lint
+tooling and funnel-cleared minimal root registration are contemplated. Resolve
+symbols/static safe arguments and supported pipeables; unsafe/unresolved forms
+need diagnostics, never an unsafe fix. tools/function-telemetry stays inventory-only.
+No global enforcement or migration is claimed by the current source annotation.
+
+After optimization: patched runtime build/telemetry tsc pass; normal telemetry
+101tests/10files pass unchanged90% gates,96.58/95.68/91.86/96.84 coverage;
+primitive56/56statements,2/2authored bodies,6/6branches. verify:static passes
+with zero source/declaration violations/cycles. The older runtime689/contracts589
+hook is only evidence for its older tree. No fixture/new hook/full-suite rerun,
+commit/separate graph/push/exact-head CI or publication has occurred here.
+Publication stays held for final overhead target and remaining qualification;
+CodeQL dismissals remain Jonathan's separate decision. Both trackers stay open.
+
+## Patched-toolchain qualification and current publication hold
+
+Historical pre-optimization checkpoint; its tested tree does not cover the new
+source changes above. Retain all failed outputs and delivery boundaries.
+
+The [current canonical checkpoint](../../../docs/architecture/function-telemetry.md#patched-toolchain-hook-qualification---2026-11-20)
+supersedes earlier unresolved compiler/fixture/hook-integration status below,
+not failed outputs or the publication hold. Published base515a62ff, tested
+staged tree42b273dabb372e641f47944228ca3fcdc93d49b8. These subsequent evidence
+docs are separate from that tested tree, not implicitly hook-qualified.
+[EVE-44](https://linear.app/resnovas/issue/EVE-44#comment-b62cfd38-5e0d-41ef-a579-9aae8f9c9599)
+and [explicit #811 mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7045755856)
+remain open; no commit/push exists.
+
+Puck-authorized exact renewal supervised daemon/pinned non-superuser PostgreSQL
+fixture passes resource/loopback/SCRAM/role checks. Candidate compiler hardlinks
+become real copies before existing prepare; vendorcheck confirms both patched
+0.87.5, shared originals unchanged. Old diagnostic miss reproduces without
+primitive on clean541b18ac and disappears in isolated patched controls; historical
+missing-patch lifecycle cause stays unknown. First new hook fails static on six
+chained provides; retained failure precedes Puck's exact six-expression spec-only
+single-provide correction. Same services/assertions, no suppressions/config edits.
+Patched telemetry tsc and normal101-test telemetry pass.
+
+Fresh authorized installed hook WITHOUT git commit exits0,17:01:28-17:08:21UTC
+on November20: static,22affected tasks (13cache hits),323tooling. Runtime689tests
+and contracts589tests execute fresh; normal statements/branches/functions/lines
+are93.86/90.43/93.02/94.88 and95.53/91.97/93.61/95.92 respectively. Telemetry
+remains101tests,96.57/95.68/91.86/96.83. Unchanged90% gates/isolation/assertions/
+1200s bound. Final17:09audit: zero containers, fixture network absent, daemon
+stopped; no services/processes/5432listener/container directories. No fixture left.
+
+Publication STILL HOLD: Jonathan's measured overhead/unused-native-declaration
+decisions, source/separate clean graph delivery and exact-head candidate CI.
+No standalone aggregate/smoke/feature/global acceptance from this hook. No later
+checker/migration/root/held-source or SQL transaction packet authority follows.
+
+## Retained normal-hook failure and delivery hold
+
+Installed source-hook attempt106600 exits1 without creating a commit. Static,
+root/documentation and143 Node fixtures pass; aggregate fails six targets.
+Resource tests31fail/37pass, runtime46fail/643pass, contracts31fail/558pass.
+PostgreSQL cases report local5432 ECONNREFUSED. Independently, unchanged
+runtime action-types expects patched Effect diagnostic codes `[1, 1, 1]` but
+receives `[]`, despite its standard TypeScript diagnostic assertion passing.
+That separate compiler/environment failure remains unresolved, not attributed
+to SQL or this primitive. Smoke/features are not reached. The focused101-test
+telemetry pass does not erase these failures.
+
+The [canonical retained attempt](../../../docs/architecture/function-telemetry.md#retained-source-hook-failure-and-delivery-hold---2026-11-20)
+records exact patch/output hashes. Source/spec/docs remain local, uncommitted
+and unpublished; separate clean graph delivery and exact-head CI are pending.
+Coordinator relays Jonathan's hook correction verified15:16:33UTC: static plus
+affected tests only, funnel-owned. No unpublished root adoption, further old-hook
+attempt/tuning, provisioning, weakened coverage/assertions/isolation or retry.
+Puck's broader push-main/seven-day interpretation is not a Jonathan quote.
+
+## Candidate public API and measurements
+
+Use `@eventiva/runtime/function-instrumentation`: yield* functionCatalog with
+static names, yield* functionObservation with its opaque handle and one member,
+then yield* namedGenerator(args).pipe(observe). The native returned Effect's
+outer composition is essential; putting observe inside Effect.fn's definition
+pipeables is not equivalent. Scope/Flags and admission failures are explicit
+inferred requirements. Reuse prepared operators. The [canonical complete example
+and evidence](../../../docs/architecture/function-telemetry.md#primitive-api-and-bounded-evidence)
+owns exact options, defaults, fixed errors and constraints; the new public spec
+is compiled by telemetry/runtime/contracts consumers without source exclusions.
+
+The target-wide8192 union includes both authored generator helpers and persists
+across handles. Histogram descriptor identity is reused. Two catalog and eleven
+prepare completions match that finite self-observation case's exact executions;
+native terminal metric programs never invoke either helper. No authored
+recursion guard or skipped helper is used. Default-on signals are independent;
+both span flags and ambient enablement must permit tracing. Production extra
+timer remains OFF even with flag TRUE; explicit test capability makes timing
+mandatory. The private restoration scope reprovides the caller's Scope for
+business resources. Only fixed admitted labels/static generator metadata enter
+observations; central sanitized projection and existing remote opt-in policy
+remain required. This is not an arbitrary external-tracer privacy guarantee.
+
+Normal telemetry suite exits0:101tests/10files, unchanged90% thresholds;
+96.57% statements/95.68% branches/91.86% functions/96.83% lines. Coverage JSON
+includes primitive55/55statements,2/2authored bodies,6/6branches. Nine public
+cases include all exits/exact-original recovery, independent signals, timer,
+helper/cross-handle bounds, repeated execution, concurrent ancestry, resource
+lifetime, private canaries, provider/sink faults, saturated queue and independent
+required-audit failure. That audit is a test port, not production tamper evidence.
+
+Measured7200calls per variant after warmup in the Linux orb: native vs observed
+production p50 10.81us vs120.19us, p95 20.48us vs220.35us. Test-timer p50
+9.85us vs124.30us, p95 17.08us vs191.71us. No speedup or tolerance inferred;
+the whole-call single-step probe is not global per-step/p95 acceptance.
+Unminified installed Vite browser builds remove the unused primitive subpath
+(26485bytes, canary absent; baseline26480bytes). Used primitive552076bytes;
+native fn-only195418bytes. An unused local native Effect.fn declaration remains
+retained195435bytes: explicit BLOCKED wrapped-declaration elimination for later
+qualified checker/migration work, not hidden by a purity annotation. See the
+[measurement scope](../../../docs/architecture/function-telemetry.md#primitive-measurements)
+for warmup/order/gzip/control details. Hooks/full combined gates/publication
+remain unexecuted; this evidence supersedes only earlier incomplete local cases.
+
+## Superseding recovery contract and outer gate - 2026-11-20
+
+Jonathan selected exact original-object recovery through Cause.originalError for
+typed failures and subsequently defects, retaining native generator Effect.fn.
+The [typed selection](https://linear.app/resnovas/issue/EVE-44#comment-13e6efa4-28e0-4085-9137-313b53e5ec9f)
+and [subsequent defect record](https://linear.app/resnovas/issue/EVE-44#comment-c644ce53-2b0d-41a6-a372-6dc1875f04c3)
+supersede raw proxy identity, not values/interruption/finalizers/audit or other
+gates. Puck relayed both on November20; original human-decision times unknown.
+[Explicit #811 mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7042897976).
+Assert distinct supplied originals and native controls, not matching text/type.
+Preserve the old failed raw-identity checks and independent control evidence.
+
+Current diagnostic focused spec: six pass. Runtime build and verify:static
+exit0 with no source/declaration boundary violations or package cycles.
+The corrected operator surrounds the returned Effect, not Effect.fn's inner
+pipeable list. Explicit OFF/ON controls prove business/catalog/preparation
+span gating and fresh repeated execution. The Flags provider's separate native
+spans are outside these subjects; no helper exclusion or global claim follows.
+Independent Metric.snapshot proves repeated8ms/13ms durations; the selected
+originalError assertions reach interruption and four business finalizers.
+
+Publication remains HOLD: default/explicit full signals, ambient tracing,
+test-only mandatory timing, finite helpers, failures/overload/audit, overhead,
+tree shaking and normal source/separate clean graph hooks remain unqualified.
+All edits remain local/uncommitted/unpublished. Earlier checkpoint below is
+historical, not the current error oracle. No root/checker/migration expansion.
+
+## Unqualified native candidate and publication hold - 2026-11-20
+
+Historical failed checkpoint: the local primitive/spec and exactly two cleared export/coverage hunks are
+uncommitted and unpublished. Runtime build passes; focused public-contract run
+has three passing cases and two retained failures. Full static verification
+exits1 on two unused spec imports. No normal source/graph hooks or CI are claimed.
+See the [candidate checkpoint](../../../docs/architecture/function-telemetry.md#effect-native-candidate-qualification---2026-11-20)
+for exact commands, evidence and unexecuted obligations.
+
+Confirmed composition blocker: installed Effect.fn applies its pipeables before
+adding its own outer withSpan. A tracing-disable pipeable does not suppress that
+span; an outer gate does. Flags must therefore surround native execution, not
+be installed as this candidate's inner pipeable. Qualify a corrected outer
+composition, including both authored generator helpers, without exemptions,
+sync runners, casts or unobserved callbacks before publishing anything.
+
+Do not infer a timer defect from the first spec failure: independent
+Metric.snapshot has a sample while a newly constructed Metric.timer queries a
+distinct zero-count histogram with the same displayed name/tags. Snapshot-based
+observation and descriptor reuse/capacity need qualification. The second
+failure compares raw object identity; native uninstrumented Effect.fn also
+annotates/proxies that failure, while Cause.originalError retains identity.
+Use a correct native baseline; later defect/interruption assertions did not run.
+
+Scope/receiver/environment, concurrent sanitized ancestry and catalog boundary
+cases pass, not all-exit/full Flags/finite-self-observation/overload/audit proof.
+No overhead or emitted tree-shaking measurements exist for this candidate.
+Preserve the failures; do not claim best-found optimization, global coverage,
+production activation, completed primitive or finished EVE44/#811.
+
+## Binding A selection and queued lint packet - 2026-11-20
+
+Jonathan selected A: EVERY first-party helper, including pure total sync
+helpers, becomes named generator Effect.fn and callers yield* it. Sources:
+[binding selection](https://linear.app/resnovas/issue/EVE-44#comment-ddad7ad8-abb8-4d63-9c78-28795816f0f9)
+and [explicit mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7041886325).
+Puck relayed this on November 20; original human-decision time is unknown.
+This supersedes the mixed-wrapper plan/options hold below, not prior evidence.
+No instrument() sync wrapper, try/finally, runSync/cast/suppression bridge or
+root/opacity clearance. Use Exit/finalizers/Metric; Flags outside spans; additional
+profiling timer only in tests. Native span timestamps remain distinct.
+
+Primitive/public-contract proof comes first. The queued later checker packet
+reuses tools/function-telemetry inventory and installed TypeScript/ESLint,
+resolves true symbols/static catalog/generator bodies/caller execution and
+rejects fake/eager wrappers or dropped/nested Effects. Working --fix propagates
+lazy Effect types through resolved closed caller graphs; second pass zero diff
+requires type/receiver/argument/recursion/overload/runtime proof. Constructors,
+accessors/framework callbacks/dynamic/public external contracts remain exact
+BLOCKED until redesigned, never exempted. Account for generator implementations
+and introduced helpers; finite self-observation remains a proof obligation.
+Future checker owner has only tools/function-telemetry/** after dispatch;
+root ESLint/package/Nx/verification stay funnel-owned. This primitive assignment
+does not implement that packet or migration. Source presence, executed evidence
+and publication are reported separately; EVE44/#811 remain open.
+
+## Current owner ruling and options gate - 2026-11-20
+
+Historical options-before-implementation checkpoint, superseded by A above.
+
+Jonathan ruled NO to the rule 3 try/finally exception for instrument(), relayed
+by Puck on November 20; original human-decision time is unknown. Sources:
+[binding Linear ruling](https://linear.app/resnovas/issue/EVE-44#comment-3026bf41-1f35-4315-bae9-f5cd6aa7f1c0)
+and independently read [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7041759687).
+No runtime Proxy/try-finally, hook suppression, integration relabeling or
+vendor-opacity bridge is authorized. Use Effect facilities; lift real vendor
+async work at its existing boundary. Plain sync helpers must be total, so raw
+throw-identity preservation is not an applicable compliant-helper requirement.
+
+Puck requires OPTIONS BEFORE implementation. The canonical architecture's
+[helper redesign comparison](../../../docs/architecture/function-telemetry.md#effect-native-helper-redesign---owner-review-required)
+is a proposal, not a selected API or migration:
+
+- A, recommended for ordinary helpers: named generator Effect.fn returns an
+  Effect instead of the original value. Callers yield* it; helper body execution
+  is lazy and repeated Effect execution is fresh. Sync-only callback/framework
+  APIs require individual redesign or remain BLOCKED. No Promise is needed.
+- B: keep the total sync helper and observe its invocation from a named Effect
+  step using deferred Effect.sync. This changes callers, not the helper API.
+  Bare calls/internal helper calls escape; it cannot replace every-definition
+  enforcement without an explicit owner policy change and full call-edge proof.
+- C: a total-thunk lift returning Effect has A's return/laziness impact plus a
+  wrapper/callback and retention edge. It is not a transparent sync alternative.
+  Do not introduce another wrapper name without a demonstrated reused need.
+
+Named Effect.fn adds generator/interpreter/span and definition/call Error
+allocation costs; captureStackTrace:false does not eliminate all allocation.
+Optional timer cost is separate from intrinsic span timestamps. No overhead
+tolerance, speedup or tree-shaking acceptance has been measured. Preserve
+sideEffects:false truth, modular imports and lazy bounded catalogs; prove real
+used/unused consumers, do not add unproved purity annotations or a global
+registry that retains otherwise unused functions. B can keep pure modules free
+of Effect imports, but cannot meet universal definition coverage by itself.
+
+All-exit observation uses Exit/finalizers/Metric, without exporting Exit/Cause,
+raw errors, arguments or results. onExit finalizer defects can change the business
+Exit; fault containment/visible health remains a proof obligation. Finite helper
+self-observation still needs bounded accounting terminating in vendor facilities,
+not an unobserved first-party callback or a reentrancy exemption. Existing Flags,
+production timer OFF/test ON mandatory, remote opt-in OFF and8192 remain binding.
+
+Executed option models: node .amp/in/orb-backup/effect-native-options.mjs exits0,
+four PASS controls on published541b18ac/Effect3.22.4. A is lazy/repeatable with
+fresh spans/two metric increments and composes41/72 with ancestry. B's observed
+step retains ancestry but bare calls emit nothing. Nested runSync loses parent
+and ignores outer tracing-disable context even for a total body, so it is not
+the proposed sync bridge. This is not production primitive/spec/Flags/timer/
+finite-helper/performance/emitted-consumer acceptance. No primitive, root hunk,
+commit or publication follows before the owner selects the API/call-site form.
+
+## Current selected mechanism - 2026-11-20
+
+The earlier source-wrapper selection below is qualified by the later NO ruling
+and current options gate above; it does not authorize transparent sync wrapping
+or an implicit value-to-Effect conversion. Jonathan selected generator-form named Effect.fn for every Effect-returning
+function and one-line instrument("op", originalFunction) definitions for all
+other first-party functions. No exemptions, decorators or build-time rewriting.
+The lint rule's working --fix adds missing wrappers to actual source; emitted
+and directly loaded source must run that same implementation. Preserve private
+visibility and behavior rather than exporting formerly private helpers.
+
+Spans, timer starts and metric measurement state are fresh per call/execution,
+never definition-time observations. Effect3.22.4 Effect.ts28923-29064 sends native
+generator bodies through core.fromIterator, whose internal/core.ts implementation
+uses suspend. Non-generator bodies and Effect.fn pipeline callbacks execute
+while constructing the returned Effect. Require generator form and put deferred
+observation inside the generator or Effect.suspend; syntax alone is insufficient.
+Test no observation at definition/construction and distinct spans/samples when
+executing the same returned Effect twice, concurrent ancestry and all exits.
+Effect.fn supplies a span, not automatic counters/histograms. Source inspection
+does not substitute for primitive behavior proof or working lint enforcement.
+
+Staging is primitive first, then symbol-aware lint with executed --fix and
+idempotence/behavior/fake-wrapper/eager-state fixtures, then coordinated source
+migration. Puck assigned the freed CodeQL slot to primitive execution thread
+T-f8067a59-6f0f-4ced-9708-e13b3317ffdd, isolated agents/eve44-primitive from
+published541b18ac. It owns only new function-instrumentation.ts/spec and
+canonical EVE44 sections, with no nested threads. tools/function-telemetry
+is the later checker stage, not an extra implementation here. Funnel reconfirmed
+only the additive runtime subpath and telemetry coverage include; existing
+runtime/contracts configs also discover the telemetry spec. Root wiring and
+existing telemetry/bootstrap/process fixtures remain read-only.
+No transform proof is scheduled. Unsupported constructors/async/generator/
+framework semantics and finite collector self-observation remain BLOCKED,
+not exemptions or permission to apply behavior-changing fixes.
+
+Earlier signal/privacy/8192/optimization/tree-shaking requirements remain.
+Counters/metrics/traces/spans/attributes default ON through existing Flags;
+timers default OFF in production and ON/mandatory in tests; remote export is
+opt-in/OFF. No new dependency, provider, production activation or spend.
+Five-lane cap and separate normal hooks within1200s remain. Measure real CPU/
+memory over a full hook before considering an upgrade, report sustained70-80%+
+use; a paid upgrade still requires an explicit amount. EVE-248 January2027.
+
+The selected source mechanism supersedes the historical pending/decorator/
+transform discussion below. See the canonical architecture's current selection
+and EVE-44 comment2d3ca630-e4d5-40a9-ae1d-f9cd58fd8f06.
+
+## Primitive qualification hold - 2026-11-20
+
+Historical pre-ruling checkpoint only. The requested rule 3 exception below
+was rejected; no further exception is pending. The current gate is owner review
+of the Effect-native helper options, not permission for the diagnostic Proxy.
+
+Both retained input hashes match. Selected prose is reconciled, never the old
+timeline/decision history or generated LLMS wholesale. Diagnostic probe
+node .amp/in/orb-backup/primitive-qualification.mjs exits0 on published541b18ac:
+zero generator observations at definition/construction, fresh spans/counter
+increments on repeated execution, construction-eager negative controls,
+four-exit business/finalizer/audit preservation and concurrent ancestry.
+These controls are not production primitive/public-contract acceptance.
+
+Disabling tracing inside the generator leaves Effect.fn's outer span enabled;
+Flags need outer deferred control. Effect.runSync normalizes synchronous thrown
+identity; a diagnostic Proxy+try/finally preserves the tested synchronous
+receiver/arguments/arity/value/throw contract. At that checkpoint production use
+awaited a scoped rule3 ruling; the subsequent NO rejects that path. No override
+or hook suppression is inferred.
+Typed synchronous context, finite helper observation and full flag/timer/
+privacy/catalog/overload/async qualification remain unproved, not exemptions.
+No production primitive/spec/export/coverage change or publication is claimed.
+Context7 is quota-blocked; installed Effect3.22.4 source supplied the evidence.
+
+## Historical bounded inventory and superseded proposals
 
 Read `docs/architecture/function-telemetry.md` for Jonathan's seven binding
 selections and the structural mechanism proposal/START. No manual per-call
@@ -3390,3 +3641,49 @@ typed primitive; vendor opacity, nested restoration, async/native behavior,
 per-step profiling and collector self-observation remain unresolved. Ordinary
 non-generator Effect.fn bodies execute at construction: verify actual execution
 coverage rather than accepting a wrapper name. No production adoption yet.
+
+---
+
+# No inline comments: the comment ratchet
+
+Since 2026-11-21 ([ADR-0001](../../../docs/adr/0001-no-inline-comments-and-ratchet.md)) first-party JavaScript and TypeScript carries no inline (`//`) or block (`/* */`) comments. `eventiva/no-inline-comments` in `eslint.config.mjs` reports them, and `node tools/comments/ratchet.mjs --base HEAD` (part of `node --run check`) holds each legacy file to its count in `tools/comments/ratchet.json`. Counts may only fall.
+
+Kept: licence headers, attached JSDoc (`/** ... */`), `// effect-boundary: <reason>` markers, `// @ts-expect-error` in tests, shebangs and files synced from `Resnovas/.github`.
+
+Instead of a comment: delete a tautology or stale note, fix the hack an excuse describes (file an issue and add a lint rule with `correction-to-lint`), move a decision into `docs/adr/`, or document the callable contract in its JSDoc.
+
+To pay down the ratchet, run `/delete-comment` on a directory. After classifying and recording, `node tools/comments/ratchet.mjs --strip <paths>` deletes the remaining comments and `--update` tightens the ledger in the same commit.
+
+```ts
+/** Return the tenant's open invoices; never includes drafts. */
+export const openInvoices = (invoices: ReadonlyArray<{ readonly status: string }>) =>
+    invoices.filter((invoice) => invoice.status === 'open');
+```
+
+---
+
+# The JSDoc tag contract
+
+`eslint.config.mjs` applies `eslint-plugin-jsdoc` 65.4.6 to the globs in `jsdocAdoptedFiles`. The target is every JS/TS file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`. Add a group's glob in the commit that clears its findings; never add a baseline or suppression. Read the table in `docs/documentation-standard.md` before writing JSDoc.
+
+- Each callable gets a sentence description, `@param` per parameter and `@returns` when it returns a value.
+- Each export gets `@since <package version>` and `@example`.
+- An Effect documents its success in `@returns` and each typed failure with `@fails {ErrorTag}`.
+- `@access` names the resource or action permission a caller must hold, in the dotted form of the `Permission` schema in `packages/contracts/src/action.ts`. Never a role.
+- Callbacks passed to `Effect.gen` need only a description.
+- Never write `@throws`, `@exception`, `@author`, `@license` or `@version`.
+- JavaScript files may keep JSDoc types; TypeScript files may not.
+- A callback that needs `@param` and follows another argument (`it('name', fn)`) becomes a named, documented `const`.
+
+```ts
+/**
+ * An `I18n` layer for one locale.
+ *
+ * @since 0.0.1
+ * @param options - The locale, catalogue and optional terminology pack, as for `make`.
+ * @returns A layer providing `I18n`; building it never fails.
+ * @example
+ * const program = Effect.provide(useShellTitle, layer({ locale: 'en-GB', catalogue }));
+ */
+export const layer = (options: I18nOptions): Layer.Layer<I18n> => Layer.effect(I18n, make(options));
+```

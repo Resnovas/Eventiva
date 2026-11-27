@@ -21,6 +21,7 @@ LICENSE
 .github/PULL_REQUEST_TEMPLATE.md
 .github/smartcloud.yml
 .github/workflows/house-codeql.yml
+.github/workflows/house-codeql-alert-comment.yml
 .github/workflows/house-dependency-review.yml
 .github/workflows/house-scorecard.yml
 .github/zizmor.yml
@@ -46,8 +47,22 @@ tools/release/
 .github/workflows/house-release.yml
 .github/workflows/house-nightly.yml
 .github/workflows/house-release-preview.yml
+.github/workflows/house-funnel.yml
+.github/workflows/house-readiness.yml
+docs/house-funnel.md
+docs/graphify.md
+tools/dev/pre-commit.mjs
+tools/lint/funnel.mjs
+tools/lint/react.mjs
+tools/verification/
 tools/ci/coverage-goal.ts
 tools/ci/flaky-tests.ts
+tools/ci/smartcloud-native-contract.cjs
+tools/ci/smartcloud-native.yml
+tools/test-process/process.mjs
+tools/test-process/process.d.mts
+tools/test-process/windows.mjs
+tools/test-process/build-windows.mjs
 tools/test/file.ts
 tools/typecheck/tests.ts
 tools/ai-docs/
@@ -74,8 +89,9 @@ orca.yaml
 .codex/config.toml
 # Generated from ai-docs/src by tools/ai-docs/docgen.mjs.
 LLMS.md
-# The committed code graph.
+# Ignored local graph output.
 graphify-out/
+graphify-snapshot/
 .agents/skills/git-worktrees/
 # house:managed:end
 # house:local - add this repository's own ignores below this line.

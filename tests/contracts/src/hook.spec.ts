@@ -58,13 +58,27 @@ const event = {
     sequence: 1,
     projection: { kind: 'domain.change', identity, change: 'updated', revision: 1 },
 };
-/** Test unknown wire input against a hook schema without throwing or coercing the validation outcome. */
+/**
+ * Test unknown wire input against a hook schema without throwing or coercing the validation outcome.
+ *
+ * @template A - The schema's decoded type.
+ * @template I - The schema's encoded type.
+ * @template Input - The type of the wire value under test.
+ * @param schema - The hook schema to decode with.
+ * @param value - The wire value under test.
+ * @returns Whether the value decodes successfully.
+ */
 const valid = <A, I, Input>(schema: Schema.Schema<A, I>, value: Input) =>
     Schema.decodeUnknownEither(schema)(value)._tag === 'Right';
 
 it.effect(
     'fails closed without a durable outbox or an authorized release policy',
-    /** Isolate unavailable persistence and deny-all release layers from real hook delivery infrastructure. */ () =>
+    /**
+     * Isolate unavailable persistence and deny-all release layers from real hook delivery infrastructure.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Verify every outbox operation fails unavailable and release authorization independently denies the event. */ function* () {
                 // A valid declaration and event ensure failures reflect missing capabilities rather than malformed fixtures.

@@ -18,6 +18,13 @@ import { defineConfig } from 'vitest/config';
 import { testProject } from '../../vitest.shared.ts';
 
 const config = testProject('contracts-tests', ['packages/contracts/src/**'], import.meta.url);
+/**
+ * The contracts test project: portable contract specs plus the resource, telemetry, UI module and runtime specs that exercise them.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run @eventiva/contracts-tests:test
+ */
 export default defineConfig({
     ...config,
     test: {

@@ -14,6 +14,12 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
+/**
+ * Babel configuration for the Expo client: the Expo preset, cached for the whole build.
+ *
+ * @param {{ cache: (value: boolean) => void }} api - Babel's configuration API.
+ * @returns {{ presets: Array<string> }} The Babel options.
+ */
 module.exports = function (api) {
     api.cache(true);
     return { presets: ['babel-preset-expo'] };

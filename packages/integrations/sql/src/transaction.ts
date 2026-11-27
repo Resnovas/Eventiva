@@ -29,7 +29,17 @@ class Origin extends Context.Tag('@eventiva/integrations.sql/transaction/Origin'
     }
 >() {}
 
-/** One trusted composition root; independently constructed roots never share authority. */
+/**
+ * One trusted composition root; independently constructed roots never share authority.
+ *
+ * @param dialect - The SQL dialect the paired storage adapter is built for.
+ * @param operation - The operation name recorded on a failure when a foreign ambient transaction is detected.
+ * @returns The SQL client, the ownership-checked storage, and the `check` and `required` guard effects.
+ * @fails {StorageFailure} When the paired storage layer cannot be built.
+ * @since 0.0.1
+ * @example
+ * const { storage, required } = yield* transactionScope('postgres', 'hook-foreign-transaction');
+ */
 export const transactionScope = (
     dialect: Dialect,
     operation: 'hook-foreign-transaction' | 'resource-provider-boundary'
@@ -61,9 +71,25 @@ export const transactionScope = (
                         return yield* new StorageFailure({ operation: 'hook-transaction-required' });
                 }
             );
-            /** Check ambient ownership before evaluating work, preserving its result and typed failures. */
+            /**
+             * Check ambient ownership before evaluating work, preserving its result and typed failures.
+             *
+             * @template A - The work's success value.
+             * @template E - The work's typed failure.
+             * @template R - The work's required services.
+             * @param effect - The storage work to run once ownership is confirmed.
+             * @returns The work's result, or a StorageFailure when a foreign ambient transaction is present.
+             */
             const owned = <A, E, R>(effect: Effect.Effect<A, E, R>) => check.pipe(Effect.zipRight(effect));
-            /** Bind work to the transaction established by the paired storage, not an arbitrary supplied client. */
+            /**
+             * Bind work to the transaction established by the paired storage, not an arbitrary supplied client.
+             *
+             * @template A - The work's success value.
+             * @template E - The work's typed failure.
+             * @template R - The work's required services.
+             * @param effect - The body to run with this root's private ownership marker.
+             * @returns The body's result, or a StorageFailure when no transaction connection is present.
+             */
             const inside = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
                 Effect.gen(
                     /** Attach private ownership only while a transaction connection is present in the current context. */ function* () {
@@ -79,43 +105,157 @@ export const transactionScope = (
             const paired = Storage.of({
                 capabilities: base.capabilities,
                 ready: owned(base.ready),
-                /** Bind durable run acceptance to this exact transaction root. */
+                /**
+                 * Bind durable run acceptance to this exact transaction root.
+                 *
+                 * @param args - The run acceptance arguments, passed unchanged to the base adapter.
+                 * @returns The accepted run.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 acceptRun: (...args) => owned(base.acceptRun(...args)),
-                /** Refuse retained-run reads through a foreign ambient transaction. */
+                /**
+                 * Refuse retained-run reads through a foreign ambient transaction.
+                 *
+                 * @param args - The tenant and run id, passed unchanged to the base adapter.
+                 * @returns The stored run, or undefined when none is retained.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 getRun: (...args) => owned(base.getRun(...args)),
-                /** Serialize takeover only on this root's own tenant connection. */
+                /**
+                 * Serialize takeover only on this root's own tenant connection.
+                 *
+                 * @param args - The claim arguments, passed unchanged to the base adapter.
+                 * @returns The fence for the claimed run.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 claimRun: (...args) => owned(base.claimRun(...args)),
-                /** Mark the fenced effect with the same private ownership as business commits. */
+                /**
+                 * Mark the fenced effect with the same private ownership as business commits.
+                 *
+                 * @param fence - The run fence that must still hold when the effect commits.
+                 * @param effect - The fenced work.
+                 * @returns The fenced work's result.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or no transaction is open.
+                 * @fails {StorageConflict} When the fence is stale.
+                 */
                 fence: (fence, effect) => owned(base.fence(fence, inside(effect))),
                 // The ownership check runs BEFORE Effect SQL can reuse a foreign ambient connection.
-                /** Reject foreign ambient connections, then mark the paired transaction's body as owned. */
+                /**
+                 * Reject foreign ambient connections, then mark the paired transaction's body as owned.
+                 *
+                 * @param effect - The body to run inside one atomic transaction.
+                 * @returns The body's result once the transaction commits.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the transaction fails.
+                 */
                 transaction: (effect) => owned(base.transaction(inside(effect))),
-                /** Guard key serialization and mark only the mutation body with this root's transaction authority. */
+                /**
+                 * Guard key serialization and mark only the mutation body with this root's transaction authority.
+                 *
+                 * @param request - The idempotent commit request whose key is serialized.
+                 * @param execute - The mutation body run only when the key has no stored result.
+                 * @returns The commit result and whether it was replayed.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the key was used with a different input.
+                 */
                 commit: (request, execute) => owned(base.commit(request, inside(execute))),
-                /** Guard record insertion against reuse of a foreign ambient transaction. */
+                /**
+                 * Guard record insertion against reuse of a foreign ambient transaction.
+                 *
+                 * @param args - The record to insert, passed unchanged to the base adapter.
+                 * @returns An effect that completes once the record is inserted.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 create: (...args) => owned(base.create(...args)),
-                /** Guard record reads even though they do not open their own transaction. */
+                /**
+                 * Guard record reads even though they do not open their own transaction.
+                 *
+                 * @param args - The record id, passed unchanged to the base adapter.
+                 * @returns The record, or undefined when it does not exist.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 get: (...args) => owned(base.get(...args)),
-                /** Preserve the base optimistic transition checks after verifying ambient ownership. */
+                /**
+                 * Preserve the base optimistic transition checks after verifying ambient ownership.
+                 *
+                 * @param args - The transition arguments, passed unchanged to the base adapter.
+                 * @returns The updated record.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 compareAndSet: (...args) => owned(base.compareAndSet(...args)),
-                /** Guard atomic opening stock and its ledger entry with this root's ownership check. */
+                /**
+                 * Guard atomic opening stock and its ledger entry with this root's ownership check.
+                 *
+                 * @param args - The stock id and capacity, passed unchanged to the base adapter.
+                 * @returns An effect that completes once stock is opened.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 stock: (...args) => owned(base.stock(...args)),
-                /** Refuse stock observations through a foreign ambient transaction connection. */
+                /**
+                 * Refuse stock observations through a foreign ambient transaction connection.
+                 *
+                 * @param args - The stock id, passed unchanged to the base adapter.
+                 * @returns The quantity currently available.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 available: (...args) => owned(base.available(...args)),
-                /** Preserve atomic reservation and expiry handling after rejecting foreign ambient ownership. */
+                /**
+                 * Preserve atomic reservation and expiry handling after rejecting foreign ambient ownership.
+                 *
+                 * @param args - The reservation arguments, passed unchanged to the base adapter.
+                 * @returns An effect that completes once the reservation is held.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 reserve: (...args) => owned(base.reserve(...args)),
-                /** Guard confirmation/release without changing the base pending/expiry rules. */
+                /**
+                 * Guard confirmation/release without changing the base pending/expiry rules.
+                 *
+                 * @param args - The settlement arguments, passed unchanged to the base adapter.
+                 * @returns An effect that completes once the reservation is settled.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 settle: (...args) => owned(base.settle(...args)),
                 expire: owned(base.expire),
-                /** Guard event deduplication and exact payment comparison against foreign transactions. */
+                /**
+                 * Guard event deduplication and exact payment comparison against foreign transactions.
+                 *
+                 * @param args - The reconciliation arguments, passed unchanged to the base adapter.
+                 * @returns Whether the event was applied or replayed.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 * @fails {StorageConflict} When the base adapter rejects the operation as a conflict.
+                 */
                 reconcile: (...args) => owned(base.reconcile(...args)),
-                /** Guard outbox insertion without executing the queued command. */
+                /**
+                 * Guard outbox insertion without executing the queued command.
+                 *
+                 * @param args - The outbox id and command, passed unchanged to the base adapter.
+                 * @returns An effect that completes once the command is queued.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 enqueue: (...args) => owned(base.enqueue(...args)),
-                /** Guard immutable receipt persistence without bypassing the base replay comparison. */
+                /**
+                 * Guard immutable receipt persistence without bypassing the base replay comparison.
+                 *
+                 * @param args - The receipt id and body, passed unchanged to the base adapter.
+                 * @returns An effect that completes once the receipt is stored.
+                 * @fails {StorageFailure} When a foreign ambient transaction is present or the store fails.
+                 */
                 audit: (...args) => owned(base.audit(...args)),
             });
             return { client, storage: paired, check, required };
         }
     );
 
+/**
+ * The services a transaction scope yields: the client, the paired storage and its guards.
+ *
+ * @since 0.0.1
+ * @example
+ * const use = (scope: TransactionScope) => scope.storage.transaction(work);
+ */
 export type TransactionScope = Effect.Effect.Success<ReturnType<typeof transactionScope>>;

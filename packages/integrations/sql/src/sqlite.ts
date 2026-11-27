@@ -18,7 +18,15 @@ import { SqliteClient } from '@effect/sql-sqlite-node';
 import { SqlClient } from '@effect/sql';
 import { Effect, Layer, Redacted } from 'effect';
 
-/** Persistent Node-local dev/staging database; callers own private directory provisioning and trusted tenant routing. */
+/**
+ * Persistent Node-local dev/staging database; callers own private directory provisioning and trusted tenant routing.
+ *
+ * @param filename - The redacted path of the SQLite database file; its directory must already exist.
+ * @returns A layer providing the SQLite client with foreign-key enforcement enabled.
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(migrate('sqlite', migrations), localFile(Redacted.make('/var/lib/eventiva/tenant.db')));
+ */
 export const localFile = (filename: Redacted.Redacted<string>) =>
     Layer.effectDiscard(
         Effect.gen(
@@ -29,7 +37,14 @@ export const localFile = (filename: Redacted.Redacted<string>) =>
         )
     ).pipe(Layer.provideMerge(SqliteClient.layer({ filename: Redacted.value(filename) })));
 
-/** Node conformance only. Uses the package's bundled prebuild, never a build-script allowance. */
+/**
+ * Node conformance only. Uses the package's bundled prebuild, never a build-script allowance.
+ *
+ * @returns A layer providing a fresh in-memory SQLite client with foreign-key enforcement enabled.
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(migrate('sqlite', migrations), memory());
+ */
 export const memory = () =>
     Layer.effectDiscard(
         Effect.gen(

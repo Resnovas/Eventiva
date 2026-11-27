@@ -20,10 +20,9 @@ import { bannedTagMessage, bannedTags, jsdocTagBan } from './jsdoc-tags.mjs';
 
 const [severity, options] = jsdocTagBan(['packages/*/src/**/*.ts']).rules['jsdoc/no-restricted-syntax'];
 const selector = options.contexts[0].comment;
-// The JsdocTag attribute regex, as esquery evaluates it against each tag name.
 const tagPattern = new RegExp(/tag=\/(.+)\/\]/.exec(selector)[1]);
 
-test('the override bans exactly the throws, exception, author and license tags as errors', () => {
+test('the override bans exactly the throws, exception, author and license tags as errors', /** Verify the exported tag list and esquery attribute regex reject only the four banned tag names. */ () => {
     assert.equal(severity, 'error');
     assert.deepEqual([...bannedTags], ['throws', 'exception', 'author', 'license']);
     for (const tag of bannedTags) assert.ok(tagPattern.test(tag), tag);
@@ -32,7 +31,7 @@ test('the override bans exactly the throws, exception, author and license tags a
     }
 });
 
-test('the override targets the caller files on every JSDoc block with the corrective message', () => {
+test('the override targets the caller files on every JSDoc block with the corrective message', /** Verify the flat-config entry forwards caller globs, matches every JSDoc block and emits the corrective message. */ () => {
     const files = ['apps/*/src/**/*.ts'];
     assert.deepEqual(jsdocTagBan(files).files, files);
     assert.equal(options.contexts[0].context, 'any');

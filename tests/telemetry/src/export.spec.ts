@@ -56,23 +56,48 @@ const record: TelemetryRecord = {
     outcome: 'none',
 };
 const enabled = Layer.succeed(Flags, {
-    /** Enable the requested flag without changing its other safe-default metadata. */ evaluate: (flag) =>
-        Effect.succeed({ ...safeDefault(flag), value: true }),
+    /**
+     * Enable the requested flag without changing its other safe-default metadata.
+     *
+     * @param flag - Flag definition the sink asks about.
+     * @returns An effect yielding the safe-default evaluation with its value switched on.
+     */
+    evaluate: (flag) => Effect.succeed({ ...safeDefault(flag), value: true }),
 });
 const allow = Layer.succeed(TelemetryExportAuthority, {
-    /** Model a currently valid export grant independently of transport. */ authorize: () => Effect.void,
+    /**
+     * Model a currently valid export grant independently of transport.
+     *
+     * @returns An effect that grants every export request.
+     */
+    authorize: () => Effect.void,
 });
-/** Substitute an independent transport to verify projection without coupling runtime to a vendor. */
+/**
+ * Substitute an independent transport to verify projection without coupling runtime to a vendor.
+ *
+ * @param records - Array that receives every record the provider is asked to write.
+ * @returns A provider layer that records writes and flushes without a network.
+ */
 const provider = (records: Array<TelemetryRecord>) =>
     Layer.succeed(TelemetryExportProvider, {
-        /** Retain exactly what crosses the provider boundary for privacy assertions. */
+        /**
+         * Retain exactly what crosses the provider boundary for privacy assertions.
+         *
+         * @param _binding - Export scope of the write, unused by this provider.
+         * @param value - Projected record that crossed the provider boundary.
+         * @returns An effect that appends the record when it runs.
+         */
         write: (_binding, value) =>
             Effect.sync(
                 /** Capture delivery at execution time rather than effect construction. */ () => {
                     records.push(value);
                 }
             ),
-        /** Complete a transport flush without adding records or accessing a network. */
+        /**
+         * Complete a transport flush without adding records or accessing a network.
+         *
+         * @returns An effect that completes immediately.
+         */
         flush: () => Effect.void,
     });
 
@@ -82,14 +107,25 @@ describe('governed telemetry export', /** Register vendor-independent export aut
         for (const operation of ['write', 'flush'] as const) {
             it.effect(
                 `preserves admitted export scope after ${adapter} mutation during ${operation}`,
-                /** Adapter-owned views cannot widen later records or replace the original baseline scope. */ () =>
+                /**
+                 * Adapter-owned views cannot widen later records or replace the original baseline scope.
+                 *
+                 * @returns The scenario that corrupts one adapter view and checks every later release.
+                 */
+                () =>
                     Effect.gen(
                         /** Compare asymmetric profiles and all delivered bindings through the public sink. */ function* () {
                             // Collect outside the sink scope so shutdown cannot conceal a late widened release.
                             const records: TelemetryRecord[] = [];
                             const observed: TelemetryExportBinding[] = [];
                             let changed = false;
-                            /** Mutate the first selected adapter view, never the fixture's trusted input. */
+                            /**
+                             * Mutate the first selected adapter view, never the fixture's trusted input.
+                             *
+                             * @param scope - Binding view the adapter received, which may be corrupted in place.
+                             * @param source - Adapter boundary that produced the view: control, authority or provider.
+                             * @param phase - Operation the view belongs to: write or flush.
+                             */
                             const inspect = (scope: TelemetryExportBinding, source: string, phase: string) => {
                                 // Snapshot before corruption so the expectation cannot alias the adapter's later writes.
                                 observed.push({ ...scope });
@@ -116,10 +152,21 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                                         Layer.provide(enabled),
                                         Layer.provide(
                                             Layer.succeed(TelemetryExportAuthority, {
-                                                /** Observe the exact current scope before attempting adapter corruption. */
+                                                /**
+                                                 * Observe the exact current scope before attempting adapter corruption.
+                                                 *
+                                                 * @param scope - Binding view passed to the authority.
+                                                 * @param phase - Release phase being authorized.
+                                                 * @returns An effect that inspects the view and grants the request.
+                                                 */
                                                 authorize: (scope, phase) =>
                                                     Effect.sync(
-                                                        /** Flush and record authorization expose separate disposable views. */ () =>
+                                                        /**
+                                                         * Flush and record authorization expose separate disposable views.
+                                                         *
+                                                         * @returns Nothing; the view is recorded and possibly corrupted.
+                                                         */
+                                                        () =>
                                                             inspect(
                                                                 scope,
                                                                 'authority',
@@ -130,7 +177,13 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                                         ),
                                         Layer.provide(
                                             Layer.succeed(TelemetryExportProvider, {
-                                                /** Capture only the minimized record while corrupting the received binding. */
+                                                /**
+                                                 * Capture only the minimized record while corrupting the received binding.
+                                                 *
+                                                 * @param scope - Binding view passed to the provider.
+                                                 * @param projected - Minimized record being delivered.
+                                                 * @returns An effect that records the delivery and inspects the view.
+                                                 */
                                                 write: (scope, projected) =>
                                                     Effect.sync(
                                                         /** The mutation happens after the first release, not during setup. */ () => {
@@ -139,11 +192,20 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                                                             inspect(scope, 'provider', 'write');
                                                         }
                                                     ),
-                                                /** A payload-free flush must not change subsequent release scope either. */
+                                                /**
+                                                 * A payload-free flush must not change subsequent release scope either.
+                                                 *
+                                                 * @param scope - Binding view passed to the provider flush.
+                                                 * @returns An effect that inspects the view.
+                                                 */
                                                 flush: (scope) =>
                                                     Effect.sync(
-                                                        /** Exercise flush through the same adapter boundary as transport. */ () =>
-                                                            inspect(scope, 'provider', 'flush')
+                                                        /**
+                                                         * Exercise flush through the same adapter boundary as transport.
+                                                         *
+                                                         * @returns Nothing; the view is recorded and possibly corrupted.
+                                                         */
+                                                        () => inspect(scope, 'provider', 'flush')
                                                     ),
                                             })
                                         )
@@ -168,7 +230,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'projects catalog text, drops every input attribute and preserves correlation with interchangeable providers',
-        /** Exercise the same safe projection for logs and spans. */ () =>
+        /**
+         * Exercise the same safe projection for logs and spans.
+         *
+         * @returns The scenario that writes a log and a span carrying private data and checks the delivered projection.
+         */
+        () =>
             Effect.gen(
                 /** Verify only catalog text and correlation survive delivery to an arbitrary provider. */ function* () {
                     // Both signals carry the same private canary, exposing signal-specific projection bypasses.
@@ -198,7 +265,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'defaults off and supplies an explicit default-deny authority',
-        /** Exercise independent flag and authority denials. */ () =>
+        /**
+         * Exercise independent flag and authority denials.
+         *
+         * @returns The scenario that denies the flag and the authority in turn and expects no delivery.
+         */
+        () =>
             Effect.gen(
                 /** Verify enabling one gate cannot bypass the other's safe default. */ function* () {
                     // Enable the other prerequisite in each case so an unrelated denial cannot mask this gate.
@@ -230,21 +302,36 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'never lets downgraded record classification override a protected static binding',
-        /** Exercise classification downgrade resistance. */ () =>
+        /**
+         * Exercise classification downgrade resistance.
+         *
+         * @returns The scenario that binds each protected profile and operation and expects denial.
+         */
+        () =>
             Effect.gen(
                 /** Bind protected contexts while submitting a baseline record that must not escape. */ function* () {
                     // Keep the caller's record ordinary; only the immutable binding supplies the protected floor.
                     const denied: ReadonlyArray<TelemetryExportBinding> = [
                         ...(['restricted', 'vault'] as const).map(
-                            /** Vary the bound protection profile without changing the record. */ (profile) => ({
+                            /**
+                             * Vary the bound protection profile without changing the record.
+                             *
+                             * @param profile - Protected profile to bind.
+                             * @returns A copy of the binding with that profile.
+                             */
+                            (profile) => ({
                                 ...binding,
                                 profile,
                             })
                         ),
                         ...(['protected', 'financial', 'emergency', 'decrypting'] as const).map(
-                            /** Vary the bound operation independently of caller-supplied record classification. */ (
-                                operation
-                            ) => ({
+                            /**
+                             * Vary the bound operation independently of caller-supplied record classification.
+                             *
+                             * @param operation - Protected operation to bind.
+                             * @returns A copy of the binding with that operation.
+                             */
+                            (operation) => ({
                                 ...binding,
                                 operation,
                             })
@@ -276,7 +363,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'rejects unregistered codes, malformed records and record classification mismatch',
-        /** Exercise record validation before transport access. */ () =>
+        /**
+         * Exercise record validation before transport access.
+         *
+         * @returns The scenario that submits invalid records and expects no delivery.
+         */
+        () =>
             Effect.gen(
                 /** Keep a recording provider available to detect accidental release of rejected records. */ function* () {
                     // Observe outside the sink's scope so disposal cannot hide a late or partial delivery.
@@ -311,7 +403,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'checks exact tenant, purpose and generation live and denies flush after grant or flag revocation',
-        /** Exercise revocation on an already acquired sink. */ () =>
+        /**
+         * Exercise revocation on an already acquired sink.
+         *
+         * @returns The scenario that revokes the authority and the flag on a live sink.
+         */
+        () =>
             Effect.gen(
                 /** Revoke each live gate after one permitted delivery without rebuilding the sink. */ function* () {
                     // Mutable fixture decisions expose acquisition-time caching while the binding and handle stay fixed.
@@ -319,10 +416,20 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                     let flagEnabled = true;
                     const records: Array<TelemetryRecord> = [];
                     const authority = Layer.succeed(TelemetryExportAuthority, {
-                        /** Check the full static binding on every authorization request. */
+                        /**
+                         * Check the full static binding on every authorization request.
+                         *
+                         * @param current - Binding the sink presents for authorization.
+                         * @returns An effect that checks the binding and grants or denies the request.
+                         */
                         authorize: (current) =>
                             Effect.suspend(
-                                /** Read mutable permission at operation time to expose stale authorization caching. */ () => {
+                                /**
+                                 * Read mutable permission at operation time to expose stale authorization caching.
+                                 *
+                                 * @returns An effect that succeeds while authorized and fails as unavailable otherwise.
+                                 */
+                                () => {
                                     // A permissive boolean is insufficient if the sink substitutes another tenant or generation.
                                     expect(current).toEqual(binding);
                                     return authorized
@@ -332,10 +439,20 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                             ),
                     });
                     const flags = Layer.succeed(Flags, {
-                        /** Reevaluate the flag for an existing sink rather than only at acquisition. */
+                        /**
+                         * Reevaluate the flag for an existing sink rather than only at acquisition.
+                         *
+                         * @param flag - Flag definition the sink asks about.
+                         * @returns An effect yielding the evaluation with the current test-controlled value.
+                         */
                         evaluate: (flag) =>
                             Effect.sync(
-                                /** Observe the latest test-controlled flag value. */ () => ({
+                                /**
+                                 * Observe the latest test-controlled flag value.
+                                 *
+                                 * @returns The safe-default evaluation carrying the current test-controlled value.
+                                 */
+                                () => ({
                                     ...safeDefault(flag),
                                     value: flagEnabled,
                                 })
@@ -370,7 +487,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'rejects escaped sink handles after scope closure',
-        /** Exercise disposal fencing on retained sink references. */ () =>
+        /**
+         * Exercise disposal fencing on retained sink references.
+         *
+         * @returns The scenario that uses a sink after its scope has closed and expects refusal.
+         */
+        () =>
             Effect.gen(
                 /** Acquire a sink in a completed scope before attempting either release path. */ function* () {
                     // Effect.provide closes the layer before returning; the retained reference is deliberately escaped.
@@ -393,7 +515,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'authorizes queued records at worker delivery, never releasing them on revoked shutdown flush',
-        /** Exercise revocation between enqueue and worker delivery. */ () =>
+        /**
+         * Exercise revocation between enqueue and worker delivery.
+         *
+         * @returns The scenario that revokes authorization while a write is in flight.
+         */
+        () =>
             Effect.gen(
                 /** Hold the first write in flight while a second queued record loses authorization. */ function* () {
                     const started = yield* Deferred.make<void>();
@@ -401,7 +528,13 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                     let authorized = true;
                     const records: Array<TelemetryRecord> = [];
                     const remote = Layer.succeed(TelemetryExportProvider, {
-                        /** Hold an already authorized delivery so later queued work can be revoked deterministically. */
+                        /**
+                         * Hold an already authorized delivery so later queued work can be revoked deterministically.
+                         *
+                         * @param _binding - Export scope of the write, unused by this provider.
+                         * @param value - Projected record being delivered.
+                         * @returns An effect that signals entry, waits for release and records the delivery.
+                         */
                         write: (_binding, value) =>
                             Effect.gen(
                                 /** Signal provider entry and wait for the test to permit completion. */ function* () {
@@ -411,15 +544,27 @@ describe('governed telemetry export', /** Register vendor-independent export aut
                                     records.push(value);
                                 }
                             ),
-                        /** Avoid adding transport-side behavior to the worker authorization scenario. */
+                        /**
+                         * Avoid adding transport-side behavior to the worker authorization scenario.
+                         *
+                         * @returns An effect that completes immediately.
+                         */
                         flush: () => Effect.void,
                     });
                     const authority = Layer.succeed(TelemetryExportAuthority, {
-                        /** Evaluate permission when the worker attempts release, not when logging enqueues a record. */
+                        /**
+                         * Evaluate permission when the worker attempts release, not when logging enqueues a record.
+                         *
+                         * @returns An effect that grants or denies according to the current permission state.
+                         */
                         authorize: () =>
                             Effect.suspend(
-                                /** Return the permission state observed at this delivery boundary. */ () =>
-                                    authorized ? Effect.void : new TelemetrySinkFailure({ reason: 'unavailable' })
+                                /**
+                                 * Return the permission state observed at this delivery boundary.
+                                 *
+                                 * @returns An effect that succeeds while authorized, or an unavailable failure otherwise.
+                                 */
+                                () => (authorized ? Effect.void : new TelemetrySinkFailure({ reason: 'unavailable' }))
                             ),
                     });
                     const pipeline = telemetryLayer(
@@ -452,7 +597,12 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'rejects invalid static bindings and policy before export',
-        /** Exercise acquisition-time validation of trusted export configuration. */ () =>
+        /**
+         * Exercise acquisition-time validation of trusted export configuration.
+         *
+         * @returns The scenario that acquires sinks with malformed bindings and unsafe catalog text and expects failure.
+         */
+        () =>
             Effect.gen(
                 /** Reject malformed bindings and unsafe catalog text before a sink can be used. */ function* () {
                     // All release gates are enabled below, isolating trusted-configuration validation from policy denial.
@@ -480,14 +630,23 @@ describe('governed telemetry export', /** Register vendor-independent export aut
 
     it.effect(
         'refuses release when its scope closes during a pending authorization',
-        /** Exercise disposal racing with authorization completion. */ () =>
+        /**
+         * Exercise disposal racing with authorization completion.
+         *
+         * @returns The scenario that closes the owner during authorization and checks that nothing is released.
+         */
+        () =>
             Effect.gen(
                 /** Close the owner while authorization is suspended, then verify late approval cannot release data. */ function* () {
                     const entered = yield* Deferred.make<void>();
                     const finish = yield* Deferred.make<void>();
                     const records: Array<TelemetryRecord> = [];
                     const authority = Layer.succeed(TelemetryExportAuthority, {
-                        /** Pause permission completion until the sink's owner has closed. */
+                        /**
+                         * Pause permission completion until the sink's owner has closed.
+                         *
+                         * @returns An effect that signals entry and waits until the test releases it.
+                         */
                         authorize: () =>
                             Deferred.succeed(entered, undefined).pipe(Effect.zipRight(Deferred.await(finish))),
                     });

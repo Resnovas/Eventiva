@@ -38,7 +38,34 @@ and [backlog](planning/documentation-backlog.md) for bounded delivery evidence.
 
 Document the contract, purpose and important constraints of every editable Eventiva TypeScript function, method, class and interface with attached JSDoc (`/** ... */`). Include private code, callbacks, function expressions, arrows, overloads, constructors/accessors and callable type signatures. A name or parameter list is not a description. Explain what callers can rely on: ownership, validation, failures, authorization, lifetimes or deliberate absence of side effects, as applicable. Do not claim a guarantee that the implementation does not provide.
 
-Inside bodies, explain meaningful phases, invariants, security boundaries and non-obvious decisions. Comments explain why the implementation takes a step, not that an assignment assigns or a return returns. A pure expression or trivial straight-line body does not need invented internal narration. It still needs a useful contract. No code is grandfathered by its age or by being a test.
+As of 2026-11-21 ([ADR-0001](adr/0001-no-inline-comments-and-ratchet.md)), non-JSDoc inline (`//`) and block (`/* */`) comments are banned under a monotonic ratchet (`tools/comments/ratchet.json`, enforced by `eventiva/no-inline-comments` and `tools/comments/ratchet.mjs`) and `review-internal-rationale` is retired from `tools/documentation/check.mjs`. Document callable contracts in attached JSDoc (`/** ... */`), record cross-cutting architectural decisions in `docs/adr/`, fix hacky implementations rather than excusing them, and use `/delete-comment` to process legacy comments. FCL-1.0-MIT license headers, attached JSDoc contracts (including `@agent-optimization`), `// effect-boundary:` markers, test-only `// @ts-expect-error` assertions and house-synced files remain exempt. No code is grandfathered by its age or by being a test.
+
+## JSDoc tags and the lint rule set
+
+Since 2026-11-21, `eslint.config.mjs` holds editable production TypeScript to a JSDoc tag contract with `eslint-plugin-jsdoc` 65.4.6. The target is every JavaScript and TypeScript file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`, which are fixed there. It is switched on one package or tool at a time through `jsdocAdoptedFiles`, without baselines or suppressions: when a group's findings reach zero, add its glob to the list in the same commit. The standalone checker below still runs on every file.
+
+Three details:
+
+- JavaScript files may keep JSDoc types (`@param {string} file - ...`), because they have no other type information. TypeScript files may not.
+- A review marker may follow the description on the same line (`/** Retain the diagnostics. @agent-optimization reviewed=...; result=...; evidence=... */`), because `tools/function-telemetry` reads it there.
+- When a callback that needs `@param` follows another argument, as in `it('name', fn)` or `page.on('error', fn)`, Prettier keeps its JSDoc on the call's line and the stars cannot align. Name the callback in a `const`, document the `const`, and pass the name.
+
+Every callable and exported type needs a description written as a full sentence. Then add:
+
+| Tag                                                                                                         | When                                            | Notes                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@param name - text`                                                                                        | Every parameter                                 | One spelling only: `@arg`, `@argument` and `@return` are rejected.                                                                                                                                                           |
+| `@returns text`                                                                                             | Every function that returns a value             | For an Effect, describe the success value and that it never fails, or name the failures with `@fails`.                                                                                                                       |
+| `@fails {ErrorTag} text`                                                                                    | Each typed failure in an Effect's error channel | Replaces `@throws`.                                                                                                                                                                                                          |
+| `@since version`                                                                                            | Every export                                    | The package version the export first shipped in. Replaces `@version`, which goes stale.                                                                                                                                      |
+| `@example`                                                                                                  | Every export and public exported method         | A short, real call.                                                                                                                                                                                                          |
+| `@access permission`                                                                                        | Code guarded by a resource or action permission | The dotted, lower-case permission a caller must hold, as the `Permission` schema in `packages/contracts/src/action.ts` defines it, for example `@access inventory.catalogue.write`. Never a role or a TypeScript visibility. |
+| `@yields text`                                                                                              | Real generator APIs                             | Not on callbacks passed to `Effect.gen`: the outer function's `@returns` and `@fails` document the Effect.                                                                                                                   |
+| `@default`, `@deprecated`, `@fires`, `@implements`, `@inheritdoc`, `@see`, `@this`, `@class`, `@constructs` | When they apply                                 | `@emits` is rewritten to `@fires`.                                                                                                                                                                                           |
+
+Never use `@throws` or `@exception` (Effect code does not throw), `@author` (git records it), `@license` (the file header holds it) or `@version` (use `@since`). The rule's message names the replacement. Tests in `tests/boundaries/src/boundaries.spec.ts` prove each ban and a passing control.
+
+A full example is `make` in `packages/integrations/formatjs/src/i18n.ts`.
 
 ## Run the standalone checker
 
@@ -174,11 +201,11 @@ strict CLI, while an actual meaningful body comment clears the fixture.
 
 Eventiva never writes `@throws`, `@exception`, `@author` or `@license`. Jonathan decided this on 2026-11-21. Effect code never throws: failures are typed in the Effect error channel and handled with Effect's tools, not `try`/`catch`, so a throw contract documents the wrong concept. Git records authors, and the file header holds the licence terms.
 
-The house JSDoc `contracts` set in `tools/lint/funnel.mjs` no longer requires `@throws` ([house PR 83](https://github.com/Resnovas/.github/pull/83)). Eventiva's own ban lives in `tools/documentation/jsdoc-tags.mjs`, outside the synced module. `jsdocTagBan(files)` returns one flat-config entry that sets `jsdoc/no-restricted-syntax` to error with this message:
+`eslint.config.mjs` enforces these bans (plus `@version`) on `jsdocAdoptedFiles` through `jsdocContracts` with `eslint-plugin-jsdoc` 65.4.6; see [JSDoc tags and the lint rule set](#jsdoc-tags-and-the-lint-rule-set) above. The house JSDoc `contracts` set in `tools/lint/funnel.mjs` no longer requires `@throws` ([house PR 83](https://github.com/Resnovas/.github/pull/83)). For callers composing the house `contracts` set without editing the synced module, `tools/documentation/jsdoc-tags.mjs` exports `jsdocTagBan(files)`, a standalone flat-config override entry that sets `jsdoc/no-restricted-syntax` to error with this message:
 
 > Do not use @throws, @author or @license. Document Effect failures with @fails, let git record authors, and keep licence terms in the file header.
 
-It is not active yet. Eventiva has not adopted the `contracts` set or installed `eslint-plugin-jsdoc` 65.5.0 (approved under EVE-299; its pnpm `minimumReleaseAge` cooldown ended on 2026-11-26). When the set is adopted, append the entry after the `contracts` entry for the same files; flat config applies the last matching setting:
+When composing the house `contracts` entry directly, append `jsdocTagBan(sources)` after it for the same files; flat config applies the last matching setting:
 
 ```js
 import { contracts } from './tools/lint/funnel.mjs';
