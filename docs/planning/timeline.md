@@ -35,6 +35,8 @@ flowchart LR
     Proof --> Delivery[Protected delivery and hosted artifact evidence]
 ```
 
+Protected delivery completed on 2026-11-27: [house PR88](https://github.com/Resnovas/.github/pull/88) merged at19:53:02Z as [e0eaf130](https://github.com/Resnovas/.github/commit/e0eaf130aec53f396067b148696ca9d62b03edc9), followed by [Eventiva PR1115](https://github.com/Resnovas/Eventiva/pull/1115) at19:53:55Z as [7b6843e2](https://github.com/Resnovas/Eventiva/commit/7b6843e2f8abda9f5e9d4607cb399be4aa82ad0b). Postmerge workflow lint rejects the old publisher pin because its feature commit is no longer in repository history after squash/queue delivery. The correction started at19:56:15Z: pin both callers, including canonical house source, to published house e0eaf130 with byte-identical publisher content. No trigger, permission, gate, application behavior or other repository adoption changes. Normal-hook and protected correction delivery remain current; actual daily hosted publication and administrator inspection remain outstanding, so both issues stay open. Earlier local full-suite listener failures remain disclosed; no settings changes, manual dispatch or new bypass occurred.
+
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
 ## EVE-44 function telemetry recovery - 2026-11-27

@@ -13,7 +13,7 @@ jobs:
   house-graphify:
     # Initial rollout is explicitly limited to these two repositories.
     if: (github.repository == 'Resnovas/Eventiva' || github.repository == 'Resnovas/.github') && github.ref == 'refs/heads/main'
-    uses: Resnovas/.github/.github/workflows/graphify-snapshot.yml@5869de5166b1c98a97dfa7110be07b5b4afbd3f5
+    uses: Resnovas/.github/.github/workflows/graphify-snapshot.yml@e0eaf130aec53f396067b148696ca9d62b03edc9
     permissions:
       contents: read
     with:
