@@ -8,4 +8,7 @@ cd "$(dirname "$0")/.."
 CI=true pnpm install --frozen-lockfile
 node --run setup
 node --run check
+if [ "${CI:-}" != true ] && [ "${GITHUB_ACTIONS:-}" != true ]; then
+  sh tools/graphify/graphify setup
+fi
 echo "agent-setup: ok"
