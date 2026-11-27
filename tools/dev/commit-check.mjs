@@ -19,8 +19,8 @@
 //
 // `node tools/dev/surfaces.mjs install` (run by setup) installs it as
 // .git/hooks/commit-msg. It has no dependencies and never talks to the
-// network. HOUSE_SKIP_COMMIT_CHECK=1 skips it for one emergency commit; the
-// smartcloud check on the pull request still applies every rule.
+// network. HOUSE_SKIP_COMMIT_CHECK=1 skips ordinary checks for an emergency
+// commit, but never the generated-output guard. PR policy still applies.
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -42,7 +42,7 @@ const HOST_LINE = /^(?:claude-session|made-with|generated-by|generated with|🤖
 
 // Staged files the dash scan leaves alone: generated, vendored or not text.
 // The Linear mirror paths preserve verbatim source, not human-authored prose.
-const SKIP_PATH = /^(?:graphify-out\/|externals\/|docs\/reference\/|docs\/planning\/issues\/|tools\/documentation\/linear-snapshot\.json$|LLMS\.md$|CHANGELOG\.md$|.*lock\.(?:yaml|json)$|.*\.(?:min\.js|map|svg|png|jpe?g|gif|pdf|woff2?|ttf|ico)$)/
+const SKIP_PATH = /^(?:graphify-out\/|graphify-snapshot\/|externals\/|docs\/reference\/|docs\/planning\/issues\/|tools\/documentation\/linear-snapshot\.json$|LLMS\.md$|CHANGELOG\.md$|.*lock\.(?:yaml|json)$|.*\.(?:min\.js|map|svg|png|jpe?g|gif|pdf|woff2?|ttf|ico)$)/
 
 // TypeScript the code scan covers: sources, not tests, typings, vendored code
 // or repository tooling (coding-preferences, references/effect.md).
@@ -275,8 +275,48 @@ export const checkStagedText = (diff) => {
 // so the buffer is well above Node's default of one megabyte.
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024 })
 
+/**
+ * Reject generated content before message exemptions or staged-text switches.
+ * Only legacy local-output deletions and its two configuration files are ordinary changes.
+ * Workflow context is an accident guard, not authentication; GitHub permissions,
+ * signed automation PRs and required reviews/checks remain the security boundary.
+ *
+ * @param {string} message - Complete proposed commit message.
+ * @returns {{ problems: string[], automation: boolean }} Guard decision without publishing its configured value.
+ */
+const checkGeneratedGraph = (message) => {
+  const fields = git('diff', '--cached', '--name-status', '--no-renames', '-z').split('\0')
+  const changes = []
+  for (let i = 0; i + 1 < fields.length; i += 2) changes.push({ status: fields[i], path: fields[i + 1] })
+  const generated = changes.filter(({ status, path }) => path.startsWith('graphify-snapshot/') ||
+    (path.startsWith('graphify-out/') && !['graphify-out/.gitignore', 'graphify-out/.gitattributes'].includes(path) && status !== 'D'))
+  if (generated.length === 0) return { problems: [], automation: false }
+  const denied = { problems: ['Generated graph commits cause merge conflicts; graph updates are handled only by repository automation. Unstage generated output and commit source/configuration changes instead.'], automation: false }
+  // No cache, local graph, source change, rename or deletion can ride the publisher exception.
+  const outputs = ['graphify-snapshot/graph.json', 'graphify-snapshot/provenance.json']
+  if (!changes.every(({ status, path }) => ['A', 'M'].includes(status) && outputs.includes(path))) return denied
+  const env = process.env
+  if (env.GITHUB_ACTIONS !== 'true' || !['schedule', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME) ||
+    !['Resnovas/Eventiva', 'Resnovas/.github'].includes(env.GITHUB_REPOSITORY) || env.GITHUB_REF !== 'refs/heads/main' ||
+    env.GITHUB_WORKFLOW_REF !== `${env.GITHUB_REPOSITORY}/.github/workflows/house-graphify.yml@refs/heads/main`) return denied
+  try {
+    const event = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8'))
+    if (event.repository?.full_name !== env.GITHUB_REPOSITORY || event.repository?.default_branch !== 'main' ||
+      git('symbolic-ref', '--short', 'HEAD').trim() !== 'main' || git('rev-parse', 'HEAD').trim() !== env.GITHUB_SHA) return denied
+    // Read committed workflow configuration; an unstaged/staged edit cannot grant an exception.
+    const workflow = git('show', 'HEAD:.github/workflows/house-graphify.yml')
+    const values = [...workflow.matchAll(/^      publication-message: '([^'\r\n]+)'$/gm)]
+    if (values.length !== 1 || message.replace(/\r?\n$/, '') !== values[0][1]) return denied
+    const modes = git('ls-files', '--stage', '--', ...outputs).trim().split('\n')
+    if (modes.length !== outputs.length || modes.some((entry) => !entry.startsWith('100644 ') || !/ 0\t/.test(entry))) return denied
+    return { problems: [], automation: true }
+  } catch {
+    // Missing/malformed workflow evidence denies publication without leaking message or event data.
+    return denied
+  }
+}
+
 const main = () => {
-  if (process.env['HOUSE_SKIP_COMMIT_CHECK'] === '1') return 0
   const args = process.argv.slice(2)
   let message
   let author
@@ -293,6 +333,12 @@ const main = () => {
     console.error('usage: node tools/dev/commit-check.mjs <message-file> | --message "<text>" [--author "Name <email>"] [--no-diff]')
     return 2
   }
+  const graph = checkGeneratedGraph(message)
+  if (graph.problems.length > 0) {
+    for (const problem of graph.problems) console.error(`commit-check: ${problem}`)
+    return 1
+  }
+  if (graph.automation || process.env['HOUSE_SKIP_COMMIT_CHECK'] === '1') return 0
   if (author === undefined) {
     // "Name <email> 1700000000 +0000"
     const ident = git('var', 'GIT_AUTHOR_IDENT').trim().replace(/\s+\d+\s+[+-]\d{4}$/, '')

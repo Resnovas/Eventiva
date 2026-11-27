@@ -13,4 +13,5 @@ if [[ "$(node --version)" != "v$(cat .node-version)" || \
     exit 1
 fi
 node --run check
+sh tools/graphify/graphify update || echo 'Graph navigation unavailable; run sh tools/graphify/graphify setup.' >&2
 echo 'Orb repository ready; run node --run verify for the full gate.'

@@ -81,19 +81,20 @@ Each has one job, so a pull request gets one summary and each finding comes from
 | GitHub Copilot code review | The security and permissions pass: workflow permissions, tokens and secrets, injection, and the least-privilege fallbacks for forks, Dependabot and other outside triggers. No style comments and no summary. The house ruleset requests it on every pull request, drafts included, and again on each push. | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` |
 | Qodo Merge | Checks the change against its ticket, and reviews its tests and edge cases. A few findings at most; no description and no style comments. | `.pr_agent.toml` |
 | Cursor Bugbot | Logic bugs. No summary. | `.cursor/BUGBOT.md` |
-| Graphify | Architecture: coupling, blast radius and module boundaries, from the committed code graph. | `.graphifyignore`, the Graphify workflow |
+| Graphify | Navigation from ignored local graphs or automation-owned main snapshots; not PR acceptance. Daily snapshot PRs retain normal required checks and reviews. | `.graphifyignore`, the daily Graphify snapshot workflow |
 | Cursor approval agent | Approves low-risk pull requests under the [Approval Policy](APPROVAL_POLICY.md). | `APPROVAL_POLICY.md` |
 
 Every bot reads the repository's `AGENTS.md` and this repository's policies, and skips the same files: vendored source under `externals/`, the code graph, build output, generated schemas and reference pages, lockfiles and changelogs.
 
 ### <a id="review-bots-blocking"></a>Which findings block
 
-Only four kinds of finding block a merge until they are fixed, or a maintainer dismisses them with a reason:
+Only these kinds of finding block a merge until they are fixed, or a maintainer dismisses them with a reason:
 
 - a security finding from Copilot code review;
 - a CodeRabbit comment marked major or critical;
-- a failing Graphify gate;
 - Qodo reporting that the change does not match its ticket.
+
+Graphify generation and freshness do not block merging. Required source-based architecture checks remain unchanged.
 
 Everything else a bot says is advisory. The author fixes it or replies, and the conversation is resolved before merging, but it does not block on its own.
 No bot's own check is a required status check; the rules above are applied by the reviewers and the [Approval Policy](APPROVAL_POLICY.md#ap-31).

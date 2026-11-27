@@ -15,9 +15,10 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runVerification } from './pipeline.mjs';
+import { installPreCommit } from '../dev/pre-commit.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 /**
@@ -31,13 +32,22 @@ const marker = '# eventiva:verified-staged-snapshot';
 const hook = resolve(root, git('rev-parse', '--git-path', 'hooks/pre-commit'));
 
 if (process.argv[2] === '--install') {
-    if (existsSync(hook) && !readFileSync(hook, 'utf8').includes(marker)) {
-        throw new Error(
-            `A foreign pre-commit hook owns ${hook}. Integrate the Eventiva runner explicitly; nothing was overwritten.`
-        );
+    const legacy = [
+        `#!/bin/sh\n${marker}\nset -eu\nnode tools/verification/pre-commit.mjs\n`,
+        '#!/bin/sh\n# house:pre-commit\nexec node "$(git rev-parse --show-toplevel)/tools/dev/pre-commit.mjs" run\n',
+    ];
+    if (existsSync(hook)) {
+        const current = readFileSync(hook, 'utf8');
+        if (legacy.includes(current)) {
+            const backup = `${hook}.before-eventiva-composition`;
+            if (!existsSync(backup)) writeFileSync(backup, current, { flag: 'wx' });
+            unlinkSync(hook);
+        }
     }
-    writeFileSync(hook, `#!/bin/sh\n${marker}\nset -eu\nnode tools/verification/pre-commit.mjs\n`);
-    chmodSync(hook, 0o755);
+    installPreCommit(root, false, {
+        script: 'verify:staged',
+        marker: marker.slice(2),
+    });
     console.log('Eventiva pre-commit installed; commit-msg preserved.');
 } else {
     /**
