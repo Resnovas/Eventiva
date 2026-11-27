@@ -30,6 +30,7 @@ const root = resolve(import.meta.dirname, '../..');
 export const verificationStages = [
     ['--run', 'verify:static'],
     ['--run', 'check'],
+    ['tests/telemetry/benchmark/check.mjs'],
     [
         '--test',
         'tools/resources/boundaries.test.mjs',

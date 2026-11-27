@@ -63,6 +63,9 @@ jobs:
           DOCUMENTATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: node --run check
 
+      - name: Qualify matched production and profiling overhead
+        run: node tests/telemetry/benchmark/check.mjs
+
       # Nx replays a task only when its input hash matches; a pull request's
       # entries stay on its own ref, so they never reach main.
       - name: Restore the Nx cache

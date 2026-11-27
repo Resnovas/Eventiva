@@ -16,6 +16,7 @@
 
 import { readFileSync } from 'node:fs';
 import { isAbsolute, relative } from 'node:path';
+import ts from 'typescript';
 
 const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const EXCLUDED_PREFIX =
@@ -27,6 +28,72 @@ const LICENSE_MARKER = 'DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.';
 const SYNCED_MARKER = 'Synced from Resnovas/.github';
 const EFFECT_BOUNDARY = /^\s*effect-boundary:\s+\S/;
 const TS_EXPECT_ERROR = /^\s*@ts-expect-error\b/;
+
+/**
+ * Locate exact outer compiler directives on module-level native Effect generator definitions.
+ * Inspect only direct const initializers and previously initialized pipeable bindings: names inside functions cannot borrow the module import.
+ *
+ * @param {string} text - Complete module text, including comment trivia.
+ * @param {string} filename - Source path used for TS/TSX parsing.
+ * @returns {Set<number>} Offsets of directives safe to exclude from the comment budget.
+ * @example
+ * pureDefinitionOffsets('const a = 1;', 'a.ts').size === 0;
+ */
+export const pureDefinitionOffsets = (text, filename) => {
+    const offsets = new Set();
+    const directive = '/* @__PURE__ */';
+    if (!text.includes(directive)) return offsets;
+    const source = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
+    if (source.parseDiagnostics.length) return offsets;
+    const constants = new Set();
+    let native = false;
+    for (const statement of source.statements) {
+        if (
+            ts.isImportDeclaration(statement) &&
+            statement.moduleSpecifier.text === 'effect' &&
+            !statement.importClause?.isTypeOnly
+        ) {
+            const imports = statement.importClause?.namedBindings;
+            if (imports && ts.isNamedImports(imports))
+                for (const item of imports.elements) {
+                    if (!item.isTypeOnly && !item.propertyName && item.name.text === 'Effect') native = true;
+                }
+        }
+        if (!native || !ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const))
+            continue;
+        for (const declaration of statement.declarationList.declarations) {
+            const outer = declaration.initializer;
+            if (!outer || !ts.isIdentifier(declaration.name)) continue;
+            if (ts.isCallExpression(outer) && !outer.questionDotToken && ts.isCallExpression(outer.expression)) {
+                const factory = outer.expression;
+                const [name, options] = factory.arguments;
+                const [body, pipeable] = outer.arguments;
+                const trivia = text.slice(outer.pos, outer.getStart(source));
+                if (
+                    trivia.trim() === directive &&
+                    factory.expression.getText(source) === 'Effect.fn' &&
+                    !factory.questionDotToken &&
+                    name &&
+                    ts.isStringLiteral(name) &&
+                    name.text.length &&
+                    (factory.arguments.length === 1 ||
+                        (factory.arguments.length === 2 &&
+                            /^\{\s*captureStackTrace\s*:\s*false\s*,?\s*\}$/.test(options.getText(source)))) &&
+                    body &&
+                    ts.isFunctionExpression(body) &&
+                    body.asteriskToken &&
+                    !body.modifiers?.length &&
+                    (outer.arguments.length === 1 ||
+                        (outer.arguments.length === 2 && ts.isIdentifier(pipeable) && constants.has(pipeable.text)))
+                ) {
+                    offsets.add(outer.pos + trivia.indexOf(directive));
+                }
+            }
+            constants.add(declaration.name.text);
+        }
+    }
+    return offsets;
+};
 
 /**
  * Normalize a file path to a workspace-relative POSIX string.
@@ -83,6 +150,7 @@ export const isHouseSyncedSource = (text) => text.split('\n', 12).join('\n').inc
  * isExemptComment({ type: 'Line', value: ' effect-boundary: vendor promise.' }); // true
  */
 export const isExemptComment = ({ type, value, raw }, { filename = '' } = {}) => {
+    if (/[@#]__PURE__/.test(value)) return false;
     if (type === 'Shebang') return true;
     if (type === 'Block') {
         if (value.includes(LICENSE_MARKER)) return true;
