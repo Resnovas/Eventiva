@@ -23,6 +23,7 @@ import { printSemicolon, printTrailingComma } from "./miscellaneous.js";
 
 /*
 - `ClassBody`
+- `StructBody`
 - `TSInterfaceBody` (TypeScript)
 - `TSTypeLiteral` (TypeScript)
 - `ObjectTypeAnnotation` (Flow)
@@ -172,6 +173,7 @@ function isClassBody(path) {
 
   return (
     node.type === "ClassBody" ||
+    node.type === "StructBody" ||
     node.type === "TSInterfaceBody" ||
     node.type === "RecordDeclarationBody"
   );
@@ -213,6 +215,7 @@ const isClassProperty = createTypeCheckFunction([
   "ClassPrivateProperty",
   "ClassAccessorProperty",
   "AccessorProperty",
+  "AbstractPropertyDefinition",
   "TSAbstractPropertyDefinition",
   "TSAbstractAccessorProperty",
 ]);
@@ -256,8 +259,8 @@ function shouldPrintSemicolonAfterClassProperty(
     return false;
   }
 
-  if (!nextNode.computed) {
-    const name = nextNode.key?.name;
+  if (!nextNode.computed && nextNode.key?.type === "Identifier") {
+    const { name } = nextNode.key;
     if (name === "in" || name === "instanceof") {
       return true;
     }
@@ -267,6 +270,9 @@ function shouldPrintSemicolonAfterClassProperty(
   // "declare" or "static" keyword before it.
   if (
     isClassProperty(nextNode) &&
+    // Flow abstract properties cannot have variance or static modifiers, and
+    // their AST nodes do not have a `static` field.
+    nextNode.type !== "AbstractPropertyDefinition" &&
     !nextNode.static &&
     // @ts-expect-error -- Safe
     nextNode.variance &&
@@ -279,9 +285,11 @@ function shouldPrintSemicolonAfterClassProperty(
   switch (nextNode.type) {
     case "ClassProperty":
     case "PropertyDefinition":
+    case "AbstractPropertyDefinition":
     case "TSAbstractPropertyDefinition":
       return nextNode.computed;
     case "MethodDefinition":
+    case "AbstractMethodDefinition":
     case "TSAbstractMethodDefinition":
     case "ClassMethod":
     case "ClassPrivateMethod": {

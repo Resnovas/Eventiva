@@ -27,6 +27,7 @@ const overrideBreakOrContinueEnd =
 const getContentEnd = (node) => node.__contentEnd ?? locEndWithFullText(node);
 
 const nodeTypesWithContentEnd = /** @type {const} */ ([
+  // Statements
   "ExpressionStatement",
   "Directive",
   "ImportDeclaration",
@@ -36,6 +37,16 @@ const nodeTypesWithContentEnd = /** @type {const} */ ([
   "ReturnStatement",
   "ThrowStatement",
   "DoWhileStatement",
+
+  // Properties
+  "ClassProperty",
+  "PropertyDefinition",
+  "ClassPrivateProperty",
+  "ClassAccessorProperty",
+  "AccessorProperty",
+  "AbstractPropertyDefinition",
+  "TSAbstractPropertyDefinition",
+  "TSAbstractAccessorProperty",
 ]);
 
 const overrides =
@@ -50,40 +61,6 @@ const overrides =
   ]);
 
 const shouldAddContentEnd = createTypeCheckFunction(nodeTypesWithContentEnd);
-
-const shouldIgnoredNodePrintSemicolon = (node) => {
-  if (shouldAddContentEnd(node) && node.__contentEnd) {
-    return true;
-  }
-
-  const { type } = node;
-
-  if (
-    type === "BreakStatement" ||
-    type === "ContinueStatement" ||
-    type === "DebuggerStatement" ||
-    type === "VariableDeclaration"
-  ) {
-    return true;
-  }
-
-  if (type === "IfStatement") {
-    return shouldIgnoredNodePrintSemicolon(node.alternate ?? node.consequent);
-  }
-
-  if (
-    type === "ForInStatement" ||
-    type === "ForOfStatement" ||
-    type === "ForStatement" ||
-    type === "LabeledStatement" ||
-    type === "WithStatement" ||
-    type === "WhileStatement"
-  ) {
-    return shouldIgnoredNodePrintSemicolon(node.body);
-  }
-
-  return false;
-};
 
 /**
 @param {Node | Comment} node
@@ -116,4 +93,4 @@ function locEnd(node) {
   );
 }
 
-export { locEnd, shouldAddContentEnd, shouldIgnoredNodePrintSemicolon };
+export { locEnd, shouldAddContentEnd };
