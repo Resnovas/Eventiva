@@ -25,7 +25,12 @@ const edge = { product: id, quantity: 7, optional: false };
 
 it.effect(
     'kit contracts are strict counted composition, not ownership or stock',
-    /** Use asymmetric positive values and both sides of every scalar/container boundary. */ () =>
+    /**
+     * Use asymmetric positive values and both sides of every scalar/container boundary.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Decode complete replacements and refuse coercion, defaulting and unknown authority fields. */ function* () {
                 // Schema checks deliberately do not implement graph-dependent duplicate or cycle validation.
@@ -51,8 +56,12 @@ it.effect(
                     [],
                     Array.from(
                         { length: 100 },
-                        /** Boundary duplicates are legal structurally but rejected by the runtime graph contract. */ () =>
-                            edge
+                        /**
+                         * Boundary duplicates are legal structurally but rejected by the runtime graph contract.
+                         *
+                         * @returns The same component edge for every slot.
+                         */
+                        () => edge
                     ),
                 ])
                     expect(
@@ -66,7 +75,12 @@ it.effect(
                         revision: 0,
                         components: Array.from(
                             { length: 101 },
-                            /** Exceed the container bound without changing individual component validity. */ () => edge
+                            /**
+                             * Exceed the container bound without changing individual component validity.
+                             *
+                             * @returns The same component edge for every slot.
+                             */
+                            () => edge
                         ),
                     },
                     { id, revision: 0, components: [{ product: id, quantity: 7 }] },
@@ -94,7 +108,12 @@ it.effect(
 
 it.effect(
     'kit definitions retain canonical metadata and fail closed for unsupported discovery',
-    /** Registration validity is distinct from the deliberately conservative cross-provider schema projection. */ () =>
+    /**
+     * Registration validity is distinct from the deliberately conservative cross-provider schema projection.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Keep the public metadata exact without widening the shared compiler or asserting Google parity. */ function* () {
                 // A successful runtime schema does not imply every provider can describe it faithfully.
@@ -102,8 +121,13 @@ it.effect(
                 yield* validateDefinitions(actions);
                 expect(
                     actions.map(
-                        /** Compare exact portable names independently of runtime registration. */ (action) =>
-                            action.name
+                        /**
+                         * Compare exact portable names independently of runtime registration.
+                         *
+                         * @param action - One declared kit action.
+                         * @returns The action's portable name.
+                         */
+                        (action) => action.name
                     )
                 ).toEqual(['inventory.kit.define', 'inventory.kit.get']);
                 expect(inventoryFlag.safeDefault).toBe(false);

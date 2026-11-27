@@ -45,7 +45,11 @@ const messages = defineMessages<{
     failed: { id: 'client.shell.failed', defaultMessage: 'Unable to start. Restart the app to try again.' },
 });
 
-/** Render the localized shell; the banner follows the provider's safe-default flag evaluation. */
+/**
+ * Render the localized shell; the banner follows the provider's safe-default flag evaluation.
+ *
+ * @returns The shell's main region.
+ */
 const Shell = () => {
     const showBanner = useBooleanFlagValue(offlineBanner.key, offlineBanner.safeDefault);
     return (
@@ -66,10 +70,17 @@ const Shell = () => {
     );
 };
 
-/** Render a synchronous bootstrap shell; product content subscribes to the sole readiness owner without acquiring services. */
+/**
+ * Render a synchronous bootstrap shell; product content subscribes to the sole readiness owner without acquiring
+ * services. One external snapshot gates every product hook, so the native root never waits on provider IO.
+ *
+ * @since 0.0.1
+ * @returns The localized loading, failed or ready shell.
+ * @example
+ * registerRootComponent(App);
+ */
 export const App = () => {
     const locale = deviceLocale();
-    // One external snapshot gates all product hooks; the synchronous native root never waits on provider IO.
     const state = useSyncExternalStore(startup.subscribe, startup.snapshot, startup.snapshot);
     return (
         <IntlProvider locale={locale} defaultLocale="en-GB" messages={catalogues[locale] ?? {}}>

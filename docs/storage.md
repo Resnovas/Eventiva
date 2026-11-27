@@ -78,6 +78,32 @@ The v1 consumer contract is the existing `Storage`, `CurrentTenant` and `TenantR
 
 Use `compareAndSet(command, next, payload, machine, leaseUntil?)` for operational version/state transitions and leases. Its `GuardedCommand` carries the expected version/state and deadline; the implementation rechecks the existing lease after acquiring the row lock and appends transition history atomically. `enqueue(id, command)` stages outbox intent inside the same transaction. These methods do not claim a transport message, dispatch a provider request, or implement cluster shard ownership. Those lifecycles belong to their consumers.
 
+#### Retained record validation
+
+Treat malformed persisted records as invalid data, not permission to replace them.
+After serializing the existing row and applying the existing expired/stale guards,
+`compareAndSet` decodes that row with the same JSON and record schemas as `get`,
+before writing its replacement or transition history. A malformed lease or payload
+fails with `StorageFailure` / `invalid-data`, without rejected values or parser
+diagnostics in the failure. The original row, payload bytes, version and lease
+remain unchanged, with no new history. Do not repair corrupted data by retrying a
+transition; investigate it through a separately authorized recovery procedure.
+
+A null existing lease permits a live command; a future lease remains valid, and
+an existing lease or command deadline exactly equal to the current time is expired.
+Expired checks still precede stale state/version checks. Missing rows still return
+the existing bounded conflict, without attempting to decode an absent record.
+Omitting the next `leaseUntil` still clears a valid lease after a successful transition.
+
+The public-service regression in `tests/storage/src/retained-record-validation.spec.ts`
+uses actual migrations and drivers. SQLite affinity permits fixture-only text
+corruption of the integer lease column; this reproduces a persisted-data correctness
+failure, not a demonstrated hostile-ingress exploit. PostgreSQL instead rejects
+malformed timestamp text and out-of-range versions through its installed type/CHECK
+constraints. Its valid timestamp `Date` and bigint string representations remain
+accepted. Invalid retained JSON payloads are denied on both engines. No constraint,
+schema or migration is weakened to simulate equivalent corruption.
+
 The existing `client` layer from `@eventiva/integrations.sql/postgres` supplies both upstream `SqlClient.SqlClient` from `@effect/sql` and `PgClient.PgClient`. Retain one layer instance per authorized database/role and share it with `storage('postgres')` and any trusted upstream SQL services; no new client export or portable SQL escape hatch is needed. The tenant router injects the resolved Storage and CurrentTenant, not a raw SQL client. Keep cluster transport databases and tenant operational databases explicitly routed; sharing a layer is appropriate only when they intentionally target the same database and role.
 
 Inside `TenantRouter.run`, build `durable` from `@eventiva/runtime/storage` against that scope's Storage and CurrentTenant. Provide its Integrity/Audit services to ActionHost while retaining the same Storage in handler context. `Storage.commit` runs the execute effect under the captured client's `withTransaction`; nested calls on that Storage join the current fiber's transaction. There is no second transaction-bound Storage to obtain. Do not replace Storage/client inside the callback or detach handler work. Independent transport transactions are not automatically part of the business action transaction.

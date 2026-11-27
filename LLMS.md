@@ -14,139 +14,15 @@ documentation covers the same ground in plain words; see the README.
 
 ## House standards
 
-Every Resnovas repository follows the same standards. This section is synced from
-[`Resnovas/.github`](https://github.com/Resnovas/.github); the rules come from
-`AGENTS.md`, `CONTRIBUTING.md`, `AI_POLICY.md` and the PostHog skill
-`coding-preferences`, and those documents win if this summary ever disagrees
-with them. The sections after this one describe this repository itself.
+Use `AGENTS.md` for authority, tool routing and handoff requirements, `AI_POLICY.md` for contribution policy, and the applicable `.agents/skills/` source for engineering decisions. Do not copy those rules into feature documentation.
 
-### Agent checkout isolation
+The funnel is code examples, corrective static checks, executable verification, minimal agent guidance, then human decisions. The adoption contract and commands are in `docs/house-funnel.md`. Preserve existing repository checks when adding shared tooling; a parser or lint pass is not semantic proof.
 
-Use a dedicated task branch in a Git worktree for repository changes. Reuse a
-host-provided task checkout. Prefer T3 or Orca managed worktrees when working
-through those hosts; otherwise use native worktree support or `git worktree`.
-Use ordinary Git for commits and pushes and explicit PR head/base branches.
-GitButler remains the user's personal tool; leave its checkout and metadata
-untouched. The synced `git-worktrees` skill contains the workflow.
+Read package scripts and CI before reporting verification. Pre-commit runs only `verify:static` then staged `test:affected`; full `verify`, smoke and evidence collection run in PR and main-push CI. `check` alone need not include either gate. Feature guides remain canonical Markdown; executable examples and registry entries must agree with reached public paths. Record only affected-feature evidence using synthetic data, the existing artifact audience and seven-day retention.
 
-### Code
+For an existing native hook, declare its exact package `script` and comment `marker` in local `.agents/surfaces.jsonc` `preCommit`; setup preserves matching bytes and refuses other hooks. Follow the complete example in `docs/house-funnel.md#retain-a-repository-owned-hook`. The native runner owns static/affected execution, alternate-index isolation and snapshot/failure proof; registration does not certify those semantics.
 
-- **Effect-TS v3 first.** TypeScript is the primary language, written with
-  Effect v3: services as `Context.Tag` with `Layer`s, `Effect.gen` for
-  sequencing, `Schema` to decode anything from outside the process. Load the
-  PostHog skill `coding-preferences` and its `effect` reference before writing
-  Effect code, and look up current APIs with Context7 rather than from memory.
-- **Strict TypeScript, never `any`.** Keep `strict` on. Decode unknown input
-  with `Schema` instead of casting it.
-- **Typed errors.** Model failures as tagged errors (`Data.TaggedError` or
-  `Schema.TaggedError`) in the error channel, so a caller sees every way a call
-  can fail. Do not throw for expected failures.
-- **Secrets through `Config` and `Redacted`.** Read configuration with
-  Effect `Config`, and hold every secret as `Redacted` (`Config.redacted`)
-  until the boundary that needs its value. Never put a secret in source, logs,
-  telemetry, command-line arguments, issues or pull requests.
-- **PostHog telemetry and feature flags.** Every app ships PostHog feature
-  flags; new behaviour goes behind a flag with a safe default in code, never
-  behind an environment variable or configuration toggle (house skill
-  `feature-flags`). Telemetry events carry no secret or personal data.
-- **Module boundaries.** The core package holds domain-agnostic building
-  blocks only. Vendor SDKs and API clients live in
-  `@resnovas/integrations.<vendor>` (`AI_POLICY.md` AI-13).
-  Use colon-separated Nx tags (`type:core`, `layer:shared`,
-  `capability:contracts`) and intersect every matching constraint in the
-  repository's `eslint.config.mjs`. Type-only imports and `devDependencies`
-  do not bypass boundaries; same-type permission does not permit cycles.
-  Read `coding-preferences/references/architecture.md` for Eventiva's
-  16-row baseline and the distinction between workspace, external and cycle
-  checks. That baseline is not a universal hierarchy or permission for
-  extensions to import integrations.
-- **Comments explain why.** Constraints, trade-offs and anything surprising;
-  never a restatement of the code.
-
-### Tests
-
-- Write tests with `@effect/vitest`. Line and branch coverage never falls
-  below 90%, and most repositories hold 100%.
-- **Never delete, skip or weaken a test** to make a change pass: fix the code
-  (`AI_POLICY.md` AI-11). A flaky test is a bug to fix, not to retry away.
-- Every bug fix comes with a regression test that fails before the fix.
-
-### TypeScript
-
-- Effect-TS v3 is the foundation of all production TypeScript, in every
-  repository (house skill `coding-preferences`, `references/effect.md`).
-  Anything that does IO, can fail, reads configuration, retries, runs
-  concurrently or holds a resource is an `Effect` with `Data.TaggedError`
-  failures, services as `Context.Tag` classes behind a `Layer`, input through
-  `Schema`, configuration through `Config`, tests with `@effect/vitest`, in
-  the shape of the module's existing code.
-- Raw Promise code (`async`, `await`, `try`/`catch`, `throw`, `new Promise`,
-  `.then`) lives only at a vendor boundary inside an integration module, in
-  the one `Effect.tryPromise` or `Effect.try` that wraps the vendor call,
-  marked with `// effect-boundary: <reason>` on the line above. The commit
-  hook refuses it anywhere else in added source lines, and refuses `any`.
-- A pure function with no IO and no failure path stays plain TypeScript. A
-  whole feature in plain TypeScript is never an agent's decision: it is a
-  house-rule override only the accountable human gives, by naming the rule.
-
-### Files
-
-- Every source file carries the FCL-1.0-MIT licence header from
-  `tools/license/header.txt`, with its own path on the second line and the
-  current year. `node tools/license/check-headers.mjs` (the `headers` package
-  script) verifies it and `--fix` writes it; synced house tools carry none.
-- ASCII hyphen-minus only in text an agent writes: no em or en dashes, and no
-  emoji in titles or descriptions (house skill `no-em-or-en-dashes`,
-  `AI_POLICY.md` AI-09).
-
-### Commits and pull requests
-
-- Conventional commits (`type(scope): summary`, imperative mood), one logical
-  change each, and every commit signed off for the Developer Certificate of
-  Origin with the commit author's name and address. An AI tool never signs off
-  (`AI_POLICY.md` AI-03).
-- Every commit an AI tool materially changed carries one `Co-authored-by`
-  trailer per tool naming the tool and the model at the tool's attribution
-  address (`AI_POLICY.md` AI-02); the commit author and the sign-off are the
-  accountable human. No "Generated with" footer, robot emoji or host session
-  line (house skill `commits-and-rd-evidence`). `tools/dev/commit-check.mjs`,
-  installed as the commit-msg hook by setup, refuses a commit that breaks
-  these rules.
-- A pull request an agent opens is a draft (`AI_POLICY.md` AI-20) and states
-  `AI level: autonomous` and every tool and model used (AI-01); the
-  accountable human fills in `Accountable human` and `Human review` when
-  marking it ready (AI-21). No "Generated with" footer or session link.
-- One pull request per batch of work: one stacked branch per issue, each
-  squashed to one conventional, signed-off commit naming its issue, all opened
-  as a single pull request. Once a maintainer approves it, it lands as an owner
-  fast-forward (its signed commits pushed onto the default branch unchanged),
-  so each issue keeps its own commit; the merge queue squashes, because GitHub
-  cannot sign rebased commits. Run the full gate locally first; CI is not the
-  debugger.
-- Deterministic gates (the repository's checks and the `smartcloud` check)
-  decide a merge. AI review bots are advisory.
-- Releases are cut by the synced house release workflow from `release.config.json`
-  at the repository root (what the repository ships: bundles, apps, the major
-  tag, error tracking project, npm package); the tools under `tools/release/`
-  are synced too. The workflow runs on every push to the default branch and
-  releases when the conventional commits call for it (before the first stable
-  `v*` tag, the `firstRelease` version); never add a release that needs
-  starting by hand. Never run `nx release` without `--dry-run`; the workflow
-  is the only release path.
-
-### Document everything twice
-
-Every change to a feature, option, preset or workflow updates both kinds of
-documentation in the same commit:
-
-- **ELI5 docs for people.** Plain words and short sentences; what it is and why
-  you would want it before how; step-by-step setup; one complete example; what
-  you will see when it runs; every option with its default; common problems
-  and their fixes.
-- **ai-docs for agents.** The sections under `ai-docs/src`, with compiling
-  examples in the codebase's own style. `LLMS.md` is generated from them by
-  `node tools/ai-docs/docgen.mjs` and checked in CI with `--check`; never edit
-  it by hand.
+Sections numbered from 10 describe this repository's features and compiling examples. Update the corresponding people guide alongside them, and regenerate `LLMS.md` with `node tools/ai-docs/docgen.mjs`.
 
 ---
 
@@ -173,6 +49,8 @@ EVE-248 is deferred by Jonathan's explicit 2026-11-18 decision: "Leave off for n
 ---
 
 ## Eventiva application foundation (EVE-244)
+
+EVE-299 licence prerequisite: `.github/dependency-review-config.yml` carries exactly three versionless `allow-dependencies-licenses` entries, `pkg:npm/spdx-exceptions`, `pkg:npm/uri-js` and `pkg:npm/parse-statements`. Jonathan approved all versions through Puck on 2026-11-20, following accepted Resnovas/.github#57; the [people guide](../../../docs/dependency-security.md#jsdoc-licence-prerequisite-eve-299) owns the full policy example and provenance. Do not broaden the licence allowlist, waive advisories or change `minimumReleaseAge: 10080`. This separate policy commit precedes the JSDoc dependency. PR/merge-group dependency review, direct-push CI and local validation are distinct evidence; a push does not execute the PR-only review.
 
 Workspace: PNPM 12.18.0, Nx 24.0.5 (`neverConnectToCloud`), TypeScript 6.0.3 (nodenext, strict, `exactOptionalPropertyTypes`, custom condition `@eventiva/source` resolving workspace packages to `src/*.ts`), Effect 3.22.4 from the pnpm catalog. Projects:
 
@@ -250,11 +128,13 @@ Feature flags: this foundation adds the flag plumbing and one client flag, `clie
 
 Provider diagnostic remediation retains existing recovery/default/teardown behavior while replacing raw vendor causes with bounded operation/reason literals. OpenFeature errors retain initialize|close and provider-failed; server-provider shutdown retains shutdown and shutdown-failed. Never log vendor exception payloads to diagnose provider configuration.
 
-Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. After coding, run `node --run verify:static` before documentation: dependency builds, Nx lint/typecheck, source audit and emitted-declaration audit. Independent root stages use the two-task Nx default and normal input-hashed caching, with no additional options or runtime flags. The feature-evidence runner and its Nx prerequisites remain explicitly serial. Process conformance intentionally imports the built server, so static graph resolution requires those outputs even on a clean checkout. Run frozen install and `pnpm nx sync:check`; inspect `pnpm nx sync` changes when references drift. Full `verify` runs static checks first, then the unchanged house/documentation gate, regression fixtures, Nx tests/builds/parity, smoke and affected-feature proof. CI retains trusted-event PostgreSQL tests and adds the owner-approved isolated PR fixture, not shared credentials or data. A static pass cannot certify full PR integration, production acceptance or native devices. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
+Coordinated module validation uses real package export conditions and Nx-tagged test/example projects. Reusable UI registry/interpreter source lives in the frontend extension library @eventiva/ui-modules; tests build and consume that library, never the client app. After coding, run `node --run verify:static` before documentation: dependency builds, Nx lint/typecheck, source audit and emitted-declaration audit. Independent root stages use the two-task Nx default and normal input-hashed caching, with no additional options or runtime flags. The feature-evidence runner and its Nx prerequisites remain explicitly serial. Process conformance intentionally imports the built server, so static graph resolution requires those outputs even on a clean checkout. Run frozen install and `pnpm nx sync:check`; inspect `pnpm nx sync` changes when references drift. Full `verify` invokes `tools/verification/pipeline.mjs`: static checks once, then the unchanged house/documentation gate, regression fixtures, Nx tests/builds/parity, smoke and affected-feature proof, stopping at the first failed stage. CI retains trusted-event PostgreSQL tests and adds the owner-approved isolated PR fixture, not shared credentials or data. A static pass cannot certify full PR integration, production acceptance or native devices. tests/resources composes callable kernel providers with real SQL resources on PostgreSQL/Node SQLite, including ready and tenant rejection; no production module activation follows from that test.
 
 The frontend `eventiva/no-zero-delay-ui-timer` rule rejects direct/global-member `setTimeout(updateSelection, 0)` and omitted-delay calls with a corrective state-ownership diagnostic. Invoke the owning event operation directly or remove redundant state; genuine timed work uses scoped Effect scheduling. The real-config boundary suite tests both UI scopes, computed literal properties, optional calls, signed zero and retained export restrictions. Local shadows/nonzero delays/backend/spread calls are controls; aliases and dynamic delay values are not analyzed. Run `pnpm nx test @eventiva/boundaries-tests --skip-nx-cache`. Active-source React imports reject useEffect without exceptions and direct the author to bootstrap or event-owned state. The client registers a shell synchronously, starts flags outside React and exposes product content only after readiness. Its useSyncExternalStore subscription reads one primitive snapshot. Fatal acquisition shows a bounded alert; scoped provider recovery retains safe defaults. Interruption releases providers and clears readiness; tests distinguish registration from asynchronous acquisition and verify failure/cleanup.
 
-The canonical [feature registry](../../../docs/verification/registry.md) records interface reachability, executable commands and limitations. `node tools/verification/run.mjs --base HEAD` defaults to local changes; `--staged` selects index paths and `--check` validates coverage without execution. Source-derived inventory and resolved reverse imports select affected interfaces. Manifests bind source/tree/registry digests, commands, test outcomes and evidence files; empty or malformed proof fails. Evidence runs one feature and one Nx prerequisite at a time; conflicting parallel overrides fail, and the manifest records this tested scheduling contract. Setup installs the pre-commit guard without replacing commit-msg or a foreign hook. It runs static then full verify and rejects unstaged/untracked divergence or index mutation. CI evidence is synthetic, affected-only, seven-day retention and the existing audience; no deployment or external ingestion follows. Shared-house adoption is pending separately and cannot replace the AST documentation ratchet/strict-zero gate.
+The canonical [feature registry](../../../docs/verification/registry.md) records interface reachability, executable commands and limitations. `node tools/verification/run.mjs --base HEAD` defaults to local changes; `--staged` selects index paths and `--check` validates coverage without execution. Source-derived inventory and resolved reverse imports select affected interfaces. Manifests bind source/tree/registry digests, commands, test outcomes and evidence files; empty or malformed proof fails. Evidence runs one feature and one Nx prerequisite at a time; conflicting parallel overrides fail, and the manifest records this tested scheduling contract.
+
+Setup installs the pre-commit guard without replacing commit-msg or a foreign hook. The hook runs static then `node --run test:affected`, matching accepted house #76. The adapter passes only staged paths to `nx affected -t test --stdin` and selects the Node tooling test group when root files, `tools/`, `scripts/` or `.github/workflows/` change. Deletions and both rename paths are included; spaces/commas are preserved, newline-containing names fail visibly and an empty index selects no tests. It does not run the full aggregate, smoke or feature collection. Snapshot barriers after each stage reject unstaged/untracked divergence and index mutation; child Git environments remain isolated from the outer index. Standalone `verify` and main-push/PR CI retain all acceptance gates. CI smoke waits for verification; synthetic affected evidence retains seven days and the existing audience. Run `node --test tools/verification/run.test.mjs tools/verification/pipeline.test.mjs` for hook/standalone ordering, failure propagation, mutation, nested histories and native Nx cache-input proof. Broader shared-house adoption is pending separately; no coverage, registry, documentation gate or production authority changes.
 
 EVE-263 schema aliases: `checkTypeEscapes` binds each file with the installed TypeScript checker without loading vendor declarations. Import module/original member plus lexical symbol identity identify `Schema as S` from `effect`, namespace imports from `effect/Schema`, named `Unknown`/`Any` imports and direct or local re-exports, qualified type references and import-type queries. `AnyNoContext` is inside the vendor's `Schema` type namespace, not a top-level export. Both modes reject these erased contracts with the existing diagnostic. Typed `S.Struct({ name: S.String, count: S.Number })` remains valid; unrelated application exports/objects and lexical shadows are positive controls. Keep the legacy unbound `Schema.Unknown` diagnostic. This is file-local import provenance, not transitive value-flow soundness. No new option, dependency, flag or policy is introduced; run the existing Node fixtures and both CLI modes after builds. See the complete example in `docs/foundation.md`, "Erased schema import aliases (EVE-263)".
 
@@ -264,7 +144,7 @@ Run `node --test tools/resources/boundaries.test.mjs` and `node tools/resources/
 
 Test projects run explicit `tsc -p ... --noEmit` targets after dependency builds, not Nx's inferred disabled-target placeholder. The shared Vitest helper takes the suite config URL to anchor discovery/reports and keeps the workspace inside Vite's root for uncovered TypeScript transformation. All four coverage thresholds stay at 90%; a silently excluded source file is not coverage evidence.
 
-Package-wide coverage reuses public cross-package specifications: runtime includes resources/telemetry, storage includes resources, and contracts includes resources/telemetry/UI/kernel. Nx implicit test dependencies track these inputs. Keep both package-wide coverage globs and thresholds; do not restore silent external-source exclusions. The paired hook Storage scenario tests handled versus escaping transaction failures, inventory settlement and exact payment replay through its public Storage methods.
+Package-wide coverage reuses public cross-package specifications: runtime includes resources/telemetry, storage includes resources, and contracts includes resources/telemetry/UI/kernel. Contracts/runtime explicitly retain the inferred Nx test input list with `^default` replacing `^production`, because production inputs exclude the reused dependency specs. The native-hash regression mutates assertions in every include family, verifies exact restoration and checks unrelated-document stability. Keep other inputs, package-wide coverage globs and thresholds unchanged. The paired hook Storage scenario tests handled versus escaping transaction failures, inventory settlement and exact payment replay through its public Storage methods.
 
 ### Dependency security (EVE-265)
 
@@ -402,6 +282,22 @@ EVE-42's first increment is SQL-only, not completion of deferred Drizzle/device-
 Authenticate before `TenantRouter.run`. Inject a trusted resolver and an authorization callback that also audits current control-plane access; no caller-supplied URL, cross-tenant operational query or tenant ID in isolated database primary keys. Build the runtime `durable` layer inside that tenant scope and use the same Storage service in handlers. Do not wire server main until a separate durable integration is accepted.
 
 Persistence seam v1 is the existing `Storage.commit` result/replay contract, operational `compareAndSet` with leases and atomic transition history, and `enqueue` outbox staging. No second workflow abstraction is needed. `client` from `@eventiva/integrations.sql/postgres` already supplies upstream `SqlClient.SqlClient` and `PgClient.PgClient`; share one layer instance with `storage('postgres')` and trusted SQL consumers only when database/role routing intentionally matches. The tenant router does not expose a raw SQL client. Within the tenant route, provide `durable` to ActionHost and retain that same Storage for handlers: commit's execute effect runs inside its captured client's transaction, including nested Storage operations. Do not capture another client, replace Storage or detach work. Transport transactions are not implicitly atomic with business actions.
+
+`compareAndSet` must decode the serialized existing row with the same JSON/record
+schemas as `get` before replacement or history insertion. Keep the existing
+expired/deadline and stale state/version guards first, including missing-row
+conflicts; do not introduce an existence oracle through decoding. Malformed retained
+lease/payload denial is sanitized `StorageFailure` / `invalid-data`, preserving
+the original row/payload bytes/version/lease and appending no history. Null/future
+leases remain valid, exact expiry/deadline equality remains expired, and omission
+of the next lease still clears a valid lease on success. Recovery of corrupt data
+needs separate authorization, not a transition retry. The actual-driver public
+regression is `tests/storage/src/retained-record-validation.spec.ts`: SQLite permits
+fixture-only text in its integer lease column; PostgreSQL rejects malformed
+timestamp text (22007) and unsafe versions (23514) without disabling constraints,
+while valid Date/bigint-string representations pass. Invalid retained JSON is
+denied on both. This is persisted-data fail-closed correctness, not a demonstrated
+hostile-ingress exploit or a schema/migration change.
 
 Migration locks are transaction-scoped `pg_advisory_xact_lock`; runtime locking is row/transaction based, with no session advisory locks or `LISTEN`. Transaction pooling does not preserve backend session identity between transactions. Upstream runner lease-row ownership, polling and message storage require their own compatibility verification; installed cluster packages alone do not prove sharding/recovery. Keep migration/direct and runtime/pooled privileges separate. See `docs/storage.md` for exact v1 composition and boundaries.
 
@@ -802,6 +698,12 @@ No additional retry, backlog, exporter or production listener exists. Bootstrap 
 
 ## EVE-261 subprocess phase evidence
 
+The 2026-11-20 H follow-up isolates avoidable source-startup work: `apps/server/src/main.ts` imports `NodeRuntime` directly as a namespace from the published `@effect/platform-node/NodeRuntime` subpath, not the package root barrel. The latter eagerly loads unrelated HTTP/cluster/socket/worker adapters. This preserves the identical `runMain` implementation and every lifecycle body, 2300/5000 ms budget, output assertion and cancellation owner. Completed diagnostic imports fell from 1229 to 770 modules, including 110 to zero Undici modules. Under the stated two-CPU/two-busy-process load, three baseline launches expired while three single-import candidates closed naturally in 1481-1780 ms; the literal corrected existing Vitest control then passed without a source override, followed by normal uncached telemetry 92/92 at unchanged coverage. These are bounded measurements, not universal determinism, a percentage speedup or dependency-causality proof.
+
+The subsequent unchanged installed hook passed all 38 aggregate tasks but hit its 1200 s outer bound during smoke; serial feature proof was unreached and no commit/push occurred. Coordinator/Puck authorized one combined import-fix/static-dedup snapshot owned by the funnel owner under EVE-261/#1035 and EVE-299/#1092; this is pending qualification, not H resume clearance or permission to change gates.
+
+The [canonical report](../../../docs/core-qualification/telemetry-timeouts.md#h-follow-up-avoid-unrelated-bootstrap-imports---2026-11-20) owns exact parent/child phase correlation, load protocol, hook-stage accounting and limits; EVE-261/#1035 separately records installed-hook/publication/CI outcomes. Keep the historical aggregate and native-shutdown failures distinct. No expanded barrel lint rule, compile-cache workaround, production instrumentation, runner/configuration or dependency change is included in the import correction.
+
 The executable's custom `NodeRuntime.runMain` teardown sets `process.exitCode=1` only for a failed, non-interruption root after every application scope closes. Do not call the runtime's forced-exit callback for that branch: pinned Node 24.22.3 can deadlock joining a V8 worker awaiting main-thread GC (nodejs/node#64274). Success and interruption still call the original callback with 0, preserving its signal behavior. No dependency, retry, timeout, production stress flag, logger or scope/fiber ownership changes. See [native-shutdown evidence and reproduction](../../../docs/telemetry.md#drain-failed-roots-without-forced-native-exit); CI's early exit event alone does not identify its native worker. The real-server stress regression fails before the change at the same 10000 ms deadline and passes after with exit 1, safe output, empty stderr and natural beforeExit. Keep finite pressure in `tests/telemetry/fixtures/bootstrap-exit-pressure.mjs`, not application code. Future resources still need correct scoped cleanup; natural drain cannot hide leaked handles. Earlier cause-unknown notes describe the initial diagnostic checkpoint, not this later native reproduction.
 
 `tests/telemetry/src/server.spec.ts` preloads `tests/telemetry/fixtures/bootstrap-diagnostics.mjs` through Node's `--import`. Ordinary measured child budgets are 2300 ms; intentional stuck/native-pressure children retain 10000 ms. Preserve 65536 maxBuffer, default SIGTERM, isolated environment and all existing exit/output/redaction/file-drain assertions, with the unchanged enclosing limits. Descriptor 3 is a test-only, deduplicated, at-most-4096-byte journal. Parent assertion context includes monotonic elapsed time, Unix-epoch spawn time and only a completely Schema-validated bounded journal; absence, invalid content and oversize are fixed states. Existing stdout/stderr summaries retain only lengths and at most eight recognized event names. Capture failure never becomes a bootstrap prerequisite. The harness always emits safe numeric timing, including successful tests, never raw business diagnostics.
@@ -881,6 +783,14 @@ launch records safe closed phases and numeric timing, with cancellation owning
 termination through pipe close. Preserve business output, serial positive
 controls and existing aggregate/coverage limits. Node IPC/storage/tool callers
 are a separately coordinated migration to the same core, not exempt occurrences.
+Ordinary core qualification uses the existing bootstrap preload and asserts
+root/finalizer evidence. Preserve genuinely uninstrumented observer-parity
+and missing-fd3 controls: they still assert outer `spawn-request`, `spawned`,
+`exit` and `close`, with the existing `total` retained. `spawned` means OS
+process creation, not application readiness. A false journal argument disables
+only fd3, not timing. The [phase correction](../../../docs/core-qualification/telemetry-timeouts.md#mandatory-phase-evidence)
+separates regression proof from full-hook qualification and renewal's later
+measured attempt. No budget or business assertion is removed.
 No managed AGENTS prose is removed because none duplicates this new rule.
 Shared-house promotion remains proposed, not adopted. Missing historical phase
 evidence still prevents a causal latency claim; EVE-261 remains open.
@@ -1499,6 +1409,10 @@ Composition error bases use the concrete annotated Data.TaggedError constructor 
 This pure schema library change has no runtime product rollout and therefore no feature flag. It does not adapt or activate the separate resource-provider model. No new dependency or storage implementation is authorized.
 
 The compiling examples and type assertions live in `tests/schema/src/compose.spec.ts`: exact per-key decoded/encoded rows, exact nested schema members, source-schema identity, annotations, Date round trips and preserved nullable metadata. Run strict schema package/test typechecks and the entire schema Vitest project with its existing 90% coverage gate. Each delivering lane regenerates affected LLMS, planning and clean-source Graphify outputs after rebasing; no central integration window is required.
+
+## Core qualification evidence pointers - 2026-11-20
+
+Read `docs/core-qualification/types-boundaries.md` and `docs/core-qualification/bootstrap-diagnostics.md`, starting with their Packet H current-state capsules. Published integration 01517213/head23baec94 includes owned declaration closure and the closed DeploymentProfileFailure boundary; those fixes must not be implemented again from the historical blocked/local-only sections. The reports map each bounded clause to immutable source, historical reported execution, independently checked exact-head CI and remaining limits. H is docs-only reconciliation, not a new test or production qualification. Existing first-party declaration restrictions do not recursively police dependency internals, and SQL import detection remains independent. Exact-head CI is not release authority or whole EVE-277/278/Core acceptance; preserve failed/skipped/cancelled history and distinguish H's fresh delivery gates from earlier commands.
 
 ---
 
@@ -2878,6 +2792,8 @@ Every mutation acquires a tenant graph guard inside the existing transaction, th
 
 The compiling example assumes an already composed authenticated host, not a policy bootstrap. Actual PostgreSQL/SQLite host/reopen/history/paging/rollback/replay/live-policy and independent PostgreSQL graph races are tested in `tests/resources/src/inventory-location.spec.ts`. Definition validation/invocation do not establish provider parity: intact schemas retain explicit UnsupportedSchema discovery controls. No archive exists without the authoritative LocationNotEmpty stock query. Broader EVE-103 ledger/levels/movements/UI/offline acceptance remains open. See `docs/inventory-locations.md` for options, limits and troubleshooting. No activation/spend or January-deferred EVE-248 work is included.
 
+The full-page ancestry test batches only its 920 synthetic setup rows into current/revision tables within the existing Resources transaction. Both dialects were compared against the real 920-call API loop before qualification: ordered record, revision, schema definition/checksum and tenant-pin bytes match exactly, and both rollback to the original state. Preserve the hexadecimal IDs, active schema version, revision 1 and encoded payload field order when maintaining this fixture. Public-host assertions, schema pins, rollback checks and the 60-second budget remain unchanged; direct SQL setup is not feature authorization or permission to bypass the production graph guard/live per-node policy. The people guide records the bounded diagnostic measurements and digest, not production traversal acceptance.
+
 ### locations
 
 @title Invoke metadata without asserting stock
@@ -3115,6 +3031,15 @@ schema, retention producer or activated endpoint. Preserve the existing default-
 checks. The binding session-renewal policy and trusted-activity classification
 are outside this cancellation correction.
 
+Published evidence (reconciled 2026-11-20): the
+`Current published state - Packet I, 2026-11-20` capsule in
+`docs/core-qualification/resource-cancellation.md`
+maps source `009dc422`, head `3ff2251b` and exact-head application run
+`44638123407` to the clauses below, preserving original failures and fixture approval.
+The same dated capsule in `docs/core-qualification/session-policy.md` records
+delivered permanent coverage and policy-backed SQL issuance; neither capsule
+certifies rolling renewal, production activation or whole EVE-275/Core acceptance.
+
 Use registered `ActionHost.prepareApproval` to derive the review. After codec,
 target authorization and live policy, trusted `ApprovalEvents.resolve(binding,
 canonicalWireInput)` returns an optional `{ event, resource }`. `resource` is the
@@ -3174,6 +3099,80 @@ caller-supplied scope, implicit lead role or permissive missing-service fallback
 Focused coverage-disabled diagnostics do not replace unchanged normal coverage,
 root/boundary/full gates or exact-head hosted CI. Whole EVE-275/Core and production
 activation remain separate acceptance.
+
+---
+
+# Trusted real-activity renewal
+
+EVE-275 / GitHub #1063 remains open. The selected idle window is one hour,
+absolute maximum eight hours from original sign-in. Server policy remains
+required; trusted tenant idle settings may shorten but cannot exceed that bound.
+The existing policy's approval window cannot exceed the live session deadline.
+See docs/identity-oidc.md and docs/core-qualification/session-renewal.md.
+
+Qualification checkpoint, 2026-11-20: retained renewal source2693f31b on exact
+published515a62ff passes its normal static-plus-affected hook in496.534675s;
+pinned fixture/hook/cleanup exits0 in500.844678s within unchanged1200s.
+Fresh server80 cases include13 real SQLite/PostgreSQL lifecycle cases; coverage
+is97.37/93.97/96.65/97.95%, renewal94.44/94.59/90/94.33%. No budgets/assertions
+or thresholds changed. Separate clean graph hook, publication and exact-head
+full main-push CI remain required. The report preserves earlier failed attempts
+and finalization limits; local admission is not whole-Core or release acceptance.
+
+IdentitySession.activity is optional for compatibility, not automatic migration.
+Legacy rows require fresh sign-in to acquire lifecycle metadata. Its issuedAt,
+lastRealActivityAt, absoluteExpiresAt, idleMs and original issuer/client provenance
+must remain consistent with expiresAt. Repeating an already live OIDC sign-in
+does not write or move anchors. Expired or closed sessions never reopen.
+
+Trusted login completion uses server openOidcSessionWithPolicy inside the routed
+Storage transaction and mandatory audit. It rereads IdentitySessionPolicy under
+the shared identity guard and persists the required rolling settings. The portable
+openOidcSession overload accepts explicit bounded settings; its numeric legacy
+overload remains nonrenewable. The compiling example shows that lower-level seam,
+not a new production policy source or replacement for the server wrapper.
+
+Server sessionRenewal(verifier, registrations) builds a Context.Tag capability,
+not an endpoint. Required services: paired same-client IdentityStore/Storage,
+CurrentTenant, IdentityResolver, IdentitySessionPolicy, Flags and InputDigest.
+Each exact registration supplies route, clientId, surface web/native and activity
+human-mutation/interactive-read/navigation; none has a fallback. Bind only trusted
+interactive handlers after accepted human activity. Never accept classification
+from transport body/header/TTY booleans or wire this into generic HTTP middleware.
+
+SessionRenewal.renew(route, redactedToken) re-verifies the bearer, matches the
+server route/client, then acquires identity_guard first within Storage.transaction.
+Time is sampled after lock acquisition. Live policy, issuer/subject link, human
+principal/membership and session are rechecked. CAS and minimal durable receipt
+commit together. Policy tightening is checked against previous activity before
+acceptance; lost audit rolls back CAS. Repeated real activity cannot move the
+absolute anchor or resurrect expiry/revocation. Only expiresAt is returned;
+closed failure reasons invalid/denied/unavailable contain no provider/SQL details.
+
+identity.session-renewal-enabled defaults false through the existing flag port.
+Do not enable or configure production as a consequence of importing this module.
+CLI activity NEVER renews, even human-interactive CLI commands: Jonathan's option B
+supersedes earlier CLI eligibility. Sign-in is the human proof; reauthenticate on
+idle/absolute expiry. Build no activity tickets. Only independently allowlisted
+real web/native activity may renew the same canonical session. Agents, polling,
+prefetch, background sync and token refresh never qualify. EVE-248 remains deferred
+to January 2027 with budgets/settings unchanged; no dependency/spend/activation.
+
+### sign_in
+
+@title Record bounded sign-in anchors without treating token refresh as user activity
+
+```ts
+import { openOidcSession } from '@eventiva/integrations.oidc/session';
+import type { OidcAccessClaims } from '@eventiva/integrations.oidc/token';
+
+/**
+ * Lower-level example with explicit selected bounds, not production configuration. Supply freshly verified claims
+ * inside the trusted tenant Storage transaction with its required audit; server login normally uses the policy wrapper.
+ */
+export const openBoundedSession = (claims: OidcAccessClaims) =>
+    openOidcSession(claims, { idleMs: 3_600_000, absoluteMs: 28_800_000 });
+```
 
 ---
 
@@ -3259,3 +3258,49 @@ typed primitive; vendor opacity, nested restoration, async/native behavior,
 per-step profiling and collector self-observation remain unresolved. Ordinary
 non-generator Effect.fn bodies execute at construction: verify actual execution
 coverage rather than accepting a wrapper name. No production adoption yet.
+
+---
+
+# No inline comments: the comment ratchet
+
+Since 2026-11-21 ([ADR-0001](../../../docs/adr/0001-no-inline-comments-and-ratchet.md)) first-party JavaScript and TypeScript carries no inline (`//`) or block (`/* */`) comments. `eventiva/no-inline-comments` in `eslint.config.mjs` reports them, and `node tools/comments/ratchet.mjs --base HEAD` (part of `node --run check`) holds each legacy file to its count in `tools/comments/ratchet.json`. Counts may only fall.
+
+Kept: licence headers, attached JSDoc (`/** ... */`), `// effect-boundary: <reason>` markers, `// @ts-expect-error` in tests, shebangs and files synced from `Resnovas/.github`.
+
+Instead of a comment: delete a tautology or stale note, fix the hack an excuse describes (file an issue and add a lint rule with `correction-to-lint`), move a decision into `docs/adr/`, or document the callable contract in its JSDoc.
+
+To pay down the ratchet, run `/delete-comment` on a directory. After classifying and recording, `node tools/comments/ratchet.mjs --strip <paths>` deletes the remaining comments and `--update` tightens the ledger in the same commit.
+
+```ts
+/** Return the tenant's open invoices; never includes drafts. */
+export const openInvoices = (invoices: ReadonlyArray<{ readonly status: string }>) =>
+    invoices.filter((invoice) => invoice.status === 'open');
+```
+
+---
+
+# The JSDoc tag contract
+
+`eslint.config.mjs` applies `eslint-plugin-jsdoc` 65.4.6 to the globs in `jsdocAdoptedFiles`. The target is every JS/TS file in `packages`, `apps`, `tests`, `tools`, `scripts` and `storage`, except files synced from `Resnovas/.github`. Add a group's glob in the commit that clears its findings; never add a baseline or suppression. Read the table in `docs/documentation-standard.md` before writing JSDoc.
+
+- Each callable gets a sentence description, `@param` per parameter and `@returns` when it returns a value.
+- Each export gets `@since <package version>` and `@example`.
+- An Effect documents its success in `@returns` and each typed failure with `@fails {ErrorTag}`.
+- `@access` names the resource or action permission a caller must hold, in the dotted form of the `Permission` schema in `packages/contracts/src/action.ts`. Never a role.
+- Callbacks passed to `Effect.gen` need only a description.
+- Never write `@throws`, `@exception`, `@author`, `@license` or `@version`.
+- JavaScript files may keep JSDoc types; TypeScript files may not.
+- A callback that needs `@param` and follows another argument (`it('name', fn)`) becomes a named, documented `const`.
+
+```ts
+/**
+ * An `I18n` layer for one locale.
+ *
+ * @since 0.0.1
+ * @param options - The locale, catalogue and optional terminology pack, as for `make`.
+ * @returns A layer providing `I18n`; building it never fails.
+ * @example
+ * const program = Effect.provide(useShellTitle, layer({ locale: 'en-GB', catalogue }));
+ */
+export const layer = (options: I18nOptions): Layer.Layer<I18n> => Layer.effect(I18n, make(options));
+```

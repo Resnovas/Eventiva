@@ -16,4 +16,11 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
+/**
+ * The client bootstrap test project, with coverage over `apps/client/src/bootstrap.ts`.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run @eventiva/client:test
+ */
 export default testProject('client-bootstrap', ['apps/client/src/bootstrap.ts'], import.meta.url);

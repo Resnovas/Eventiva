@@ -21,7 +21,13 @@ import { CurrentTenant, UuidV7, Version } from '@eventiva/contracts/storage';
 import { Effect, Layer, Schema } from 'effect';
 import { uuidV7 } from './values.ts';
 
-/** Bind dedicated proof persistence to the same tenant client as identity, Storage and Integrity; never the compute client. */
+/**
+ * Bind dedicated proof persistence to the same tenant client as identity, Storage and Integrity; never the compute client.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(issueApproval, approvalStore);
+ */
 export const approvalStore = Layer.effect(
     ApprovalStore,
     Effect.gen(
@@ -30,17 +36,43 @@ export const approvalStore = Layer.effect(
             // Physical routing is authoritative; proof bodies cannot select or switch their own database client.
             const tenant = yield* CurrentTenant;
             const sql = yield* SqlClient.SqlClient;
-            /** Redact driver and malformed persisted-data details at the authorization storage boundary. */
+            /**
+             * Redact driver and malformed persisted-data details at the authorization storage boundary.
+             *
+             * @returns An ApprovalFailure with the `unavailable` reason and no driver or row detail.
+             */
             const unavailable = () => new ApprovalFailure({ reason: 'unavailable' });
-            /** Enforce exact persisted/input schemas rather than trusting TypeScript or coercing arbitrary row fields. */
+            /**
+             * Enforce exact persisted/input schemas rather than trusting TypeScript or coercing arbitrary row fields.
+             *
+             * @template A - The decoded value.
+             * @template I - The encoded input accepted by the schema.
+             * @param schema - The exact schema the value must satisfy, with no excess properties.
+             * @param value - The persisted or caller-supplied value to decode.
+             * @returns The decoded value.
+             * @fails {ApprovalFailure} With `invalid` when the value does not decode.
+             */
             const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
                 Schema.decode(schema)(value, { onExcessProperty: 'error' }).pipe(
                     Effect.mapError(
-                        /** Rejected proof content never appears in a public error. */
+                        /**
+                         * Rejected proof content never appears in a public error.
+                         *
+                         * @returns An ApprovalFailure with the `invalid` reason.
+                         */
                         () => new ApprovalFailure({ reason: 'invalid' })
                     )
                 );
-            /** Share the identity guard and its lock order, so live authority and proof changes serialize together. */
+            /**
+             * Share the identity guard and its lock order, so live authority and proof changes serialize together.
+             *
+             * @template A - The body's success value.
+             * @template E - The body's typed failure.
+             * @template R - The body's required services.
+             * @param effect - The proof work to run while the identity guard row is locked.
+             * @returns The body's result once the SQL transaction commits.
+             * @fails {ApprovalFailure} With `unavailable` when the guard row is missing or SQL fails; the body's own failures pass through.
+             */
             const transaction: ApprovalStore['Type']['transaction'] = (effect) =>
                 sql
                     .withTransaction(
@@ -56,7 +88,13 @@ export const approvalStore = Layer.effect(
                         )
                     )
                     .pipe(Effect.catchTag('SqlError', unavailable));
-            /** Read row identity/version and body as one exact record; corruption is denial, never absence. */
+            /**
+             * Read row identity/version and body as one exact record; corruption is denial, never absence.
+             *
+             * @param id - The approval proof id, decoded as a UUIDv7 before use.
+             * @returns The stored record, or undefined when no row exists.
+             * @fails {ApprovalFailure} With `invalid` when the id, body or revision is malformed or the body names another record, revision or tenant, or `unavailable` when SQL fails.
+             */
             const get: ApprovalStore['Type']['get'] = (id) =>
                 Effect.gen(
                     /** Cross-check the embedded route and optimistic revision against SQL metadata. */
@@ -81,7 +119,15 @@ export const approvalStore = Layer.effect(
                 nextId: uuidV7.pipe(Effect.mapError(unavailable)),
                 transaction,
                 get,
-                /** Persist immutable binding plus monotonic lifecycle and an append-only decision in one SQL transaction. */
+                /**
+                 * Persist immutable binding plus monotonic lifecycle and an append-only decision in one SQL transaction.
+                 *
+                 * @param record - The full proof record to persist; only lifecycle fields may differ from the stored revision.
+                 * @param actor - The caller recorded on the decision; issue and cancel need a human, use needs the bound principal.
+                 * @param kind - The decision being recorded: `issued`, `used` or `cancelled`.
+                 * @returns An effect that completes once the proof and its decision row are written together.
+                 * @fails {ApprovalFailure} With `denied` for a foreign tenant or ineligible actor, `conflict` for a stale or illegal transition, `invalid` for malformed input, or `unavailable` when SQL fails.
+                 */
                 save: (record, actor, kind) =>
                     transaction(
                         Effect.gen(

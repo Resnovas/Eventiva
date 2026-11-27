@@ -31,7 +31,12 @@ import { Effect, Schema } from 'effect';
 
 it.effect(
     'portable value codecs reject precision loss and non-v7 IDs without driver imports',
-    /** Exercise portable storage codecs without a database driver or persistence service. */ () =>
+    /**
+     * Exercise portable storage codecs without a database driver or persistence service.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Verify exact numeric strings, bounded timestamps, JSON values and complete guarded command metadata. */ function* () {
                 // Numeric strings beyond JavaScript integer precision must round trip lexically rather than through floating point.
@@ -53,7 +58,7 @@ it.effect(
                 const value = { amount: '-9007199254740993.1200', nested: [true, null, { id: uuid }] };
                 expect(yield* Schema.decodeUnknown(Json)(yield* Schema.encode(Json)(value))).toEqual(value);
                 expect(yield* Effect.either(Schema.encode(Json)({ invalid: Infinity }))).toMatchObject({
-                    _tag: 'Left'
+                    _tag: 'Left',
                 });
                 expect(Schema.is(IntentOutcome)('pending')).toBe(true);
                 expect(
@@ -73,7 +78,12 @@ it.effect(
 
 it.effect(
     'typed machine edges reject illegal transitions',
-    /** Exercise runtime transition rejection alongside a compile-time state vocabulary proof. */ () =>
+    /**
+     * Exercise runtime transition rejection alongside a compile-time state vocabulary proof.
+     *
+     * @returns The Effect that runs these assertions.
+     */
+    () =>
         Effect.gen(
             /** Verify declared edges succeed, undeclared edges fail and nonexistent states remain type errors. */ function* () {
                 // Runtime edge validity and compile-time state membership are independent guarantees.
@@ -82,7 +92,11 @@ it.effect(
                 expect(yield* Effect.either(transition(machine, 'reservation', 'expired', 'confirmed'))).toMatchObject({
                     left: { reason: 'illegal-transition' },
                 });
-                /** Keep an invalid state reference typechecked but unexecuted to prove the literal state vocabulary. */
+                /**
+                 * Keep an invalid state reference typechecked but unexecuted to prove the literal state vocabulary.
+                 *
+                 * @returns The transition Effect, which the test never runs.
+                 */
                 const typeProof = () => {
                     // @ts-expect-error State names are the literal machine vocabulary.
                     return transition(machine, 'reservation', 'missing', 'confirmed');

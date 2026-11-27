@@ -51,24 +51,53 @@ interface Row {
     payload: string;
     lease_until: Date | number | null;
 }
-/** Validate boundary data with a caller-selected schema and discard rejected values/diagnostics on failure. */
+/**
+ * Validate boundary data with a caller-selected schema and discard rejected values/diagnostics on failure.
+ *
+ * @template A - Decoded output type.
+ * @template I - Encoded input type.
+ * @param schema - Effect schema used to decode the value.
+ * @param value - Unchecked input value to decode.
+ * @returns An Effect producing the decoded value.
+ * @fails StorageFailure when schema validation rejects the input.
+ */
 const decode = <A, I>(schema: Schema.Schema<A, I>, value: NoInfer<I>) =>
     Schema.decode(schema)(value).pipe(
         Effect.mapError(
-            /** Sanitize schema failures before they cross the storage port. */ () =>
-                new StorageFailure({ operation: 'codec', reason: 'invalid-data' })
+            /**
+             * Sanitize schema failures before they cross the storage port.
+             *
+             * @returns A bounded codec storage failure.
+             */
+            () => new StorageFailure({ operation: 'codec', reason: 'invalid-data' })
         )
     );
-/** Serialize only schema-valid JSON values for parameterized SQL persistence. */
+/**
+ * Serialize only schema-valid JSON values for parameterized SQL persistence.
+ *
+ * @param value - JSON value to serialize.
+ * @returns An Effect producing the encoded JSON string.
+ * @fails StorageFailure when JSON encoding fails.
+ */
 const encode = (value: JsonValue) =>
     Schema.encode(Json)(value).pipe(
         Effect.mapError(
-            /** Hide serialization diagnostics and rejected payload content. */ () =>
-                new StorageFailure({ operation: 'encode', reason: 'invalid-data' })
+            /**
+             * Hide serialization diagnostics and rejected payload content.
+             *
+             * @returns A bounded encode storage failure.
+             */
+            () => new StorageFailure({ operation: 'encode', reason: 'invalid-data' })
         )
     );
 
-/** Require the exact retained schema, not merely a migration name or a newer compatible-looking default. */
+/**
+ * Require the exact retained schema, not merely a migration name or a newer compatible-looking default.
+ *
+ * @param snapshot - Recorded run snapshot containing the expected migration history.
+ * @returns An Effect succeeding when the database migration history matches the snapshot exactly.
+ * @fails StorageFailure when the applied migration history differs from the snapshot.
+ */
 const checkRunSchema = (snapshot: RunSnapshot) =>
     Effect.gen(
         /** Compare the full applied history while the caller holds the run transaction lock. */ function* () {
@@ -81,7 +110,13 @@ const checkRunSchema = (snapshot: RunSnapshot) =>
             if (
                 rows.length !== snapshot.schema.length ||
                 rows.some(
-                    /** Every byte checksum belongs to the recorded history; no omitted or additional migration is inferred safe. */
+                    /**
+                     * Every byte checksum belongs to the recorded history; no omitted or additional migration is inferred safe.
+                     *
+                     * @param row - Applied migration row from the database.
+                     * @param index - Zero-based position in the ordered migration list.
+                     * @returns True when the applied migration differs from the snapshot entry.
+                     */
                     (row, index) =>
                         row.name !== snapshot.schema[index]?.name || row.checksum !== snapshot.schema[index]?.checksum
                 )
@@ -90,7 +125,28 @@ const checkRunSchema = (snapshot: RunSnapshot) =>
         }
     );
 
-/** Integration-private fence primitive: call INSIDE the accepting SQL transaction, including independent output transactions. */
+/**
+ * Integration-private fence primitive: call INSIDE the accepting SQL transaction, including independent output transactions.
+ *
+ * @since 0.0.1
+ * @param sql - Active SQL client bound to the enclosing transaction.
+ * @param input - Run fence credentials asserting tenant, run, owner, and epoch.
+ * @returns An Effect succeeding once ownership and recorded schema are verified.
+ * @fails Conflict when the fence owner or epoch is stale.
+ * @fails StorageFailure when the snapshot is missing or its schema differs.
+ * @example
+ * ```ts
+ * import { Effect } from 'effect';
+ * import { SqlClient } from '@effect/sql';
+ * import { checkRunFence } from '@eventiva/sql';
+ *
+ * const guarded = (fence: Parameters<typeof checkRunFence>[1]) =>
+ *     Effect.gen(function* () {
+ *         const sql = yield* SqlClient.SqlClient;
+ *         yield* checkRunFence(sql, fence);
+ *     });
+ * ```
+ */
 export const checkRunFence = (sql: SqlClient.SqlClient, input: RunFence) =>
     Effect.gen(
         /** A conditional no-op UPDATE locks the authoritative row on both engines until commit or rollback. */ function* () {
@@ -109,7 +165,19 @@ export const checkRunFence = (sql: SqlClient.SqlClient, input: RunFence) =>
         }
     );
 
-/** SQL methods close over one client; Effect SQL propagates its connection through the current fiber transaction. */
+/**
+ * SQL methods close over one client; Effect SQL propagates its connection through the current fiber transaction.
+ *
+ * @since 0.0.1
+ * @param dialect - Target SQL dialect controlling timestamp formatting and row locking clauses.
+ * @returns A Layer providing the Storage service backed by SqlClient.
+ * @example
+ * ```ts
+ * import { storage } from '@eventiva/sql';
+ *
+ * const sqliteStorage = storage('sqlite');
+ * ```
+ */
 export const storage = (dialect: Dialect) =>
     Layer.effect(
         Storage,
@@ -117,23 +185,49 @@ export const storage = (dialect: Dialect) =>
             /** Bind operational storage to the supplied client and dialect; tenant admission belongs to composition/router. */ function* () {
                 // These tables have no tenant predicate: the injected client must already select the tenant database.
                 const sql = yield* SqlClient.SqlClient;
-                /** Match PostgreSQL timestamp parameters or SQLite integer milliseconds without changing the instant. */
+                /**
+                 * Match PostgreSQL timestamp parameters or SQLite integer milliseconds without changing the instant.
+                 *
+                 * @param millis - Unix timestamp in milliseconds.
+                 * @returns An ISO timestamp string for PostgreSQL or raw milliseconds for SQLite.
+                 */
                 const time = (millis: number) => (dialect === 'postgres' ? new Date(millis).toISOString() : millis);
-                /** Hide driver SQL and connection details behind a bounded database failure. */
+                /**
+                 * Hide driver SQL and connection details behind a bounded database failure.
+                 *
+                 * @returns A sanitized SQL storage failure.
+                 */
                 const failure = () => new StorageFailure({ operation: 'sql', reason: 'database' });
-                /** Use the client's fiber-local transaction/savepoint and translate only SQL failures, retaining domain errors. */
+                /**
+                 * Use the client's fiber-local transaction/savepoint and translate only SQL failures, retaining domain errors.
+                 *
+                 * @template A - Effect success type.
+                 * @template E - Effect domain error type.
+                 * @template R - Effect environment requirements.
+                 * @param effect - Effect executed inside the SQL transaction.
+                 * @returns The transactional Effect with SqlError translated to StorageFailure.
+                 */
                 const transaction = <A, E, R>(
                     effect: Effect.Effect<A, E | SqlError, R>
                 ): Effect.Effect<A, E | StorageFailure, R> =>
-                    sql
-                        .withTransaction(effect)
-                        .pipe(
-                            Effect.mapError(
-                                /** Preserve typed business failures while sanitizing driver errors. */ (cause) =>
-                                    cause instanceof SqlError ? failure() : cause
-                            )
-                        );
-                /** Decode stored JSON and normalize driver primitives before validating the public record shape. */
+                    sql.withTransaction(effect).pipe(
+                        Effect.mapError(
+                            /**
+                             * Preserve typed business failures while sanitizing driver errors.
+                             *
+                             * @param cause - Error emitted by the transactional effect.
+                             * @returns Either the original domain error or a sanitized StorageFailure.
+                             */
+                            (cause) => (cause instanceof SqlError ? failure() : cause)
+                        )
+                    );
+                /**
+                 * Decode stored JSON and normalize driver primitives before validating the public record shape.
+                 *
+                 * @param row - Raw database row from operational_record.
+                 * @returns An Effect yielding the validated stored record.
+                 * @fails StorageFailure when payload JSON or record fields fail validation.
+                 */
                 const record = (row: Row) =>
                     Effect.gen(
                         /** Reject corrupted retained records instead of returning unchecked driver data. */ function* () {
@@ -149,7 +243,13 @@ export const storage = (dialect: Dialect) =>
                             });
                         }
                     );
-                /** Return a validated tenant-local record or absence; database failures are sanitized. */
+                /**
+                 * Return a validated tenant-local record or absence; database failures are sanitized.
+                 *
+                 * @param id - Operational record identifier.
+                 * @returns An Effect yielding the stored record or undefined when absent.
+                 * @fails StorageFailure when query execution or decoding fails.
+                 */
                 const get = (id: string) =>
                     Effect.gen(
                         /** Look up a single identifier on the already-routed connection, decoding only an existing row. */ function* () {
@@ -159,10 +259,22 @@ export const storage = (dialect: Dialect) =>
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Discard query diagnostics at the storage boundary. */ () => Effect.fail(failure())
+                            /**
+                             * Discard query diagnostics at the storage boundary.
+                             *
+                             * @returns A failed Effect carrying a sanitized StorageFailure.
+                             */
+                            () => Effect.fail(failure())
                         )
                     );
-                /** Retain one encoded receipt per identifier; byte-different replay fails rather than overwriting history. */
+                /**
+                 * Retain one encoded receipt per identifier; byte-different replay fails rather than overwriting history.
+                 *
+                 * @param id - Unique receipt identifier.
+                 * @param receipt - JSON receipt payload to persist.
+                 * @returns An Effect completing once the exact receipt bytes are retained.
+                 * @fails StorageFailure when an existing receipt differs or persistence fails.
+                 */
                 const audit: Storage['Type']['audit'] = (id, receipt) =>
                     Effect.gen(
                         /** Compare the retained receipt after insert-or-ignore so identifier reuse cannot replace evidence. */ function* () {
@@ -178,8 +290,12 @@ export const storage = (dialect: Dialect) =>
                     ).pipe(
                         Effect.catchTag(
                             'SqlError',
-                            /** Keep receipt persistence failures free of raw SQL details. */ () =>
-                                Effect.fail(failure())
+                            /**
+                             * Keep receipt persistence failures free of raw SQL details.
+                             *
+                             * @returns A failed Effect carrying a sanitized StorageFailure.
+                             */
+                            () => Effect.fail(failure())
                         )
                     );
                 const expire = transaction(
@@ -201,10 +317,22 @@ export const storage = (dialect: Dialect) =>
                 ).pipe(
                     Effect.catchTag(
                         'SqlError',
-                        /** Sanitize any SQL failure escaping expiry reclamation. */ () => Effect.fail(failure())
+                        /**
+                         * Sanitize any SQL failure escaping expiry reclamation.
+                         *
+                         * @returns A failed Effect carrying a sanitized StorageFailure.
+                         */
+                        () => Effect.fail(failure())
                     )
                 );
-                /** Decode retained acceptance and ownership without resolving any executable default. */
+                /**
+                 * Decode retained acceptance and ownership without resolving any executable default.
+                 *
+                 * @param tenant - Tenant identifier owning the run.
+                 * @param id - Run identifier.
+                 * @returns An Effect yielding the stored run record or undefined when absent.
+                 * @fails StorageFailure when query execution or decoding fails.
+                 */
                 const getRun: Storage['Type']['getRun'] = (tenant, id) =>
                     Effect.gen(
                         /** Tenant and run together identify a record even when a trusted fixture shares a physical database. */ function* () {
@@ -229,7 +357,17 @@ export const storage = (dialect: Dialect) =>
                     ready: sql`SELECT id FROM action_receipt LIMIT 0`.pipe(Effect.asVoid, Effect.mapError(failure)),
                     transaction,
                     getRun,
-                    /** Compare accepted bytes after insert-ignore; immutable snapshots can never be repinned by a retry. */
+                    /**
+                     * Compare accepted bytes after insert-ignore; immutable snapshots can never be repinned by a retry.
+                     *
+                     * @param tenant - Tenant identifier owning the run.
+                     * @param id - Run identifier.
+                     * @param input - Accepted JSON input payload for the run.
+                     * @param snapshot - Pinned module run snapshot.
+                     * @returns An Effect yielding the accepted stored run.
+                     * @fails Conflict when an existing run was accepted with different input or snapshot bytes.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     acceptRun: (tenant, id, input, snapshot) =>
                         transaction(
                             Effect.gen(
@@ -256,7 +394,17 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Explicit expected-epoch transfer cannot overwrite a concurrent acquisition or wrap the monotonic counter. */
+                    /**
+                     * Explicit expected-epoch transfer cannot overwrite a concurrent acquisition or wrap the monotonic counter.
+                     *
+                     * @param tenant - Tenant identifier owning the run.
+                     * @param id - Run identifier.
+                     * @param expectedEpoch - Ownership epoch required for the transfer.
+                     * @param owner - New run owner identifier.
+                     * @returns An Effect yielding the newly acquired run fence.
+                     * @fails Conflict when the stored epoch does not match expectedEpoch.
+                     * @fails StorageFailure when schema verification or persistence fails.
+                     */
                     claimRun: (tenant, id, expectedEpoch, owner) =>
                         transaction(
                             Effect.gen(
@@ -273,12 +421,26 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Retain the checked fence lock for the entire effect and its transaction commit. */
+                    /**
+                     * Retain the checked fence lock for the entire effect and its transaction commit.
+                     *
+                     * @param fence - Run fence asserted for the transaction.
+                     * @param effect - Effect executed while holding the fence lock.
+                     * @returns The transactional fenced Effect.
+                     */
                     fence: (fence, effect) => transaction(checkRunFence(sql, fence).pipe(Effect.zipRight(effect))),
                     get,
                     audit,
                     expire,
-                    /** Serialize one scoped key, reject changed input and replay the retained result without rerunning execute. */
+                    /**
+                     * Serialize one scoped key, reject changed input and replay the retained result without rerunning execute.
+                     *
+                     * @param request - Idempotency key, input hash, and optional run fence.
+                     * @param execute - Effect computing the action output and receipt on first execution.
+                     * @returns An Effect yielding the validated result with a replay indicator.
+                     * @fails Conflict when the key was already committed with a different input hash or stale fence.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     commit: (request, execute) =>
                         transaction(
                             Effect.gen(
@@ -306,7 +468,14 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Validate and insert a new record without overwriting an existing identifier. */
+                    /**
+                     * Validate and insert a new record without overwriting an existing identifier.
+                     *
+                     * @param value - Record fields to validate and insert.
+                     * @returns An Effect completing once the record is persisted.
+                     * @fails Conflict when a record with the same identifier already exists.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     create: (value) =>
                         transaction(
                             Effect.gen(
@@ -321,7 +490,18 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Apply an allowed version/state transition after deadline and lease checks, recording history atomically. */
+                    /**
+                     * Apply an allowed version/state transition after deadline and lease checks, recording history atomically.
+                     *
+                     * @param input - Guarded command containing record identity, expected version/state, and deadline.
+                     * @param next - Target state to transition into.
+                     * @param payload - Replacement JSON payload for the updated record.
+                     * @param machine - State machine transition map allowing state-to-next edges.
+                     * @param leaseUntil - Optional Unix millisecond lease expiry for the updated record.
+                     * @returns An Effect yielding the decoded updated stored record.
+                     * @fails Conflict when the command or lease is expired, the record is stale, or the transition is disallowed.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     compareAndSet: (input, next, payload, machine, leaseUntil) =>
                         transaction(
                             Effect.gen(
@@ -348,6 +528,8 @@ export const storage = (dialect: Dialect) =>
                                         current.state !== command.expectedState
                                     )
                                         return yield* new Conflict({ id: command.id, reason: 'stale' });
+                                    // Validate the retained bytes before UPDATE can erase corruption; preserve expired/stale precedence.
+                                    yield* record(current);
                                     if (!machine[current.state]?.includes(next))
                                         return yield* new Conflict({ id: command.id, reason: 'illegal-transition' });
                                     if (leaseUntil !== undefined) {
@@ -365,7 +547,14 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Initialize positive integer stock with its opening ledger delta; duplicate inserts are database failures. */
+                    /**
+                     * Initialize positive integer stock with its opening ledger delta; duplicate inserts are database failures.
+                     *
+                     * @param id - Stock resource UUIDv7 identifier.
+                     * @param capacity - Opening positive integer quantity.
+                     * @returns An Effect completing once stock balance and opening ledger delta are inserted.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     stock: (id, capacity) =>
                         transaction(
                             Effect.gen(
@@ -379,7 +568,13 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Observe recorded available stock without implicitly reclaiming expired reservations; missing stock fails. */
+                    /**
+                     * Observe recorded available stock without implicitly reclaiming expired reservations; missing stock fails.
+                     *
+                     * @param id - Stock resource identifier.
+                     * @returns An Effect yielding the currently available stock quantity.
+                     * @fails StorageFailure when the stock row does not exist or the query fails.
+                     */
                     available: (id) =>
                         Effect.gen(
                             /** Normalize the driver's stock integer or report that no stock row exists. */ function* () {
@@ -393,10 +588,25 @@ export const storage = (dialect: Dialect) =>
                         ).pipe(
                             Effect.catchTag(
                                 'SqlError',
-                                /** Hide stock-query diagnostics from callers. */ () => Effect.fail(failure())
+                                /**
+                                 * Hide stock-query diagnostics from callers.
+                                 *
+                                 * @returns A failed Effect carrying a sanitized StorageFailure.
+                                 */
+                                () => Effect.fail(failure())
                             )
                         ),
-                    /** Reclaim expiry, then atomically debit sufficient stock and retain a unique pending reservation and ledger delta. */
+                    /**
+                     * Reclaim expiry, then atomically debit sufficient stock and retain a unique pending reservation and ledger delta.
+                     *
+                     * @param id - Reservation UUIDv7 identifier.
+                     * @param resource - Stock resource UUIDv7 identifier to debit.
+                     * @param quantity - Positive integer quantity to hold.
+                     * @param expiresAt - Unix millisecond timestamp when the hold expires.
+                     * @returns An Effect completing once stock is debited and the reservation is persisted.
+                     * @fails Conflict when the deadline has passed, stock is insufficient, or the reservation id already exists.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     reserve: (id, resource, quantity, expiresAt) =>
                         transaction(
                             Effect.gen(
@@ -420,7 +630,15 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Confirm or release a pending unexpired reservation; only release restores stock and appends a delta. */
+                    /**
+                     * Confirm or release a pending unexpired reservation; only release restores stock and appends a delta.
+                     *
+                     * @param id - Reservation identifier to settle.
+                     * @param outcome - Target settlement state (`confirmed` or `released`).
+                     * @returns An Effect completing once the reservation state and optional stock restoration are committed.
+                     * @fails Conflict when the reservation is missing, not pending, or already expired.
+                     * @fails StorageFailure when persistence fails.
+                     */
                     settle: (id, outcome) =>
                         transaction(
                             Effect.gen(
@@ -451,7 +669,17 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Retain exact integer payment units once per event; changed payment/currency/amount conflicts on replay. */
+                    /**
+                     * Retain exact integer payment units once per event; changed payment/currency/amount conflicts on replay.
+                     *
+                     * @param event - Unique payment ledger event identifier.
+                     * @param payment - Payment identifier associated with the event.
+                     * @param currency - Three-letter uppercase ISO currency code.
+                     * @param minorUnits - Exact integer payment amount encoded as a decimal string.
+                     * @returns An Effect yielding `'applied'` on first insert or `'replayed'` on identical replay.
+                     * @fails Conflict when an existing event disagrees on payment, currency, or minor units.
+                     * @fails StorageFailure when validation or persistence fails.
+                     */
                     reconcile: (event, payment, currency, minorUnits) =>
                         transaction(
                             Effect.gen(
@@ -476,7 +704,14 @@ export const storage = (dialect: Dialect) =>
                                 }
                             )
                         ),
-                    /** Persist an encoded command intent only; delivery/external execution is not performed here. */
+                    /**
+                     * Persist an encoded command intent only; delivery/external execution is not performed here.
+                     *
+                     * @param id - Outbox command identifier.
+                     * @param command - JSON command payload to persist.
+                     * @returns An Effect completing once the outbox row is written.
+                     * @fails StorageFailure when encoding or persistence fails.
+                     */
                     enqueue: (id, command) =>
                         Effect.gen(
                             /** Encode JSON before inserting an outbox row on the current transaction connection. */ function* () {
@@ -486,8 +721,12 @@ export const storage = (dialect: Dialect) =>
                         ).pipe(
                             Effect.catchTag(
                                 'SqlError',
-                                /** Suppress SQL diagnostics from command persistence errors. */ () =>
-                                    Effect.fail(failure())
+                                /**
+                                 * Suppress SQL diagnostics from command persistence errors.
+                                 *
+                                 * @returns A failed Effect carrying a sanitized StorageFailure.
+                                 */
+                                () => Effect.fail(failure())
                             )
                         ),
                 });

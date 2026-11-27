@@ -21,7 +21,12 @@ import { childTests, runChild as probe } from './child-process.ts';
 const preload = './tests/telemetry/fixtures/bootstrap-diagnostics.mjs';
 const childTest = childTests();
 
-/** Remove only generated timestamps and trace identities when comparing two independent server runs. */
+/**
+ * Remove only generated timestamps and trace identities when comparing two independent server runs.
+ *
+ * @param output - Captured stdout from one server run.
+ * @returns The output with timestamps and trace or span identifiers replaced by fixed placeholders.
+ */
 const stableOutput = (output: string) =>
     output.replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<timestamp>').replace(/\b(?:trace|span)=[a-f0-9]+/g, '<correlation>');
 
@@ -30,7 +35,12 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
     childTest(
         'exits a failed bootstrap while native workers await main-thread garbage collection',
         [10000],
-        /** Exercise the actual composition and Node teardown under a controlled native allocation stressor. */ () =>
+        /**
+         * Exercise the actual composition and Node teardown under a controlled native allocation stressor.
+         *
+         * @returns The scenario that runs the pressured child and checks its failed exit.
+         */
+        () =>
             Effect.gen(
                 /** Keep the same ten-second process deadline and safe failure contract as ordinary bootstrap tests. */ function* () {
                     // Finite native pressure exercises teardown while preserving the ordinary failed-bootstrap deadline.
@@ -70,7 +80,12 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
         childTest(
             `preserves server output and exit with settings ${Object.keys(environment).join(',') || 'default'}`,
             [2300, 2300],
-            /** Compare observed and unobserved execution without relaxing existing server assertions. */ () =>
+            /**
+             * Compare observed and unobserved execution without relaxing existing server assertions.
+             *
+             * @returns The scenario that runs the server with and without the observer and compares them.
+             */
+            () =>
                 Effect.gen(
                     /** Keep the observer's side channel independent from stdout, stderr and process results. */ function* () {
                         // Independent executions require timestamp/ID normalization, not relaxed business-output assertions.
@@ -83,6 +98,16 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
                         expect(observed.stderr).toBe(original.stderr);
                         expect(stableOutput(observed.stdout)).toBe(stableOutput(original.stdout));
                         expect(original.output[3]).toBeUndefined();
+                        // Observer parity needs an uninstrumented control, not an untimed child.
+                        for (const result of [original, observed])
+                            expect(result.timings).toEqual(
+                                expect.arrayContaining([
+                                    expect.objectContaining({ phase: 'spawn-request' }),
+                                    expect.objectContaining({ phase: 'spawned' }),
+                                    expect.objectContaining({ phase: 'exit' }),
+                                    expect.objectContaining({ phase: 'close' }),
+                                ])
+                            );
                         const journal = observed.output[3];
                         expect(typeof journal).toBe('string');
                         if (typeof journal !== 'string') return;
@@ -119,7 +144,12 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
     childTest(
         'ignores missing descriptors and malformed or repeated phase payloads',
         [1000, 1000],
-        /** Diagnostic failure cannot change a child's successful business result. */ () =>
+        /**
+         * Diagnostic failure cannot change a child's successful business result.
+         *
+         * @returns The scenario that floods the subscriber with and without a journal descriptor.
+         */
+        () =>
             Effect.gen(
                 /** Flood the actual subscriber with untrusted values and keep one closed phase. */ function* () {
                     // Repeated valid phases accompany hostile payloads, exposing both reflection leaks and unbounded journals.
@@ -142,6 +172,15 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
                         expect(result.status).toBe(0);
                         expect(result.stdout).toBe('business-result');
                         expect(result.stderr).toBe('');
+                        // A deliberately missing fd3 must still retain the outer process lifetime.
+                        expect(result.timings).toEqual(
+                            expect.arrayContaining([
+                                expect.objectContaining({ phase: 'spawn-request' }),
+                                expect.objectContaining({ phase: 'spawned' }),
+                                expect.objectContaining({ phase: 'exit' }),
+                                expect.objectContaining({ phase: 'close' }),
+                            ])
+                        );
                         if (descriptor) {
                             const journal = result.output[3] ?? '';
                             expect(Buffer.byteLength(journal)).toBeLessThanOrEqual(4096);
@@ -158,7 +197,12 @@ describe('bootstrap diagnostic observer', /** Exercise real descriptors and proc
     childTest(
         'retains the last phase when the actual ten-second timeout sends SIGTERM',
         [10000],
-        /** A deliberately stuck control must retain evidence without catching or changing SIGTERM. */ () =>
+        /**
+         * A deliberately stuck control must retain evidence without catching or changing SIGTERM.
+         *
+         * @returns The scenario that runs a stuck child until the timeout terminates it.
+         */
+        () =>
             Effect.gen(
                 /** Use a synthetic keepalive, not a modified production bootstrap, to prove timeout capture. */ function* () {
                     // A deliberate live timer separates preserved last-phase evidence from successful process completion.

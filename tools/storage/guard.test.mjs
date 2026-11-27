@@ -69,7 +69,6 @@ test('accepts forward-only migrations, backfills and tenant-isolated SQL without
 });
 
 test('checks exact applied bytes and permits appended migrations without rewriting the ledger', (t) => {
-    // SHA-256 of abc is an independent standard test vector, not computed by the guard.
     const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
     const f = fixture(t, { sql: 'abc', applied: { '0001.sql': hash } });
     const ledger = readFileSync(join(f.root, 'applied.json'));

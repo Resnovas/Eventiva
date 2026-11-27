@@ -16,4 +16,11 @@
 
 import { testProject } from '../../vitest.shared.ts';
 
+/**
+ * The boundaries test project: lint-rule probes, package hygiene and portable bundling checks.
+ *
+ * @since 0.0.1
+ * @example
+ * pnpm nx run boundaries-tests:test
+ */
 export default testProject('boundaries-tests', [], import.meta.url);

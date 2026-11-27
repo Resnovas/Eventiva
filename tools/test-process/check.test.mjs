@@ -22,13 +22,25 @@ import { ESLint } from 'eslint';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const eslint = new ESLint({ cwd: root, ignore: false });
 
-/** Exercise the actual required rule configuration, not a copied rule or a test-only selector. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */
+/**
+ * Exercise the actual required rule configuration, not a copied rule or a test-only selector.
+ *
+ * @param {string} source - The source text to lint.
+ * @param {string} [file] - The repository path the source is linted as; defaults to a bootstrap probe.
+ * @returns {Promise<Array<object>>} The boundary diagnostics ESLint reports for the source.
+ * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+ */
 const restrictions = async (source, file = 'tests/telemetry/src/bootstrap-diagnostics.spec.ts') => {
     const [result] = await eslint.lintText(source, { filePath: root + file });
     return result.messages.filter(
-        /** Retain only the actual boundary diagnostics. @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review */ (
-            message
-        ) => ['no-restricted-imports', 'no-restricted-syntax'].includes(message.ruleId)
+        /**
+         * Retain only the actual boundary diagnostics.
+         *
+         * @param {object} message - One ESLint diagnostic.
+         * @returns {boolean} Whether the diagnostic comes from an import or syntax restriction.
+         * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/core-qualification/telemetry-timeouts.md#function-optimization-review
+         */
+        (message) => ['no-restricted-imports', 'no-restricted-syntax'].includes(message.ruleId)
     );
 };
 

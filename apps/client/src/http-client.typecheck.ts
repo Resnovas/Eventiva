@@ -44,13 +44,25 @@ const distinct = define('fixture.batch-types', {
     offline: 'online-only',
 });
 
-/** Compile the public JSON-valued discovery result on native/web without asserting executable schemas or invoking IO. */
+/**
+ * Compile the public JSON-valued discovery result on native/web without asserting executable schemas or invoking IO.
+ *
+ * @since 0.0.1
+ * @param target - The tenant and server to discover actions from.
+ * @returns An Effect whose success type proves the discovery document's exact field types.
+ * @example
+ * const typed = checkHttpDiscoveryTypes(target);
+ */
 export const checkHttpDiscoveryTypes = (target: Omit<HttpActionTarget, 'idempotencyKey'>) =>
     discoverHttpActions(target).pipe(
         Effect.map(
-            /** Exact envelope types coexist with untouched JSON-valued schema/reference/extension data. */ (
-                document
-            ) => {
+            /**
+             * Exact envelope types coexist with untouched JSON-valued schema/reference/extension data.
+             *
+             * @param document - The discovered OpenAPI document.
+             * @returns Its version, title, batch path, an example schema and an extension, each at its exact type.
+             */
+            (document) => {
                 const version: '3.1.0' = document.openapi;
                 const title: string = document.info.title;
                 const path: JsonValue | undefined = document.paths[`/tenants/${target.tenant}/actions:batch`];
@@ -61,11 +73,22 @@ export const checkHttpDiscoveryTypes = (target: Omit<HttpActionTarget, 'idempote
         )
     );
 
-/** Compile heterogeneous tuple inference without importing server/runtime code or executing a network request. */
+/**
+ * Compile heterogeneous tuple inference without importing server/runtime code or executing a network request. Input
+ * inference comes only from the ordered canonical tuple, never a union widened by a mismatching input.
+ *
+ * @since 0.0.1
+ * @param target - The tenant and server the batch would call.
+ * @returns An Effect whose success type proves each positional output keeps its own decoded type.
+ * @example
+ * const typed = checkHttpBatchTypes(target);
+ */
 export const checkHttpBatchTypes = (target: Omit<HttpActionTarget, 'idempotencyKey'>) => {
-    // Input inference comes only from the ordered canonical tuple, never a union widened by a mismatching input.
+    /** The two action specifications in call order. */
     type Specs = readonly [typeof canonical, typeof distinct];
+    /** The calls the batch accepts for those specifications. */
     type Calls = Parameters<typeof invokeHttpActionBatch<Specs>>[1];
+    /** The positional results the batch yields. */
     type Results = Effect.Effect.Success<ReturnType<typeof invokeHttpActionBatch<Specs>>>;
     const swappedInputRejected: { readonly accepted: boolean } extends Calls[0]['input'] ? false : true = true;
     const wireInputRejected: { readonly units: string } extends Calls[0]['input'] ? false : true = true;
@@ -84,9 +107,13 @@ export const checkHttpBatchTypes = (target: Omit<HttpActionTarget, 'idempotencyK
         target
     ).pipe(
         Effect.map(
-            /** Positional outputs are inferred from an inline tuple without caller casts or duplicate DTOs. */ (
-                results
-            ) => {
+            /**
+             * Positional outputs are inferred from an inline tuple without caller casts or duplicate DTOs.
+             *
+             * @param results - The batch's positional results.
+             * @returns The first output's total and the second output's label at their decoded types.
+             */
+            (results) => {
                 const total: number = results[0].output.total;
                 const label: string = results[1].output.label;
                 return { total, label };
@@ -95,14 +122,24 @@ export const checkHttpBatchTypes = (target: Omit<HttpActionTarget, 'idempotencyK
     );
 };
 
-/** Native/web compile proof only; never called by the application shell and never supplies an authentication shortcut. */
+/**
+ * Native/web compile proof only; never called by the application shell and never supplies an authentication shortcut.
+ * The canonical schema, not a handwritten transport DTO, distinguishes domain numbers from wire strings, and the
+ * rejection constants compile only while wrong representations stay unassignable; no diagnostic is suppressed.
+ *
+ * @since 0.0.1
+ * @param target - The tenant, server and idempotency key the call would use.
+ * @returns An Effect whose success type proves the decoded output and receipt keep their exact types.
+ * @example
+ * const typed = checkHttpClientTypes(target);
+ */
 export const checkHttpClientTypes = (target: HttpActionTarget) => {
-    // The canonical schema, not a handwritten transport DTO, must distinguish domain numbers from wire strings.
     const input: Input<typeof canonical> = { units: 7 };
     const wire: Schema.Schema.Encoded<typeof canonical.input> = { units: '7' };
+    /** The input type the client accepts for the canonical action. */
     type ClientInput = Parameters<typeof invokeHttpAction<typeof canonical>>[1];
+    /** The decoded output type the client yields for the canonical action. */
     type ClientOutput = Effect.Effect.Success<ReturnType<typeof invokeHttpAction<typeof canonical>>>['output'];
-    // Rejection assertions compile only while wrong representations remain unassignable; no diagnostic is suppressed.
     const wireInputRejected: typeof wire extends ClientInput ? false : true = true;
     const domainWireRejected: typeof input extends typeof wire ? false : true = true;
     const wireOutputRejected: string extends ClientOutput['total'] ? false : true = true;
@@ -112,7 +149,13 @@ export const checkHttpClientTypes = (target: HttpActionTarget) => {
     void wireOutputRejected;
     return invokeHttpAction(canonical, input, target).pipe(
         Effect.map(
-            /** A decoded result retains the exact output type through the public client API. */ (result) => {
+            /**
+             * A decoded result retains the exact output type through the public client API.
+             *
+             * @param result - The decoded action result.
+             * @returns The output total and the invocation receipt.
+             */
+            (result) => {
                 const output: Output<typeof canonical> = result.output;
                 const total: number = output.total;
                 return { total, invocationReceipt: result.receiptId };

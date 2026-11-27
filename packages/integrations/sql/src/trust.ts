@@ -19,17 +19,35 @@ import { SqlClient } from '@effect/sql';
 import { TrustFailure, TrustPolicy, TrustReplay, TrustRequest } from '@eventiva/contracts/trust';
 import { Cause, Effect, Layer, Option, Schema } from 'effect';
 
-/** Standalone durable nonce consumption. Intentionally not wired into application composition. */
+/**
+ * Standalone durable nonce consumption. Intentionally not wired into application composition.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(verifyWebhook, trustReplay);
+ */
 export const trustReplay = Layer.effect(
     TrustReplay,
     Effect.gen(
         /** Capture the replay database; callers still supply already-verified request and trusted policy metadata. */ function* () {
             const sql = yield* SqlClient.SqlClient;
-            /** Restrict replay-store failures to bounded reasons without leaking request or SQL content. */
+            /**
+             * Restrict replay-store failures to bounded reasons without leaking request or SQL content.
+             *
+             * @param reason - The bounded replay failure reason to report.
+             * @returns A TrustFailure for the `replay` gate carrying only that reason.
+             */
             const failure = (reason: 'invalid' | 'unavailable' | 'replay') =>
                 new TrustFailure({ gate: 'replay', reason });
             return TrustReplay.of({
-                /** Durably consume the case-normalized nonce once; this adapter does not perform the upstream verifier gates. */
+                /**
+                 * Durably consume the case-normalized nonce once; this adapter does not perform the upstream verifier gates.
+                 *
+                 * @param request - The already-verified trust request whose nonce is consumed; excess properties are refused.
+                 * @param policy - The trusted policy metadata supplying the consumption time; excess properties are refused.
+                 * @returns The opaque audit reference recorded with the consumed nonce.
+                 * @fails {TrustFailure} With `invalid` for malformed input, `replay` when the nonce was already consumed, or `unavailable` inside an ambient transaction or on any infrastructure failure.
+                 */
                 consume: (request, policy) =>
                     Effect.gen(
                         /** Validate metadata and commit nonce consumption independently of any caller transaction. */ function* () {
@@ -38,32 +56,52 @@ export const trustReplay = Layer.effect(
                             if (Option.isSome(yield* Effect.serviceOption(SqlClient.TransactionConnection)))
                                 return yield* failure('unavailable');
                             const checked = yield* Schema.decode(TrustRequest)(request, {
-                                onExcessProperty: 'error'
+                                onExcessProperty: 'error',
                             }).pipe(
                                 Effect.mapError(
-                                    /** Hide request-validation diagnostics from the trust boundary. */ () =>
-                                        failure('invalid')
+                                    /**
+                                     * Hide request-validation diagnostics from the trust boundary.
+                                     *
+                                     * @returns A TrustFailure with the `invalid` reason.
+                                     */
+                                    () => failure('invalid')
                                 )
                             );
                             const trusted = yield* Schema.decode(TrustPolicy)(policy, {
-                                onExcessProperty: 'error'
+                                onExcessProperty: 'error',
                             }).pipe(
                                 Effect.mapError(
-                                    /** Reject malformed policy without disclosing its fields. */ () =>
-                                        failure('invalid')
+                                    /**
+                                     * Reject malformed policy without disclosing its fields.
+                                     *
+                                     * @returns A TrustFailure with the `invalid` reason.
+                                     */
+                                    () => failure('invalid')
                                 )
                             );
                             const body = yield* Schema.encode(Schema.parseJson(TrustRequest))(checked).pipe(
                                 Effect.mapError(
-                                    /** Refuse an unencodable retained request with a bounded failure. */ () =>
-                                        failure('invalid')
+                                    /**
+                                     * Refuse an unencodable retained request with a bounded failure.
+                                     *
+                                     * @returns A TrustFailure with the `invalid` reason.
+                                     */
+                                    () => failure('invalid')
                                 )
                             );
                             const audit = yield* Effect.try({
-                                /** Generate an opaque evidence reference, not proof of verification or key release. */
+                                /**
+                                 * Generate an opaque evidence reference, not proof of verification or key release.
+                                 *
+                                 * @returns A random UUID used as the audit reference.
+                                 */
                                 // effect-boundary: Node generates an opaque audit UUID, never key material
                                 try: () => randomUUID(),
-                                /** Fail closed when the local audit reference cannot be generated. */
+                                /**
+                                 * Fail closed when the local audit reference cannot be generated.
+                                 *
+                                 * @returns A TrustFailure with the `unavailable` reason.
+                                 */
                                 catch: () => failure('unavailable'),
                             });
                             return yield* sql.withTransaction(
@@ -81,9 +119,13 @@ export const trustReplay = Layer.effect(
                         }
                     ).pipe(
                         Effect.catchAllCause(
-                            /** Preserve interruption and typed trust failures while sanitizing unknown infrastructure causes. */ (
-                                cause
-                            ) => {
+                            /**
+                             * Preserve interruption and typed trust failures while sanitizing unknown infrastructure causes.
+                             *
+                             * @param cause - The full failure cause of the consumption attempt.
+                             * @returns An interruption, the original TrustFailure, or a TrustFailure with the `unavailable` reason.
+                             */
+                            (cause) => {
                                 // Cancellation is control flow, never an unavailable receipt decision.
                                 if (Cause.isInterrupted(cause)) return Effect.interrupt;
                                 const error = Cause.failureOption(cause);

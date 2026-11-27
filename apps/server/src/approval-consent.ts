@@ -28,7 +28,7 @@ import { cancelApproval } from '@eventiva/runtime/approval';
 import type { ActionHost } from '@eventiva/runtime/host';
 import { ExecutionPolicy, IdentityResolver, InputDigest } from '@eventiva/runtime/invocation';
 import { Context, Effect, Layer, Option, Schema } from 'effect';
-import { IdentitySessionPolicy } from './identity-session-policy.ts';
+import { IdentitySessionPolicy, SessionPolicyFailure } from './identity-session-policy.ts';
 
 /** Local default-off capability gate; enabling it does not supply trusted authentication policy or event authority. */
 export const approvalConsentFlag = {
@@ -133,8 +133,16 @@ export const openOidcSessionWithPolicy = (claims: OidcAccessClaims) =>
     Effect.gen(
         /** The same required policy used for consent supplies issuance; caller/token expiry is not the configured maximum. */
         function* () {
+            const store = yield* IdentityStore;
+            yield* store.lock;
             const policy = yield* IdentitySessionPolicy;
-            return yield* openOidcSession(claims, yield* policy.sessionExpiresAt);
+            const configured = yield* policy.current;
+            if (configured.tenant !== store.tenant) return yield* new SessionPolicyFailure({ reason: 'tenant' });
+            // Fresh issuance records the sign-in anchor; repeating login or refreshing a token cannot renew activity.
+            return yield* openOidcSession(claims, {
+                idleMs: configured.sessionLifetimeMs,
+                absoluteMs: 28_800_000,
+            });
         }
     );
 

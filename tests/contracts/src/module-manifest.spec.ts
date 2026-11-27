@@ -41,7 +41,12 @@ describe('kernel wire contracts', /** Cover exact kernel declarations separately
 
     it.effect(
         'rejects range syntax, partial pins and noncanonical versions',
-        /** Exercise kernel exact-version parsing independently of package range conventions. */ () =>
+        /**
+         * Exercise kernel exact-version parsing independently of package range conventions.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Require canonical three-part version pins and reject ranges, prereleases and build suffixes. */ function* () {
                     // A concrete multi-digit pin is the positive control for rejection of ambiguous or noncanonical versions.
@@ -53,7 +58,7 @@ describe('kernel wire contracts', /** Cover exact kernel declarations separately
                         '01.2.3',
                         '1.2.3-beta',
                         '1.2.3+build',
-                        '*'
+                        '*',
                     ]) {
                         expect(yield* Schema.decodeUnknown(ModuleVersion)(version).pipe(Effect.isFailure)).toBe(true);
                     }
@@ -64,7 +69,12 @@ describe('kernel wire contracts', /** Cover exact kernel declarations separately
 
     it.effect(
         'keeps local instance and requirement names distinct from module identifiers',
-        /** Exercise local naming freedom without relaxing canonical module identity constraints. */ () =>
+        /**
+         * Exercise local naming freedom without relaxing canonical module identity constraints.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Accept nonempty human-readable instance and requirement names but reject empty names and invalid module ids. */ function* () {
                     // Spaces and slashes are legal in local names, not in module identifiers used for provider lookup.
@@ -97,7 +107,12 @@ describe('kernel wire contracts', /** Cover exact kernel declarations separately
 
     it.effect(
         'round trips portable manifests and rejects nested extra fields',
-        /** Exercise strict wire round trips without installing modules or executing migrations. */ () =>
+        /**
+         * Exercise strict wire round trips without installing modules or executing migrations.
+         *
+         * @returns The Effect that runs these assertions.
+         */
+        () =>
             Effect.gen(
                 /** Verify manifest transport rejects extra root and migration fields plus incomplete provider bindings. */ function* () {
                     // Migration declarations carry portable metadata, not executable SQL smuggled through an extra field.

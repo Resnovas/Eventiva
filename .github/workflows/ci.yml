@@ -1,4 +1,4 @@
-# Application checks for the EVE-244 foundation, as parallel jobs: verify runs
+# Full acceptance on main pushes and PRs: verify runs
 # the Nx lint, typecheck, test and build targets, and smoke runs the server
 # start, the i18n catalogue check, the Android Hermes export and the
 # Playwright web smoke. The application check job waits for both and is the
@@ -58,10 +58,10 @@ jobs:
 
       # Candidate HEAD cannot certify its own new-code documentation debt.
       # A manual event without earlier trusted history fails rather than resetting the ledger.
-      - name: Documentation against trusted history
+      - name: Root checks and documentation against trusted history
         env:
           DOCUMENTATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-        run: node --run documentation
+        run: node --run check
 
       # Nx replays a task only when its input hash matches; a pull request's
       # entries stay on its own ref, so they never reach main.
@@ -193,6 +193,8 @@ jobs:
 
   smoke:
     name: smoke
+    # Static and full verification must pass before smoke; the local hook does not run this job.
+    needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

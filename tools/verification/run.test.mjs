@@ -26,14 +26,30 @@ const menu =
 const billing =
     '| billing | apps/billing/ | HTTP | authenticated invoice action | durable receipt replay | `["pnpm","nx","test","billing","--skip-nx-cache"]` | synthetic fixture only |';
 
-test('affected paths select their own public proof and explicit shared dependencies, not unrelated UI', () => {
+test('affected paths select their own public proof and explicit shared dependencies, not unrelated UI', /** Changed paths select only the features that declare them or depend on them. */ () => {
     const registry = parseRegistry(`${menu}\n${billing}`);
     assert.deepEqual(
-        selectFeatures(registry, ['apps/billing/create.ts']).map((entry) => entry.id),
+        selectFeatures(registry, ['apps/billing/create.ts']).map(
+            /**
+             * Keep a selected feature's ID.
+             *
+             * @param {{ id: string }} entry - One selected feature.
+             * @returns {string} Its ID.
+             */
+            (entry) => entry.id
+        ),
         ['billing']
     );
     assert.deepEqual(
-        selectFeatures(registry, ['packages/contracts/src/menu.ts']).map((entry) => entry.id),
+        selectFeatures(registry, ['packages/contracts/src/menu.ts']).map(
+            /**
+             * Keep a selected feature's ID.
+             *
+             * @param {{ id: string }} entry - One selected feature.
+             * @returns {string} Its ID.
+             */
+            (entry) => entry.id
+        ),
         ['menu']
     );
     assert.deepEqual(selectFeatures(registry, ['docs/notes.md']), []);
@@ -45,26 +61,61 @@ test('affected paths select their own public proof and explicit shared dependenc
                 ['apps/billing/create.ts', 'packages/contracts/src/menu.ts'],
                 ['apps/billing/index.ts', 'apps/billing/create.ts'],
             ]
-        ).map((entry) => entry.id),
+        ).map(
+            /**
+             * Keep a selected feature's ID.
+             *
+             * @param {{ id: string }} entry - One selected feature.
+             * @returns {string} Its ID.
+             */
+            (entry) => entry.id
+        ),
         ['menu', 'billing']
     );
-    assert.throws(() => selectFeatures(registry, ['apps/menu-other/index.ts']), /Map affected application paths/);
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            selectFeatures(registry, ['apps/menu-other/index.ts']);
+        },
+        /Map affected application paths/
+    );
 });
 
-test('malformed, duplicate and executable-shell registry rows fail before executing any proof', () => {
-    assert.throws(() => parseRegistry(`${menu}\n${menu}`), /duplicate/);
-    assert.throws(() => parseRegistry(menu.replace('apps/menu/', '../private/')), /traversal/);
-    assert.throws(() => parseRegistry(menu.replace('"pnpm"', '"sh"')), /argument array/);
-    assert.throws(() => parseRegistry(menu.replace('keyboard focus and dismissal', '')), /Invalid/);
+test('malformed, duplicate and executable-shell registry rows fail before executing any proof', /** Bad registry rows are refused at parse time. */ () => {
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            parseRegistry(`${menu}\n${menu}`);
+        },
+        /duplicate/
+    );
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            parseRegistry(menu.replace('apps/menu/', '../private/'));
+        },
+        /traversal/
+    );
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            parseRegistry(menu.replace('"pnpm"', '"sh"'));
+        },
+        /argument array/
+    );
+    assert.throws(
+        /** Expect the call to throw. */ () => {
+            parseRegistry(menu.replace('keyboard focus and dismissal', ''));
+        },
+        /Invalid/
+    );
     assert.equal(parseRegistry(menu)[0].reach, '/ then Open menu');
     for (const override of ['--parallel=2', '--parallel', '--parallel=3'])
         assert.throws(
-            () => parseRegistry(menu.replace('"--skip-nx-cache"', `"--skip-nx-cache","${override}"`)),
+            /** Expect the parallel override to be refused. */ () => {
+                parseRegistry(menu.replace('"--skip-nx-cache"', `"--skip-nx-cache","${override}"`));
+            },
             /evidence runs Nx serially/
         );
 });
 
-test('fixture log redaction preserves useful failure information while replacing credentials', () => {
+test('fixture log redaction preserves useful failure information while replacing credentials', /** Redaction keeps the failure text but hides credentials. */ () => {
     assert.equal(
         redact('connect postgres://user:abc@localhost/db failed: abc', ['abc']),
         'connect postgres://[REDACTED]@localhost/db failed: [REDACTED]'
@@ -72,7 +123,7 @@ test('fixture log redaction preserves useful failure information while replacing
     assert.equal(redact('assertion: expected 4, received 3'), 'assertion: expected 4, received 3');
 });
 
-test('report outcomes distinguish passed, failed, skipped and empty execution', () => {
+test('report outcomes distinguish passed, failed, skipped and empty execution', /** Only reports with at least one passing test and no failures count as proof. */ () => {
     const result = summarizeProof(
         {
             testResults: [
@@ -113,11 +164,24 @@ test('report outcomes distinguish passed, failed, skipped and empty execution', 
     assert.equal(browser.passed, 1);
 });
 
-/** Isolate real CLI/hook operations from this checkout and leave reproducible fixtures in ignored orb scratch. */
-function fixture() {
+/**
+ * Isolate real CLI/hook operations from this checkout and leave reproducible fixtures in ignored orb scratch.
+ *
+ * @param {{ pipeline?: boolean }} [options] - What to copy into the disposable repository.
+ * @param {boolean} [options.pipeline] - Also copy the pipeline and hook files and their package scripts.
+ * @returns {{ cwd: string, git: Function, run: Function, env: object }} The fixture directory, a Git runner, a tool runner and the child environment.
+ */
+function fixture({ pipeline = false } = {}) {
     const parent = resolve(import.meta.dirname, '../../.amp/in/orb-backup/test-output/verification-fixtures');
     mkdirSync(parent, { recursive: true });
     const cwd = mkdtempSync(join(parent, 'run-'));
+
+    /**
+     * Run Git in the fixture repository.
+     *
+     * @param {...string} args - The Git arguments.
+     * @returns {string} Git's trimmed output.
+     */
     const git = (...args) =>
         execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     git('init', '--quiet');
@@ -131,7 +195,7 @@ function fixture() {
     );
     mkdirSync(join(cwd, 'docs/verification'), { recursive: true });
     mkdirSync(join(cwd, 'apps/billing'), { recursive: true });
-    for (const name of ['run.mjs', 'pre-commit.mjs'])
+    for (const name of ['run.mjs', 'pre-commit.mjs', 'pipeline.mjs', 'affected.mjs'])
         copyFileSync(join(import.meta.dirname, name), join(cwd, 'tools/verification', name));
     writeFileSync(join(cwd, '.gitignore'), 'test-output/\n');
     writeFileSync(join(cwd, 'apps/billing/input'), 'before\n');
@@ -141,10 +205,35 @@ function fixture() {
             name: 'synthetic-proof',
             scripts: {
                 'verify:static': 'node -e "console.log(\'STATIC_OK\')"',
-                verify: 'node -e "console.log(\'VERIFY_OK\')"',
+                'test:affected': 'node tools/verification/affected.mjs',
+                check: 'node -e "console.log(\'CHECK_OK\')"',
+                'verify:features': 'node -e "console.log(\'FEATURES_OK\')"',
+                verify: 'node tools/verification/pipeline.mjs',
             },
         })
     );
+    if (pipeline) {
+        for (const [path, marker] of [
+            ['tools/resources/boundaries.test.mjs', 'BOUNDARIES'],
+            ['tools/resources/types.test.mjs', 'TYPES'],
+            ['tools/verification/run.test.mjs', 'RUNNER'],
+        ])
+            writeFileSync(join(cwd, path), `console.log('${marker}_OK');\n`);
+        mkdirSync(join(cwd, 'node_modules/nx/dist/bin'), { recursive: true });
+        writeFileSync(
+            join(cwd, 'node_modules/nx/dist/bin/nx.js'),
+            `const args = process.argv.slice(2).join(' ');
+if (args === 'run-many -t test build parity') console.log('AGGREGATE_OK');
+else if (args === 'run-many -t smoke') console.log('SMOKE_OK');
+else if (args === 'affected -t test --stdin') {
+    require('node:fs').writeFileSync('test-output/affected-paths.json', JSON.stringify(require('node:fs').readFileSync(0, 'utf8').trimEnd().split('\\n')));
+    console.log('AFFECTED_OK');
+}
+else process.exit(9);
+`
+        );
+        mkdirSync(join(cwd, 'test-output'), { recursive: true });
+    }
     git('add', '.');
     git(
         '-c',
@@ -156,16 +245,25 @@ function fixture() {
         '-m',
         'synthetic baseline'
     );
+    const env = { PATH: process.env.PATH, HOME: cwd };
+
+    /**
+     * Run one copied verification tool in the fixture.
+     *
+     * @param {string} file - The tool's base name, such as `run` or `pre-commit`.
+     * @param {...string} args - Its arguments.
+     * @returns {object} The child process result.
+     */
     const run = (file, ...args) =>
         spawnSync(process.execPath, [`tools/verification/${file}.mjs`, ...args], {
             cwd,
             encoding: 'utf8',
-            env: { PATH: process.env.PATH, HOME: cwd },
+            env,
         });
-    return { cwd, git, run };
+    return { cwd, git, run, env };
 }
 
-test('CLI serializes real Nx prerequisite processes sharing an exclusive synthetic resource', () => {
+test('CLI serializes real Nx prerequisite processes sharing an exclusive synthetic resource', /** Feature commands run one at a time against a shared exclusive resource. */ () => {
     const { cwd, git, run } = fixture();
     symlinkSync(resolve(import.meta.dirname, '../../node_modules'), join(cwd, 'node_modules'), 'dir');
     writeFileSync(join(cwd, 'apps/billing/input'), 'after\n');
@@ -242,7 +340,7 @@ test('exclusive resource was released before the next prerequisite', () => {
     assert.deepEqual(manifest.execution, { featureConcurrency: 1, nxParallel: 1 });
 });
 
-test('CLI retains real assertion evidence and fails empty or malformed proof even after exit zero', () => {
+test('CLI retains real assertion evidence and fails empty or malformed proof even after exit zero', /** Evidence keeps real assertions and fails empty or malformed reports. */ () => {
     const { cwd, run } = fixture();
     writeFileSync(join(cwd, 'apps/billing/input'), 'after\n');
     for (const [script, expected] of [
@@ -260,19 +358,46 @@ test('CLI retains real assertion evidence and fails empty or malformed proof eve
         );
         const result = run('run');
         assert.equal(result.status, expected === 'passed' ? 0 : 1, result.stderr);
-        const manifests = readdirSync(join(cwd, 'test-output/verification')).map((id) =>
-            JSON.parse(readFileSync(join(cwd, 'test-output/verification', id, 'manifest.json'), 'utf8'))
+        const manifests = readdirSync(join(cwd, 'test-output/verification')).map(
+            /**
+             * Read one run's manifest.
+             *
+             * @param {string} id - One evidence directory name.
+             * @returns {object} Its parsed manifest.
+             */
+            (id) => JSON.parse(readFileSync(join(cwd, 'test-output/verification', id, 'manifest.json'), 'utf8'))
         );
-        const manifest = manifests.sort((a, b) => a.startedAt.localeCompare(b.startedAt)).at(-1);
+        const manifest = manifests
+            .sort(
+                /**
+                 * Order manifests by start time.
+                 *
+                 * @param {{ startedAt: string }} a - One manifest.
+                 * @param {{ startedAt: string }} b - Another manifest.
+                 * @returns {number} Their start-time comparison.
+                 */
+                (a, b) => a.startedAt.localeCompare(b.startedAt)
+            )
+            .at(-1);
         assert.equal(manifest.status, expected);
         assert.deepEqual(manifest.affectedFeatures, ['billing']);
         assert.match(manifest.committedTree, /^[a-f0-9]{40}$/);
-        assert.ok(manifest.results[0].files.some((file) => file.path === 'billing/command.log'));
+        assert.ok(
+            manifest.results[0].files.some(
+                /**
+                 * Find the feature's command log among its evidence files.
+                 *
+                 * @param {{ path: string }} file - One evidence file.
+                 * @returns {boolean} Whether it is the billing command log.
+                 */
+                (file) => file.path === 'billing/command.log'
+            )
+        );
         if (expected === 'passed') assert.equal(manifest.results[0].assertions[0].name, 'receipt replay');
     }
 });
 
-test('hook installs idempotently without replacing foreign hooks or commit-msg', () => {
+test('hook installs idempotently without replacing foreign hooks or commit-msg', /** Installing twice is safe and never overwrites another hook. */ () => {
     const { cwd, run } = fixture();
     const hook = join(cwd, '.git/hooks/pre-commit');
     const commitMsg = join(cwd, '.git/hooks/commit-msg');
@@ -280,20 +405,109 @@ test('hook installs idempotently without replacing foreign hooks or commit-msg',
     writeFileSync(hook, '#!/bin/sh\nexit 9\n');
     assert.notEqual(run('pre-commit', '--install').status, 0);
     assert.equal(readFileSync(hook, 'utf8'), '#!/bin/sh\nexit 9\n');
-    // A second independent checkout tests ownership without deleting a foreign hook to make installation pass.
     const fresh = fixture();
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
     assert.equal(fresh.run('pre-commit', '--install').status, 0);
     assert.equal(readFileSync(commitMsg, 'utf8'), 'existing commit validation\n');
 });
 
-test('hook checks static before verification and rejects unstaged files and index mutation', () => {
-    const { cwd, git, run } = fixture();
+test('installed hook runs only static and affected tests while standalone retains full acceptance', /** The hook runs the commit subset; the standalone run keeps every stage. */ () => {
+    const { cwd, git, run, env } = fixture({ pipeline: true });
+    assert.equal(run('pre-commit', '--install').status, 0);
+    writeFileSync(join(cwd, 'apps/billing/input'), 'staged\n');
+    git('add', '.');
+    const tree = git('write-tree');
+    const commit = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'ordered proof'], {
+        cwd,
+        encoding: 'utf8',
+        env,
+    });
+    const standalone = spawnSync(process.execPath, ['--run', 'verify'], { cwd, encoding: 'utf8', env });
+    assert.equal(commit.status, 0, commit.stderr);
+    assert.deepEqual((commit.stdout + commit.stderr).match(/\b[A-Z]+_OK\b/g), ['STATIC_OK', 'AFFECTED_OK']);
+    assert.equal(standalone.status, 0, standalone.stderr);
+    const stages = (standalone.stdout + standalone.stderr).match(/\b[A-Z]+_OK\b/g);
+    assert.deepEqual(stages.slice(0, 2), ['STATIC_OK', 'CHECK_OK']);
+    assert.deepEqual(stages.slice(2, 5).sort(), ['BOUNDARIES_OK', 'RUNNER_OK', 'TYPES_OK']);
+    assert.deepEqual(stages.slice(5), ['AGGREGATE_OK', 'SMOKE_OK', 'FEATURES_OK']);
+    assert.equal(git('rev-parse', 'HEAD^{tree}'), tree);
+    assert.equal(git('write-tree'), tree);
+    assert.deepEqual(JSON.parse(readFileSync(join(cwd, 'test-output/affected-paths.json'))), ['apps/billing/input']);
+
+    git('mv', 'apps/billing/input', 'apps/billing/renamed, input');
+    writeFileSync(join(cwd, 'apps/billing/unstaged'), 'not selected\n');
+    const renamed = run('affected');
+    assert.equal(renamed.status, 0, renamed.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(join(cwd, 'test-output/affected-paths.json'))), [
+        'apps/billing/input',
+        'apps/billing/renamed, input',
+    ]);
+    git('add', '.');
+    git('-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'renamed fixture');
+    git('rm', 'apps/billing/renamed, input');
+    assert.equal(run('affected').status, 0);
+    assert.deepEqual(JSON.parse(readFileSync(join(cwd, 'test-output/affected-paths.json'))), [
+        'apps/billing/renamed, input',
+    ]);
+
+    writeFileSync(join(cwd, 'tools/verification/run.test.mjs'), "console.log('RUNNER_OK');\n// changed tooling\n");
+    git('add', '.');
+    const tooling = run('pre-commit');
+    assert.equal(tooling.status, 0, tooling.stderr);
+    const toolingStages = (tooling.stdout + tooling.stderr).match(/\b[A-Z]+_OK\b/g);
+    assert.deepEqual(toolingStages.slice(0, 2), ['STATIC_OK', 'AFFECTED_OK']);
+    assert.deepEqual(toolingStages.slice(2).sort(), ['BOUNDARIES_OK', 'RUNNER_OK', 'TYPES_OK']);
+    writeFileSync(join(cwd, 'node_modules/nx/dist/bin/nx.js'), "console.log('AFFECTED_FAILED'); process.exit(7);\n");
+    git('add', '.');
+    const failed = run('pre-commit');
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.stdout, /STATIC_OK[\s\S]*AFFECTED_FAILED/);
+    assert.doesNotMatch(failed.stdout, /RUNNER_OK|CHECK_OK|SMOKE_OK|FEATURES_OK/);
+
+    const manifestPath = join(cwd, 'package.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    delete manifest.scripts['test:affected'];
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    git('add', '.');
+    const missing = run('pre-commit');
+    assert.notEqual(missing.status, 0, 'A missing adapter must fail, never fall back to full verification.');
+    assert.doesNotMatch(missing.stdout, /CHECK_OK|AGGREGATE_OK|SMOKE_OK|FEATURES_OK/);
+});
+
+test('static failure stops installed hook and standalone verification before documentation', /** A static failure stops both runs before later stages. */ () => {
+    const { cwd, git, run, env } = fixture({ pipeline: true });
+    const path = join(cwd, 'package.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    manifest.scripts['verify:static'] = 'node -e "console.log(\'STATIC_FAILED\'); process.exit(7)"';
+    writeFileSync(path, JSON.stringify(manifest));
+    git('add', '.');
+    const head = git('rev-parse', 'HEAD');
+    assert.equal(run('pre-commit', '--install').status, 0);
+    const commit = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'reject static'], {
+        cwd,
+        encoding: 'utf8',
+        env,
+    });
+    const standalone = spawnSync(process.execPath, ['--run', 'verify'], { cwd, encoding: 'utf8', env });
+    for (const result of [commit, standalone]) {
+        assert.notEqual(result.status, 0);
+        assert.match(result.stdout + result.stderr, /STATIC_FAILED/);
+        assert.doesNotMatch(
+            result.stdout + result.stderr,
+            /AFFECTED_OK|CHECK_OK|BOUNDARIES_OK|AGGREGATE_OK|SMOKE_OK|FEATURES_OK/
+        );
+    }
+    assert.equal(git('rev-parse', 'HEAD'), head);
+});
+
+test('hook checks static before verification and rejects unstaged files and index mutation', /** The hook refuses unstaged work and a staged tree that changes mid-run. */ () => {
+    const { cwd, git, run } = fixture({ pipeline: true });
     writeFileSync(join(cwd, 'apps/billing/input'), 'staged\n');
     git('add', '.');
     const pass = run('pre-commit');
     assert.equal(pass.status, 0, pass.stderr);
-    assert.match(pass.stdout, /STATIC_OK[\s\S]*VERIFY_OK/);
+    assert.match(pass.stdout, /STATIC_OK[\s\S]*AFFECTED_OK/);
+    assert.doesNotMatch(pass.stdout, /CHECK_OK|AGGREGATE_OK|SMOKE_OK|FEATURES_OK/);
     writeFileSync(join(cwd, 'untracked'), 'not staged\n');
     assert.match(run('pre-commit').stderr, /staged tree/);
     git('add', '.');
@@ -316,10 +530,17 @@ test('hook checks static before verification and rejects unstaged files and inde
     assert.match(mutation.stderr, /staged tree changed/);
 });
 
-test('installed worktree hook isolates nested Git histories while preserving the outer commit and index guard', () => {
-    const primary = fixture();
+test('installed worktree hook isolates nested Git histories while preserving the outer commit and index guard', /** Nested repositories created by tests cannot touch the outer worktree's index. */ () => {
+    const primary = fixture({ pipeline: true });
     const cwd = `${primary.cwd}-worktree`;
     primary.git('worktree', 'add', '--quiet', '-b', 'nested-history-proof', cwd);
+
+    /**
+     * Run Git in the nested worktree.
+     *
+     * @param {...string} args - The Git arguments.
+     * @returns {string} Git's trimmed output.
+     */
     const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
     writeFileSync(
         join(cwd, 'nested.mjs'),
@@ -343,10 +564,15 @@ assert.equal(git('show', 'HEAD:receipt'), stage);
 console.log(stage + '_HISTORY_OK');
 `
     );
+    const manifestPath = join(cwd, 'package.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    manifest.scripts['verify:static'] = 'node nested.mjs static';
+    const affectedPath = join(cwd, 'node_modules/nx/dist/bin/nx.js');
     writeFileSync(
-        join(cwd, 'package.json'),
-        JSON.stringify({ scripts: { 'verify:static': 'node nested.mjs static', verify: 'node nested.mjs verify' } })
+        affectedPath,
+        "require('node:child_process').execFileSync(process.execPath, ['nested.mjs', 'affected'], { stdio: 'inherit' });\n"
     );
+    writeFileSync(manifestPath, JSON.stringify(manifest));
     writeFileSync(join(cwd, 'apps/billing/input'), 'outer staged receipt\n');
     git('add', '.');
     const tree = git('write-tree');
@@ -355,32 +581,41 @@ console.log(stage + '_HISTORY_OK');
     const commit = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'outer receipt'], {
         cwd,
         encoding: 'utf8',
+        env: primary.env,
     });
     assert.equal(commit.status, 0, commit.stderr);
-    assert.match(commit.stderr + commit.stdout, /static_HISTORY_OK[\s\S]*verify_HISTORY_OK/);
+    assert.match(commit.stderr + commit.stdout, /static_HISTORY_OK[\s\S]*affected_HISTORY_OK/);
     assert.equal(git('rev-parse', 'HEAD^{tree}'), tree);
     assert.equal(git('write-tree'), tree);
     assert.equal(git('show', 'HEAD:apps/billing/input'), 'outer staged receipt');
     assert.equal(primary.git('rev-parse', 'HEAD'), primaryHead);
 
-    // Clearing child environment must not disable detection of real outer-index changes.
-    writeFileSync(
-        join(cwd, 'package.json'),
-        JSON.stringify({
-            scripts: {
-                'verify:static':
-                    "node -e \"require('node:fs').writeFileSync('apps/billing/input', 'mutated'); require('node:child_process').execFileSync('git', ['add', 'apps/billing/input'])\"",
-                verify: 'node -e "console.log(\'VERIFY_OK\')"',
-            },
-        })
-    );
-    git('add', '.');
-    const head = git('rev-parse', 'HEAD');
-    const mutation = spawnSync('git', ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'reject mutation'], {
-        cwd,
-        encoding: 'utf8',
-    });
-    assert.notEqual(mutation.status, 0);
-    assert.match(mutation.stderr, /staged tree changed/);
-    assert.equal(git('rev-parse', 'HEAD'), head);
+    for (const stage of ['verify:static', 'affected']) {
+        manifest.scripts['verify:static'] = 'node -e "console.log(\'STATIC_OK\')"';
+        writeFileSync(affectedPath, "console.log('AFFECTED_OK');\n");
+        const mutate = `require('node:fs').writeFileSync('apps/billing/input', '${stage} mutation'); require('node:child_process').execFileSync('git', ['add', 'apps/billing/input']);`;
+        if (stage === 'affected') writeFileSync(affectedPath, mutate);
+        else manifest.scripts[stage] = `node -e "${mutate}"`;
+        writeFileSync(manifestPath, JSON.stringify(manifest));
+        git('add', '.');
+        const head = git('rev-parse', 'HEAD');
+        const mutation = spawnSync(
+            'git',
+            ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'reject mutation'],
+            {
+                cwd,
+                encoding: 'utf8',
+                env: primary.env,
+            }
+        );
+        assert.notEqual(mutation.status, 0);
+        assert.match(mutation.stderr, /staged tree changed/);
+        assert.equal(git('rev-parse', 'HEAD'), head);
+        if (stage === 'verify:static')
+            assert.doesNotMatch(
+                mutation.stdout + mutation.stderr,
+                /CHECK_OK|BOUNDARIES_OK|AGGREGATE_OK|SMOKE_OK|FEATURES_OK/
+            );
+        else assert.match(mutation.stdout + mutation.stderr, /STATIC_OK/);
+    }
 });

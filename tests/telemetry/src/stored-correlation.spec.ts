@@ -47,7 +47,13 @@ const identity: CorrelationIdentity = {
 };
 // Public vector bytes, not a deployment root; Python hashlib/hmac RFC 5869 expansion independently supplied the oracle.
 const vector = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
-/** Install explicit deployment settings without inheriting the orb's secret environment. */
+/**
+ * Install explicit deployment settings without inheriting the orb's secret environment.
+ *
+ * @param environment - Deployment environment name; defaults to development.
+ * @param root - Hex-encoded correlation root key; defaults to the public HKDF test vector.
+ * @returns A config provider holding only these two settings.
+ */
 const config = (environment = 'development', root = vector) =>
     ConfigProvider.fromMap(
         new Map([
@@ -66,7 +72,12 @@ const scope = {
 describe('root-derived persistent-policy correlation', /** Test custody and release contracts independently of network or PostHog availability. */ () => {
     it.effect(
         'matches independent HKDF vector and separates every custody dimension at the UTC boundary',
-        /** Derive via the public key port; never assert an oracle obtained from the implementation. */ () =>
+        /**
+         * Derive via the public key port; never assert an oracle obtained from the implementation.
+         *
+         * @returns The scenario that checks the HKDF vector, scope separation and epoch rollover.
+         */
+        () =>
             Effect.gen(
                 /** A stable root yields stable runner output only for the same exact current scope. */ function* () {
                     // A fixed independent vector catches shared derivation bugs; one-dimension changes test separation and epoch rollover.
@@ -101,7 +112,12 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
 
     it.effect(
         'fails closed for missing, short, malformed and unrelated roots',
-        /** Configuration failures expose only a bounded safe reason, never a root or decoder cause. */ () =>
+        /**
+         * Configuration failures expose only a bounded safe reason, never a root or decoder cause.
+         *
+         * @returns The scenario that tries each malformed root and inspects the safe failure.
+         */
+        () =>
             Effect.gen(
                 /** Malformed material must not silently produce a weaker or empty HMAC key. */ function* () {
                     // Inspect safe failure text as well as denial so malformed root material cannot leak through decoder diagnostics.
@@ -123,7 +139,12 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
 
     it.scoped(
         'requires live consent and identity on every issue and release, including expiry during SQL suspension',
-        /** The production store is covered by both-dialect storage tests; this controlled port makes the suspension boundary deterministic. */ () =>
+        /**
+         * The production store is covered by both-dialect storage tests; this controlled port makes the suspension boundary deterministic.
+         *
+         * @returns The scenario that changes one policy input at a time and checks every release path.
+         */
+        () =>
             Effect.gen(
                 /** Change one authoritative input at a time and preserve the same already-issued request token. */ function* () {
                     // Retain issued handles while changing policy to catch cached grants and expiry crossed during an awaited store read.
@@ -138,9 +159,13 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                     });
                     const current = Ref.get(state).pipe(
                         Effect.flatMap(
-                            /** Model fresh authenticateTokenSession results, not a caller-carried identifier assertion. */ (
-                                value
-                            ) =>
+                            /**
+                             * Model fresh authenticateTokenSession results, not a caller-carried identifier assertion.
+                             *
+                             * @param value - Current controlled session state from the test Ref.
+                             * @returns An effect yielding the live identity, or failing with an unavailable sink when the state is marked failed.
+                             */
+                            (value) =>
                                 value.failed
                                     ? Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' }))
                                     : Effect.succeed({
@@ -152,7 +177,12 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                         )
                     );
                     const store = TelemetryConsent.of({
-                        /** Simulate a policy read crossing a clock boundary while retaining its prior deadline. */ get: () =>
+                        /**
+                         * Simulate a policy read crossing a clock boundary while retaining its prior deadline.
+                         *
+                         * @returns An effect yielding the current grant, or nothing when consent is withdrawn.
+                         */
+                        get: () =>
                             Effect.gen(
                                 /** A grant read is fresh, explicit and never synthesized for an absent consent row. */ function* () {
                                     // Advance time after capturing state to model a valid read that returns only after session expiry.
@@ -161,8 +191,12 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                                     return value.grant ? { version: 0, expiresAt: 3 * correlationEpochMs } : undefined;
                                 }
                             ),
-                        /** Test policy mutation uses Ref above, not an accepting persistence implementation. */ put: () =>
-                            Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
+                        /**
+                         * Test policy mutation uses Ref above, not an accepting persistence implementation.
+                         *
+                         * @returns An effect that always fails as unavailable.
+                         */
+                        put: () => Effect.fail(new TelemetrySinkFailure({ reason: 'unavailable' })),
                     });
                     const lifetime = yield* Scope.make();
                     const authority = yield* Layer.buildWithScope(
@@ -196,17 +230,25 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                     }
                     yield* Ref.update(
                         state,
-                        /** Only the store suspends; the initial session check still sees a live deadline. */ (
-                            value
-                        ) => ({ ...value, suspend: true })
+                        /**
+                         * Only the store suspends; the initial session check still sees a live deadline.
+                         *
+                         * @param value - Session state before the update.
+                         * @returns A copy of the state with store suspension switched on.
+                         */
+                        (value) => ({ ...value, suspend: true })
                     );
                     expect(Exit.isFailure(yield* Effect.exit(general.authorize(binding, 'log')))).toBe(true);
                     yield* TestClock.setTime(0);
                     yield* Ref.update(
                         state,
-                        /** Restore a genuine grant so closure, not missing policy, explains the final denial. */ (
-                            value
-                        ) => ({ ...value, suspend: false })
+                        /**
+                         * Restore a genuine grant so closure, not missing policy, explains the final denial.
+                         *
+                         * @param value - Session state before the update.
+                         * @returns A copy of the state with store suspension switched off.
+                         */
+                        (value) => ({ ...value, suspend: false })
                     );
                     yield* Scope.close(lifetime, Exit.void);
                     expect(Exit.isFailure(yield* Effect.exit(issuer.issue(true)))).toBe(true);
@@ -217,7 +259,12 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
 
     it.effect(
         'has no accepting production issuer even with a root and explicit stored grant',
-        /** The new composition cannot bypass the existing production hold. */ () =>
+        /**
+         * The new composition cannot bypass the existing production hold.
+         *
+         * @returns The scenario that builds the layer under production settings and expects failure.
+         */
+        () =>
             Effect.gen(
                 /** No permissive input can install the real issuer under a production environment. */ function* () {
                     // Supply valid root and consent controls so production policy, not missing prerequisites, explains construction failure.
@@ -226,9 +273,18 @@ describe('root-derived persistent-policy correlation', /** Test custody and rele
                         Effect.scoped(
                             Layer.build(storedCorrelationLayer(binding, identity, keys, Effect.succeed(identity))).pipe(
                                 Effect.provideService(TelemetryConsent, {
-                                    /** Explicit test grant isolates deployment denial from absent consent. */ get: () =>
-                                        Effect.succeed({ version: 0, expiresAt: identity.expiresAt }),
-                                    /** No test path mutates durable policy. */ put: () => Effect.void,
+                                    /**
+                                     * Explicit test grant isolates deployment denial from absent consent.
+                                     *
+                                     * @returns An effect yielding a grant that lasts as long as the identity.
+                                     */
+                                    get: () => Effect.succeed({ version: 0, expiresAt: identity.expiresAt }),
+                                    /**
+                                     * No test path mutates durable policy.
+                                     *
+                                     * @returns An effect that succeeds without storing anything.
+                                     */
+                                    put: () => Effect.void,
                                 })
                             )
                         )

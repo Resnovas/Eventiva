@@ -20,6 +20,13 @@ import ts from 'typescript';
  * Inventory executable source bodies without granting coverage from syntax or a wrapper's name.
  * This initial stage deliberately reports every function as blocked until emitted instrumentation is proved.
  * Identities are offline source coordinates, never production telemetry attribute values.
+ *
+ * @since 0.0.1
+ * @param {string} source - The source text to parse.
+ * @param {string} [file] - The repository path the source belongs to; it selects TSX parsing and owns top-level identities.
+ * @returns {{ file: string, functions: Array<object>, diagnostics: Array<string>, capacityExceeded: boolean }} Every executable body with its identity and optimization record, the parse diagnostics, and whether the file exceeds the 8,192-function capacity.
+ * @example
+ * const { functions } = inspectStructure('export const run = () => 1;', 'src/run.ts');
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 export function inspectStructure(source, file = 'source.ts') {
@@ -35,6 +42,9 @@ export function inspectStructure(source, file = 'source.ts') {
 
     /**
      * Preserve nested callable ownership while counting anonymous, pure and internal bodies equally.
+     *
+     * @param {import('typescript').Node} node - The AST node to inspect.
+     * @param {string} [owner] - The identity of the enclosing callable or container; the file at the top level.
      * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
      */
     function visit(node, owner = file) {
@@ -86,6 +96,9 @@ export function inspectStructure(source, file = 'source.ts') {
             node,
             /**
              * Visit only original AST children; declarations without bodies do not invent executions.
+             *
+             * @param {import('typescript').Node} child - One direct AST child of the visited node.
+             * @returns {void} Nothing; identities are recorded in the enclosing inventory.
              * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
              */
             (child) => visit(child, nextOwner)
@@ -102,6 +115,9 @@ export function inspectStructure(source, file = 'source.ts') {
 /**
  * Check one precise optimization-evidence line, not the truth or quality of an optimization claim.
  * Reject impossible dates, duplicated tags, multiline text and traversal/absolute report references.
+ *
+ * @param {Array<string>} lines - The texts of every optimization tag on one body.
+ * @returns {boolean} Whether there is exactly one well-formed record with a real date and a safe relative evidence path.
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 function validOptimization(lines) {
@@ -121,6 +137,14 @@ function validOptimization(lines) {
  * Require an attached optimization record for added/changed bodies or documentation, including nested helpers.
  * Syntax/identity uncertainty blocks the comparison. Unchanged source creates no migration baseline.
  * This in-memory proof does not replace trusted Git-base acquisition, emitted coverage or report review.
+ *
+ * @since 0.0.1
+ * @param {string} before - The trusted base version of the file.
+ * @param {string} after - The candidate version of the file.
+ * @param {string} [file] - The repository path both versions belong to.
+ * @returns {Array<object>} One finding per added or changed body without a valid record, or a single parse-blocked finding.
+ * @example
+ * const findings = inspectOptimizationChange(baseText, candidateText, 'src/run.ts');
  * @agent-optimization reviewed=2026-11-20; result=best-found; evidence=docs/architecture/function-telemetry.md#s1-implementation-evidence
  */
 export function inspectOptimizationChange(before, after, file = 'source.ts') {
@@ -148,7 +172,6 @@ export function inspectOptimizationChange(before, after, file = 'source.ts') {
     }
     for (const entry of current.functions) {
         const prior = byIdentity.get(entry.id);
-        // A copied anonymous sibling cannot inherit a previously unreviewed occurrence's ordinal.
         const sameMultiplicity = previousGroups.get(entry.identityGroup) === currentGroups.get(entry.identityGroup);
         if (prior && sameMultiplicity && prior.text === entry.text && prior.documentation === entry.documentation)
             continue;

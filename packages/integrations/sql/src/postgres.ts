@@ -17,7 +17,15 @@
 import { PgClient } from '@effect/sql-pg';
 import { Config } from 'effect';
 
-/** TCP PostgreSQL, including Neon. Credentials stay redacted; TLS follows the approved connection URL. */
+/**
+ * TCP PostgreSQL, including Neon. Credentials stay redacted; TLS follows the approved connection URL.
+ *
+ * Reads `DATABASE_URL` (redacted) and `DATABASE_POOL_SIZE` (default 4) from configuration.
+ *
+ * @since 0.0.1
+ * @example
+ * const program = Effect.provide(migrate('postgres', migrations), client);
+ */
 export const client = PgClient.layerConfig({
     url: Config.redacted('DATABASE_URL'),
     maxConnections: Config.integer('DATABASE_POOL_SIZE').pipe(Config.withDefault(4)),
