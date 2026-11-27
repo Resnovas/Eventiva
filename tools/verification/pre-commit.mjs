@@ -43,7 +43,6 @@ if (process.argv[2] === '--install') {
             try {
                 writeFileSync(backup, current, { flag: 'wx' });
             } catch (error) {
-                // Exclusive creation preserves an earlier backup without a check/write race.
                 if (error.code !== 'EEXIST') throw error;
             }
             unlinkSync(hook);
