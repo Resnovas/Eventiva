@@ -1,5 +1,7 @@
 ## Mandatory Cluster composition (EVE-252)
 
+HTTP integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. With the default host, bind `127.0.0.1` on port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend. The advertised host stays unchanged; only the port comes from the socket.
+
 Canonical Markdown: `docs/cluster.md`. Compiling typed composition: `apps/server/tests/backend.spec.ts`. Production owners: `apps/server/src/{backend,cluster,cluster-profile,cluster-actions}.ts`. Shared/client contracts and packages/runtime remain Cluster/driver-free. The archived EVE-18 spike is not integrated.
 
 Use `backend(profile, initialize, registerWorkflows)` for every edition. Community defaults to one cluster-capable runner; cloud defaults to two independent processes and rejects fewer. There is no local/noop profile or disable-Cluster flag. Topology configuration is mandatory architecture, not an optional rollout; ActionHost module/action flags still apply. Decode DeploymentProfile with deploymentProfile's Config boundary first. Full options/defaults are in the canonical docs. Increasing expectedRunners neither starts processes nor provisions infrastructure. Raw sockets are internal-only, loopback by default.
