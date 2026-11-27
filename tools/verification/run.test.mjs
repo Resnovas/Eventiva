@@ -427,6 +427,10 @@ test('hook installs idempotently without replacing foreign hooks or commit-msg',
         assert.equal(readFileSync(`${path}.before-eventiva-composition`, 'utf8'), legacy);
         assert.equal(readFileSync(path, 'utf8'), '#!/bin/sh\n# eventiva:verified-staged-snapshot\nexec node --run verify:staged\n');
         assert.equal(migrated.run('pre-commit', '--install').status, 0);
+        writeFileSync(`${path}.before-eventiva-composition`, 'preserved owner backup\n');
+        writeFileSync(path, legacy);
+        assert.equal(migrated.run('pre-commit', '--install').status, 0);
+        assert.equal(readFileSync(`${path}.before-eventiva-composition`, 'utf8'), 'preserved owner backup\n');
     }
 });
 

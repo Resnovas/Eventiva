@@ -40,7 +40,12 @@ if (process.argv[2] === '--install') {
         const current = readFileSync(hook, 'utf8');
         if (legacy.includes(current)) {
             const backup = `${hook}.before-eventiva-composition`;
-            if (!existsSync(backup)) writeFileSync(backup, current, { flag: 'wx' });
+            try {
+                writeFileSync(backup, current, { flag: 'wx' });
+            } catch (error) {
+                // Exclusive creation preserves an earlier backup without a check/write race.
+                if (error.code !== 'EEXIST') throw error;
+            }
             unlinkSync(hook);
         }
     }
