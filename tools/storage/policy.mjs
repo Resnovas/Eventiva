@@ -29,14 +29,28 @@ try {
         encoding: 'utf8',
     })
         .split('\0')
-        .filter((path) => path.endsWith('.sql'));
+        .filter(
+            /**
+             * Select migration files from the base tree, not the candidate working directory.
+             *
+             * @param path - One repository-relative entry returned by git ls-tree.
+             * @returns Whether the entry has the expected lowercase SQL extension.
+             */ (path) => path.endsWith('.sql')
+        );
     const applied = Object.fromEntries(
-        paths.map((path) => [
-            path.slice('storage/migrations/'.length),
-            createHash('sha256')
-                .update(execFileSync('git', ['show', `${base}:${path}`]))
-                .digest('hex'),
-        ])
+        paths.map(
+            /**
+             * Hash the committed blob so editing a migration and a candidate ledger together cannot pass.
+             *
+             * @param path - Repository-relative SQL path at the trusted revision.
+             * @returns Its migration-relative key and SHA-256 digest of the original bytes.
+             */ (path) => [
+                path.slice('storage/migrations/'.length),
+                createHash('sha256')
+                    .update(execFileSync('git', ['show', `${base}:${path}`]))
+                    .digest('hex'),
+            ]
+        )
     );
     const ledger = join(directory, 'applied.json');
     writeFileSync(ledger, JSON.stringify(applied), { mode: 0o400 });

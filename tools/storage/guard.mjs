@@ -80,26 +80,59 @@ const ignored = new Set([
     'release',
 ]);
 
+/**
+ * Discover package manifests without following symlinks into other source trees.
+ *
+ * @param directory - Workspace directory whose entries are in scope.
+ * @returns Manifest paths outside the excluded directories.
+ */
 function packageFiles(directory) {
-    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        if (entry.name.startsWith('.') || ignored.has(entry.name)) return [];
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) return packageFiles(path);
-        return entry.isFile() && entry.name === 'package.json' ? [path] : [];
-    });
+    return readdirSync(directory, { withFileTypes: true }).flatMap(
+        /**
+         * Exclude hidden and generated entries before descending into directories.
+         *
+         * @param entry - Directory entry with its on-disk file type.
+         * @returns Manifests contributed by this entry, possibly none.
+         */ (entry) => {
+            if (entry.name.startsWith('.') || ignored.has(entry.name)) return [];
+            const path = join(directory, entry.name);
+            if (entry.isDirectory()) return packageFiles(path);
+            return entry.isFile() && entry.name === 'package.json' ? [path] : [];
+        }
+    );
 }
 
+/**
+ * Read migration bytes without normalizing line endings or following links.
+ *
+ * @param directory - Physical migration directory to enumerate.
+ * @param prefix - Slash-delimited path from the migration root, including its trailing separator when nonempty.
+ * @returns Ledger keys paired with the exact candidate bytes.
+ */
 function sqlFiles(directory, prefix = '') {
     if (!lstatSync(directory).isDirectory()) throw new Error(`Not a migration directory: ${directory}`);
-    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        const path = join(directory, entry.name);
-        const name = prefix + entry.name;
-        if (entry.isSymbolicLink()) throw new Error(`Migration symlinks are not allowed: ${name}`);
-        if (entry.isDirectory()) return sqlFiles(path, `${name}/`);
-        return entry.isFile() && /\.sql$/i.test(name) ? [[name, readFileSync(path)]] : [];
-    });
+    return readdirSync(directory, { withFileTypes: true }).flatMap(
+        /**
+         * Reject links even for non-SQL entries; directories contribute their descendants.
+         *
+         * @param entry - Child inspected without resolving a symlink target.
+         * @returns SQL path and buffer pairs under this child.
+         */ (entry) => {
+            const path = join(directory, entry.name);
+            const name = prefix + entry.name;
+            if (entry.isSymbolicLink()) throw new Error(`Migration symlinks are not allowed: ${name}`);
+            if (entry.isDirectory()) return sqlFiles(path, `${name}/`);
+            return entry.isFile() && /\.sql$/i.test(name) ? [[name, readFileSync(path)]] : [];
+        }
+    );
 }
 
+/**
+ * Split SQL for policy inspection, treating quoted content as opaque and tracking leading annotations.
+ *
+ * @param sql - Decoded migration text from a single file.
+ * @returns Nonempty token sequences with their start lines and annotation flags.
+ */
 function statements(sql) {
     const result = [];
     let words = [];
@@ -107,10 +140,16 @@ function statements(sql) {
     let line = 1;
     let startLine = 1;
     let i = 0;
+    /**
+     * Advance past a recognized token while preserving physical line numbers for diagnostics.
+     *
+     * @param end - Exclusive character offset in the migration text.
+     */
     const consume = (end) => {
         line += (sql.slice(i, end).match(/\n/g) ?? []).length;
         i = end;
     };
+    /** Close the statement and discard its annotation even when a stray semicolon had no preceding tokens. */
     const finish = () => {
         if (words.length) result.push({ words, annotated, line: startLine });
         words = [];
@@ -182,9 +221,25 @@ function statements(sql) {
     return result;
 }
 
+/**
+ * Decide whether the policy requires a reason, including opaque executable bodies it cannot inspect.
+ *
+ * @param words - Tokens of one statement, with unquoted words uppercased.
+ * @returns Whether running this statement requires a preceding destructive-migration annotation.
+ */
 function destructive(words) {
     const text = words.join(' ');
-    if (words.some((word) => word === 'DROP' || word === 'TRUNCATE')) return true;
+    if (
+        words.some(
+            /**
+             * Match unquoted removal keywords regardless of their position within the statement.
+             *
+             * @param word - Normalized token or opaque quoted placeholder.
+             * @returns Whether the token alone triggers the annotation policy.
+             */ (word) => word === 'DROP' || word === 'TRUNCATE'
+        )
+    )
+        return true;
     if (words[0] === 'DELETE' || words[0] === 'REPLACE') return true;
     if (['WITH', 'EXPLAIN'].includes(words[0]) && words.includes('DELETE')) return true;
     if (/\bINSERT OR REPLACE\b/.test(text)) return true;
@@ -203,6 +258,7 @@ function destructive(words) {
     );
 }
 
+/** Check commands without executing them; only inspect migrations when both their directory and ledger are supplied. */
 function main() {
     const { values } = parseArgs({
         options: {
@@ -222,7 +278,14 @@ function main() {
     }
     const root = resolve(values.root);
     const problems = [];
-    const commands = values.command.map((command) => ['--command', command]);
+    const commands = values.command.map(
+        /**
+         * Preserve command text for the same inspection used for package scripts.
+         *
+         * @param command - One explicit command from the argument vector.
+         * @returns A diagnostic source label and the proposed command text.
+         */ (command) => ['--command', command]
+    );
     let packages = 0;
     for (const path of packageFiles(root)) {
         const manifest = JSON.parse(readFileSync(path, 'utf8'));
