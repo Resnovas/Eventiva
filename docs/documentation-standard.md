@@ -170,6 +170,27 @@ The root documentation command ends with `node tools/documentation/check.mjs`;
 regression fixtures prove accepted and never-ledgered rationale both fail that
 strict CLI, while an actual meaningful body comment clears the fixture.
 
+## Banned JSDoc tags
+
+Eventiva never writes `@throws`, `@exception`, `@author` or `@license`. Jonathan decided this on 2026-11-21. Effect code never throws: failures are typed in the Effect error channel and handled with Effect's tools, not `try`/`catch`, so a throw contract documents the wrong concept. Git records authors, and the file header holds the licence terms.
+
+The house JSDoc `contracts` set in `tools/lint/funnel.mjs` no longer requires `@throws` ([house PR 83](https://github.com/Resnovas/.github/pull/83)). Eventiva's own ban lives in `tools/documentation/jsdoc-tags.mjs`, outside the synced module. `jsdocTagBan(files)` returns one flat-config entry that sets `jsdoc/no-restricted-syntax` to error with this message:
+
+> Do not use @throws, @author or @license. Document Effect failures with @fails, let git record authors, and keep licence terms in the file header.
+
+It is not active yet. Eventiva has not adopted the `contracts` set or installed `eslint-plugin-jsdoc` 65.5.0 (approved under EVE-299; its pnpm `minimumReleaseAge` cooldown ended on 2026-11-26). When the set is adopted, append the entry after the `contracts` entry for the same files; flat config applies the last matching setting:
+
+```js
+import { contracts } from './tools/lint/funnel.mjs';
+import { jsdocTagBan } from './tools/documentation/jsdoc-tags.mjs';
+
+const sources = ['packages/*/src/**/*.ts', 'apps/*/src/**/*.ts'];
+
+export default [...existingConfig, { ...contracts, files: sources }, jsdocTagBan(sources)];
+```
+
+`node --test tools/documentation/jsdoc-tags.test.mjs`, part of `node --run documentation`, checks the banned tags, the severity and the message. No active source uses a banned tag today.
+
 ## Maintain the rule
 
 Keep positive and negative fixtures for each covered syntax, attachment boundary, heuristic, ratchet invariant and exclusion. Before changing a classifier, run the full inventory and review representative production/test/callback results. Keep presence findings separate from quality/rationale candidates and machine-check the per-file backlog against the exact ledger. Migrate one owned module at a time, read the code first, and run its lint/type/tests. Never mass-generate placeholder comments or modify another active lane's source to reduce the inventory. Track D01-D07 on EVE-13/EVE-261 until the owner assigns separate issues or approves another arrangement.

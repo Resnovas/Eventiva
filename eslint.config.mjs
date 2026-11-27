@@ -186,6 +186,9 @@ const noZeroDelayUiTimer = {
     },
 };
 
+// When the house JSDoc `contracts` set from tools/lint/funnel.mjs is adopted, append
+// jsdocTagBan(files) from tools/documentation/jsdoc-tags.mjs after it for the same
+// files. It bans @throws, @exception, @author and @license (owner decision, 2026-11-21).
 export default [
     ...nx.configs['flat/base'],
     ...nx.configs['flat/typescript'],
