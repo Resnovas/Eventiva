@@ -177,7 +177,7 @@ export const commands = {
         ),
 };
 
-export const makeBackend = (profile) =>
+export const makeBackend = (profile, preboundSocket) =>
     Layer.unwrapScoped(
         Effect.gen(function* () {
             const compute = yield* connect(checked(process.env.CLUSTER_TEST_C_URL).toString());
@@ -401,7 +401,7 @@ export const makeBackend = (profile) =>
                 process.send?.({ barrier: 'registration', pid: process.pid });
                 yield* waitOpen(sql, 'registration');
             });
-            return backend(profile, initialize, registerWorkflows, Security).pipe(
+            return backend(profile, initialize, registerWorkflows, Security, undefined, preboundSocket).pipe(
                 Layer.provideMerge(Security),
                 Layer.provide(Layer.succeedContext(compute))
             );
