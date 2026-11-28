@@ -18,13 +18,13 @@ The only `LICENSE` change is `Copyright 2024 Eventiva` to `Copyright 2026 Jonath
 
 The licence-header checker preserves the existing third-party Nx `monitor-ci` scripts in `.cursor/skills/` and `.opencode/skills/` instead of relabelling them as Resnovas-authored source. Those exact imported paths and `examples/` are listed in `tools/license/ignore`; current house and repository tooling remains checked.
 
-## Direct-to-main delivery
+## Coding-agent delivery
 
-The owner's existing exception in [AGENTS.md](../AGENTS.md#delivery-exception-ship-straight-to-main) governs coding-agent delivery, including where generic governance describes PR delivery. It is preserved outside the managed block. Agents use Jonathan's authorized author/sign-off identity, retain AI attribution and run the local gate before pushing to `main`.
+Coding agents deliver through the AI-21 pull request path in [AGENTS.md](../AGENTS.md#delivery): a disclosed draft PR, marked ready and merged once all required checks are green, under Jonathan's 2026-11-20 exception. This supersedes the 2026-10-31 direct-to-main exception (EVE-13 item 12). Commit identity follows EVE-299 as stated in AGENTS.md.
 
-The locked preset has `settings.ruleset.adminBypass: true`. Smartcloud renders this as `{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}`, so a repository administrator can push directly despite the PR, queue, signature and required-check rules. Do not change this to a PR-only bypass or remove it. A token without the necessary administrator permissions cannot use this exception. No local override of locked preset values is needed.
+The locked preset has `settings.ruleset.adminBypass: true`. Smartcloud renders this as `{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}`, so a repository administrator can push directly despite the PR, queue, signature and required-check rules. Do not change this to a PR-only bypass or remove it; coding agents do not use it for delivery. No local override of locked preset values is needed.
 
-The preset still governs other contributors' PRs. Its standard house sync and Graphify bots may propose updates on their own branches; these proposals do not require coding agents to deliver through PRs. The sole-maintainer ruleset currently renders zero required approvals. A future second maintainer changes the generic PR gate, not the documented owner bypass.
+The preset governs every contributor's PRs. Its standard house sync and Graphify bots propose updates on their own branches. The sole-maintainer ruleset currently renders zero required approvals; a future second maintainer changes the generic PR gate.
 
 ## Settings plan and external blocker
 

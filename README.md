@@ -192,7 +192,7 @@ The canonical configuration is [`.github/smartcloud.yml`](.github/smartcloud.yml
 
 The Markdown governance files and `LICENSE` are canonical. Obsolete root AsciiDoc compatibility links have been removed; historical originals remain in the archive. Ownership and funding configuration now live only in `.github/CODEOWNERS` and `.github/FUNDING.yml`.
 
-**Coding agents still commit and push directly to `main` under [the owner's documented exception](AGENTS.md#delivery-exception-ship-straight-to-main).** It takes precedence over the generic house PR delivery path. The preset retains an always-bypass for repository administrators. Standard house sync and Graphify bot PRs do not change that exception.
+**Coding agents deliver through [the AI-21 pull request path](AGENTS.md#delivery):** a disclosed draft PR, marked ready and merged once all required checks are green. This supersedes the earlier direct-to-main exception. Standard house sync and Graphify bot PRs use their own branches.
 
 </details>
 

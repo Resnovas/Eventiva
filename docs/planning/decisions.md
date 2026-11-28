@@ -28,7 +28,7 @@ Jonathan approved the proposed Linear changes on 2026-11-26 in [this thread](htt
 
 ## Platform-specific commit identity - 2026-11-20
 
-Jonathan's [identity decision](https://linear.app/resnovas/issue/EVE-299#comment-d57175a5-f09b-443a-b5ca-d53c6142ee3c), relayed by Puck, replaces the local noreply-only author rule: Amp commits as configured `Jonathan Stevens <jonathan@resnovas.com>`; agents on other platforms commit and sign with their own agent identity, never Jonathan's. The exact original decision time is unavailable. Jonathan's subsequent correction keeps personal sign-off authority only in his personal Amp global guidance, not repository guidance, code or checks. [AGENTS.md](../../AGENTS.md#delivery-exception-ship-straight-to-main) owns only the platform identity instruction. The shared house thread owns the signature check; no downstream checker override, signing bypass or shared-house edit is claimed here.
+Jonathan's [identity decision](https://linear.app/resnovas/issue/EVE-299#comment-d57175a5-f09b-443a-b5ca-d53c6142ee3c), relayed by Puck, replaces the local noreply-only author rule: Amp commits as configured `Jonathan Stevens <jonathan@resnovas.com>`; agents on other platforms commit and sign with their own agent identity, never Jonathan's. The exact original decision time is unavailable. Jonathan's subsequent correction keeps personal sign-off authority only in his personal Amp global guidance, not repository guidance, code or checks. [AGENTS.md](../../AGENTS.md#delivery) owns only the platform identity instruction. The shared house thread owns the signature check; no downstream checker override, signing bypass or shared-house edit is claimed here.
 
 ## Commit admission is static plus affected tests - 2026-11-20
 
