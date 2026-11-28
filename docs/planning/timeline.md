@@ -49,6 +49,12 @@ Protected delivery completed on 2026-11-27: [house PR88](https://github.com/Resn
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Client smoke and five-tree JSDoc audit - 2026-11-27
+
+The [executor](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) preserved the client smoke assertions and its existing JSDoc enforcement. Removing its two ordinary comments tightens the ledger from 2,109 to 2,107; [ADR-0008](../adr/0008-verification-tooling-and-test-isolation.md) explains the no-provider assertion. This layer targets [root config PR #1111](https://github.com/Resnovas/Eventiva/pull/1111), whose direct lint, root check and installed static/affected hook passed, including 32 affected Nx tasks and 320 tooling tests. Neither layer is whole-issue acceptance.
+
+The [EVE-299 five-tree audit](https://linear.app/resnovas/issue/EVE-299#comment-c7996baf-b054-449c-965d-7edc0630f2b6), [mirrored on #1092](https://github.com/Resnovas/Eventiva/issues/1092#issuecomment-7211950314), measured 551 tracked files on the pre-sync base. Of 330 local JS/TS files, 130 already had enforcement. Another 32 JS/TS files are house-synced; seven intentionally invalid import fixtures are ignored, not passing. The other 182 files are outside JS/TS (including C#, shell, assets, manifests and prose). This audit is neither a baseline nor evidence that other formats are comment-free. Global JSDoc and a zero ratchet remain outstanding.
+
 ## Root ESLint and Vitest contracts - 2026-11-27
 
 Layer two of the [scheduled backlog](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) documents the root ESLint and Vitest configurations without replacing rules or changing test thresholds. Applying the contract before adoption reported 18 and six findings respectively. Neither file has counted inline comments. [Layer one, PR #1110](https://github.com/Resnovas/Eventiva/pull/1110), passed the normal hook on the post-sync base: static checks, 32 affected Nx tasks and 320 tooling tests. PR delivery is for review, not whole-issue acceptance; [EVE-299](https://linear.app/resnovas/issue/EVE-299) and [#1092](https://github.com/Resnovas/Eventiva/issues/1092) remain open.
