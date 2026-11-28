@@ -275,6 +275,7 @@ const eventivaPlugin = {
 const jsdocAdoptedFiles = [
     'eslint.config.mjs',
     'vitest.shared.ts',
+    'ai-docs/src/**/*.ts',
     'apps/client/**/*.{ts,tsx,mts,js}',
     'apps/client-e2e/**/*.{ts,mts}',
     'packages/integrations/*/src/**/*.{ts,tsx}',
@@ -630,6 +631,12 @@ export default [
         },
     },
     { files: jsdocAdoptedFiles, ...jsdocContracts },
+    {
+        files: ['ai-docs/src/**/*.ts'],
+        rules: {
+            'jsdoc/check-tag-names': ['error', { definedTags: ['fails', 'file', 'internal', 'agent-optimization', 'title'] }],
+        },
+    },
     { files: ['**/*.{js,mjs,cjs}'], plugins: { jsdoc }, rules: { 'jsdoc/no-types': 'off' } },
     prettier,
 ];

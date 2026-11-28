@@ -15,19 +15,25 @@
  */
 
 /**
- * @title Durable output persistence and exclusive reconnect
  * This privileged storage example requires an already authorized tenant route.
  * Public readers use the server's readAgentOutput seam, which reauthorizes
  * accepted ownership on every page. SQL and run-process examples live in the
  * storage/server tests; docs/agent-output.md owns bounds and crash limitations.
+ *
+ * @title Durable output persistence and exclusive reconnect
  */
 import { AgentOutputLog } from '@eventiva/contracts/agent-output';
 import { Effect } from 'effect';
 
-/** Retry identical logical content and resume after offset zero without repeating that committed event. */
+/**
+ * Append the same logical event twice and read strictly after the original append's offset.
+ *
+ * @since 0.0.0
+ * @example
+ * const nextPage = outputExample.pipe(Effect.map(({ nextPage }) => nextPage));
+ */
 export const outputExample = Effect.gen(
     /** Stable producer identity is fixed before retryable SQL; it is never a random transport identity. */ function* () {
-        // Reuse identical logical content so retry deduplication, not a fresh event, determines the reconnect cursor.
         const log = yield* AgentOutputLog;
         const event = {
             runId: '019b0000-0000-7000-8000-000000001001',

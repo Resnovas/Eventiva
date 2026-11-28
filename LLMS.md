@@ -344,11 +344,18 @@ import { Storage } from '@eventiva/contracts/storage';
 import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
-/** Commit the supplied successful receipt with an invoice outbox command using the caller's tenant-bound services. */
+/**
+ * Commit the invoice command on the receipt's tenant storage so neither write can survive alone.
+ *
+ * @param receipt - Successful invocation receipt with the admitted action version.
+ * @returns An Effect that stages the durable command without dispatching an invoice.
+ * @since 0.0.0
+ * @example
+ * const commit = stage(successfulReceipt);
+ */
 export const stage = (receipt: Receipt & { readonly version: number }) =>
     Effect.gen(
         /** Couple outbox staging to integrity commit rather than dispatching an external invoice during the transaction. */ function* () {
-            // Both services must share the tenant storage so receipt and command cannot commit independently.
             const storage = yield* Storage;
             const integrity = yield* Integrity;
             return yield* integrity.commit(
@@ -361,7 +368,6 @@ export const stage = (receipt: Receipt & { readonly version: number }) =>
                 },
                 Effect.gen(
                     /** Stage only the durable command and return the receipt; delivery belongs to an outbox consumer. */ function* () {
-                        // Keep money as an exact minor-unit string rather than a lossy JavaScript number.
                         yield* storage.enqueue('invoice:1', {
                             type: 'send-invoice',
                             minorUnits: '9007199254740993',
@@ -382,12 +388,25 @@ import { HookDenied, HookProducer, HookProducerDeny, type HookProducerTarget } f
 import { hookProducer } from '@eventiva/integrations.sql/hook-producer';
 import { Effect } from 'effect';
 
-/** Supply authenticated CurrentTenant and SqlClient after migration 0008; build once per restart. */
+/**
+ * Bind the producer journal to the tenant SQLite client after migration 0008.
+ *
+ * @since 0.0.0
+ * @example
+ * const commit = commitTransition(requestId, target, mutate).pipe(Effect.provide(journal));
+ */
 export const journal = hookProducer('sqlite', 'platform.primary');
 
-/** Only the trusted mutation owner supplies this callback and its authoritative policy binding.
- * The callback must use the retained request UUID for idempotency/status reconciliation.
- * An error leaves the attempt unresolved: failure is not proof of no external effect.
+/**
+ * Invoke the mutation only for a fresh attempt. Reconcile a lost acknowledgement rather than repeating an external write.
+ *
+ * @param request - Stable request UUID retained across recovery.
+ * @param target - Policy binding supplied by the trusted mutation owner.
+ * @param commit - Mutation that uses the journal's attempt identifier as its idempotency key.
+ * @returns An Effect yielding the mutation result only after the journal confirms the attempt.
+ * @since 0.0.0
+ * @example
+ * const operation = commitTransition(requestId, policyTarget, writeOnce);
  */
 export const commitTransition = <A, E, R>(
     request: string,
@@ -399,7 +418,6 @@ export const commitTransition = <A, E, R>(
         /** Persist intent before the mutation and publish confirmation only after its success. */ function* () {
             const producer = yield* HookProducer;
             const attempt = yield* producer.begin(request, target);
-            // An existing attempt may already have changed external state; retry status, never the callback.
             if (!attempt.fresh) return yield* new HookDenied({ reason: 'unavailable' });
             const value = yield* commit(attempt.attempt.id);
             yield* producer.confirm(request);
@@ -407,8 +425,14 @@ export const commitTransition = <A, E, R>(
         }
     );
 
-/** Inspect/reconcile instead of reinvoking after a crash or lost confirmation acknowledgement.
- * This example is deliberately denied until a core status authority is supplied.
+/**
+ * Inspect the retained request without reinvoking the mutation. The example supplies a denying status authority.
+ *
+ * @param request - Original request UUID, including after a process restart.
+ * @returns A reconciliation Effect that denies access rather than guessing whether the mutation committed.
+ * @since 0.0.0
+ * @example
+ * const status = reconcile(originalRequestId);
  */
 export const reconcile = (request: string) =>
     Effect.gen(
@@ -502,10 +526,15 @@ storage/server tests; docs/agent-output.md owns bounds and crash limitations.
 import { AgentOutputLog } from '@eventiva/contracts/agent-output';
 import { Effect } from 'effect';
 
-/** Retry identical logical content and resume after offset zero without repeating that committed event. */
+/**
+ * Append the same logical event twice and read strictly after the original append's offset.
+ *
+ * @since 0.0.0
+ * @example
+ * const nextPage = outputExample.pipe(Effect.map(({ nextPage }) => nextPage));
+ */
 export const outputExample = Effect.gen(
     /** Stable producer identity is fixed before retryable SQL; it is never a random transport identity. */ function* () {
-        // Reuse identical logical content so retry deduplication, not a fresh event, determines the reconnect cursor.
         const log = yield* AgentOutputLog;
         const event = {
             runId: '019b0000-0000-7000-8000-000000001001',
@@ -542,9 +571,9 @@ Keycloak 26.8.2 (exact digest) and `oauth4webapi@3.8.8` were adopted on 2026-11-
 
 Run contracts/runtime/storage tests and `node --run verify`. Use only `docs/storage.md`'s approved disposable PostgreSQL fixture. Tests must retain cross-DB denial, link collisions, viewer-agent intersection, resource denial, live revocation/replays, bound approvals, CAS concurrency, receipt count/privacy and audit rollback. The composition example below compiles in the storage test typecheck. No cloud, paid service, CI change or new dependency is needed.
 
-### host
+### Register a host INSIDE one already authorized tenant route
 
-@title Register a host INSIDE one already authorized tenant route
+Route to tenant-owned storage before constructing the host; registration does not authorize a caller.
 
 ```ts
 import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
@@ -555,15 +584,20 @@ import { InvocationDenied } from '@eventiva/runtime/invocation';
 import { durable } from '@eventiva/runtime/storage';
 import { Effect, Layer } from 'effect';
 
-/** The composition root supplies IdentityStore and Storage around the SAME authorized tenant SQL client. */
+/**
+ * Read through an identity host whose identity store and storage share the authorized tenant SQL client.
+ *
+ * @param caller - Authenticated principal whose tenant must match the current route.
+ * @returns A scoped organization read that denies a route mismatch before module registration.
+ * @since 0.0.0
+ * @example
+ * const lookup = readOrganization(authenticatedCaller);
+ */
 export const readOrganization = (caller: CallerIdentity) => {
     const host = ActionHostLive.pipe(Layer.provide(identitySecurity), Layer.provide(durable));
-    // IdentityStore, Storage, Approvals, InputDigest, Flags and CurrentTenant remain REQUIRED.
-    // Supply production implementations at the trusted root, never a permissive fallback.
     return Effect.scoped(
         Effect.gen(
             /** Reject a mismatched route before registering and invoking identity actions with the supplied caller. */ function* () {
-                // Host construction is not route authorization; verify the caller against the already bound tenant.
                 const tenant = yield* CurrentTenant;
                 if (caller.tenant !== tenant.id)
                     return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });
@@ -578,9 +612,9 @@ export const readOrganization = (caller: CallerIdentity) => {
 };
 ```
 
-### oidc
+### Verify a Keycloak access token, open its session, then authenticate inside one routed tenant
 
-@title Verify a Keycloak access token, open its session, then authenticate inside one routed tenant
+Complete sign-in only for a previously linked human subject on the tenant route.
 
 ```ts
 import { openOidcSession } from '@eventiva/integrations.oidc/session';
@@ -598,7 +632,15 @@ const settings = {
     allowInsecureLoopback: false,
 };
 
-/** Sign-in completion: IdentityStore, CurrentTenant and identitySecurity are provided by the tenant composition root. */
+/**
+ * Open a bounded session and resolve the live caller using the tenant root's identity services.
+ *
+ * @param accessToken - Credential presented to the configured issuer verifier; never log it.
+ * @returns An Effect that refuses unlinked subjects rather than provisioning a principal.
+ * @since 0.0.0
+ * @example
+ * const completion = signIn(presentedToken);
+ */
 export const signIn = (accessToken: string) =>
     Effect.gen(
         /** Verify, provision the session with a server-chosen expiry, then resolve the caller from live SQL. */ function* () {
@@ -610,7 +652,6 @@ export const signIn = (accessToken: string) =>
             const token = Redacted.make(accessToken);
             const claims = yield* verifier.verify(token);
             const now = yield* Clock.currentTimeMillis;
-            // openOidcSession refuses unlinked or non-human subjects; it never creates principals or links.
             yield* openOidcSession(claims, now + 8 * 3_600_000);
             return yield* authenticateTokenSession(token, {
                 issuer: verifier.issuer,
@@ -618,14 +659,30 @@ export const signIn = (accessToken: string) =>
                 scopes: ['eventiva.invoke'],
             }).pipe(
                 Effect.provideService(StandardsTokenVerifier, {
-                    /** Hand the runtime only the claim fields its policy reads. */
+                    /**
+                     * Hand the runtime only the claim fields its policy reads.
+                     *
+                     * @param presented - Redacted credential supplied for this verification.
+                     * @returns Verified runtime claims or a denial with a bounded reason.
+                     */
                     verify: (presented) =>
                         verifier.verify(presented).pipe(
                             Effect.map(
-                                /** Drop the provider-only client ID. */ ({ clientId: _clientId, ...rest }) => rest
+                                /**
+                                 * Drop the provider-only client ID.
+                                 *
+                                 * @param claims - Claims that passed issuer verification.
+                                 * @param claims.clientId - Client identifier already checked against server configuration.
+                                 * @returns The remaining claims for session authentication.
+                                 */ ({ clientId: _clientId, ...rest }) => rest
                             ),
                             Effect.mapError(
-                                /** Collapse refusal detail into a safe reason. */ (error) =>
+                                /**
+                                 * Report the refusal category without exposing the presented token.
+                                 *
+                                 * @param error - Verifier failure with a closed reason code.
+                                 * @returns A runtime denial suitable for the authentication boundary.
+                                 */ (error) =>
                                     new InvocationDenied({ action: '<token>', reason: `oidc-${error.reason}` })
                             )
                         ),
@@ -999,7 +1056,21 @@ import { hookStorage } from '@eventiva/integrations.sql/hook';
 import { HookDispatcherLive, HookSinkUnavailable } from '@eventiva/runtime/hook';
 import { Effect, Layer } from 'effect';
 
+/**
+ * Construct tenant-local SQLite feed and recovery services; this does not migrate the store or start delivery.
+ *
+ * @since 0.0.0
+ * @example
+ * const reader = resume(lastAcceptedCursor).pipe(Effect.provide(hooks));
+ */
 export const hooks = hookStorage('sqlite');
+/**
+ * Compose a dispatcher with release denied, no external sink and safe flag defaults.
+ *
+ * @since 0.0.0
+ * @example
+ * const isolatedDispatcher = Layer.build(dispatch);
+ */
 export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(hooks),
     Layer.provide(HookReleaseDeny),
@@ -1007,28 +1078,51 @@ export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(FlagsSafeDefaults)
 );
 
-/** Stage trusted, minimized event metadata and approved observer pins atomically in the existing storage scope. */
+/**
+ * Stage minimized metadata on the domain write's transaction so rollback discards both.
+ *
+ * @param event - Trusted event facts, not the original action input.
+ * @param observers - Exact declaration pins approved to observe this event.
+ * @returns A storage Effect that stages work without notifying an external consumer.
+ * @since 0.0.0
+ * @example
+ * const pending = stageMetadata(facts, approvedPins);
+ */
 export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDeclaration>) =>
     Effect.gen(
         /** Enlist hook outbox staging in the same transaction that should contain the domain write. */ function* () {
             const store = yield* Storage;
             const outbox = yield* HookOutbox;
-            // Include the real domain write in this transaction before staging.
             yield* store.transaction(outbox.stage(event, observers));
         }
     );
 
-/** Trusted host only; release policy is still required before exposing facts to a consumer. */
+/**
+ * Read at most fifty changes outside the SQL transaction. Save a cursor only after durable acceptance.
+ *
+ * @param savedCursor - Last position acknowledged by the consumer.
+ * @returns A bounded page that still requires release authorization before disclosure.
+ * @since 0.0.0
+ * @example
+ * const page = resume(lastAcceptedCursor);
+ */
 export const resume = (savedCursor: number) =>
     Effect.gen(
         /** Fetch a bounded batch after the consumer's durable cursor, without advancing it here. */ function* () {
             const feed = yield* HookChangeFeed;
-            // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
             return yield* feed.read(savedCursor, 50);
         }
     );
 
-/** Inspection releases metadata too; this example remains deliberately denied. */
+/**
+ * Request the first dead-letter page with operator access explicitly denied.
+ *
+ * @param declaration - Observer pin whose recovery metadata the operator requested.
+ * @returns A denied inspection rather than an unauthorized page of metadata.
+ * @since 0.0.0
+ * @example
+ * const inspection = inspectDeadLetters(observerPin);
+ */
 export const inspectDeadLetters = (declaration: HookDeclaration) =>
     Effect.gen(
         /** Request the first dead-letter metadata page under the deliberately denying operator policy. */ function* () {
@@ -1037,7 +1131,17 @@ export const inspectDeadLetters = (declaration: HookDeclaration) =>
         }
     ).pipe(Effect.provide(HookOperatorDeny));
 
-/** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
+/**
+ * Request a replay under the denying operator policy. Reuse the request UUID after an ambiguous reply.
+ *
+ * @param declaration - Observer declaration that owns the dead letter.
+ * @param key - Delivery key retained from the failed attempt.
+ * @param requestId - Stable replay request UUID, not a fresh worker identifier.
+ * @returns A recovery Effect that refuses to reset work without operator access.
+ * @since 0.0.0
+ * @example
+ * const replay = replayDeadLetter(observerPin, failedKey, originalRequestId);
+ */
 export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
     Effect.gen(
         /** Reuse the caller-retained replay identifier; the denying policy prevents this sample from resetting work. */ function* () {
@@ -1097,7 +1201,18 @@ import { migrateResources, resourceHookProvider } from '@eventiva/integrations.s
 import type { Dialect } from '@eventiva/integrations.sql/migrations';
 import { resourceRuntime } from '@eventiva/runtime/resource';
 
-/** Privileged app composition only. The existing Storage migrations and authenticated SQL scope must be ready. */
+/**
+ * Prepare the contributed receipt schema on migrated, authenticated tenant storage after fencing workflow leases.
+ *
+ * @param dialect - Engine of the routed SQL client.
+ * @param tenant - Trusted tenant binding of that client.
+ * @param policy - Approved migration policy for this schema change.
+ * @param authorize - Live resource authorization supplied by the host.
+ * @returns A restart requirement or an unactivated provider and operations sharing its transaction.
+ * @since 0.0.0
+ * @example
+ * const preparation = composeExample('sqlite', routedTenant, migrationPolicy, authorizeResource);
+ */
 export const composeExample = (
     dialect: Dialect,
     tenant: TenantId,
@@ -1121,7 +1236,6 @@ export const composeExample = (
                     annotation: { type: 'text', optional: true },
                 },
             });
-            // The kernel must fence real workflow leases before this privileged execution call.
             const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
             if (migration.status === 'restart-required') return migration;
             const provider = yield* resourceHookProvider(
@@ -1130,7 +1244,13 @@ export const composeExample = (
                 { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
                 [annotated]
             );
-            /** Create an annotated record through the injected authorized resource runtime. */
+            /**
+             * Create a receipt through the authorized runtime using the contributed schema.
+             *
+             * @param id - Identity of the new receipt record.
+             * @param message - Value of its required text field.
+             * @returns A create Effect requiring the authorized resource runtime.
+             */
             const feature = (id: string, message: string) =>
                 Effect.gen(
                     /** Use the contributed schema without mutating the original resource declaration. */ function* () {
@@ -1141,8 +1261,15 @@ export const composeExample = (
                         });
                     }
                 );
-            // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
-            /** Atomically couple a resource write and trusted event staging using this provider's storage transaction. */
+            /**
+             * Stage the hook in the same transaction as the receipt so a rolled-back write emits no event.
+             *
+             * @param id - Identity of the receipt to create.
+             * @param message - Required receipt text, not a hook payload.
+             * @param event - Minimized facts supplied by trusted composition.
+             * @param observers - Exact observer pins approved for those facts.
+             * @returns The created record only when both writes succeed.
+             */
             const writeAndStage = (
                 id: string,
                 message: string,
@@ -1152,7 +1279,6 @@ export const composeExample = (
                 provider.storage.transaction(
                     Effect.gen(
                         /** Stage observers only after the domain create succeeds, rolling both back on failure. */ function* () {
-                            // Sharing the provider transaction prevents an event from describing a resource write that never committed.
                             const record = yield* feature(id, message);
                             yield* provider.outbox.stage(event, observers);
                             return record;
@@ -1365,6 +1491,14 @@ import { Effect, Exit, Scope } from 'effect';
  * Portable state only. The trusted host has already authenticated both callers
  * and admitted the registration. Keep its registration scope alive throughout.
  * Callers sharing a tenant/session share selection, not field masking authority.
+ *
+ * @param registration - Admitted screen registration with a live owner scope.
+ * @param mountingCaller - Authenticated identity that mounts the screen.
+ * @param currentViewer - Identity whose permissions apply to each subsequent read and invocation.
+ * @returns Visible state and invocation outcome before unmount, plus the result of reading after scope closure.
+ * @since 0.0.0
+ * @example
+ * const inspection = inspectMountedScreen(admitted, owner, viewer);
  */
 export const inspectMountedScreen = (
     registration: UiRegistration,
@@ -1377,7 +1511,11 @@ export const inspectMountedScreen = (
                 const context = yield* makeScreenContext;
                 const screenScope = yield* Scope.make();
                 yield* Effect.addFinalizer(
-                    /** Close the child even if mounting or inspection fails before the explicit unmount. */ () =>
+                    /**
+                     * Release the child even if inspection fails before the explicit unmount.
+                     *
+                     * @returns The Effect that closes the screen scope.
+                     */ () =>
                         Scope.close(screenScope, Exit.void)
                 );
                 yield* registration.mount.pipe(
@@ -1385,7 +1523,6 @@ export const inspectMountedScreen = (
                     Effect.provideService(Scope.Scope, screenScope),
                     Effect.provideService(Caller, mountingCaller)
                 );
-                // These effects retain Caller as a requirement until each call.
                 const visible = yield* context.read.pipe(Effect.provideService(Caller, currentViewer));
                 const invoked = yield* context.invoke('open').pipe(Effect.provideService(Caller, currentViewer));
                 yield* Scope.close(screenScope, Exit.void);
@@ -1556,18 +1693,31 @@ import {
 } from '@eventiva/runtime/kernel-runtime';
 import { Effect, Layer, Schema } from 'effect';
 
-// A neutral, trusted callable service contract, shared by providers and consumer.
 /** Example in-process message capability; the captured provider prefix makes selected bindings observable. */
 class Messages {
     /** Produce a deterministic message without IO or access to another provider's state. */
     readonly read: /** Read a key without IO; the result carries this instance's provider prefix. */ (key: string) => Effect.Effect<string>;
-    /** Bind this instance's immutable prefix for all subsequent reads. */
+    /**
+     * Make provider choice observable in each subsequent read.
+     *
+     * @param prefix - Label identifying the selected provider instance.
+     */
     constructor(prefix: string) {
-        this.read = /** Format a key using only this provider's captured prefix. */ (key) => Effect.succeed(`${prefix}:${key}`);
+        this.read = /**
+                     * Format the key without consulting shared state.
+                     *
+                     * @param key - Consumer's lookup key.
+                     * @returns A pure Effect containing the provider-qualified key.
+                     */ (key) => Effect.succeed(`${prefix}:${key}`);
     }
 }
 const MessagesSchema = Schema.instanceOf(Messages);
-/** Build a minimal example manifest with no implicit dependencies or migration work. */
+/**
+ * Declare a first-party module without implicit dependencies or migrations.
+ *
+ * @param id - Identity that the composition must pin at version 1.0.0.
+ * @returns An in-process manifest with no advertised capabilities yet.
+ */
 const manifest = (id: string): KernelManifest => ({
     id,
     version: '1.0.0',
@@ -1580,7 +1730,12 @@ const manifest = (id: string): KernelManifest => ({
     restartRequired: false,
 });
 
-/** Publish one typed messages instance under an explicit capability/version declaration. */
+/**
+ * Publish a schema-wrapped messages instance under an explicit version declaration.
+ *
+ * @param id - Provider module selected by the composition binding.
+ * @returns A definition exposing the instance named Tenant A.
+ */
 const provider = (id: string): ModuleDefinition => ({
     manifest: { ...manifest(id), provides: [{ name: 'Tenant A', capability: 'messages', version: '1.0.0' }] },
     validate: Effect.void,
@@ -1588,7 +1743,6 @@ const provider = (id: string): ModuleDefinition => ({
         KernelModule,
         Effect.gen(
             /** Wrap the trusted service instance for kernel admission and publish it under the manifest's instance name. */ function* () {
-                // Admission uses the schema-wrapped capability; publishing the raw instance would bypass that boundary.
                 const service = yield* kernelProvider(MessagesSchema, new Messages(id));
                 return KernelModule.of({
                     providers: new Map([['Tenant A', service]]),
@@ -1608,7 +1762,6 @@ const feature: ModuleDefinition = {
         KernelModule,
         Effect.gen(
             /** Resolve only the declared startup binding and use it during feature activation. */ function* () {
-                // Resolution stays in the kernel environment so choosing a provider cannot become ambient global lookup.
                 const environment = yield* KernelEnvironment;
                 const messages = yield* environment.resolve('startup', MessagesSchema);
                 return KernelModule.of({
@@ -1623,7 +1776,17 @@ const feature: ModuleDefinition = {
     ),
 };
 
-/** Supply authenticated identity and real admission/authorization policy at the app boundary. */
+/**
+ * Compose the feature with one explicitly bound provider under the supplied admission policy.
+ *
+ * @param caller - Authenticated identity admitted at the application boundary.
+ * @param authority - Host-owned admission and authorization policy.
+ * @param selected - Provider module whose messages instance satisfies the startup requirement.
+ * @returns The scoped composition receipt or the kernel's admission failure.
+ * @since 0.0.0
+ * @example
+ * const composition = runKernelExample(authenticated, admission, 'regional');
+ */
 export const runKernelExample = (
     caller: CallerIdentity,
     authority: Layer.Layer<KernelAuthority>,
@@ -1631,13 +1794,19 @@ export const runKernelExample = (
 ) =>
     Effect.gen(
         /** Compose the chosen provider and consumer with an exact instance binding in the authorized kernel scope. */ function* () {
-            // Pin both module identities and the binding; a capability name alone does not select an implementation.
             const kernel = yield* Kernel;
             const selectedProvider = provider(selected);
             return yield* kernel.compose(
                 {
                     modules: [feature.manifest, selectedProvider.manifest].map(
-                        /** Admit the exact module versions used by this composition. */ ({ id, version }) => ({
+                        /**
+                         * Pin the definition rather than relying on the capability name alone.
+                         *
+                         * @param manifest - Manifest of the selected provider or feature.
+                         * @param manifest.id - Module identity admitted by the kernel.
+                         * @param manifest.version - Exact declared version, not a range.
+                         * @returns The identity/version pair for the composition request.
+                         */ ({ id, version }) => ({
                             id,
                             version
                         })
@@ -1665,8 +1834,19 @@ import type { KernelAuthority } from '@eventiva/contracts/module-policy';
 import { Kernel, KernelLive, KernelProducer, type ModuleDefinition } from '@eventiva/runtime/kernel-runtime';
 import { Effect, Layer } from 'effect';
 
-/** Compose inside the caller's Scope with an already authenticated journal, classification policy and UUID source.
+/**
+ * Compose inside the caller's Scope with an already authenticated journal, classification policy and UUID source.
  * The host owns producer migrations/lifetime and authoritative reconciliation; this example enables no consumer.
+ *
+ * @param caller - Authenticated identity used to authorize composition.
+ * @param authority - Admission and lifecycle policy supplied by the host.
+ * @param journal - Migrated producer binding for the intended logical runtime.
+ * @param composition - Requested exact module versions and provider bindings.
+ * @param definitions - Implementations matching the pinned manifests.
+ * @returns The composed kernel and receipt in the serving host's scope.
+ * @since 0.0.0
+ * @example
+ * const prepared = composeDurableKernel(caller, policy, journal, pins, definitions);
  */
 export const composeDurableKernel = (
     caller: CallerIdentity,
@@ -1683,7 +1863,6 @@ export const composeDurableKernel = (
                     Layer.provide(Layer.succeed(KernelProducer, journal))
                 )
             );
-            // Scope belongs to the serving host, not a short-lived composition helper.
             const kernel = yield* Kernel.pipe(Effect.provide(context));
             const receipt = yield* kernel.compose(composition, definitions).pipe(Effect.provideService(Caller, caller));
             return { kernel, receipt };
@@ -1812,6 +1991,13 @@ This result is always Left with the closed trust-unapproved reason.
 import { privateExchangeUnavailable } from '@eventiva/runtime/marketplace';
 import { Effect } from 'effect';
 
+/**
+ * Expose the refusal as data so the caller can distinguish it from a successful release.
+ *
+ * @since 0.0.0
+ * @example
+ * const refusal = Effect.runSync(privateReleaseResult);
+ */
 export const privateReleaseResult = privateExchangeUnavailable.pipe(Effect.either);
 ```
 
@@ -1827,11 +2013,19 @@ import { marketplace } from '@eventiva/integrations.sql/marketplace';
 import type { Dialect } from '@eventiva/integrations.sql/migrations';
 import { Effect } from 'effect';
 
-/** Explicit lease/retry bounds come from approved policy, never this example. */
+/**
+ * Settle only a lease actually acquired on this tenant's outbox. No external party is invoked.
+ *
+ * @param dialect - Engine of the migrated marketplace database.
+ * @param input - Claim request with explicit approved lease and retry bounds.
+ * @returns A local recording Effect that skips settlement when the claim is absent.
+ * @since 0.0.0
+ * @example
+ * const recording = recordLocalMetadata('sqlite', boundedClaim);
+ */
 export const recordLocalMetadata = (dialect: Dialect, input: ClaimExchange) =>
     Effect.gen(
         /** Settle only a successfully claimed local metadata exchange; this sample invokes no external party. */ function* () {
-            // An absent claim means no owned lease, so settlement must not be attempted.
             const outbox = yield* MarketplaceOutbox;
             const claim = yield* outbox.claim(input);
             if (claim !== undefined) yield* outbox.settle({ claim, outcome: { state: 'recorded' } });
@@ -1934,7 +2128,16 @@ import { TrustUnavailable, type TrustPolicy, type TrustRequest } from '@eventiva
 import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect } from 'effect';
 
-/** Demonstrate fail-closed metadata preflight with unavailable verifiers; no private release is authorized. */
+/**
+ * Evaluate metadata with unavailable verifiers; no private release is authorized.
+ *
+ * @param request - Proposed exchange whose evidence must be checked independently.
+ * @param trustedPolicy - Preflight policy from the composition root.
+ * @returns A preflight Effect that fails unavailable rather than granting trust.
+ * @since 0.0.0
+ * @example
+ * const check = refusedPreflight(candidate, serverPolicy);
+ */
 export const refusedPreflight = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     trustPreflight(request, trustedPolicy).pipe(Effect.provide(TrustUnavailable));
 ```
@@ -1952,11 +2155,25 @@ import { TrustReplay, type TrustPolicy, type TrustRequest } from '@eventiva/cont
 import { trustReplay } from '@eventiva/integrations.sql/trust';
 import { Effect } from 'effect';
 
-/** The returned Effect still requires the intended trust database's SqlClient. */
+/**
+ * Consume a nonce outside an ambient SQL transaction after the caller completes independent trust checks.
+ *
+ * @param request - Verified request whose nonce must not be reused.
+ * @param trustedPolicy - Host policy governing consumption.
+ * @returns An Effect requiring the trust database and yielding an opaque receipt, not release authority.
+ * @since 0.0.0
+ * @example
+ * const consumption = consumeOnce(verified, policy);
+ */
 export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     TrustReplay.pipe(
         Effect.flatMap(
-            /** Consume against the injected durable authority only after the caller's independent trust checks. */ (
+            /**
+             * Delegate the uniqueness decision to durable storage.
+             *
+             * @param replay - Replay authority bound to the trust database.
+             * @returns The nonce consumption attempt for this policy and request.
+             */ (
                 replay
             ) => replay.consume(request, trustedPolicy)
         ),
@@ -1978,11 +2195,21 @@ import { verifyRequest } from '@eventiva/integrations.trust.server/crypto';
 import { trustPreflight } from '@eventiva/runtime/trust';
 import { Effect } from 'effect';
 
-/** Requires TrustDirectory plus the four gates and TrustReplay; Restricted decryption needs A4. */
+/**
+ * Verify the signed payload before preflight. Signature validity alone does not release a resource.
+ *
+ * @param signed - M2 envelope presented to the directory-backed verifier.
+ * @param body - Exact payload bytes whose digest must match the signed envelope.
+ * @param request - Exchange metadata evaluated by independent preflight gates.
+ * @param now - Trusted clock reading for signature verification and policy freshness.
+ * @returns The gated preflight Effect, not a decryption capability.
+ * @since 0.0.0
+ * @example
+ * const decision = admit(envelope, payload, exchange, trustedNow);
+ */
 export const admit = (signed: SignedRequest, body: Uint8Array, request: TrustRequest, now: number) =>
     Effect.gen(
         /** Authenticate the transport request first, then run the independent release preflight. */ function* () {
-            // A valid request signature does not supply the independent evidence needed to release the resource.
             const claims = yield* verifyRequest(signed, body, { audience: 'marketplace.cell', now });
             const preflight = yield* trustPreflight(request, trustPolicyAt(now, 'A4'));
             return { claims, preflight };
@@ -2240,6 +2467,10 @@ import { Effect } from 'effect';
  * Register only inside trusted tenant routing after productResources migration and Resources policy composition.
  * The ActionHost must share the provider's Storage owner for durable Integrity/Audit; Caller is supplied per call.
  * No application activation occurs here. Keep inventory.f6-inventory default-off while discovery compatibility is unresolved.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerPrivateProducts.pipe(Effect.provide(tenantHost));
  */
 export const registerPrivateProducts = Effect.gen(
     /** Register the same portable specifications and backend handlers for every authorized invocation surface. */ function* () {
@@ -2261,6 +2492,10 @@ import { Effect } from 'effect';
  * Register after importResources/productResources migration on the same tenant provider and durable host.
  * Supply StockImportSources, Resources, InputDigest, Flags, Authorizer, IdentityResolver and CurrentTenant.
  * Keep inventory.import.enabled and inventory.f6-inventory default-off; no application installation occurs here.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerMetadataImport.pipe(Effect.provide(tenantHost));
  */
 export const registerMetadataImport = Effect.gen(
     /** Capture the actual common host so nested product invocation joins its same-owner SQL savepoints. */ function* () {
@@ -2273,10 +2508,13 @@ export const registerMetadataImport = Effect.gen(
  * Demonstrate an explicitly reviewed synthetic one-row source with stable plan/row/product UUIDv7 identities.
  * Call only after registration and trusted routing with a canonical Caller. Reconcile an ambiguous apply reply
  * with this exact input and row idempotency key; never generate replacement identities or apply quantity.
+ *
+ * @since 0.0.0
+ * @example
+ * const importRun = Effect.zipRight(registerMetadataImport, reviewedMetadataExample);
  */
 export const reviewedMetadataExample = Effect.gen(
     /** A matched public model supplies provenance only; all product fields absent from CSV are explicitly reviewed here. */ function* () {
-        // This example assumes the trusted synthetic source has exactly one matching data row, not arbitrary caller CSV.
         const host = yield* ActionHost;
         const plan = '019b0000-0000-7000-8000-000000000100';
         const row = '019b0000-0000-7000-8000-000000000101';
@@ -2335,6 +2573,10 @@ import { Effect } from 'effect';
  * Register alongside productModule only after kit/product Resources migration and tenant-local live policy composition.
  * Share provider Storage with durable Integrity/Audit; supply Caller per invocation, not here.
  * This compiling example does not install or enable the default-off inventory capability.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerPrivateKits.pipe(Effect.provide(tenantHost));
  */
 export const registerPrivateKits = Effect.gen(
     /** Keep all surfaces on the same common host instead of calling a private handler or alternate kit writer. */ function* () {
@@ -2343,10 +2585,15 @@ export const registerPrivateKits = Effect.gen(
     }
 );
 
-/** A complete counted composition example; the two existing Product IDs must belong to the authenticated tenant. */
+/**
+ * Define and read a counted kit using existing products in the authenticated tenant; stock levels do not change.
+ *
+ * @since 0.0.0
+ * @example
+ * const kit = Effect.zipRight(registerPrivateKits, defineAndReadKit);
+ */
 export const defineAndReadKit = Effect.gen(
     /** Retain the original write key for acknowledgement recovery; a new key is not an overwrite or replay mechanism. */ function* () {
-        // This is composition metadata only: no quantity is added to stock and no product revision is changed.
         const host = yield* ActionHost;
         const id = '019b0000-0000-7000-8000-000000000010';
         yield* host.invoke(
@@ -2390,10 +2637,15 @@ import { declareSetting, settingsRead, settingsWrite, settingsResource } from '@
 import { ActionHost } from '@eventiva/runtime/host';
 import { settingsModule } from '@eventiva/runtime/settings';
 
-/** Return unactivated composition helpers; the trusted caller supplies Resources, digest, tenant and durable host services. */
+/**
+ * Prepare the resource and deferred registration and use Effects. Revision zero is create-only on the tenant store.
+ *
+ * @since 0.0.0
+ * @example
+ * const resource = example.pipe(Effect.map((prepared) => prepared.resource));
+ */
 export const example = Effect.gen(
     /** Validate metadata before returning resource migration and registration inputs. */ function* () {
-        // Return deferred operations, not activation: metadata validation supplies neither tenant authority nor a migrated store.
         const definition = yield* declareSetting({
             module: 'calendar',
             instance: 'primary',
@@ -2407,14 +2659,12 @@ export const example = Effect.gen(
         const resource = yield* settingsResource;
         const register = Effect.gen(
             /** Resources migrations/provider and a matching durable integrity owner must exist before this effect runs. */ function* () {
-                // Registration uses the caller's trusted host composition rather than installing a separate preference store.
                 const host = yield* ActionHost;
                 yield* host.register(yield* settingsModule([definition]));
             }
         );
         const use = Effect.gen(
             /** Invoke only after separately approved activation and authenticated permission checks. */ function* () {
-                // Revision zero is create-only; this example is an initial intent, not an unconditional overwrite recipe.
                 const host = yield* ActionHost;
                 const target = { module: 'calendar', instance: 'primary', key: 'page-size', scope: 'user' } as const;
                 const before = yield* host.invoke(settingsRead.name, target);
@@ -2508,25 +2758,38 @@ flag activation or authority grant. Run
 local SQL fixture and retain original HTTP conformance plus full gates. See
 `docs/http-actions.md#sequential-non-atomic-batches` for recovery and proof limits.
 
-### proof
+### Inspect current inventory only after credential verification inside one trusted tenant
 
-@title Inspect current inventory only after credential verification inside one trusted tenant
+Resolve live identity on the routed tenant before listing any action metadata.
 
 ```ts
 import { ActionInventory } from '@eventiva/contracts/inventory';
 import { authenticateTokenSession, type TokenPolicy } from '@eventiva/runtime/identity';
 import { Effect, type Redacted } from 'effect';
 
-/** Server-only metadata inspection, not an HTTP executor, accepting identity layer or permission snapshot. */
+/**
+ * Exclude sensitive actions from the currently visible inventory; visibility is not execution permission.
+ *
+ * @param proof - Protected token, not a principal UUID or provider subject.
+ * @param policy - Trusted issuer, audience and scope requirements.
+ * @returns A tenant-local inventory read that fails closed if authentication fails.
+ * @since 0.0.0
+ * @example
+ * const listing = inspectAfterProof(protectedToken, serverPolicy);
+ */
 export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: TokenPolicy) =>
     Effect.gen(
         /** Resolve the canonical tenant-local identity before asking the real registered inventory for current visibility. */ function* () {
-            // A UUID or raw provider subject is not proof; missing verification, SQL identity or policy must fail closed.
             const authenticated = yield* authenticateTokenSession(proof, policy);
             const inventory = yield* ActionInventory;
             const visible = yield* inventory.list(authenticated.caller);
             return visible.filter(
-                /** Apply the same conservative sensitive-action exclusion used by the local HTTP projection. */ (
+                /**
+                 * Apply the local HTTP projection's conservative exclusion.
+                 *
+                 * @param action - Descriptor already visible to the authenticated caller.
+                 * @returns Whether this descriptor can appear in the nonsensitive listing.
+                 */ (
                     action
                 ) => !action.sensitive
             );
@@ -2534,9 +2797,9 @@ export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: Toke
     );
 ```
 
-### client
+### Invoke a canonical specification with portable domain types and separately protected current proof
 
-@title Invoke a canonical specification with portable domain types and separately protected current proof
+Bind credentials independently of action input and evaluate them when the Effect runs.
 
 ```ts
 import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
@@ -2553,6 +2816,15 @@ import { Effect, Layer, Schema } from 'effect';
  * Build an unexecuted canonical call; the caller still provides its platform HttpClient and runs the Effect.
  * The protected store effect is evaluated on every call, while server identity/consent/policy remain live authority.
  * This is the spec-typed single-action boundary, not generated inventory, streaming or offline support.
+ *
+ * @param spec - Canonical specification defining the wire codec and inferred result.
+ * @param input - Domain input accepted by that specification.
+ * @param target - Trusted endpoint and caller-retained mutation key when required.
+ * @param currentProof - Protected credential lookup evaluated for the call.
+ * @returns An unexecuted invocation requiring the platform HTTP client.
+ * @since 0.0.0
+ * @example
+ * const call = callWithCurrentProof(reserve, { units: 7 }, target, readProof);
  */
 export const callWithCurrentProof = <S extends ActionSpec>(
     spec: S,
@@ -2569,6 +2841,13 @@ export const callWithCurrentProof = <S extends ActionSpec>(
  * Provide an unretried platform HttpClient to execute; references/servers remain inert JSON, never destinations.
  * Actual body intake is capped at 1 MiB, 64 nested containers and 100000 structural tokens before JSON decoding.
  * A refresh failure is not permission to reuse a prior snapshot as current authority; invocation still needs canonical specs.
+ *
+ * @param target - Discovery endpoint selected by the caller, not by a returned reference.
+ * @param currentProof - Protected credential lookup for this GET.
+ * @returns A deferred read of the caller's private discovery snapshot.
+ * @since 0.0.0
+ * @example
+ * const discovery = discoverWithCurrentProof(target, readProof);
  */
 export const discoverWithCurrentProof = (
     target: Omit<HttpActionTarget, 'idempotencyKey'>,
@@ -2577,7 +2856,12 @@ export const discoverWithCurrentProof = (
     discoverHttpActions(target).pipe(
         Effect.provideService(HttpActionCredentials, { proof: currentProof }),
         Effect.map(
-            /** The typed envelope retains optional components and arbitrary JSON extensions without compiling them. */ (
+            /**
+             * Project the typed envelope without compiling JSON extensions.
+             *
+             * @param document - Validated private snapshot from this GET.
+             * @returns Its discovery fields alongside the complete inert document.
+             */ (
                 document
             ) => ({
                 version: document.openapi,
@@ -2613,6 +2897,13 @@ const annotate = define('example.annotate', {
  * Prepare one heterogeneous sequential batch without executing it. Supply an unretried platform HttpClient to run.
  * Retain these exact keys and inputs for explicit recovery: a failure may follow a committed prefix and supplies
  * no partial results/index or rollback guarantee. Wire receipts can change while original SQL commits remain stable.
+ *
+ * @param target - Batch endpoint; each enclosed mutation owns its idempotency key.
+ * @param currentProof - Protected credential lookup for this request.
+ * @returns A deferred batch yielding positional results and both receipt identifiers on success.
+ * @since 0.0.0
+ * @example
+ * const batch = batchWithCurrentProof(target, readProof);
  */
 export const batchWithCurrentProof = (
     target: Omit<HttpActionTarget, 'idempotencyKey'>,
@@ -2628,7 +2919,12 @@ export const batchWithCurrentProof = (
     ).pipe(
         Effect.provide(Layer.succeed(HttpActionCredentials, { proof: currentProof })),
         Effect.map(
-            /** Each result retains its canonical position without a union, cast or copied DTO. */ (results) => ({
+            /**
+             * Project typed outputs in request order.
+             *
+             * @param results - Successful reserve and annotate results, respectively.
+             * @returns Both values and their attempt receipts without widening them to a union.
+             */ (results) => ({
                 reserved: results[0].output.reserved,
                 accepted: results[1].output.accepted,
                 receipts: [results[0].receiptId, results[1].receiptId],
@@ -2637,9 +2933,9 @@ export const batchWithCurrentProof = (
     );
 ```
 
-### batch
+### Preserve caller-owned keys and ordered wire inputs for explicit non-atomic batch recovery
 
-@title Preserve caller-owned keys and ordered wire inputs for explicit non-atomic batch recovery
+Retain the decoded envelope after a partial failure; earlier writes may already have committed.
 
 ```ts
 import { JsonValue } from '@eventiva/contracts/storage';
@@ -2652,7 +2948,13 @@ const Call = Schema.Struct({
 });
 const Envelope = Schema.Struct({ calls: Schema.Array(Call).pipe(Schema.minItems(1), Schema.maxItems(10)) });
 
-/** Pure synthetic payload validation only; neither possession of this envelope nor a specification grants authority. */
+/**
+ * Validate the synthetic envelope without invoking any action or granting authority.
+ *
+ * @since 0.0.0
+ * @example
+ * const decodedEnvelope = batchExample;
+ */
 export const batchExample = Schema.decodeUnknown(Envelope)(
     {
         calls: [
@@ -2663,9 +2965,6 @@ export const batchExample = Schema.decodeUnknown(Envelope)(
     },
     { onExcessProperty: 'error' }
 );
-
-// Keep this same decoded envelope for recovery. The server independently preflights current visibility, then reauthorizes each invocation.
-// After failure the committed prefix stays committed. A replay has fresh attempt receipt IDs and must not be mistaken for an atomic rollback.
 ```
 
 ---
@@ -2717,13 +3016,18 @@ import { Caller } from '@eventiva/contracts/caller';
 import { ActionHost } from '@eventiva/runtime/host';
 import { Effect } from 'effect';
 
-/** Exercise all six public actions under the caller supplied by the authenticated route, without installing policy or activating a module. */
+/**
+ * Exercise the organisation lifecycle on a fresh tenant fixture. Each distinct mutation keeps its own retry key.
+ *
+ * @since 0.0.0
+ * @example
+ * const walkthrough = organisationLifecycle.pipe(Effect.provide(authenticatedFixture));
+ */
 export const organisationLifecycle = Effect.gen(
     /** Demonstrate revisions one through four in a fresh sequential fixture; concurrent clients must reread conflicts. */ function* () {
         const host = yield* ActionHost;
         const caller = yield* Caller;
         const id = '019b0000-0000-7000-8000-000000000001';
-        // Each intentional mutation has its own stable retry key; this demonstration must use a fresh fixture database.
         const created = yield* host.invoke(
             'crm.organisation.create',
             {
@@ -2756,18 +3060,22 @@ export const organisationLifecycle = Effect.gen(
             { idempotencyKey: 'crm-example-restore' }
         );
         const page = yield* host.invoke('crm.organisation.list', { limit: 2 });
-        // Return private results to the authorised caller only; do not annotate spans or logs with these values.
         return { created, updated, archived, hidden, visibleArchive, restored, page, tenant: caller.tenant };
     }
 );
 
-/** Use an existing active organisation and fresh IDs/keys; sensitive work contacts never activate an HTTP route or verification. */
+/**
+ * Exercise work contacts on an active organisation using fresh IDs and keys. Keep the historical private results with the caller.
+ *
+ * @since 0.0.0
+ * @example
+ * const contacts = organisationWorkContacts.pipe(Effect.provide(authenticatedFixture));
+ */
 export const organisationWorkContacts = Effect.gen(
     /** Demonstrate exact canonical action names, expected revisions and explicit original-key recovery without logging contact values. */ function* () {
         const host = yield* ActionHost;
         const organisationId = '019b0000-0000-7000-8000-000000000001';
         const id = '019b0000-0000-7000-8000-000000000011';
-        // The existing ActionName grammar is lowercase; conceptual contactPoint/setPrimary are not wire aliases.
         const input = { id, organisationId, kind: 'email', label: 'work', value: 'Sales.Team+demo@Example.test' };
         const added = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
         const recovered = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
@@ -2788,7 +3096,6 @@ export const organisationWorkContacts = Effect.gen(
             { id, organisationId, expectedRevision: 3 },
             { idempotencyKey: 'crm-contact-remove' }
         );
-        // Removal retains immutable history; authorized replay is historical output, not a fresh domain-state read.
         return { added, recovered, updated, primary, current, page, removed };
     }
 );
@@ -2810,21 +3117,26 @@ The compiling example assumes an already composed authenticated host, not a poli
 
 The full-page ancestry test batches only its 920 synthetic setup rows into current/revision tables within the existing Resources transaction. Both dialects were compared against the real 920-call API loop before qualification: ordered record, revision, schema definition/checksum and tenant-pin bytes match exactly, and both rollback to the original state. Preserve the hexadecimal IDs, active schema version, revision 1 and encoded payload field order when maintaining this fixture. Public-host assertions, schema pins, rollback checks and the 60-second budget remain unchanged; direct SQL setup is not feature authorization or permission to bypass the production graph guard/live per-node policy. The people guide records the bounded diagnostic measurements and digest, not production traversal acceptance.
 
-### locations
+### Invoke metadata without asserting stock
 
-@title Invoke metadata without asserting stock
+Exercise location metadata under a routed caller; a location record says nothing about on-hand stock.
 
 ```ts
 import { ActionHost } from '@eventiva/runtime/host';
 import { Effect } from 'effect';
 
-/** Run on a fresh synthetic authenticated host; stable keys represent each intentional mutation, not automatic retries. */
+/**
+ * Run on a fresh synthetic authenticated host; stable keys represent each intentional mutation, not automatic retries.
+ *
+ * @since 0.0.0
+ * @example
+ * const walkthrough = locationLifecycle.pipe(Effect.provide(authenticatedFixture));
+ */
 export const locationLifecycle = Effect.gen(
     /** Preserve root/null semantics and immutable kinds while demonstrating revisioned explicit detachment. */ function* () {
         const host = yield* ActionHost;
         const warehouse = '019b0000-0000-7000-8000-000000000001';
         const bin = '019b0000-0000-7000-8000-000000000002';
-        // Caller and tenant come from the route; no location input supplies or grants authority.
         yield* host.invoke(
             'inventory.location.create',
             {
@@ -2856,7 +3168,6 @@ export const locationLifecycle = Effect.gen(
         );
         const current = yield* host.invoke('inventory.location.get', { id: bin });
         const roots = yield* host.invoke('inventory.location.list', { parent: null, limit: 25 });
-        // Results are private caller data, never log attributes or assertions of empty stock.
         return { detached, current, roots };
     }
 );
@@ -2921,10 +3232,15 @@ import { ActionHost } from '@eventiva/runtime/host';
 import { invoiceDraftModule, invoiceDraftResources } from '@eventiva/runtime/invoice-draft';
 import { Effect } from 'effect';
 
-/** Unactivated example: trusted composition supplies migrated Organisation/Resources and matching durable tenant host services. */
+/**
+ * Prepare registration and draft operations for migrated tenant resources. Neither registration nor declaration grants reference access.
+ *
+ * @since 0.0.0
+ * @example
+ * const declaration = example.pipe(Effect.map((prepared) => prepared.resource));
+ */
 export const example = Effect.gen(
     /** Return deferred operations, never prepare invoices, register services or enable flags merely by importing documentation. */ function* () {
-        // These synthetic references must already exist as accessible active Organisation Parties before use.
         const snapshot: InvoiceRevision = {
             invoice: '019b0000-0000-7000-8000-000000000010',
             revision: 1,
@@ -2941,14 +3257,12 @@ export const example = Effect.gen(
         const resource = yield* invoiceDraftResources;
         const register = Effect.gen(
             /** Defer until a trusted host and the exact tenant Resources/Storage owner have been composed. */ function* () {
-                // Neither this resource declaration nor a module registration grants accounting or reference access.
                 const host = yield* ActionHost;
                 yield* host.register(yield* invoiceDraftModule);
             }
         );
         const use = Effect.gen(
             /** Full explicit replacement is preparation only; no provider, issue number or payment result exists. */ function* () {
-                // Reuse original key/input only to reconcile this first write, never to submit the changed revision.
                 const host = yield* ActionHost;
                 const original = yield* host.invoke(
                     invoiceDraft.name,
@@ -3174,9 +3488,9 @@ real web/native activity may renew the same canonical session. Agents, polling,
 prefetch, background sync and token refresh never qualify. EVE-248 remains deferred
 to January 2027 with budgets/settings unchanged; no dependency/spend/activation.
 
-### sign_in
+### Record bounded sign-in anchors without treating token refresh as user activity
 
-@title Record bounded sign-in anchors without treating token refresh as user activity
+Open a session at sign-in; refreshing a token must not reset its activity deadline.
 
 ```ts
 import { openOidcSession } from '@eventiva/integrations.oidc/session';
@@ -3185,6 +3499,12 @@ import type { OidcAccessClaims } from '@eventiva/integrations.oidc/token';
 /**
  * Lower-level example with explicit selected bounds, not production configuration. Supply freshly verified claims
  * inside the trusted tenant Storage transaction with its required audit; server login normally uses the policy wrapper.
+ *
+ * @param claims - Freshly verified access-token claims for the linked subject.
+ * @returns The opening Effect with a one-hour idle bound and an eight-hour absolute bound.
+ * @since 0.0.0
+ * @example
+ * const session = openBoundedSession(verifiedClaims);
  */
 export const openBoundedSession = (claims: OidcAccessClaims) =>
     openOidcSession(claims, { idleMs: 3_600_000, absoluteMs: 28_800_000 });

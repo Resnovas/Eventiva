@@ -23,6 +23,10 @@ import { Effect } from 'effect';
  * Register alongside productModule only after kit/product Resources migration and tenant-local live policy composition.
  * Share provider Storage with durable Integrity/Audit; supply Caller per invocation, not here.
  * This compiling example does not install or enable the default-off inventory capability.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerPrivateKits.pipe(Effect.provide(tenantHost));
  */
 export const registerPrivateKits = Effect.gen(
     /** Keep all surfaces on the same common host instead of calling a private handler or alternate kit writer. */ function* () {
@@ -31,10 +35,15 @@ export const registerPrivateKits = Effect.gen(
     }
 );
 
-/** A complete counted composition example; the two existing Product IDs must belong to the authenticated tenant. */
+/**
+ * Define and read a counted kit using existing products in the authenticated tenant; stock levels do not change.
+ *
+ * @since 0.0.0
+ * @example
+ * const kit = Effect.zipRight(registerPrivateKits, defineAndReadKit);
+ */
 export const defineAndReadKit = Effect.gen(
     /** Retain the original write key for acknowledgement recovery; a new key is not an overwrite or replay mechanism. */ function* () {
-        // This is composition metadata only: no quantity is added to stock and no product revision is changed.
         const host = yield* ActionHost;
         const id = '019b0000-0000-7000-8000-000000000010';
         yield* host.invoke(

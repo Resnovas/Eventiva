@@ -15,20 +15,28 @@
  */
 
 /**
- * @title Commit an action with its outbox command
  * Provide the same tenant-scoped Storage service to Integrity and handlers.
  * The runtime supplies the validated successful receipt and rechecks live gates.
+ *
+ * @title Commit an action with its outbox command
  */
 import type { Receipt } from '@eventiva/contracts/receipt';
 import { Storage } from '@eventiva/contracts/storage';
 import { Integrity } from '@eventiva/runtime/invocation';
 import { Effect } from 'effect';
 
-/** Commit the supplied successful receipt with an invoice outbox command using the caller's tenant-bound services. */
+/**
+ * Commit the invoice command on the receipt's tenant storage so neither write can survive alone.
+ *
+ * @param receipt - Successful invocation receipt with the admitted action version.
+ * @returns An Effect that stages the durable command without dispatching an invoice.
+ * @since 0.0.0
+ * @example
+ * const commit = stage(successfulReceipt);
+ */
 export const stage = (receipt: Receipt & { readonly version: number }) =>
     Effect.gen(
         /** Couple outbox staging to integrity commit rather than dispatching an external invoice during the transaction. */ function* () {
-            // Both services must share the tenant storage so receipt and command cannot commit independently.
             const storage = yield* Storage;
             const integrity = yield* Integrity;
             return yield* integrity.commit(
@@ -41,7 +49,6 @@ export const stage = (receipt: Receipt & { readonly version: number }) =>
                 },
                 Effect.gen(
                     /** Stage only the durable command and return the receipt; delivery belongs to an outbox consumer. */ function* () {
-                        // Keep money as an exact minor-unit string rather than a lossy JavaScript number.
                         yield* storage.enqueue('invoice:1', {
                             type: 'send-invoice',
                             minorUnits: '9007199254740993',

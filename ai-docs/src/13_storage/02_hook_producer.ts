@@ -18,12 +18,25 @@ import { HookDenied, HookProducer, HookProducerDeny, type HookProducerTarget } f
 import { hookProducer } from '@eventiva/integrations.sql/hook-producer';
 import { Effect } from 'effect';
 
-/** Supply authenticated CurrentTenant and SqlClient after migration 0008; build once per restart. */
+/**
+ * Bind the producer journal to the tenant SQLite client after migration 0008.
+ *
+ * @since 0.0.0
+ * @example
+ * const commit = commitTransition(requestId, target, mutate).pipe(Effect.provide(journal));
+ */
 export const journal = hookProducer('sqlite', 'platform.primary');
 
-/** Only the trusted mutation owner supplies this callback and its authoritative policy binding.
- * The callback must use the retained request UUID for idempotency/status reconciliation.
- * An error leaves the attempt unresolved: failure is not proof of no external effect.
+/**
+ * Invoke the mutation only for a fresh attempt. Reconcile a lost acknowledgement rather than repeating an external write.
+ *
+ * @param request - Stable request UUID retained across recovery.
+ * @param target - Policy binding supplied by the trusted mutation owner.
+ * @param commit - Mutation that uses the journal's attempt identifier as its idempotency key.
+ * @returns An Effect yielding the mutation result only after the journal confirms the attempt.
+ * @since 0.0.0
+ * @example
+ * const operation = commitTransition(requestId, policyTarget, writeOnce);
  */
 export const commitTransition = <A, E, R>(
     request: string,
@@ -35,7 +48,6 @@ export const commitTransition = <A, E, R>(
         /** Persist intent before the mutation and publish confirmation only after its success. */ function* () {
             const producer = yield* HookProducer;
             const attempt = yield* producer.begin(request, target);
-            // An existing attempt may already have changed external state; retry status, never the callback.
             if (!attempt.fresh) return yield* new HookDenied({ reason: 'unavailable' });
             const value = yield* commit(attempt.attempt.id);
             yield* producer.confirm(request);
@@ -43,8 +55,14 @@ export const commitTransition = <A, E, R>(
         }
     );
 
-/** Inspect/reconcile instead of reinvoking after a crash or lost confirmation acknowledgement.
- * This example is deliberately denied until a core status authority is supplied.
+/**
+ * Inspect the retained request without reinvoking the mutation. The example supplies a denying status authority.
+ *
+ * @param request - Original request UUID, including after a process restart.
+ * @returns A reconciliation Effect that denies access rather than guessing whether the mutation committed.
+ * @since 0.0.0
+ * @example
+ * const status = reconcile(originalRequestId);
  */
 export const reconcile = (request: string) =>
     Effect.gen(

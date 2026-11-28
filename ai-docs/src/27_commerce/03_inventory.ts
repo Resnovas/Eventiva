@@ -22,6 +22,10 @@ import { Effect } from 'effect';
  * Register only inside trusted tenant routing after productResources migration and Resources policy composition.
  * The ActionHost must share the provider's Storage owner for durable Integrity/Audit; Caller is supplied per call.
  * No application activation occurs here. Keep inventory.f6-inventory default-off while discovery compatibility is unresolved.
+ *
+ * @since 0.0.0
+ * @example
+ * const registration = registerPrivateProducts.pipe(Effect.provide(tenantHost));
  */
 export const registerPrivateProducts = Effect.gen(
     /** Register the same portable specifications and backend handlers for every authorized invocation surface. */ function* () {

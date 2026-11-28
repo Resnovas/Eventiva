@@ -33,6 +33,11 @@
 8. **Idempotent replay semantics**:
    - Mutation deduplication keys bind `(tenant, subject, delegation, action, version, idempotencyKey)` so retries span refreshed sessions without crossing delegation boundaries (`packages/runtime/src/storage.ts`, `tests/runtime/src/caller-qualification.spec.ts`).
    - Replay separates deduplication from authority: every replay re-runs live identity, policy, approval, step-up, and optimistic precondition (`expectedVersion`/`expectedState`) checks, and writes its own fenced replay audit receipt attributed to the newly admitted session (`packages/runtime/src/execution.ts`, `packages/runtime/src/storage.ts`, `tests/runtime/src/execution-approval-commit.spec.ts`).
+   - An ordered HTTP batch can fail after a committed prefix. Keep its original keys and inputs for reconciliation; a new receipt identifies a new attempt, not a rollback. Historical output is private to the authorized caller and is not a current resource read (`ai-docs/src/29_http/03_batch.ts`, `ai-docs/src/30_crm/01_organisations.ts`).
+9. **Durable event boundaries in the compiling examples**:
+   - Use the domain write's tenant storage transaction for its receipt, minimized hook facts and approved observer pins. Otherwise an invoice command or observer event could survive a rolled-back write. Keep money in exact minor-unit strings; the storage example deliberately exceeds JavaScript's safe integer range.
+   - Read the hook feed outside the transaction and persist its cursor only after durable acceptance. A retained producer attempt may already have mutated an external system: query its status rather than invoking its callback again. For output reconnect, retry identical event content and read strictly after its committed offset.
+   - Registration and metadata examples confer no execution or release authority. The host supplies the current caller and authenticated tenant, checks field visibility at use time, and keeps private results out of telemetry. Recording an exchange requires an owned lease; a valid signature, inventory listing, kit definition or location record grants neither decryption nor a stock movement.
 
 ## Consequences
 

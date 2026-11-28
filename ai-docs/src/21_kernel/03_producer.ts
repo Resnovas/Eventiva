@@ -20,8 +20,19 @@ import type { KernelAuthority } from '@eventiva/contracts/module-policy';
 import { Kernel, KernelLive, KernelProducer, type ModuleDefinition } from '@eventiva/runtime/kernel-runtime';
 import { Effect, Layer } from 'effect';
 
-/** Compose inside the caller's Scope with an already authenticated journal, classification policy and UUID source.
+/**
+ * Compose inside the caller's Scope with an already authenticated journal, classification policy and UUID source.
  * The host owns producer migrations/lifetime and authoritative reconciliation; this example enables no consumer.
+ *
+ * @param caller - Authenticated identity used to authorize composition.
+ * @param authority - Admission and lifecycle policy supplied by the host.
+ * @param journal - Migrated producer binding for the intended logical runtime.
+ * @param composition - Requested exact module versions and provider bindings.
+ * @param definitions - Implementations matching the pinned manifests.
+ * @returns The composed kernel and receipt in the serving host's scope.
+ * @since 0.0.0
+ * @example
+ * const prepared = composeDurableKernel(caller, policy, journal, pins, definitions);
  */
 export const composeDurableKernel = (
     caller: CallerIdentity,
@@ -38,7 +49,6 @@ export const composeDurableKernel = (
                     Layer.provide(Layer.succeed(KernelProducer, journal))
                 )
             );
-            // Scope belongs to the serving host, not a short-lived composition helper.
             const kernel = yield* Kernel.pipe(Effect.provide(context));
             const receipt = yield* kernel.compose(composition, definitions).pipe(Effect.provideService(Caller, caller));
             return { kernel, receipt };

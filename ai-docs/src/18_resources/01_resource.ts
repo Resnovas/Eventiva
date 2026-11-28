@@ -27,7 +27,18 @@ import { migrateResources, resourceHookProvider } from '@eventiva/integrations.s
 import type { Dialect } from '@eventiva/integrations.sql/migrations';
 import { resourceRuntime } from '@eventiva/runtime/resource';
 
-/** Privileged app composition only. The existing Storage migrations and authenticated SQL scope must be ready. */
+/**
+ * Prepare the contributed receipt schema on migrated, authenticated tenant storage after fencing workflow leases.
+ *
+ * @param dialect - Engine of the routed SQL client.
+ * @param tenant - Trusted tenant binding of that client.
+ * @param policy - Approved migration policy for this schema change.
+ * @param authorize - Live resource authorization supplied by the host.
+ * @returns A restart requirement or an unactivated provider and operations sharing its transaction.
+ * @since 0.0.0
+ * @example
+ * const preparation = composeExample('sqlite', routedTenant, migrationPolicy, authorizeResource);
+ */
 export const composeExample = (
     dialect: Dialect,
     tenant: TenantId,
@@ -51,7 +62,6 @@ export const composeExample = (
                     annotation: { type: 'text', optional: true },
                 },
             });
-            // The kernel must fence real workflow leases before this privileged execution call.
             const migration = yield* migrateResources(dialect, tenant, [initial, annotated], policy);
             if (migration.status === 'restart-required') return migration;
             const provider = yield* resourceHookProvider(
@@ -60,7 +70,13 @@ export const composeExample = (
                 { key: { module: 'platform-sql', instance: 'operational' }, version: '1.0.0' },
                 [annotated]
             );
-            /** Create an annotated record through the injected authorized resource runtime. */
+            /**
+             * Create a receipt through the authorized runtime using the contributed schema.
+             *
+             * @param id - Identity of the new receipt record.
+             * @param message - Value of its required text field.
+             * @returns A create Effect requiring the authorized resource runtime.
+             */
             const feature = (id: string, message: string) =>
                 Effect.gen(
                     /** Use the contributed schema without mutating the original resource declaration. */ function* () {
@@ -71,8 +87,15 @@ export const composeExample = (
                         });
                     }
                 );
-            // Trusted composition supplies minimized facts and exact approved observer pins, never raw feature input.
-            /** Atomically couple a resource write and trusted event staging using this provider's storage transaction. */
+            /**
+             * Stage the hook in the same transaction as the receipt so a rolled-back write emits no event.
+             *
+             * @param id - Identity of the receipt to create.
+             * @param message - Required receipt text, not a hook payload.
+             * @param event - Minimized facts supplied by trusted composition.
+             * @param observers - Exact observer pins approved for those facts.
+             * @returns The created record only when both writes succeed.
+             */
             const writeAndStage = (
                 id: string,
                 message: string,
@@ -82,7 +105,6 @@ export const composeExample = (
                 provider.storage.transaction(
                     Effect.gen(
                         /** Stage observers only after the domain create succeeds, rolling both back on failure. */ function* () {
-                            // Sharing the provider transaction prevents an event from describing a resource write that never committed.
                             const record = yield* feature(id, message);
                             yield* provider.outbox.stage(event, observers);
                             return record;

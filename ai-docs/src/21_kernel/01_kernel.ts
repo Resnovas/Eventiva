@@ -28,18 +28,31 @@ import {
 } from '@eventiva/runtime/kernel-runtime';
 import { Effect, Layer, Schema } from 'effect';
 
-// A neutral, trusted callable service contract, shared by providers and consumer.
 /** Example in-process message capability; the captured provider prefix makes selected bindings observable. */
 class Messages {
     /** Produce a deterministic message without IO or access to another provider's state. */
     readonly read: /** Read a key without IO; the result carries this instance's provider prefix. */ (key: string) => Effect.Effect<string>;
-    /** Bind this instance's immutable prefix for all subsequent reads. */
+    /**
+     * Make provider choice observable in each subsequent read.
+     *
+     * @param prefix - Label identifying the selected provider instance.
+     */
     constructor(prefix: string) {
-        this.read = /** Format a key using only this provider's captured prefix. */ (key) => Effect.succeed(`${prefix}:${key}`);
+        this.read = /**
+                     * Format the key without consulting shared state.
+                     *
+                     * @param key - Consumer's lookup key.
+                     * @returns A pure Effect containing the provider-qualified key.
+                     */ (key) => Effect.succeed(`${prefix}:${key}`);
     }
 }
 const MessagesSchema = Schema.instanceOf(Messages);
-/** Build a minimal example manifest with no implicit dependencies or migration work. */
+/**
+ * Declare a first-party module without implicit dependencies or migrations.
+ *
+ * @param id - Identity that the composition must pin at version 1.0.0.
+ * @returns An in-process manifest with no advertised capabilities yet.
+ */
 const manifest = (id: string): KernelManifest => ({
     id,
     version: '1.0.0',
@@ -52,7 +65,12 @@ const manifest = (id: string): KernelManifest => ({
     restartRequired: false,
 });
 
-/** Publish one typed messages instance under an explicit capability/version declaration. */
+/**
+ * Publish a schema-wrapped messages instance under an explicit version declaration.
+ *
+ * @param id - Provider module selected by the composition binding.
+ * @returns A definition exposing the instance named Tenant A.
+ */
 const provider = (id: string): ModuleDefinition => ({
     manifest: { ...manifest(id), provides: [{ name: 'Tenant A', capability: 'messages', version: '1.0.0' }] },
     validate: Effect.void,
@@ -60,7 +78,6 @@ const provider = (id: string): ModuleDefinition => ({
         KernelModule,
         Effect.gen(
             /** Wrap the trusted service instance for kernel admission and publish it under the manifest's instance name. */ function* () {
-                // Admission uses the schema-wrapped capability; publishing the raw instance would bypass that boundary.
                 const service = yield* kernelProvider(MessagesSchema, new Messages(id));
                 return KernelModule.of({
                     providers: new Map([['Tenant A', service]]),
@@ -80,7 +97,6 @@ const feature: ModuleDefinition = {
         KernelModule,
         Effect.gen(
             /** Resolve only the declared startup binding and use it during feature activation. */ function* () {
-                // Resolution stays in the kernel environment so choosing a provider cannot become ambient global lookup.
                 const environment = yield* KernelEnvironment;
                 const messages = yield* environment.resolve('startup', MessagesSchema);
                 return KernelModule.of({
@@ -95,7 +111,17 @@ const feature: ModuleDefinition = {
     ),
 };
 
-/** Supply authenticated identity and real admission/authorization policy at the app boundary. */
+/**
+ * Compose the feature with one explicitly bound provider under the supplied admission policy.
+ *
+ * @param caller - Authenticated identity admitted at the application boundary.
+ * @param authority - Host-owned admission and authorization policy.
+ * @param selected - Provider module whose messages instance satisfies the startup requirement.
+ * @returns The scoped composition receipt or the kernel's admission failure.
+ * @since 0.0.0
+ * @example
+ * const composition = runKernelExample(authenticated, admission, 'regional');
+ */
 export const runKernelExample = (
     caller: CallerIdentity,
     authority: Layer.Layer<KernelAuthority>,
@@ -103,13 +129,19 @@ export const runKernelExample = (
 ) =>
     Effect.gen(
         /** Compose the chosen provider and consumer with an exact instance binding in the authorized kernel scope. */ function* () {
-            // Pin both module identities and the binding; a capability name alone does not select an implementation.
             const kernel = yield* Kernel;
             const selectedProvider = provider(selected);
             return yield* kernel.compose(
                 {
                     modules: [feature.manifest, selectedProvider.manifest].map(
-                        /** Admit the exact module versions used by this composition. */ ({ id, version }) => ({
+                        /**
+                         * Pin the definition rather than relying on the capability name alone.
+                         *
+                         * @param manifest - Manifest of the selected provider or feature.
+                         * @param manifest.id - Module identity admitted by the kernel.
+                         * @param manifest.version - Exact declared version, not a range.
+                         * @returns The identity/version pair for the composition request.
+                         */ ({ id, version }) => ({
                             id,
                             version
                         })

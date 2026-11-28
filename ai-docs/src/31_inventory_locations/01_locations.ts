@@ -14,17 +14,26 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Invoke metadata without asserting stock */
+/**
+ * Exercise location metadata under a routed caller; a location record says nothing about on-hand stock.
+ *
+ * @title Invoke metadata without asserting stock
+ */
 import { ActionHost } from '@eventiva/runtime/host';
 import { Effect } from 'effect';
 
-/** Run on a fresh synthetic authenticated host; stable keys represent each intentional mutation, not automatic retries. */
+/**
+ * Run on a fresh synthetic authenticated host; stable keys represent each intentional mutation, not automatic retries.
+ *
+ * @since 0.0.0
+ * @example
+ * const walkthrough = locationLifecycle.pipe(Effect.provide(authenticatedFixture));
+ */
 export const locationLifecycle = Effect.gen(
     /** Preserve root/null semantics and immutable kinds while demonstrating revisioned explicit detachment. */ function* () {
         const host = yield* ActionHost;
         const warehouse = '019b0000-0000-7000-8000-000000000001';
         const bin = '019b0000-0000-7000-8000-000000000002';
-        // Caller and tenant come from the route; no location input supplies or grants authority.
         yield* host.invoke(
             'inventory.location.create',
             {
@@ -56,7 +65,6 @@ export const locationLifecycle = Effect.gen(
         );
         const current = yield* host.invoke('inventory.location.get', { id: bin });
         const roots = yield* host.invoke('inventory.location.list', { parent: null, limit: 25 });
-        // Results are private caller data, never log attributes or assertions of empty stock.
         return { detached, current, roots };
     }
 );

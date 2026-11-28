@@ -15,20 +15,26 @@
  */
 
 /**
- * @title Invoke the bounded organisation lifecycle
  * Use an already composed authenticated host; UUID identity and revision remain stable across edits and archive state.
+ *
+ * @title Invoke the bounded organisation lifecycle
  */
 import { Caller } from '@eventiva/contracts/caller';
 import { ActionHost } from '@eventiva/runtime/host';
 import { Effect } from 'effect';
 
-/** Exercise all six public actions under the caller supplied by the authenticated route, without installing policy or activating a module. */
+/**
+ * Exercise the organisation lifecycle on a fresh tenant fixture. Each distinct mutation keeps its own retry key.
+ *
+ * @since 0.0.0
+ * @example
+ * const walkthrough = organisationLifecycle.pipe(Effect.provide(authenticatedFixture));
+ */
 export const organisationLifecycle = Effect.gen(
     /** Demonstrate revisions one through four in a fresh sequential fixture; concurrent clients must reread conflicts. */ function* () {
         const host = yield* ActionHost;
         const caller = yield* Caller;
         const id = '019b0000-0000-7000-8000-000000000001';
-        // Each intentional mutation has its own stable retry key; this demonstration must use a fresh fixture database.
         const created = yield* host.invoke(
             'crm.organisation.create',
             {
@@ -61,18 +67,22 @@ export const organisationLifecycle = Effect.gen(
             { idempotencyKey: 'crm-example-restore' }
         );
         const page = yield* host.invoke('crm.organisation.list', { limit: 2 });
-        // Return private results to the authorised caller only; do not annotate spans or logs with these values.
         return { created, updated, archived, hidden, visibleArchive, restored, page, tenant: caller.tenant };
     }
 );
 
-/** Use an existing active organisation and fresh IDs/keys; sensitive work contacts never activate an HTTP route or verification. */
+/**
+ * Exercise work contacts on an active organisation using fresh IDs and keys. Keep the historical private results with the caller.
+ *
+ * @since 0.0.0
+ * @example
+ * const contacts = organisationWorkContacts.pipe(Effect.provide(authenticatedFixture));
+ */
 export const organisationWorkContacts = Effect.gen(
     /** Demonstrate exact canonical action names, expected revisions and explicit original-key recovery without logging contact values. */ function* () {
         const host = yield* ActionHost;
         const organisationId = '019b0000-0000-7000-8000-000000000001';
         const id = '019b0000-0000-7000-8000-000000000011';
-        // The existing ActionName grammar is lowercase; conceptual contactPoint/setPrimary are not wire aliases.
         const input = { id, organisationId, kind: 'email', label: 'work', value: 'Sales.Team+demo@Example.test' };
         const added = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
         const recovered = yield* host.invoke('crm.contact-point.add', input, { idempotencyKey: 'crm-contact-add' });
@@ -93,7 +103,6 @@ export const organisationWorkContacts = Effect.gen(
             { id, organisationId, expectedRevision: 3 },
             { idempotencyKey: 'crm-contact-remove' }
         );
-        // Removal retains immutable history; authorized replay is historical output, not a fresh domain-state read.
         return { added, recovered, updated, primary, current, page, removed };
     }
 );

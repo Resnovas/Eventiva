@@ -29,7 +29,21 @@ import { hookStorage } from '@eventiva/integrations.sql/hook';
 import { HookDispatcherLive, HookSinkUnavailable } from '@eventiva/runtime/hook';
 import { Effect, Layer } from 'effect';
 
+/**
+ * Construct tenant-local SQLite feed and recovery services; this does not migrate the store or start delivery.
+ *
+ * @since 0.0.0
+ * @example
+ * const reader = resume(lastAcceptedCursor).pipe(Effect.provide(hooks));
+ */
 export const hooks = hookStorage('sqlite');
+/**
+ * Compose a dispatcher with release denied, no external sink and safe flag defaults.
+ *
+ * @since 0.0.0
+ * @example
+ * const isolatedDispatcher = Layer.build(dispatch);
+ */
 export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(hooks),
     Layer.provide(HookReleaseDeny),
@@ -37,28 +51,51 @@ export const dispatch = HookDispatcherLive.pipe(
     Layer.provide(FlagsSafeDefaults)
 );
 
-/** Stage trusted, minimized event metadata and approved observer pins atomically in the existing storage scope. */
+/**
+ * Stage minimized metadata on the domain write's transaction so rollback discards both.
+ *
+ * @param event - Trusted event facts, not the original action input.
+ * @param observers - Exact declaration pins approved to observe this event.
+ * @returns A storage Effect that stages work without notifying an external consumer.
+ * @since 0.0.0
+ * @example
+ * const pending = stageMetadata(facts, approvedPins);
+ */
 export const stageMetadata = (event: HookEvent, observers: ReadonlyArray<HookDeclaration>) =>
     Effect.gen(
         /** Enlist hook outbox staging in the same transaction that should contain the domain write. */ function* () {
             const store = yield* Storage;
             const outbox = yield* HookOutbox;
-            // Include the real domain write in this transaction before staging.
             yield* store.transaction(outbox.stage(event, observers));
         }
     );
 
-/** Trusted host only; release policy is still required before exposing facts to a consumer. */
+/**
+ * Read at most fifty changes outside the SQL transaction. Save a cursor only after durable acceptance.
+ *
+ * @param savedCursor - Last position acknowledged by the consumer.
+ * @returns A bounded page that still requires release authorization before disclosure.
+ * @since 0.0.0
+ * @example
+ * const page = resume(lastAcceptedCursor);
+ */
 export const resume = (savedCursor: number) =>
     Effect.gen(
         /** Fetch a bounded batch after the consumer's durable cursor, without advancing it here. */ function* () {
             const feed = yield* HookChangeFeed;
-            // Call outside SQL transactions and persist the returned cursor only after durable acceptance.
             return yield* feed.read(savedCursor, 50);
         }
     );
 
-/** Inspection releases metadata too; this example remains deliberately denied. */
+/**
+ * Request the first dead-letter page with operator access explicitly denied.
+ *
+ * @param declaration - Observer pin whose recovery metadata the operator requested.
+ * @returns A denied inspection rather than an unauthorized page of metadata.
+ * @since 0.0.0
+ * @example
+ * const inspection = inspectDeadLetters(observerPin);
+ */
 export const inspectDeadLetters = (declaration: HookDeclaration) =>
     Effect.gen(
         /** Request the first dead-letter metadata page under the deliberately denying operator policy. */ function* () {
@@ -67,7 +104,17 @@ export const inspectDeadLetters = (declaration: HookDeclaration) =>
         }
     ).pipe(Effect.provide(HookOperatorDeny));
 
-/** Retain this request UUID on an ambiguous reply; retry must not reset a new worker. */
+/**
+ * Request a replay under the denying operator policy. Reuse the request UUID after an ambiguous reply.
+ *
+ * @param declaration - Observer declaration that owns the dead letter.
+ * @param key - Delivery key retained from the failed attempt.
+ * @param requestId - Stable replay request UUID, not a fresh worker identifier.
+ * @returns A recovery Effect that refuses to reset work without operator access.
+ * @since 0.0.0
+ * @example
+ * const replay = replayDeadLetter(observerPin, failedKey, originalRequestId);
+ */
 export const replayDeadLetter = (declaration: HookDeclaration, key: string, requestId: string) =>
     Effect.gen(
         /** Reuse the caller-retained replay identifier; the denying policy prevents this sample from resetting work. */ function* () {

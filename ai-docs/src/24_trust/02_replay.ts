@@ -15,22 +15,37 @@
  */
 
 /**
- * @title Compose standalone durable nonce consumption
  * Apply storage migrations through 0007 before building this unactivated adapter.
  * Run only outside ambient SQL transactions, after independent trusted checks.
  * The receipt is an opaque reference, not release authority or revocation proof.
  * There are no retention, cleanup, activation or policy defaults.
  * See docs/trust-replay.md for failure handling and deployment limitations.
+ *
+ * @title Compose standalone durable nonce consumption
  */
 import { TrustReplay, type TrustPolicy, type TrustRequest } from '@eventiva/contracts/trust';
 import { trustReplay } from '@eventiva/integrations.sql/trust';
 import { Effect } from 'effect';
 
-/** The returned Effect still requires the intended trust database's SqlClient. */
+/**
+ * Consume a nonce outside an ambient SQL transaction after the caller completes independent trust checks.
+ *
+ * @param request - Verified request whose nonce must not be reused.
+ * @param trustedPolicy - Host policy governing consumption.
+ * @returns An Effect requiring the trust database and yielding an opaque receipt, not release authority.
+ * @since 0.0.0
+ * @example
+ * const consumption = consumeOnce(verified, policy);
+ */
 export const consumeOnce = (request: TrustRequest, trustedPolicy: TrustPolicy) =>
     TrustReplay.pipe(
         Effect.flatMap(
-            /** Consume against the injected durable authority only after the caller's independent trust checks. */ (
+            /**
+             * Delegate the uniqueness decision to durable storage.
+             *
+             * @param replay - Replay authority bound to the trust database.
+             * @returns The nonce consumption attempt for this policy and request.
+             */ (
                 replay
             ) => replay.consume(request, trustedPolicy)
         ),

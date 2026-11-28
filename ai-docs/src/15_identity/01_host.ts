@@ -14,7 +14,11 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Register a host INSIDE one already authorized tenant route */
+/**
+ * Route to tenant-owned storage before constructing the host; registration does not authorize a caller.
+ *
+ * @title Register a host INSIDE one already authorized tenant route
+ */
 import { Caller, type CallerIdentity } from '@eventiva/contracts/caller';
 import { CurrentTenant } from '@eventiva/contracts/storage';
 import { ActionHost, ActionHostLive } from '@eventiva/runtime/host';
@@ -23,15 +27,20 @@ import { InvocationDenied } from '@eventiva/runtime/invocation';
 import { durable } from '@eventiva/runtime/storage';
 import { Effect, Layer } from 'effect';
 
-/** The composition root supplies IdentityStore and Storage around the SAME authorized tenant SQL client. */
+/**
+ * Read through an identity host whose identity store and storage share the authorized tenant SQL client.
+ *
+ * @param caller - Authenticated principal whose tenant must match the current route.
+ * @returns A scoped organization read that denies a route mismatch before module registration.
+ * @since 0.0.0
+ * @example
+ * const lookup = readOrganization(authenticatedCaller);
+ */
 export const readOrganization = (caller: CallerIdentity) => {
     const host = ActionHostLive.pipe(Layer.provide(identitySecurity), Layer.provide(durable));
-    // IdentityStore, Storage, Approvals, InputDigest, Flags and CurrentTenant remain REQUIRED.
-    // Supply production implementations at the trusted root, never a permissive fallback.
     return Effect.scoped(
         Effect.gen(
             /** Reject a mismatched route before registering and invoking identity actions with the supplied caller. */ function* () {
-                // Host construction is not route authorization; verify the caller against the already bound tenant.
                 const tenant = yield* CurrentTenant;
                 if (caller.tenant !== tenant.id)
                     return yield* new InvocationDenied({ action: '<route>', reason: 'tenant-scope-mismatch' });

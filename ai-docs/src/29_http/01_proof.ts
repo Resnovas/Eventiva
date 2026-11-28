@@ -14,21 +14,38 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-/** @title Inspect current inventory only after credential verification inside one trusted tenant */
+/**
+ * Resolve live identity on the routed tenant before listing any action metadata.
+ *
+ * @title Inspect current inventory only after credential verification inside one trusted tenant
+ */
 import { ActionInventory } from '@eventiva/contracts/inventory';
 import { authenticateTokenSession, type TokenPolicy } from '@eventiva/runtime/identity';
 import { Effect, type Redacted } from 'effect';
 
-/** Server-only metadata inspection, not an HTTP executor, accepting identity layer or permission snapshot. */
+/**
+ * Exclude sensitive actions from the currently visible inventory; visibility is not execution permission.
+ *
+ * @param proof - Protected token, not a principal UUID or provider subject.
+ * @param policy - Trusted issuer, audience and scope requirements.
+ * @returns A tenant-local inventory read that fails closed if authentication fails.
+ * @since 0.0.0
+ * @example
+ * const listing = inspectAfterProof(protectedToken, serverPolicy);
+ */
 export const inspectAfterProof = (proof: Redacted.Redacted<string>, policy: TokenPolicy) =>
     Effect.gen(
         /** Resolve the canonical tenant-local identity before asking the real registered inventory for current visibility. */ function* () {
-            // A UUID or raw provider subject is not proof; missing verification, SQL identity or policy must fail closed.
             const authenticated = yield* authenticateTokenSession(proof, policy);
             const inventory = yield* ActionInventory;
             const visible = yield* inventory.list(authenticated.caller);
             return visible.filter(
-                /** Apply the same conservative sensitive-action exclusion used by the local HTTP projection. */ (
+                /**
+                 * Apply the local HTTP projection's conservative exclusion.
+                 *
+                 * @param action - Descriptor already visible to the authenticated caller.
+                 * @returns Whether this descriptor can appear in the nonsensitive listing.
+                 */ (
                     action
                 ) => !action.sensitive
             );
