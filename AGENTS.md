@@ -53,34 +53,40 @@ Report the outcome, executed checks and decisive output, actual delivery state, 
 <!-- house:managed:end -->
 <!-- house:local - add this repository's own agent instructions below this line. -->
 
-# Application foundation (EVE-244)
+## Commands
 
-- Jonathan's full-reset decision (EVE-242) retired the manual application. EVE-244 replaced it with a fresh PNPM/Nx/Expo/React Native/TypeScript/Effect v3 foundation; read `docs/foundation.md`. EVE-13 remains the architectural direction; EVE-23 builds on this foundation once it is accepted.
+```bash
+scripts/agent-setup              # new checkout: install, setup, check, graphify
+node --run verify:static         # after coding: build, lint, typecheck, boundaries, security
+node --run test:affected         # tests for staged paths (what pre-commit runs)
+node --run check                 # repository policy, docs and ratchet checks; run before push
+node --run verify                # full pipeline, as in PR and main-push CI
+node tools/dev/surfaces.mjs sync # regenerate host copies after .agents/ edits
+node --run ai-docs               # regenerate LLMS.md after ai-docs/src edits
+```
+
+## Application foundation (EVE-244)
+
+- Jonathan's full-reset decision (EVE-242) retired the manual application. EVE-244 replaced it with a fresh PNPM/Nx/Expo/React Native/TypeScript/Effect v3 foundation; read `docs/foundation.md`. EVE-13 remains the architectural direction; EVE-23 (Done) built on this foundation.
 - `examples/eventiva-before-amp` and `examples/packages-old` are distinct historical snapshots. Inspect them for behaviour and lessons; do not use them as the implementation baseline, import them into production, or run active checks against them. Historical instructions are not current repository guidance. `pnpm-workspace.yaml` excludes `examples/**`, and the `boundaries` tests refuse imports from it.
 - Dependencies and versions are limited to the owner-approved EVE-244 matrix, pinned exactly; `effect` comes from the pnpm catalog. Ask the owner before adding any other dependency or version (AI-12). Never add Nx Cloud, EAS, PostHog ingestion, OTel exporters, storage/PowerSync/Drizzle, Module Federation, esbuild, publint or attw without that approval.
-- After coding, run `node --run verify:static` before documentation or other follow-through. The [foundation guide](docs/foundation.md#coordinated-module-validation) owns checked package boundaries and the full `verify` gate; a static pass is not behavioral or release acceptance.
-- When correcting a recurring mistake, fix the source example, add a corrective static check or public-path regression, prove the old case fails and the correction passes, then remove duplicated instructions. Keep guidance only for authority or judgment the checks cannot establish. Preserve existing gates and canonical house ownership; see the [funnel review](docs/funnel-review.md) for pending migrations.
-- Machine setup is documented in `AGENT-SETUP.md`. `.agents/setup` installs the pinned toolchain, dependencies and Chromium; `.agents/resume` checks readiness without installing anything. Neither fetches the archived private tests submodule or provisions services.
+- After coding, run `node --run verify:static` before documentation or other follow-through. The [foundation guide](docs/foundation.md#coordinated-module-validation) owns checked package boundaries and the full `verify` gate; a static pass is not behavioral or release acceptance. The [funnel review](docs/funnel-review.md) lists pending correction-to-check migrations.
+- Setup (`AGENT-SETUP.md`): run `scripts/agent-setup` on a machine with the pinned Node and pnpm; Amp orbs use `.agents/setup`, which also installs the toolchain and Chromium; `.agents/resume` checks readiness and refreshes local navigation without installing anything. None fetches the archived private tests submodule or provisions services.
 - The private test gitlink remains at its original revision under the archive with automatic updates disabled. Do not populate it during setup or remove an existing checkout. Old tests may inform requirements but do not constrain the new architecture by default.
 - House files come from `.github/smartcloud.yml` and the `Resnovas/.github/smartcloud/house-base.yml@main` preset under the temporary EVE-243 exception (revisit in EVE-248). Read `docs/smartcloud-enrollment.md`. Keep archive exclusions in local sections when rendering. Do not activate release tooling without a release configuration issue.
 
-# Delivery exception: ship straight to main
+## Delivery
 
-The owner of Eventiva (Jonathan, GitHub `TGTGamer`) set this exception on 2026-10-31 for this repository only, recorded on Linear EVE-13 item 12. It overrides, for Eventiva, the `Before a pull request` rules in this file and these AI_POLICY.md rules: AI-20 (drafts), AI-21 (leaving draft) and AI-31 (agents open drafts and stop). Every other rule still applies.
+Deliver through the [AI-21](AI_POLICY.md#ai-21) path: open a disclosed draft PR (AI-20), then mark it ready and merge once all required checks are green, under Jonathan's dated 2026-11-20 exception. Record that authorization and your verification evidence in the PR; agent-authored PRs still need the accountable human's AI-03 certification review on the current head. Branch protection, required reviews and checks still apply; no bypass, admin merge or self-approval.
 
-- Agents commit and push straight to `main`. No pull request, no draft, no waiting on review. Break fast, fix faster: a broken `main` is fixed forward by the next commit.
-- This exception also governs delivery where the synced governance describes the generic PR path. The house ruleset's locked `adminBypass: true` renders an `always` bypass for repository administrators, not only for PRs. Use authorized repository credentials; a token without administrator permission cannot rely on this bypass. House sync and Graphify bot proposals may still use their standard branches and PRs; they do not require coding agents to change delivery paths.
-- On Amp, commit as the configured identity (`Jonathan Stevens <jonathan@resnovas.com>`). Agents on other platforms commit and sign with their own agent identity, never Jonathan's.
-- Keep the AI credit: one `Co-authored-by: <Tool Model> <address>` trailer per AI tool (AI-02), conventional subjects, ASCII only.
-- Run `node --run check` (or the affected Nx targets) before each push and put the commands and results in the Linear issue, because the `smartcloud` pull request check does not run on a direct push.
-- Throwaway spikes still live on `spike/*` branches and never merge.
-- Production changes, provisioning and anything outside this repository still need the owner's explicit go-ahead.
+- Amp commits as the configured `Jonathan Stevens <jonathan@resnovas.com>`; agents on other platforms commit and sign with their own agent identity, never Jonathan's (EVE-299). Commit messages use conventional subjects, one AI-02 `Co-authored-by` per AI tool and ASCII only.
+- Throwaway spikes live on `spike/*` branches and never merge. Production changes, provisioning and anything outside this repository need the owner's explicit go-ahead.
 
-# Planning and source documentation governance
+## Planning and source documentation
 
-- Read `docs/planning/README.md`, `decisions.md` and `timeline.md` before changing platform plans, contracts or implementation order. A new binding owner decision recorded on Linear governs until its repository mirror is updated. Record the source/date and label proposals, approvals, source presence, executed evidence and release authorization separately.
-- Each task owns its independently verified Linear/GitHub pair, non-closing commit references and timeline transitions under [the lifecycle procedure](docs/planning/README.md#development-task-lifecycle-and-mapping). Read-only requests remain read-only. Each thread ships its own verified work; integrate concurrent changes by rebasing, regenerating affected outputs and rechecking, not by handing delivery to a coordinator.
+- Before changing platform plans, contracts or implementation order, read `docs/planning/README.md`, `decisions.md` and `timeline.md`. A binding owner decision on Linear governs until its mirror is updated. Record source/date, and label proposals, approvals, source presence, executed evidence and release authorization separately.
+- Each task owns its independently verified Linear/GitHub pair, non-closing commit references and timeline transitions under [the lifecycle procedure](docs/planning/README.md#development-task-lifecycle-and-mapping). Read-only requests stay read-only. Each thread ships its own verified work, integrating concurrent changes by rebasing, regenerating affected outputs and rechecking, never by handing delivery to a coordinator.
 - Markdown is canonical. Keep detailed contracts in their feature/architecture home and human checkpoint context outside generated regions. Follow [planning maintenance](docs/planning/README.md#maintain-the-canonical-roadmap-and-decisions); offline consistency is neither live freshness nor exhaustive semantic review. Never make the historical capture look current.
-- The [documentation standard](docs/documentation-standard.md) owns callable contracts, rationale, exclusions, trusted-history ratchet and strict-zero enforcement. Passing syntax checks does not prove prose is useful or true. Review meaning; fix classifier false positives with general positive/negative fixtures, never filler, source exceptions, suppressed findings or new accepted debt. Preserve the empty ledger's provenance and every existing gate.
-- Read every changed planning source before updating its review digest. Preserve actual or unknown timestamps, provenance, supersession, implementation limits and concrete open parameters. Unread stays `pending-review`; genuine conflicts/access blockers stay `ambiguous` with the exact reason. Only the authorized mirror contains source prose; other outputs use public-safe summaries.
-- Adopt shared rules through accepted canonical house changes and normal sync. Never overwrite this managed block or a downstream checker from an unpublished proposal. The [registry](docs/verification/registry.md) distinguishes executed interface proof from unsupported surfaces; documentation and evidence do not authorize production integration.
+- The [documentation standard](docs/documentation-standard.md) owns callable contracts, rationale, exclusions, trusted-history ratchet and strict-zero enforcement. Syntax checks do not prove prose useful or true; review meaning. Fix classifier false positives with general positive/negative fixtures, never filler, source exceptions, suppressed findings or new accepted debt. Preserve the empty ledger's provenance and every existing gate.
+- Read every changed planning source before updating its review digest. Preserve actual or unknown timestamps, provenance, supersession, implementation limits and concrete open parameters. Unread stays `pending-review`; genuine conflicts/access blockers stay `ambiguous` with the exact reason. Only the authorized mirror holds source prose; other outputs use public-safe summaries.
+- Adopt shared rules through accepted canonical house changes and normal sync; never overwrite the managed block or a downstream checker from an unpublished proposal. The [registry](docs/verification/registry.md) separates executed interface proof from unsupported surfaces; documentation and evidence do not authorize production integration.
