@@ -21,6 +21,8 @@ import { noInlineCommentsRule } from './no-inline-comments.mjs';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { build } from 'vite';
 import { isExemptComment, isInScopeCommentFile, readIfPresent } from './policy.mjs';
 import {
     buildRatchetLedger,
@@ -53,6 +55,73 @@ const lintWithRule = (code, filename, options = {}) => {
         { filename }
     );
 };
+
+test('only the outer, named native generator definition admits the exact compiler directive', /** Exercise both production scanners against placement, binding and eager-argument mistakes. */ () => {
+    const path = 'packages/runtime/src/directive.mjs';
+    const prefix = "import { Effect } from 'effect';\n";
+    const directive = '/* @__PURE__ */';
+    const body = 'function* () { return 41; }';
+    const factory = "Effect.fn('sample')";
+    const accepted = `const op = ${directive} ${factory}(${body});`;
+    for (const source of [
+        prefix + accepted,
+        prefix + `const wrap = x => x;\n` + accepted.replace(body, `${body}, wrap`),
+    ]) {
+        assert.deepEqual(scanBannedComments(path, source), []);
+        assert.deepEqual(lintWithRule(source, path), []);
+    }
+    for (const source of [
+        accepted,
+        prefix.replace("'effect'", "'fake'") + accepted,
+        prefix + `function shadow(Effect) { ${accepted} }`,
+        prefix + accepted.replace(`${directive} ${factory}`, `(${directive} ${factory})`),
+        prefix + accepted.replace(directive, '/*@__PURE__*/'),
+        prefix + accepted.replace(directive, '/** @__PURE__ */'),
+        prefix + accepted.replace(directive, '/* #__PURE__ */'),
+        prefix + accepted.replace(body, '() => 41'),
+        prefix + accepted.replace("'sample'", 'sideEffect()'),
+        prefix + accepted.replace(body, `${body}, eager()`),
+        prefix + accepted.replace(factory, 'sideEffect'),
+        prefix + accepted.replace(directive, '/* a note */'),
+    ]) {
+        assert.equal(scanBannedComments(path, source).length, 1, source);
+        assert.equal(lintWithRule(source, path).length, 1, source);
+    }
+});
+
+test('the approved directive removes only unused native definitions from real Vite output', /** A missing directive retains the canary; an exported annotated generator still runs. */ async () => {
+    const entry = fileURLToPath(import.meta.url);
+    const declaration =
+        "const operation = /* @__PURE__ */ Effect.fn('unused-generator-canary')(function* () { return 41; });";
+    for (const [definition, live, retained] of [
+        [declaration, false, false],
+        [declaration.replace('/* @__PURE__ */ ', ''), false, true],
+        [declaration, true, true],
+    ]) {
+        const output = await build({
+            configFile: false,
+            logLevel: 'silent',
+            plugins: [
+                {
+                    name: 'consumer',
+                    enforce: 'pre',
+                    /** Supply the consumer at a real module path so the installed Effect resolves through Vite. */
+                    load(id) {
+                        if (id === entry)
+                            return `import { Effect } from 'effect'; ${definition} export const value = ${live ? 'Effect.runSync(operation())' : 'Effect.runSync(Effect.succeed(19))'};`;
+                    },
+                },
+            ],
+            build: { write: false, minify: false, lib: { entry, formats: ['es'] } },
+        });
+        const code = (Array.isArray(output) ? output[0] : output).output[0].code;
+        assert.equal(code.includes('unused-generator-canary'), retained);
+        assert.equal(
+            (await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).value,
+            live ? 41 : 19
+        );
+    }
+});
 
 test('rejects inline and block comments while preserving JSDoc, FCL headers, effect-boundary and test @ts-expect-error', /** Exempt comments pass in both scanners while ordinary comments are reported with the corrective message. */ () => {
     const license =
