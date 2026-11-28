@@ -239,16 +239,14 @@ export const migrateResources = (
                                 const exists =
                                     yield* sql`SELECT 1 FROM pg_trigger WHERE tgname = ${table + '_immutable'} AND tgrelid = ${table}::regclass`;
                                 if (exists.length === 0)
-                                    yield* sql.unsafe(
-                                        `CREATE TRIGGER ${table}_immutable BEFORE UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION resource_reject_mutation()`
-                                    );
+                                    yield* sql`CREATE TRIGGER ${sql(`${table}_immutable`)} BEFORE UPDATE OR DELETE ON ${sql(table)} FOR EACH ROW EXECUTE FUNCTION resource_reject_mutation()`;
                             }
                         } else {
                             for (const table of ['resource_schema', 'resource_revision', 'resource_tenant']) {
                                 for (const operation of table === 'resource_tenant' ? ['DELETE'] : ['UPDATE', 'DELETE'])
-                                    yield* sql.unsafe(
-                                        `CREATE TRIGGER IF NOT EXISTS ${table}_immutable_${operation.toLowerCase()} BEFORE ${operation} ON ${table} BEGIN SELECT RAISE(ABORT, 'Resource history is immutable'); END`
-                                    );
+                                    yield* operation === 'UPDATE'
+                                        ? sql`CREATE TRIGGER IF NOT EXISTS ${sql(`${table}_immutable_update`)} BEFORE UPDATE ON ${sql(table)} BEGIN SELECT RAISE(ABORT, 'Resource history is immutable'); END`
+                                        : sql`CREATE TRIGGER IF NOT EXISTS ${sql(`${table}_immutable_delete`)} BEFORE DELETE ON ${sql(table)} BEGIN SELECT RAISE(ABORT, 'Resource history is immutable'); END`;
                             }
                             yield* sql`CREATE TRIGGER IF NOT EXISTS resource_tenant_immutable_update BEFORE UPDATE ON resource_tenant WHEN OLD.tenant <> NEW.tenant OR OLD.singleton <> NEW.singleton BEGIN SELECT RAISE(ABORT, 'Resource tenant binding is immutable'); END`;
                         }

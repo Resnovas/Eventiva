@@ -37,7 +37,7 @@
         "build": "nx run-many -t build",
         "smoke": "nx run-many -t smoke",
         "parity": "nx run-many -t parity",
-        "verify:static": "nx run-many -t build && nx run-many -t lint typecheck && node tools/resources/boundaries.mjs && node tools/resources/boundaries.mjs --declarations",
+        "verify:static": "nx run-many -t build && nx run-many -t lint typecheck && node tools/resources/boundaries.mjs && node tools/resources/boundaries.mjs --declarations && node tools/security/scan.mjs --tracked --exclude externals/ --exclude examples/ --postgres storage/migrations/postgres --sqlite storage/migrations/sqlite --baseline tools/security/baseline.json",
         "verify:features": "node tools/verification/run.mjs",
         "verify": "node tools/verification/pipeline.mjs",
         "format": "prettier --write .",

@@ -96,6 +96,12 @@ const endpoint = (action: ActionMetadata, path: `/${string}`) =>
             },
         });
 
+/** A bounded bearer credential: the only accepted Authorization header shape. */
+const BearerAuthorization = Schema.String.pipe(Schema.maxLength(8192), Schema.pattern(/^Bearer [A-Za-z0-9._~-]+$/i));
+
+/** A bounded request target without a query string; actions take input only from the decoded body. */
+const RequestTarget = Schema.String.pipe(Schema.maxLength(512), Schema.pattern(/^[^?]*$/));
+
 /** Decode one bounded envelope, then delegate all business validation, authorization and replay to ClusterActions. */
 const invoke = (action: ActionMetadata, caller: CallerIdentity, cluster: ClusterActions['Type']) =>
     Effect.gen(
@@ -139,9 +145,12 @@ export const httpActions = (policy: TokenPolicy) =>
     Effect.gen(
         /** Authenticate before discovery and build only the caller's current non-sensitive route projection. */ function* () {
             const request = yield* HttpServerRequest.HttpServerRequest;
-            const authorization = request.headers.authorization;
-            if (!authorization || authorization.length > 8192 || !/^Bearer [A-Za-z0-9._~-]+$/i.test(authorization))
-                return yield* new HttpActionFailure({ status: 401, code: 'unauthenticated' });
+            const authorization = yield* Schema.decodeUnknown(BearerAuthorization)(request.headers.authorization).pipe(
+                Effect.mapError(
+                    /** An absent, oversized or malformed credential is indistinguishable from a refused one. */ () =>
+                        new HttpActionFailure({ status: 401, code: 'unauthenticated' })
+                )
+            );
             const { caller } = yield* authenticateTokenSession(Redacted.make(authorization.slice(7)), policy).pipe(
                 Effect.mapError(
                     /** Token verification and SQL identity refusal are deliberately indistinguishable. */ () =>
@@ -153,8 +162,12 @@ export const httpActions = (policy: TokenPolicy) =>
                 return yield* new HttpActionFailure({ status: 404, code: 'unavailable' });
             const tenant = yield* CurrentTenant;
             const prefix = `/tenants/${tenant.id}` as const;
-            if (request.url.includes('?') || request.url.length > 512)
-                return yield* new HttpActionFailure({ status: 400, code: 'invalid-request' });
+            yield* Schema.decodeUnknown(RequestTarget)(request.url).pipe(
+                Effect.mapError(
+                    /** Query strings and oversized targets are refused before any route is matched. */ () =>
+                        new HttpActionFailure({ status: 400, code: 'invalid-request' })
+                )
+            );
             const inventory = yield* ActionInventory;
             const visible = yield* inventory
                 .list(caller)

@@ -1,5 +1,13 @@
 # Foundation and integration timeline
 
+## Shared security checks - 2026-11-28
+
+On 2026-11-28 (start time unknown; recorded about 17:00 UTC), [this Amp thread](https://ampcode.com/threads/T-82fb050f-8dc8-4713-9756-fb75a59c5726) took [EVE-330](https://linear.app/resnovas/issue/EVE-330) / [#1155](https://github.com/Resnovas/Eventiva/issues/1155). It adds seven security checks, synced from Resnovas/.github: secrets, row-level security, sequential IDs, admin permission declarations, common credentials, rate limits and input validation with bound SQL and no raw HTML. The checks are the `house-security/*` ESLint rules (`tools/lint/security.mjs`) and the scanner `tools/security/scan.mjs`, which `verify:static` runs. The client `smoke` target now depends on `security-bundle`, so the web and Android bundles are scanned after export. The `security-checks` skill documents every rule.
+
+- Completed: the HTTP entry decodes its Authorization header and request target with Schema, resource trigger DDL binds identifiers with `sql(identifier)`, and one CRM test value no longer matches the credential denylist.
+- Accepted debt: 129 `rls-*` findings over 43 PostgreSQL tables, held in `tools/security/baseline.json` under [EVE-331](https://linear.app/resnovas/issue/EVE-331). The baseline fails when an entry goes stale.
+- Upcoming: rate-limit declarations, enforcement and a budgeted AI port ([EVE-332](https://linear.app/resnovas/issue/EVE-332)), a web CSP and an approved sanitiser ([EVE-333](https://linear.app/resnovas/issue/EVE-333)), and behavioural cross-tenant, IDOR and seed-refusal tests ([EVE-334](https://linear.app/resnovas/issue/EVE-334)). Provider spend caps are an owner action.
+
 ## Approval-consent listener isolation - 2026-11-27
 
 At 23:01 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) resumed [EVE-310](https://linear.app/resnovas/issue/EVE-310#comment-d6cf53dd) / [#1130](https://github.com/Resnovas/Eventiva/issues/1130), separately from [the HTTP listener repair](https://github.com/Resnovas/Eventiva/pull/1117). A local test process held loopback port 34566 continuously. All four unchanged consent cases failed on the original fixture with `EADDRINUSE`; the hosted log does not identify the competing process. With a scoped OS-assigned listener, two concurrent runs at 23:07 UTC each passed all four SQLite and PostgreSQL cases under the same occupied-port condition. Neither the authorization assertions nor the timeouts changed. Full verification and protected delivery remain separate gates for the evidence PRs; the wider EVE-261 integration remains blocked.

@@ -236,7 +236,7 @@ describe('CRM organisation contracts', /** Keep bounded wire validation independ
             { tenant: input.id },
             { visibility: 'private' },
             { visibility: 'team' },
-            { email: 'secret@example.test' },
+            { email: 'party-50217394@example.test' },
             { taxNumber: 'secret' },
             { contactPoints: [] },
             { arbitrary: {} },

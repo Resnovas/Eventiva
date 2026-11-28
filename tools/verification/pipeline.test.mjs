@@ -51,6 +51,7 @@ test('verification preserves every gate and dependency barrier without serializi
         'nx run-many -t lint typecheck',
         'node tools/resources/boundaries.mjs',
         'node tools/resources/boundaries.mjs --declarations',
+        'node tools/security/scan.mjs --tracked --exclude externals/ --exclude examples/ --postgres storage/migrations/postgres --sqlite storage/migrations/sqlite --baseline tools/security/baseline.json',
     ]);
     assert.equal(manifest.scripts.verify, 'node tools/verification/pipeline.mjs');
     assert.equal(manifest.scripts['test:affected'], 'node tools/verification/affected.mjs');

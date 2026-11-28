@@ -1,0 +1,907 @@
+{
+    "entries": [
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "operational_record",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "operational_record",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "operational_record",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "transition_history",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "transition_history",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "transition_history",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "stock",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "stock",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "stock",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "reservation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "reservation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "reservation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "quantity_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "quantity_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "quantity_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "payment_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "payment_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "payment_ledger",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_commit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_commit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_commit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_receipt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_receipt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "action_receipt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "command_outbox",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "command_outbox",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0001.sql",
+            "subject": "command_outbox",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_principal",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_principal",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_principal",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_session",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_session",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_session",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_organization",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_organization",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_organization",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_membership",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_membership",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_membership",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_role",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_role",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_role",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_team",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_team",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_team",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_profile",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_profile",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_profile",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_federation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_federation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0002.sql",
+            "subject": "identity_federation",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_subscription",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_subscription",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_subscription",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0003.sql",
+            "subject": "hook_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_feed_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_feed_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_feed_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0004.sql",
+            "subject": "hook_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0005.sql",
+            "subject": "hook_redrive",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0005.sql",
+            "subject": "hook_redrive",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0005.sql",
+            "subject": "hook_redrive",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_guard",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_grant",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_grant",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_grant",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_intent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_intent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_intent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_delivery",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_request",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_request",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_request",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_audit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_audit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_audit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_settlement",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_settlement",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0006.sql",
+            "subject": "marketplace_settlement",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0007.sql",
+            "subject": "trust_replay",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0007.sql",
+            "subject": "trust_replay",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0007.sql",
+            "subject": "trust_replay",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_runtime",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_runtime",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_runtime",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_head",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_attempt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_attempt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0008.sql",
+            "subject": "hook_producer_attempt",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0009.sql",
+            "subject": "telemetry_consent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0009.sql",
+            "subject": "telemetry_consent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0009.sql",
+            "subject": "telemetry_consent",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_run",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_run",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_run",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0010.sql",
+            "subject": "agent_output_event",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_snapshot",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_owner",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_owner",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0011.sql",
+            "subject": "module_run_owner",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_proof",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_proof",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_proof",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_decision",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_decision",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0012.sql",
+            "subject": "approval_decision",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-enable",
+            "path": "storage/migrations/postgres/0013.sql",
+            "subject": "approval_retention_permit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-force",
+            "path": "storage/migrations/postgres/0013.sql",
+            "subject": "approval_retention_permit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        },
+        {
+            "rule": "rls-policy",
+            "path": "storage/migrations/postgres/0013.sql",
+            "subject": "approval_retention_permit",
+            "issue": "EVE-331",
+            "reason": "Per-tenant databases need a principal-context RLS policy design before these tables can be forced."
+        }
+    ]
+}

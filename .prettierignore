@@ -54,6 +54,9 @@ docs/graphify.md
 tools/dev/pre-commit.mjs
 tools/lint/funnel.mjs
 tools/lint/react.mjs
+tools/lint/security.mjs
+tools/security/
+docs/security-checks.md
 tools/verification/
 tools/ci/coverage-goal.ts
 tools/ci/flaky-tests.ts

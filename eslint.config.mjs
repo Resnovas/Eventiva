@@ -24,6 +24,7 @@ import formatjs from 'eslint-plugin-formatjs';
 import jsdoc from 'eslint-plugin-jsdoc';
 import reactHooks from 'eslint-plugin-react-hooks';
 import { noInlineCommentsRule } from './tools/comments/no-inline-comments.mjs';
+import { security, securityClient, securityDeclarations, securityServer } from './tools/lint/security.mjs';
 
 const typeConstraints = [
     { sourceTag: 'type:core', onlyDependOnLibsWithTags: ['type:core'] },
@@ -168,6 +169,25 @@ const filesTagged = (...tags) =>
             (project) => `${project.root}/**/*.{ts,tsx,mts}`
         );
 const portableFiles = filesTagged('layer:shared', 'layer:frontend');
+const backendSources = projects
+    .filter(
+        /**
+         * Select production backend projects; test projects host fake servers, not public entry points.
+         *
+         * @param project - Root and tags read from one manifest.
+         * @returns Whether the project serves real requests.
+         */
+        (project) => project.tags.includes('layer:backend') && !project.tags.includes('type:test')
+    )
+    .map(
+        /**
+         * Limit the check to the project's source, excluding its own test fakes.
+         *
+         * @param project - Production backend project.
+         * @returns The project's src glob.
+         */
+        (project) => `${project.root}/src/**/*.{ts,tsx,mts}`
+    );
 const runtimeFiles = filesTagged('capability:actions');
 
 const reactLifecycleMessage =
@@ -638,5 +658,35 @@ export default [
         },
     },
     { files: ['**/*.{js,mjs,cjs}'], plugins: { jsdoc }, rules: { 'jsdoc/no-types': 'off' } },
+    {
+        ...security,
+        files: ['**/*.{ts,tsx,mts,js,mjs}'],
+        ignores: ['packages/integrations/sql/src/migrations.ts'],
+        rules: {
+            ...security.rules,
+            'house-security/no-secret-env': ['error', { allow: ['EXPO_PUBLIC_POSTHOG_KEY'] }],
+        },
+    },
+    {
+        ...securityClient,
+        files: portableFiles,
+        rules: {
+            ...securityClient.rules,
+            'house-security/no-secret-env': ['error', { client: true, allow: ['EXPO_PUBLIC_POSTHOG_KEY'] }],
+        },
+    },
+    { ...securityServer, files: backendSources },
+    {
+        ...securityDeclarations([
+            {
+                callee: 'define',
+                source: '(?:^|/)action(?:\\.ts)?$',
+                argument: 1,
+                properties: ['permission'],
+                message: 'Every action declares the permission the server Authorizer checks on every invocation.',
+            },
+        ]),
+        files: ['**/*.{ts,tsx,mts}'],
+    },
     prettier,
 ];
