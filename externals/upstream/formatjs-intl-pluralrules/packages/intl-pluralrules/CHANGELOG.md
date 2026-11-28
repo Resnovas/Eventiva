@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [7.1.0](https://github.com/formatjs/formatjs/compare/@formatjs/intl-pluralrules@7.0.4...@formatjs/intl-pluralrules@7.1.0) (2026-11-17)
+
+
+### Features
+
+* **@formatjs/intl-numberformat:** keep trailing zeros ([#7934](https://github.com/formatjs/formatjs/issues/7934)) ([70a4b89](https://github.com/formatjs/formatjs/commit/70a4b89d0fdf8a67d23bed1d4e12010292343d29))
+* **@formatjs/temporal:** add Temporal for TypeScript, Rust and Hermes ([#8016](https://github.com/formatjs/formatjs/issues/8016)) ([8d5f2a4](https://github.com/formatjs/formatjs/commit/8d5f2a4064cd0bb6e9310b9d91f4daf4f1399582))
+
+## [7.0.4](https://github.com/formatjs/formatjs/compare/@formatjs/intl-pluralrules@7.0.3...@formatjs/intl-pluralrules@7.0.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* deduplicate polyfill locale data ([#7897](https://github.com/formatjs/formatjs/issues/7897)) ([fc49531](https://github.com/formatjs/formatjs/commit/fc4953174d71fcab85cbe3d47d10edc5f2bf3733))
+
+## [7.0.3](https://github.com/formatjs/formatjs/compare/@formatjs/intl-pluralrules@7.0.2...@formatjs/intl-pluralrules@7.0.3) (2026-11-08)
+
+
+### Bug Fixes
+
+* declare sideEffects for the Intl polyfill packages ([#7869](https://github.com/formatjs/formatjs/issues/7869)) ([d2f7a6f](https://github.com/formatjs/formatjs/commit/d2f7a6fab5c33c9855c6ba32e062b0d05a721aa3))
+
 ## [7.0.2](https://github.com/formatjs/formatjs/compare/@formatjs/intl-pluralrules@7.0.1...@formatjs/intl-pluralrules@7.0.2) (2026-11-01)
 
 

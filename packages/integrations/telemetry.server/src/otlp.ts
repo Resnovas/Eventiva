@@ -14,8 +14,8 @@
  * DELETING THIS NOTICE AUTOMATICALLY VOIDS YOUR LICENSE.
  */
 
-import * as OtlpSerialization from '@effect/opentelemetry/OtlpSerialization';
 import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
+import * as HttpBody from '@effect/platform/HttpBody';
 import * as HttpClient from '@effect/platform/HttpClient';
 import * as HttpClientRequest from '@effect/platform/HttpClientRequest';
 import { TelemetryRecord, TelemetrySinkFailure } from '@eventiva/contracts/observability';
@@ -123,8 +123,8 @@ const ExportResponse = Schema.parseJson(
 
 /**
  * Export authorized spans below governedTelemetrySinkLayer, never directly from features.
- * Uses Effect's OTLP serializer without its batching/retry exporter: a retained batch
- * could outlive a grant, and swallowed HTTP failures cannot acknowledge delivery.
+ * Encode the OTLP JSON body directly with Effect's HTTP body helper, without an SDK
+ * peer bridge or a batching/retry exporter that could retain data beyond a grant.
  * Supply an un-retried HttpClient (normally FetchHttpClient.layer); no network is acquired here.
  *
  * @param binding - The trusted host export binding every provider call must match.
@@ -228,7 +228,6 @@ export const otlpTelemetryLayer = (
                     )
                 );
                 const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient);
-                const serialization = yield* OtlpSerialization.OtlpSerialization;
                 const mutex = yield* Effect.makeSemaphore(1);
                 let closed = false;
                 yield* Effect.addFinalizer(
@@ -349,7 +348,7 @@ export const otlpTelemetryLayer = (
                                         BigInt(Math.round((record.durationMs % 1) * 1000000));
                                     if (duration > end || end > 18446744073709551615n)
                                         return yield* new TelemetrySinkFailure({ reason: 'invalid-record' });
-                                    const body = serialization.traces({
+                                    const body = HttpBody.unsafeJson({
                                         resourceSpans: [
                                             {
                                                 resource: {
@@ -540,4 +539,4 @@ export const otlpTelemetryLayer = (
                 }).pipe(Context.add(CorrelationProvider, { write }));
             }
         )
-    ).pipe(Layer.provide(OtlpSerialization.layerJson));
+    );

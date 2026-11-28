@@ -20,7 +20,7 @@
     },
     "dependencies": {
         "@eventiva/contracts": "workspace:*",
-        "oauth4webapi": "3.8.8"
+        "oauth4webapi": "3.8.9"
     },
     "peerDependencies": {
         "effect": "catalog:"
