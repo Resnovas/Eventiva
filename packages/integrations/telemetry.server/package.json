@@ -25,7 +25,6 @@
     },
     "dependencies": {
         "@eventiva/contracts": "workspace:*",
-        "@effect/opentelemetry": "0.64.2",
         "@effect/platform": "0.97.4",
         "@opentelemetry/api": "1.10.0"
     },

@@ -38,14 +38,11 @@ import { printForStatement } from "./for-statement.js";
 import { printForXStatement } from "./for-x-statement.js";
 import { printFunction, printMethod } from "./function.js";
 import { printHtmlBinding } from "./html-binding.js";
+import { printIdentifier } from "./identifier.js";
 import { printIfStatement } from "./if-statement.js";
 import { printLiteral } from "./literal.js";
 import { printMemberExpression } from "./member.js";
-import {
-  printDefiniteToken,
-  printOptionalToken,
-  printSemicolon,
-} from "./miscellaneous.js";
+import { printSemicolon } from "./miscellaneous.js";
 import {
   printExportDeclaration,
   printImportDeclaration,
@@ -57,6 +54,7 @@ import { printRestElement, printSpreadElement } from "./rest-element.js";
 import {
   printReturnStatement,
   printThrowStatement,
+  printYieldExpression,
 } from "./return-statement.js";
 import { printSequenceExpression } from "./sequence-expression.js";
 import { printSwitchCase, printSwitchStatement } from "./switch-statement.js";
@@ -66,7 +64,6 @@ import {
 } from "./template-literal.js";
 import { printTernary } from "./ternary.js";
 import { printCatchClause, printTryStatement } from "./try-statement.js";
-import { printTypeAnnotationProperty } from "./type-annotation.js";
 import { printVariableDeclaration } from "./variable-declaration.js";
 import { printWhileStatement } from "./while-statement.js";
 
@@ -137,12 +134,7 @@ function printEstree(path, options, print, args) {
     case "BindExpression":
       return printBindExpression(path, options, print);
     case "Identifier":
-      return [
-        node.name,
-        printOptionalToken(path),
-        printDefiniteToken(path),
-        printTypeAnnotationProperty(path, print),
-      ];
+      return printIdentifier(path, options, print);
 
     case "V8IntrinsicIdentifier":
       return ["%", node.name];
@@ -156,10 +148,8 @@ function printEstree(path, options, print, args) {
     case "ArrowFunctionExpression":
       return printArrowFunction(path, options, print, args);
     case "YieldExpression":
-      return [
-        `yield${node.delegate ? "*" : ""}`,
-        node.argument ? [" ", print("argument")] : "",
-      ];
+      return printYieldExpression(path, options, print);
+
     case "AwaitExpression":
       return printAwaitExpression(path, options, print);
 
@@ -184,6 +174,7 @@ function printEstree(path, options, print, args) {
     case "StaticBlock":
       return printBlock(path, options, print);
     case "ClassBody":
+    case "StructBody":
       return printClassBody(path, options, print);
     case "ThrowStatement":
       return printThrowStatement(path, options, print);
@@ -294,6 +285,7 @@ function printEstree(path, options, print, args) {
 
     case "ClassDeclaration":
     case "ClassExpression":
+    case "StructDeclaration":
       return printClass(path, options, print);
     case "ClassMethod":
     case "ClassPrivateMethod":

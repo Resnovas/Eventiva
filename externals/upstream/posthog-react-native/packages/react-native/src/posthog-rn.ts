@@ -164,6 +164,9 @@ export interface PostHogOptions extends PostHogCoreOptions {
    * Allows you to provide the storage type.
    * 'file' will try to load the best available storage, the provided 'customStorage', 'customAsyncStorage' or in-memory storage.
    *
+   * Events captured offline stay in the queue. A flush that fails with a network error keeps them and retries later.
+   * With 'file', the queue is stored on the device and survives an app restart.
+   *
    * @default 'file'
    */
   persistence?: 'memory' | 'file'
@@ -186,6 +189,7 @@ export interface PostHogOptions extends PostHogCoreOptions {
   /**
    * Captures app lifecycle events such as Application Installed, Application Updated, Application Opened, Application Became Active and Application Backgrounded.
    * Application Installed and Application Updated events are not supported with persistence set to 'memory'.
+   * On by default from 4.39.0.
    *
    * @default true
    */
@@ -363,6 +367,7 @@ export class PostHog extends PostHogCore {
   private _eventsStorage: PostHogRNStorage
   private _logsStorage: PostHogRNStorage
   private _appProperties: PostHogCustomAppProperties = {}
+  private _appLanguage: string | undefined
   private _currentSessionId?: string | undefined
   private _enableSessionReplay?: boolean
   private _sessionReplayNativeInitialized: boolean = false
@@ -866,6 +871,11 @@ export class PostHog extends PostHogCore {
     return {
       ...super.getCommonEventProperties(),
       ...this._appProperties,
+      // A registered $app_language wins, as on the native SDKs. Common properties override
+      // registered and session ones, so skip ours rather than overwrite it.
+      ...(this._appLanguage !== undefined &&
+        this.props.$app_language === undefined &&
+        this.sessionProps.$app_language === undefined && { $app_language: this._appLanguage }),
       $screen_height: height,
       $screen_width: width,
     }
@@ -960,10 +970,12 @@ export class PostHog extends PostHogCore {
   }
 
   // Read apart from the replay keys so a failure building those still reports the queue depth.
+  // Below flushAt the queue is ordinary batching, so the depth is only reported once it backs up.
   private _pendingQueueSize(): number | undefined {
     try {
       const queue = this.getPersistedProperty<unknown[]>(PostHogPersistedProperty.Queue)
-      return Array.isArray(queue) ? queue.length : 0
+      const depth = Array.isArray(queue) ? queue.length : 0
+      return depth > 0 && depth >= this.flushAt ? depth : undefined
     } catch {
       return undefined
     }
@@ -1078,6 +1090,42 @@ export class PostHog extends PostHogCore {
 
   getSurveyDisplayLanguageOverride(): string | null {
     return this._overrideDisplayLanguage
+  }
+
+  /**
+   * Sets the `$app_language` property: the language your app displays, sent with every event.
+   *
+   * Default: not set, so events carry no `$app_language`. React Native apps usually translate in
+   * JavaScript (for example with i18next), which the SDK can't see, so call this at startup and
+   * whenever the language changes. Compare `$locale`, which is the device language.
+   *
+   * The value is kept in memory only and survives `reset()`. A `$app_language` you `register()`
+   * wins over it. With `@posthog/react-native-plugin` 3.0 or later, events the native SDK
+   * captures itself, such as crashes and push opens, carry it too. Call it right after creating
+   * the client so a push open that launched the app carries it as well.
+   *
+   * {@label Capture}
+   *
+   * @example
+   * ```js
+   * // With i18next or react-i18next
+   * posthog.setAppLanguage(i18n.resolvedLanguage)
+   * i18n.on('languageChanged', (language) => posthog.setAppLanguage(language))
+   *
+   * // Your own language setting
+   * posthog.setAppLanguage(settings.language) // at startup
+   * posthog.setAppLanguage('de') // when the user picks German
+   * ```
+   *
+   * @public
+   *
+   * @param language A BCP 47 language tag, such as `de` or `pt-BR`. `_` is replaced with `-`.
+   *   Pass `null` or an empty string to stop sending it.
+   */
+  setAppLanguage(language: string | null): void {
+    const normalized = typeof language === 'string' ? language.trim().replace(/_/g, '-') : ''
+    this._appLanguage = normalized || undefined
+    void this._enqueueNative('setAppLanguage', (plugin) => plugin.setAppLanguage?.(this._appLanguage ?? null))
   }
 
   /**
@@ -3327,6 +3375,9 @@ export class PostHog extends PostHogCore {
       // Native-sent requests (session replay, crash uploads) bypass the JS request path,
       // so the configured headers are passed through to the native plugin as well.
       requestHeaders: this._requestHeaders,
+      // Applied before native setup, so the push open setup captures on a cold launch carries it.
+      // null clears a value an earlier client left on the process-wide native SDK.
+      appLanguage: this._appLanguage ?? null,
     }
 
     // Log header names only: requestHeaders values can carry secrets (e.g. an Authorization token).

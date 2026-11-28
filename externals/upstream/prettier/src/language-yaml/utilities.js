@@ -269,7 +269,9 @@ function getBlockValueLineContents(
   });
 
   if (options.proseWrap === "never") {
-    lines = lines.map((words) => [words.join(" ")]);
+    lines = lines.map((words) =>
+      words.length === 0 ? words : [words.join(" ")],
+    );
   }
 
   return removeUnnecessaryTrailingNewlines(lines);
@@ -286,7 +288,7 @@ function getBlockValueLineContents(
 
     let trailingNewlineCount = 0;
     for (let i = lineContents.length - 1; i >= 0; i--) {
-      if (lineContents[i].every((line) => line.replace(/[ \t]+$/, "") === "")) {
+      if (lineContents[i].length === 0) {
         trailingNewlineCount++;
       } else {
         break;
@@ -300,6 +302,18 @@ function getBlockValueLineContents(
           lineContents.slice(0, -(trailingNewlineCount - 1))
         : lineContents.slice(0, -trailingNewlineCount);
   }
+}
+
+function hasTrailingContentWhitespace(node) {
+  return /[ \t]+\n*$/.test(node.value);
+}
+
+function endsWithBlockWithTrailingWhitespace(node) {
+  const lastDescendantNode = getLastDescendantNode(node);
+  return (
+    isNode(lastDescendantNode, ["blockLiteral", "blockFolded"]) &&
+    hasTrailingContentWhitespace(lastDescendantNode)
+  );
 }
 
 function isInlineNode(node) {
@@ -323,6 +337,7 @@ function isInlineNode(node) {
 
 export {
   defineShortcut,
+  endsWithBlockWithTrailingWhitespace,
   getBlockValueLineContents,
   getFlowScalarLineContents,
   getLastDescendantNode,
@@ -332,6 +347,7 @@ export {
   hasMiddleComments,
   hasPrettierIgnore,
   hasTrailingComment,
+  hasTrailingContentWhitespace,
   isEmptyNode,
   isInlineNode,
   isLastDescendantNode,

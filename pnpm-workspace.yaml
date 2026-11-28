@@ -22,7 +22,7 @@ allowBuilds:
 
 # One copy of effect for every project: two copies break Context and Schema identity.
 catalog:
-    effect: 3.22.4
+    effect: 3.22.5
 
 # EVE-265: Expo 56's dev-tools schemas use APIs retained in Zod 4.
 # Restrict the major override to this reviewed consumer, not every Zod user.

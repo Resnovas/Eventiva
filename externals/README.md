@@ -18,15 +18,23 @@ Both Effect snapshots are complete repository trees, including upstream agent/pa
 
 Versions below identify published releases through their upstream tags or npm `gitHead`. Upstream source manifests are not rewritten: Nx uses development version `0.0.1`, and the React Hooks plugin's release-tagged source still says `7.0.0`. Their publish tooling stamps the released versions. Main contains `.agents` and `scripts` but no top-level `.patterns` directory at the recorded commit; the complete tree is preserved as published.
 
-- `effect-stable`: Effect 3.22.4; platform 0.97.3, platform-node 0.108.4, sql 0.52.2, sql-sqlite-node 0.54.1, cluster 0.60.5, rpc 0.76.4, experimental 0.61.2, vitest 0.30.1. `effect-main`: commit `3d13d1e84a933bfd4b90952ad9a221728326e923`, captured 2026-11-16. Separate release trees cover sql-pg 0.53.1, workflow 0.19.1 and language-service 0.87.5.
+- `effect-stable`: Effect 3.22.5; platform 0.97.4, platform-node 0.108.4, sql 0.52.2, sql-sqlite-node 0.54.1, cluster 0.60.5, rpc 0.76.4, experimental 0.61.3, vitest 0.30.1. `effect-main`: commit `3d13d1e84a933bfd4b90952ad9a221728326e923`, captured 2026-11-16. Separate release trees cover sql-pg 0.53.1, workflow 0.19.1 and language-service 0.87.5.
 - React and React DOM 19.2.3; React Native 0.85.3 and its code generator; React Native Web 0.21.4; Async Storage 2.2.0.
 - Expo 56.0.24; CLI 56.1.27; Metro runtime 56.0.21; Babel preset 56.0.21; localization 56.0.6; splash-screen 56.0.16; status-bar 56.0.4; system-ui 56.0.5. Independently released packages retain their own npm `gitHead` commits, not an approximate shared Expo tag.
 - Metro and its 13 companion packages 0.84.5, the exact implementation dependencies of `@expo/metro` 56.0.2. The latter describes itself as a "Generated and versioned meta-package wrapping Metro". Its published `expo/expo-metro` URL returns 404 and its `gitHead` is absent from both public Expo repositories checked. Under the no-stable-public-URL exception, no wrapper source is invented or replaced with npm artifacts; the actual upstream Metro implementation is copied at its matching release.
-- FormatJS intl 6.1.4, React Intl 12.1.6, intl-getcanonicallocales 3.3.0, intl-locale 5.4.2, intl-pluralrules 7.0.2, CLI 6.18.0 and ESLint plugin 8.1.3.
+- FormatJS intl 6.2.0, React Intl 12.2.0, intl-getcanonicallocales 3.4.0, intl-locale 5.5.0, intl-pluralrules 7.1.0, CLI 6.20.0 and ESLint plugin 8.1.4.
 - OpenFeature core 1.12.0, server SDK 1.23.0, web SDK 1.10.0 and React SDK 1.4.1.
-- PostHog Node 5.63.1, React Native 4.85.3 and OpenFeature provider 0.1.3, each with its same-commit shared core source; node-postgres (`pg`) 8.23.1 including its repository packages.
-- TypeScript 6.0.3; Nx and all seven directly used Nx plugins/devkit 24.0.5; Vite 8.3.6; Vitest and coverage-v8 4.1.12; Playwright 1.65.0.
-- ESLint 10.14.0; `@eslint/js` 10.0.1; typescript-eslint 8.72.1; React Hooks ESLint plugin 7.1.1 at its own release, not the older copy in the React release; Prettier 3.9.10; eslint-config-prettier 10.1.8; Babel core/runtime 7.29.13 plus upstream helpers.
+- PostHog Node 5.63.1, React Native 4.87.1 and OpenFeature provider 0.1.3, each with its same-commit shared core source; node-postgres (`pg`) 8.23.1 including its repository packages.
+- TypeScript 6.0.3; Nx and all seven directly used Nx plugins/devkit 24.0.6; Vite 8.3.8; Vitest and coverage-v8 4.1.12; Playwright 1.65.1.
+- ESLint 10.15.0; `@eslint/js` 10.0.1; typescript-eslint 8.73.0; React Hooks ESLint plugin 7.1.1 at its own release, not the older copy in the React release; Prettier 3.10.1; eslint-config-prettier 10.1.8; Babel core/runtime 7.29.13 plus upstream helpers.
+
+### EVE-308 full-batch qualification
+
+Jonathan selected full remediation on 2026-11-27: [EVE-308](https://linear.app/resnovas/issue/EVE-308#comment-f4a6f24d) / [Eventiva#1128](https://github.com/Resnovas/Eventiva/issues/1128). The 26 candidate upgrades above also include `oauth4webapi` 3.8.9, `eslint-plugin-jsdoc` 65.5.0 and OpenTelemetry API 1.10.0. The one additional compatible pin is shared Effect 3.22.5, satisfying Platform 0.97.4 and Experimental 0.61.3's `^3.22.5` peers. The main research snapshot and unrelated source pins stay unchanged.
+
+Fifteen release entries are refreshed using peeled immutable tags, with original source paths, bytes, modes and notices. The preceding aggregate bundle remains the new bundle's parent. Prettier 3.10.1 uses its peeled release tag `deda65fd47c285b974e2a4397f26a33cfc1746b8`, distinct from npm's pre-publication `gitHead`; this is release-tag provenance, not an assertion those commits are identical. The existing identity/isolation check still enforces all 45 trees and the unchanged 350 MiB limit.
+
+The telemetry adapter uses the same Effect HTTP JSON body helper as its former fixed serializer layer. Removing `@effect/opentelemetry` removes its unused unconditional SDK peer bridge, rather than forcing SDK 2.x to accept API 1.10.0 or migrating to SDK 3.x. The API pin remains declared without a current direct source consumer. No peer override, security exception, cooldown reduction or runtime export authorization follows from this source refresh. Full qualification and Jonathan's required review are recorded separately in the [task record](../docs/planning/dependency-batch-eve308.md).
 
 ## Licenses and security
 

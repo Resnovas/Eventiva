@@ -27,7 +27,8 @@ function parentNeedsParentheses(path, options, needsParentheses) {
   switch (parent.type) {
     case "ReturnStatement":
     case "ThrowStatement":
-      if (willReturnOrThrowStatementBreak(path, options)) {
+    case "YieldExpression":
+      if (willArgumentBreakAndAddParentheses(path, options)) {
         return false;
       }
       break;
@@ -36,6 +37,7 @@ function parentNeedsParentheses(path, options, needsParentheses) {
       return false;
     case "ClassDeclaration":
     case "ClassExpression":
+    case "StructDeclaration":
       // Add parens around the extends clause of a class. It is needed for almost
       // all expressions.
       if (key === "superClass") {
@@ -116,6 +118,20 @@ function parentNeedsParentheses(path, options, needsParentheses) {
       }
       break;
 
+    case "BinaryExpression":
+      if (
+        !(
+          key === "right" &&
+          node.type === "TSInstantiationExpression" &&
+          (parent.operator === "instanceof" || parent.operator === "in")
+        ) &&
+        endsWithInstantiationExpression(node)
+      ) {
+        return true;
+      }
+
+      break;
+
     case "TSInstantiationExpression":
       if (
         key === "expression" &&
@@ -128,14 +144,35 @@ function parentNeedsParentheses(path, options, needsParentheses) {
   }
 }
 
-function willReturnOrThrowStatementBreak(path, options) {
+function endsWithInstantiationExpression(node) {
+  while (node) {
+    if (
+      node.type === "UnaryExpression" ||
+      node.type === "AwaitExpression" ||
+      node.type === "YieldExpression"
+    ) {
+      node = node.argument;
+    } else if (node.type === "TSTypeAssertion") {
+      node = node.expression;
+    } else {
+      break;
+    }
+  }
+
+  return node?.type === "TSInstantiationExpression";
+}
+
+function willArgumentBreakAndAddParentheses(path, options) {
   const { key, parent } = path;
-  if (!(key === "argument" && isReturnOrThrowStatement(parent))) {
+  if (!(
+    key === "argument" &&
+    (isReturnOrThrowStatement(parent) || parent.type === "YieldExpression")
+  )) {
     return false;
   }
 
   /*
-  When `ReturnStatement` or `ThrowStatement` breaks, parentheses will be added around it's argument.
+  When `ReturnStatement`, `ThrowStatement`, or `YieldExpression` breaks, parentheses will be added around it's argument.
   So don't need add parentheses again.
   But we can't know how the argument printed, so only matches cases that will break for sure
   */
@@ -223,7 +260,12 @@ function includesFunctionTypeInObjectType(node) {
     node,
     (node) =>
       node.type === "ObjectTypeAnnotation" &&
-      hasNode(node, (node) => node.type === "FunctionTypeAnnotation"),
+      hasNode(
+        node,
+        (node) =>
+          node.type === "FunctionTypeAnnotation" ||
+          node.type === "ConstructorTypeAnnotation",
+      ),
   );
 }
 
