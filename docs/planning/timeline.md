@@ -89,13 +89,17 @@ At 09:29 UTC the [full local gate](https://linear.app/resnovas/issue/EVE-44#comm
 
 At 09:43 UTC the [attribution check](https://linear.app/resnovas/issue/EVE-44#comment-6e5edb96-7a14-42a6-a796-1710da2868f4) and [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7215008655) confirmed that the project-only co-author setting took effect in this orb. The new local registry commit passed the repository hook but contained only an author sign-off, with no AI co-author. AI-02 therefore still blocks publication until a supported model-qualified credit path is verified. No PR or merge.
 
+At 10:43:45 UTC [PR #1116](https://github.com/Resnovas/Eventiva/pull/1116) merged through the protected queue. Explicit model-qualified credits passed the stored-message checks, and GitHub verified all three branch signatures with matching author and signer. The [delivery record](https://linear.app/resnovas/issue/EVE-44#comment-72103568-f878-4c9d-84d2-ba5ad89489ed) and [GitHub mirror](https://github.com/Resnovas/Eventiva/issues/811#issuecomment-7216256694) distinguish local production/profiling ratios of 2.39x/2.71x from hosted PR 2.35x/2.67x and [queue CI](https://github.com/Resnovas/Eventiva/actions/runs/45981588753) 2.37x/2.66x. The strict sub-3x gate shipped with the primitive. Nothing was deployed. The 2x goal, checker/autofix and migration remain open.
+
+The [receipt, EVE-313](https://linear.app/resnovas/issue/EVE-313) / [#1133](https://github.com/Resnovas/Eventiva/issues/1133) is separate from the primitive. Its first [queue run](https://github.com/Resnovas/Eventiva/actions/runs/45988452388/job/140469919525) passed the telemetry gate but could not bind the approval-consent fixture listener. On 2026-11-28 at 01:19:29 UTC the [EVE-310 fix](https://github.com/Resnovas/Eventiva/pull/1148) landed after [queue CI](https://github.com/Resnovas/Eventiva/actions/runs/46090802933) and [policy checks](https://github.com/Resnovas/Eventiva/actions/runs/46090803093) passed. [PR #1119](https://github.com/Resnovas/Eventiva/pull/1119) carries the receipt against that repaired base, without changing the fixture or the telemetry contract.
+
 ```mermaid
 flowchart LR
     Transfer[Source recovered] --> Measure[Both matched p50 ratios below 5x]
     Measure --> Policy[Narrow compiler directive policy qualified]
     Policy --> Verify[2x not reached]
     Verify --> Decide[Strict sub-3x delivery gate; continue toward 2x]
-    Decide --> Credit[Both modes below 3x; publication awaits attribution]
+    Decide --> Delivered[Primitive merged; both modes below 3x]
 ```
 
 ## Renewal static-plus-affected requalification - 2026-11-20
