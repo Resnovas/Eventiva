@@ -45,6 +45,12 @@ Protected delivery completed on 2026-11-27: [house PR88](https://github.com/Resn
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## EVE-261 HTTP fixture listener recovery - 2026-11-27
+
+At 09:41 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) isolated three failing HTTP cases in [the #1113 run](https://github.com/Resnovas/Eventiva/actions/runs/45973498358/job/140419413699), tracked in [EVE-261](https://linear.app/resnovas/issue/EVE-261#comment-a862243d) / [#1035](https://github.com/Resnovas/Eventiva/issues/1035). With both former ports occupied continuously, the original tests failed 3/3 and the retained-listener implementation passed 3/3 against disposable PostgreSQL. This qualifies the local HTTP fixture only, not the documentation stack, process migration or wider integration gate.
+
+At 23:01 UTC the [existing recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) resumed [EVE-309](https://linear.app/resnovas/issue/EVE-309#comment-0de06138) / [#1129](https://github.com/Resnovas/Eventiva/issues/1129) under [renewed authorization](https://ampcode.com/threads/T-01a21f3b-7821-7194-b956-625d41f89870). The existing [HTTP repair #1117](https://github.com/Resnovas/Eventiva/pull/1117) retains both loopback listeners across discovery and use. Requalify against current main without restoring its deleted generated graph; release evidence requires the protected queue and exact main checks. Consent isolation and parent acceptance remain separate.
+
 ## EVE-44 function telemetry recovery - 2026-11-27
 
 At 00:08 UTC the [optimisation thread](https://ampcode.com/threads/T-01a21a1b-68d9-7668-93a5-8193e2306671) verified main `f46ecad1` and the [EVE-44 restart](https://linear.app/resnovas/issue/EVE-44#comment-7e43c1c0-c388-4b2b-9118-6480e9dfa981) / open [GitHub #811](https://github.com/Resnovas/Eventiva/issues/811). Jonathan accepts at most 5x matched native `Effect.fn` overhead without weakening telemetry, fresh flag reads or cleanup.
