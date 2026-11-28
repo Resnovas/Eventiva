@@ -8,6 +8,8 @@ The `main` executable remains an inventory/parity diagnostic, reports `unavailab
 
 ## One execution path
 
+For concurrent HTTP fixtures using the default host, bind a scoped TCP socket to `127.0.0.1` on port `0` and pass the open service to `backend`. The runner advertises the assigned port without changing the profile's host or rebinding the listener. The deployment profile still requires a port from 1 through 65535; ordinary servers bind their configured port.
+
 Community defaults to one cluster-capable runner on one host. Self-hosted operators may increase the count. Cloud defaults to two independent runner processes, with disjoint acquired shard ownership. Two processes on one physical host are not host-level redundancy. Production requires independently failure-isolated hosts, shared reachable coordination storage and verified capacity and recovery before being called ready.
 
 Both editions use `backend` and its `clusterRunner` in `apps/server/src/cluster.ts`, the same `EventivaAction` entity, serial mailbox handling and `ActionHost.execute`. No profile selects local/noop storage. The deployment schema, not a rollout flag, selects topology; the binding core security architecture cannot be disabled by a feature flag. Existing module/action feature gates remain enforced by ActionHost.
@@ -101,7 +103,7 @@ No SQLite-only Cluster support, managed database compatibility or safe managed d
 
 ## Run validation
 
-Follow the disposable PostgreSQL fixture instructions in `docs/storage.md` and its bounded image-risk exception. Export `STORAGE_TEST_POSTGRES_URL` from secure local configuration. The tests accept only a loopback host and an administrative fixture database named `eventiva_test`; they create and clean up randomly named databases. Do not point them at Neon, production or user data. Ports 34561, 34562 and 34563 must be free.
+Follow the disposable PostgreSQL fixture instructions in `docs/storage.md` and its bounded image-risk exception. Export `STORAGE_TEST_POSTGRES_URL` from secure local configuration. The tests accept only a loopback host and an administrative fixture database named `eventiva_test`; they create and clean up randomly named databases. Do not point them at Neon, production or user data. Port 34563 must be free for the typed backend fixture. The independent-process harness allocates initial listeners through the OS and retains each socket through backend composition; ports 34561 and 34562 are no longer reserved. Each replacement, including the final community restart, reuses the replaced runner's assigned port so persisted endpoint identity remains stable. Port zero is a fixture listener request, never a deployment-profile value.
 
 Run `pnpm nx run @eventiva/server:cluster-conformance` to build and run the process harness. Run `pnpm nx run @eventiva/server:test` for that harness plus policy/protocol, health and typed SQL backend tests. Neither target caches database evidence. `node --run verify` includes them through the server test target; existing CI uses its bounded PostgreSQL fixture, with no new job, image, dependency or paid service. Existing editor Test actions reach these same targets.
 
