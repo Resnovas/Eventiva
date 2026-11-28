@@ -1,0 +1,35 @@
+version 2.1
+
+build:
+  env:
+    - NODE_ENV
+
+builds:
+  - src: "*"
+    use: nodejs@20
+
+routes:
+  - src: /.*
+    dest: libs/api/src/http-server.ts
+    headers:
+      Access-Control-Allow-Origin: "*"
+      Access-Control-Allow-Methods: "GET,POST,PUT,DELETE,OPTIONS"
+      Access-Control-Allow-Headers: "Content-Type,Authorization"
+
+functions:
+  "libs/api/src/http-server.ts":
+    maxDuration: 30
+    memory: 1024
+    runtime: nodejs20.x
+
+env:
+  - name: NODE_ENV
+    value: production
+  - name: EVENTIVA_HTTP_PORT
+    value: "3000"
+  - name: EVENTIVA_DATABASE
+    value: postgres
+  - name: EVENTIVA_FEATURE_OBSERVABILITY
+    value: "true"
+  - name: EVENTIVA_FEATURE_ENTITY_ENDPOINTS
+    value: "true"

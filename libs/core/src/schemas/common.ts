@@ -1,38 +1,54 @@
-import { Schema } from "effect"
-import * as Branded from "../types/branded.js"
-import { EventStatus, VenueStatus, VendorCategory } from "../types/enums.js"
+/**
+ * Common domain schemas for Eventiva.
+ * Composes branded types into reusable entity/value-object schemas.
+ */
+import * as Schema from 'effect/Schema';
+import * as Branded from '../types/branded.js';
+import { EventStatus, VenueStatus, VendorCategory } from '../types/enums.js';
 
-export const TenantId = Schema.UUID.pipe(
-  Schema.fromBrand(Branded.TenantId)
-)
+// ─── Value object schemas (re-export branded schemas from types/branded.ts) ───
 
-export const EntityId = Schema.UUID.pipe(
-  Schema.fromBrand(Branded.EntityId)
-)
+export const EmailAddress = Branded.EmailAddress;
+export const PhoneNumber = Branded.PhoneNumber;
+export const CurrencyAmount = Branded.CurrencyAmount;
+export const DateTime = Branded.DateTime;
 
-export const EmailAddress = Schema.String.pipe(
-  Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: () => "Invalid email address" }),
-  Schema.fromBrand(Branded.EmailAddress)
-)
+export const EventStatusSchema = Schema.Enums(EventStatus);
+export const VenueStatusSchema = Schema.Enums(VenueStatus);
+export const VendorCategorySchema = Schema.Enums(VendorCategory);
 
-export const PhoneNumber = Schema.String.pipe(
-  Schema.pattern(/^\+?[1-9]\d{1,14}$/, { message: () => "Invalid phone number" }),
-  Schema.fromBrand(Branded.PhoneNumber)
-)
+// ─── Composite entity / value-object schemas ───
 
-export const CurrencyAmount = Schema.Number.pipe(
-  Schema.nonNegative({ message: () => "Amount cannot be negative" }),
-  Schema.fromBrand(Branded.CurrencyAmount)
-)
+export const ContactInfo = Schema.Struct({
+  name: Schema.String,
+  email: EmailAddress,
+  phone: Schema.optional(PhoneNumber),
+});
 
-export const DateTime = Schema.String.pipe(
-  Schema.filter(
-    (s) => !isNaN(Date.parse(s)) ? undefined : "Invalid datetime",
-    { message: () => "Invalid datetime" }
+export const Address = Schema.Struct({
+  line1: Schema.String,
+  line2: Schema.optional(Schema.String),
+  city: Schema.String,
+  postalCode: Schema.String,
+  country: Schema.String,
+});
+
+export const Money = Schema.Struct({
+  amount: CurrencyAmount,
+  currency: Schema.String.pipe(
+    Schema.pattern(/^[A-Z]{3}$/, { message: () => 'Invalid ISO 4217 currency code' })
   ),
-  Schema.fromBrand(Branded.DateTime)
-)
+});
 
-export const EventStatusSchema = Schema.Enums(EventStatus)
-export const VenueStatusSchema = Schema.Enums(VenueStatus)
-export const VendorCategorySchema = Schema.Enums(VendorCategory)
+export const DateRange = Schema.Struct({
+  start: DateTime,
+  end: DateTime,
+});
+
+export const BaseEntityRecord = Schema.Struct({
+  id: Schema.String,
+  tenantId: Schema.String,
+  createdAt: Schema.String,
+  updatedAt: Schema.String,
+  deletedAt: Schema.optional(Schema.String),
+});

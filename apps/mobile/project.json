@@ -1,0 +1,26 @@
+{
+  "name": "mobile",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/mobile/src",
+  "projectType": "application",
+  "tags": ["type:app", "layer:frontend", "platform:mobile"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/mobile",
+        "main": "apps/mobile/src/index.ts",
+        "tsConfig": "apps/mobile/tsconfig.json"
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "apps/mobile/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/apps/mobile"],
+      "cache": true
+    }
+  }
+}

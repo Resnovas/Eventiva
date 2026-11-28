@@ -97,9 +97,6 @@ jobs:
           branch-name: ${{ env.BRANCH_NAME }}
           bot-token: ${{ secrets.BOT_TOKEN }}
 
-      - name: Bootstrap tests repo project structure
-        run: pnpm exec nx g @eventiva/test-repo-tooling:bootstrap-tests-repo tests --no-interactive
-
       - name: Install Cursor CLI
         run: |
           set -euo pipefail
@@ -151,8 +148,8 @@ jobs:
           invalid_paths=0
           while IFS= read -r changed; do
             if [ -z "${changed}" ]; then continue; fi
-            if [[ "${changed}" =~ ^(core|databases/[^/]+|extensions/[^/]+/[^/]+|platforms/[^/]+)/src/.+\.spec\.[jt]sx?$ ]]; then continue; fi
-            if [[ "${changed}" =~ ^(core|databases/[^/]+|extensions/[^/]+/[^/]+|platforms/[^/]+)/workflows/.+\.(yml|yaml)$ ]]; then continue; fi
+            if [[ "${changed}" =~ ^(core|databases/[^/]+|platforms/[^/]+|libs/[^/]+/[^/]+)/src/.+\.spec\.[jt]sx?$ ]]; then continue; fi
+            if [[ "${changed}" =~ ^(core|databases/[^/]+|platforms/[^/]+|libs/[^/]+/[^/]+)/workflows/.+\.(yml|yaml)$ ]]; then continue; fi
             echo "Disallowed agent-generated path: ${changed}"
             invalid_paths=1
           done < agent-generated-files.txt

@@ -1,95 +1,145 @@
-// Auth domain repository - PostgreSQL
+import { Effect, Layer } from 'effect';
 import { eq } from 'drizzle-orm';
-import { Context, Effect, Layer, Schema } from 'effect';
-import { AuthRepository, AuthRepositoryError, InvalidCredentialsError, UserNotFoundError } from '../repository.js';
+import { typeId } from '@eventiva/core';
+import { AuthRepository, AuthRepositoryError } from '../repository.js';
+import type { RegisterInput, User } from '../schema.js';
 import { users } from './schema.js';
-import type { LoginInput, RegisterInput, User } from '../schema.js';
 
-// PostgreSQL driver must be provided via DatabasesPgTag
-import type { DatabasesPg } from '@eventiva/databases.pg';
+function rowToUser(row: any): User {
+    return {
+        id: row.id,
+        email: row.email,
+        passwordHash: row.passwordHash,
+        role: row.role as User['role'],
+        isVerified: row.isVerified,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+    };
+}
 
-export const makeAuthRepository = Effect.gen(function* () {
-  const db = yield* DatabasesPgTag;
+export function makeDrizzleAuthRepository(db: any): AuthRepository {
+    return {
+        create: (input) =>
+            Effect.gen(function* () {
+                const now = new Date().toISOString();
+                const id = typeId('user');
+                const row = {
+                    id,
+                    email: input.email,
+                    passwordHash: input.passwordHash,
+                    role: input.role ?? 'staff',
+                    isVerified: false,
+                    createdAt: now,
+                    updatedAt: now,
+                };
 
-  return AuthRepository.of({
-    create: (input: RegisterInput) =>
-      Effect.gen(function* () {
-        const { email, password, role } = input;
-        const now = new Date().toISOString();
-        const result = yield* Effect.tryPromise({
-          try: () => db.insert(users).values({ email, passwordHash: '', role, isVerified: false, createdAt: now, updatedAt: now }).returning(),
-          catch: (e) => new AuthRepositoryError({ message: 'Failed to create user', cause: e }),
-        });
+                yield* Effect.tryPromise({
+                    try: () => db.insert(users).values(row),
+                    catch: (cause) => new AuthRepositoryError({ message: 'Failed to insert user', cause }),
+                });
 
-        if (result.length === 0) {
-          return yield* Effect.fail(new AuthRepositoryError({ message: 'No user returned' }));
-        }
+                return row as User;
+            }),
 
-        return Schema.decodeUnknownSync(User)({
-          id: result[0].id,
-          email: result[0].email,
-          passwordHash: '',
-          role: result[0].role as User['role'],
-          isVerified: result[0].isVerified,
-          createdAt: result[0].createdAt.toISOString(),
-          updatedAt: result[0].updatedAt.toISOString(),
-        });
-      }),
+        findByEmail: (email: string) =>
+            Effect.gen(function* () {
+                const rows = yield* Effect.tryPromise({
+                    try: () => db.select().from(users).where(eq(users.email, email)),
+                    catch: (cause) => new AuthRepositoryError({ message: `Failed to find user by email ${email}`, cause }),
+                });
 
-    findByEmail: (email: string) =>
-      Effect.gen(function* () {
-        const result = yield* Effect.tryPromise({
-          try: () => db.select().from(users).where(eq(users.email, email)).limit(1),
-          catch: (e) => new AuthRepositoryError({ message: 'Failed to find user', cause: e }),
-        });
+                if (rows.length === 0) {
+                    return null;
+                }
+                return rowToUser(rows[0]);
+            }),
 
-        if (result.length === 0) {
-          return null;
-        }
+        findById: (id: string) =>
+            Effect.gen(function* () {
+                const rows = yield* Effect.tryPromise({
+                    try: () => db.select().from(users).where(eq(users.id, id)),
+                    catch: (cause) => new AuthRepositoryError({ message: `Failed to find user ${id}`, cause }),
+                });
 
-        const user = result[0];
-        return Schema.decodeUnknownSync(User)({
-          id: user.id,
-          email: user.email,
-          passwordHash: user.passwordHash,
-          role: user.role as User['role'],
-          isVerified: user.isVerified,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        });
-      }),
+                if (rows.length === 0) {
+                    return null;
+                }
+                return rowToUser(rows[0]);
+            }),
 
-    findById: (id: string) =>
-      Effect.gen(function* () {
-        const result = yield* Effect.tryPromise({
-          try: () => db.select().from(users).where(eq(users.id, id)).limit(1),
-          catch: (e) => new AuthRepositoryError({ message: 'Failed to find user', cause: e }),
-        });
+        updatePasswordHash: (id: string, passwordHash: string) =>
+            Effect.gen(function* () {
+                yield* Effect.tryPromise({
+                    try: () =>
+                        db
+                            .update(users)
+                            .set({ passwordHash, updatedAt: new Date().toISOString() })
+                            .where(eq(users.id, id)),
+                    catch: (cause) => new AuthRepositoryError({ message: `Failed to update password for user ${id}`, cause }),
+                });
+            }),
 
-        if (result.length === 0) {
-          return null;
-        }
+        verifyUser: (id: string) =>
+            Effect.gen(function* () {
+                yield* Effect.tryPromise({
+                    try: () =>
+                        db
+                            .update(users)
+                            .set({ isVerified: true, updatedAt: new Date().toISOString() })
+                            .where(eq(users.id, id)),
+                    catch: (cause) => new AuthRepositoryError({ message: `Failed to verify user ${id}`, cause }),
+                });
+            }),
+    };
+}
 
-        const user = result[0];
-        return Schema.decodeUnknownSync(User)({
-          id: user.id,
-          email: user.email,
-          passwordHash: user.passwordHash,
-          role: user.role as User['role'],
-          isVerified: user.isVerified,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        });
-      }),
+export function makeInMemoryAuthRepository(): AuthRepository {
+    const store = new Map<string, User>();
 
-    updatePasswordHash: (id: string, passwordHash: string) =>
-      Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: () => db.update(users).set({ passwordHash }).where(eq(users.id, id)),
-          catch: (e) => new AuthRepositoryError({ message: 'Failed to update password', cause: e }),
-        });
-      }),
-  });
-}).pipe(Effect.provide(Layer.effect(DatabasesPgTag, Effect.succeed({} as any)))); // Will be provided properly
+    return {
+        create: (input) =>
+            Effect.gen(function* () {
+                const now = new Date().toISOString();
+                const id = typeId('user');
+                const user: User = {
+                    id,
+                    email: input.email,
+                    passwordHash: input.passwordHash,
+                    role: input.role ?? 'staff',
+                    isVerified: false,
+                    createdAt: now,
+                    updatedAt: now,
+                };
+                store.set(id, user);
+                return user;
+            }),
 
-export const AuthRepositoryPg = Layer.effect(AuthRepository, makeAuthRepository);
+        findByEmail: (email: string) =>
+            Effect.sync(() => {
+                for (const user of store.values()) {
+                    if (user.email === email) return user;
+                }
+                return null;
+            }),
+
+        findById: (id: string) => Effect.succeed(store.get(id) ?? null),
+
+        updatePasswordHash: (id: string, passwordHash: string) =>
+            Effect.sync(() => {
+                const user = store.get(id);
+                if (user) {
+                    store.set(id, { ...user, passwordHash, updatedAt: new Date().toISOString() });
+                }
+            }),
+
+        verifyUser: (id: string) =>
+            Effect.sync(() => {
+                const user = store.get(id);
+                if (user) {
+                    store.set(id, { ...user, isVerified: true, updatedAt: new Date().toISOString() });
+                }
+            }),
+    };
+}
+
+export const AuthRepositoryInMemoryLive = Layer.succeed(AuthRepository, makeInMemoryAuthRepository());

@@ -1,13 +1,10 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from '@effect/platform';
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 import { GDPRService } from '@eventiva/domain-gdpr';
-import * as Schema from 'effect/Schema';
-import { typeIdSchema } from '@eventiva/core';
-import { NotFoundError } from '../errors/api-errors.js';
 
 export const CreateErasureRequestSchema = Schema.Struct({
-    subjectId: typeIdSchema('contact'),
-    hardDelete: Schema.boolean,
+    subjectId: Schema.String,
+    hardDelete: Schema.Boolean,
 });
 
 export const gdprRoutes = HttpRouter.empty.pipe(

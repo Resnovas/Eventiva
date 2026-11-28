@@ -1,0 +1,21 @@
+{
+  "name": "core-db",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:core", "type:shared", "layer:shared"],
+  "sourceRoot": "libs/core/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/core/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/core"],
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {}
+    }
+  }
+}

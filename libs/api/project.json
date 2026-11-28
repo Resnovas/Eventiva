@@ -1,0 +1,17 @@
+{
+  "name": "api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:api", "type:platform", "layer:backend"],
+  "sourceRoot": "libs/api/src",
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {}
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {}
+    }
+  }
+}

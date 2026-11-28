@@ -1,0 +1,21 @@
+{
+  "name": "domain-gdpr",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain"],
+  "sourceRoot": "libs/domain/gdpr/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/gdpr/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/gdpr"],
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {}
+    }
+  }
+}

@@ -32,7 +32,9 @@
       "@eventiva/api": ["libs/api/src/index.ts"],
       "@eventiva/domain-venue": ["libs/domain/venue/src/index.ts"],
       "@eventiva/domain-vendor": ["libs/domain/vendor/src/index.ts"],
-      "@eventiva/domain-event": ["libs/domain/event/src/index.ts"]
+      "@eventiva/domain-event": ["libs/domain/event/src/index.ts"],
+      "@eventiva/domain-gdpr": ["libs/domain/gdpr/src/index.ts"],
+      "@eventiva/domain-auth": ["libs/domain/auth/src/index.ts"]
     }
   }
 }

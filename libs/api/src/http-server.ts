@@ -66,13 +66,13 @@ export const ApiServerLive = (options: ApiServerOptions = {}) =>
 /**
  * Starts the API server with Effect runtime.
  */
-export const startApiServer = (options: ApiServerOptions = {}) => {
+export const startApiServer = (options: ApiServerOptions = {}): Promise<void> => {
   const serverLayer = ApiServerLive(options);
 
-  const program = Layer.launch(serverLayer).pipe(
-    Effect.flatMap(() => Effect.succeed(console.log('[Eventiva API] Server started')))
-  );
+  const program = Layer.launch(serverLayer);
 
-  return Effect.runPromise(program);
+  return Effect.runPromise(program as Effect.Effect<never, ServeError, never>).then(() => {
+    console.log('[Eventiva API] Server started');
+  });
 };
 

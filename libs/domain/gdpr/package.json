@@ -15,6 +15,14 @@
         }
     },
     "dependencies": {
-        "tslib": "^2.3.0"
+        "tslib": "^2.3.0",
+        "@eventiva/core": "workspace:*",
+        "effect": "3.19.19"
+    },
+    "devDependencies": {
+        "@effect/vitest": "^0.27.0",
+        "@nx/vitest": "^22.5.4",
+        "vite-tsconfig-paths": "^6.1.1",
+        "vitest": "^2.1.9"
     }
 }

@@ -1,0 +1,21 @@
+{
+  "name": "domain-schedule",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:domain", "type:domain", "npm:private"],
+  "sourceRoot": "libs/domain/schedule/src",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/domain/schedule/vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/coverage/libs/domain/schedule"],
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {}
+    }
+  }
+}

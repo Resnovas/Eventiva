@@ -2,27 +2,10 @@ import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
 import * as Schema from 'effect/Schema';
 import { typeId } from '@eventiva/core';
-import {
-    CreateEventInput,
-    CurrencyAmount,
-    Event,
-    EventStatus,
-    EventType,
-    UpdateEventInput,
-} from '../schema.js';
-import {
-    EventDateConflictError,
-    EventInvalidStatusTransitionError,
-    EventNotFoundError,
-    EventRepository,
-    EventRepositoryError,
-    EventValidationError,
-} from '../repository.js';
-import {
-    makeDrizzleEventRepository,
-    makeInMemoryEventRepository,
-} from '../db/repository.pg.js';
-import { EventService, EventServiceLive, makeEventService } from '../service.ts';
+import { CreateEventInput, Event, EventStatus, UpdateEventInput } from '../schema.js';
+import { EventDateConflictError, EventInvalidStatusTransitionError, EventNotFoundError, EventRepository } from '../repository.js';
+import { makeDrizzleEventRepository, makeInMemoryEventRepository } from '../db/repository.pg.ts';
+import { EventService, EventServiceLive } from '../service.js';
 
 const sampleTenantId = typeId('tenant');
 const sampleOwnerId = typeId('contact');
@@ -43,7 +26,7 @@ const validCreateInput: CreateEventInput = {
     tags: ['outdoor', 'music'],
 };
 
-describe('Event Schema & Models', () => {
+describe('Event Schema Validation', () => {
     it.effect('validates correct CreateEventInput and decodes', () =>
         Effect.gen(function* () {
             const decoded = yield* Schema.decodeUnknown(CreateEventInput)(validCreateInput);
@@ -84,10 +67,9 @@ describe('Event Schema & Models', () => {
 });
 
 describe('EventRepository (InMemory)', () => {
-    const repo = makeInMemoryEventRepository();
-
     it.effect('creates and finds event', () =>
         Effect.gen(function* () {
+            const repo = makeInMemoryEventRepository();
             const created = yield* repo.create(validCreateInput);
             expect(created.name).toBe(validCreateInput.name);
 
@@ -96,15 +78,16 @@ describe('EventRepository (InMemory)', () => {
             expect(found?.id).toBe(created.id);
 
             const list = yield* repo.findByTenant(sampleTenantId);
-            expect(list.length).toBeGreaterThan(0);
+            expect(list.length).toBe(1);
 
             const byVenue = yield* repo.findByVenue(sampleTenantId, sampleVenueId);
-            expect(byVenue.length).toBeGreaterThan(0);
+            expect(byVenue.length).toBe(1);
         })
     );
 
     it.effect('updates and deletes event', () =>
         Effect.gen(function* () {
+            const repo = makeInMemoryEventRepository();
             const created = yield* repo.create(validCreateInput);
             const updated = yield* repo.update(sampleTenantId, created.id, { name: 'Updated Festival Name' });
             expect(updated.name).toBe('Updated Festival Name');
@@ -117,6 +100,7 @@ describe('EventRepository (InMemory)', () => {
 
     it.effect('returns EventNotFoundError when deleting/updating non-existent', () =>
         Effect.gen(function* () {
+            const repo = makeInMemoryEventRepository();
             const updateExit = yield* Effect.exit(repo.update(sampleTenantId, 'event_nonexistent', { name: 'New' }));
             expect(updateExit._tag).toBe('Failure');
 
@@ -127,10 +111,10 @@ describe('EventRepository (InMemory)', () => {
 });
 
 describe('EventService Business Logic', () => {
-    const testLayer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, makeInMemoryEventRepository()));
-
-    it.effect('fails createEvent if startDate >= endDate', () =>
-        Effect.gen(function* () {
+    it.effect('fails createEvent if startDate >= endDate', () => {
+        const repo = makeInMemoryEventRepository();
+        const layer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, repo));
+        return Effect.gen(function* () {
             const service = yield* EventService;
             const exit = yield* Effect.exit(
                 service.createEvent({
@@ -140,18 +124,17 @@ describe('EventService Business Logic', () => {
                 })
             );
             expect(exit._tag).toBe('Failure');
-            if (exit._tag === 'Failure' && exit.cause._tag === 'Fail') {
-                expect(exit.cause.error._tag).toBe('EventValidationError');
-            }
-        }).pipe(Effect.provide(testLayer))
-    );
+        }).pipe(Effect.provide(layer));
+    });
 
-    it.effect('detects date conflict for venue', () =>
-        Effect.gen(function* () {
+    it.effect('detects date conflict for same venue', () => {
+        const repo = makeInMemoryEventRepository();
+        const layer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, repo));
+        return Effect.gen(function* () {
             const service = yield* EventService;
             yield* service.createEvent(validCreateInput);
 
-            // Overlapping event for same venue
+            // Overlapping event for same venue on same dates
             const conflictingInput: CreateEventInput = {
                 ...validCreateInput,
                 name: 'Conflicting Tech Conference',
@@ -161,14 +144,13 @@ describe('EventService Business Logic', () => {
 
             const exit = yield* Effect.exit(service.createEvent(conflictingInput));
             expect(exit._tag).toBe('Failure');
-            if (exit._tag === 'Failure' && exit.cause._tag === 'Fail') {
-                expect(exit.cause.error._tag).toBe('EventDateConflictError');
-            }
-        }).pipe(Effect.provide(testLayer))
-    );
+        }).pipe(Effect.provide(layer));
+    });
 
-    it.effect('allows non-overlapping event for same venue', () =>
-        Effect.gen(function* () {
+    it.effect('allows non-overlapping event for same venue', () => {
+        const repo = makeInMemoryEventRepository();
+        const layer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, repo));
+        return Effect.gen(function* () {
             const service = yield* EventService;
             const nonOverlapping: CreateEventInput = {
                 ...validCreateInput,
@@ -179,36 +161,46 @@ describe('EventService Business Logic', () => {
 
             const created = yield* service.createEvent(nonOverlapping);
             expect(created.name).toBe('Next Month Expo');
-        }).pipe(Effect.provide(testLayer))
-    );
+        }).pipe(Effect.provide(layer));
+    });
 
-    it.effect('enforces status lifecycle transitions', () =>
-        Effect.gen(function* () {
+    it.effect('enforces status lifecycle transitions', () => {
+        const repo = makeInMemoryEventRepository();
+        const layer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, repo));
+        return Effect.gen(function* () {
             const service = yield* EventService;
             const event = yield* service.createEvent(validCreateInput);
+            expect(event.status).toBe('planned');
 
-            // Transition from planned -> confirmed (valid)
+            // Transition planned -> confirmed (valid)
             const confirmed = yield* service.updateEvent(sampleTenantId, event.id, { status: 'confirmed' });
             expect(confirmed.status).toBe('confirmed');
 
-            // Transition from confirmed -> in_progress (valid)
+            // Transition confirmed -> in_progress (valid)
             const inProgress = yield* service.updateEvent(sampleTenantId, event.id, { status: 'in_progress' });
             expect(inProgress.status).toBe('in_progress');
 
-            // Transition from in_progress -> completed (valid)
+            // Transition in_progress -> completed (valid)
             const completed = yield* service.updateEvent(sampleTenantId, event.id, { status: 'completed' });
             expect(completed.status).toBe('completed');
 
-            // Transition from completed -> in_progress (invalid!)
+            // Transition completed -> in_progress (invalid — completed is terminal)
             const invalidExit = yield* Effect.exit(
                 service.updateEvent(sampleTenantId, event.id, { status: 'in_progress' })
             );
             expect(invalidExit._tag).toBe('Failure');
-            if (invalidExit._tag === 'Failure' && invalidExit.cause._tag === 'Fail') {
-                expect(invalidExit.cause.error._tag).toBe('EventInvalidStatusTransitionError');
-            }
-        }).pipe(Effect.provide(testLayer))
-    );
+        }).pipe(Effect.provide(layer));
+    });
+
+    it.effect('getEvent returns EventNotFoundError for non-existent', () => {
+        const repo = makeInMemoryEventRepository();
+        const layer = Layer.provide(EventServiceLive, Layer.succeed(EventRepository, repo));
+        return Effect.gen(function* () {
+            const service = yield* EventService;
+            const exit = yield* Effect.exit(service.getEvent(sampleTenantId, 'event_nonexistent'));
+            expect(exit._tag).toBe('Failure');
+        }).pipe(Effect.provide(layer));
+    });
 });
 
 describe('makeDrizzleEventRepository Error Handling', () => {

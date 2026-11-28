@@ -15,7 +15,7 @@ export const GDPRRequest = Schema.Struct({
     status: GDPRActionStatus,
     requestedAt: Schema.String,
     completedAt: Schema.optional(Schema.String),
-    details: Schema.Record(Schema.String, Schema.Unknown),
+    details: Schema.Struct({}).pipe(Schema.optionalWith({ default: () => ({}) })),
 });
 export type GDPRRequest = Schema.Schema.Type<typeof GDPRRequest>;
 
@@ -23,6 +23,6 @@ export const CreateGDPRRequestInput = Schema.Struct({
     tenantId: typeIdSchema('tenant'),
     subjectId: typeIdSchema('contact'),
     type: GDPRRecordType,
-    details: Schema.Record(Schema.String, Schema.Unknown),
+    details: Schema.Struct({}).pipe(Schema.optionalWith({ default: () => ({}) })),
 });
 export type CreateGDPRRequestInput = Schema.Schema.Type<typeof CreateGDPRRequestInput>;
