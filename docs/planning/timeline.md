@@ -49,6 +49,10 @@ Protected delivery completed on 2026-11-27: [house PR88](https://github.com/Resn
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
 
+## Storage migration tooling contracts - 2026-11-27
+
+The [executor](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) documented the migration guard, its policy and its test fixtures against the existing contract (36 findings before adoption). The trust tiers remain in [ADR-0008](../adr/0008-verification-tooling-and-test-isolation.md); the group has no counted inline comments. The parent [client smoke PR #1112](https://github.com/Resnovas/Eventiva/pull/1112) passed the uncached Chromium smoke and normal commit hook with the ledger at 2,107. [EVE-299](https://linear.app/resnovas/issue/EVE-299) / [#1092](https://github.com/Resnovas/Eventiva/issues/1092) remain open for the later groups, house-owned tooling, a zero ledger and global enforcement.
+
 ## Client smoke and five-tree JSDoc audit - 2026-11-27
 
 The [executor](https://ampcode.com/threads/T-9871962d-5d1f-4b7f-8bdb-01905a797f84) preserved the client smoke assertions and its existing JSDoc enforcement. Removing its two ordinary comments tightens the ledger from 2,109 to 2,107; [ADR-0008](../adr/0008-verification-tooling-and-test-isolation.md) explains the no-provider assertion. This layer targets [root config PR #1111](https://github.com/Resnovas/Eventiva/pull/1111), whose direct lint, root check and installed static/affected hook passed, including 32 affected Nx tasks and 320 tooling tests. Neither layer is whole-issue acceptance.
