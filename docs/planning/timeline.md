@@ -1,5 +1,9 @@
 # Foundation and integration timeline
 
+## Approval-consent listener isolation - 2026-11-27
+
+At 23:01 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) resumed [EVE-310](https://linear.app/resnovas/issue/EVE-310#comment-d6cf53dd) / [#1130](https://github.com/Resnovas/Eventiva/issues/1130), separately from [the HTTP listener repair](https://github.com/Resnovas/Eventiva/pull/1117). A local test process held loopback port 34566 continuously. All four unchanged consent cases failed on the original fixture with `EADDRINUSE`; the hosted log does not identify the competing process. With a scoped OS-assigned listener, two concurrent runs at 23:07 UTC each passed all four SQLite and PostgreSQL cases under the same occupied-port condition. Neither the authorization assertions nor the timeouts changed. Full verification and protected delivery remain separate gates for the evidence PRs; the wider EVE-261 integration remains blocked.
+
 ## Graphify ownership migration - 2026-11-27
 
 Owner: [implementation thread](https://ampcode.com/threads/T-01a21be5-639d-7648-a3d5-d9b54cf795e2). Verified pairs: [EVE-305](https://linear.app/resnovas/issue/EVE-305) / [Eventiva#1108](https://github.com/Resnovas/Eventiva/issues/1108), canonical [RES-74](https://linear.app/resnovas/issue/RES-74) / [house#87](https://github.com/Resnovas/.github/issues/87). Approved [plan revision 2](https://ampcode.com/artifacts/eventiva-graph-generation-378f45fd-4d09-4849-8f38-1949db89f302). This decision supersedes older graph-commit and shared-graph reservation instructions below; their historical execution evidence remains unchanged.
@@ -44,6 +48,12 @@ flowchart LR
 Protected delivery completed on 2026-11-27: [house PR88](https://github.com/Resnovas/.github/pull/88) merged at19:53:02Z as [e0eaf130](https://github.com/Resnovas/.github/commit/e0eaf130aec53f396067b148696ca9d62b03edc9), followed by [Eventiva PR1115](https://github.com/Resnovas/Eventiva/pull/1115) at19:53:55Z as [7b6843e2](https://github.com/Resnovas/Eventiva/commit/7b6843e2f8abda9f5e9d4607cb399be4aa82ad0b). Postmerge workflow lint rejects the old publisher pin because its feature commit is no longer in repository history after squash/queue delivery. The correction started at19:56:15Z: pin both callers, including canonical house source, to published house e0eaf130 with byte-identical publisher content. No trigger, permission, gate, application behavior or other repository adoption changes. Normal-hook and protected correction delivery remain current; actual daily hosted publication and administrator inspection remain outstanding, so both issues stay open. Earlier local full-suite listener failures remain disclosed; no settings changes, manual dispatch or new bypass occurred.
 
 Last reconciled with Linear: 2026-11-17 (EVE-250/251 parameter checkpoint added 2026-11-18). Dates describe recorded decisions or this snapshot, not invented delivery deadlines. Status is the issue's observed status; repository source presence and focused tests do not close broader acceptance. Detailed contracts remain in the [modular specification](../architecture/modular-platform.md) and the [decision index](decisions.md).
+
+## EVE-261 HTTP fixture listener recovery - 2026-11-27
+
+At 09:41 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) isolated three failing HTTP cases in [the #1113 run](https://github.com/Resnovas/Eventiva/actions/runs/45973498358/job/140419413699), tracked in [EVE-261](https://linear.app/resnovas/issue/EVE-261#comment-a862243d) / [#1035](https://github.com/Resnovas/Eventiva/issues/1035). With both former ports occupied continuously, the original tests failed 3/3 and the retained-listener implementation passed 3/3 against disposable PostgreSQL. This qualifies the local HTTP fixture only, not the documentation stack, process migration or wider integration gate.
+
+At 23:01 UTC the [existing recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) resumed [EVE-309](https://linear.app/resnovas/issue/EVE-309#comment-0de06138) / [#1129](https://github.com/Resnovas/Eventiva/issues/1129) under [renewed authorization](https://ampcode.com/threads/T-01a21f3b-7821-7194-b956-625d41f89870). The existing [HTTP repair #1117](https://github.com/Resnovas/Eventiva/pull/1117) retains both loopback listeners across discovery and use. Requalify against current main without restoring its deleted generated graph; release evidence requires the protected queue and exact main checks. Consent isolation and parent acceptance remain separate.
 
 ## EVE-44 function telemetry recovery - 2026-11-27
 
@@ -781,6 +791,8 @@ flowchart LR
 ```
 
 ### Bounded Verify mirror repair - 2026-11-20
+
+On 2026-11-28 at 01:19:29 UTC the protected queue landed [the separate EVE-310 consent fixture fix](https://github.com/Resnovas/Eventiva/pull/1148) at [5539bedc](https://github.com/Resnovas/Eventiva/commit/5539bedcf6baced23a783213f3aa4af890a5f722). Its [merge-group CI](https://github.com/Resnovas/Eventiva/actions/runs/46090802933) passed verification and smoke. The recovery owner resumed #1094 against that published base. This unblocks qualification; it does not establish #1094 delivery or whole-issue acceptance.
 
 At 23:34 UTC on 2026-11-27 the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) reconciled [#1094](https://github.com/Resnovas/Eventiva/pull/1094) locally with the accepted house sync. [#1089](https://github.com/Resnovas/Eventiva/pull/1089) had already merged at [cf2c44ff](https://github.com/Resnovas/Eventiva/commit/cf2c44ff26d9c471fafb536ec9a226b1b7ea5802) with green main CI. [EVE-322](https://linear.app/resnovas/issue/EVE-322#comment-a8063d31) / [#1142](https://github.com/Resnovas/Eventiva/issues/1142#issuecomment-7230251047) retains the failed merge-group evidence: all four consent tests collided on port 34566. Final qualification of this evidence-only change waits for separate EVE-310 delivery. The November 20 results below remain historical.
 

@@ -16,6 +16,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
 import { define, type ActionSpec } from '@eventiva/contracts/action';
@@ -218,10 +219,9 @@ const fixture = (dialect: Dialect) =>
                     })
                 )
             ).pipe(Layer.provideMerge(identitySecurity));
+            const socket = yield* NodeSocketServer.make({ host: '127.0.0.1', port: 0 });
             const profile = yield* Schema.decode(DeploymentProfile)({
                 edition: 'community',
-                // Vitest runs this fixture alongside the HTTP client suite, which owns listener 34565.
-                port: 34566,
                 shards: 24,
                 assignmentRefreshMs: 50,
             });
@@ -285,7 +285,7 @@ const fixture = (dialect: Dialect) =>
                 })
             );
             const context = yield* Layer.build(
-                backend(profile, initialize, Effect.void, security, policy).pipe(
+                backend(profile, initialize, Effect.void, security, policy, socket).pipe(
                     Layer.provide(routing),
                     Layer.provide(shared),
                     Layer.provide(Layer.succeed(SqlClient.SqlClient, compute))
