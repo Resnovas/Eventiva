@@ -42,9 +42,13 @@ export function windowsChild(command, args, options, phase, startedAtMs) {
   let failed = false
   let empty = false
   let connected = false
+  let releasing = false
 
   /** Route cancellation through the supervisor so its close follows active-process-zero. */
   child.kill = (signal = 'SIGTERM') => {
+    // Release is the final command: the peer may already have closed its pipe
+    // while Node still reports writable. Keep awaiting supervisor/stream close.
+    if (releasing) return false
     requestedSignal ??= signal
     if (channel?.writable) channel.write('stop\n')
     else if (!connected) return nativeKill(signal)
@@ -127,10 +131,12 @@ export function windowsChild(command, args, options, phase, startedAtMs) {
           originalEmit.call(child, 'exit', child.exitCode, child.signalCode)
         } else if (packet.action === 'empty') {
           empty = true
+          releasing = true
           socket.write('release\n')
         }
         else if (packet.action === 'failed') {
           failed = true
+          releasing = true
           socket.write('release\n')
           originalEmit.call(child, 'error', Object.assign(new Error('Windows process acquisition failed.'), {
             code: packet.code === 2 || packet.code === 3 ? 'ENOENT' : packet.code === 5 ? 'EACCES' : 'EOWNER',

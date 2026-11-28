@@ -40,6 +40,8 @@ Preserve all `house:local` content. Coding agents deliver straight to `main` und
 
 Canonical governance is Markdown; obsolete root AsciiDoc compatibility links have been removed. Canonical owners/funding live in `.github/`. `examples/` is historical reference only, excluded from workspace discovery, Graphify, CodeQL and licence checking. Never initialize its private tests gitlink during setup, run its old active checks or treat it as an implementation baseline.
 
+EVE-305 / Eventiva#1108 adopts RES-74 / Resnovas/.github#87: local Graphify output and semantic caches stay ignored. Explicit non-CI setup and post-commit/checkout/merge/rewrite refresh navigation; queries and long-lived MCP reads refresh dirty source too. Daily/manual main automation alone updates the separate tracked `graphify-snapshot/` through a signed PR with normal required checks, retaining revision-labelled seven-day artifacts. PR workflows never generate/publish graphs or enforce freshness. The commit-msg guard rejects manual generated content, including on feature/fix branches, while preserving source/config commits and legacy local-output removals. Hook context is not authentication. See `docs/graphify.md` and the timeline. Native pre-commit setup migrates only exact known hook bodies, backs them up and registers `verify:staged` with the existing installer; custom hooks are refused, not overwritten. No gate is removed. This migration does not authorize the older delivery bypass described above.
+
 EVE-264 changes only the archive parent spelling to `examples/`, not historical content, AsciiDoc, modes or private-tests revision. Package hygiene requires the exact lowercase top-level spelling and rejects archive imports case-insensitively. Preserve the old `Examples/cluster-docker` spelling above as a historical incident reference, not a current path. This repository-only rename introduces no runtime behavior or feature flag.
 
 Enrollment introduces no runtime behavior or feature flag: it is repository governance and CI configuration. Application APIs and examples are in section 11.
@@ -420,6 +422,8 @@ export const reconcile = (request: string) =>
 ---
 
 ## Mandatory Cluster composition (EVE-252)
+
+HTTP integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. With the default host, bind `127.0.0.1` on port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend. The advertised host stays unchanged; only the port comes from the socket.
 
 Canonical Markdown: `docs/cluster.md`. Compiling typed composition: `apps/server/tests/backend.spec.ts`. Production owners: `apps/server/src/{backend,cluster,cluster-profile,cluster-actions}.ts`. Shared/client contracts and packages/runtime remain Cluster/driver-free. The archived EVE-18 spike is not integrated.
 
@@ -2170,6 +2174,16 @@ Pre-publication integration preserves independently delivered EVE-36 head `78c0e
 The combined full repeat at 78c0e17a also passes all 104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate and 16 smoke/dependency tasks with zero boundary violations/cycles and PostgreSQL cleanup. A later fetch preserves settings head `dcab6a3b403815e7b36920896b8e075cfa1d1ae0`; fifteen new candidates in three settings source/test/example files receive preparation-local one-shot admission, generation fencing, explicit default/persistence, transactional revision and real reconnect/scope-control explanations. Total for this packet becomes 148 documentation resolutions, zero checker corrections, all 63,769 parsed terminals unchanged across 44 TypeScript files, exact accepted and complete live queues zero across 239 editable files. No source semantics are unknown, no settings/host behavior changes and no broader acceptance is inferred. Repeat combined gates before strict publication; read the canonical backlog for actual execution and CI state.
 
 The full settings-integrated repeat at dcab6a3b exits zero: 104 documentation fixtures, 116 boundary/type fixtures, 98 aggregate tasks (18 cached), 16 smoke/dependency tasks (11 cached), zero source/emitted boundary violations/cycles and PostgreSQL cleanup. The backlog records the cumulative lane count separately: 2,972 attachments and 1,055 rationale findings resolved through documentation, versus 32 bounded classifier false positives; fingerprint reconciliation clears no semantic finding. Independent implementation/canonical improvements and diagnostic identity replacements are not documentation credit. Final root/clean-source graph publication and exact-head remote CI remain separately reported evidence.
+
+## Banned JSDoc tags
+
+Never write `@throws`, `@exception`, `@author` or `@license` (owner decision, 2026-11-21). Effect failures travel in the typed error channel, git records authors and the file header holds the licence. `eslint.config.mjs` enforces these bans (plus `@version`) on `jsdocAdoptedFiles` through `jsdocContracts` with `eslint-plugin-jsdoc` 65.4.6 (see `ai-docs/src/39_jsdoc_contract/index.md`). Outside the synced `tools/lint/funnel.mjs`, `tools/documentation/jsdoc-tags.mjs` also exports `jsdocTagBan(files)`, a standalone flat-config override entry setting `jsdoc/no-restricted-syntax` to error for composing after `{ ...contracts, files }` without editing the synced module. See `docs/documentation-standard.md#banned-jsdoc-tags`.
+
+```js
+import { jsdocTagBan } from './tools/documentation/jsdoc-tags.mjs';
+
+const entry = jsdocTagBan(['packages/*/src/**/*.ts']);
+```
 
 ---
 

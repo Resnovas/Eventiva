@@ -33,6 +33,7 @@ import {
     canonicalJson,
 } from '@eventiva/runtime/invocation';
 import { durable } from '@eventiva/runtime/storage';
+import type { SocketServer } from '@effect/platform/SocketServer';
 import type { WorkflowEngine } from '@effect/workflow/WorkflowEngine';
 import { SqlClient } from '@effect/sql';
 import { Context, Effect, Layer, Option, Schema, Scope } from 'effect';
@@ -67,7 +68,9 @@ export const backend = <E, WE = never, WR = never>(
     /** Trusted routed policy only; the absent source denies consent without selecting a duration or configuration authority. */
     sessionPolicy: Layer.Layer<IdentitySessionPolicy, never, CurrentTenant> = identitySessionPolicy(
         Effect.fail(new SessionPolicyFailure({ reason: 'unavailable' }))
-    )
+    ),
+    /** Trusted composition may retain an open listener across address discovery and runner registration. */
+    preboundSocket?: SocketServer['Type']
 ) =>
     Layer.scopedContext(
         Effect.gen(
@@ -228,7 +231,7 @@ export const backend = <E, WE = never, WR = never>(
                         )
                     );
                 return yield* Layer.build(
-                    clusterRunner(profile, registerWorkflows).pipe(
+                    clusterRunner(profile, registerWorkflows, preboundSocket).pipe(
                         Layer.provide(Layer.succeed(ClusterActionExecutor, { execute })),
                         Layer.provide(routedIdentity)
                     )
