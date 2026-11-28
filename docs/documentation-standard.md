@@ -52,16 +52,16 @@ Three details:
 
 Every callable and exported type needs a description written as a full sentence. Then add:
 
-| Tag | When | Notes |
-| --- | --- | --- |
-| `@param name - text` | Every parameter | One spelling only: `@arg`, `@argument` and `@return` are rejected. |
-| `@returns text` | Every function that returns a value | For an Effect, describe the success value and that it never fails, or name the failures with `@fails`. |
-| `@fails {ErrorTag} text` | Each typed failure in an Effect's error channel | Replaces `@throws`. |
-| `@since version` | Every export | The package version the export first shipped in. Replaces `@version`, which goes stale. |
-| `@example` | Every export and public exported method | A short, real call. |
-| `@access permission` | Code guarded by a resource or action permission | The dotted, lower-case permission a caller must hold, as the `Permission` schema in `packages/contracts/src/action.ts` defines it, for example `@access inventory.catalogue.write`. Never a role or a TypeScript visibility. |
-| `@yields text` | Real generator APIs | Not on callbacks passed to `Effect.gen`: the outer function's `@returns` and `@fails` document the Effect. |
-| `@default`, `@deprecated`, `@fires`, `@implements`, `@inheritdoc`, `@see`, `@this`, `@class`, `@constructs` | When they apply | `@emits` is rewritten to `@fires`. |
+| Tag                                                                                                         | When                                            | Notes                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@param name - text`                                                                                        | Every parameter                                 | One spelling only: `@arg`, `@argument` and `@return` are rejected.                                                                                                                                                           |
+| `@returns text`                                                                                             | Every function that returns a value             | For an Effect, describe the success value and that it never fails, or name the failures with `@fails`.                                                                                                                       |
+| `@fails {ErrorTag} text`                                                                                    | Each typed failure in an Effect's error channel | Replaces `@throws`.                                                                                                                                                                                                          |
+| `@since version`                                                                                            | Every export                                    | The package version the export first shipped in. Replaces `@version`, which goes stale.                                                                                                                                      |
+| `@example`                                                                                                  | Every export and public exported method         | A short, real call.                                                                                                                                                                                                          |
+| `@access permission`                                                                                        | Code guarded by a resource or action permission | The dotted, lower-case permission a caller must hold, as the `Permission` schema in `packages/contracts/src/action.ts` defines it, for example `@access inventory.catalogue.write`. Never a role or a TypeScript visibility. |
+| `@yields text`                                                                                              | Real generator APIs                             | Not on callbacks passed to `Effect.gen`: the outer function's `@returns` and `@fails` document the Effect.                                                                                                                   |
+| `@default`, `@deprecated`, `@fires`, `@implements`, `@inheritdoc`, `@see`, `@this`, `@class`, `@constructs` | When they apply                                 | `@emits` is rewritten to `@fires`.                                                                                                                                                                                           |
 
 Never use `@throws` or `@exception` (Effect code does not throw), `@author` (git records it), `@license` (the file header holds it) or `@version` (use `@since`). The rule's message names the replacement. Tests in `tests/boundaries/src/boundaries.spec.ts` prove each ban and a passing control.
 
@@ -196,6 +196,27 @@ records the immutable base, token proof, exact zero inventory and executed gates
 The root documentation command ends with `node tools/documentation/check.mjs`;
 regression fixtures prove accepted and never-ledgered rationale both fail that
 strict CLI, while an actual meaningful body comment clears the fixture.
+
+## Banned JSDoc tags
+
+Eventiva never writes `@throws`, `@exception`, `@author` or `@license`. Jonathan decided this on 2026-11-21. Effect code never throws: failures are typed in the Effect error channel and handled with Effect's tools, not `try`/`catch`, so a throw contract documents the wrong concept. Git records authors, and the file header holds the licence terms.
+
+`eslint.config.mjs` enforces these bans (plus `@version`) on `jsdocAdoptedFiles` through `jsdocContracts` with `eslint-plugin-jsdoc` 65.4.6; see [JSDoc tags and the lint rule set](#jsdoc-tags-and-the-lint-rule-set) above. The house JSDoc `contracts` set in `tools/lint/funnel.mjs` no longer requires `@throws` ([house PR 83](https://github.com/Resnovas/.github/pull/83)). For callers composing the house `contracts` set without editing the synced module, `tools/documentation/jsdoc-tags.mjs` exports `jsdocTagBan(files)`, a standalone flat-config override entry that sets `jsdoc/no-restricted-syntax` to error with this message:
+
+> Do not use @throws, @author or @license. Document Effect failures with @fails, let git record authors, and keep licence terms in the file header.
+
+When composing the house `contracts` entry directly, append `jsdocTagBan(sources)` after it for the same files; flat config applies the last matching setting:
+
+```js
+import { contracts } from './tools/lint/funnel.mjs';
+import { jsdocTagBan } from './tools/documentation/jsdoc-tags.mjs';
+
+const sources = ['packages/*/src/**/*.ts', 'apps/*/src/**/*.ts'];
+
+export default [...existingConfig, { ...contracts, files: sources }, jsdocTagBan(sources)];
+```
+
+`node --test tools/documentation/jsdoc-tags.test.mjs`, part of `node --run documentation`, checks the banned tags, the severity and the message. No active source uses a banned tag today.
 
 ## Maintain the rule
 
