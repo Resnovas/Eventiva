@@ -1,5 +1,9 @@
 # Foundation and integration timeline
 
+## Approval-consent listener isolation - 2026-11-27
+
+At 23:01 UTC the [recovery owner](https://ampcode.com/threads/T-7ba3a4bc-96b7-4ca7-a23b-1307239a1d45) resumed [EVE-310](https://linear.app/resnovas/issue/EVE-310#comment-d6cf53dd) / [#1130](https://github.com/Resnovas/Eventiva/issues/1130), separately from [the HTTP listener repair](https://github.com/Resnovas/Eventiva/pull/1117). A local test process held loopback port 34566 continuously. All four unchanged consent cases failed on the original fixture with `EADDRINUSE`; the hosted log does not identify the competing process. With a scoped OS-assigned listener, two concurrent runs at 23:07 UTC each passed all four SQLite and PostgreSQL cases under the same occupied-port condition. Neither the authorization assertions nor the timeouts changed. Full verification and protected delivery remain separate gates for the evidence PRs; the wider EVE-261 integration remains blocked.
+
 ## Graphify ownership migration - 2026-11-27
 
 Owner: [implementation thread](https://ampcode.com/threads/T-01a21be5-639d-7648-a3d5-d9b54cf795e2). Verified pairs: [EVE-305](https://linear.app/resnovas/issue/EVE-305) / [Eventiva#1108](https://github.com/Resnovas/Eventiva/issues/1108), canonical [RES-74](https://linear.app/resnovas/issue/RES-74) / [house#87](https://github.com/Resnovas/.github/issues/87). Approved [plan revision 2](https://ampcode.com/artifacts/eventiva-graph-generation-378f45fd-4d09-4849-8f38-1949db89f302). This decision supersedes older graph-commit and shared-graph reservation instructions below; their historical execution evidence remains unchanged.
