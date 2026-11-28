@@ -95,7 +95,7 @@ export const commands = {
         ),
 };
 
-export const makeBackend = (profile) =>
+export const makeBackend = (profile, preboundSocket) =>
     Layer.unwrapScoped(
         Effect.gen(function* () {
             const compute = Context.get(yield* Layer.build(pg(process.env.CLUSTER_TEST_C_URL)), SqlClient.SqlClient);
@@ -275,7 +275,9 @@ export const makeBackend = (profile) =>
                     profile,
                     () => Effect.fail(new Error('Module runs must never initialize the default executable')),
                     registerAgentRuns.pipe(Effect.provide(security)),
-                    security
+                    security,
+                    undefined,
+                    preboundSocket
                 ).pipe(Layer.provideMerge(security), Layer.provide(Layer.succeed(SqlClient.SqlClient, compute)))
             );
             return Layer.succeedContext(

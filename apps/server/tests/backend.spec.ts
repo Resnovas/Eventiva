@@ -16,6 +16,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
 import { define } from '@eventiva/contracts/action';
@@ -80,9 +81,9 @@ describe('SQL backend composition', /** Register real PostgreSQL composition cov
                     ).pipe(Effect.provideService(SqlClient.SqlClient, sql));
                     const h = yield* makeTestOnlyHarness(caller);
                     const failInitialization = yield* Ref.make(false);
+                    const socket = yield* NodeSocketServer.make({ host: '127.0.0.1', port: 0 });
                     const profile = yield* Schema.decodeUnknown(DeploymentProfile)({
                         edition: 'community',
-                        port: 34563,
                         shards: 24,
                         assignmentRefreshMs: 50,
                     });
@@ -135,7 +136,7 @@ describe('SQL backend composition', /** Register real PostgreSQL composition cov
                             }
                         );
                     const context = yield* Layer.build(
-                        backend(profile, initialize, Effect.void, h.TestOnly).pipe(
+                        backend(profile, initialize, Effect.void, h.TestOnly, undefined, socket).pipe(
                             Layer.provide(
                                 sqlRouter(
                                     'postgres',

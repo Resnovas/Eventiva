@@ -30,6 +30,7 @@ const fixture = await run(
     )
 );
 const children = new Set();
+const ports = new WeakMap();
 const events = [];
 let sequence = 0;
 const until = async (read, predicate) => {
@@ -41,33 +42,43 @@ const until = async (read, predicate) => {
     }
     throw new Error('Module run convergence timed out');
 };
-const launch = async (port, options = {}) => {
-    const child = fork(fileURLToPath(new URL('./module-run-process.mjs', import.meta.url)), [], {
-        env: {
-            ...process.env,
-            ...fixture.env,
-            ...options,
-            EVENTIVA_CLUSTER_PROFILE: JSON.stringify({
-                edition: 'community',
-                expectedRunners: 1,
-                shards: 24,
-                port,
-                assignmentRefreshMs: 250,
-                healthCheckMs: 250,
-                lockRefreshMs: 500,
-                lockExpiryMs: 2500,
-                drainMs: 1000,
-            }),
-        },
-        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-    });
+const launch = async (port = 0, options = {}, avoided = 0) => {
+    const child = fork(
+        fileURLToPath(new URL('./module-run-process.mjs', import.meta.url)),
+        [String(port), String(avoided)],
+        {
+            env: {
+                ...process.env,
+                ...fixture.env,
+                ...options,
+                EVENTIVA_CLUSTER_PROFILE: JSON.stringify({
+                    edition: 'community',
+                    expectedRunners: 1,
+                    shards: 24,
+                    port: port || undefined,
+                    assignmentRefreshMs: 250,
+                    healthCheckMs: 250,
+                    lockRefreshMs: 500,
+                    lockExpiryMs: 2500,
+                    drainMs: 1000,
+                }),
+            },
+            stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+        }
+    );
     children.add(child);
     child.on('message', (event) => events.push({ pid: child.pid, ...event }));
     child.once('exit', () => children.delete(child));
-    await until(
-        () => Promise.resolve(events),
-        (all) => all.some((event) => event.pid === child.pid && event.ready)
-    );
+    const ready = (
+        await until(
+            () => Promise.resolve(events),
+            (all) => all.some((event) => event.pid === child.pid && event.ready)
+        )
+    ).find((event) => event.pid === child.pid && event.ready);
+    assert.ok(Number.isInteger(ready.port) && ready.port > 0 && ready.port <= 65535);
+    if (port !== 0) assert.equal(ready.port, port);
+    assert.notEqual(ready.port, avoided);
+    ports.set(child, ready.port);
     return child;
 };
 const request = (child, command, input) =>
@@ -124,7 +135,8 @@ const gate = (runId, enabled) =>
     );
 
 try {
-    let a = await launch(34671);
+    let a = await launch();
+    const portA = ports.get(a);
     const accepted = input(9100);
     await gate(accepted.runId, true);
     await request(a, 'start', accepted);
@@ -141,7 +153,8 @@ try {
     const originalPid = a.pid;
     await stop(a);
     // A completely separate process has a newer default but retains the old executable and provider configuration.
-    const b = await launch(34672, { MODULE_RUN_NEW_DEFAULT: 'true' });
+    const b = await launch(0, { MODULE_RUN_NEW_DEFAULT: 'true' }, portA);
+    const portB = ports.get(b);
     await until(
         () => owner(accepted.runId),
         (row) => Number(row?.epoch) > 1
@@ -188,7 +201,7 @@ try {
     );
 
     // Both processes remain alive for explicit tenant transfer; no membership-change fence is presumed.
-    a = await launch(34671, { MODULE_RUN_NEW_DEFAULT: 'true' });
+    a = await launch(portA, { MODULE_RUN_NEW_DEFAULT: 'true' });
     const retained = await owner(accepted.runId);
     const oldFence = {
         tenant: caller().tenant,
@@ -243,7 +256,7 @@ try {
         'MODULE_RUN_PROVIDER_MISMATCH',
         'MODULE_RUN_SCHEMA_MISMATCH',
     ].entries()) {
-        const before = await launch(34671);
+        const before = await launch(portA);
         const candidate = input(9200 + index * 100);
         await gate(candidate.runId, true);
         await request(before, 'start', candidate);
@@ -256,7 +269,7 @@ try {
             await run(fixture.sql.a`SELECT snapshot FROM module_run_snapshot WHERE run_id = ${candidate.runId}`)
         )[0].snapshot;
         await stop(before);
-        const after = await launch(34672, { MODULE_RUN_NEW_DEFAULT: 'true', [missing]: 'true' });
+        const after = await launch(portB, { MODULE_RUN_NEW_DEFAULT: 'true', [missing]: 'true' });
         const refused = await until(
             () => request(after, 'poll', { caller: caller(), runId: candidate.runId }),
             (value) => value.state !== 'pending'

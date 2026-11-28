@@ -17,6 +17,7 @@
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as FetchHttpClient from '@effect/platform/FetchHttpClient';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
 import { define, type ActionSpec, type Input } from '@eventiva/contracts/action';
@@ -332,11 +333,11 @@ const fixture = Effect.gen(
                     })
                 )
         );
+        const socket = yield* NodeSocketServer.make({ host: '127.0.0.1', port: 0 });
         const runner = yield* Layer.build(
             backend(
                 yield* Schema.decodeUnknown(DeploymentProfile)({
                     edition: 'community',
-                    port: 34565,
                     shards: 8,
                     assignmentRefreshMs: 25,
                     messagePollMs: 25,
@@ -344,7 +345,9 @@ const fixture = Effect.gen(
                 }),
                 initialize,
                 Effect.void,
-                dependencies
+                dependencies,
+                undefined,
+                socket
             ).pipe(
                 Layer.provide(
                     sqlRouter(
