@@ -2,6 +2,12 @@
 
 Last checked: 2026-11-17. This is an index, not a new approval register. The owning Linear decision governs; detailed contracts stay in the linked architecture/feature document. `Approved direction` does not mean every implementation or target is accepted.
 
+## Scoped queue provenance and dependency approval - 2026-11-28
+
+Jonathan directly approved AI-03's verified unchanged GitHub-restack exception for PR1111-PR1114 only and AI-12 approval for PR1125's exact dependency changes at head7dee6c94, at 13:26:04.453 UTC. The [EVE-327 decision record](eve-327-queue.md#scoped-ai-03-and-ai-12-authorization---2026-11-28) preserves the human source, exact head, ordered delivery and unchanged protection/check requirements. This is not a standing signer rule, fresh DCO certification or approval of materially changed patches. Earlier authorization holds are superseded only within this scope; delivery remains separate from approval.
+
+The later direct [bounded amendment](eve-327-queue.md#bounded-conflict-resolution-amendment---2026-11-28), observed by 15:01:45 UTC, permits preserving both timeline histories and recomputing each existing ratchet reduction against current main for PR1112-PR1114, with fresh verification before sequential protected delivery. It adds PR1152 after the stack, retains approved-head PR1125 last, and authorizes normal decision/receipt publication. No other patch change or gate waiver follows.
+
 ## Development task traceability acceptance - 2026-11-19
 
 Jonathan explicitly accepted the EVE-266 governance requirements subject to conflict repair and passing verification, relayed by [Puck](https://ampcode.com/threads/T-01a1ee4a-387f-71c5-9b2b-5a421efd2e7c) and recorded on [Linear at 20:29:15.588Z](https://linear.app/resnovas/issue/EVE-266#comment-5bc07e0d) and [house PR #50 at 20:29:25Z](https://github.com/Resnovas/.github/pull/50#issuecomment-7021346916). Exact human-selection time was not supplied. This supersedes the earlier substantive acceptance hold, not technical gates or historical evidence.
