@@ -15,7 +15,8 @@
  */
 
 import { NodeRuntime } from '@effect/platform-node';
-import { Cause, Context, Effect, FiberSet, Layer } from 'effect';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
+import { Cause, Context, Effect, ExecutionStrategy, Exit, FiberSet, Layer, Scope } from 'effect';
 import { ClusterStatus } from '../dist/cluster.js';
 import { deploymentProfile } from '../dist/cluster-profile.js';
 import { makeBackend, commands } from './module-run-fixture.mjs';
@@ -24,7 +25,19 @@ NodeRuntime.runMain(
     Effect.scoped(
         Effect.gen(function* () {
             const profile = yield* deploymentProfile;
-            const context = yield* Layer.build(makeBackend(profile));
+            const requested = Number(process.argv[2]);
+            const avoided = Number(process.argv[3]);
+            const probe = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.sequential);
+            const first = yield* NodeSocketServer.make({ host: profile.listenHost, port: requested }).pipe(
+                Scope.extend(probe)
+            );
+            const socket =
+                requested === 0 && first.address.port === avoided
+                    ? yield* NodeSocketServer.make({ host: profile.listenHost, port: 0 }).pipe(
+                          Effect.tap(() => Scope.close(probe, Exit.void))
+                      )
+                    : first;
+            const context = yield* Layer.build(makeBackend(profile, socket));
             const status = Context.get(context, ClusterStatus);
             const fibers = yield* FiberSet.make();
             const fork = yield* FiberSet.runtime(fibers)();
@@ -52,7 +65,7 @@ NodeRuntime.runMain(
                 Effect.sync(() => process.on('message', respond)),
                 () => Effect.sync(() => process.off('message', respond))
             );
-            process.send?.({ ready: true, pid: process.pid });
+            process.send?.({ ready: true, pid: process.pid, port: socket.address.port });
             yield* Effect.never;
         })
     )

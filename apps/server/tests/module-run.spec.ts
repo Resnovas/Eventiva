@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as Entity from '@effect/cluster/Entity';
 import { Persisted, ShardGroup } from '@effect/cluster/ClusterSchema';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import * as Rpc from '@effect/rpc/Rpc';
 import { SqlClient } from '@effect/sql';
 import { describe, expect, it } from '@effect/vitest';
@@ -216,9 +217,9 @@ const moduleFixture = (withCatalog = true) =>
                 })
             );
             const security = Layer.merge(base, withCatalog ? Layer.succeed(ModuleRunCatalog, catalog) : Layer.empty);
+            const socket = yield* NodeSocketServer.make({ host: '127.0.0.1', port: 0 });
             const profile = yield* Schema.decodeUnknown(DeploymentProfile)({
                 edition: 'community',
-                port: 34685,
                 shards: 24,
                 assignmentRefreshMs: 50,
             });
@@ -228,7 +229,9 @@ const moduleFixture = (withCatalog = true) =>
                     /** A module-bound invocation must never initialize the admission default. */ () =>
                         Effect.fail(new RunRecoveryRequired()),
                     registerAgentRuns.pipe(Effect.provide(security)),
-                    harness.TestOnly
+                    harness.TestOnly,
+                    undefined,
+                    socket
                 ).pipe(Layer.provideMerge(security), Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)))
             );
             yield* Context.get(context, ClusterStatus).snapshot.pipe(

@@ -273,7 +273,7 @@ adapter, renewal, retention cleanup or activation is implied.
 
 ### Concurrent consent and HTTP fixture proof
 
-The `backend-fixture-isolation` entry in `docs/verification/registry.md` runs `approval-consent.spec.ts` and `http-client.spec.ts` with two Vitest workers against disposable PostgreSQL. Nx task serialization does not serialize files inside Vitest. The two fixtures previously both listened on 34565; this bounded repair isolates consent on 34566 while retaining every authorization, mutation and replay assertion. The explicit concurrent command failed four tests before the repair and passes all seven after it. Full verification still owns coverage. This fixes the observed collision, not arbitrary fixed-port safety; the requested port-zero fixture migration and corrective enforcement are follow-up work, without permission to weaken the validated deployment-profile contract or release a reserved port before rebinding it.
+The `backend-fixture-isolation` entry in `docs/verification/registry.md` runs `approval-consent.spec.ts` and `http-client.spec.ts` with two Vitest workers against disposable PostgreSQL. Nx task serialization does not serialize files inside Vitest. The two fixtures previously both listened on 34565. Both now retain OS-assigned listeners through the backend's prebound socket, with every authorization, mutation and replay assertion unchanged. The explicit concurrent command failed four tests before the first repair and passed all seven after it. Full verification still owns coverage. A corrective rule against fixed fixture listener ports is follow-up work. Neither repair weakens the validated deployment-profile contract or releases a reserved port before rebinding it.
 
 ---
 
@@ -447,7 +447,7 @@ export const reconcile = (request: string) =>
 
 ## Mandatory Cluster composition (EVE-252)
 
-Integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. With the default host, bind `127.0.0.1` on port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend. The advertised host stays unchanged; only the port comes from the socket. The independent-process harness reports the assigned port over readiness IPC, verifies distinct initial ports, and reuses each replaced runner's port for recovery and the final community restart. Do not restore fixed initial ports or discover-close-rebind allocation.
+Integration fixtures may supply a scoped, already listening TCP `SocketServer` as the sixth `backend` argument. With the default host, bind `127.0.0.1` on port `0` in trusted fixture code, never in the deployment profile. Keep the service alive for the lifetime of the backend. The advertised host stays unchanged; only the port comes from the socket. The independent-process harness reports the assigned port over readiness IPC, verifies distinct initial ports, and reuses each replaced runner's port for recovery and the final community restart. Do not restore fixed initial ports or discover-close-rebind allocation. The module-run handover harness follows the same rule, and its second runner refuses the first runner's just-released port.
 
 Canonical Markdown: `docs/cluster.md`. Compiling typed composition: `apps/server/tests/backend.spec.ts`. Production owners: `apps/server/src/{backend,cluster,cluster-profile,cluster-actions}.ts`. Shared/client contracts and packages/runtime remain Cluster/driver-free. The archived EVE-18 spike is not integrated.
 
