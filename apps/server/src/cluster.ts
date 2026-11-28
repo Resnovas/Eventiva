@@ -24,6 +24,7 @@ import * as ShardingConfig from '@effect/cluster/ShardingConfig';
 import * as SocketRunner from '@effect/cluster/SocketRunner';
 import * as SqlMessageStorage from '@effect/cluster/SqlMessageStorage';
 import * as SqlRunnerStorage from '@effect/cluster/SqlRunnerStorage';
+import { SocketServer, SocketServerError } from '@effect/platform/SocketServer';
 import { NodeClusterSocket } from '@effect/platform-node';
 import * as RpcSerialization from '@effect/rpc/RpcSerialization';
 import { Context, Deferred, Effect, Layer, Scope } from 'effect';
@@ -90,7 +91,7 @@ export const clusterStatus = (profile: DeploymentProfile) =>
                                         registered,
                                         /** Avoid probing runners already declared unhealthy by shared membership storage. */ ([
                                             runner,
-                                            healthy
+                                            healthy,
                                         ]) => (healthy ? health.isAlive(runner.address) : Effect.succeed(false)),
                                         { concurrency: 8 }
                                     );
@@ -131,13 +132,20 @@ export const clusterStatus = (profile: DeploymentProfile) =>
  */
 export const clusterRunner = <E = never, R = never>(
     profile: DeploymentProfile,
-    registerWorkflows: Effect.Effect<void, E, R | WorkflowEngine | Scope.Scope> = Effect.void
+    registerWorkflows: Effect.Effect<void, E, R | WorkflowEngine | Scope.Scope> = Effect.void,
+    /** Already listening TCP service owned by the caller's scope, never decoded from configuration. */
+    preboundSocket?: SocketServer['Type']
 ) =>
     Layer.unwrapEffect(
         Effect.gen(
             /** Compose SQL-backed transport and gate runner advertisement on handler registration. */ function* () {
                 const ready = yield* Deferred.make<void>();
-                const config = ShardingConfig.layer(shardingConfig(profile));
+                const address = preboundSocket?.address;
+                if (address && address._tag !== 'TcpAddress')
+                    return yield* new SocketServerError({ reason: 'Open', cause: 'Cluster transport requires TCP' });
+                const config = ShardingConfig.layer(
+                    shardingConfig(address ? { ...profile, port: address.port } : profile)
+                );
                 const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(config));
                 const health = RunnerHealth.layerPing.pipe(Layer.provide(Runners.layerRpc), Layer.provide(protocol));
                 // Sharding starts its background loops during acquisition. Do not advertise
@@ -159,7 +167,11 @@ export const clusterRunner = <E = never, R = never>(
                 ).pipe(Layer.provide(SqlRunnerStorage.layer));
                 const storage = Layer.mergeAll(runners, SqlMessageStorage.layer).pipe(Layer.provide(config));
                 const transport = SocketRunner.layer.pipe(
-                    Layer.provide(NodeClusterSocket.layerSocketServer),
+                    Layer.provide(
+                        preboundSocket
+                            ? Layer.succeed(SocketServer, preboundSocket)
+                            : NodeClusterSocket.layerSocketServer
+                    ),
                     Layer.provideMerge(health),
                     Layer.provide(protocol),
                     Layer.provideMerge(storage),

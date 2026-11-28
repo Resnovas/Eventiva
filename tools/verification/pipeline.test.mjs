@@ -20,9 +20,25 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeF
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { verificationStages } from './pipeline.mjs';
+import { qualify } from '../../tests/telemetry/benchmark/check.mjs';
 
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 const nx = JSON.parse(readFileSync(new URL('../../nx.json', import.meta.url), 'utf8'));
+
+test('rejects a median of exactly three in either composition without rounding or discarding a mode', async () => {
+    for (const failingMode of [false, true, null]) {
+        const counts = [0, 0];
+        const result = qualify((testTimer) => {
+            const index = counts[Number(testTimer)]++;
+            const multiple = index === 0 ? 1 : index === 1 ? 7 : testTimer === failingMode ? 3 : 2.99999;
+            const native = { n: 7200, p50us: 10, p95us: 12, meanUs: 11 };
+            return { testTimer, total: 688800, result: { native, observed: { ...native, p50us: 10 * multiple, p95us: 12 * multiple, meanUs: 11 * multiple } } };
+        });
+        if (failingMode === null) await result;
+        else await assert.rejects(result, /strictly below 3x/);
+        assert.deepEqual(counts, [5, 5]);
+    }
+});
 
 /**
  * Preserve the static-first funnel while allowing measured independent Nx work.
@@ -43,6 +59,7 @@ test('verification preserves every gate and dependency barrier without serializi
         [
             ['--run', 'verify:static'],
             ['--run', 'check'],
+            ['tests/telemetry/benchmark/check.mjs'],
             [
                 '--test',
                 'tools/resources/boundaries.test.mjs',
@@ -77,6 +94,7 @@ test('verification preserves every gate and dependency barrier without serializi
     const commands = [
         'run: node --run verify:static',
         'run: node --run check',
+        'run: node tests/telemetry/benchmark/check.mjs',
         'run: pnpm nx run-many -t lint typecheck test build parity',
         'node tools/resources/boundaries.mjs --declarations',
         'node tools/verification/run.mjs --base "$VERIFICATION_BASE"',

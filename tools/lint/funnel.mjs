@@ -157,7 +157,9 @@ export const contracts = {
     'jsdoc/check-param-names': 'error',
     'jsdoc/require-returns': 'error',
     'jsdoc/require-returns-description': 'error',
-    'jsdoc/require-throws': 'error',
+    // Effect code fails through its typed error channel, not throw/catch, so a throw contract is the wrong
+    // concept. A repository overrides any rule here with a later flat-config entry (docs/house-funnel.md).
+    'jsdoc/require-throws': 'off',
     'jsdoc/check-tag-names': 'error',
     'jsdoc/no-types': 'error',
     'jsdoc/valid-types': 'error',
