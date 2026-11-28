@@ -82,14 +82,14 @@ Every feature below has a written specification, and none of them is built yet. 
 
 Event teams plan and run productions with tools built for something else. Eventiva's own industry survey, reported in the historical README, found:
 
-| Claim | What the survey reported |
-| --- | --- |
-| **55%+** | of events had no management tool of any kind. |
+| Claim    | What the survey reported                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **55%+** | of events had no management tool of any kind.                                                                              |
 | **~40%** | used tools designed for office work, such as Flock and Excel, which barely cover what managers need during pre-production. |
-| **80%** | of the people surveyed believed schedulers, task lists and other management tools would help their ongoing operations. |
+| **80%**  | of the people surveyed believed schedulers, task lists and other management tools would help their ongoing operations.     |
 
 > [!NOTE]
-> **Source:** *Study of management solutions within events*, primary research carried out by Eventiva's founder for a university work-related project in the 2020-21 academic year. It surveyed 50 individuals, covering 48 job titles and 2 to 40 years of experience, and 20 events companies picked from listings with recent or upcoming events. As the study itself notes, a sample this small may not represent every view in the industry, so treat these as historical findings rather than current industry-wide data.
+> **Source:** _Study of management solutions within events_, primary research carried out by Eventiva's founder for a university work-related project in the 2020-21 academic year. It surveyed 50 individuals, covering 48 job titles and 2 to 40 years of experience, and 20 events companies picked from listings with recent or upcoming events. As the study itself notes, a sample this small may not represent every view in the industry, so treat these as historical findings rather than current industry-wide data.
 
 ## Why open source
 
@@ -129,14 +129,14 @@ The [source documentation standard](docs/documentation-standard.md) and [exact r
 
 ## What's in the box today
 
-| Path | What it is |
-| --- | --- |
-| [`apps/server`](apps/server) | Effect backend shell |
-| [`apps/client`](apps/client) | Expo and React Native client shell, with [`apps/client-e2e`](apps/client-e2e) end-to-end tests |
-| [`packages/contracts`](packages/contracts), [`packages/schema`](packages/schema), [`packages/runtime`](packages/runtime) | The `@eventiva/contracts`, `@eventiva/schema` and `@eventiva/runtime` packages |
-| [`docs`](docs) | Foundation guide, planning record, architecture notes and ADRs |
-| [`externals`](externals/README.md) | Version-pinned upstream source references for coding agents, not installed packages |
-| [`examples`](#historical-reference) | Historical snapshots, kept for reference only |
+| Path                                                                                                                     | What it is                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| [`apps/server`](apps/server)                                                                                             | Effect backend shell                                                                           |
+| [`apps/client`](apps/client)                                                                                             | Expo and React Native client shell, with [`apps/client-e2e`](apps/client-e2e) end-to-end tests |
+| [`packages/contracts`](packages/contracts), [`packages/schema`](packages/schema), [`packages/runtime`](packages/runtime) | The `@eventiva/contracts`, `@eventiva/schema` and `@eventiva/runtime` packages                 |
+| [`docs`](docs)                                                                                                           | Foundation guide, planning record, architecture notes and ADRs                                 |
+| [`externals`](externals/README.md)                                                                                       | Version-pinned upstream source references for coding agents, not installed packages            |
+| [`examples`](#historical-reference)                                                                                      | Historical snapshots, kept for reference only                                                  |
 
 The workspace has tests and smoke runs but no product features. Read [the foundation guide](docs/foundation.md) for how it fits together. Release workflows stay inactive until a release configuration exists.
 
@@ -152,12 +152,12 @@ pnpm exec playwright install --with-deps chromium
 node --run verify
 ```
 
-| Command | What it does |
-| --- | --- |
-| `setup` | Installs the house commit hook and registers available editor actions. |
-| `check` | The house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current. Locally it also checks that the commit hook is installed. |
-| `verify` | Runs `check`, then the Nx `lint`, `typecheck`, `test`, `build` and `parity` targets, then the `smoke` targets. |
-| `parity` | Runs the action inventory gate alone. Read [the action host guide](docs/actions.md) for invocation services, approval and receipt guarantees. |
+| Command  | What it does                                                                                                                                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`  | Installs the house commit hook and registers available editor actions.                                                                                                                                                      |
+| `check`  | The house gate: the toolchain pins agree, generated agent files are current, licence headers are present outside the historical archive and `LLMS.md` is current. Locally it also checks that the commit hook is installed. |
+| `verify` | Runs `check`, then the Nx `lint`, `typecheck`, `test`, `build` and `parity` targets, then the `smoke` targets.                                                                                                              |
+| `parity` | Runs the action inventory gate alone. Read [the action host guide](docs/actions.md) for invocation services, approval and receipt guarantees.                                                                               |
 
 The `house check` and `application check` CI jobs run the same gates. `scripts/agent-setup` runs the install, setup and check on a machine with the pinned toolchain. No secrets, services or private repository access are required. There is no development server to start.
 
@@ -218,13 +218,13 @@ The archived private tests gitlink is preserved at its original revision and dis
 
 Read current [AGENTS.md](AGENTS.md) before working. Historical instructions, commands and configuration inside the archives do not govern the rebuild. The application workspace is the fresh foundation described in [docs/foundation.md](docs/foundation.md).
 
-| Read | For |
-| --- | --- |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [SUPPORT.md](SUPPORT.md) | Where to get help |
-| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [COOPERATION_COMMITMENT.md](COOPERATION_COMMITMENT.md) | How we work together |
-| [GOVERNANCE.md](GOVERNANCE.md), [AI_POLICY.md](AI_POLICY.md) and [DCO.md](DCO.md) | Decisions, AI-assisted work and sign-off |
+| Read                                                                                                | For                                      |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                                                                  | How to contribute                        |
+| [SUPPORT.md](SUPPORT.md)                                                                            | Where to get help                        |
+| [SECURITY.md](SECURITY.md)                                                                          | How to report a vulnerability            |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [COOPERATION_COMMITMENT.md](COOPERATION_COMMITMENT.md) | How we work together                     |
+| [GOVERNANCE.md](GOVERNANCE.md), [AI_POLICY.md](AI_POLICY.md) and [DCO.md](DCO.md)                   | Decisions, AI-assisted work and sign-off |
 
 <p align="center">
   <img src="assets/readme/footer.svg" width="100%" alt="Eventiva icon. Made for the people who make events happen.">
