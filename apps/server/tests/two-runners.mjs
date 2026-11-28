@@ -29,6 +29,7 @@ import { caller, id, prepare } from './sql-fixture.mjs';
 const bootstrap = fileURLToPath(new URL('./sql-fixture.mjs', import.meta.url));
 await access(resolve(bootstrap));
 const children = new Set();
+const ports = new WeakMap();
 const events = [];
 let sequence = 0;
 const scope = await Effect.runPromise(Scope.make());
@@ -40,25 +41,29 @@ const fixture = await Effect.runPromise(
 );
 const run = Effect.runPromise;
 
-const launch = (port, edition = 'cloud') => {
-    const child = fork(fileURLToPath(new URL('./runner-process.mjs', import.meta.url)), [resolve(bootstrap)], {
-        env: {
-            ...process.env,
-            ...fixture.env,
-            EVENTIVA_CLUSTER_PROFILE: JSON.stringify({
-                edition,
-                expectedRunners: edition === 'cloud' ? 2 : 1,
-                shards: 24,
-                port,
-                assignmentRefreshMs: 250,
-                healthCheckMs: 250,
-                lockRefreshMs: 1000,
-                lockExpiryMs: 4000,
-                drainMs: 2000,
-            }),
-        },
-        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-    });
+const launch = (port = 0, edition = 'cloud') => {
+    const child = fork(
+        fileURLToPath(new URL('./runner-process.mjs', import.meta.url)),
+        [resolve(bootstrap), String(port)],
+        {
+            env: {
+                ...process.env,
+                ...fixture.env,
+                EVENTIVA_CLUSTER_PROFILE: JSON.stringify({
+                    edition,
+                    expectedRunners: edition === 'cloud' ? 2 : 1,
+                    shards: 24,
+                    port: port || undefined,
+                    assignmentRefreshMs: 250,
+                    healthCheckMs: 250,
+                    lockRefreshMs: 1000,
+                    lockExpiryMs: 4000,
+                    drainMs: 2000,
+                }),
+            },
+            stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+        }
+    );
     children.add(child);
     child.on('message', (event) => {
         if (event?.barrier) events.push(event);
@@ -78,6 +83,7 @@ const launch = (port, edition = 'cloud') => {
         const message = (value) => {
             if (value?.ready) {
                 cleanup();
+                ports.set(child, value.port);
                 resolveReady(child);
             }
         };
@@ -92,6 +98,11 @@ const launch = (port, edition = 'cloud') => {
         child.on('message', message);
         child.once('exit', exit);
         child.once('error', error);
+    }).then((ready) => {
+        const assignedPort = ports.get(ready);
+        assert.ok(Number.isInteger(assignedPort) && assignedPort > 0 && assignedPort <= 65535);
+        if (port !== 0) assert.equal(assignedPort, port);
+        return ready;
     });
 };
 
@@ -161,7 +172,7 @@ const distributed = (states) =>
     states[0].ownedShards.length + states[1].ownedShards.length === 24;
 
 try {
-    const pending = launch(34561);
+    const pending = launch();
     await until(
         () => Promise.resolve(events),
         (values) => values.some((event) => event.barrier === 'registration')
@@ -172,7 +183,8 @@ try {
     assert.equal((await run(fixture.sql.c`SELECT * FROM cluster_runners`)).length, 0);
     await run(fixture.set('registration', false));
     let a = await pending;
-    let b = await launch(34562);
+    let b = await launch();
+    assert.notEqual(ports.get(a), ports.get(b));
     assert.notEqual(a.pid, b.pid);
     assert.notEqual(a.pid, process.pid);
     const distribution = await until(() => snapshots(a, b), distributed);
@@ -409,7 +421,7 @@ try {
     );
     const victim = outputPersisted.pid === a.pid ? a : b;
     const survivor = victim === a ? b : a;
-    const replacementPort = victim === a ? 34561 : 34562;
+    const replacementPort = ports.get(victim);
     assert.equal(victim.pid, outputPersisted.pid);
     await stop(victim, 'SIGKILL');
     await until(
@@ -459,7 +471,7 @@ try {
         assert.deepEqual(await request(b, { command: 'agentStatus', request: input }), { state: 'pending' });
         const victim = between.pid === a.pid ? a : b;
         const survivor = victim === a ? b : a;
-        const port = victim === a ? 34561 : 34562;
+        const port = ports.get(victim);
         assert.equal(victim.pid, between.pid);
         await stop(victim, signal);
         await until(
@@ -648,7 +660,7 @@ try {
         assert.equal(recovered.value.replayed, false);
         assert.deepEqual(recovered.value.output, { value: input.input.value, tenant: id(1) });
         await verifyCommitted(input);
-        a = await launch(34561);
+        a = await launch(ports.get(a));
         await until(() => snapshots(a, b), distributed);
 
         const workflowInput = invocation(++record);
@@ -659,7 +671,7 @@ try {
         await verifyCommitted(workflowInput);
         const victim = after.pid === a.pid ? a : b;
         const survivor = victim === a ? b : a;
-        const port = victim === a ? 34561 : 34562;
+        const port = ports.get(victim);
         await stop(victim, signal);
         await run(fixture.set('after', false));
         await until(
@@ -748,7 +760,7 @@ try {
     await checkpoint(restartingAgent, restartingId);
     await stop(a, 'SIGTERM');
     await stop(b, 'SIGTERM');
-    const community = await launch(34561, 'community');
+    const community = await launch(ports.get(a), 'community');
     const [single] = await until(
         () => snapshots(community),
         ([s]) => s.status === 'healthy' && s.healthyRunners === 1 && s.ownedShards.length === 24

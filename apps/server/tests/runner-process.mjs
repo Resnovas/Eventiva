@@ -17,6 +17,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NodeRuntime } from '@effect/platform-node';
+import * as NodeSocketServer from '@effect/platform-node/NodeSocketServer';
 import { Sharding } from '@effect/cluster/Sharding';
 import { Cause, Effect, FiberSet, Layer, Schema } from 'effect';
 import { ClusterStatus } from '../dist/cluster.js';
@@ -33,7 +34,8 @@ const { makeBackend, commands: extraCommands } = await import('./sql-fixture.mjs
 
 const program = Effect.gen(function* () {
     const profile = yield* deploymentProfile;
-    const context = yield* Layer.build(makeBackend(profile));
+    const socket = yield* NodeSocketServer.make({ host: profile.listenHost, port: Number(process.argv[3]) });
+    const context = yield* Layer.build(makeBackend(profile, socket));
     const status = yield* ClusterStatus.pipe(Effect.provide(context));
     const actions = yield* ClusterActions.pipe(Effect.provide(context));
     const sharding = yield* Sharding.pipe(Effect.provide(context));
@@ -67,7 +69,7 @@ const program = Effect.gen(function* () {
         Effect.sync(() => process.on('message', respond)),
         () => Effect.sync(() => process.off('message', respond))
     );
-    process.send?.({ ready: true, pid: process.pid, port: profile.port });
+    process.send?.({ ready: true, pid: process.pid, port: socket.address.port });
     yield* Effect.never;
 });
 
